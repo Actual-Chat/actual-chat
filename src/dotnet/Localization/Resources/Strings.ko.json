@@ -2019,7 +2019,7 @@
   "Coach_BestThisWeek": "이번 주 최고",
   "Coach_GettingBetter": "점점 나아지고 있어요",
   "Coach_BetterCaption_Format": "{0}이(가) 지난주보다 {1}% 줄었어요. 7일 중 {2}일 말했어요.",
-  "Coach_ScoreLastWeeks": "점수, 최근 4주",
+  "Coach_ScoreLastWeeks": "점수, 최근 8주",
   "Coach_ThisWeekVsLast": "이번 주 vs 지난주",
   "Coach_PercentagePoints_Format": "{0} 퍼센트포인트",
   "Coach_ComfortableRange_Format": "편안한 범위: 분당 {0}–{1} 단어",

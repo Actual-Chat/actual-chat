@@ -2019,7 +2019,7 @@
   "Coach_BestThisWeek": "Најбоље ове седмице",
   "Coach_GettingBetter": "Све сте бољи",
   "Coach_BetterCaption_Format": "{0} је за {1}% ниже него претходне седмице. {2} дана с говором од 7.",
-  "Coach_ScoreLastWeeks": "Резултат, посљедње 4 седмице",
+  "Coach_ScoreLastWeeks": "Резултат, посљедњих 8 седмица",
   "Coach_ThisWeekVsLast": "Ове седмице наспрам прошле",
   "Coach_PercentagePoints_Format": "{0} процентних поена",
   "Coach_ComfortableRange_Format": "Угодно: {0}–{1} речи/мин",

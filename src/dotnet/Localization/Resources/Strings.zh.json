@@ -2019,7 +2019,7 @@
   "Coach_BestThisWeek": "本周最佳",
   "Coach_GettingBetter": "你在进步",
   "Coach_BetterCaption_Format": "{0}比前一周下降了 {1}%。7 天中有 {2} 天有讲话。",
-  "Coach_ScoreLastWeeks": "得分，最近 4 周",
+  "Coach_ScoreLastWeeks": "得分，最近 8 周",
   "Coach_ThisWeekVsLast": "本周与上周对比",
   "Coach_PercentagePoints_Format": "{0} 个百分点",
   "Coach_ComfortableRange_Format": "舒适范围：每分钟 {0}–{1} 词",

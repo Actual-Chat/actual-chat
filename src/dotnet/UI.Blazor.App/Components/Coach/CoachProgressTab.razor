@@ -62,6 +62,7 @@
 
 @code {
     private const int HistoryWeeks = 12;
+    private const int ScoreWeeks = 8;
 
     [Parameter] public string? Language { get; set; }
 
@@ -75,7 +76,8 @@
             ?? await Hub.CoachUI.GetComparisonLanguage(cancellationToken).ConfigureAwait(false);
         var deltas = await Hub.Coach
             .GetOwnWeekDeltas(Session, comparisonLanguage, cancellationToken).ConfigureAwait(false);
-        var scores = await Hub.Coach.ListOwnWeekScores(Session, 4, Language, cancellationToken).ConfigureAwait(false);
+        var scores = await Hub.Coach.ListOwnWeekScores(Session, ScoreWeeks, Language, cancellationToken)
+            .ConfigureAwait(false);
         var milestones = await Hub.Coach.ListOwnMilestones(Session, cancellationToken).ConfigureAwait(false);
         var today = UsageDay.DayOf(Clocks.SystemClock.Now);
         var weekStart = CoachWeek.StartOf(today);

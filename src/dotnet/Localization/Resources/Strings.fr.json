@@ -2019,7 +2019,7 @@
   "Coach_BestThisWeek": "Meilleur score de la semaine",
   "Coach_GettingBetter": "Vous progressez",
   "Coach_BetterCaption_Format": "{0} a baissé de {1} % par rapport à la semaine précédente. {2} jours de parole sur 7.",
-  "Coach_ScoreLastWeeks": "Score, 4 dernières semaines",
+  "Coach_ScoreLastWeeks": "Score, 8 dernières semaines",
   "Coach_ThisWeekVsLast": "Cette semaine vs la précédente",
   "Coach_PercentagePoints_Format": "{0} points de pourcentage",
   "Coach_ComfortableRange_Format": "Confortable : {0}–{1} mots/min",

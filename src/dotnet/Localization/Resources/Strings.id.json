@@ -2019,7 +2019,7 @@
   "Coach_BestThisWeek": "Terbaik minggu ini",
   "Coach_GettingBetter": "Anda makin baik",
   "Coach_BetterCaption_Format": "{0} turun {1}% dibanding minggu sebelumnya. {2} hari berbicara dari 7.",
-  "Coach_ScoreLastWeeks": "Skor, 4 minggu terakhir",
+  "Coach_ScoreLastWeeks": "Skor, 8 minggu terakhir",
   "Coach_ThisWeekVsLast": "Minggu ini vs minggu lalu",
   "Coach_PercentagePoints_Format": "{0} poin persentase",
   "Coach_ComfortableRange_Format": "Nyaman: {0}–{1} kata/menit",

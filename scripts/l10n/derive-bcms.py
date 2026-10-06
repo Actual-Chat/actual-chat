@@ -110,6 +110,7 @@ CROATIAN = [
     ("otpremljeno", "preneseno"), ("Otpremljeno", "Preneseno"),
     ("Kreiraj", "Stvori"), ("kreiraj", "stvori"), ("kreirate", "stvarate"),
     ("kreirao", "stvorio"), ("Kreirajte", "Stvorite"), ("kreiranje", "stvaranje"),
+    ("8 sedmica", "8 tjedana"),
     ("sedmic", "tjedn"), ("desilo", "dogodilo"),
     ("dešavanjima", "događanjima"), ("hiljad", "tisuć"),
 ]

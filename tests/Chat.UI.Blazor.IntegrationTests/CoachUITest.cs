@@ -693,6 +693,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             cut.FindAll(".coach-progress .coach-days .c-day.on").Count.Should().BeGreaterThan(0);
             cut.FindAll(".coach-milestones .tile-item").Count.Should().Be(7);
             cut.FindAll(".coach-week-deltas").Should().BeEmpty();
+            cut.FindAll(".coach-week-scores .c-column").Should().HaveCount(8);
+            cut.Find(".coach-progress").TextContent.Should().Contain("last 8 weeks");
             cut.Markup.Should().NotContain("No earlier week");
         });
     }

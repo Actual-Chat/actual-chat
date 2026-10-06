@@ -2019,7 +2019,7 @@
   "Coach_BestThisWeek": "Лучшее за неделю",
   "Coach_GettingBetter": "У вас становится лучше",
   "Coach_BetterCaption_Format": "{0}: на {1}% меньше, чем неделей раньше. Дней с речью: {2} из 7.",
-  "Coach_ScoreLastWeeks": "Балл за последние 4 недели",
+  "Coach_ScoreLastWeeks": "Балл за последние 8 недель",
   "Coach_ThisWeekVsLast": "Эта неделя и прошлая",
   "Coach_PercentagePoints_Format": "{0} п. п.",
   "Coach_ComfortableRange_Format": "Комфортно: {0}–{1} слов/мин",
