@@ -329,10 +329,6 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply bg-transparent;
     @apply no-sheen;
 }
-.chat-list .navbar-item .recording-in-chat.on,
-body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
-    @apply text-danger;
-}
 /* Timer ring around the listen button would be clipped by the ending's
    overflow-hidden — open it up only for rows that actually show the controls. */
 .chat-list .navbar-item .navbar-item-ending[data-has-audio-controls],
@@ -342,10 +338,9 @@ body.hoverable .chat-list .navbar-item:hover .recording-in-chat.on {
     @apply overflow-visible;
 }
 /* Every audio state shares one width so the unread badge never shifts between
-   them (recording ⇆ hang up ⇆ countdown ring). Kept as tight as the "00:25"
-   countdown text allows; the menu sits to the right and is sized separately. */
+   them (hang up ⇆ countdown ring). Kept as tight as the "00:25" countdown text
+   allows; the menu sits to the right and is sized separately. */
 .chat-list .navbar-item .chat-audio-controls .c-hangup,
-.chat-list .navbar-item .chat-audio-controls .c-mic,
 .chat-list .navbar-item .chat-audio-controls .c-listening-timer {
     @apply w-8;
 }

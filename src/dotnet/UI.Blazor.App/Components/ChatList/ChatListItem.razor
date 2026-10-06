@@ -108,7 +108,11 @@
                     // An ongoing recording takes over: the mic control is what stops it.
                     <ChatListPttToggle ChatId="@chat.Id" Class="ending-btn"/>
                 } else {
-                    <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
+                    <ChatAudioControls
+                        Chat="@chat"
+                        AudioState="@audioState"
+                        ShowRecordingToggle="false"
+                        Class="ending-btn"/>
                 }
             </div>
         } else if (!isHoverable) {
@@ -123,7 +127,11 @@
                         ReactionEmoji="@m.ReactionEmoji"/>
                 }
                 @if (showAudioControls) {
-                    <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
+                    <ChatAudioControls
+                        Chat="@chat"
+                        AudioState="@audioState"
+                        ShowRecordingToggle="false"
+                        Class="ending-btn"/>
                 }
             </div>
         } else {
@@ -136,9 +144,11 @@
                     HasAttention="@m.HasAttention"
                     ReactionEmoji="@m.ReactionEmoji"/>
                 @if (showAudioControls) {
-                    <ChatAudioControls Chat="@chat" AudioState="@audioState" Class="ending-btn"/>
-                } else {
-                    <ChatListRecordingToggle Chat="@chat" IsRecording="false" Class="ending-btn"/>
+                    <ChatAudioControls
+                        Chat="@chat"
+                        AudioState="@audioState"
+                        ShowRecordingToggle="false"
+                        Class="ending-btn"/>
                 }
                 <div
                     class="menu ending-btn"
