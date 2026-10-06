@@ -502,24 +502,170 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         var appHost = await NewCoachHost("coach-ui-recent");
         await using var _1 = appHost;
         await using var tester = appHost.NewBlazorTester(Out);
-        await tester.SignInAsUniqueBob();
+        var account = await tester.SignInAsUniqueBob();
         tester.JSInterop.Mode = JSRuntimeMode.Loose;
         var (chatId, _) = await tester.CreateChat(true);
         var hub = tester.ScopedAppServices.AppUIHub();
         await OptIn(tester);
-        await PostVoice(tester, chatId, Text);
+        var previousWeek = CoachWeek.StartOf(UsageDay.DayOf(Clocks.SystemClock.Now)) - TimeSpan.FromDays(7);
+        var baseline = new CoachEntryAnalysis(ChatEntryId.New(chatId, 10_000), 1) {
+            AuthorId = AuthorId.New(chatId, 1), UserId = account.Id,
+            BeginsAt = previousWeek, Language = Languages.English,
+            DurationSeconds = 600, SpeechSeconds = 600,
+            Words = 1000, Sentences = 100, Fillers = 30, TagState = CoachTagState.Tagged,
+            ContentHash = ChatEntryHashExt.GetContentHashString("baseline"),
+        };
+        await appHost.Services.Commander().Call(new CoachBackend_Record(
+            account.Id, CoachRecord.FromEntry(baseline), false));
+        await PostVoice(tester, chatId, string.Join(" ", Enumerable.Repeat(Text, 30)));
 
         // act
         var cut = tester.Render<CoachPanel>();
         InitializeHub(tester, hub, cut.Instance);
 
         // assert
-        cut.WaitForAssertion(() => {
+        await TestWait.WhenRendered(cut, () => {
             var cards = cut.FindAll(".coach-conversation");
-            cards.Should().HaveCount(1);
+            cards.Should().HaveCount(2, "the baseline and current period each have one conversation");
             cards[0].QuerySelectorAll(".c-finding").Length.Should().BeInRange(1, 3);
-            cards[0].TextContent.Should().Contain("Marked transcript");
+            cards[0].TextContent.Should().Contain("Go to conversation");
+            cards[0].QuerySelector(".c-links a")!.GetAttribute("href")
+                .Should().StartWith($"/chat/{chatId}");
+            var summary = cut.Find(".coach-recent-summary");
+            summary.QuerySelectorAll("button.c-skill").Length.Should().Be(3);
+            summary.TextContent.Should().Contain("English").And.Contain("Monday–Sunday (UTC)");
+            cut.Find(".coach-recent").FirstElementChild!.ClassList.Should().Contain("coach-recent-summary");
         }, TimeSpan.FromSeconds(30));
+        await TestWait.WhenRendered(cut, () =>
+            cut.FindAll(".coach-recent-summary .c-rail").Should().HaveCount(3));
+        cut.Find(".coach-conversation .c-exclude").Click();
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".coach-conversation.excluded");
+            cut.FindAll(".coach-recent-summary").Should().BeEmpty();
+        });
+        cut.Find(".coach-conversation .c-exclude").Click();
+        await TestWait.WhenRendered(cut, () =>
+            cut.FindAll(".coach-recent-summary .c-rail").Should().HaveCount(3));
+        cut.Find(".coach-recent-summary button[data-metric=Pace]").Click();
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".coach-week-deltas .targeted").GetAttribute("data-metric").Should().Be("Pace");
+            hub.CoachUI.ComparisonTarget.Should().Be(CoachMetricKind.Pace);
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task RecentSummaryShouldSwitchValuesBaselineAndPaceRangeTogetherWithLanguage()
+    {
+        var appHost = await NewCoachHost("coach-ui-recent-language");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        var kvas = appHost.Services.GetRequiredService<IServerKvasBackend>().ForUser(account.Id, isOutermost: true);
+        await kvas.UserLanguageSettings().Set(new UserLanguageSettings {
+            Primary = Languages.English, Secondary = Languages.Russian,
+        });
+        await hub.CoachUI.SelectLanguage("en");
+        var now = Clocks.SystemClock.Now;
+        var previousWeek = CoachWeek.StartOf(UsageDay.DayOf(now)) - TimeSpan.FromDays(7);
+        var inputs = new[] {
+            (Lid: 1L, Language: Languages.English, At: previousWeek, Fillers: 200, Seconds: 600d),
+            (Lid: 2L, Language: Languages.Russian, At: previousWeek, Fillers: 100, Seconds: 600d),
+            (Lid: 3L, Language: Languages.English, At: now, Fillers: 5, Seconds: 400d),
+            (Lid: 4L, Language: Languages.Russian, At: now, Fillers: 50, Seconds: 600d),
+        };
+        foreach (var input in inputs) {
+            var analysis = new CoachEntryAnalysis(ChatEntryId.New(chatId, input.Lid), 1) {
+                AuthorId = AuthorId.New(chatId, 1), UserId = account.Id,
+                BeginsAt = input.At, Language = input.Language,
+                DurationSeconds = input.Seconds, SpeechSeconds = input.Seconds,
+                Words = 1000, Sentences = 10, DistinctWords = 500,
+                Fillers = input.Fillers, TagState = CoachTagState.Tagged,
+                ContentHash = ChatEntryHashExt.GetContentHashString(input.Lid.ToString()),
+            };
+            await appHost.Services.Commander().Call(new CoachBackend_Record(
+                account.Id, CoachRecord.FromEntry(analysis), false));
+        }
+
+        var cut = tester.Render<CoachRecentTab>();
+        InitializeHub(tester, hub, cut.Instance);
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".c-period").TextContent.Should().Contain("English");
+            cut.Find("[data-metric=Fillers]").TextContent.Should().Contain("20% of speech")
+                .And.Contain("0.5% of speech");
+            cut.Find("[data-metric=Pace]").TextContent.Should().Contain("130–170 wpm");
+        });
+        await hub.CoachUI.SelectLanguage("ru");
+
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".c-period").TextContent.Should().Contain("Русский");
+            cut.Find("[data-metric=Fillers]").TextContent.Should().Contain("10% of speech")
+                .And.Contain("5% of speech");
+            cut.Find("[data-metric=Pace]").TextContent.Should().Contain("100–140 wpm");
+        });
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task WeeklyComparisonsShouldHideSkillsWithMissingPeriods()
+    {
+        var appHost = await NewCoachHost("coach-ui-recent-summary");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        ApiArray<CoachWeekDelta> deltas = [
+            new(CoachMetricKind.Fillers, 0.07, 0.04, CoachBand.Medium, true),
+            new(CoachMetricKind.Pace, 110, 130, CoachBand.Good, null),
+            new(CoachMetricKind.WeakWords, null, 0.02, CoachBand.Good, null),
+        ];
+
+        var cut = tester.Render<CoachRecentSkillSummary>(p => p
+            .Add(x => x.Language, "en")
+            .Add(x => x.Deltas, deltas)
+            .Add(x => x.Summary, CoachSummary.None with { PaceSlow = 100, PaceFast = 140 }));
+
+        cut.FindAll("button.c-skill").Should().HaveCount(2);
+        cut.Find("[data-metric=Fillers]").TextContent.Should().Contain("↑ 3 pp").And.Contain("Improving");
+        cut.Find("[data-metric=Fillers] .c-change").ClassList.Should().Contain("improving");
+        cut.Find("[data-metric=Pace] .c-change").ClassList.Should().Contain("stable");
+        cut.FindAll("[data-metric=WeakWords]").Should().BeEmpty();
+        cut.Find("[data-metric=Pace]").TextContent.Should().Contain("130 wpm")
+            .And.Contain("same").And.Contain("100–140 wpm");
+        cut.Markup.Should().NotContain("No earlier week").And.NotContain("not enough speech");
+        var progress = tester.Render<CoachWeekDeltas>(p => p.Add(x => x.Deltas, deltas));
+        progress.Find("[data-metric=Fillers] .c-badge.improving").TextContent.Should().Contain("↑");
+        progress.Find("[data-metric=Pace] .c-badge.stable").TextContent.Should().Contain("→");
+        progress.FindAll("[data-metric=WeakWords]").Should().BeEmpty();
+        ApiArray<CoachWeekDelta> worsening = [
+            new(CoachMetricKind.Fillers, 0.04, 0.07, CoachBand.High, false),
+        ];
+        cut.Render(p => p.Add(x => x.Deltas, worsening));
+        progress.Render(p => p.Add(x => x.Deltas, worsening));
+        cut.Find("[data-metric=Fillers] .c-change.worsening").TextContent.Should().Contain("↓ 3 pp");
+        progress.Find("[data-metric=Fillers] .c-badge.worsening").TextContent.Should().Contain("↓");
+        ApiArray<CoachWeekDelta> insufficient = [
+            new(CoachMetricKind.Fillers, 0.04, null, CoachBand.None, null),
+            new(CoachMetricKind.Pace, null, 118, CoachBand.Good, null),
+        ];
+        cut.Render(p => p.Add(x => x.Deltas, insufficient));
+        progress.Render(p => p.Add(x => x.Deltas, insufficient));
+        cut.FindAll(".coach-recent-summary").Should().BeEmpty();
+        progress.FindAll(".coach-week-deltas").Should().BeEmpty();
+        ApiArray<CoachWeekDelta> zeroRates = [
+            new(CoachMetricKind.Fillers, 0, 0, CoachBand.Good, null),
+        ];
+        cut.Render(p => p.Add(x => x.Deltas, zeroRates));
+        progress.Render(p => p.Add(x => x.Deltas, zeroRates));
+        cut.FindAll("button.c-skill").Should().ContainSingle();
+        progress.FindAll(".c-comparison").Should().ContainSingle();
+        cut.Find("[data-metric=Fillers]").TextContent.Should().Contain("0% of speech").And.Contain("same");
+        cut.Render(p => p.Add(x => x.Deltas, ApiArray<CoachWeekDelta>.Empty));
+        progress.Render(p => p.Add(x => x.Deltas, ApiArray<CoachWeekDelta>.Empty));
+        cut.FindAll(".coach-recent-summary").Should().BeEmpty();
+        progress.FindAll(".coach-week-deltas").Should().BeEmpty();
     }
 
     [Fact(Timeout = 60_000)]
@@ -543,11 +689,12 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         hub.CoachUI.SelectTab(CoachTab.Progress);
 
         // assert
-        cut.WaitForAssertion(() => {
+        await TestWait.WhenRendered(cut, () => {
             cut.FindAll(".coach-progress .coach-days .c-day.on").Count.Should().BeGreaterThan(0);
             cut.FindAll(".coach-milestones .tile-item").Count.Should().Be(7);
-            cut.Find(".coach-week-deltas").TextContent.Should().Contain("not enough speech");
-        }, TimeSpan.FromSeconds(30));
+            cut.FindAll(".coach-week-deltas").Should().BeEmpty();
+            cut.Markup.Should().NotContain("No earlier week");
+        });
     }
 
     [Theory(Timeout = 60_000)]

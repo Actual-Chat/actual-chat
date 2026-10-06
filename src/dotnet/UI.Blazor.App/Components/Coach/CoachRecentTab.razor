@@ -7,6 +7,9 @@
 }
 
 <div class="coach-recent">
+    @if (m.Language is not null) {
+        <CoachRecentSkillSummary Deltas="@m.Deltas" Language="@m.Language" Summary="@m.ComparisonSummary"/>
+    }
     @foreach (var c in m.Conversations) {
         var level = m.Settings.LevelOf(c.Language);
         var isBest = c.StartEntryLid == m.BestLid && c.ChatId == m.BestChatId;
@@ -31,6 +34,11 @@
         var conversations = await Hub.Coach
             .ListOwnConversations(Session, 20, language, cancellationToken)
             .ConfigureAwait(false);
+        var comparisonLanguage = await Hub.CoachUI.GetComparisonLanguage(cancellationToken).ConfigureAwait(false);
+        var deltas = await Hub.Coach
+            .GetOwnWeekDeltas(Session, comparisonLanguage, cancellationToken).ConfigureAwait(false);
+        var summary = await Hub.Coach
+            .GetOwnSummary(Session, CoachWindow.Days7, comparisonLanguage, cancellationToken).ConfigureAwait(false);
         var settings = await Hub.UserSettingsUI.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
         var titles = new Dictionary<ChatId, string>();
         foreach (var chatId in conversations.Select(c => c.ChatId).Distinct()) {
@@ -42,7 +50,9 @@
             .Where(c => !c.IsExcluded && c.StartedAt >= weekAgo && c.SpeechSeconds >= 60 && c.Words > 0)
             .OrderBy(c => (double)c.Fillers / c.Words)
             .FirstOrDefault();
-        return new Model(conversations, titles, settings, best?.ChatId, best?.StartEntryLid ?? 0);
+        return new Model(
+            conversations, titles, settings, best?.ChatId, best?.StartEntryLid ?? 0,
+            comparisonLanguage, deltas, summary);
     }
 
     public sealed record Model(
@@ -50,8 +60,12 @@
         Dictionary<ChatId, string> Titles,
         UserCoachSettings Settings,
         ChatId? BestChatId,
-        long BestLid) {
+        long BestLid,
+        string? Language,
+        ApiArray<CoachWeekDelta> Deltas,
+        CoachSummary ComparisonSummary) {
         public static readonly Model None = new(
-            ApiArray<CoachConversation>.Empty, new (), new UserCoachSettings(), null, 0);
+            ApiArray<CoachConversation>.Empty, new (), new UserCoachSettings(), null, 0,
+            null, ApiArray<CoachWeekDelta>.Empty, CoachSummary.None);
     }
 }

@@ -1,20 +1,41 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Users
 @inherits ComponentBase<AppUIHub>
+@{
+    var deltas = Deltas.Where(CoachLabels.HasComparison).ToArray();
+    if (deltas.Length == 0) {
+        return;
+    }
+}
 
 <Card Class="coach-week-deltas">
-    @foreach (var d in Deltas) {
-        var cls = d.IsBetter switch { true => "text-success", false => "text-danger", _ => "text-03" };
-        <TileItem @key="@d.Kind" IsHoverable="false">
-            <Content>@Labels.MetricTitle(d.Kind)</Content>
-            <Caption>@Labels.DeltaValue(d)</Caption>
-            <Right><span class="c-badge @cls">@Labels.DeltaBadge(d)</span></Right>
-        </TileItem>
+    @foreach (var d in deltas) {
+        var cls = CoachLabels.DeltaClass(d);
+        <div class="c-comparison @(Target == d.Kind ? "targeted" : "")"
+             data-metric="@d.Kind" tabindex="-1" @ref="_rows[d.Kind]">
+            <TileItem @key="@d.Kind" IsHoverable="false">
+                <Content>@Labels.MetricTitle(d.Kind)</Content>
+                <Caption>@Labels.DeltaValue(d)</Caption>
+                <Right><span class="c-badge @cls">@Labels.DeltaBadge(d)</span></Right>
+            </TileItem>
+        </div>
     }
 </Card>
 
 @code {
     [Parameter, EditorRequired] public ApiArray<CoachWeekDelta> Deltas { get; set; }
+    [Parameter] public CoachMetricKind? Target { get; set; }
+
+    private readonly Dictionary<CoachMetricKind, ElementReference> _rows = new();
+    private CoachMetricKind? _focusedTarget;
 
     private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        await base.OnAfterRenderAsync(firstRender);
+        if (Target is { } target && _focusedTarget != target && _rows.TryGetValue(target, out var row)) {
+            _focusedTarget = target;
+            await row.FocusAsync();
+        }
+    }
 }

@@ -164,12 +164,12 @@ public sealed class CoachLabels(IStringLocalizer l)
 
     public string DeltaBadge(CoachWeekDelta d)
     {
-        if (d.Previous is null)
+        if (d.Previous is null || d.Current is null)
             return "";
         if (d.Current is not { } now || d.Previous is not { } was || d.IsBetter is null)
-            return l.Coach_DeltaSame;
+            return $"→ {l.Coach_DeltaSame}";
 
-        var arrow = now < was ? "▼" : "▲";
+        var arrow = d.IsBetter == true ? "↑" : "↓";
         return d.Kind switch {
             CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
                 => was > 0 ? $"{arrow} {Round(Math.Abs(now - was) / was * 100)}%" : arrow,
@@ -178,6 +178,37 @@ public sealed class CoachLabels(IStringLocalizer l)
             _ => $"{arrow} {Round(Math.Abs(now - was))}",
         };
     }
+
+    public string RecentDeltaValue(CoachWeekDelta d)
+        => d.Current is not { } now
+            ? l.Coach_NotEnoughSpeech
+            : d.Kind == CoachMetricKind.Pace
+                ? l.Coach_Wpm_Format(Round(now))
+                : l.Coach_PercentOfSpeech_Format((now * 100).ToString("0.#", null));
+
+    public string RecentDeltaBadge(CoachWeekDelta d)
+    {
+        if (d.Current is not { } now)
+            return l.Coach_NotEnoughSpeech;
+        if (d.Previous is not { } was)
+            return l.Coach_NothingToCompare;
+        if (d.IsBetter is null)
+            return $"→ {l.Coach_DeltaSame}";
+
+        var arrow = d.IsBetter == true ? "↑" : "↓";
+        var change = Math.Abs(now - was);
+        return d.Kind == CoachMetricKind.Pace
+            ? $"{arrow} {l.Coach_Wpm_Format(Round(change))}"
+            : $"{arrow} {l.Coach_PercentagePoints_Format((change * 100).ToString("0.#", null))}";
+    }
+
+    public static bool HasComparison(CoachWeekDelta d)
+        => d.Previous is not null && d.Current is not null;
+
+    public static string DeltaClass(CoachWeekDelta d)
+        => !HasComparison(d)
+            ? "text-03"
+            : d.IsBetter switch { true => "improving", false => "worsening", _ => "stable" };
 
     public string BetterCaption(CoachWeekDelta best, int speakingDays)
     {

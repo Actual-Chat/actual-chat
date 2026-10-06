@@ -2101,7 +2101,7 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_FocusHintVocabulary => l["Coach_FocusHintVocabulary"].Value;
         public string Coach_FocusHintSentenceLength => l["Coach_FocusHintSentenceLength"].Value;
         public string Coach_SpokeMinutes_Format(object arg0) => l["Coach_SpokeMinutes_Format", arg0].Value;
-        public string Coach_MarkedTranscript => l["Coach_MarkedTranscript"].Value;
+        public string Coach_GoToConversation => l["Coach_GoToConversation"].Value;
         public string Coach_AllNumbers => l["Coach_AllNumbers"].Value;
         public string Coach_FindingFillers_Format(object arg0, object arg1, object arg2)
             => l["Coach_FindingFillers_Format", arg0, arg1, arg2].Value;
@@ -2132,6 +2132,12 @@ public static class LocalizedStringsLocalizerExt
             => l["Coach_BetterCaption_Format", arg0, arg1, arg2].Value;
         public string Coach_ScoreLastWeeks => l["Coach_ScoreLastWeeks"].Value;
         public string Coach_ThisWeekVsLast => l["Coach_ThisWeekVsLast"].Value;
+        public string Coach_PercentagePoints_Format(object arg0) => l["Coach_PercentagePoints_Format", arg0].Value;
+        public string Coach_ComfortableRange_Format(object arg0, object arg1)
+            => l["Coach_ComfortableRange_Format", arg0, arg1].Value;
+        public string Coach_Improving => l["Coach_Improving"].Value;
+        public string Coach_Worsening => l["Coach_Worsening"].Value;
+        public string Coach_WeekUtc => l["Coach_WeekUtc"].Value;
         public string Coach_DaysWithSpeech => l["Coach_DaysWithSpeech"].Value;
         public string Coach_Milestones => l["Coach_Milestones"].Value;
         public string Coach_DaysOfSeven_Format(object arg0) => l["Coach_DaysOfSeven_Format", arg0].Value;
