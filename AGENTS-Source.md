@@ -96,6 +96,29 @@ directly. That page covers `When` vs `WhenPolled`, how budgets scale on a build
 agent, why `[Fact(Timeout = N)]` is a ceiling rather than a knob, and the flake
 patterns the CI watchdog keeps finding.
 
+## EF Core migrations
+
+**Generate every migration with the tool — never write or hand-edit one.**
+Build the service project first, then run
+`./ef-migrations.cmd <Project> add <Name>` (e.g. `Users.Service`). It writes
+the migration, its `.Designer.cs` and the updated model snapshot together, all
+derived from the model. A migration written by analogy with its neighbours
+drifts from the model silently: tests build their databases with `EnsureCreated`
+from the model, so they pass, and the drift surfaces on prod when the next
+generated migration refers to a name the database doesn't have. `AddUsage`
+did exactly that: it named two primary keys `pk_*`, while the model names a key
+declared after `UseSnakeCaseNaming()` `PK_*`.
+
+- Don't rename keys, indexes or constraints inside the generated code. If a name
+  is wrong, fix the model (`HasName`, `HasDatabaseName`) and generate again.
+- Changing a migration that has already reached a release branch is never an
+  option — it has run on prod. Fix forward with a new migration, or make the
+  model match what prod has.
+- `./ef-migrations.cmd <Project> has-pending-model-changes` must report no changes
+  before you commit.
+- `DbMigrationTest` (Slow) applies all migrations to empty databases and compares
+  the result with `EnsureCreated`. Run it after adding a migration.
+
 ## TypeScript Validation
 
 When modifying TypeScript files under `src/nodejs/` or `src/dotnet/UI.Blazor.App/`, always validate changes by running:
