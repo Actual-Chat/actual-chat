@@ -138,10 +138,17 @@ public partial class ChatVideoUI
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             var cancellationToken1 = cts.Token;
             cts.CancelAfter(TimeSpan.FromSeconds(3));
-            if (!recorder.WhenStopped.IsCompleted)
-                await recorder.StopRecording(cancellationToken1).WaitAsync(cancellationToken1).ConfigureAwait(false);
-            await recorder.WhenStopped.WaitAsync(cancellationToken1).ConfigureAwait(false);
-            await recorder.DisposeAsync().AsTask().WaitAsync(cancellationToken1).ConfigureAwait(false);
+            try {
+                if (!recorder.WhenStopped.IsCompleted)
+                    await recorder.StopRecording(cancellationToken1)
+                        .WaitAsync(cancellationToken1)
+                        .ConfigureAwait(false);
+                await recorder.WhenStopped.WaitAsync(cancellationToken1).ConfigureAwait(false);
+            }
+            finally {
+                // Stopping fails on a disconnected circuit; only disposal stops the recorder's maintenance loops
+                await recorder.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)).SilentAwait(false);
+            }
         }
     }
 

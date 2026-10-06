@@ -5,7 +5,10 @@ using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Video;
+using Bunit;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
+using Microsoft.JSInterop;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -240,5 +243,44 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
         unnamed.Should().Be(l.Call_CameraIsUnavailable);
         restart.Should().Be(l.Video_RestartRequired);
         unknown.Should().Be("Requested device not found", "browser wording we don't own stays untranslated");
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task RecorderShouldBeDisposedWhenItsCircuitIsGone()
+    {
+        // arrange
+        var js = new BunitJSInterop { Mode = JSRuntimeMode.Loose };
+        var recorderJS = js.SetupModule(i => i.Identifier.EndsWith(".VideoRecorder.create"));
+        recorderJS.Mode = JSRuntimeMode.Loose;
+        recorderJS.SetupVoid("stopRecording")
+            .SetException(new JSDisconnectedException("The circuit has disconnected"));
+        var appHost = await NewAppHost("video-recorder-circuit-gone", options => options with {
+            ConfigureServices = (_, services) => services.Replace(ServiceDescriptor.Scoped(_ => js.JSRuntime)),
+        });
+        await using var _1 = appHost;
+        await using var alice = appHost.NewWebClientTester(Out);
+        await alice.SignInAsUniqueAlice();
+        var bob = appHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var chatVideoUI = bob.ScopedAppServices.GetRequiredService<ChatVideoUI>();
+        chatVideoUI.StartScreenCasting(chatId);
+        // Side effects on the fake JS object, so there is nothing for When to react to
+        await TestWait.WhenPolled(() => {
+            recorderJS.Invocations["startScreenCast"].Should().ContainSingle();
+            return Task.CompletedTask;
+        });
+
+        // act
+        await bob.DisposeAsync();
+
+        // assert
+        await TestWait.WhenPolled(() => {
+            recorderJS.Invocations["stopRecording"].Should().ContainSingle();
+            recorderJS.Invocations["dispose"].Should().ContainSingle(
+                "only disposal stops the recorder's loops, and stopping fails once the circuit is gone");
+            return Task.CompletedTask;
+        });
     }
 }
