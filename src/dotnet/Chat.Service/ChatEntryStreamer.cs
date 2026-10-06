@@ -1,6 +1,5 @@
 using ActualChat.Audio;
 using ActualChat.Live;
-using ActualChat.Mesh;
 using ActualChat.Streaming;
 using ActualChat.Transcription;
 using ActualLab.Rpc;
@@ -11,7 +10,7 @@ namespace ActualChat.Chat;
 /// Posts a text entry whose content arrives over time: the entry appears immediately with an
 /// empty body and a content stream readers can subscribe to, and is finalized with the full text.
 /// </summary>
-public class TextEntryStreamer(IServiceProvider services)
+public sealed class ChatEntryStreamer(IServiceProvider services)
 {
     // 5 outbound updates per second at most, regardless of how fast chunks arrive
     private static readonly TimeSpan OutboundUpdateInterval = TimeSpan.FromMilliseconds(200);
@@ -25,35 +24,36 @@ public class TextEntryStreamer(IServiceProvider services)
         => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private MomentClockSet Clocks => field ??= Services.Clocks();
-    protected ILogger Log => field ??= Services.LogFor(GetType());
+    private ILogger Log => field ??= Services.LogFor(GetType());
 
-    public virtual Task<ChatEntry> Stream(
+    public Task<ChatEntry> PushStream(
         ChatId chatId,
         AuthorId authorId,
-        IAsyncEnumerable<string> textChunks,
+        IAsyncEnumerable<string> chunks,
         CancellationToken cancellationToken = default)
-        => Stream(chatId, authorId, null, textChunks, cancellationToken);
+        => PushStream(chatId, authorId, null, chunks, cancellationToken);
 
     // entryCreatedSource fires as soon as the entry exists, which is long before this method
     // returns - a lease-driven producer needs the entry id to hand back from its "start" call.
-    public virtual async Task<ChatEntry> Stream(
+    public async Task<ChatEntry> PushStream(
         ChatId chatId,
         AuthorId authorId,
         ChatEntry? entryToUpdate,
-        IAsyncEnumerable<string> textChunks,
+        IAsyncEnumerable<string> chunks,
         CancellationToken cancellationToken = default,
         bool? isViaApi = null,
         TaskCompletionSource<ChatEntry>? entryCreatedSource = null,
         Language? language = null)
     {
         var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
-        using var stream = ToTranscriptDiffs(textChunks, language, cancellationToken)
-            .Memoize(cancellationToken);
-        var rpcStream = RpcStream.New(stream.Replay(cancellationToken));
+        var diffStream = ToTranscriptDiffs(chunks, language, cancellationToken).Memoize(cancellationToken);
+        await using var _ = diffStream.ConfigureAwait(false);
+
+        var rpcStream = RpcStream.New(diffStream.Replay(cancellationToken));
         // PushTextTranscript rather than PushTranscript: nothing else registers the speaker for a
         // transcript with no audio, and without it the text cannot be spoken aloud later.
-        var publishStreamTask = StreamingBackend.PushTextTranscript(
-            streamId, chatId, authorId, rpcStream, cancellationToken);
+        var publishStreamTask = StreamingBackend
+            .PushTextTranscript(streamId, chatId, authorId, rpcStream, cancellationToken);
 
         // The entry has to exist before the stream is drained: readers find the stream through
         // its ContentStreamId, so anything published earlier has no subscriber to reach.
@@ -77,7 +77,7 @@ public class TextEntryStreamer(IServiceProvider services)
 
         var transcript = Transcript.Empty;
         try {
-            await foreach (var diff in stream.Replay(cancellationToken).ConfigureAwait(false))
+            await foreach (var diff in diffStream.Replay(cancellationToken).ConfigureAwait(false))
                 transcript = diff.ApplyTo(transcript);
             await publishStreamTask.ConfigureAwait(false);
         }

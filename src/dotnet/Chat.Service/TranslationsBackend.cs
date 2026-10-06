@@ -22,6 +22,12 @@ namespace ActualChat.Chat;
 /// </summary>
 public class TranslationsBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), ITranslationsBackend
 {
+    private static readonly UnboundedChannelOptions TranscriptDiffChannelOptions = new() {
+        SingleReader = true,
+        SingleWriter = true,
+        AllowSynchronousContinuations = true,
+    };
+
     private readonly ConcurrentDictionary<StreamId, FuncWorker> _activePublishers = new();
 
     private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
@@ -527,11 +533,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var language = translatedStreamId.Language!;
         DebugLog?.LogDebug("TranslateTranscriptStream: #{StreamId}", translatedStreamId);
 
-        var channel = Channel.CreateUnbounded<TranscriptDiff>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-            AllowSynchronousContinuations = true,
-        });
+        var channel = TranscriptDiffChannelOptions.NewChannel<TranscriptDiff>();
         using var activity = CoreServerInstruments.ActivitySource.StartActivity(GetType(), activityKind: ActivityKind.Client);
         try {
             var reader = channel.Reader;

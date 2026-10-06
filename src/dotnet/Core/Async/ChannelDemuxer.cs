@@ -61,7 +61,8 @@ public sealed class ChannelDemuxer<T> : IAsyncDisposable
     // Private methods
 
     private Channel<T> CreateChannel()
-        => ChannelExt.Create<T>(_channelCapacity, singleReader: true, singleWriter: true);
+        => ChannelExt.New<T>(
+            _channelCapacity, singleReader: true, singleWriter: true, allowSynchronousContinuations: true);
 
     private async Task PumpAsync(ChannelReader<T> input)
     {

@@ -14,7 +14,7 @@ public static class SpeechSynthesizerExt
         ILogger log,
         CancellationToken cancellationToken)
     {
-        var output = Channel.CreateUnbounded<AudioFrame>(ChannelOptions);
+        var output = ChannelOptions.NewChannel<AudioFrame>();
         _ = BackgroundTask.Run(async () => {
             Exception? error = null;
             try {
@@ -47,7 +47,7 @@ public static class SpeechSynthesizerExt
         CancellationToken cancellationToken)
         => ToAudioSource(
             async (output, ct) => {
-                var pcm = Channel.CreateUnbounded<byte[]>(ChannelOptions);
+                var pcm = ChannelOptions.NewChannel<byte[]>();
                 using var pump = new OpusFramePump(clocks.CpuClock, isPaced: false);
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                 await TaskExt.WhenPushAndRead(

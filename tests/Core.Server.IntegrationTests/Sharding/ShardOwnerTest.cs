@@ -132,10 +132,7 @@ public class ShardOwnerTest(ITestOutputHelper @out)
         private ITestOutputHelper Out { get; } = @out;
 
         public ShardOwner ShardOwner { get; } = services.ShardOwner(ShardScheme.TestBackend);
-        public Channel<int> UsedShardIndexes { get; } = ActualLab.Channels.ChannelExt.Create<int>(new UnboundedChannelOptions() {
-            SingleReader = false,
-            SingleWriter = false,
-        });
+        public Channel<int> UsedShardIndexes { get; } = ChannelExt.New<int>(capacity: null);
 
         public override string ToString()
             => _toString ??= $"{services.MeshWatcher().ThisNode.Ref}-{name}";

@@ -84,13 +84,12 @@ public abstract class MessageProcessorBase<TMessage>(CancellationTokenSource? st
         if (Queue != null!)
             return Task.CompletedTask;
 
-        Queue = Channel.CreateBounded<IMessageProcess<TMessage>>(
-            new BoundedChannelOptions(QueueSize) {
-                SingleReader = true,
-                SingleWriter = false,
-                AllowSynchronousContinuations = false, // Enqueue anyway runs a new task for any WriteAsync
-                FullMode = QueueFullMode,
-            });
+        Queue = new BoundedChannelOptions(QueueSize) {
+            SingleReader = true,
+            SingleWriter = false,
+            AllowSynchronousContinuations = false, // Enqueue anyway runs a new task for any WriteAsync
+            FullMode = QueueFullMode,
+        }.NewChannel<IMessageProcess<TMessage>>();
         return Task.CompletedTask;
     }
 

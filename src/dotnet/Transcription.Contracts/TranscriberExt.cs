@@ -15,7 +15,7 @@ public static class TranscriberExt
         TranscriptionOptions options,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var output = Channel.CreateUnbounded<Transcript>(ChannelExt.UnboundedPipeOptions);
+        var output = ChannelExt.UnboundedPipeOptions.NewChannel<Transcript>();
         var transcribeTask = transcriber.Transcribe(audioStreamId, audioSource, options, output, cancellationToken);
         var index = 0;
         var skippedTranscript = (Transcript?)null;

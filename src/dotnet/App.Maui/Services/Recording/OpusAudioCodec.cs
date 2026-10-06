@@ -11,6 +11,12 @@ namespace ActualChat.App.Maui.Services.Recording;
 #pragma warning disable CS9113 // 'log' is read only under WINDOWS || ANDROID
 public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
 {
+    private static readonly UnboundedChannelOptions SyncPipeChannelOptions = new() {
+        SingleReader = true,
+        SingleWriter = true,
+        AllowSynchronousContinuations = true,
+    };
+
     public IAsyncEnumerable<IMemoryOwner<byte>> Encode(
         IAsyncEnumerable<IMemoryOwner<float>> lpcmFrames,
         CancellationToken cancellationToken = default)
@@ -18,11 +24,7 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
 #if IOS
         return NotSupportedAsyncEnumerable<byte>("Audio encoding is not supported on iOS.");
 #else
-        var channel = Channel.CreateUnbounded<IMemoryOwner<byte>>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-            AllowSynchronousContinuations = true,
-        });
+        var channel = SyncPipeChannelOptions.NewChannel<IMemoryOwner<byte>>();
         _ = Task.Run(async () => {
                 const int maxOpusPacketSize = 4096;
 
@@ -157,11 +159,7 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
 #if IOS
         return NotSupportedAsyncEnumerable<float>("Audio decoding is not supported on iOS.");
 #else
-        var channel = Channel.CreateUnbounded<IMemoryOwner<float>>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-            AllowSynchronousContinuations = true,
-        });
+        var channel = SyncPipeChannelOptions.NewChannel<IMemoryOwner<float>>();
         _ = Task.Run(async () => {
 #if WINDOWS || ANDROID
                 OpusSharp.Core.OpusDecoder? decoder = null;

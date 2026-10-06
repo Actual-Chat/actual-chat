@@ -137,10 +137,7 @@ public partial class AudioStreamingBackend
             return;
         }
 
-        var text = Channel.CreateUnbounded<string>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-        });
+        var text = ChannelExt.UnboundedPipeOptions.NewChannel<string>();
         using var translationCts = cancellationToken.CreateLinkedTokenSource();
         Task<AsyncMemoizer<TranscriptDiff>?>? translationTask = null;
         Task? synthesizeTask = null;
@@ -350,10 +347,7 @@ public partial class AudioStreamingBackend
         CancellationToken cancellationToken)
     {
         // Header-first: the muxer's GetStream(S~lang) succeeds on the publish, before any frame exists
-        var frames = Channel.CreateUnbounded<AudioFrame>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-        });
+        var frames = ChannelExt.UnboundedPipeOptions.NewChannel<AudioFrame>();
         var header = new AudioFrame {
             Data = new ActualOpusStreamHeader(Clocks.ServerClock.Now, AudioSource.DefaultFormat).Serialize(),
             Offset = TimeSpan.FromMilliseconds(-1),

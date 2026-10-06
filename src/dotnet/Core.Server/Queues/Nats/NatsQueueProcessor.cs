@@ -128,11 +128,8 @@ public sealed class NatsQueueProcessor : ShardQueueProcessor<NatsQueues.Options,
         DebugLog?.LogDebug("[{ShardScheme}-S{ShardIndex}] OnRun started", ShardScheme.Name, shardIndex);
 
         var concurrencyLevel = Settings.ConcurrencyLevel;
-        var buffer = Channel.CreateBounded<(INatsJSMsg<IMemoryOwner<byte>> Message, QueuedCommand Command)>(
-            new BoundedChannelOptions(concurrencyLevel) {
-                FullMode = BoundedChannelFullMode.Wait,
-                SingleWriter = true,
-            });
+        var buffer = ChannelExt.New<(INatsJSMsg<IMemoryOwner<byte>> Message, QueuedCommand Command)>(
+            concurrencyLevel, singleWriter: true);
 
         using var gracefulStopCts = cancellationToken.CreateDelayedTokenSource(Settings.GracefulStopDelay);
         var gracefulStopToken = gracefulStopCts.Token;

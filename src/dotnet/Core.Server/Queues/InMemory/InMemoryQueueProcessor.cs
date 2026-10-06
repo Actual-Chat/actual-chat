@@ -10,10 +10,7 @@ public sealed class InMemoryQueueProcessor : LocalQueueProcessor<InMemoryQueues.
     public InMemoryQueueProcessor(InMemoryQueues.Options settings, InMemoryQueues queues)
         : base(settings, queues)
     {
-        _queue = Channel.CreateBounded<QueuedCommand>(
-            new BoundedChannelOptions(Settings.MaxQueueSize) {
-                FullMode = BoundedChannelFullMode.Wait,
-            });
+        _queue = ChannelExt.New<QueuedCommand>(capacity: Settings.MaxQueueSize);
         _knownCommands = new RecentlySeenMap<string, Unit>(
             Settings.MaxKnownCommandCount,
             Settings.MaxKnownCommandAge);

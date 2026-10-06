@@ -159,7 +159,6 @@ public interface IChats : IComputeService
 
     // Editing an entry older than Constants.Chat.MaxStreamingEditAge still succeeds, but lands as
     // one ordinary update rather than re-animating a settled message.
-    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<ChatEntry> StreamEntry(
         Session session,
         ChatId chatId,
@@ -171,34 +170,30 @@ public interface IChats : IComputeService
     // StreamEntry call-by-call, for callers that can't hold an RpcStream open - MCP tools, plain
     // HTTP. Mirrors IUploads: AppendEntryStream writes nothing unless offset matches the server's,
     // and reports where the server is so a retried or lost call can resume.
-    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     // The producer declares the language it is writing in: a transcript with no audio has no other
     // way to say, and without it the text can be neither spoken nor translated. Null = the author's
     // primary spoken language.
-    Task<ChatEntryStream> StartEntryStream(
+    Task<ChatEntryStreamInfo> StartEntryStream(
         Session session,
         ChatId chatId,
         long? localId,
         Language? language,
         CancellationToken cancellationToken);
 
-    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
-    Task<ChatEntryStream> AppendEntryStream(
+    Task<ChatEntryStreamInfo> AppendEntryStream(
         Session session,
         StreamId streamId,
         int offset,
         string text,
         CancellationToken cancellationToken);
 
-    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
-    Task<ChatEntryStream> FinishEntryStream(
+    Task<ChatEntryStreamInfo> FinishEntryStream(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken);
 
     // StreamEntry's voice equivalent, for a caller that can hold a stream open. Returns the posted
     // message, or null when the producer sent neither audio nor words.
-    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<ChatEntry?> StreamVoice(
         Session session,
         ChatId chatId,
@@ -209,7 +204,6 @@ public interface IChats : IComputeService
 
     // The same call by call, for a caller that cannot: an append carries a text delta, an Ogg Opus
     // chunk, or both. Audio is append-only, so its position is implicit in arrival order.
-    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<ChatVoiceStream> StartVoiceStream(
         Session session,
         ChatId chatId,
@@ -217,7 +211,6 @@ public interface IChats : IComputeService
         Language? language,
         CancellationToken cancellationToken);
 
-    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<ChatVoiceStream> AppendVoiceStream(
         Session session,
         StreamId streamId,
@@ -227,7 +220,6 @@ public interface IChats : IComputeService
         double? audioOffset,
         CancellationToken cancellationToken);
 
-    [RpcMethod(ConnectTimeout = double.PositiveInfinity)]
     Task<ChatVoiceStream> FinishVoiceStream(
         Session session,
         StreamId streamId,

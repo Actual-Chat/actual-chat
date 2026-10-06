@@ -13,14 +13,8 @@ public static partial class AsyncEnumerableExt
         Func<int, TSource, bool> splitPredicate,
         CancellationToken cancellationToken = default)
     {
-        var matched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
-            SingleWriter = true,
-            SingleReader = true,
-        });
-        var notMatched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
-            SingleWriter = true,
-            SingleReader = true,
-        });
+        var matched = ChannelExt.UnboundedPipeOptions.NewChannel<TSource>();
+        var notMatched = ChannelExt.UnboundedPipeOptions.NewChannel<TSource>();
 
         _ = BackgroundTask.Run(async () => {
                 Exception? error = null;
@@ -50,10 +44,7 @@ public static partial class AsyncEnumerableExt
         CancellationToken cancellationToken = default)
     {
         var headSource = TaskCompletionSourceExt.New<TSource>();
-        var notMatched = Channel.CreateUnbounded<TSource>(new UnboundedChannelOptions {
-            SingleWriter = true,
-            SingleReader = true,
-        });
+        var notMatched = ChannelExt.UnboundedPipeOptions.NewChannel<TSource>();
 
         _ = BackgroundTask.Run(async () => {
                 Exception? error = null;

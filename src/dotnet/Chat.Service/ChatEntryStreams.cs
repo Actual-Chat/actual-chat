@@ -11,7 +11,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
     private readonly ConcurrentDictionary<Symbol, ExpiringEntry<Symbol, Lease>> _leases = new();
 
     private IServiceProvider Services { get; } = services;
-    private TextEntryStreamer Streamer => field ??= Services.GetRequiredService<TextEntryStreamer>();
+    private ChatEntryStreamer Streamer => field ??= Services.GetRequiredService<ChatEntryStreamer>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IAudioStreamingBackend StreamingBackend
         => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
@@ -28,7 +28,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
             expiringLease.Dispose();
     }
 
-    public virtual async Task<ChatEntryStream> Start(
+    public virtual async Task<ChatEntryStreamInfo> Start(
         ChatId chatId,
         AuthorId authorId,
         UserId userId,
@@ -53,7 +53,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
             .ReadAllAsync(stopToken)
             .RequireAvailable(Maintenances, chatId, stopToken);
         // Logged here because nothing else may ever await it: an abandoned lease is only disposed
-        lease.StreamTask = Streamer.Stream(
+        lease.StreamTask = Streamer.PushStream(
                 chatId, authorId, entryToUpdate, chunks, stopToken,
                 isViaApi: isViaApi, entryCreatedSource: lease.EntryCreatedSource, language: language)
             .WithErrorHandler(
@@ -90,7 +90,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
         return await WithSpeechBacklog(lease, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<ChatEntryStream> Append(
+    public virtual async Task<ChatEntryStreamInfo> Append(
         StreamId streamId,
         UserId userId,
         int offset,
@@ -123,7 +123,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
         return await WithSpeechBacklog(lease, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<ChatEntryStream> Finish(
+    public virtual async Task<ChatEntryStreamInfo> Finish(
         StreamId streamId,
         UserId userId,
         CancellationToken cancellationToken)
@@ -131,7 +131,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
         var expiringLease = GetOwnLease(streamId, userId);
         var lease = expiringLease.Value;
         lease.Chunks.Writer.TryComplete();
-        var entry = await lease.StreamTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+        var entry = await lease.StreamTask!.WaitAsync(cancellationToken).ConfigureAwait(false);
         lock (lease.Lock) {
             lease.EntryId = entry.Id;
             lease.IsCompleted = true;
@@ -147,7 +147,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
     // A producer that wants to be heard needs to know whether it is outrunning the voice reading
     // it, and no constant can tell it: speaking rate depends on the language, the voice and the
     // provider. Null means nothing is speaking this entry - nobody is listening.
-    private async Task<ChatEntryStream> WithSpeechBacklog(Lease lease, CancellationToken cancellationToken)
+    private async Task<ChatEntryStreamInfo> WithSpeechBacklog(Lease lease, CancellationToken cancellationToken)
     {
         var contentStreamId = lease.ContentStreamId;
         if (contentStreamId.IsNullOrEmpty())
@@ -162,7 +162,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
     private ExpiringEntry<Symbol, Lease> GetOwnLease(StreamId streamId, UserId userId)
     {
         if (!_leases.TryGetValue(streamId.Value, out var expiringLease))
-            throw StandardError.NotFound<ChatEntryStream>("This entry stream is unknown or has expired.");
+            throw StandardError.NotFound<ChatEntryStreamInfo>("This entry stream is unknown or has expired.");
         if (expiringLease.Value.OwnerId != userId)
             throw StandardError.Unauthorized("You can write only to your own entry streams.");
 
@@ -176,16 +176,15 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
         public object Lock { get; } = new();
         public StreamId Id { get; } = id;
         public UserId OwnerId { get; } = ownerId;
-        public Channel<string> Chunks { get; } = Channel.CreateUnbounded<string>(
-            new UnboundedChannelOptions { SingleReader = true });
-        public TaskCompletionSource<ChatEntry> EntryCreatedSource { get; } = TaskCompletionSourceExt.New<ChatEntry>();
-        public CancellationTokenSource StopTokenSource { get; } = new(Constants.Chat.MaxEntryStreamDuration);
-
-        public Task<ChatEntry> StreamTask { get; set; } = null!;
-        public ChatEntryId EntryId { get; set; }
+        public ChatEntryId EntryId { get; set; } = null!;
         public string ContentStreamId { get; set; } = "";
         public int Offset { get; set; }
         public bool IsCompleted { get; set; }
+
+        public Channel<string> Chunks { get; } = ChannelExt.UnboundedFanInOptions.NewChannel<string>();
+        public TaskCompletionSource<ChatEntry> EntryCreatedSource { get; } = TaskCompletionSourceExt.New<ChatEntry>();
+        public Task<ChatEntry>? StreamTask { get; set; }
+        public CancellationTokenSource StopTokenSource { get; } = new(Constants.Chat.MaxTextEntryStreamDuration);
 
         public void Dispose()
         {
@@ -201,10 +200,10 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
                 TaskScheduler.Default);
         }
 
-        public ChatEntryStream ToModel(TimeSpan? speechBacklog = null)
+        public ChatEntryStreamInfo ToModel(TimeSpan? speechBacklog = null)
         {
             lock (Lock)
-                return new ChatEntryStream(Id, EntryId, Offset, IsCompleted, speechBacklog);
+                return new ChatEntryStreamInfo(Id, EntryId, Offset, IsCompleted, speechBacklog);
         }
     }
 }

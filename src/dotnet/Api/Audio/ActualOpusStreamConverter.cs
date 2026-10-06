@@ -23,13 +23,7 @@ public sealed class ActualOpusStreamConverter(MomentClockSet clocks, ILogger log
         // We're doing this fairly complex processing via tasks & channels only
         // because "async IAsyncEnumerable<..>" methods can't contain
         // "yield return" inside "catch" blocks, and we need this here.
-        var target = Channel.CreateBounded<AudioFrame>(
-            new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {
-                SingleWriter = true,
-                SingleReader = true,
-                AllowSynchronousContinuations = true,
-                FullMode = BoundedChannelFullMode.Wait,
-            });
+        var target = Constants.Channels.OpusStreamConverterChannelOptions.NewChannel<AudioFrame>();
 
         _ = BackgroundTask.Run(async () => {
             try {

@@ -130,10 +130,7 @@ public class ShardWorkerTest(ITestOutputHelper @out)
                 .ToArray();
         private static readonly RandomTimeSpan WaitDelay = TimeSpan.FromSeconds(0.1).ToRandom(0.5);
 
-        public Channel<int> UsedShardIndexes { get; } = ActualLab.Channels.ChannelExt.Create<int>(new UnboundedChannelOptions() {
-            SingleReader = false,
-            SingleWriter = false,
-        });
+        public Channel<int> UsedShardIndexes { get; } = ChannelExt.New<int>(capacity: null);
 
         public override string ToString()
         {

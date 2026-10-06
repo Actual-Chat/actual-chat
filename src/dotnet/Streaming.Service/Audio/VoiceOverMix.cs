@@ -21,10 +21,7 @@ public sealed class VoiceOverMix(
     private static readonly int RampSampleCount =
         (int)(Constants.Audio.VoiceOverDuckRamp.TotalSeconds * Constants.Audio.PlaybackSampleRate);
 
-    private readonly Channel<byte[]> _dubPcm = Channel.CreateUnbounded<byte[]>(new UnboundedChannelOptions {
-        SingleReader = true,
-        SingleWriter = true,
-    });
+    private readonly Channel<byte[]> _dubPcm = ChannelExt.UnboundedPipeOptions.NewChannel<byte[]>();
     private readonly VoiceOverMixer _mixer = new(Constants.Audio.VoiceOverDuckGain, HoldFrameCount, RampSampleCount);
     private readonly short[] _originalPcm = new short[VoiceOverMixer.FrameLength];
     private readonly short[] _mixedPcm = new short[VoiceOverMixer.FrameLength];

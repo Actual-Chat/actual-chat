@@ -20,10 +20,7 @@ public class LazyWriter<T> : WorkerBase
 
     public LazyWriter()
     {
-        _commands = Channel.CreateUnbounded<Command>(new UnboundedChannelOptions() {
-            SingleReader = true,
-            SingleWriter = false,
-        });
+        _commands = ChannelExt.UnboundedFanInOptions.NewChannel<Command>();
         this.Start();
     }
 

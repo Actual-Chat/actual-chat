@@ -205,13 +205,10 @@ public class ChatVoiceStreams(IServiceProvider services) : IChatVoiceStreamsBack
         public Language? Language { get; } = language;
         public OggOpusReader OggReader { get; } = new();
 
-        public Channel<AudioFrame> Frames { get; } = Channel.CreateUnbounded<AudioFrame>(
-            new UnboundedChannelOptions { SingleReader = true });
-
+        public Channel<AudioFrame> Frames { get; } = ChannelExt.UnboundedFanInOptions.NewChannel<AudioFrame>();
         public Channel<ExternalTranscriptChunk> Chunks { get; }
-            = Channel.CreateUnbounded<ExternalTranscriptChunk>(new UnboundedChannelOptions { SingleReader = true });
-
-        public CancellationTokenSource StopTokenSource { get; } = new(Constants.Chat.MaxEntryStreamDuration);
+            = ChannelExt.UnboundedFanInOptions.NewChannel<ExternalTranscriptChunk>();
+        public CancellationTokenSource StopTokenSource { get; } = new(Constants.Chat.MaxTextEntryStreamDuration);
 
         public Task? StreamTask { get; set; }
         public ChatEntryId? EntryId { get; set; }

@@ -69,9 +69,10 @@
     </CascadingValue>
 </RenderIntoSlot>
 
-<ContentSwap LayerKey="@swapKey" Class="chat-view-swap"
-             Effect="@ContentSwapEffect.None"
-             SwapStarted="@PanelsUI.Middle.NotifyContentSwapStarted">
+<ContentSwap
+        LayerKey="@swapKey" Class="chat-view-swap"
+        Effect="@ContentSwapEffect.None"
+        SwapStarted="@PanelsUI.Middle.NotifyContentSwapStarted">
     <ChildContent>
         @if (m is null) {
             <chat-view-skeleton count="15" class="chat-view-skeleton-list no-scrollbar"/>

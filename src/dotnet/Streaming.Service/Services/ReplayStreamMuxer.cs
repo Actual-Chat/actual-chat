@@ -45,7 +45,7 @@ public sealed class ReplayStreamMuxer : WorkerBase
         RewindOffset = rewindOffset;
         Speed = Math.Clamp(speed, 1.0, 2.0);
         DubLanguage = dubLanguage;
-        _output = ChannelExt.Create<MuxedAudioStreamItem>(ChannelExt.UnboundedFanInOptions);
+        _output = ChannelExt.UnboundedFanInOptions.NewChannel<MuxedAudioStreamItem>();
         _ = Run(); // Start immediately
     }
 

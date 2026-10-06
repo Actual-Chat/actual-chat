@@ -7,13 +7,13 @@ using ActualLab.Rpc;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
-public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
+public class ChatEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<ChatCollection.AppHostFixture>(fixture, @out)
 {
     private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(15);
 
     private WebClientTester Tester => field ??= AppHost.NewWebClientTester(Out);
-    private TextEntryStreamer Streamer => field ??= AppHost.Services.GetRequiredService<TextEntryStreamer>();
+    private ChatEntryStreamer Streamer => field ??= AppHost.Services.GetRequiredService<ChatEntryStreamer>();
     private IChatsBackend ChatsBackend => field ??= AppHost.Services.GetRequiredService<IChatsBackend>();
     private IAudioStreamingBackend StreamingBackend
         => field ??= AppHost.Services.GetRequiredService<IAudioStreamingBackend>();
@@ -48,7 +48,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
         var cts = NewTestCts(WaitTimeout.Debuggable());
 
         // act
-        var streamTask = Streamer.Stream(chatId, authorId, chunks.Reader.ReadAllAsync(cts.Token), cts.Token);
+        var streamTask = Streamer.PushStream(chatId, authorId, chunks.Reader.ReadAllAsync(cts.Token), cts.Token);
         await chunks.Writer.WriteAsync("Partial text", cts.Token);
 
         // assert - the entry is visible with a content stream and no content of its own
@@ -73,7 +73,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
         var (chatId, authorId) = await NewChat();
         var chunks = Channel.CreateUnbounded<string>();
         var cts = NewTestCts(WaitTimeout.Debuggable());
-        var streamTask = Streamer.Stream(chatId, authorId, chunks.Reader.ReadAllAsync(cts.Token), cts.Token);
+        var streamTask = Streamer.PushStream(chatId, authorId, chunks.Reader.ReadAllAsync(cts.Token), cts.Token);
         await chunks.Writer.WriteAsync("One ", cts.Token);
         var streaming = await WhenEntryAppears(chatId, authorId, cts.Token);
 
@@ -131,7 +131,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
         var cts = NewTestCts(WaitTimeout.Debuggable());
 
         // act
-        var streamTask = Streamer.Stream(chatId, authorId, FailingChunks(), cts.Token);
+        var streamTask = Streamer.PushStream(chatId, authorId, FailingChunks(), cts.Token);
         await streamTask.SilentAwait();
 
         // assert
@@ -266,7 +266,7 @@ public class TextEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
     private Task<ChatEntry> Stream(ChatId chatId, AuthorId authorId, params string[] chunks)
     {
         var cts = NewTestCts(WaitTimeout.Debuggable());
-        return Streamer.Stream(chatId, authorId, chunks.ToAsyncEnumerable(), cts.Token);
+        return Streamer.PushStream(chatId, authorId, chunks.ToAsyncEnumerable(), cts.Token);
     }
 
     private Task<ChatEntry> StreamViaApi(ChatId chatId, long? localId, params string[] chunks)

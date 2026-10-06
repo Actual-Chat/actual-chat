@@ -6,8 +6,12 @@ namespace ActualChat.UI.App.Services;
 public abstract class IncomingShareSuggestions(IServiceProvider services) : WorkerBase, IComputeService, INotifyInitialized
 {
     private static readonly TimeSpan ContactSuggestionThrottlingInterval = TimeSpan.FromMinutes(1);
-    private readonly Channel<ContactId> _channel = Channel.CreateBounded<ContactId>(
-        new BoundedChannelOptions(100) { SingleReader = true, FullMode = BoundedChannelFullMode.DropOldest });
+    private static readonly BoundedChannelOptions SuggestionChannelOptions = new(100) {
+        SingleReader = true,
+        FullMode = BoundedChannelFullMode.DropOldest,
+    };
+
+    private readonly Channel<ContactId> _channel = SuggestionChannelOptions.NewChannel<ContactId>();
     private readonly Dictionary<ContactId, Moment> _lastSuggestedAt = new();
 
     protected IServiceProvider Services { get; } = services;

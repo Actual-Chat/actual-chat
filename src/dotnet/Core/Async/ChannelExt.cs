@@ -25,17 +25,17 @@ public static partial class ChannelExt
         AllowSynchronousContinuations = false,
     };
 
-    // Create
+    // New
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Channel<T> Create<T>(ChannelOptions options)
+    public static Channel<T> New<T>(ChannelOptions options)
         => ChannelExtCore.Create<T>(options);
 
-    public static Channel<T> Create<T>(
+    public static Channel<T> New<T>(
         int? capacity,
         bool singleReader = false,
         bool singleWriter = false,
-        bool allowSynchronousContinuations = true)
+        bool allowSynchronousContinuations = false)
         => ChannelExtCore.Create<T>(capacity.HasValue
             ? new BoundedChannelOptions(capacity.Value) {
                 SingleReader = singleReader,
