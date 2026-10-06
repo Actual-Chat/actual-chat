@@ -508,6 +508,8 @@
   // around a Join button, so they end without punctuation.
   "ChatMaintenance_Mode": "Maintenance mode",
   "ChatImport_Start": "Start import",
+  "ChatImport_StartConfirm_Title": "Start import mode?",
+  "ChatImport_StartConfirm_Text": "Members can't post here until the import ends. Each member decides whether their messages can be imported.",
   "ChatImport_Starting_Title": "Entering import mode",
   "ChatImport_Starting_Text": "Running a few final checks.",
   "ChatImport_Starting_SecondsLeft": "{0} second left…|{0} seconds left…",

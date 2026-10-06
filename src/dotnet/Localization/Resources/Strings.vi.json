@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Chế độ bảo trì",
   "ChatImport_Start": "Bắt đầu nhập",
+  "ChatImport_StartConfirm_Title": "Bắt đầu chế độ nhập?",
+  "ChatImport_StartConfirm_Text": "Thành viên không thể đăng ở đây cho đến khi quá trình nhập kết thúc. Mỗi thành viên tự quyết định tin nhắn của mình có được nhập hay không.",
   "ChatImport_Starting_Title": "Đang vào chế độ nhập",
   "ChatImport_Starting_Text": "Đang chạy một vài bước kiểm tra cuối cùng.",
   "ChatImport_Starting_SecondsLeft": "Còn {0} giây…",

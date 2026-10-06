@@ -452,6 +452,8 @@ public static class LocalizedStringsLocalizerExt
 
         public string ChatMaintenance_Mode => l["ChatMaintenance_Mode"].Value;
         public string ChatImport_Start => l["ChatImport_Start"].Value;
+        public string ChatImport_StartConfirm_Title => l["ChatImport_StartConfirm_Title"].Value;
+        public string ChatImport_StartConfirm_Text => l["ChatImport_StartConfirm_Text"].Value;
         public string ChatImport_Starting_Title => l["ChatImport_Starting_Title"].Value;
         public string ChatImport_Starting_Text => l["ChatImport_Starting_Text"].Value;
         public string ChatImport_Starting_SecondsLeft(long count, object arg0)

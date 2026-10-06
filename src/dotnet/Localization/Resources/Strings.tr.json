@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Bakım modu",
   "ChatImport_Start": "İçe aktarmayı başlat",
+  "ChatImport_StartConfirm_Title": "İçe aktarma modu başlatılsın mı?",
+  "ChatImport_StartConfirm_Text": "İçe aktarma bitene kadar üyeler buraya mesaj gönderemez. Her üye kendi mesajlarının içe aktarılıp aktarılamayacağına karar verir.",
   "ChatImport_Starting_Title": "İçe aktarma moduna geçiliyor",
   "ChatImport_Starting_Text": "Birkaç son kontrol yapılıyor.",
   "ChatImport_Starting_SecondsLeft": "{0} saniye kaldı…",

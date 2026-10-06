@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "रखरखाव मोड",
   "ChatImport_Start": "आयात शुरू करें",
+  "ChatImport_StartConfirm_Title": "इम्पोर्ट मोड शुरू करें?",
+  "ChatImport_StartConfirm_Text": "इम्पोर्ट खत्म होने तक सदस्य यहाँ पोस्ट नहीं कर सकते। हर सदस्य तय करता है कि उसके संदेश इम्पोर्ट किए जा सकते हैं या नहीं।",
   "ChatImport_Starting_Title": "इम्पोर्ट मोड शुरू हो रहा है",
   "ChatImport_Starting_Text": "कुछ अंतिम जाँचें चल रही हैं।",
   "ChatImport_Starting_SecondsLeft": "{0} सेकंड बाकी…",

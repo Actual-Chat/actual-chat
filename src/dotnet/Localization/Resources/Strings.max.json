@@ -508,6 +508,8 @@
   // around a Join button, so they end without punctuation.
   "ChatMaintenance_Mode": "Modo de mantenimiento",
   "ChatImport_Start": "Започни импортиране",
+  "ChatImport_StartConfirm_Title": "インポートモードを開始しますか？",
+  "ChatImport_StartConfirm_Text": "Участниците не могат да пишат тук, докато импортът не приключи. Всеки участник решава дали съобщенията му могат да бъдат импортирани.",
   "ChatImport_Starting_Title": "インポートモードに切り替えています",
   "ChatImport_Starting_Text": "Проводи се још неколико завршних провјера.",
   "ChatImport_Starting_SecondsLeft": "Преостале су {0} секунде…",

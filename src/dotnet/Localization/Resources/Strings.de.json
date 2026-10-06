@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Wartungsmodus",
   "ChatImport_Start": "Import starten",
+  "ChatImport_StartConfirm_Title": "Import-Modus starten?",
+  "ChatImport_StartConfirm_Text": "Bis der Import endet, können Mitglieder hier nichts posten. Jedes Mitglied entscheidet, ob seine Nachrichten importiert werden dürfen.",
   "ChatImport_Starting_Title": "Import-Modus wird aktiviert",
   "ChatImport_Starting_Text": "Ein paar letzte Prüfungen laufen.",
   "ChatImport_Starting_SecondsLeft": "Noch {0} Sekunde…|Noch {0} Sekunden…",

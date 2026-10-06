@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Režim údržby",
   "ChatImport_Start": "Zahájit import",
+  "ChatImport_StartConfirm_Title": "Spustit režim importu?",
+  "ChatImport_StartConfirm_Text": "Dokud import neskončí, nemohou sem členové psát. Každý člen rozhodne, zda lze jeho zprávy importovat.",
   "ChatImport_Starting_Title": "Přechod do režimu importu",
   "ChatImport_Starting_Text": "Probíhá několik posledních kontrol.",
   "ChatImport_Starting_SecondsLeft": "Zbývá {0} sekunda…|Zbývají {0} sekundy…|Zbývá {0} sekund…",

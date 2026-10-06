@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Mode maintenance",
   "ChatImport_Start": "Démarrer l’importation",
+  "ChatImport_StartConfirm_Title": "Lancer le mode importation ?",
+  "ChatImport_StartConfirm_Text": "Les membres ne peuvent pas publier ici tant que l'importation n'est pas terminée. Chaque membre décide si ses messages peuvent être importés.",
   "ChatImport_Starting_Title": "Passage en mode importation",
   "ChatImport_Starting_Text": "Quelques dernières vérifications en cours.",
   "ChatImport_Starting_SecondsLeft": "{0} seconde restante…|{0} secondes restantes…",

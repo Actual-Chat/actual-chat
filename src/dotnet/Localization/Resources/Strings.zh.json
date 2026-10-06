@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "维护模式",
   "ChatImport_Start": "开始导入",
+  "ChatImport_StartConfirm_Title": "开启导入模式？",
+  "ChatImport_StartConfirm_Text": "导入结束前，成员无法在此发言。每位成员自行决定是否允许导入自己的消息。",
   "ChatImport_Starting_Title": "正在进入导入模式",
   "ChatImport_Starting_Text": "正在进行几项最后检查。",
   "ChatImport_Starting_SecondsLeft": "还剩 {0} 秒…",

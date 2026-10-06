@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Mode pemeliharaan",
   "ChatImport_Start": "Mulai impor",
+  "ChatImport_StartConfirm_Title": "Mulai mode impor?",
+  "ChatImport_StartConfirm_Text": "Anggota tidak dapat mengirim pesan di sini sampai impor selesai. Setiap anggota memutuskan apakah pesannya boleh diimpor.",
   "ChatImport_Starting_Title": "Memasuki mode impor",
   "ChatImport_Starting_Text": "Menjalankan beberapa pemeriksaan akhir.",
   "ChatImport_Starting_SecondsLeft": "{0} detik lagi…",

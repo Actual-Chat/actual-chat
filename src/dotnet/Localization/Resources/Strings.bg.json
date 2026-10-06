@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Режим на поддръжка",
   "ChatImport_Start": "Започни импортиране",
+  "ChatImport_StartConfirm_Title": "Да се включи ли режим на импорт?",
+  "ChatImport_StartConfirm_Text": "Участниците не могат да пишат тук, докато импортът не приключи. Всеки участник решава дали съобщенията му могат да бъдат импортирани.",
   "ChatImport_Starting_Title": "Влизане в режим на импорт",
   "ChatImport_Starting_Text": "Извършват се няколко последни проверки.",
   "ChatImport_Starting_SecondsLeft": "Остава {0} секунда…|Остават {0} секунди…",

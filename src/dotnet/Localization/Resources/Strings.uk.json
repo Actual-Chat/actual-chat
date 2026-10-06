@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Режим обслуговування",
   "ChatImport_Start": "Почати імпорт",
+  "ChatImport_StartConfirm_Title": "Увімкнути режим імпорту?",
+  "ChatImport_StartConfirm_Text": "Поки триває імпорт, учасники не зможуть писати тут. Кожен учасник сам вирішує, чи можна імпортувати його повідомлення.",
   "ChatImport_Starting_Title": "Увімкнення режиму імпорту",
   "ChatImport_Starting_Text": "Триває кілька останніх перевірок.",
   "ChatImport_Starting_SecondsLeft": "Залишилася {0} секунда…|Залишилося {0} секунди…|Залишилося {0} секунд…",

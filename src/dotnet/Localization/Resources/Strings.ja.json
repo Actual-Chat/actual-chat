@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "メンテナンスモード",
   "ChatImport_Start": "インポートを開始",
+  "ChatImport_StartConfirm_Title": "インポートモードを開始しますか？",
+  "ChatImport_StartConfirm_Text": "インポートが終わるまで、メンバーはここに投稿できません。メッセージをインポートしてよいかは各メンバーが決めます。",
   "ChatImport_Starting_Title": "インポートモードに切り替えています",
   "ChatImport_Starting_Text": "最終チェックをいくつか実行しています。",
   "ChatImport_Starting_SecondsLeft": "残り {0} 秒…",

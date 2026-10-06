@@ -3,19 +3,29 @@
 @implements IDisposable
 @inherits ComponentBase<AppUIHub>
 
-<DialogFrame Title="@L.ChatImport_Starting_Title" Class="chat-import-start-modal modal-sm">
+<DialogFrame
+    Title="@(_isStarting ? L.ChatImport_Starting_Title : L.ChatImport_StartConfirm_Title)"
+    Class="chat-import-start-modal modal-sm">
     <Body>
     <FormBlock>
         <div class="c-text">
-            <p>@L.ChatImport_Starting_Text</p>
-            @if (_secondsLeft > 0) {
-                // The number is bold, so the localized text is split around it
-                var parts = L.ChatImport_Starting_SecondsLeft(_secondsLeft, NumberMarker).Split(NumberMarker);
-                <p class="text-03">@parts[0]<strong>@_secondsLeft</strong>@parts.ElementAtOrDefault(1)</p>
+            @if (!_isStarting) {
+                <p>@L.ChatImport_StartConfirm_Text</p>
+            } else {
+                <p>@L.ChatImport_Starting_Text</p>
+                @if (_secondsLeft > 0) {
+                    // The number is bold, so the localized text is split around it
+                    var parts = L.ChatImport_Starting_SecondsLeft(_secondsLeft, NumberMarker).Split(NumberMarker);
+                    <p class="text-03">@parts[0]<strong>@_secondsLeft</strong>@parts.ElementAtOrDefault(1)</p>
+                }
             }
         </div>
     </FormBlock>
     </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())" IsDisabled="@_isStarting">@L.Common_Cancel</Button>
+        <Button Class="btn-modal btn-danger" Click="OnStart" IsDisabled="@_isStarting">@L.ChatImport_Start</Button>
+    </Buttons>
 </DialogFrame>
 
 @code {
@@ -23,15 +33,11 @@
 
     private readonly CancellationTokenSource _disposeCts = new();
     private int _secondsLeft = (int)Math.Ceiling(Constants.Chat.ImportStartSettleDelay.TotalSeconds);
+    private bool _isStarting;
     private bool _isDisposed;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
-
-    protected override void OnInitialized() {
-        _ = CountDown(_disposeCts.Token);
-        _ = Start();
-    }
 
     public void Dispose() {
         _isDisposed = true;
@@ -40,7 +46,12 @@
 
     // Private methods
 
-    private async Task Start() {
+    private async Task OnStart() {
+        if (_isStarting)
+            return;
+
+        _isStarting = true;
+        _ = CountDown(_disposeCts.Token);
         // Closing this modal early doesn't cancel the start: the command isn't bound to it
         await Hub.UICommander.Run(new ChatImports_Start { Session = Session, ChatId = ModalModel.ChatId });
         if (!_isDisposed)

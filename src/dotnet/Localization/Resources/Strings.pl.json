@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Tryb konserwacji",
   "ChatImport_Start": "Rozpocznij import",
+  "ChatImport_StartConfirm_Title": "Uruchomić tryb importu?",
+  "ChatImport_StartConfirm_Text": "Do końca importu członkowie nie mogą tu pisać. Każdy członek decyduje, czy jego wiadomości mogą zostać zaimportowane.",
   "ChatImport_Starting_Title": "Przechodzenie w tryb importu",
   "ChatImport_Starting_Text": "Trwa kilka ostatnich sprawdzeń.",
   "ChatImport_Starting_SecondsLeft": "Została {0} sekunda…|Zostały {0} sekundy…|Zostało {0} sekund…",

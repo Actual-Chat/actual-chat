@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "Režim održavanja",
   "ChatImport_Start": "Pokreni uvoz",
+  "ChatImport_StartConfirm_Title": "Pokrenuti način uvoza?",
+  "ChatImport_StartConfirm_Text": "Članovi ne mogu pisati ovdje dok se uvoz ne završi. Svaki član odlučuje mogu li se njegove poruke uvesti.",
   "ChatImport_Starting_Title": "Ulazak u način uvoza",
   "ChatImport_Starting_Text": "Provodi se još nekoliko završnih provjera.",
   "ChatImport_Starting_SecondsLeft": "Preostala je {0} sekunda…|Preostale su {0} sekunde…|Preostalo je {0} sekundi…",

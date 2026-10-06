@@ -416,6 +416,8 @@
 
   "ChatMaintenance_Mode": "유지보수 모드",
   "ChatImport_Start": "가져오기 시작",
+  "ChatImport_StartConfirm_Title": "가져오기 모드를 시작할까요?",
+  "ChatImport_StartConfirm_Text": "가져오기가 끝날 때까지 멤버는 여기에 글을 올릴 수 없습니다. 각 멤버가 자신의 메시지를 가져올 수 있는지 결정합니다.",
   "ChatImport_Starting_Title": "가져오기 모드로 전환 중",
   "ChatImport_Starting_Text": "몇 가지 최종 확인을 진행하고 있습니다.",
   "ChatImport_Starting_SecondsLeft": "{0}초 남음…",
