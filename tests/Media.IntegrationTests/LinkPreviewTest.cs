@@ -1,3 +1,4 @@
+using System.Net;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
 
@@ -171,6 +172,33 @@ public class LinkPreviewTest(AppHostFixture fixture, ITestOutputHelper @out)
         entryLinkPreview.PreviewMedia.Should().NotBeNull();
         var linkPreview = await TestWait.When(ct => Previews.Get(id1, ct).Require());
         linkPreview.Should().BeEquivalentTo(entryLinkPreview);
+    }
+
+    [Fact]
+    public async Task ShortMapLinkShouldGetThePointItRedirectsTo()
+    {
+        // arrange
+        var url = $"https://maps-short.some/{RandomStringGenerator.Next()}";
+        var id = LinkPreview.ComposeId(url);
+        var resolvedUrl = "https://www.google.com/maps/place/Eiffel+Tower/@48.85837,2.294481,17z";
+        var html = new OpenGrapHtmlBuilder().Title("Google Maps");
+        Http.Setup(url,
+                _ => new (HttpStatusCode.OK) {
+                    RequestMessage = new (HttpMethod.Get, resolvedUrl),
+                    Content = html.BuildHtmlResponseContent(),
+                })
+            .SetupEmptyRobots(url);
+
+        // act
+        await Tester.SignInAsAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+        var entry = await Tester.CreateTextEntry(chatId, $"Meet me here: {url}");
+
+        // assert
+        var entryLinkPreview = await GetEntryLinkPreview(entry.Id, id).Require();
+        entryLinkPreview.Title.Should().Be("Google Maps");
+        entryLinkPreview.MapPointName.Should().Be("Eiffel Tower");
+        entryLinkPreview.MapPoint.Should().Be(new GeoPoint(48.85837, 2.294481));
     }
 
     private async Task<LinkPreview?> GetEntryLinkPreview(

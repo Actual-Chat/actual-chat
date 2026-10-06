@@ -223,3 +223,39 @@ body.narrow .link-preview.local-link .c-info {
     @apply md:min-w-32 md:max-w-32;
     @apply lg:min-w-60 lg:max-w-60;
 }
+
+/* Map link: a link to a point on a map */
+.message-link-preview:has(.map-link-preview) {
+    @apply w-fit max-w-full;
+}
+.map-link-preview {
+    @apply flex-y;
+    @apply w-80 max-w-full;
+    @apply rounded-xl border border-separator;
+    @apply overflow-hidden;
+    @apply bg-01;
+}
+.map-link-preview .c-map {
+    @apply shrink-0;
+    @apply w-full h-[8.75rem];
+    @apply pointer-events-none;
+}
+.map-link-preview .c-footer {
+    @apply flex-x items-center gap-x-2;
+    @apply p-2;
+}
+.map-link-preview .c-footer .c-pin {
+    @apply text-2xl text-03;
+}
+.map-link-preview .c-footer .c-info {
+    @apply flex-y grow;
+    @apply min-w-0;
+}
+.map-link-preview .c-footer .c-title {
+    @apply truncate;
+    @apply text-body-500 text-01;
+}
+.map-link-preview .c-footer .c-caption {
+    @apply truncate;
+    @apply text-sm text-03;
+}

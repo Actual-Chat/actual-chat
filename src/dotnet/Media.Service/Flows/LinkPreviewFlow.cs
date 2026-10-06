@@ -43,6 +43,9 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
                 VideoWidth = linkMeta.OpenGraph.Video.Width,
                 VideoHeight = linkMeta.OpenGraph.Video.Height,
             };
+        // A short map link has no coordinates in it, but the URL it redirects to usually does
+        if ((MapLinkParser.TryParse(Target) ?? MapLinkParser.TryParse(linkMeta.ResolvedUrl)) is { } mapLinkTarget)
+            linkPreview = linkPreview with { MapPoint = mapLinkTarget.Point, MapPointName = mapLinkTarget.Name };
         var cmd = new LinkPreviewsBackend_Change(id, null, Change.Upsert(linkPreview));
         await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
     }

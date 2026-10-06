@@ -222,7 +222,8 @@
             @if (entry.LinkPreviews.Length > 0) {
                 <div class="message-links">
                     @foreach (var linkPreview in entry.LinkPreviews) {
-                        var showLinkPreview = !linkPreview.IsEmpty && entry.LinkPreviewMode != LinkPreviewMode.None;
+                        var showLinkPreview = entry.LinkPreviewMode != LinkPreviewMode.None
+                            && (!linkPreview.IsEmpty || linkPreview.MapPoint is not null);
                         @if (showLinkPreview) {
                             <div class="message-link-preview">
                                 <LinkPreviewView Entry="@entry" LinkPreview="@linkPreview"/>

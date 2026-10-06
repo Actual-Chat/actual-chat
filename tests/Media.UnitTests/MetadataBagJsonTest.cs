@@ -95,6 +95,25 @@ public sealed class MetadataBagJsonTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void RoundTripsLinkPreviewMapPoint()
+    {
+        // arrange
+        var linkPreview = new LinkPreview {
+            Id = "lp-1",
+            MapPoint = new GeoPoint(48, -2.294481),
+            MapPointName = "Eiffel Tower",
+        };
+
+        // act
+        var result = linkPreview with { Metadata = MetadataBagJson.FromJson(linkPreview.Metadata.ToJson()) };
+
+        // assert
+        result.MapPoint.Should().Be(new GeoPoint(48, -2.294481));
+        result.MapPointName.Should().Be("Eiffel Tower");
+        new LinkPreview { Id = "lp-2" }.MapPoint.Should().BeNull();
+    }
+
+    [Fact]
     public void ReadsLegacyTypeDecoratedSize2D()
     {
         // arrange

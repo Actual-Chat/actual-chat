@@ -19,6 +19,26 @@
 
 @if (m.LocalLink is { CanRender: true }) {
     <LocalLinkPreview Data="@m.LocalLink" DataMenu="@linkMenuRef"/>
+} else if (preview.MapPoint is { } mapPoint) {
+    var mapMarkers = new[] { new MapMarker(preview.Id.Value, mapPoint) };
+    <a class="map-link-preview unfocusable"
+       href="@uri"
+       target="_blank"
+       data-menu="@linkMenuRef">
+        <MapView
+            Class="c-map"
+            Zoom="15"
+            Interactive="false"
+            Center="@mapPoint"
+            Markers="@mapMarkers"/>
+        <div class="c-footer">
+            <i class="icon-marker-pin c-pin"></i>
+            <div class="c-info">
+                <div class="c-title">@GetMapTitle(preview)</div>
+                <div class="c-caption">@mapPoint.ToDisplayText()</div>
+            </div>
+        </div>
+    </a>
 } else {
     var isLocal = m.LocalLink is { };
     var target = isLocal ? "_self" : "_blank";
@@ -93,7 +113,8 @@
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var entry = Entry;
         var linkPreview = LinkPreview;
-        if (entry.LinkPreviewMode == LinkPreviewMode.None || linkPreview.IsEmpty)
+        var hasContent = !linkPreview.IsEmpty || linkPreview.MapPoint is not null;
+        if (entry.LinkPreviewMode == LinkPreviewMode.None || !hasContent)
             return null;
 
         Uri.TryCreate(linkPreview.Url, UriKind.Absolute, out var uri);
@@ -112,6 +133,10 @@
     }
 
     // Private methods
+
+    private string GetMapTitle(LinkPreview preview)
+        // The page title of a map link is the site's name more often than the place's
+        => preview.MapPointName.NullIfEmpty() ?? preview.Title.NullIfEmpty() ?? L.LocationMessage_Static;
 
     private string GetImageUrl(Media? preview, LinkPreviewMode linkPreviewMode)
     {

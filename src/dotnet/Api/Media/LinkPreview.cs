@@ -48,6 +48,19 @@ public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IH
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public GeoPoint? MapPoint {
+        // Set for a link to a point on a map; kept as "latitude,longitude", since the bag holds primitives only
+        get => GeoPoint.TryParse(this.GetMetadataValue(""));
+        init => this.SetMetadataValue(value is null ? null : $"{value.Latitude:0.######},{value.Longitude:0.######}");
+    }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public string MapPointName {
+        get => this.GetMetadataValue("");
+        init => this.SetMetadataValue(value);
+    }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsEmpty => Title.IsNullOrEmpty() && Description.IsNullOrEmpty() && PreviewMediaId == null;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

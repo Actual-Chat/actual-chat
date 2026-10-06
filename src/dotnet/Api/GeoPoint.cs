@@ -13,6 +13,19 @@ public sealed partial record GeoPoint(
     [property: DataMember, Key(3)] float? Bearing = null
 )
 {
+    public static GeoPoint? TryParse(string? latitudeAndLongitude)
+    {
+        var parts = (latitudeAndLongitude ?? "").Split(',');
+        if (parts.Length != 2
+            || !double.TryParse(parts[0], NumberStyles.Float, null, out var latitude)
+            || !double.TryParse(parts[1], NumberStyles.Float, null, out var longitude))
+            return null;
+
+        return Math.Abs(latitude) <= 90 && Math.Abs(longitude) <= 180
+            ? new GeoPoint(latitude, longitude)
+            : null;
+    }
+
     public string ToDisplayText()
         => $"{Latitude:0.######}, {Longitude:0.######}";
 
