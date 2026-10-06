@@ -16,9 +16,14 @@ public sealed class AccountIdentityOwnershipTest(AppHostFixture fixture, ITestOu
         await using var otherTester = AppHost.NewWebClientTester(Out);
         var owner = await ownerTester.SignInAsUniqueAlice();
         var other = await otherTester.SignInAsUniqueBob();
+        var backend = AppHost.Services.GetRequiredService<IAccountsBackend>();
         var identity = new UserIdentity(schema, UniqueNames.Name("identity"));
+
+        owner = (await backend.Get(owner.Id, default)).Require();
         await Commander.Call(new AccountsBackend_Update(
             owner.WithIdentity(identity), owner.Version));
+
+        other = (await backend.Get(other.Id, default)).Require();
         var updateCommand = new AccountsBackend_Update(
             other.WithIdentity(identity), other.Version);
 
@@ -28,7 +33,6 @@ public sealed class AccountIdentityOwnershipTest(AppHostFixture fixture, ITestOu
         // assert
         await update.Should().ThrowAsync<Exception>()
             .WithMessage($"{target} has already been taken by another account.");
-        var backend = AppHost.Services.GetRequiredService<IAccountsBackend>();
         (await backend.GetIdByUserIdentity(identity, default)).Should().Be(owner.Id);
     }
 }
