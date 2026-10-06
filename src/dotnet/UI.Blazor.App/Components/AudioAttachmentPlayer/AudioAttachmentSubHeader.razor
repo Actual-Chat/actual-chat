@@ -24,15 +24,15 @@
             <div class="c-title"><span class="c-title-inner">@m?.FileName</span></div>
         </div>
         <div class="c-actions">
-            <PlaybackSpeedButton Speed="@speed" Menu="@(MenuRef.New<AudioAttachmentSpeedMenu>())"/>
             @if (ScreenSize.IsWide()) {
-                <HeaderButton Tooltip="@L.AudioPlayer_Backward" Click="@OnBackward">
+                <HeaderButton Class="btn-glass btn-sm" Tooltip="@L.AudioPlayer_Backward" Click="@OnBackward">
                     <i class="icon-media-backward-10"></i>
                 </HeaderButton>
-                <HeaderButton Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
+                <HeaderButton Class="btn-glass btn-sm" Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
                     <i class="icon-media-forward-10"></i>
                 </HeaderButton>
             }
+            <PlaybackSpeedButton Speed="@speed" Menu="@(MenuRef.New<AudioAttachmentSpeedMenu>())"/>
             <HeaderButton Click="@OnStop">
                 <i class="icon-close-fill text-2xl"></i>
             </HeaderButton>
