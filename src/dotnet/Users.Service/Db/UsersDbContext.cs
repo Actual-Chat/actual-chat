@@ -87,13 +87,14 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
         var userVoice = model.Entity<DbUserVoice>();
         userVoice.Property(e => e.Id).UseCollation("C");
 
+        // AddUsage created both keys as pk_*, while a key declared after UseSnakeCaseNaming gets EF's PK_*
         var usageEvent = model.Entity<DbUsageEvent>();
-        usageEvent.HasKey(e => new { e.UserId, e.OccurredAt, e.Kind, e.SourceId });
+        usageEvent.HasKey(e => new { e.UserId, e.OccurredAt, e.Kind, e.SourceId }).HasName("pk_usage_events");
         usageEvent.Property(e => e.UserId).UseCollation("C");
         usageEvent.Property(e => e.SourceId).UseCollation("C");
 
         var usageDay = model.Entity<DbUsageDay>();
-        usageDay.HasKey(e => new { e.UserId, e.Day });
+        usageDay.HasKey(e => new { e.UserId, e.Day }).HasName("pk_usage_days");
         usageDay.Property(e => e.UserId).UseCollation("C");
 
         var coachEvent = model.Entity<DbCoachEvent>();

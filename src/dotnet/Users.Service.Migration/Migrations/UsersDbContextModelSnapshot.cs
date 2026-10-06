@@ -571,7 +571,8 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("bigint")
                     .HasColumnName("version");
 
-                b.HasKey("UserId", "Day");
+                b.HasKey("UserId", "Day")
+                    .HasName("pk_usage_days");
 
                 b.ToTable("usage_days");
             });
@@ -604,7 +605,8 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("bigint")
                     .HasColumnName("value");
 
-                b.HasKey("UserId", "OccurredAt", "Kind", "SourceId");
+                b.HasKey("UserId", "OccurredAt", "Kind", "SourceId")
+                    .HasName("pk_usage_events");
 
                 b.HasIndex("UserId", "Kind", "SourceId")
                     .IsUnique()
