@@ -38,7 +38,7 @@ public class MaintenanceShardMigrationTest(ITestOutputHelper @out)
         var backend1 = h1.Services.GetRequiredService<IMaintenancesBackend>();
         var commander1 = h1.Services.Commander();
         for (var shard = 0; shard < shardCount; shard++)
-            (await backend1.Get(keys[shard], cancellationToken)).Should().Be(MaintenanceMode.None);
+            (await backend1.GetMode(keys[shard], cancellationToken)).Should().Be(MaintenanceMode.None);
 
         // Half of the shards move to h2
         var h2 = await NewAppHost(o => o with { MustInitializeDb = false });
@@ -66,8 +66,8 @@ public class MaintenanceShardMigrationTest(ITestOutputHelper @out)
                     .Call(new MaintenancesBackend_Set(keys[shard], MaintenanceMode.System), true, cancellationToken)
                     .ConfigureAwait(false);
                 await TestWait.When(async ct => {
-                    (await backend2.Get(keys[shard], ct)).Should().Be(MaintenanceMode.System);
-                    (await backend1.Get(keys[shard], ct)).Should().Be(MaintenanceMode.System);
+                    (await backend2.GetMode(keys[shard], ct)).Should().Be(MaintenanceMode.System);
+                    (await backend1.GetMode(keys[shard], ct)).Should().Be(MaintenanceMode.System);
                 }, TimeSpan.FromSeconds(20));
             }
 
@@ -80,13 +80,13 @@ public class MaintenanceShardMigrationTest(ITestOutputHelper @out)
 
             foreach (var shard in movedShards)
                 await TestWait.When(async ct => {
-                    (await backend1.Get(keys[shard], ct)).Should().Be(MaintenanceMode.System);
+                    (await backend1.GetMode(keys[shard], ct)).Should().Be(MaintenanceMode.System);
                 }, TimeSpan.FromSeconds(20));
 
             // Shards that never moved must still read as untouched
             for (var shard = 0; shard < shardCount; shard++)
                 if (!movedShards.Contains(shard))
-                    (await backend1.Get(keys[shard], cancellationToken)).Should().Be(MaintenanceMode.None);
+                    (await backend1.GetMode(keys[shard], cancellationToken)).Should().Be(MaintenanceMode.None);
         }
         finally {
             foreach (var shard in movedShards)

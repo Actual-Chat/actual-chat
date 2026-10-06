@@ -41,6 +41,18 @@ public partial class PanelsUI : UIWorkerBase<UIHub>
         Right.SetIsVisible(false);
     }
 
+    public void RevealMiddle()
+    {
+        if (!IsWide()) {
+            HidePanels();
+            return;
+        }
+
+        // At md widths (ScreenSize.Medium) the right panel overlays the middle one, see side-nav.css
+        if (ScreenSize.Value.IsMedium())
+            Right.SetIsVisible(false);
+    }
+
     public void KeepPanelsOn(LocalUrl url)
         // Suppresses the auto-hide below for one upcoming navigation to `url` - the place switch changes the URL,
         // but the user asked for that place's chat list. Publication: ChatUI calls this off the dispatcher.

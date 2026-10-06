@@ -13,16 +13,17 @@ namespace ActualChat.Streaming.Services;
 public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
 {
     private IServiceProvider Services { get; } = services;
-    private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
+    private IAudioStreamingBackend Backend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private LiveStreamAccess Access { get; } = services.GetRequiredService<LiveStreamAccess>();
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
-    private ICommander Commander => field ??= Services.Commander();
-    private IAudioStreamingBackend Backend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
+    private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
     private RemoteAudioStreamCache RemoteAudioCache => field ??= Services.GetRequiredService<RemoteAudioStreamCache>();
+    private MeshWatcher MeshWatcher { get; } = services.MeshWatcher();
+    private ICommander Commander => field ??= Services.Commander();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     // [ComputeMethod]
@@ -101,7 +102,7 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         RpcStream<AudioFrame> frameStream,
         CancellationToken cancellationToken)
     {
-        var stopCts = new CancellationTokenSource(Constants.Chat.MaxEntryDuration + TimeSpan.FromSeconds(5));
+        var stopCts = new CancellationTokenSource(Constants.Chat.MaxVoiceEntryDuration + TimeSpan.FromSeconds(5));
         try {
             var chatIdTyped = ChatId.Parse(chatId);
             var repliedEntryIdTyped = ChatEntryId.ParseNullable(repliedChatEntryId);
@@ -110,10 +111,10 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
             var audioRecord = new AudioRecord(streamId, session, chatIdTyped, clientStartAt, repliedEntryIdTyped);
             Log.LogInformation("PushStream: {AudioRecord}", audioRecord);
 
-            var maintenances = Services.GetRequiredService<IMaintenancesBackend>();
-            await maintenances.RequireAvailable(chatIdTyped, cancellationToken).ConfigureAwait(false);
-            var checkedFrameStream = frameStream.RequireAvailable(maintenances, chatIdTyped, stopCts.Token);
-            var newFrameStream = RpcStream.New(checkedFrameStream);
+            await MaintenancesBackend.RequireAvailable(chatIdTyped, cancellationToken).ConfigureAwait(false);
+            // Maintenance ends the frames where they are, so the entry keeps the audio recorded so far
+            var whenMaintenanceStarted = MaintenancesBackend.WhenMaintenanceStarted(chatIdTyped, stopCts.Token);
+            var newFrameStream = RpcStream.New(frameStream.TakeWhile(whenMaintenanceStarted, stopCts.Token));
             await Backend.ProcessAudio(audioRecord, preSkip, newFrameStream, stopCts.Token).ConfigureAwait(false);
         }
         finally {

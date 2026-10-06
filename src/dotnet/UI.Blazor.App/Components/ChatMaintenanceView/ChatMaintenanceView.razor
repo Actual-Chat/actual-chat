@@ -1,7 +1,141 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComponentBase<AppUIHub>
+@using ActualChat.UI.Blazor.App.Components.MarkupParts
+@inherits ComputedStateComponent<AppUIHub, ChatMaintenanceView.Model>
+@{
+    var m = State.Value ?? Model.Empty;
+}
 
 <div class="chat-maintenance-view" role="status">
-    <h2>@L.ChatMaintenance_Title</h2>
+    <h2>@(m.Import is not null ? L.ChatImport_Title : L.ChatMaintenance_Title)</h2>
     <Kitty Name="chat-maintenance"/>
+    @if (m.Import is { } import) {
+        @if (import.ChatId is PlaceChatId { IsRoot: true }) {
+            <p>@L.ChatImport_PlaceScope</p>
+        }
+        @* Checkbox cancels its own click, so the toggle belongs to the element around it *@
+        <div class="c-consent" @onclick="@(() => OnConsent(import, m))">
+            <Checkbox
+                Label="@L.ChatImport_Consent"
+                IsChecked="@m.HasConsent"
+                IsDisabled="@(_isBusy || m.HasConsent || !m.CanConsent)"/>
+        </div>
+        @if (m.Summary is { } summary) {
+            var memberCount = summary.ConsentingCount + summary.NonConsentingCount;
+            // Rounded down, so the share reads 100% only once everyone has consented
+            var consentPercent = memberCount == 0 ? 0 : summary.ConsentingCount * 100 / memberCount;
+            <Card Class="c-counts">
+                <TileItem IsHoverable="false">
+                    <Icon><i class="text-xl icon-checkmark-circle-2 text-primary"></i></Icon>
+                    <Content>@L.ChatImport_Consenting</Content>
+                    <Right>
+                        <span class="c-percent">@L.ChatImport_ConsentPercent_Format(consentPercent)</span>
+                        <span>@L.ChatImport_ConsentOutOf_Format(summary.ConsentingCount, memberCount)</span>
+                    </Right>
+                </TileItem>
+            </Card>
+            @if (m.Members.Length != 0) {
+                var moreCount = summary.NonConsentingCount - m.Members.Length;
+                <p class="c-members">
+                    @L.ChatImport_WaitingFor_Prefix
+                    @for (var i = 0; i < m.Members.Length; i++) {
+                        var account = m.Members[i];
+                        @if (i > 0) {
+                            <span>, </span>
+                        }
+                        <MentionBadge
+                            Label="@account.Avatar.Name"
+                            Href="@Links.User(account.Id)"
+                            IsOwn="@(account.Id == m.OwnUserId)"/>
+                    }
+                    @if (moreCount > 0) {
+                        @L.ChatImport_AndMoreUsers(moreCount, moreCount)
+                    }
+                    @L.ChatImport_WaitingFor_Suffix
+                </p>
+            }
+            @if (m.IsOwner) {
+                <Button Class="btn-primary" Click="@(() => OnEnd(import))" IsDisabled="@_isBusy">
+                    @L.ChatImport_End
+                </Button>
+            }
+        }
+    }
 </div>
+
+@code {
+    private const int MaxListedMemberCount = 20;
+
+    private bool _isBusy;
+
+    private IChatImports Imports => field ??= Hub.Services.GetRequiredService<IChatImports>();
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatContext.Chat.Id;
+        var import = await Imports.Get(Session, chatId, cancellationToken);
+        if (import is null)
+            return Model.Empty;
+
+        var hasConsent = await Imports.HasConsent(Session, chatId, import.ImportId, cancellationToken);
+        var scope = await Hub.Chats.Get(Session, import.ChatId, cancellationToken);
+        var canConsent = scope?.Rules.Author is { HasLeft: false, IsAnonymous: false };
+        var isOwner = scope?.Rules.IsOwner() == true;
+        // Only owners get the user IDs, so for everyone else Members stays empty
+        var summary = await Imports.GetConsentSummary(Session, chatId, 0, MaxListedMemberCount, cancellationToken);
+        var ownAccount = await Hub.Accounts.GetOwn(Session, cancellationToken);
+        var members = new List<Account>();
+        foreach (var userId in summary.NonConsentingUserIds) {
+            var account = await Hub.Accounts.Get(Session, userId, cancellationToken);
+            if (account is not null)
+                members.Add(account);
+        }
+        return new(import, hasConsent, canConsent, isOwner, summary, members.ToArray(), ownAccount.Id);
+    }
+
+    // Private methods
+
+    private async Task OnConsent(ChatImportSession import, Model m) {
+        if (_isBusy || m.HasConsent || !m.CanConsent)
+            return;
+
+        var isConfirmed = false;
+        var confirmModel = new ConfirmModal.Model(false, L.ChatImport_ConsentConfirmText, () => isConfirmed = true) {
+            Title = L.ChatImport_ConsentConfirmTitle,
+        };
+        var modalRef = await Hub.ModalUI.Show(confirmModel);
+        await modalRef.WhenClosed;
+        if (!isConfirmed)
+            return;
+
+        _isBusy = true;
+        try {
+            await Hub.UICommander.Run(new ChatImports_SetConsent {
+                Session = Session, ChatId = ChatContext.Chat.Id, ImportId = import.ImportId, HasConsent = true,
+            });
+        }
+        finally {
+            _isBusy = false;
+        }
+    }
+
+    private async Task OnEnd(ChatImportSession import) {
+        _isBusy = true;
+        try {
+            await Hub.UICommander.Run(new ChatImports_End {
+                Session = Session, ChatId = import.ChatId, ImportId = import.ImportId,
+            });
+        }
+        finally {
+            _isBusy = false;
+        }
+    }
+
+    // Nested types
+
+    public sealed record Model(
+        ChatImportSession? Import, bool HasConsent, bool CanConsent, bool IsOwner,
+        ChatImportConsentSummary? Summary, Account[] Members, UserId OwnUserId) {
+        public static readonly Model Empty = new(null, false, false, false, null, [], default);
+    }
+}

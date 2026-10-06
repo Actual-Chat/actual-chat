@@ -10,25 +10,32 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbChat> Chats { get; protected set; } = null!;
     public DbSet<DbChatEntry> ChatEntries { get; protected set; } = null!;
     public DbSet<DbChatEntryLanguage> ChatEntryLanguages { get; protected set; } = null!;
+    public DbSet<DbChatEntryAttachment> ChatEntryAttachments { get; protected set; } = null!;
+    public DbSet<DbChatVisualMediaItem> ChatVisualMediaItems { get; protected set; } = null!;
     public DbSet<DbTranslation> Translations { get; protected set; } = null!;
     public DbSet<DbMention> Mentions { get; protected set; } = null!;
     public DbSet<DbReaction> Reactions { get; protected set; } = null!;
     public DbSet<DbReactionSummary> ReactionSummaries { get; protected set; } = null!;
-    public DbSet<DbChatEntryAttachment> ChatEntryAttachments { get; protected set; } = null!;
-    public DbSet<DbChatVisualMediaItem> ChatVisualMediaItems { get; protected set; } = null!;
+    public DbSet<DbSharedLocation> SharedLocations { get; protected set; } = null!;
+    public DbSet<DbReadPositionsStat> ReadPositionsStats { get; protected set; } = null!;
     public DbSet<DbChatFileItem> ChatFileItems { get; protected set; } = null!;
     public DbSet<DbChatLinkItem> ChatLinkItems { get; protected set; } = null!;
+    public DbSet<DbChatImportConsent> ChatImportConsents { get; protected set; } = null!;
+    public DbSet<DbChatImportBatch> ChatImportBatches { get; protected set; } = null!;
+    public DbSet<DbChatImportUpload> ChatImportUploads { get; protected set; } = null!;
+    public DbSet<DbChatCopyState> ChatCopyStates { get; protected set; } = null!;
+
+    public DbSet<DbPlace> Places { get; protected set; } = null!;
+    public DbSet<DbConversation> Conversations { get; protected set; } = null!;
+    public DbSet<DbAlias> Aliases { get; protected set; } = null!;
+
     public DbSet<DbAuthor> Authors { get; protected set; } = null!;
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
-    public DbSet<DbChatCopyState> ChatCopyStates { get; protected set; } = null!;
-    public DbSet<DbPlace> Places { get; protected set; } = null!;
-    public DbSet<DbReadPositionsStat> ReadPositionsStats { get; protected set; } = null!;
-    public DbSet<DbAlias> Aliases { get; protected set; } = null!;
-    public DbSet<DbConversation> Conversations { get; protected set; } = null!;
-    public DbSet<DbSharedLocation> SharedLocations { get; protected set; } = null!;
+
     public DbSet<DbWebHook> WebHooks { get; protected set; } = null!;
     public DbSet<DbWebHookDelivery> WebHookDeliveries { get; protected set; } = null!;
+
     public DbSet<DbCoachEntry> CoachEntries { get; protected set; } = null!;
     public DbSet<DbCoachConversation> CoachConversations { get; protected set; } = null!;
 

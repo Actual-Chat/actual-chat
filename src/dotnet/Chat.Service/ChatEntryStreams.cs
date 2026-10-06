@@ -15,7 +15,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IAudioStreamingBackend StreamingBackend
         => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
-    private IMaintenancesBackend Maintenances => field ??= Services.GetRequiredService<IMaintenancesBackend>();
+    private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
     private MeshWatcher MeshWatcher => field ??= Services.MeshWatcher();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
@@ -49,9 +49,8 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
         // The hard cap belongs to the lease rather than to this call: the producer is gone by the
         // time Start returns, so nothing else would ever stop a stream that is never finished.
         var stopToken = lease.StopTokenSource.Token;
-        var chunks = lease.Chunks.Reader
-            .ReadAllAsync(stopToken)
-            .RequireAvailable(Maintenances, chatId, stopToken);
+        var chunkWriter = lease.Chunks.Writer;
+        var chunks = lease.Chunks.Reader.ReadAllAsync(stopToken);
         // Logged here because nothing else may ever await it: an abandoned lease is only disposed
         lease.StreamTask = Streamer.PushStream(
                 chatId, authorId, entryToUpdate, chunks, stopToken,
@@ -59,6 +58,12 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
             .WithErrorHandler(
                 e => Log.LogError(e, "Entry stream #{StreamId} in chat {ChatId} failed", streamId, chatId),
                 stopToken);
+        // Maintenance ends the text where it is: completing the channel finalizes the entry with what it has
+        _ = MaintenancesBackend.WhenMaintenanceStarted(chatId, stopToken).ContinueWith(
+            _ => chunkWriter.TryComplete(),
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnRanToCompletion,
+            TaskScheduler.Default);
 
         try {
             var entry = await lease.EntryCreatedSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -193,7 +198,7 @@ public class ChatEntryStreams(IServiceProvider services) : IChatEntryStreamsBack
             // abandoned stream leaves a readable message rather than an empty one.
             Chunks.Writer.TryComplete();
             _ = (StreamTask ?? Task.CompletedTask).ContinueWith(
-                (_, state) => ((CancellationTokenSource)state!).DisposeSilently(),
+                (_, state) => ((CancellationTokenSource)state!).CancelAndDisposeSilently(),
                 StopTokenSource,
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,

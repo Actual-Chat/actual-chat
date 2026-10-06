@@ -128,6 +128,7 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
         var defaultAuthor = chatId is PeerChatId peerChatId
             ? GetDefaultPeerChatAuthor(peerChatId, authorId, userId!).RequireValid(userId!)
             : null;
+        await CheckImportState(chatId, command.ImportId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -634,6 +635,22 @@ public class AuthorsBackend(IServiceProvider services) : DbServiceBase<ChatDbCon
     }
 
     // Private / internal methods
+
+    private async ValueTask CheckImportState(
+        ChatId chatId, ChatImportId? importId, CancellationToken cancellationToken)
+    {
+        var currentImport = await ChatsBackend.GetImport(chatId, cancellationToken).ConfigureAwait(false);
+        var currentImportId = currentImport?.ImportId;
+        if (currentImportId == importId)
+            return;
+
+        var message = currentImportId is null
+            ? "The chat import session has already ended."
+            : importId is null
+                ? "The chat is in import mode."
+                : "The chat import session is invalid or stale.";
+        throw StandardError.Constraint(message);
+    }
 
     // Bots live below Sherlock (-2); Wall-E is -1 and has no row
     private static async Task<long> NextBotLocalId(ChatDbContext dbContext, ChatId chatId, CancellationToken cancellationToken)

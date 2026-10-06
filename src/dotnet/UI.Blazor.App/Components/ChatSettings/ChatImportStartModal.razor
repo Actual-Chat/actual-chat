@@ -1,0 +1,64 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<ChatImportStartModal.Model>
+@implements IDisposable
+@inherits ComponentBase<AppUIHub>
+
+<DialogFrame Title="@L.ChatImport_Starting_Title" Class="chat-import-start-modal modal-sm">
+    <Body>
+    <FormBlock>
+        <div class="c-text">
+            <p>@L.ChatImport_Starting_Text</p>
+            @if (_secondsLeft > 0) {
+                // The number is bold, so the localized text is split around it
+                var parts = L.ChatImport_Starting_SecondsLeft(_secondsLeft, NumberMarker).Split(NumberMarker);
+                <p class="text-03">@parts[0]<strong>@_secondsLeft</strong>@parts.ElementAtOrDefault(1)</p>
+            }
+        </div>
+    </FormBlock>
+    </Body>
+</DialogFrame>
+
+@code {
+    private const string NumberMarker = "\u0001";
+
+    private readonly CancellationTokenSource _disposeCts = new();
+    private int _secondsLeft = (int)Math.Ceiling(Constants.Chat.ImportStartSettleDelay.TotalSeconds);
+    private bool _isDisposed;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override void OnInitialized() {
+        _ = CountDown(_disposeCts.Token);
+        _ = Start();
+    }
+
+    public void Dispose() {
+        _isDisposed = true;
+        _disposeCts.CancelAndDisposeSilently();
+    }
+
+    // Private methods
+
+    private async Task Start() {
+        // Closing this modal early doesn't cancel the start: the command isn't bound to it
+        await Hub.UICommander.Run(new ChatImports_Start { Session = Session, ChatId = ModalModel.ChatId });
+        if (!_isDisposed)
+            Modal.Close();
+    }
+
+    private async Task CountDown(CancellationToken cancellationToken) {
+        try {
+            while (_secondsLeft > 0) {
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                _secondsLeft--;
+                StateHasChanged();
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    // Nested types
+
+    public sealed record Model(ChatId ChatId);
+}

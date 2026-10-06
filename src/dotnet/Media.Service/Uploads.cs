@@ -11,21 +11,25 @@ namespace ActualChat.Media;
 /// </summary>
 public class Uploads(IServiceProvider services) : IUploads
 {
-    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IServiceProvider Services { get; } = services;
     private IUploadsBackend Backend { get; } = services.GetRequiredService<IUploadsBackend>();
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private IMediaProgressBackend MediaProgressBackend { get; } = services.GetRequiredService<IMediaProgressBackend>();
-    private RateLimitPolicy RateLimitPolicy => field ??= services.GetRequiredService<RateLimitPolicy>();
+    private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
+    private RateLimitPolicy RateLimitPolicy => field ??= Services.GetRequiredService<RateLimitPolicy>();
     private RateLimitIdentityResolver IdentityResolver
-        => field ??= services.GetRequiredService<RateLimitIdentityResolver>();
+        => field ??= Services.GetRequiredService<RateLimitIdentityResolver>();
     private ICommander Commander { get; } = services.Commander();
-    private FlowHub FlowHub => field ??= services.FlowHub();
 
     public virtual async Task<long> GetOffset(Session session, UploadId uploadId, CancellationToken cancellationToken)
     {
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).ConfigureAwait(false);
-        EnsureCanAccessUpload(upload, user);
+        await RequireCanAccessUpload(upload, user, cancellationToken).ConfigureAwait(false);
+
         return await Backend.GetOffset(uploadId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -82,7 +86,8 @@ public class Uploads(IServiceProvider services) : IUploads
 
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
-        EnsureCanAccessUpload(upload, user);
+        await RequireCanAccessUpload(upload, user, cancellationToken).ConfigureAwait(false);
+
         return await Commander.Call(new UploadsBackend_Append(uploadId, offset, data), cancellationToken).ConfigureAwait(false);
     }
 
@@ -95,7 +100,7 @@ public class Uploads(IServiceProvider services) : IUploads
     {
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).Require().ConfigureAwait(false);
-        EnsureCanAccessUpload(upload, user);
+        await RequireCanAccessUpload(upload, user, cancellationToken).ConfigureAwait(false);
 
         const int alignment = Constants.Uploads.StorageBlockAlignment;
         const int flushSize = Constants.Uploads.FlushSize;
@@ -138,8 +143,12 @@ public class Uploads(IServiceProvider services) : IUploads
         }
         return currentOffset;
 
-        async Task<long> Flush(byte[] block, long currentOffset1)
-            => await Commander.Call(new UploadsBackend_Append(uploadId, currentOffset1, block), cancellationToken).ConfigureAwait(false);
+        async Task<long> Flush(byte[] block, long currentOffset1) {
+            await RequireCanAccessUpload(upload, user, cancellationToken).ConfigureAwait(false);
+
+            var appendCmd = new UploadsBackend_Append(uploadId, currentOffset1, block);
+            return await Commander.Call(appendCmd, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // [CommandHandler]
@@ -149,7 +158,8 @@ public class Uploads(IServiceProvider services) : IUploads
         var uploadId = command.UploadId;
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).ConfigureAwait(false);
-        EnsureCanAccessUpload(upload, user);
+        await RequireCanAccessUpload(upload, user, cancellationToken).ConfigureAwait(false);
+
         return await Commander.Call(new UploadsBackend_ConvertToMediaRef(uploadId), cancellationToken).ConfigureAwait(false);
     }
 
@@ -163,7 +173,7 @@ public class Uploads(IServiceProvider services) : IUploads
         // Verify upload ownership
         var user = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var upload = await Backend.Get(uploadId, cancellationToken).ConfigureAwait(false);
-        EnsureCanAccessUpload(upload, user);
+        await RequireCanAccessUpload(upload, user, cancellationToken).ConfigureAwait(false);
 
         // Verify media ownership
         var media = await MediaBackend.GetFull(mediaId, cancellationToken).ConfigureAwait(false);
@@ -187,9 +197,36 @@ public class Uploads(IServiceProvider services) : IUploads
             .ConfigureAwait(false);
     }
 
-    private static void EnsureCanAccessUpload([NotNullWhen(true)] Upload? upload, Account user)
+    // Private methods
+
+    private async ValueTask RequireCanAccessUpload(Upload? upload, Account user, CancellationToken cancellationToken)
     {
         if (upload is null || upload.UserId != user.Id)
             throw StandardError.Upload.NotFound();
+        if (!upload.HasChatEntryAttachmentTag())
+            return;
+
+        var chatId = upload.ExtractChatIdFromTag();
+        var importedUpload = await ChatsBackend
+            .GetImportUpload(chatId, upload.Id, cancellationToken)
+            .ConfigureAwait(false);
+        var import = await ChatsBackend.GetImport(chatId, cancellationToken).ConfigureAwait(false);
+        if (importedUpload is null) {
+            // Covers the import case too: RequireAvailable rejects every maintenance mode
+            await MaintenancesBackend.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+        if (import is null || import.ImportId != importedUpload.ImportId)
+            throw StandardError.Constraint("The import session is not active.");
+
+        var rules = await ChatsBackend.GetRules(import.ChatId, user.Id, cancellationToken).ConfigureAwait(false);
+        var consents = await ChatsBackend
+            .ListImportConsents(import.ChatId, import.ImportId, cancellationToken)
+            .ConfigureAwait(false);
+        var authorRules = await ChatsBackend
+            .GetRules(chatId, importedUpload.UserId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!rules.IsOwner() || !authorRules.CanRead() || !consents.Contains(importedUpload.UserId))
+            throw StandardError.Constraint("Import permission or consent was revoked.");
     }
 }

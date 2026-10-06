@@ -9,9 +9,11 @@ namespace ActualChat.Chat;
 /// </summary>
 public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbContext>(services), IPlacesBackend
 {
-    private IDbEntityResolver<string, DbPlace> DbPlaceResolver { get; } = services.GetRequiredService<IDbEntityResolver<string, DbPlace>>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IMaintenancesBackend MaintenancesBackend { get; } = services.GetRequiredService<IMaintenancesBackend>();
+    private IDbEntityResolver<string, DbPlace> DbPlaceResolver { get; }
+        = services.GetRequiredService<IDbEntityResolver<string, DbPlace>>();
     private DiffEngine DiffEngine { get; } = services.GetRequiredService<DiffEngine>();
 
     // [ComputeMethod]
@@ -70,6 +72,9 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
         var context = CommandContext.GetCurrent();
 
         change.RequireValid();
+        if (placeId is not null)
+            await MaintenancesBackend.RequireNotImporting(placeId.RootChatId, cancellationToken).ConfigureAwait(false);
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 

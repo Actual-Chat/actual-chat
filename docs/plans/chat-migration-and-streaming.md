@@ -7,8 +7,8 @@ real group-chat history into Voxt without weakening authorship or timeline guara
 
 The work is split into five independently reviewable plans:
 
-1. [Chat maintenance mode](./chat-maintenance-mode.md) — a persisted, owner-controlled mode that
-   blocks ordinary chat activity while maintenance is running.
+1. [Object maintenance](./object-maintenance.md) — the implemented Users-backed maintenance
+   service. Owner-controlled import sessions build on it.
 2. [Chat history reset](./chat-history-reset.md) — an owner-only, flow-driven operation that removes
    a chat's complete visible history and all dependent state.
 3. [Import-compatible history export](./chat-history-export.md) — a stable snapshot and loss report
@@ -59,13 +59,14 @@ administrator repairs it.
 
 Voxt assigns every local entry ID. Import callers never choose IDs.
 
-For every visible entry in local-ID order, `BeginsAt` must be nondecreasing. Each import batch must
-therefore start at or after the timestamp of the chat's last visible entry, and entries within the
-batch must be sorted by timestamp. Equal timestamps are allowed and retain request order.
+Every accepted imported timestamp must be strictly later than the last available visible entry.
+The server reads that entry for every batch, sorts the submitted entries by timestamp, and reports
+old or equal timestamps as per-item errors in original input order. Accepted timestamps are unique;
+rejected entries do not advance the bound.
 
-An importer that needs to prepend history must create an import-compatible snapshot, start an
-import session, collect the required author consents, verify that the snapshot tail still matches,
-reset the chat inside that session, import the older source first, and then re-import the snapshot.
+Prepare or clear history before starting import. Reset and ordinary removal are unavailable inside
+an import session. Export/restore tooling is separate future work; this feature assumes the owner
+has already prepared the target timeline.
 Removed entries retain their old IDs as tombstones; newly imported entries receive higher IDs and
 still form a valid new visible timeline.
 
@@ -76,14 +77,15 @@ but it must not be labeled import-compatible.
 
 ### Import consent and attribution
 
-The initiating owner consents automatically. Every other member chooses whether messages may be
+Every member, including the initiating owner, explicitly chooses whether messages may be
 imported under that member's identity. An owner can import only for a member whose consent is active
 in the current session.
 
 Imported content records both identities:
 
 - `AuthorId` — the member to whom the message or media is attributed;
-- `ImportedByUserId` — the owner who performed the operation.
+- The import session records its initiating owner; upload staging records the uploader separately.
+  Per-entry source provenance is future work.
 
 `IsImported`, `ImportSessionId`, the source namespace, and the stable source item ID are immutable
 provenance. Revocation prevents future imports; it does not remove content already imported.
@@ -142,14 +144,14 @@ the final `LinearMap` while the stream is running. It never infers timing from n
 
 ## Delivery order
 
-1. Chat maintenance mode.
-2. Import-compatible history export and its loss/readiness report.
-3. Chat history reset, including reset inside an active import session.
-4. Consented import sessions, then batch entries and media.
+1. Object maintenance (implemented).
+2. Consented import sessions, batch entries and attributed media.
+3. Import-compatible history export and its loss/readiness report (separate work).
+4. History reset before an import session (separate work).
 5. Merge/rebase ordinary text streaming and add external transcript streaming.
 6. Build the capture rig against these public product surfaces.
 
-Maintenance and reset are useful and testable before import exists. External streaming is independent
+Import does not depend on implementing automated history reset. External streaming is independent
 of import and can proceed in parallel once the ordinary text-streaming branch is reconciled.
 
 ## ActualChat-docs deliverables

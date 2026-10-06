@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Backend service for chat operations including entries, tiles, and chat management.
 /// </summary>
-public interface IChatsBackend : IComputeService, IBackendService
+public partial interface IChatsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken);

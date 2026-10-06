@@ -12,21 +12,21 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private static readonly TileLayer<long> EntryIdTiles = Constants.Chat.EntryIdTiles;
 
     private IServiceProvider Services { get; } = services;
-    private IMaintenancesBackend Maintenances => field ??= Services.GetRequiredService<IMaintenancesBackend>();
+    private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
+    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
-    private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
-    private MomentClockSet Clocks => field ??= Services.Clocks();
+    private PeerParticipations PeerParticipations => field ??= Services.GetRequiredService<PeerParticipations>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
-    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
-    private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
-    private ILiveSessionsBackend Backend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
-    private ICallsBackend CallsBackend => field ??= Services.GetRequiredService<ICallsBackend>();
-    private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
-    private PeerParticipations PeerParticipations => field ??= Services.GetRequiredService<PeerParticipations>();
+    private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
     private IAudioStreamingBackend AudioStreamingBackend
         => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
+    private ILiveAudioBackend LiveAudioBackend => field ??= Services.GetRequiredService<ILiveAudioBackend>();
+    private ILiveVideoBackend LiveVideoBackend => field ??= Services.GetRequiredService<ILiveVideoBackend>();
+    private ICallsBackend CallsBackend => field ??= Services.GetRequiredService<ICallsBackend>();
+    private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
+    private MomentClockSet Clocks => field ??= Services.Clocks();
 
     // [ComputeMethod]
     public virtual async Task<LiveSessionState?> GetState(
@@ -132,7 +132,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         var authorId = chat.Rules.Author!.Id;
         var peer = RpcInboundContext.Current?.Peer;
         if (isActive)
-            await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+            await MaintenancesBackend.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
 
         await PeerParticipations.SetParticipation(peer, chatId, authorId, kind, isActive, cancellationToken)
             .ConfigureAwait(false);
@@ -251,7 +251,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         // permissions are stripped unless the recipient stored the caller's contact or replied to
         // them (a block by the recipient leaves the contact non-regular too). So CanWriteAudio is the
         // reused signal that this caller is allowed to reach the peer with a call.
-        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        await MaintenancesBackend.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
         if (chatId is PeerChatId && !chat.Rules.CanWriteAudio())
             throw StandardError.Constraint(
                 "You can call this user only after they add you to their contacts or reply to you.");
@@ -272,7 +272,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     public async Task AcceptCall(Session session, CallId callId, string clientId, CancellationToken cancellationToken)
     {
         var chatId = callId.ChatId;
-        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        await MaintenancesBackend.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
         if (await RequireOwnAuthorId(session, chatId, cancellationToken).ConfigureAwait(false) is { } authorId)
             await Backend.AcceptCall(chatId, authorId, session.Hash, clientId, callId, cancellationToken)
                 .ConfigureAwait(false);

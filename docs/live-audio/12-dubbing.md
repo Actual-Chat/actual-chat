@@ -1707,7 +1707,7 @@ armed twice: once at the start, covering the translation wait and the
 wait for a synthesis slot, and again — `CancelAfter` resets the timer —
 the moment the slot is acquired, so the whole budget covers synthesis +
 upload + stamp (synthesis runs at about spoken pace, so it has to clear
-`Chat.MaxEntryDuration`, 3 min, with room for the upload) even when the
+`Chat.MaxVoiceEntryDuration`, 3 min, with room for the upload) even when the
 entry queued behind two other long ones first. So a slow entry that a
 caller has already stopped waiting for still finishes, gets stored, and is
 reused by the *next* replay instead of being re-synthesized every time. A genuine
@@ -1971,7 +1971,7 @@ voice" mid-replay is picked up only the next time replay starts fresh.
 | `Constants.Audio.DubSynthesizerDownDelay` | 60 s | After a synthesis failure, how long every dub skips the synthesis (the mix is still published: the original alone) |
 | `Constants.Audio.DubBacklogThreshold` | 5 s | Audio already transcribed when a dub is requested beyond which the listener counts as late |
 | `Constants.Audio.ReplayDubTimeout` | 20 s | How long a `ReplayDubs.GetOrCreate` caller waits for a stored dub or for synthesis to *start* before serving the original; the work keeps running past this |
-| `Constants.Audio.ReplayDubSynthesisTimeout` | 5 min | Upper bound on synthesis + upload + stamp counted from slot acquisition (the translation wait + slot wait before that get the same budget separately), linked to host shutdown; synthesis streams at spoken pace, so it must clear `Chat.MaxEntryDuration` (3 min) |
+| `Constants.Audio.ReplayDubSynthesisTimeout` | 5 min | Upper bound on synthesis + upload + stamp counted from slot acquisition (the translation wait + slot wait before that get the same budget separately), linked to host shutdown; synthesis streams at spoken pace, so it must clear `Chat.MaxVoiceEntryDuration` (3 min) |
 | `Constants.Audio.ReplayDubLookahead` | 2 | Entries the replay muxer keeps synthesizing ahead of the one currently streaming |
 | `Constants.Audio.ReplayDubMaxConcurrentSynthesis` | 2 | Caps concurrent replay-dub syntheses; shares Soniox's 3-stream quota with live dubbing |
 | `Constants.Audio.VoiceOverDuckGain` | 0.25 | `VoiceOverMixer`: the original's gain floor while the dub speaks or is expected |

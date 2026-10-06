@@ -1,5 +1,10 @@
 # Import-Compatible Chat History Export Implementation Plan
 
+> Import contract update: [consented chat import](./consented-chat-import.md) is authoritative.
+> Cleanup happens before import; reset inside an active import is unavailable. Imported
+> timestamps must be strictly increasing, including across batches. The export/reset
+> workflows below are separate future work and must follow these constraints.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let a group-chat or Place owner create a stable history snapshot and know, before clearing anything, whether the first importer can restore it without silent loss.

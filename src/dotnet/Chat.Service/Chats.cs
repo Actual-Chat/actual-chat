@@ -21,7 +21,7 @@ public partial class Chats(IServiceProvider services) : IChats
     // Lazy resolving to prevent cyclic dependency
     private IPlaces Places => field ??= services.GetRequiredService<IPlaces>();
     private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
-    private IMaintenancesBackend Maintenances { get; } = services.GetRequiredService<IMaintenancesBackend>();
+    private IMaintenancesBackend MaintenancesBackend { get; } = services.GetRequiredService<IMaintenancesBackend>();
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     // Lazy: it's registered only on hosts that run the chat backend, and only these two paths need it
@@ -92,7 +92,7 @@ public partial class Chats(IServiceProvider services) : IChats
         if (!rules.CanRead())
             return null;
 
-        var maintenanceMode = await Maintenances.Get(chatId, cancellationToken).ConfigureAwait(false);
+        var maintenanceMode = await MaintenancesBackend.GetMode(chatId, cancellationToken).ConfigureAwait(false);
         chat = chat with { Rules = rules, MaintenanceMode = maintenanceMode };
 
         return chat;
@@ -224,7 +224,7 @@ public partial class Chats(IServiceProvider services) : IChats
                 Permissions = permissions,
             };
         }
-        if (await Maintenances.Get(chatId, cancellationToken).ConfigureAwait(false) != MaintenanceMode.None)
+        if (await MaintenancesBackend.GetMode(chatId, cancellationToken).ConfigureAwait(false) != MaintenanceMode.None)
             rules = rules with {
                 Permissions = rules.Permissions & ~(ChatPermissions.Write | ChatPermissions.Upload
                     | ChatPermissions.WriteAudio | ChatPermissions.WriteVideo
@@ -395,7 +395,7 @@ public partial class Chats(IServiceProvider services) : IChats
             : await Get(session, chatId, cancellationToken).ConfigureAwait(false);
 
         if (chatId is not null)
-            await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+            await MaintenancesBackend.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
 
         var changeCommand = new ChatsBackend_Change(chatId, expectedVersion, change.RequireValid());
         if (change.IsCreate(out var chatDiff1)) {
@@ -406,7 +406,7 @@ public partial class Chats(IServiceProvider services) : IChats
             };
             var placeId = chatDiff1.PlaceId;
             if (placeId is not null)
-                await Maintenances.RequireAvailable(placeId.RootChatId, cancellationToken).ConfigureAwait(false);
+                await MaintenancesBackend.RequireAvailable(placeId.RootChatId, cancellationToken).ConfigureAwait(false);
             await ValidatePlaceChatChangeConstraints(placeId, chatDiff1).ConfigureAwait(false);
         }
         else {
@@ -510,34 +510,43 @@ public partial class Chats(IServiceProvider services) : IChats
         ChatId chatId,
         long? localId,
         Language? language,
-        RpcStream<string> textChunks,
+        RpcStream<string> chunks,
         CancellationToken cancellationToken)
     {
         var (author, entryToUpdate) = await PrepareEntryStream(session, chatId, localId, cancellationToken)
             .ConfigureAwait(false);
         var isViaApi = GetIsViaApi(session);
-        // Re-checked per chunk rather than once: a stream can outlive the start of a maintenance window.
-        var checkedChunks = textChunks.RequireAvailable(Maintenances, chatId, cancellationToken);
-        if (!IsTooOldToStreamInto(entryToUpdate))
-            return await ChatEntryStreamer
-                .PushStream(chatId, author.Id, entryToUpdate, checkedChunks, cancellationToken,
-                    isViaApi: isViaApi,
-                    language: await ResolveStreamLanguage(session, chatId, language, cancellationToken)
-                        .ConfigureAwait(false))
-                .ConfigureAwait(false);
+        // Maintenance ends the text where it is, so the entry is finalized with what arrived so far
+        var stopCts = new CancellationTokenSource();
+        var whenMaintenanceStarted = MaintenancesBackend.WhenMaintenanceStarted(chatId, stopCts.Token);
+        try {
+            var safeChunks = chunks.TakeWhile(whenMaintenanceStarted, cancellationToken);
+            if (!IsTooOldToStreamInto(entryToUpdate)) {
+                var resolvedLanguage = await ResolveStreamLanguage(session, chatId, language, cancellationToken)
+                    .ConfigureAwait(false);
+                return await ChatEntryStreamer
+                    .PushStream(chatId, author.Id, entryToUpdate, safeChunks, cancellationToken,
+                        isViaApi: isViaApi,
+                        language: resolvedLanguage)
+                    .ConfigureAwait(false);
+            }
 
-        // Too old to animate: collect everything, then apply it through the ordinary edit path so
-        // the audio, markup and attachment handling there still applies.
-        var sb = ActualLab.Text.StringBuilderExt.Acquire();
-        await foreach (var chunk in checkedChunks.WithCancellation(cancellationToken).ConfigureAwait(false))
-            sb.Append(chunk);
-        var upsertCommand = new Chats_UpsertEntry {
-            Session = session,
-            ChatId = chatId,
-            LocalId = localId,
-            Text = sb.ToStringAndRelease(),
-        };
-        return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+            // Too old to animate: collect everything, then apply it through the ordinary edit path so
+            // the audio, markup and attachment handling there still applies.
+            var sb = ActualLab.Text.StringBuilderExt.Acquire();
+            await foreach (var chunk in safeChunks.ConfigureAwait(false))
+                sb.Append(chunk);
+            var upsertCommand = new Chats_UpsertEntry {
+                Session = session,
+                ChatId = chatId,
+                LocalId = localId,
+                Text = sb.ToStringAndRelease(),
+            };
+            return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            stopCts.CancelAndDisposeSilently();
+        }
     }
 
     public virtual async Task<ChatEntryStreamInfo> StartEntryStream(
@@ -604,11 +613,9 @@ public partial class Chats(IServiceProvider services) : IChats
         // because the only writer is this loop.
         var stream = await StartVoiceStream(session, chatId, repliedEntryLid, language, cancellationToken)
             .ConfigureAwait(false);
-        // Re-checked per part rather than once: a stream can outlive the start of a maintenance window.
-        var checkedParts = parts.RequireAvailable(Maintenances, chatId, cancellationToken);
         try {
             var textOffset = 0;
-            await foreach (var part in checkedParts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var part in parts.WithCancellation(cancellationToken).ConfigureAwait(false)) {
                 var appended = await AppendVoiceStream(
                         session, stream.Id, textOffset, part.Text, part.Audio, part.AudioOffset,
                         cancellationToken)
@@ -638,7 +645,7 @@ public partial class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         chat.Rules.Permissions.Require(ChatPermissions.WriteAudio);
-        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        await MaintenancesBackend.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var resolvedLanguage = await ResolveStreamLanguage(session, chatId, language, cancellationToken)
@@ -1393,7 +1400,7 @@ public partial class Chats(IServiceProvider services) : IChats
             throw StandardError.Constraint("Invalid message.");
 
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        await MaintenancesBackend.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
         if (!(chatId.Kind == ChatKind.Peer || chat.Rules.CanModerate()))
             throw StandardError.NotEnoughPermissions("Only chat Owners and Moderators can pin messages.");
 
@@ -1513,7 +1520,7 @@ public partial class Chats(IServiceProvider services) : IChats
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
-        await Maintenances.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
+        await MaintenancesBackend.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
 
         if (localId is not { } vLocalId)
             return (author, null);

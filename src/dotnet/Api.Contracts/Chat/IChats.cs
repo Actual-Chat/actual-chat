@@ -164,7 +164,7 @@ public interface IChats : IComputeService
         ChatId chatId,
         long? localId,
         Language? language,
-        RpcStream<string> textChunks,
+        RpcStream<string> chunks,
         CancellationToken cancellationToken);
 
     // StreamEntry call-by-call, for callers that can't hold an RpcStream open - MCP tools, plain

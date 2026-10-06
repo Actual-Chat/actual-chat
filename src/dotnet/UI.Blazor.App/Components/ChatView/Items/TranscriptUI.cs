@@ -64,7 +64,7 @@ public class TranscriptUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompute
 
     // Protected/internal methods
 
-    // MinCacheDuration spans Constants.Chat.MaxEntryDuration plus finalization - see the body.
+    // MinCacheDuration spans Constants.Chat.MaxVoiceEntryDuration plus finalization - see the body.
     [ComputeMethod(MinCacheDuration = 250)]
     protected virtual async Task<TranscriptStreamReader?> GetReader(
         ChatEntryId id,

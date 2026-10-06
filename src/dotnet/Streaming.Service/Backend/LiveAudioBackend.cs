@@ -133,7 +133,7 @@ public partial class LiveAudioBackend : ShardedComputeServiceBase, ILiveAudioBac
         // Isolated so the entry tiles it reads never become dependencies of this method -
         // otherwise a Redis outage would leave every chat invalidating on ordinary text traffic.
         using var _1 = Computed.BeginIsolation();
-        var cutoff = now - Constants.Chat.MaxEntryDuration;
+        var cutoff = now - Constants.Chat.MaxVoiceEntryDuration;
         var entries = await ChatsBackend.ListEntries(chatId, cutoff, cancellationToken).ConfigureAwait(false);
         var byStreamId = new Dictionary<string, LiveAudioStreamInfo>(StringComparer.Ordinal);
         foreach (var entry in entries)

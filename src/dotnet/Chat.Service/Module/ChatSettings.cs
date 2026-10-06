@@ -17,6 +17,9 @@ public sealed class ChatSettings
     // Constants.Chat.MinImageSuggestionEntries.
     public int MaxImageSuggestionEntries { get; set; } = 100;
     public TimeSpan ImageSuggestionDismissPeriod { get; set; } = TimeSpan.FromDays(30);
+    // How long ChatImports.OnStart waits for the import to reach every host - and the open streams
+    // there to stop - before it checks that nothing was posted meanwhile
+    public TimeSpan ImportStartSettleDelay { get; set; } = Constants.Chat.ImportStartSettleDelay;
 }
 
 public class TranslationSettings
@@ -80,7 +83,7 @@ public class CoachSettings
     public TimeSpan HttpTimeout { get; set; } = TimeSpan.FromSeconds(60);
     public double MinPauseSeconds { get; set; } = 1;
     public double MaxResponseGapSeconds { get; set; } = 10;
-    // Voice entries are cut at Constants.Chat.MaxEntryDuration; entries of one author closer than this are
+    // Voice entries are cut at Constants.Chat.MaxVoiceEntryDuration; entries of one author closer than this are
     // one monologue
     public double MonologueJoinGapSeconds { get; set; } = 5;
     public TimeSpan ConversationMaturity { get; set; } = TimeSpan.FromMinutes(10);

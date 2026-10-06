@@ -33,6 +33,7 @@ public class NotificationsBackend(IServiceProvider services)
         WakePendingCapacity,
         services.GetRequiredService<NotificationsSettings>().PttWakeTtl);
 
+    private NotificationsSettings Settings { get; } = services.GetRequiredService<NotificationsSettings>();
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
@@ -44,10 +45,9 @@ public class NotificationsBackend(IServiceProvider services)
     private IChatPositionsBackend ChatPositionsBackend { get; } = services.GetRequiredService<IChatPositionsBackend>();
     private IUserPresencesBackend UserPresencesBackend { get; } = services.GetRequiredService<IUserPresencesBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
-    private NotificationsSettings Settings { get; } = services.GetRequiredService<NotificationsSettings>();
+    private IMaintenancesBackend MaintenancesBackend { get; } = services.GetRequiredService<IMaintenancesBackend>();
     private IDbEntityResolver<string, DbExplicitNotification> DbExplicitNotificationResolver { get; }
         = services.GetRequiredService<IDbEntityResolver<string, DbExplicitNotification>>();
-
     private NotificationTextComposer TextComposer { get; }
         = services.GetRequiredService<NotificationTextComposer>();
     private IFirebaseMessagingClient FirebaseMessagingClient { get; }
@@ -192,6 +192,9 @@ public class NotificationsBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var notification = command.Notification;
+        if (await IsChatUnderMaintenance(notification.GetChatId(), cancellationToken).ConfigureAwait(false))
+            return;
+
         var userId = notification.UserId.Require();
 
         DebugLog?.LogDebug("-> OnNotify. UserId={UserId}, NotificationId={NotificationId}",
@@ -506,6 +509,16 @@ public class NotificationsBackend(IServiceProvider services)
     {
         var (conversationId, phase, text, endEntryLid, authorIds) = command;
         var chatId = conversationId.ChatId;
+        if (await IsChatUnderMaintenance(chatId, cancellationToken).ConfigureAwait(false))
+            return;
+        if (endEntryLid > 0) {
+            var endEntry = await ChatsBackend
+                .GetEntry(ChatEntryId.New(chatId, endEntryLid), cancellationToken)
+                .ConfigureAwait(false);
+            if (endEntry is { IsImported: true })
+                return;
+        }
+
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
             return;
@@ -653,7 +666,9 @@ public class NotificationsBackend(IServiceProvider services)
         var (entry, author, changeKind, oldEntry) = eventCommand;
         if (entry.IsSystemEntry)
             return;
-
+        if (eventCommand.MustSkipNotification || entry.IsImported
+            || await IsChatUnderMaintenance(entry.ChatId, cancellationToken).ConfigureAwait(false))
+            return;
         if (!ShouldNotify(entry, oldEntry, changeKind))
             return;
 
@@ -848,7 +863,7 @@ public class NotificationsBackend(IServiceProvider services)
     public virtual async Task OnSpeechStartedEvent(SpeechStartedEvent eventCommand, CancellationToken cancellationToken)
     {
         var (chatId, authorId, startedAt) = eventCommand;
-        if (!Settings.EnablePttPush)
+        if (!Settings.EnablePttPush || await IsChatUnderMaintenance(chatId, cancellationToken).ConfigureAwait(false))
             return;
 
         var userIds = await AuthorsBackend.ListUserIds(chatId, cancellationToken).ConfigureAwait(false);
@@ -905,6 +920,15 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // Private methods
+
+    private async ValueTask<bool> IsChatUnderMaintenance(ChatId? chatId, CancellationToken cancellationToken)
+    {
+        if (chatId is null)
+            return false;
+
+        var maintenanceMode = await MaintenancesBackend.GetMode(chatId, cancellationToken).ConfigureAwait(false);
+        return maintenanceMode != MaintenanceMode.None;
+    }
 
     private async Task SendChatMessageNotification(
         ChatEntry entry,
@@ -1069,6 +1093,12 @@ public class NotificationsBackend(IServiceProvider services)
         CancellationToken cancellationToken)
     {
         var notification = command.Notification;
+        if (await IsChatUnderMaintenance(notification.GetChatId(), cancellationToken).ConfigureAwait(false)) {
+            await Commander.Call(new NotificationsBackend_Dismiss(notification.Id), cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
         var userId = notification.UserId.Require();
 
         // Re-read current state at delivery: skip if the notification is no longer active (read,
@@ -1418,6 +1448,9 @@ public class NotificationsBackend(IServiceProvider services)
     private async Task SendPttWake(
         UserId userId, ChatId chatId, AuthorId authorId, Moment startedAt, CancellationToken cancellationToken)
     {
+        if (await IsChatUnderMaintenance(chatId, cancellationToken).ConfigureAwait(false))
+            return;
+
         // One settings read serves both gates: consent within the chat's enable-epoch, then the
         // per-chat mute. Both compare against server-stamped moments.
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -1994,7 +2027,8 @@ public class NotificationsBackend(IServiceProvider services)
             // so reference equality detects them.
             var changedIds = new List<NotificationId>();
             foreach (var incoming in notifications) {
-                if (IsSeen(incoming, seenPositions) || IsExpired(incoming, now))
+                if (IsSeen(incoming, seenPositions) || IsExpired(incoming, now)
+                    || await IsChatUnderMaintenance(incoming.GetChatId(), cancellationToken).ConfigureAwait(false))
                     continue;
 
                 var notification = incoming;

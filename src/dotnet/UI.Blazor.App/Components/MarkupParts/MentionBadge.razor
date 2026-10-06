@@ -1,19 +1,26 @@
 @namespace ActualChat.UI.Blazor.App.Components.MarkupParts
 
-<span class="@Cls"
-      data-tooltip="@Tooltip"
-      data-tooltip-position="@(Tooltip.IsNullOrEmpty() ? null : FloatingPosition.Top.ToPositionString())"
-      @onclick="OnClick">
-    <div class="truncate">@Label</div>
-</span>
+@if (!Href.IsNullOrEmpty()) {
+    <a href="@Href" class="@Cls" data-tooltip="@Tooltip" data-tooltip-position="@TooltipPosition">
+        <div class="truncate">@Label</div>
+    </a>
+} else {
+    <span class="@Cls" data-tooltip="@Tooltip" data-tooltip-position="@TooltipPosition" @onclick="OnClick">
+        <div class="truncate">@Label</div>
+    </span>
+}
 
 @code {
     [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string? Href { get; set; }
     [Parameter] public bool IsOwn { get; set; }
     [Parameter] public bool IsMember { get; set; } = true;
     [Parameter] public bool? HasRead { get; set; }
     [Parameter] public string? Tooltip { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
+
+    private string? TooltipPosition
+        => Tooltip.IsNullOrEmpty() ? null : FloatingPosition.Top.ToPositionString();
 
     private string Cls {
         get {

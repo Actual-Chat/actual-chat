@@ -21,6 +21,7 @@
 @import './Components/ChatList/FoundResult/found-result.css';
 @import './Components/ChatList/ReactionNotifications/reaction-notification-list.css';
 @import './Components/ChatMemberCounter/chat-member-counter.css';
+@import './Components/ChatSettings/chat-import-start-modal.css';
 @import './Components/ChatSettings/chat-settings-modal.css';
 @import './Components/ChatView/EmptyChatContent/empty-chat-content.css';
 @import './Components/ChatView/Items/Attachment/attachment.css';

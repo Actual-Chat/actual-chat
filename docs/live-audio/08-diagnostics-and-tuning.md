@@ -166,7 +166,7 @@ All in `src/dotnet/Api/Constants.Audio.cs` unless noted.
 | `MaxStreamDuration` | 3 min | hard cap on a single recording session |
 | `MaxBeginsAtDrift` | 5 s | clock-skew override threshold |
 | `FrameSilenceTimeout` | 2 s | publisher stall watchdog |
-| `MaxEntryDuration` | (per `Constants.Chat`) | chat-entry duration cap |
+| `MaxVoiceEntryDuration` | (per `Constants.Chat`) | chat-entry duration cap |
 | `StreamExpirationDelay` (`AudioSettings`) | 10 s | StreamStore idle expiry |
 | `StreamTtl` (`LiveAudioBackend`) | 3 min | Redis state TTL = 5 min |
 | `SkipToLive` (`ListeningStreamMuxer`) | sentinel | serve a pre-existing stream from the live edge |

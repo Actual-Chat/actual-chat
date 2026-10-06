@@ -41,6 +41,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // all backend services should be requested lazily to avoid circular references!
 
+    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
+    private HostInfo HostInfo => field ??= Services.HostInfo();
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
@@ -51,7 +53,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
-    private HostInfo HostInfo => field ??= Services.HostInfo();
+    private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
+    private FlowHub FlowHub => field ??= Services.FlowHub();
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory => field ??= Services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
@@ -59,8 +62,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, string> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, string>>();
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
-    private FlowHub FlowHub => field ??= Services.FlowHub();
-    private ChatSettings Settings => field ??= Services.GetRequiredService<ChatSettings>();
 
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(ChatId chatId, CancellationToken cancellationToken)
@@ -933,6 +934,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         change.RequireValid();
+        var importGuardChatId = chatId ??
+            (change.IsCreate(out var importCreate)
+                ? importCreate.PlaceId?.RootChatId
+                : null);
+        if (importGuardChatId is not null)
+            await MaintenancesBackend.RequireNotImporting(importGuardChatId, cancellationToken).ConfigureAwait(false);
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -947,7 +955,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (change.IsCreate(out var update)) {
             oldChat.RequireNull();
             var placeId = update.PlaceId;
-            var chatKind = update.Kind ?? (chatId is null && placeId is not null ? ChatKind.Place : chatId?.Kind ?? ChatKind.Group);
+            var chatKind = update.Kind ??
+                (chatId is null && placeId is not null
+                    ? ChatKind.Place
+                    : chatId?.Kind ?? ChatKind.Group);
 
             if (chatKind == ChatKind.Thread) {
                 /* Accept provided chat id. */
@@ -1301,128 +1312,138 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var context = CommandContext.GetCurrent();
 
         change.RequireValid();
-        ChatEntry entry;
-        ChatEntry? oldEntry;
+        var maintenanceMode = await MaintenancesBackend.GetMode(chatId, cancellationToken).ConfigureAwait(false);
+        var isImporting = await MaintenancesBackend.IsImporting(chatId, cancellationToken).ConfigureAwait(false);
+        // An import aborts the streams open in its scope; the change that ends such an entry must
+        // still go through, or the entry would stay empty and streaming
+        var mayEndStream = change.IsRemove() || (change.IsUpdate(out var endDiff) && endDiff.ContentStreamId == "");
+        if (isImporting && !mayEndStream)
+            throw StandardError.Constraint("The chat is in import mode.");
+
         bool boundToThreadHasChanged = false;
         // Written by StorePreviousAndNextEntryIds below, read by the deferred block
         var previousEntryLid = 0L;
         var nextEntryLid = 0L;
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using (var __ = dbContext.ConfigureAwait(false)) {
-            var dbEntry = changeKind == ChangeKind.Create
-                ? null
-                : await dbContext.ChatEntries.ForUpdate()
-                    // ReSharper disable once AccessToModifiedClosure
-                    .FirstOrDefaultAsync(c => c.Id == chatEntryId.Value, cancellationToken)
-                    .ConfigureAwait(false);
-            oldEntry = dbEntry?.ToModel();
+        await using var _1 = dbContext.ConfigureAwait(false);
 
-            if (chatId is PeerChatId peerChatId)
-                _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
+        var dbEntry = changeKind == ChangeKind.Create
+            ? null
+            : await dbContext.ChatEntries.ForUpdate()
+                // ReSharper disable once AccessToModifiedClosure
+                .FirstOrDefaultAsync(c => c.Id == chatEntryId.Value, cancellationToken)
+                .ConfigureAwait(false);
+        var oldEntry = dbEntry?.ToModel();
+        if (isImporting && dbEntry?.ContentStreamId.IsNullOrEmpty() != false)
+            throw StandardError.Constraint("The chat is in import mode.");
 
-            if (chatId is PeerChatId banCheckChatId && ChangeAffectsPeerContent(change)) {
-                var (userId1, userId2) = banCheckChatId.UserIds;
-                if (await ContactsBackend.IsBlocked(userId1, userId2, cancellationToken).ConfigureAwait(false)
-                    || await ContactsBackend.IsBlocked(userId2, userId1, cancellationToken).ConfigureAwait(false))
-                    throw StandardError.Constraint("You cannot send messages in this chat.");
-            }
+        ChatEntry entry;
 
-            if (change.IsCreate(out var update)) {
-                chatId.Require();
-                var localId = await DbNextLocalId(dbContext, chatId, cancellationToken)
-                    .ConfigureAwait(false);
-                chatEntryId = ChatEntryId.New(chatId, localId);
-                entry = ChatEntry.NewEmpty(chatEntryId, update?.Kind ?? ChatEntryKind.Text) with {
-                    Version = VersionGenerator.NextVersion(),
-                    BeginsAt = Clocks.SystemClock.Now,
-                };
-                entry = ApplyDiff(entry, update, false);
-                entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken)
-                    .ConfigureAwait(false);
-                await EnforceNonContactPeerMessageLimit(dbContext, chatId, entry.AuthorId, cancellationToken)
-                    .ConfigureAwait(false);
-                dbEntry = new DbChatEntry(entry) {
-                    HasAttachments = entry.Attachments.Length > 0,
-                };
-                dbContext.Add(dbEntry);
-                await StorePreviousAndNextEntryIds(localId).ConfigureAwait(false);
-            }
-            else if (change.IsUpdate(out update)) {
-                dbEntry.RequireVersion(expectedVersion);
-                if (dbEntry.IsRemoved && update.IsRemoved == true)
-                    throw StandardError.Constraint("Removed chat entries cannot be modified.");
+        if (chatId is PeerChatId peerChatId)
+            _ = await EnsureExists(peerChatId, cancellationToken).ConfigureAwait(false);
 
-                var existingChatEntry = dbEntry.ToModel();
-                entry = ApplyDiff(existingChatEntry, update, true) with {
-                    Version = VersionGenerator.NextVersion(dbEntry.Version),
-                };
-                entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken).ConfigureAwait(false);
-                var hasAttachments = update.Attachments is { } newAttachments
-                    ? newAttachments.Length > 0
-                    : dbEntry.HasAttachments;
-                dbEntry.UpdateFrom(entry);
-                dbEntry.HasAttachments = hasAttachments;
-                boundToThreadHasChanged = existingChatEntry.IsThread ^ entry.IsThread
-                    || existingChatEntry.IsThreadStart ^ entry.IsThreadStart;
-            }
-            else if (change.IsRemove()) {
-                dbEntry.Require();
-                entry = oldEntry.Require();
-                if (!entry.IsRemoved) {
-                    entry = entry with {
-                        IsRemoved = true,
-                        Version = VersionGenerator.NextVersion(dbEntry.Version),
-                    };
-                    dbEntry.UpdateFrom(entry);
-
-                    var localId = entry.LocalId;
-                    await StorePreviousAndNextEntryIds(localId).ConfigureAwait(false);
-                }
-            }
-            else
-                throw StandardError.Internal("Invalid ChatEntryDiff state.");
-
-            Invalidation.Defer(() => {
-                InvalidateTiles(chatId, entry.LocalId, changeKind, boundToThreadHasChanged);
-
-                // Range meta is pure lid structure, so only changes that add or drop a lid can touch it.
-                // A content-only Update used to invalidate it anyway, which forced every tail-following
-                // client into a ~RTT range-meta refetch per utterance finalization and per message edit.
-                if (changeKind is ChangeKind.Create or ChangeKind.Remove || boundToThreadHasChanged) {
-                    var entryTile = ConversationIdTiles.GetTile(entry.LocalId);
-                    if (previousEntryLid != 0 && !entryTile.Range.Contains(previousEntryLid)) {
-                        var previousCidTile = ConversationIdTiles.GetTile(previousEntryLid);
-                        _ = GetEntryRangeTile(chatId, previousCidTile.Range.Start, default);
-                    }
-                    if (nextEntryLid != 0 && !entryTile.Range.Contains(nextEntryLid)) {
-                        var nextCidTile = ConversationIdTiles.GetTile(nextEntryLid);
-                        _ = GetEntryRangeTile(chatId, nextCidTile.Range.Start, default);
-                    }
-                }
-
-                // Invalidate min-max Id range at last
-                switch (changeKind) {
-                case ChangeKind.Create:
-                    if (previousEntryLid == 0)
-                        _ = GetMinLid(chatEntryId.ChatId, default);
-                    _ = GetMaxLid(chatId, true, default);
-                    _ = GetMaxLid(chatId, false, default);
-                    break;
-                case ChangeKind.Update when boundToThreadHasChanged:
-                    _ = GetMaxLid(chatId, true, default);
-                    _ = GetMaxLid(chatId, false, default);
-                    break;
-                case ChangeKind.Remove:
-                    _ = GetMaxLid(chatId, false, default);
-                    break;
-                }
-            });
-            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            entry = dbEntry.ToModel().WithPopulatedValues(entry);
+        if (chatId is PeerChatId banCheckChatId && ChangeAffectsPeerContent(change)) {
+            var (userId1, userId2) = banCheckChatId.UserIds;
+            if (await ContactsBackend.IsBlocked(userId1, userId2, cancellationToken).ConfigureAwait(false)
+                || await ContactsBackend.IsBlocked(userId2, userId1, cancellationToken).ConfigureAwait(false))
+                throw StandardError.Constraint("You cannot send messages in this chat.");
         }
 
-        if (chatId is PlaceChatId { IsRoot: false })
-            await EnsurePlaceChatAuthorExists(entry.AuthorId).ConfigureAwait(false);
+        if (change.IsCreate(out var update)) {
+            chatId.Require();
+            var localId = await DbNextLocalId(dbContext, chatId, cancellationToken)
+                .ConfigureAwait(false);
+            chatEntryId = ChatEntryId.New(chatId, localId);
+            entry = ChatEntry.NewEmpty(chatEntryId, update?.Kind ?? ChatEntryKind.Text) with {
+                Version = VersionGenerator.NextVersion(),
+                BeginsAt = Clocks.SystemClock.Now,
+            };
+            entry = ApplyDiff(entry, update, false);
+            entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken)
+                .ConfigureAwait(false);
+            await EnforceNonContactPeerMessageLimit(dbContext, chatId, entry.AuthorId, cancellationToken)
+                .ConfigureAwait(false);
+            dbEntry = new DbChatEntry(entry) {
+                HasAttachments = entry.Attachments.Length > 0,
+            };
+            dbContext.Add(dbEntry);
+            await StorePreviousAndNextEntryIds(localId).ConfigureAwait(false);
+        }
+        else if (change.IsUpdate(out update)) {
+            dbEntry.RequireVersion(expectedVersion);
+            if (dbEntry.IsRemoved && update.IsRemoved == true)
+                throw StandardError.Constraint("Removed chat entries cannot be modified.");
+
+            var existingChatEntry = dbEntry.ToModel();
+            entry = ApplyDiff(existingChatEntry, update, true) with {
+                Version = VersionGenerator.NextVersion(dbEntry.Version),
+            };
+            entry = await PrepareTextEntryForSave(entry, oldEntry, cancellationToken).ConfigureAwait(false);
+            var hasAttachments = update.Attachments is { } newAttachments
+                ? newAttachments.Length > 0
+                : dbEntry.HasAttachments;
+            dbEntry.UpdateFrom(entry);
+            dbEntry.HasAttachments = hasAttachments;
+            boundToThreadHasChanged = existingChatEntry.IsThread ^ entry.IsThread
+                || existingChatEntry.IsThreadStart ^ entry.IsThreadStart;
+        }
+        else if (change.IsRemove()) {
+            dbEntry.Require();
+            entry = oldEntry.Require();
+            if (!entry.IsRemoved) {
+                entry = entry with {
+                    IsRemoved = true,
+                    Version = VersionGenerator.NextVersion(dbEntry.Version),
+                };
+                dbEntry.UpdateFrom(entry);
+
+                var localId = entry.LocalId;
+                await StorePreviousAndNextEntryIds(localId).ConfigureAwait(false);
+            }
+        }
+        else
+            throw StandardError.Internal("Invalid ChatEntryDiff state.");
+
+        Invalidation.Defer(() => {
+            InvalidateTiles(chatId, entry.LocalId, changeKind, boundToThreadHasChanged);
+
+            // Range meta is pure lid structure, so only changes that add or drop a lid can touch it.
+            // A content-only Update used to invalidate it anyway, which forced every tail-following
+            // client into a ~RTT range-meta refetch per utterance finalization and per message edit.
+            if (changeKind is ChangeKind.Create or ChangeKind.Remove || boundToThreadHasChanged) {
+                var entryTile = ConversationIdTiles.GetTile(entry.LocalId);
+                if (previousEntryLid != 0 && !entryTile.Range.Contains(previousEntryLid)) {
+                    var previousCidTile = ConversationIdTiles.GetTile(previousEntryLid);
+                    _ = GetEntryRangeTile(chatId, previousCidTile.Range.Start, default);
+                }
+                if (nextEntryLid != 0 && !entryTile.Range.Contains(nextEntryLid)) {
+                    var nextCidTile = ConversationIdTiles.GetTile(nextEntryLid);
+                    _ = GetEntryRangeTile(chatId, nextCidTile.Range.Start, default);
+                }
+            }
+
+            // Invalidate min-max Id range at last
+            switch (changeKind) {
+            case ChangeKind.Create:
+                if (previousEntryLid == 0)
+                    _ = GetMinLid(chatEntryId.ChatId, default);
+                _ = GetMaxLid(chatId, true, default);
+                _ = GetMaxLid(chatId, false, default);
+                break;
+            case ChangeKind.Update when boundToThreadHasChanged:
+                _ = GetMaxLid(chatId, true, default);
+                _ = GetMaxLid(chatId, false, default);
+                break;
+            case ChangeKind.Remove:
+                _ = GetMaxLid(chatId, false, default);
+                break;
+            }
+        });
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        entry = dbEntry.ToModel().WithPopulatedValues(entry);
+
+        await EnsurePlaceChatAuthorExists(entry.AuthorId, null, cancellationToken).ConfigureAwait(false);
         if (changeKind == ChangeKind.Remove) {
             // Clean up associated Media record when removing an entry with audio
             if (entry.Audio?.MediaId is { } removedMediaId && !removedMediaId.Value.IsNullOrEmpty()) {
@@ -1481,8 +1502,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await EnqueueChangedEvent().ConfigureAwait(false);
         return entry;
 
-        ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate)
-        {
+        // Helpers (local functions)
+
+        ChatEntry ApplyDiff(ChatEntry originalEntry, ChatEntryDiff? diff, bool isUpdate) {
             var oldAuthorId = originalEntry.AuthorId;
             var newEntry = (ChatEntry)DiffEngine.DynamicPatch(originalEntry, diff)! with {
                 Version = VersionGenerator.NextVersion(originalEntry.Version),
@@ -1500,32 +1522,12 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return newEntry;
         }
 
-        async Task EnsurePlaceChatAuthorExists(AuthorId authorId1) {
-            var author1 = await AuthorsBackend
-                .Get(authorId1.ChatId, authorId1, RequestedAuthorKind.Default, cancellationToken)
-                .ConfigureAwait(false);
-            if (author1 is { HasLeft: false })
-                return;
-
-            var author2 = await AuthorsBackend
-                .Get(authorId1.ChatId, authorId1, RequestedAuthorKind.Full, cancellationToken)
-                .Require()
-                .ConfigureAwait(false);
-            var accountId = author2.UserId.Require();
-
-            var upsertCommand = new AuthorsBackend_Upsert(
-                authorId1.ChatId, authorId1, accountId, null,
-                new AuthorDiff() {
-                    IsAnonymous = false,
-                    HasLeft = false,
-                });
-            await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
-        }
-
         async Task EnqueueChangedEvent() {
             var authorId = entry.AuthorId;
             var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
-            context.Operation.AddEvent(new ChatEntryChangedEvent(entry, author!, changeKind, oldEntry));
+            context.Operation.AddEvent(new ChatEntryChangedEvent(entry, author!, changeKind, oldEntry) {
+                MustSkipNotification = maintenanceMode != MaintenanceMode.None || entry.IsImported,
+            });
         }
 
         async Task EnqueueStreamingStartedEvent() {
@@ -1537,8 +1539,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 context.Operation.AddEvent(new ChatEntryStreamingStartedEvent(entry, author));
         }
 
-        async Task StorePreviousAndNextEntryIds(long localEntryLid)
-        {
+        async Task StorePreviousAndNextEntryIds(long localEntryLid) {
             var previousEntryId = await dbContext.ChatEntries
                 .Where(c => c.ChatId == chatId.Value && c.Kind == 0 && !c.IsRemoved && c.LocalId < localEntryLid)
                 .OrderByDescending(c => c.LocalId)
@@ -1572,6 +1573,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             throw StandardError.Constraint("Attachments cannot belong to different messages.");
 
         var entryId = entryIds[0];
+        await MaintenancesBackend.RequireNotImporting(entryId.ChatId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -1615,6 +1617,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         CancellationToken cancellationToken)
     {
         var entryId = command.EntryId;
+        await MaintenancesBackend.RequireNotImporting(entryId.ChatId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
@@ -2375,6 +2378,39 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Private / internal methods
+
+    // A public Place chat serves its members through the Place root author, so it holds no author
+    // row of its own until a member writes there. Both ordinary writes and imports materialize it;
+    // importId is what lets the upsert through the import guard, and is null off the import path.
+    internal async ValueTask EnsurePlaceChatAuthorExists(
+        AuthorId authorId, ChatImportId? importId, CancellationToken cancellationToken)
+    {
+        if (authorId.ChatId is not PlaceChatId { IsRoot: false })
+            return;
+
+        var author = await AuthorsBackend
+            .Get(authorId.ChatId, authorId, RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        if (author is { HasLeft: false })
+            return;
+
+        var fullAuthor = await AuthorsBackend
+            .Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+            .Require()
+            .ConfigureAwait(false);
+        var upsertCommand = new AuthorsBackend_Upsert(
+            authorId.ChatId,
+            authorId,
+            fullAuthor.UserId.Require(),
+            null,
+            new AuthorDiff {
+                IsAnonymous = false,
+                HasLeft = false,
+            }) {
+            ImportId = importId,
+        };
+        await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+    }
 
     internal Task<long> DbNextLocalId(
         ChatDbContext dbContext,

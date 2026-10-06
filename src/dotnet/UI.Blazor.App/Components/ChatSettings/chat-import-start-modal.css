@@ -1,0 +1,5 @@
+/* The dialog body is text-body-500; this is plain prose, as in ConfirmModal */
+.chat-import-start-modal .c-text {
+    @apply flex-y gap-y-2;
+    @apply text-body;
+}
