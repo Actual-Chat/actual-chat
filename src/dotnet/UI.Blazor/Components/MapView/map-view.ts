@@ -4,6 +4,13 @@ import { Versioning } from 'versioning';
 
 // Below this diameter the accuracy circle just fattens the dot's outline, so it's not drawn.
 const minAccuracyCircleSize = 24;
+// A preview over wilderness or open sea shows no landmarks at street zoom, so it steps out until it does.
+const emptyPreviewZoomStep = 3;
+const minEmptyPreviewZoom = 3;
+// MapLibre never times a request out, so one stalled tile, sprite or font leaves the map blank for good.
+// A map still loading after this long is rebuilt, which sends its requests again.
+const loadTimeoutMs = 8_000;
+const maxLoadRetryCount = 3;
 
 let isWorkerUrlSet = false;
 
@@ -57,6 +64,8 @@ export class MapView {
     private isVisible = false;
     private isDisposed = false;
     private recreateTimer: ReturnType<typeof setTimeout> | null = null;
+    private loadTimer: ReturnType<typeof setTimeout> | null = null;
+    private loadRetryCount = 0;
 
     public static create(
         element: HTMLElement,
@@ -154,7 +163,50 @@ export class MapView {
         this.map.on('move', () => this.applyAccuracyCircles(this.lastMarkers));
         this.map.on('movestart', () => this.element.toggleAttribute('data-moving', true));
         this.map.on('moveend', () => this.onMoveEnd());
+        if (!this.options.interactive)
+            this.map.on('idle', () => this.zoomOutIfEmpty());
+        this.map.on('idle', () => this.onLoaded());
+        this.loadTimer = setTimeout(() => this.onLoadTimeout(), loadTimeoutMs);
         this.applyMarkers(this.lastMarkers);
+    }
+
+    private onLoaded(): void {
+        this.loadRetryCount = 0;
+        this.clearLoadTimer();
+    }
+
+    private onLoadTimeout(): void {
+        this.loadTimer = null;
+        if (this.map == null)
+            return;
+
+        // A hidden tab renders no frames, so a map there can't finish loading however long it waits
+        if (document.visibilityState === 'hidden') {
+            this.loadTimer = setTimeout(() => this.onLoadTimeout(), loadTimeoutMs);
+            return;
+        }
+
+        if (this.loadRetryCount >= maxLoadRetryCount)
+            return;
+
+        this.loadRetryCount++;
+        this.destroyMap();
+        this.createMap();
+    }
+
+    private zoomOutIfEmpty(): void {
+        const map = this.map;
+        if (map == null || !map.isStyleLoaded() || !map.areTilesLoaded())
+            return;
+
+        // A uniform fill (forest, sea) tells nothing about where the point is; a line or a label does
+        const zoom = map.getZoom();
+        const hasLandmarks = map.queryRenderedFeatures()
+            .some(x => x.layer.type === 'line' || x.layer.type === 'symbol');
+        if (zoom <= minEmptyPreviewZoom || hasLandmarks)
+            return;
+
+        map.jumpTo({ zoom: Math.max(minEmptyPreviewZoom, zoom - emptyPreviewZoomStep) });
     }
 
     private destroyMap(): void {
@@ -163,6 +215,7 @@ export class MapView {
             return;
 
         this.map = null;
+        this.clearLoadTimer();
         this.element.toggleAttribute('data-moving', false);
         // Keep the user's pan/zoom, so the map reappears where they left it.
         const center = map.getCenter();
@@ -173,6 +226,14 @@ export class MapView {
             marker.remove();
         this.markers.clear();
         map.remove();
+    }
+
+    private clearLoadTimer(): void {
+        if (this.loadTimer == null)
+            return;
+
+        clearTimeout(this.loadTimer);
+        this.loadTimer = null;
     }
 
     // The delay lets a burst of evictions settle before rebuilding.

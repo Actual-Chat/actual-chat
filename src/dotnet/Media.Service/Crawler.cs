@@ -39,14 +39,14 @@ public sealed class Crawler(
                 return CrawledLink.None;
 
             var response = await SendRequest(url, userAgents, cts.Token).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-                return CrawledLink.None;
-
-            var handler = Handlers.FirstOrDefault(x => x.Supports(response));
-            if (handler is null)
-                return CrawledLink.None;
-
-            return await handler.Handle(response, cts.Token).ConfigureAwait(false);
+            var resolvedUrl = response.RequestMessage?.RequestUri?.AbsoluteUri ?? url;
+            var handler = response.IsSuccessStatusCode
+                ? Handlers.FirstOrDefault(x => x.Supports(response))
+                : null;
+            var link = handler is null
+                ? CrawledLink.None
+                : await handler.Handle(response, cts.Token).ConfigureAwait(false);
+            return link with { ResolvedUrl = resolvedUrl };
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             log.LogWarning("Crawl of '{Url}' timed out after {Timeout}s", url, settings.CrawlTimeout.TotalSeconds);

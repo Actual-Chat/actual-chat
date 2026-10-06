@@ -5,4 +5,6 @@ public sealed record CrawledLink(
     OpenGraph OpenGraph
 ) {
     public static readonly CrawledLink None = new(null, OpenGraph.None);
+
+    public string ResolvedUrl { get; init; } = "";
 }
