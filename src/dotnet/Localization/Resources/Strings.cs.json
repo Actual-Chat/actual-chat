@@ -2019,7 +2019,7 @@
   "Coach_BestThisWeek": "Nejlepší tento týden",
   "Coach_GettingBetter": "Zlepšujete se",
   "Coach_BetterCaption_Format": "{0} kleslo o {1} % oproti předchozímu týdnu. {2} dní s řečí ze 7.",
-  "Coach_ScoreLastWeeks": "Skóre, poslední 4 týdny",
+  "Coach_ScoreLastWeeks": "Skóre, posledních 8 týdnů",
   "Coach_ThisWeekVsLast": "Tento týden oproti minulému",
   "Coach_PercentagePoints_Format": "{0} procentních bodů",
   "Coach_ComfortableRange_Format": "Pohodlné: {0}–{1} slov/min",

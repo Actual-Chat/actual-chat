@@ -2380,7 +2380,7 @@
   "Coach_BestThisWeek": "Best this week",
   "Coach_GettingBetter": "You are getting better",
   "Coach_BetterCaption_Format": "{0} is down {1}% versus the week before. {2} days with speech out of 7.",
-  "Coach_ScoreLastWeeks": "Score, last 4 weeks",
+  "Coach_ScoreLastWeeks": "Score, last 8 weeks",
   "Coach_ThisWeekVsLast": "This week vs last week",
   "Coach_PercentagePoints_Format": "{0} pp",
   "Coach_ComfortableRange_Format": "Comfortable: {0}–{1} wpm",

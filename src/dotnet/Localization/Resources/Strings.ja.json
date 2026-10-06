@@ -2019,7 +2019,7 @@
   "Coach_BestThisWeek": "今週のベスト",
   "Coach_GettingBetter": "上達しています",
   "Coach_BetterCaption_Format": "{0} は前の週より {1}% 減りました。7 日中 {2} 日、話しました。",
-  "Coach_ScoreLastWeeks": "スコア、過去 4 週間",
+  "Coach_ScoreLastWeeks": "スコア、過去 8 週間",
   "Coach_ThisWeekVsLast": "今週と先週の比較",
   "Coach_PercentagePoints_Format": "{0} パーセントポイント",
   "Coach_ComfortableRange_Format": "聞きやすい範囲：毎分 {0}–{1} 語",

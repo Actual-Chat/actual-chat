@@ -151,6 +151,13 @@
 .coach-progress { @apply flex-y gap-y-3 px-4 pt-3 pb-4; }
 .coach-better .c-mascot { width: 48px; height: 38px; @apply object-contain; }
 .coach-week-scores { @apply p-3; }
+.coach-week-scores .c-column { @apply pt-4; }
+.coach-week-scores .c-bar-track { @apply items-center; }
+.coach-week-scores .c-label { @apply min-h-8 text-center; }
+.coach-week-scores .c-bar {
+    @apply shrink-0 max-w-full rounded;
+    width: 18px;
+}
 .coach-days { @apply flex-x gap-x-1.5 p-3; }
 .coach-days .c-day { @apply flex-1 flex-y items-center gap-y-1 text-micro-500 text-03; }
 .coach-days .c-day > div { @apply w-full h-6 rounded-md bg-04; }

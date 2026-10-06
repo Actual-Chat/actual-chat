@@ -2026,7 +2026,7 @@
   "Coach_BestThisWeek": "Bu haftanın en iyisi",
   "Coach_GettingBetter": "Gelişiyorsunuz",
   "Coach_BetterCaption_Format": "{0}, önceki haftaya göre %{1} azaldı. 7 günün {2} gününde konuşma var.",
-  "Coach_ScoreLastWeeks": "Puan, son 4 hafta",
+  "Coach_ScoreLastWeeks": "Puan, son 8 hafta",
   "Coach_ThisWeekVsLast": "Bu hafta ve geçen hafta",
   "Coach_PercentagePoints_Format": "{0} yüzde puan",
   "Coach_ComfortableRange_Format": "Rahat: {0}–{1} kelime/dk",

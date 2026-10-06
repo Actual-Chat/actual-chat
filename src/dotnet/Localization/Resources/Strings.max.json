@@ -2380,7 +2380,7 @@
   "Coach_BestThisWeek": "Meilleur score de la semaine",
   "Coach_GettingBetter": "У вас становится лучше",
   "Coach_BetterCaption_Format": "{0} a baissé de {1} % par rapport à la semaine précédente. {2} jours de parole sur 7.",
-  "Coach_ScoreLastWeeks": "Резултат, последните 4 седмици",
+  "Coach_ScoreLastWeeks": "Резултат, последните 8 седмици",
   "Coach_ThisWeekVsLast": "Тази седмица спрямо миналата",
   "Coach_PercentagePoints_Format": "{0} punktów procentowych",
   "Coach_ComfortableRange_Format": "聞きやすい範囲：毎分 {0}–{1} 語",

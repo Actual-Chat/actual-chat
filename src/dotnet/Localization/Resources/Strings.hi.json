@@ -2019,7 +2019,7 @@
   "Coach_BestThisWeek": "इस सप्ताह का सर्वश्रेष्ठ",
   "Coach_GettingBetter": "आप बेहतर हो रहे हैं",
   "Coach_BetterCaption_Format": "पिछले सप्ताह की तुलना में {0} में {1}% की कमी। 7 में से {2} दिन बोले।",
-  "Coach_ScoreLastWeeks": "स्कोर, पिछले 4 सप्ताह",
+  "Coach_ScoreLastWeeks": "स्कोर, पिछले 8 सप्ताह",
   "Coach_ThisWeekVsLast": "इस सप्ताह बनाम पिछला सप्ताह",
   "Coach_PercentagePoints_Format": "{0} प्रतिशत अंक",
   "Coach_ComfortableRange_Format": "आरामदायक: {0}–{1} शब्द/मिनट",
