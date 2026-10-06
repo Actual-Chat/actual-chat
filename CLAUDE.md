@@ -101,8 +101,17 @@ patterns the CI watchdog keeps finding.
 ## EF Core migrations
 
 **Generate every migration with the tool — never write or hand-edit one.**
-Build the service project first, then run
-`./ef-migrations.cmd <Project> add <Name>` (e.g. `Users.Service`). It writes
+
+```bash
+dotnet build src/dotnet/Users.Service.Migration
+./ef-migrations.cmd Users.Service add <Name> --context UsersDbContext
+```
+
+Build the `.Migration` project, not the service one: the tool runs with
+`--no-build` and loads the copy of the service assembly from the `.Migration`
+output, so building only the service generates the migration from a stale
+model. `--context` is required wherever a project has several contexts
+(`Users.Service` has `UsersDbContext` and `OAuthDbContext`). The tool writes
 the migration, its `.Designer.cs` and the updated model snapshot together, all
 derived from the model. A migration written by analogy with its neighbours
 drifts from the model silently: tests build their databases with `EnsureCreated`
@@ -116,8 +125,8 @@ declared after `UseSnakeCaseNaming()` `PK_*`.
 - Changing a migration that has already reached a release branch is never an
   option — it has run on prod. Fix forward with a new migration, or make the
   model match what prod has.
-- `./ef-migrations.cmd <Project> has-pending-model-changes` must report no changes
-  before you commit.
+- `./ef-migrations.cmd <Project> has-pending-model-changes --context <XxxDbContext>`
+  must report no changes before you commit — after building the `.Migration` project.
 - `DbMigrationTest` (Slow) applies all migrations to empty databases and compares
   the result with `EnsureCreated`. Run it after adding a migration.
 
