@@ -383,8 +383,14 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         return isHeld;
     }
 
-    private Task OpenChat(ChatId chatId)
-        => Hub.History.NavigateTo(Links.Chat(chatId));
+    private async Task OpenChat(ChatId chatId)
+    {
+        // The panels hide on a URL change, so the chat they were opened over has to hide them itself
+        var isChatOpen = Hub.History.LocalUrl.IsChat(out var openChatId) && openChatId == chatId;
+        await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
+        if (isChatOpen)
+            Hub.PanelsUI.HidePanels();
+    }
 
     private void ShowToast(string text)
         => Hub.ToastUI.Show(text, "icon-phone", ToastDismissDelay.Short);
