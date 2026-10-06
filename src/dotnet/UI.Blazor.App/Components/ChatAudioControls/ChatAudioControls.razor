@@ -116,6 +116,14 @@
         => _ = ChatAudioUI.SetListeningState(Chat.Id, false);
 
     private async Task OnHangUp() {
+        // A call held here ends the way the call screen ends it: with its media alone gone,
+        // the server notices the leave only after its grace, and the call lingers until then.
+        var call = Hub.CallUI.GetActiveCallNonComputed();
+        if (call is { Phase: not CallPhase.Ringing } && call.ChatId == Chat.Id) {
+            await Hub.CallScreensUI.HangUp(Chat.Id).ConfigureAwait(true);
+            return;
+        }
+
         if (OnHangUpRequested.HasDelegate) {
             await OnHangUpRequested.InvokeAsync().ConfigureAwait(true);
             return;
