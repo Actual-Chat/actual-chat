@@ -103,6 +103,34 @@ public class CrawlerTest(AppHostFixture fixture, ITestOutputHelper @out)
     }
 
     [Fact]
+    public async Task ShouldAuthorizeGithubCardImageRequestsOnly()
+    {
+        // arrange
+        var url = $"{Authority1}/{RandomStringGenerator.Next()}";
+        var githubUrl = $"{Authority1}/{RandomStringGenerator.Next()}";
+        var imgUrl = $"{Authority2}/images/{RandomStringGenerator.Next()}.jpg";
+        var cardUrl = $"https://opengraph.githubassets.com/{RandomStringGenerator.Next()}/Actual-Chat/actual-chat/pull/1";
+        var authorizations = new Dictionary<string, string?>(StringComparer.Ordinal);
+        Http.SetupImage(imgUrl)
+            .SetupImage(cardUrl)
+            .SetupHtml(url, h => h.Title("Title 1").Image(imgUrl))
+            .SetupHtml(githubUrl, h => h.Title("Title 2").Image(cardUrl))
+            .SetupEmptyRobots(url)
+            .OnRequest(req => authorizations[req.RequestUri!.AbsoluteUri] = req.Headers.Authorization?.ToString());
+
+        // act
+        var sut = AppHost.Services.GetRequiredService<Crawler>();
+        var meta = await sut.Crawl(url, CancellationToken.None);
+        var githubMeta = await sut.Crawl(githubUrl, CancellationToken.None);
+
+        // assert
+        meta.PreviewMediaId.Should().NotBeNull();
+        githubMeta.PreviewMediaId.Should().NotBeNull();
+        authorizations[imgUrl].Should().BeNull();
+        authorizations[cardUrl].Should().Be("Bearer test-github-key");
+    }
+
+    [Fact]
     public async Task ShouldNotCrawlIfRobotsTxtDisallowsForAllUserAgents()
     {
         // arrange

@@ -84,8 +84,12 @@ public abstract class ThrottledFlow : Flow<string>
     private TimeSpan GetRetryDelay(Exception error)
     {
         var retryDelay = RetryDelays[FailCount];
-        return error is IHasRetryDelay { RetryDelay: var requested } && requested > retryDelay
-            ? requested
-            : retryDelay;
+        if (error is not IHasRetryDelay { RetryDelay: var requested } || requested <= retryDelay)
+            return retryDelay;
+
+        // The requested delay is a floor (retrying earlier just fails again), so the jitter goes
+        // above it: flows that failed together then don't resume in the same second.
+        var halfSpread = requested * (RetryDelays.Spread / 2);
+        return new RandomTimeSpan(requested + halfSpread, halfSpread).Next();
     }
 }

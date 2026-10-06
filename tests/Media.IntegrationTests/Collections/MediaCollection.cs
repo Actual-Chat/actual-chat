@@ -20,6 +20,7 @@ public class AppHostFixture(IMessageSink messageSink)
                 ($"{nameof(CoreSettings)}:{nameof(CoreServerSettings.EgressHostAllowList)}:0", "domain*.some"),
                 ($"{nameof(MediaSettings)}:{nameof(MediaSettings.CrawlTimeout)}", "00:00:03"),
                 ($"{nameof(MediaSettings)}:{nameof(MediaSettings.LinkPreviewRetryDelay)}", "00:00:01"),
-                ($"{nameof(MediaSettings)}:{nameof(MediaSettings.LinkPreviewMaxRetryDelay)}", "00:00:01"));
+                ($"{nameof(MediaSettings)}:{nameof(MediaSettings.LinkPreviewMaxRetryDelay)}", "00:00:01"),
+                ($"{nameof(MediaSettings)}:{nameof(MediaSettings.GithubApiKey)}", "test-github-key"));
         }
     });
