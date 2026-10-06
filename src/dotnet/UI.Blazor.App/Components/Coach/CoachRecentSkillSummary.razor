@@ -1,0 +1,88 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Users
+@inherits ComponentBase<AppUIHub>
+@{
+    var labels = Labels;
+    var deltas = SummaryKinds
+        .Select(kind => Deltas.FirstOrDefault(d => d.Kind == kind))
+        .OfType<CoachWeekDelta>()
+        .Where(CoachLabels.HasComparison)
+        .ToArray();
+    if (deltas.Length == 0) {
+        return;
+    }
+}
+
+<Card Class="coach-recent-summary">
+    <button type="button" class="c-heading" @onclick="() => Hub.CoachUI.OpenComparison()">
+        <span>@L.Coach_ThisWeekVsLast</span><i class="icon-chevron-right" aria-hidden="true"></i>
+    </button>
+    <div class="c-period">@labels.LanguageName(Language) · @L.Coach_WeekUtc</div>
+    @foreach (var d in deltas) {
+        var kind = d.Kind;
+        var isPace = kind == CoachMetricKind.Pace;
+        var cls = CoachLabels.DeltaClass(d);
+        <button type="button" class="c-skill" data-metric="@kind"
+                @onclick="() => Hub.CoachUI.OpenComparison(kind)">
+            <span class="c-row"><span class="c-name">@labels.MetricTitle(kind)</span>
+                <span class="c-value">@labels.RecentDeltaValue(d)</span></span>
+            @if (d.Current is not null) {
+                <span class="c-rail" aria-hidden="true">
+                    @if (isPace) {
+                        <span class="c-range" style="@RangeStyle(d)"></span>
+                    } else {
+                        <span class="c-fill" style="width: @Position(d.Current.Value, d)%"></span>
+                    }
+                    @if (d.Previous is { } previous) {
+                        <span class="c-marker previous" style="left: @Position(previous, d)%"></span>
+                    }
+                    <span class="c-marker" style="left: @Position(d.Current.Value, d)%"></span>
+                </span>
+            }
+            @if (d.Previous is { } before && d.Current is not null) {
+                <span class="c-caption">@labels.RecentDeltaValue(d with { Current = before })
+                    → @labels.RecentDeltaValue(d)</span>
+            }
+            @if (d.Current is not null) {
+                <span class="c-change @cls">@labels.RecentDeltaBadge(d)
+                    @if (d.IsBetter is { } isBetter && d.Previous is not null) {
+                        <span> · @(isBetter ? L.Coach_Improving : L.Coach_Worsening)</span>
+                    }
+                </span>
+            }
+            @if (isPace) {
+                <span class="c-caption">
+                    @if (d.Current is not null) {
+                        <span>@labels.BandWord(kind, d.Band) · </span>
+                    }
+                    @L.Coach_ComfortableRange_Format(Summary.PaceSlow, Summary.PaceFast)
+                </span>
+            }
+        </button>
+    }
+</Card>
+
+@code {
+    [Parameter, EditorRequired] public ApiArray<CoachWeekDelta> Deltas { get; set; }
+    [Parameter, EditorRequired] public string Language { get; set; } = "";
+    [Parameter, EditorRequired] public CoachSummary Summary { get; set; } = CoachSummary.None;
+
+    private static readonly CoachMetricKind[] SummaryKinds = [
+        CoachMetricKind.Fillers, CoachMetricKind.Pace, CoachMetricKind.WeakWords,
+    ];
+
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    private double Scale(CoachWeekDelta d)
+        => d.Kind == CoachMetricKind.Pace
+            ? Math.Max(Summary.PaceFast * 1.5, Math.Max(d.Current ?? 0, d.Previous ?? 0))
+            : Math.Max(0.1, Math.Max(d.Current ?? 0, d.Previous ?? 0));
+
+    private string Position(double value, CoachWeekDelta d)
+        => (100 * Math.Clamp(value / Math.Max(0.001, Scale(d)), 0, 1))
+            .ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+
+    private string RangeStyle(CoachWeekDelta d)
+        => $"left: {Position(Summary.PaceSlow, d)}%; "
+            + $"width: {Position(Summary.PaceFast - Summary.PaceSlow, d)}%";
+}

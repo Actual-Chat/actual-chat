@@ -43,11 +43,10 @@
     @if (m.Scores.Where(x => x.Score is > 0).ToList() is [ { Score: { } first }, .., { Score: { } last } ]) {
         <div class="c-scores-caption">@first → @last</div>
     }
-    <TileTopic Topic="@L.Coach_ThisWeekVsLast"/>
-    @if (m.Deltas.Count > 0 && m.Deltas.All(d => d.Previous is null)) {
-        <div class="c-deltas-hint">@L.Coach_NothingToCompare</div>
+    @if (m.Deltas.Any(CoachLabels.HasComparison)) {
+        <TileTopic Topic="@L.Coach_ThisWeekVsLast"/>
+        <CoachWeekDeltas Deltas="@m.Deltas" Target="@Hub.CoachUI.ComparisonTarget"/>
     }
-    <CoachWeekDeltas Deltas="@m.Deltas"/>
     <TileTopic Topic="@L.Coach_DaysWithSpeech"/>
     <Card Class="coach-days">
         @foreach (var day in m.WeekCells) {
@@ -72,7 +71,10 @@
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var deltas = await Hub.Coach.GetOwnWeekDeltas(Session, Language, cancellationToken).ConfigureAwait(false);
+        var comparisonLanguage = Language
+            ?? await Hub.CoachUI.GetComparisonLanguage(cancellationToken).ConfigureAwait(false);
+        var deltas = await Hub.Coach
+            .GetOwnWeekDeltas(Session, comparisonLanguage, cancellationToken).ConfigureAwait(false);
         var scores = await Hub.Coach.ListOwnWeekScores(Session, 4, Language, cancellationToken).ConfigureAwait(false);
         var milestones = await Hub.Coach.ListOwnMilestones(Session, cancellationToken).ConfigureAwait(false);
         var today = UsageDay.DayOf(Clocks.SystemClock.Now);

@@ -34,6 +34,8 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
 
+    public CoachMetricKind? ComparisonTarget { get; private set; }
+
     [ComputeMethod]
     public virtual async Task<bool> IsEnabled(CancellationToken cancellationToken)
         => await Features.Get<Features_EnableSpeechCoach>(cancellationToken).ConfigureAwait(false);
@@ -42,7 +44,31 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
         => (await _selectedTab.Use(cancellationToken).ConfigureAwait(false)).Value;
 
     public void SelectTab(CoachTab tab)
-        => _selectedTab.Value = Box.New(tab);
+    {
+        if (tab != CoachTab.Progress)
+            ComparisonTarget = null;
+        _selectedTab.Value = Box.New(tab);
+    }
+
+    public void OpenComparison(CoachMetricKind? kind = null)
+    {
+        ComparisonTarget = kind;
+        _selectedTab.Value = Box.New(CoachTab.Progress);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<string> GetComparisonLanguage(CancellationToken cancellationToken)
+    {
+        var language = await GetSelectedLanguage(cancellationToken).ConfigureAwait(false);
+        language ??= (await ListOwnLanguages(cancellationToken).ConfigureAwait(false))
+            .FirstOrDefault(l => l.Words30Days > 0)?.Iso;
+        if (language is not null)
+            return Language.GetIsoCode(language);
+
+        var languageSettings = await Hub.LanguageUI.Settings
+            .Use(Hub.LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
+        return languageSettings.Primary.IsoCode;
+    }
 
     [ComputeMethod]
     public virtual async Task<ApiArray<CoachLanguageInfo>> ListOwnLanguages(CancellationToken cancellationToken)

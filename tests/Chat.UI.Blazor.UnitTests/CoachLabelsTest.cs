@@ -62,7 +62,9 @@ public class CoachLabelsTest
             ["Coach_PercentOfSpeech_Format"] = "{0}% of speech",
             ["Coach_Wpm_Format"] = "{0} wpm",
             ["Coach_NotEnoughSpeech"] = "not enough speech",
-            ["Coach_DeltaSame"] = "same",
+            ["Coach_DeltaSame"] = "about the same",
+            ["Coach_PercentagePoints_Format"] = "{0} pp",
+            ["Coach_NothingToCompare"] = "no earlier week",
         }));
 
     [Fact]
@@ -78,15 +80,95 @@ public class CoachLabelsTest
 
         // act & assert
         l.DeltaValue(fillers).Should().Be("7% → 4% of speech");
-        l.DeltaBadge(fillers).Should().Be("▼ 43%");
+        l.DeltaBadge(fillers).Should().Be("↑ 43%");
         l.DeltaValue(pace).Should().Be("95 → 118 wpm");
-        l.DeltaBadge(pace).Should().Be("▲ 23");
+        l.DeltaBadge(pace).Should().Be("↑ 23");
         l.DeltaValue(monologue).Should().Be("3:10 → 2:20");
-        l.DeltaBadge(monologue).Should().Be("▼ 0:50");
-        l.DeltaBadge(same).Should().Be("same");
+        l.DeltaBadge(monologue).Should().Be("↑ 0:50");
+        l.DeltaBadge(same).Should().Be("→ about the same");
         l.DeltaValue(unknown)
             .Should().Be("4% of speech", "the current value stands alone until there is an earlier week");
         l.DeltaBadge(unknown).Should().BeEmpty("there is no earlier week to be better or worse than");
+    }
+
+    [Theory]
+    [InlineData(0.07, 0.04, true, "↑ 3 pp")]
+    [InlineData(0d, 0.02, false, "↓ 2 pp")]
+    [InlineData(0.031, 0.027, null, "→ about the same")]
+    [InlineData(0.03, 0.03, null, "→ about the same")]
+    [InlineData(null, 0.04, null, "no earlier week")]
+    [InlineData(0.04, null, null, "not enough speech")]
+    public void RecentChangesShouldUsePercentagePointsAndPreserveMissingData(
+        double? previous, double? current, bool? isBetter, string expected)
+    {
+        var labels = NewProgressLabels();
+        var delta = new CoachWeekDelta(CoachMetricKind.Fillers, previous, current, CoachBand.Good, isBetter);
+
+        var badge = labels.RecentDeltaBadge(delta);
+
+        badge.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(null, null, false)]
+    [InlineData(null, 0d, false)]
+    [InlineData(0d, null, false)]
+    [InlineData(0d, 0d, true)]
+    [InlineData(0.04, 0.07, true)]
+    public void ComparisonEligibilityShouldRequireBothPeriodsButAllowZeroRates(
+        double? previous, double? current, bool expected)
+    {
+        // arrange
+        var delta = new CoachWeekDelta(CoachMetricKind.Fillers, previous, current, CoachBand.Good, null);
+
+        // act
+        var hasComparison = CoachLabels.HasComparison(delta);
+
+        // assert
+        hasComparison.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(0.07, 0.04, true, "improving")]
+    [InlineData(0.04, 0.07, false, "worsening")]
+    [InlineData(0.03, 0.03, null, "stable")]
+    [InlineData(null, 0.04, null, "text-03")]
+    [InlineData(0.04, null, null, "text-03")]
+    public void DeltaColorsShouldDistinguishProgressFromMissingData(
+        double? previous, double? current, bool? isBetter, string expected)
+    {
+        // arrange
+        var delta = new CoachWeekDelta(CoachMetricKind.Fillers, previous, current, CoachBand.Good, isBetter);
+
+        // act
+        var cls = CoachLabels.DeltaClass(delta);
+
+        // assert
+        cls.Should().Be(expected);
+    }
+
+    [Fact]
+    public void RecentPaceShouldKeepANeutralRangeChangeNeutral()
+    {
+        var labels = NewProgressLabels();
+        var delta = new CoachWeekDelta(CoachMetricKind.Pace, 110, 130, CoachBand.Good, null);
+
+        var badge = labels.RecentDeltaBadge(delta);
+        var value = labels.RecentDeltaValue(delta);
+
+        badge.Should().Be("→ about the same");
+        value.Should().Be("130 wpm");
+    }
+
+    [Fact]
+    public void RecentRateShouldPreserveTenthsOfAPercent()
+    {
+        var labels = NewProgressLabels();
+        var delta = new CoachWeekDelta(CoachMetricKind.WeakWords, 0.031, 0.027, CoachBand.Good, true);
+
+        var value = labels.RecentDeltaValue(delta);
+
+        value.Should().Be("2.7% of speech");
     }
 
     [Fact]
@@ -98,6 +180,7 @@ public class CoachLabelsTest
 
         // act & assert
         l.DeltaValue(quiet).Should().Be("not enough speech");
+        l.DeltaBadge(quiet).Should().BeEmpty("an unavailable current value is not an unchanged comparison");
     }
 
     [Fact]
