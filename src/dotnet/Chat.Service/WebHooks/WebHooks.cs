@@ -30,7 +30,7 @@ public class WebHooks(IServiceProvider services) : IWebHooks
         CancellationToken cancellationToken)
     {
         await RequireManager(session, scope, scopeId, cancellationToken).ConfigureAwait(false);
-        return await Backend.ListByScope(scope, scopeId, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListByScope(new(scope, scopeId), cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

@@ -130,7 +130,7 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
         // assert
         created.WebHook!.Id.Should().Be(id, "a retry must reuse the id instead of minting a second bot");
         await create.Should().ThrowAsync<InvalidOperationException>().WithMessage("*already exists*");
-        (await Backend.ListByScope(WebHookScope.Chat, chatId.Value, default)).Should().ContainSingle();
+        (await Backend.ListByScope(new(WebHookScope.Chat, chatId.Value), default)).Should().ContainSingle();
     }
 
     [Fact]
@@ -184,7 +184,7 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
         await withNotifications.Should().ThrowAsync<InvalidOperationException>().WithMessage("*notifications*");
         await withHeader.Should().ThrowAsync<InvalidOperationException>().WithMessage("*custom header*");
         await inUserScope.Should().ThrowAsync<InvalidOperationException>().WithMessage("*chat-scoped*");
-        (await Backend.ListByScope(WebHookScope.Chat, chatId.Value, default)).Should().BeEmpty();
+        (await Backend.ListByScope(new(WebHookScope.Chat, chatId.Value), default)).Should().BeEmpty();
     }
 
     [Fact]
@@ -225,7 +225,7 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
 
         // assert
         await createWithId.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Id must be empty*");
-        (await Backend.ListByScope(WebHookScope.Chat, chatId.Value, default)).Should().BeEmpty();
+        (await Backend.ListByScope(new(WebHookScope.Chat, chatId.Value), default)).Should().BeEmpty();
     }
 
     [Fact]

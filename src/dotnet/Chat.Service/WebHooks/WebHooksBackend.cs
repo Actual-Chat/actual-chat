@@ -38,16 +38,13 @@ public partial class WebHooksBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<WebHook>> ListByScope(
-        WebHookScope scope,
-        string scopeId,
-        CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<WebHook>> ListByScope(WebHookScopeRef scope, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbWebHooks = await dbContext.WebHooks
-            .Where(x => x.ScopeId == scopeId && x.Scope == scope)
+            .Where(x => x.ScopeId == scope.Id && x.Scope == scope.Scope)
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -57,10 +54,10 @@ public partial class WebHooksBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<ApiArray<WebHook>> ListActiveForChat(ChatId chatId, CancellationToken cancellationToken)
     {
-        IEnumerable<WebHook> hooks = await ListByScope(WebHookScope.Chat, chatId.Value, cancellationToken)
+        IEnumerable<WebHook> hooks = await ListByScope(new(WebHookScope.Chat, chatId.Value), cancellationToken)
             .ConfigureAwait(false);
         if (chatId is PlaceChatId placeChatId) {
-            var placeHooks = await ListByScope(WebHookScope.Place, placeChatId.PlaceId.Value, cancellationToken)
+            var placeHooks = await ListByScope(new(WebHookScope.Place, placeChatId.PlaceId.Value), cancellationToken)
                 .ConfigureAwait(false);
             hooks = hooks.Concat(placeHooks);
         }
@@ -70,7 +67,7 @@ public partial class WebHooksBackend(IServiceProvider services)
     // [ComputeMethod]
     public virtual async Task<ApiArray<WebHook>> ListActiveForUser(UserId userId, CancellationToken cancellationToken)
     {
-        var hooks = await ListByScope(WebHookScope.User, userId.Value, cancellationToken).ConfigureAwait(false);
+        var hooks = await ListByScope(new(WebHookScope.User, userId.Value), cancellationToken).ConfigureAwait(false);
         return hooks.Where(x => x.IsActiveOutgoing).ToApiArray();
     }
 
@@ -495,7 +492,7 @@ public partial class WebHooksBackend(IServiceProvider services)
     private void InvalidateHook(WebHook webHook, IReadOnlyCollection<string> tokenHashes)
     {
         _ = Get(webHook.Id, default);
-        _ = ListByScope(webHook.Scope, webHook.ScopeId, default);
+        _ = ListByScope(new(webHook.Scope, webHook.ScopeId), default);
         if (webHook.CreatedBy is { } createdBy)
             _ = ListByCreator(createdBy, default);
         foreach (var tokenHash in tokenHashes)

@@ -8,7 +8,7 @@ public interface IWebHooksBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<WebHook?> Get(WebHookId id, CancellationToken cancellationToken);
     [ComputeMethod]
-    Task<ApiArray<WebHook>> ListByScope(WebHookScope scope, string scopeId, CancellationToken cancellationToken);
+    Task<ApiArray<WebHook>> ListByScope(WebHookScopeRef scope, CancellationToken cancellationToken);
     // Active outgoing hooks whose scope is the chat or the chat's place
     [ComputeMethod]
     Task<ApiArray<WebHook>> ListActiveForChat(ChatId chatId, CancellationToken cancellationToken);

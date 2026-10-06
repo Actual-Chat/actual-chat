@@ -48,7 +48,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         webHook.CreatedBy.Should().Be(alice.Id);
         webHook.Events.Should().Be(WebHookEvents.Messages);
         await TestWait.When(async ct => {
-            var hooks = await Backend.ListByScope(WebHookScope.Chat, chatId.Value, ct);
+            var hooks = await Backend.ListByScope(new(WebHookScope.Chat, chatId.Value), ct);
             hooks.Should().ContainSingle(x => x.Id == webHook.Id);
         });
         (await Backend.Get(webHook.Id, default))!.Name.Should().Be("CI");
@@ -97,7 +97,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         removed.WebHook.Should().BeNull();
         await TestWait.When(async ct => {
             (await Backend.Get(created.Id, ct)).Should().BeNull();
-            (await Backend.ListByScope(WebHookScope.Chat, chatId.Value, ct)).Should().BeEmpty();
+            (await Backend.ListByScope(new(WebHookScope.Chat, chatId.Value), ct)).Should().BeEmpty();
             (await Backend.ListDeliveries(created.Id, Constants.WebHooks.DeliveryListLimit, ct))
                 .Should().BeEmpty("deliveries die with the hook and their computed must be invalidated");
         });
@@ -280,7 +280,7 @@ public class WebHooksBackendTest(ChatCollection.AppHostFixture fixture, ITestOut
         await emptyName.Should().ThrowAsync<InvalidOperationException>().WithMessage("*name*");
         await userHookWithoutTargets.Should().ThrowAsync<InvalidOperationException>();
         await reservedHeader.Should().ThrowAsync<InvalidOperationException>().WithMessage("*reserved*");
-        (await Backend.ListByScope(WebHookScope.Chat, chatId.Value, default)).Should().BeEmpty();
+        (await Backend.ListByScope(new(WebHookScope.Chat, chatId.Value), default)).Should().BeEmpty();
     }
 
     [Fact]

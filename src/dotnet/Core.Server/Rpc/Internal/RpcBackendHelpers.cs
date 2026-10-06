@@ -36,7 +36,11 @@ public sealed class RpcBackendHelpers(IServiceProvider services) : RpcServiceBas
             return _ => throw StandardError.Internal(
                 $"{backendServiceDef} must be a ServiceMode.Client or Distributed mode service.");
 
-        var typedRouter = GetTypedRouter(methodDef.Parameters.GetValueOrDefault(0)?.ParameterType);
+        var arg0Type = methodDef.Parameters.GetValueOrDefault(0)?.ParameterType;
+        // A method whose only argument is its CancellationToken has nothing to route by: zero shard, like no arguments
+        if (arg0Type == typeof(CancellationToken))
+            arg0Type = null;
+        var typedRouter = GetTypedRouter(arg0Type);
         return args => {
             if (_whenRoutingStarted is { Task.IsCompleted: false })
                 return RpcRef.Local;

@@ -270,7 +270,7 @@ public class WebHooksFanInTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         var hook = (await Commander.Call(new WebHooksBackend_Change(
             scope, scopeId, null, null, Change.Create(diff), account.Id))).WebHook!;
         await TestWait.When(async ct
-            => (await Backend.ListByScope(scope, scopeId, ct)).Should().Contain(x => x.Id == hook.Id));
+            => (await Backend.ListByScope(new(scope, scopeId), ct)).Should().Contain(x => x.Id == hook.Id));
         _createdHooks.Add(hook);
         return hook;
     }
