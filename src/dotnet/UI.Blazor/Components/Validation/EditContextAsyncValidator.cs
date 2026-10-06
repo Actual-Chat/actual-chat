@@ -10,13 +10,14 @@ public sealed class EditContextAsyncValidator : WorkerBase
 {
     private static readonly ConcurrentDictionary<(Type ModelType, string FieldName), PropertyInfo?> PropertyCache
         = new ();
+    private static readonly BoundedChannelOptions ValidationRequestsChannelOptions = new(100) {
+        FullMode = BoundedChannelFullMode.DropOldest,
+        SingleReader = true,
+    };
 
     private readonly AsyncLock _lock = new ();
-    private readonly Channel<FieldIdentifier?> _validationRequests = ChannelExt.Create<FieldIdentifier?>(
-        new BoundedChannelOptions(100) {
-            FullMode = BoundedChannelFullMode.DropOldest,
-            SingleReader = true,
-        });
+    private readonly Channel<FieldIdentifier?> _validationRequests
+        = ValidationRequestsChannelOptions.NewChannel<FieldIdentifier?>();
 
     private readonly EditContext _editContext;
     private readonly ValidationMessageStore _messages;

@@ -6,7 +6,7 @@ namespace ActualChat.Chat;
 /// voice is behind it - null when nothing is speaking this entry.
 /// </summary>
 [DataContract, MessagePackObject]
-public sealed partial record ChatEntryStream(
+public sealed partial record ChatEntryStreamInfo(
     [property: DataMember(Order = 0), Key(0)] StreamId Id,
     [property: DataMember(Order = 1), Key(1)] ChatEntryId EntryId,
     [property: DataMember(Order = 2), Key(2)] int Offset,

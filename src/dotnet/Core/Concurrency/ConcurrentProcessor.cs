@@ -38,7 +38,7 @@ public sealed class ConcurrentProcessor<TKey, TResult> : WorkerBase
         ProcessCallTimeout = processCallTimeout;
         _concurrencyGate = new SemaphoreSlim(concurrencyLevel);
         _queue = new ConcurrentDictionary<TKey, Item>(keyComparer);
-        _channel = Channel.CreateUnbounded<Item>(ChannelExt.UnboundedFanInOptions);
+        _channel = ChannelExt.UnboundedFanInOptions.NewChannel<Item>();
         _writer = _channel.Writer;
         StopToken.Register(() => _channel.Writer.Complete());
         if (mustStart)

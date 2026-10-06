@@ -200,8 +200,8 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
         return chatId;
     }
 
-    private async Task<ChatEntryStream> Append(ChatEntryStream stream, string text)
-        => await Tester.Chats.AppendEntryStream(Tester.Session, stream.Id, stream.Offset, text, default);
+    private async Task<ChatEntryStreamInfo> Append(ChatEntryStreamInfo streamInfo, string text)
+        => await Tester.Chats.AppendEntryStream(Tester.Session, streamInfo.Id, streamInfo.Offset, text, default);
 
     private static async Task SetMaintenance(IWebTester admin, ChatId chatId, bool isEnabled)
         => await admin.Commander.Call(new Chats_SetMaintenance {

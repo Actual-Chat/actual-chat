@@ -40,7 +40,7 @@ public sealed class AsyncObservable<T> : IAsyncObservable<T>
             var options = singleReader
                 ? ChannelExt.UnboundedPipeOptions
                 : ChannelExt.UnboundedFanOutOptions;
-            var channel = Channel.CreateUnbounded<T>(options);
+            var channel = options.NewChannel<T>();
             _subscribers.TryAdd(subscriberId, channel);
             return new Subscription(this, subscriberId, channel);
         }

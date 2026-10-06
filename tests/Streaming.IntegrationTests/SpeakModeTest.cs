@@ -346,7 +346,7 @@ public sealed class SpeakModeTest(SpeechCollection.AppHostFixture fixture, ITest
             return frames;
         }, CancellationToken.None);
 
-    private async Task<(ChatId, ChatEntryStream)> StreamBotText(string text)
+    private async Task<(ChatId, ChatEntryStreamInfo)> StreamBotText(string text)
     {
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);

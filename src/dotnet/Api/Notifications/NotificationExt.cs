@@ -60,8 +60,8 @@ public static class NotificationExt
         // The entry a notification is about; null for the kinds that anchor at a chat.
         // A conversation carries no entry of its own, so it anchors where it started.
         => notification switch {
-            ConversationNotification n when n.StartEntryLid > 0 => ChatEntryId.New(n.ChatId, n.StartEntryLid),
-            ChatEntryRelatedNotification n when n.EntryLid > 0 => n.EntryId,
+            ConversationNotification { StartEntryLid: > 0 } n => ChatEntryId.New(n.ChatId, n.StartEntryLid),
+            ChatEntryRelatedNotification { EntryLid: > 0 } n => n.EntryId,
             ChatEntryNotification n => n.EntryId,
             _ => null,
         };

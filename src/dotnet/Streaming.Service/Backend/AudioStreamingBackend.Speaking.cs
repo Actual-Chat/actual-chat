@@ -1,4 +1,3 @@
-using System.Threading.Channels;
 using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.Transcription;
@@ -42,7 +41,9 @@ public partial class AudioStreamingBackend
     public virtual Task<TimeSpan?> GetSpeechBacklog(StreamId streamId, CancellationToken cancellationToken)
         // Null rather than zero when nothing is speaking this stream: "nobody is listening, write as
         // fast as you like" is a different answer from "the voice is keeping up".
-        => Task.FromResult(_speechMixes.TryGetValue(streamId, out var mix) ? mix.SpeechBacklog : (TimeSpan?)null);
+        => Task.FromResult(_speechMixes.TryGetValue(streamId, out var mix)
+            ? mix.SpeechBacklog
+            : (TimeSpan?)null);
 
     // A posted message is on offer only briefly: long enough for a listening client to notice it
     // and ask, and then for as long as the speaking it started actually runs. Left registered it
@@ -116,10 +117,7 @@ public partial class AudioStreamingBackend
             return;
         }
 
-        var text = Channel.CreateUnbounded<string>(new UnboundedChannelOptions {
-            SingleReader = true,
-            SingleWriter = true,
-        });
+        var text = ChannelExt.UnboundedPipeOptions.NewChannel<string>();
         Task? synthesizeTask = null;
         try {
             var sourceMemoizer = await WaitForSourceTranscript(sourceStreamId, null, cancellationToken)

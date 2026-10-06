@@ -16,7 +16,7 @@ public sealed class ChannelMuxer<T> : IAsyncDisposable
     public ChannelReader<T> Output => _output.Reader;
 
     public ChannelMuxer(int? capacity = null)
-        => _output = ChannelExt.Create<T>(capacity);
+        => _output = ChannelExt.New<T>(capacity, allowSynchronousContinuations: true);
 
     /// <summary>
     /// Adds a source channel and returns its assigned stream index.

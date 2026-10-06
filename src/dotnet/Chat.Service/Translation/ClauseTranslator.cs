@@ -50,7 +50,7 @@ public sealed class ClauseTranslator(TranslateClause translate, ILogger log)
         IAsyncEnumerable<Transcript> source,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var output = Channel.CreateUnbounded<Transcript>(new UnboundedChannelOptions { SingleReader = true });
+        var output = ChannelExt.UnboundedFanInOptions.NewChannel<Transcript>();
         _output = output;
         var feedTask = Feed(source, output.Writer, cancellationToken);
         await foreach (var transcript in output.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))

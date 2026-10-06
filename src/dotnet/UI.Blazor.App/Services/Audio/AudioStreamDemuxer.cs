@@ -43,7 +43,7 @@ public sealed class AudioStreamDemuxer(
                     DebugLog?.LogDebug("StreamStart N{StreamIndex}: stream #{StreamId}",
                         start.StreamIndex, start.StreamInfo.StreamId);
                     startEntry = new StreamEntry(
-                        Channel.CreateUnbounded<AudioFrame>(ChannelExt.UnboundedPipeOptions));
+                        ChannelExt.UnboundedPipeOptions.NewChannel<AudioFrame>());
                     _streams[start.StreamIndex] = startEntry;
 
                     // Note: We don't use StopToken here because the audio frames should remain

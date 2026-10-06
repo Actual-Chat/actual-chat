@@ -51,7 +51,7 @@ public sealed class ListeningStreamMuxer : WorkerBase
         ChatId = chatId;
         CatchUpFrom = catchUpFrom;
         DubLanguage = dubLanguage;
-        _output = ChannelExt.Create<MuxedAudioStreamItem>(ChannelExt.UnboundedFanInOptions);
+        _output = ChannelExt.UnboundedFanInOptions.NewChannel<MuxedAudioStreamItem>();
         _ = Run(); // Start immediately
     }
 

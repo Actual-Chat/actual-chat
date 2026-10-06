@@ -25,7 +25,7 @@ public partial class Chats(IServiceProvider services) : IChats
 
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     // Lazy: it's registered only on hosts that run the chat backend, and only these two paths need it
-    private TextEntryStreamer TextEntryStreamer => field ??= services.GetRequiredService<TextEntryStreamer>();
+    private ChatEntryStreamer ChatEntryStreamer => field ??= services.GetRequiredService<ChatEntryStreamer>();
     private ILiveSessionsBackend LiveSessionsBackend
         => field ??= services.GetRequiredService<ILiveSessionsBackend>();
     private IAudioStreamingBackend StreamingBackend
@@ -519,8 +519,8 @@ public partial class Chats(IServiceProvider services) : IChats
         // Re-checked per chunk rather than once: a stream can outlive the start of a maintenance window.
         var checkedChunks = textChunks.RequireAvailable(Maintenances, chatId, cancellationToken);
         if (!IsTooOldToStreamInto(entryToUpdate))
-            return await TextEntryStreamer
-                .Stream(chatId, author.Id, entryToUpdate, checkedChunks, cancellationToken,
+            return await ChatEntryStreamer
+                .PushStream(chatId, author.Id, entryToUpdate, checkedChunks, cancellationToken,
                     isViaApi: isViaApi,
                     language: await ResolveStreamLanguage(session, chatId, language, cancellationToken)
                         .ConfigureAwait(false))
@@ -540,7 +540,7 @@ public partial class Chats(IServiceProvider services) : IChats
         return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<ChatEntryStream> StartEntryStream(
+    public virtual async Task<ChatEntryStreamInfo> StartEntryStream(
         Session session,
         ChatId chatId,
         long? localId,
@@ -564,7 +564,7 @@ public partial class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
     }
 
-    public virtual async Task<ChatEntryStream> AppendEntryStream(
+    public virtual async Task<ChatEntryStreamInfo> AppendEntryStream(
         Session session,
         StreamId streamId,
         int offset,
@@ -580,7 +580,7 @@ public partial class Chats(IServiceProvider services) : IChats
             .ConfigureAwait(false);
     }
 
-    public virtual async Task<ChatEntryStream> FinishEntryStream(
+    public virtual async Task<ChatEntryStreamInfo> FinishEntryStream(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)

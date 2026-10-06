@@ -17,7 +17,7 @@ namespace ActualChat.Chat;
 [BackendShardScheme(nameof(ShardScheme.ChatBackend))]
 public interface IChatEntryStreamsBackend : IComputeService, IBackendService
 {
-    Task<ChatEntryStream> Start(
+    Task<ChatEntryStreamInfo> Start(
         ChatId chatId,
         AuthorId authorId,
         UserId userId,
@@ -26,12 +26,12 @@ public interface IChatEntryStreamsBackend : IComputeService, IBackendService
         Language? language,
         CancellationToken cancellationToken);
 
-    Task<ChatEntryStream> Append(
+    Task<ChatEntryStreamInfo> Append(
         StreamId streamId,
         UserId userId,
         int offset,
         string text,
         CancellationToken cancellationToken);
 
-    Task<ChatEntryStream> Finish(StreamId streamId, UserId userId, CancellationToken cancellationToken);
+    Task<ChatEntryStreamInfo> Finish(StreamId streamId, UserId userId, CancellationToken cancellationToken);
 }

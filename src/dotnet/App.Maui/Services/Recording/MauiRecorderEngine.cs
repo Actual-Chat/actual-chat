@@ -12,6 +12,12 @@ namespace ActualChat.App.Maui.Services.Recording;
 public class MauiRecorderEngine : IAudioRecorderEngine
 {
     private static readonly TimeSpan RecordingFailedInterval = TimeSpan.FromMilliseconds(500);
+    private static readonly BoundedChannelOptions StreamChannelOptions
+        = new(Constants.Audio.StreamingChannelCapacity) {
+            SingleReader = true,
+            SingleWriter = true,
+            AllowSynchronousContinuations = true,
+        };
 
     private readonly Lock _lock = new();
     private readonly Debouncer<Unit> _noSignalDetectedDebouncer;
@@ -537,13 +543,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             Log.LogWarning("CreateAudioStream: no connectivity signal yet, streaming anyway");
         }
 
-        var stream = Channel.CreateBounded<IMemoryOwner<byte>>(
-            new BoundedChannelOptions(Constants.Audio.StreamingChannelCapacity) {
-                FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = true,
-                SingleWriter = true,
-                AllowSynchronousContinuations = true,
-            });
+        var stream = StreamChannelOptions.NewChannel<IMemoryOwner<byte>>();
 
         // TODO(AK): Specify PreSkip
         _sendTask = SendAudio(chatId, repliedChatEntryId, 0, firstFrameSourceCapturedAt, stream.Reader, cancellationToken);

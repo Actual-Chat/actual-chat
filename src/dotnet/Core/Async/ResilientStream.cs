@@ -43,7 +43,7 @@ public sealed class ResilientStream<T> : ResilientStream, IAsyncEnumerable<T>
     {
         if (!cancellationToken.CanBeCanceled)
             cancellationToken = CancellationToken;
-        var channel = ChannelExt.Create<T>(ChannelOptions);
+        var channel = ChannelOptions.NewChannel<T>();
         _ = Task.Run(() => PushItems(channel.Writer, cancellationToken), CancellationToken.None);
         return channel;
     }

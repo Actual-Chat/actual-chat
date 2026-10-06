@@ -26,13 +26,7 @@ public sealed class OggOpusStreamConverter(
     {
         var headerSource = TaskCompletionSourceExt.New<OpusHead>();
         var headerTask = headerSource.Task;
-        var target = Channel.CreateBounded<AudioFrame>(
-            new BoundedChannelOptions(Constants.Queues.OpusStreamConverterQueueSize) {
-                SingleWriter = true,
-                SingleReader = true,
-                AllowSynchronousContinuations = true,
-                FullMode = BoundedChannelFullMode.Wait,
-            });
+        var target = Constants.Channels.OpusStreamConverterChannelOptions.NewChannel<AudioFrame>();
 
         _ = BackgroundTask.Run(async () => {
             try {

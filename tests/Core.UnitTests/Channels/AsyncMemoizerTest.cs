@@ -897,7 +897,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         var channels = new Channel<int>[targetCount];
         var registerTasks = new Task[targetCount];
         for (var i = 0; i < targetCount; i++) {
-            var ch = Channel.CreateUnbounded<int>(new UnboundedChannelOptions { SingleReader = true });
+            var ch = ChannelExt.New<int>(capacity: null, singleReader: true);
             channels[i] = ch;
             registerTasks[i] = memoizer.AddReplayTarget(ch.Writer, 0);
         }
@@ -1047,7 +1047,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
             source.Writer.TryWrite(i);
         await memoizer.WhenBuffered(5);
 
-        var replayChannel = Channel.CreateUnbounded<int>(new UnboundedChannelOptions { SingleReader = true });
+        var replayChannel = ChannelExt.New<int>(capacity: null, singleReader: true);
         var copyTask = Task.Run(() => memoizer.AddReplayTarget(replayChannel.Writer, 0));
 
         // Give AddReplayTarget a moment to register / reach its first await.
@@ -1215,7 +1215,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         await using var memoizer = Memoize(SlowSource());
         await memoizer.WhenBuffered(15);
 
-        var channel = Channel.CreateUnbounded<object>(new UnboundedChannelOptions { SingleReader = true });
+        var channel = ChannelExt.New<object>(capacity: null, singleReader: true);
         var copyTask = Task.Run(() => memoizer.AddReplayTarget(channel, int.MaxValue));
         await Task.Delay(50);
 
