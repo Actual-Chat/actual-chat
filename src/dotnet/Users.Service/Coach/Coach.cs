@@ -127,15 +127,26 @@ public class Coach(IServiceProvider services) : ICoach
         if (account.IsGuestOrNull())
             return ApiArray<CoachWeekDelta>.Empty;
 
+        var kvas = ServerKvasBackend.ForUser(account.Id);
+        var settings = await kvas.UserCoachSettings().Get(cancellationToken).ConfigureAwait(false);
+        if (language.IsNullOrEmpty()) {
+            var languages = (await ListOwnLanguages(session, cancellationToken).ConfigureAwait(false))
+                .Where(l => l.Words30Days > 0)
+                .ToList();
+            language = languages.FirstOrDefault(l => l.Iso == settings.SelectedLanguage)?.Iso
+                ?? languages.MaxBy(l => l.Words30Days)?.Iso;
+            if (language is null) {
+                var languageSettings = await kvas.UserLanguageSettings().Get(cancellationToken).ConfigureAwait(false);
+                language = languageSettings.Primary.Value;
+            }
+        }
+        language = Language.GetIsoCode(language);
         var now = Clocks.SystemClock.Now;
         var weekStart = CoachProgressBuilder.WeekStart(UsageDay.DayOf(now));
         var thisWeek = new Range<Moment>(weekStart, weekStart + TimeSpan.FromDays(7));
         var lastWeek = new Range<Moment>(weekStart - TimeSpan.FromDays(7), weekStart);
         var thisDays = await Backend.ListDays(account.Id, thisWeek, language, cancellationToken).ConfigureAwait(false);
         var lastDays = await Backend.ListDays(account.Id, lastWeek, language, cancellationToken).ConfigureAwait(false);
-        var settings = await ServerKvasBackend.ForUser(account.Id).UserCoachSettings()
-            .Get(cancellationToken)
-            .ConfigureAwait(false);
         InvalidateAtMidnight(thisWeek);
         return CoachProgressBuilder.WeekDeltas(
             CoachDayBuilder.Merge(weekStart, thisDays),
