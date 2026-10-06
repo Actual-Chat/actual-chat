@@ -12,9 +12,6 @@
     var topmostActive = activeList.Count > 0 ? activeList[^1] : null;
     if (_refs.CheckIfHasModelsToRenderChanged(renderedRefs, out var hasModals))
         JS.InvokeVoidAsync(JSUpdateBodyStyleMethod, hasModals);
-
-    if (_refs.CheckIfHasActiveModelsToRenderChanged(renderedRefs, out var isOpen))
-        _ = TuneUI.Play(isOpen  ? Tune.OpenModal : Tune.CloseModal);
 }
 
 <CascadingValue Value="@this" IsFixed="@true">
@@ -41,7 +38,6 @@
     [Inject] private UIHub Hub { get; set; } = null!;
     internal History History => Hub.History;
     private ModalUI ModalUI => Hub.ModalUI;
-    private TuneUI TuneUI => Hub.TuneUI;
     private IJSRuntime JS => Hub.JS;
 
     public event Action? OnModalShown;

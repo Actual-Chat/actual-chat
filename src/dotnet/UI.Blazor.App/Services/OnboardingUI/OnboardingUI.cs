@@ -55,7 +55,12 @@ public class OnboardingUI : UIServiceBase<AppUIHub>, IOnboardingUI
     }
 
     public Task<ModalRef> Show()
-        => ModalUI.Show(new OnboardingModal.Model());
+    {
+        // Onboarding appears on its own (no click to feel), so it plays the open haptic itself -
+        // ModalHost no longer does, to avoid doubling it with the tap that opens click-driven modals.
+        _ = Hub.TuneUI.Play(Tune.OpenModal);
+        return ModalUI.Show(new OnboardingModal.Model());
+    }
 
     public void UpdateUserSettings(UserOnboardingSettings value)
         => UserSettings.Set(value);

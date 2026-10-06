@@ -25,6 +25,7 @@ export class Gestures {
     public static init(): void {
         // Used gestures
         DataHrefGesture.use();
+        ClickTuneGesture.use();
         DataPrefetchGesture.use();
         SuppressDefaultContextMenuGesture.use();
         ContextMenuGesture.use();
@@ -146,6 +147,54 @@ class DataHrefGesture extends Gesture {
             History.lastClickAt = event.timeStamp;
             void History.navigateTo(href, mustReplace); // Internal URL
         }
+    }
+}
+
+// Plays the standard "tap" haptic whenever an interactive control is activated, so every button,
+// toggle, radio and [role="button"] feels the same without each wiring its own TuneUI call. Runs in
+// the capturing phase: the haptic must fire even for controls that stop the click from propagating
+// (e.g. Toggle's label). Nav links keep their own haptic via data-href-tune; controls with a distinct
+// haptic opt out with data-no-tune, and data-click-tune overrides the played tune.
+class ClickTuneGesture extends Gesture {
+    private static readonly Selector =
+        'button, [role="button"], [role="switch"], [role="radio"], [data-click-tune]';
+    private static readonly DisabledSelector =
+        ':disabled, [aria-disabled="true"], [data-input-disabled="True"]';
+
+    public static use(): void {
+        debugLog?.log(`ClickTuneGesture.use`);
+
+        DocumentEvents.capturedActive.click$.subscribe((event: PointerEvent) => {
+            if (event.button !== 0) // Only primary button
+                return;
+
+            const target = event.target as HTMLElement | null;
+            // A <label>-wrapped checkbox/radio (Toggle, FormRadio) fires a second click on the control
+            // itself; skip that synthetic one so one tap plays one haptic, not two.
+            if (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio'))
+                return;
+
+            const element = target?.closest<HTMLElement>(this.Selector);
+            if (!element)
+                return;
+
+            if (element.hasAttribute('data-href-tune') || element.hasAttribute('data-no-tune'))
+                return;
+
+            if (element.matches(this.DisabledSelector))
+                return;
+
+            if (target?.closest('div.pulling'))
+                return;
+
+            const tuneName = element.dataset.clickTune as TuneName | undefined;
+            const tune = tuneName
+                ? Tune[tuneName]
+                : element.matches('[role="switch"], [role="radio"]')
+                    ? Tune.ChangeToggle
+                    : Tune.ClickButton;
+            TuneUI.play(tune);
+        });
     }
 }
 

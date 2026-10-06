@@ -23,7 +23,6 @@
 
 @code {
     [Inject] private UIHub Hub { get; set; } = null!;
-    private TuneUI TuneUI => Hub.TuneUI;
 
     [Parameter] public string Class { get; set; } = "";
     [Parameter] public string ContentClass { get; set; } = "";
@@ -49,7 +48,6 @@
         => Type.ToString().ToLower();
 
     private async Task OnClick(MouseEventArgs e) {
-        _ = TuneUI.Play(Tune.ClickButton);
         await Click.InvokeAsync(e);
     }
 }

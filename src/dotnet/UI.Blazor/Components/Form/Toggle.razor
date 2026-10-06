@@ -33,7 +33,6 @@
     private readonly AsyncLock _lock = new (LockReentryMode.CheckedFail);
 
     [Inject] private UIHub Hub { get; init; } = null!;
-    private TuneUI TuneUI => Hub.TuneUI;
 
     [Parameter] public string Id { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
@@ -60,7 +59,6 @@
     private async Task OnChange(ChangeEventArgs eventArgs) {
         // just avoiding concurrent click handling
         using var _1 = await _lock.Lock();
-        _ = TuneUI.Play(Tune.ChangeToggle);
         var newValue = eventArgs.Value is bool b ? b : eventArgs.Value?.ToString() == "true";
         _isChecked = newValue;
         StateHasChanged();
