@@ -206,6 +206,30 @@
     }
 }
 
+/* Hover hint is a weaker, persistent version of the click flash: paler (steady 0.7 opacity + a lower
+   color mix set in TS) and smaller (scale 0.85, while the click flash overshoots to 1.1). It fades in,
+   then stays under the word and glides to the next one the cursor settles on until the cursor leaves. */
+.playable-word-hover {
+    @apply absolute z-modal-overlay;
+    @apply pointer-events-none;
+    @apply rounded-md;
+    opacity: 0.7;
+    transform: scale(0.85);
+    contain: layout paint style;
+    animation: word-hover-in 0.15s ease-out;
+    transition: top 0.1s ease-out, left 0.1s ease-out, width 0.1s ease-out, height 0.1s ease-out;
+}
+@keyframes word-hover-in {
+    from {
+        opacity: 0;
+        transform: scale(0.7);
+    }
+    to {
+        opacity: 0.7;
+        transform: scale(0.85);
+    }
+}
+
 .playable-text-markup .played-run {
     @apply bg-[var(--pt-played)];
     border-radius: 6px;
