@@ -21,12 +21,12 @@ import {
 
 const shot = (name: string) => screenshot('e2e', name);
 
-// A preview is kept per URL, so the link that checks the place name is a new one on every run
+// A preview is kept per URL, so every link is a new one on each run: the server then has to build its preview
 const RUN_ID = Date.now();
 const MAP_LINKS = [
     {
         name: 'google',
-        url: 'https://www.google.com/maps?q=48.858370,2.294481',
+        url: `https://www.google.com/maps?q=48.858370,2.294481&t=${RUN_ID}`,
         caption: '48.85837, 2.294481',
         title: null,
     },
@@ -38,7 +38,7 @@ const MAP_LINKS = [
     },
     {
         name: 'osm',
-        url: 'https://www.openstreetmap.org/?mlat=51.500729&mlon=-0.124625#map=15/51.500729/-0.124625',
+        url: `https://www.openstreetmap.org/?mlat=51.500729&mlon=-0.124625&t=${RUN_ID}#map=15/51.500729/-0.124625`,
         caption: '51.500729, -0.124625',
         title: null,
     },
@@ -99,7 +99,7 @@ describe('map link preview', () => {
         const text = `Map link wilderness ${Date.now()}`;
 
         // act
-        const url = 'https://www.google.com/maps/search/62.485937,+42.318932';
+        const url = `https://www.google.com/maps/search/62.485937,+42.318932?t=${RUN_ID}`;
         const message = await postMessage(page, `${text} ${url}`, text);
 
         // assert
@@ -120,7 +120,7 @@ describe('map link preview', () => {
 
         try {
             // act
-            const message = await postMessage(page, `${text} ${MAP_LINKS[0].url}`, text);
+            const message = await postMessage(page, `${text} ${MAP_LINKS[0].url}-stalled`, text);
             const card = message.locator('.map-link-preview').first();
             await card.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 30_000 });
             const spriteLoaded = page.waitForResponse(r => spriteRe.test(r.url()) && r.ok(), { timeout: 30_000 });
