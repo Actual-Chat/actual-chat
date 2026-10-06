@@ -40,11 +40,16 @@ public sealed class DbMigrationTest(ITestOutputHelper @out)
             createdDbs = GetConnectionStrings(createdHost);
 
         // assert
+        migratedDbs.Should().NotBeEmpty();
         createdDbs.Keys.Should().BeEquivalentTo(migratedDbs.Keys);
         var diffs = new List<string>();
         foreach (var (initializerName, migratedDb) in migratedDbs.OrderBy(kv => kv.Key)) {
+            var createdDb = createdDbs[initializerName];
+            GetDbName(createdDb).Should().NotBe(GetDbName(migratedDb),
+                "a DB name template without {instance_} makes both hosts share one DB, so it is compared to itself");
             var migratedSchema = await GetSchema(migratedDb);
-            var createdSchema = await GetSchema(createdDbs[initializerName]);
+            var createdSchema = await GetSchema(createdDb);
+            migratedSchema.Should().Contain(x => x.StartsWith("column "), $"{initializerName} DB must have tables");
             // A migration adding a NOT NULL column gives it a default to fill the existing rows,
             // which the model doesn't have - only a default the model declares must match
             var createdDefaults = createdSchema
@@ -75,7 +80,7 @@ public sealed class DbMigrationTest(ITestOutputHelper @out)
 
     private static async Task DropDb(string connectionString)
     {
-        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+        var builder = new NpgsqlConnectionStringBuilder(connectionString) { Pooling = false };
         var dbName = builder.Database;
         builder.Database = "postgres";
         await using var connection = new NpgsqlConnection(builder.ConnectionString);
@@ -91,10 +96,21 @@ public sealed class DbMigrationTest(ITestOutputHelper @out)
             $"""
             select 'column ' || table_schema || '.' || table_name || '.' || column_name
                 || ': ' || udt_name || coalesce('(' || character_maximum_length || ')', '')
+                || coalesce(' precision=' || numeric_precision || ',' || numeric_scale, '')
+                || coalesce(' datetime_precision=' || datetime_precision, '')
                 || ' nullable=' || is_nullable
+                || ' identity=' || is_identity || coalesce(' ' || identity_generation, '')
+                || ' generated=' || is_generated || coalesce(' ' || generation_expression, '')
                 || ' collation=' || coalesce(collation_name, '-')
             from information_schema.columns
             where table_schema {UserSchemaFilter} and table_name {LiveTableFilter}
+            """,
+            $"""
+            select 'sequence ' || schemaname || '.' || sequencename || ': ' || data_type
+                || ' start=' || start_value || ' increment=' || increment_by
+                || ' min=' || min_value || ' max=' || max_value || ' cycle=' || cycle
+            from pg_sequences
+            where schemaname {UserSchemaFilter} and sequencename {LiveTableFilter}
             """,
             $"""
             select '{DefaultPrefix}' || table_schema || '.' || table_name || '.' || column_name
@@ -122,7 +138,8 @@ public sealed class DbMigrationTest(ITestOutputHelper @out)
             """,
         ];
         var result = new HashSet<string>();
-        await using var connection = new NpgsqlConnection(connectionString);
+        var builder = new NpgsqlConnectionStringBuilder(connectionString) { Pooling = false };
+        await using var connection = new NpgsqlConnection(builder.ConnectionString);
         await connection.OpenAsync();
         foreach (var query in queries) {
             await using var command = new NpgsqlCommand(query, connection);
@@ -132,6 +149,9 @@ public sealed class DbMigrationTest(ITestOutputHelper @out)
         }
         return result;
     }
+
+    private static string? GetDbName(string connectionString)
+        => new NpgsqlConnectionStringBuilder(connectionString).Database;
 
     private static string GetDefaultColumn(string defaultLine)
         => defaultLine[..defaultLine.IndexOf(" = ")];
