@@ -28,6 +28,8 @@ export class PlayableTextMarkupView {
     private readonly authorColorN: number;
     private hoverTimer: number | null = null;
     private lastHoverIndex = -1;
+    private hoverEl: HTMLElement | null = null;
+    private hoverRect: DOMRect | null = null;
 
     static create(blazorRef: DotNet.DotNetObject, element: HTMLElement, words: Word[]): PlayableTextMarkupView {
         return new PlayableTextMarkupView(blazorRef, element, words);
@@ -72,8 +74,10 @@ export class PlayableTextMarkupView {
         if (this.endsTextSelection())
             return;
 
-        // A coach-marked word carries a menu: the tap opens its hint, not the replay
-        if ((e.target as HTMLElement).closest('[data-menu]'))
+        // A coach-marked word carries its own hint menu inside this view: the tap opens the hint, not the
+        // replay. A data-menu on an ancestor (the message's own context menu) must not block word clicks.
+        const menuEl = (e.target as HTMLElement).closest('[data-menu]');
+        if (menuEl && this.element.contains(menuEl))
             return;
 
         this.resetHover();
@@ -94,7 +98,7 @@ export class PlayableTextMarkupView {
 
     private onWordClick(index: number) {
         if (index >= 0)
-            this.flashWord(index, this.playingColor(), 1);
+            this.flashWord(index, this.playingColor(), 'playable-word-flash');
 
         const textRange: NumberRange = index >= 0 ? this.words[index].textRange : { start: 0, end: 0 };
         void this.blazorRef.invokeMethodAsync('OnMarkupClick', textRange);
@@ -106,20 +110,49 @@ export class PlayableTextMarkupView {
         if (this.element.classList.contains('play-disabled'))
             return;
 
+        const x = e.clientX, y = e.clientY;
+        // Once the hint is showing it tracks the cursor to the next word at once; until then it waits
+        // out the dwell, so a cursor merely passing over the text doesn't light words up.
+        if (this.hoverEl != null) {
+            this.updateHover(x, y);
+            return;
+        }
         if (this.hoverTimer != null)
             clearTimeout(this.hoverTimer);
-        const x = e.clientX, y = e.clientY;
-        this.hoverTimer = setTimeout(() => this.showHoverFlash(x, y), HOVER_DWELL_MS);
+        this.hoverTimer = setTimeout(() => this.updateHover(x, y), HOVER_DWELL_MS);
     }
 
-    private showHoverFlash(x: number, y: number) {
+    private updateHover(x: number, y: number) {
         this.hoverTimer = null;
-        const index = this.wordIndexAtPoint(x, y);
-        if (index < 0 || index === this.lastHoverIndex)
+        // While the cursor stays over the already-lit word, skip the caret lookup (a layout flush) that
+        // every pointermove would otherwise trigger.
+        if (this.hoverEl != null && this.hoverRect != null
+            && x >= this.hoverRect.left && x <= this.hoverRect.right
+            && y >= this.hoverRect.top && y <= this.hoverRect.bottom)
             return;
 
+        const index = this.wordIndexAtPoint(x, y);
+        if (index < 0) {
+            this.resetHover();
+            return;
+        }
+        if (index === this.lastHoverIndex && this.hoverEl != null)
+            return;
+
+        const rect = this.wordRect(index);
+        if (!rect) {
+            this.resetHover();
+            return;
+        }
+
         this.lastHoverIndex = index;
-        this.flashWord(index, this.authorColor(), 1);
+        this.hoverRect = rect;
+        if (this.hoverEl == null) {
+            this.hoverEl = this.makeOverlay(rect, 'playable-word-hover');
+            this.hoverEl.style.background = this.hoverColor();
+            document.body.appendChild(this.hoverEl);
+        } else
+            this.positionOverlay(this.hoverEl, rect);
     }
 
     private resetHover() {
@@ -127,23 +160,27 @@ export class PlayableTextMarkupView {
             clearTimeout(this.hoverTimer);
             this.hoverTimer = null;
         }
+        if (this.hoverEl != null) {
+            this.hoverEl.remove();
+            this.hoverEl = null;
+        }
+        this.hoverRect = null;
         this.lastHoverIndex = -1;
     }
 
-    private flashWord(index: number, color: string, blinks: number) {
+    private flashWord(index: number, color: string, className: string) {
         const rect = this.wordRect(index);
         if (!rect)
             return;
 
-        const el = this.makeOverlay(rect, 'playable-word-flash');
+        const el = this.makeOverlay(rect, className);
         el.style.background = color;
-        el.style.animationIterationCount = String(blinks);
         document.body.appendChild(el);
-        setTimeout(() => el.remove(), blinks * FLASH_BLINK_MS + 50);
+        setTimeout(() => el.remove(), FLASH_BLINK_MS + 50);
     }
 
-    private authorColor(): string {
-        return `color-mix(in srgb, var(--author-color-${this.authorColorN}) 55%, transparent)`;
+    private hoverColor(): string {
+        return `color-mix(in srgb, var(--author-color-${this.authorColorN}) 32%, transparent)`;
     }
 
     private playingColor(): string {
@@ -246,13 +283,17 @@ export class PlayableTextMarkupView {
     private makeOverlay(rect: DOMRect, className: string): HTMLElement {
         const el = document.createElement('span');
         el.className = className;
+        el.style.position = 'absolute';
+        this.positionOverlay(el, rect);
+        return el;
+    }
+
+    private positionOverlay(el: HTMLElement, rect: DOMRect) {
         Object.assign(el.style, {
-            position: 'absolute',
             top: `${rect.top + window.scrollY - 2}px`,
             left: `${rect.left + window.scrollX - 5}px`,
             width: `${rect.width + 10}px`,
             height: `${rect.height + 4}px`,
         });
-        return el;
     }
 }
