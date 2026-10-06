@@ -832,6 +832,198 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         english[^1].Score.Should().BeNull("the English rows hold no words");
     }
 
+    [Theory]
+    [InlineData(null, "", true)]
+    [InlineData("", "", true)]
+    [InlineData(null, "en", false)]
+    [InlineData(null, "de", true)]
+    [InlineData("en-US", "ru", false)]
+    public async Task WeekDeltasShouldUseOneEffectiveLanguageForBothPeriods(
+        string? language, string selectedLanguage, bool isRussian)
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var now = Clocks.SystemClock.Now;
+        var previousWeek = CoachWeek.StartOf(UsageDay.DayOf(now)) - TimeSpan.FromDays(7);
+        var kvas = Kvas.ForUser(account.Id);
+        await kvas.UserLanguageSettings().Set(new UserLanguageSettings {
+            Primary = Languages.English,
+            Secondary = Languages.Russian,
+        });
+        await kvas.UserCoachSettings().Update(x => x with {
+            SelectedLanguage = selectedLanguage,
+            Languages = new ApiMap<string, CoachLanguageLevel>(new Dictionary<string, CoachLanguageLevel> {
+                ["ru"] = CoachLanguageLevel.Learning,
+            }),
+        });
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 1, 1000, 600, previousWeek, 200), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 2, 1000, 600, previousWeek, 100, language: Languages.Russian), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 3, 1000, 400, now, 5), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 4, 2000, 1200, now, 100, language: Languages.Russian), false));
+        await TestWait.When(async ct => {
+            var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.AllTime, null, ct);
+            summary.Entries.Should().Be(4);
+        });
+
+        // act
+        var deltas = await Coach.GetOwnWeekDeltas(tester.Session, language, default);
+
+        // assert
+        var fillers = deltas.Single(d => d.Kind == CoachMetricKind.Fillers);
+        fillers.Current.Should().BeApproximately(isRussian ? 0.05 : 0.005, 1e-9);
+        fillers.Previous.Should().BeApproximately(isRussian ? 0.1 : 0.2, 1e-9);
+        fillers.IsBetter.Should().BeTrue();
+        var pace = deltas.Single(d => d.Kind == CoachMetricKind.Pace);
+        pace.Current.Should().Be(isRussian ? 100 : 150);
+        pace.Band.Should().Be(CoachBand.Good, "the effective language also determines the pace range");
+        deltas.Any(d => d.Kind == CoachMetricKind.Vocabulary).Should().Be(isRussian);
+        deltas.Select(d => d.Kind).Should().Contain([
+            CoachMetricKind.Fillers, CoachMetricKind.Pace, CoachMetricKind.WeakWords,
+        ]);
+    }
+
+    [Fact]
+    public async Task WeekDeltasShouldFallBackToThePrimaryLanguageWithoutRecentSpeech()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var kvas = Kvas.ForUser(account.Id);
+        await kvas.UserLanguageSettings().Set(new UserLanguageSettings { Primary = Languages.Russian });
+        await kvas.UserCoachSettings().Update(x => x with {
+            Languages = new ApiMap<string, CoachLanguageLevel>(new Dictionary<string, CoachLanguageLevel> {
+                ["ru"] = CoachLanguageLevel.Learning,
+            }),
+        });
+
+        // act
+        var deltas = await Coach.GetOwnWeekDeltas(tester.Session, null, default);
+
+        // assert
+        deltas.Should().OnlyContain(d => d.Current == null && d.Previous == null && d.IsBetter == null);
+        deltas.Select(d => d.Kind).Should().Contain(CoachMetricKind.Vocabulary);
+    }
+
+    [Fact]
+    public async Task WeekDeltasShouldUpdateAfterLanguageSelectionChanges()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var now = Clocks.SystemClock.Now;
+        var kvas = Kvas.ForUser(account.Id);
+        await kvas.UserLanguageSettings().Set(new UserLanguageSettings {
+            Primary = Languages.English,
+            Secondary = Languages.Russian,
+        });
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 1, 1000, 400, now, 5), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 2, 2000, 1200, now, 100, language: Languages.Russian), false));
+        await TestWait.When(async ct => {
+            var deltas = await Coach.GetOwnWeekDeltas(tester.Session, null, ct);
+            deltas.Single(d => d.Kind == CoachMetricKind.Fillers).Current.Should().BeApproximately(0.05, 1e-9);
+        });
+
+        // act
+        await kvas.UserCoachSettings().Update(x => x with { SelectedLanguage = "en" });
+
+        // assert
+        await TestWait.When(async ct => {
+            var deltas = await Coach.GetOwnWeekDeltas(tester.Session, null, ct);
+            deltas.Single(d => d.Kind == CoachMetricKind.Fillers).Current.Should().BeApproximately(0.005, 1e-9);
+        });
+    }
+
+    [Fact]
+    public async Task WeekDeltasShouldUpdateAfterAConversationIsExcludedAndRestored()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var friends = GroupChatId.New();
+        var work = GroupChatId.New();
+        var now = Clocks.SystemClock.Now;
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, friends, 1, 1000, 500, now, 100), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, work, 1, 1000, 500, now), false));
+        await TestWait.When(async ct => {
+            var deltas = await Coach.GetOwnWeekDeltas(tester.Session, "en", ct);
+            deltas.Single(d => d.Kind == CoachMetricKind.Fillers).Current.Should().BeApproximately(0.05, 1e-9);
+        });
+        var command = new Coach_ExcludeConversation {
+            Session = tester.Session,
+            ChatId = friends,
+            StartEntryLid = 1,
+            Language = "en",
+            IsExcluded = true,
+        };
+
+        // act
+        await AppHost.Services.Commander().Call(command);
+
+        // assert
+        await TestWait.When(async ct => {
+            var deltas = await Coach.GetOwnWeekDeltas(tester.Session, "en", ct);
+            deltas.Single(d => d.Kind == CoachMetricKind.Fillers).Current.Should().Be(0);
+        });
+
+        // act
+        await AppHost.Services.Commander().Call(new Coach_ExcludeConversation {
+            Session = tester.Session,
+            ChatId = friends,
+            StartEntryLid = 1,
+            Language = "en",
+            IsExcluded = false,
+        });
+
+        // assert
+        await TestWait.When(async ct => {
+            var deltas = await Coach.GetOwnWeekDeltas(tester.Session, "en", ct);
+            deltas.Single(d => d.Kind == CoachMetricKind.Fillers).Current.Should().BeApproximately(0.05, 1e-9);
+        });
+    }
+
+    [Fact]
+    public async Task WeekDeltasShouldUseCalendarWeeksRatherThanRollingSevenDays()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var now = Clocks.SystemClock.Now;
+        var weekStart = CoachWeek.StartOf(UsageDay.DayOf(now));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 1, 1000, 500, weekStart, 20), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 2, 1000, 500, weekStart - TimeSpan.FromSeconds(1), 50), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 3, 1000, 500, weekStart - TimeSpan.FromDays(7), 100), false));
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(
+            Entry(account.Id, chatId, 4, 1000, 500,
+                weekStart - TimeSpan.FromDays(7) - TimeSpan.FromSeconds(1)), false));
+        await TestWait.When(async ct => {
+            var summary = await Coach.GetOwnSummary(tester.Session, CoachWindow.AllTime, null, ct);
+            summary.Entries.Should().Be(4);
+        });
+
+        // act
+        var deltas = await Coach.GetOwnWeekDeltas(tester.Session, "en", default);
+
+        // assert
+        var fillers = deltas.Single(d => d.Kind == CoachMetricKind.Fillers);
+        fillers.Current.Should().BeApproximately(0.02, 1e-9);
+        fillers.Previous.Should().BeApproximately(0.075, 1e-9);
+    }
+
     [Fact]
     public async Task SevenDayScoreShouldBeComparedWithThePreviousSevenDays()
     {

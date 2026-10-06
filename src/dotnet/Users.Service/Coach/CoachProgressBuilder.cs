@@ -5,22 +5,26 @@ namespace ActualChat.Users;
 public static class CoachProgressBuilder
 {
     private const int FiveDayWeekDays = 5;
+    private const double RateChangeTolerance = 0.005;
+    private const double PaceChangeTolerance = 5;
 
     public static ApiArray<CoachWeekDelta> WeekDeltas(
         CoachDay thisWeek, CoachDay lastWeek, CoachLanguageLevel level, CoachScoringSettings s, string? language)
     {
         var current = CoachScoring.Summarize(CoachWindow.Days7, thisWeek, null, s, language).Metrics;
-        var previous = lastWeek.Words >= s.MinScoreWords
-            ? CoachScoring.Summarize(CoachWindow.Days7, lastWeek, null, s, language).Metrics
-            : (ApiArray<CoachMetric>?)null;
-        var kinds = CoachSkillSets.Headline(level).Concat(CoachSkillSets.Conversation).Distinct();
+        var previous = CoachScoring.Summarize(CoachWindow.Days7, lastWeek, null, s, language).Metrics;
+        var kinds = CoachSkillSets.Headline(level)
+            .Concat([CoachMetricKind.Fillers, CoachMetricKind.Pace, CoachMetricKind.WeakWords])
+            .Concat(CoachSkillSets.Conversation)
+            .Distinct();
         return kinds
             .Select(kind => {
                 var now = current.FirstOrDefault(m => m.Kind == kind);
-                var was = previous?.FirstOrDefault(m => m.Kind == kind);
-                var nowValue = now is null ? null : now.Rate ?? now.Value;
-                var wasValue = was is null ? null : was.Rate ?? was.Value;
-                return new CoachWeekDelta(kind, wasValue, nowValue, now?.Band ?? CoachBand.None,
+                var was = previous.FirstOrDefault(m => m.Kind == kind);
+                var nowValue = ComparisonValue(now, thisWeek, s);
+                var wasValue = ComparisonValue(was, lastWeek, s);
+                var band = nowValue is null ? CoachBand.None : now?.Band ?? CoachBand.None;
+                return new CoachWeekDelta(kind, wasValue, nowValue, band,
                     IsBetter(kind, wasValue, nowValue, s, language));
             })
             .ToApiArray();
@@ -102,6 +106,20 @@ public static class CoachProgressBuilder
         return new Moment(new DateTime(date.Year, date.Month, 1, 0, 0, 0, DateTimeKind.Utc));
     }
 
+    private static double? ComparisonValue(CoachMetric? metric, CoachDay day, CoachScoringSettings s)
+    {
+        if (metric is null || day.Words < s.MinScoreWords)
+            return null;
+
+        return metric.Kind switch {
+            CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Profanity
+                => day.TaggedWords >= s.MinScoreWords ? metric.Rate : null,
+            CoachMetricKind.Repetition or CoachMetricKind.TurnTaking or CoachMetricKind.Interruptions
+                => metric.Rate,
+            _ => metric.Value,
+        };
+    }
+
     private static bool? IsBetter(
         CoachMetricKind kind, double? was, double? now, CoachScoringSettings s, string? language)
     {
@@ -109,27 +127,34 @@ public static class CoachProgressBuilder
             return null;
 
         switch (kind) {
-        case CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Repetition
-            or CoachMetricKind.Profanity or CoachMetricKind.Monologue or CoachMetricKind.Interruptions:
+        case CoachMetricKind.Fillers or CoachMetricKind.WeakWords:
+            return CompareChange(after - before, RateChangeTolerance);
+        case CoachMetricKind.Repetition or CoachMetricKind.Profanity
+            or CoachMetricKind.Monologue or CoachMetricKind.Interruptions:
             return after < before;
         case CoachMetricKind.Vocabulary or CoachMetricKind.Questions:
             return after > before;
         case CoachMetricKind.Pace:
             var pace = CoachScoring.PaceRange(s, language);
-            return Distance(after, pace.Slow, pace.Fast) < Distance(before, pace.Slow, pace.Fast);
+            return CompareDistance(before, after, pace.Slow, pace.Fast, PaceChangeTolerance);
         case CoachMetricKind.TurnTaking:
-            return Distance(after, s.TurnLowFactor, s.TurnHighFactor)
-                < Distance(before, s.TurnLowFactor, s.TurnHighFactor);
+            return CompareDistance(before, after, s.TurnLowFactor, s.TurnHighFactor);
         case CoachMetricKind.SentenceLength:
-            return Distance(after, s.SentenceShort, s.SentenceLong)
-                < Distance(before, s.SentenceShort, s.SentenceLong);
+            return CompareDistance(before, after, s.SentenceShort, s.SentenceLong);
         case CoachMetricKind.Patience:
-            return Distance(after, s.PatienceLowSeconds, s.PatienceHighSeconds)
-                < Distance(before, s.PatienceLowSeconds, s.PatienceHighSeconds);
+            return CompareDistance(before, after, s.PatienceLowSeconds, s.PatienceHighSeconds);
         default:
             return null;
         }
     }
+
+    private static bool? CompareDistance(
+        double before, double after, double low, double high,
+        double tolerance = 0)
+        => CompareChange(Distance(after, low, high) - Distance(before, low, high), tolerance);
+
+    private static bool? CompareChange(double change, double tolerance)
+        => Math.Abs(change) < Math.Max(1e-9, tolerance - 1e-9) ? null : change < 0;
 
     private static double Distance(double value, double low, double high)
         => value < low ? low - value : value > high ? value - high : 0;
