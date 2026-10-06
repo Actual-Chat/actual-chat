@@ -18,7 +18,7 @@
            checked="@_isChecked"
            @onclick:stopPropagation="true"
            @onchange="@OnChange"/>
-    <span class="dash"><span class="o">&nbsp;</span></span>
+    <span class="dash"><span class="o">&nbsp;</span><span class="button-touch-target"></span></span>
     @if (LabelContent != null) {
         <div class="c-label">@LabelContent</div>
     } else if (!Label.IsNullOrEmpty()) {
