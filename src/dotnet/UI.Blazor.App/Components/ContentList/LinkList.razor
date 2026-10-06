@@ -21,14 +21,19 @@
         }
         else {
             var link = (LinkItem)item.Items[0];
-            var menuRef = MenuRef.New<ChatContentItemMenu>(link.EntryId.Value).ToString();
-            <div class="message-link-preview" data-menu="@menuRef" data-visor-date="@item.VisorDate">
+            <div class="message-link-preview" data-visor-date="@item.VisorDate">
                 @if (link.LinkPreview is { IsEmpty: false }) {
                     <LinkRow Entry="@item.LinkEntry" LinkPreview="@link.LinkPreview"/>
                 }
                 else {
                     var url = link.Url.NullIfEmpty() ?? link.LinkPreview?.Url ?? "";
-                    <a class="link-preview no-thumbnail unfocusable c-link-plain" href="@url" target="_blank" rel="noopener">
+                    var plainMenuRef = MenuRef.New<LinkPreviewMenu>(
+                        link.EntryId.Value, url, "", bool.TrueString).ToString();
+                    <a class="link-preview no-thumbnail unfocusable c-link-plain"
+                       href="@url"
+                       target="_blank"
+                       rel="noopener"
+                       data-menu="@plainMenuRef">
                         <div class="c-icon"><i class="icon-link-2"></i></div>
                         <div class="c-info">
                             @if (url.Length > 0) {

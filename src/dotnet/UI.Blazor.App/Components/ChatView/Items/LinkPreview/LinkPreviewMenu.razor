@@ -2,6 +2,13 @@
 @inherits ComputedMenuBase<AppUIHub, LinkPreviewMenu.Model>
 
 <div class="message-menu">
+    @if (_showGoToMessage) {
+        <MenuEntry
+            Icon="icon-message-ellipse"
+            Text="@L.Content_GoToMessage"
+            Click="@OnGoToMessage">
+        </MenuEntry>
+    }
     <MenuEntry
         Icon="icon-external-link"
         Text="@L.MessageMenu_OpenLink"
@@ -28,10 +35,12 @@
     private ChatEntryId _entryId = null!;
     private string _url = "";
     private string _localUrl = "";
+    private bool _showGoToMessage;
 
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private ClipboardUI ClipboardUI => Hub.ClipboardUI;
     private ShareUI ShareUI => Hub.ShareUI;
+    private ChatUI ChatUI => Hub.ChatUI;
 
     protected override void OnParametersSet() {
         switch (Arguments) {
@@ -39,6 +48,13 @@
             _entryId = ChatEntryId.Parse(sEntryId);
             _url = sUrl;
             _localUrl = sLocalUrl;
+            _showGoToMessage = false;
+            break;
+        case [var sEntryId, var sUrl, var sLocalUrl, var sGoToMessage]:
+            _entryId = ChatEntryId.Parse(sEntryId);
+            _url = sUrl;
+            _localUrl = sLocalUrl;
+            _showGoToMessage = bool.Parse(sGoToMessage);
             break;
         default:
             throw new ArgumentOutOfRangeException(nameof(Arguments));
@@ -53,6 +69,13 @@
 
     protected override Task<Model> ComputeState(CancellationToken cancellationToken)
         => Task.FromResult(Model.None);
+
+    private async Task OnGoToMessage() {
+        await WhenClosed.ConfigureAwait(true);
+        ChatUI.HighlightEntry(_entryId, navigate: true);
+        if (!PanelsUI.IsWide())
+            PanelsUI.Right.SetIsVisible(false);
+    }
 
     private async Task OnOpen() {
         if (!_localUrl.IsNullOrEmpty()) {

@@ -34,10 +34,6 @@
 
     protected override void OnParametersSet() {
         switch (Arguments) {
-        case [var sEntryId]:
-            _entryId = ChatEntryId.Parse(sEntryId);
-            _index = null;
-            break;
         case [var sEntryId, var sIndex]:
             _entryId = ChatEntryId.Parse(sEntryId);
             _index = int.Parse(sIndex);
