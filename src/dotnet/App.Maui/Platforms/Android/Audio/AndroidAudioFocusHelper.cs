@@ -179,7 +179,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
                 return AudioOutputKind.Speaker;
 
             var isEarpiece = OperatingSystem.IsAndroidVersionAtLeast(31)
-                ? _audioManager.CommunicationDevice?.Type == AudioDeviceType.BuiltinEarpiece
+                ? CommunicationDeviceListener.LastDevice?.Type == AudioDeviceType.BuiltinEarpiece
                 : !_audioManager.SpeakerphoneOn;
             return isEarpiece ? AudioOutputKind.Phone : AudioOutputKind.Speaker;
         }
@@ -450,7 +450,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         try {
             var outputs = _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [];
             var commDevice = OperatingSystem.IsAndroidVersionAtLeast(12)
-                ? _audioManager.CommunicationDevice?.Type
+                ? CommunicationDeviceListener.LastDevice?.Type
                 : null;
             _log.LogInformation(
                 "Audio state: mode={Mode}, hasFocus={HasFocus}, isYielded={IsYielded}, commDevice={CommDevice}, "
@@ -488,8 +488,9 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
     private sealed class ModernAudioDeviceRouter : IAudioDeviceRouter
     {
-        // ~300ms budget, matching WarmUpAudioMode's own wait for the communication pipeline.
-        private const int RouteSettleChecks = 10;
+        // ~1s budget: the device-changed callback, which is what the wait watches, landed 0.3-0.7s
+        // after the request on a Xiaomi in 2026-10.
+        private const int RouteSettleChecks = 33;
         private const int RouteSettleCheckPeriod = 30;
 
         private readonly AudioManager _audioManager;
@@ -503,11 +504,11 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             _audioManager = audioManager;
             _log = log;
 
-            // Register listener for device changes
             _listener = new CommunicationDeviceListener(log);
             _audioManager.AddOnCommunicationDeviceChangedListener(
                 Platform.AppContext.MainExecutor!,
                 _listener);
+            _ = CommunicationDeviceListener.Seed(_audioManager, log);
         }
 
         public async Task<bool> SelectCommunicationDevice(CancellationToken ct)
@@ -617,7 +618,7 @@ public sealed class AndroidAudioFocusHelper : IDisposable
 
         private async Task<bool> SetAndAwaitCommunicationDevice(AudioDeviceInfo device, CancellationToken ct)
         {
-            var currentDevice = _audioManager.CommunicationDevice;
+            var currentDevice = CommunicationDeviceListener.LastDevice;
             if (currentDevice == null || currentDevice.Type != device.Type) {
                 _log.LogInformation("Setting communication device to: {Type}", device.Type);
                 if (!_audioManager.SetCommunicationDevice(device))
@@ -632,19 +633,19 @@ public sealed class AndroidAudioFocusHelper : IDisposable
             var isRouted = await WhenCommunicationDeviceIs(device.Type, ct).ConfigureAwait(false);
             if (!isRouted)
                 _log.LogWarning("Communication device didn't become {Type} in time (now: {Actual})",
-                    device.Type, _audioManager.CommunicationDevice?.Type);
+                    device.Type, CommunicationDeviceListener.LastDevice?.Type);
             return isRouted;
         }
 
         private async Task<bool> WhenCommunicationDeviceIs(AudioDeviceType type, CancellationToken ct)
         {
             for (var i = 0; i < RouteSettleChecks; i++) {
-                if (_audioManager.CommunicationDevice?.Type == type)
+                if (CommunicationDeviceListener.LastDevice?.Type == type)
                     return true;
 
                 await Task.Delay(RouteSettleCheckPeriod, ct).ConfigureAwait(false);
             }
-            return _audioManager.CommunicationDevice?.Type == type;
+            return CommunicationDeviceListener.LastDevice?.Type == type;
         }
     }
 
