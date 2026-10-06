@@ -825,6 +825,38 @@ public override async Task Require(CancellationToken cancellationToken)
     the halves have separate lifetimes or dependencies, not merely to keep files
     short — partial classes already solve that (see [File Organization](#file-organization)).
 
+15. **Linearize nested expressions to lower the reader's load.** A sequence is easy
+    to read: chained calls (`.Where(...).Select(...).ToListAsync(...)`), especially
+    with one call per line, and consecutive statements, each read once and set aside.
+    Nesting is hard: in `Method2(Method1(...))` the reader has to hold the outer call
+    open while parsing the inner one, and the cost grows with depth and with the size
+    of what's nested — a record-like construction, an object initializer, a lambda.
+    So when an expression nests something non-trivial, consider declaring the inner
+    part in a local first, and keep that version if it reads more easily. This isn't a
+    rule with a right and a wrong form; it's a question of which version the reader
+    parses with less effort.
+
+    `Commander` / `UICommander` calls nearly always benefit, because the command is
+    usually the bulky part and the call is the part that matters. Build the command in
+    a local named after it (`upsertCmd`, `createUploadCmd`), then make the call:
+    ```csharp
+    // Nested: the call is split around the command's construction
+    await Commander.Call(new ChatsBackend_SetImportConsent(
+        import.ChatId, account.Id, command.ImportId, command.HasConsent), cancellationToken).ConfigureAwait(false);
+
+    // Linear: construct, then call
+    var setImportConsentCmd = new ChatsBackend_SetImportConsent(
+        import.ChatId, account.Id, command.ImportId, command.HasConsent);
+    await Commander.Call(setImportConsentCmd, cancellationToken).ConfigureAwait(false);
+    ```
+    The same applies to an `await` buried in a condition or in another expression
+    (`if (!await db.X.AnyAsync(...).ConfigureAwait(false))`,
+    `(await ...).ToHashSet()`): await into a named local, then use it.
+
+    Don't pass `isOutermost: true` from an `ApiCommand` handler: `IApiCommand` is an
+    `IDelegatingCommand`, and every command called from a delegating command's handler
+    already runs as an outermost one.
+
 ### Serialization Attributes
 
 Three serializers are live and every serializable type must work in **all three**:
