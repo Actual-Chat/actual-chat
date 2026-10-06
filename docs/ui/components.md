@@ -1144,6 +1144,25 @@ The `Class` parameter on `DialogFrame` becomes the CSS scoping class. Use it to 
 await Hub.ModalUI.Show(new AmazingModal.Model("value")).ConfigureAwait(true);
 ```
 
+### Haptics for self-opening modals
+
+A modal opened in response to a tap already feels the tap: the global
+`ClickTuneGesture` plays the click haptic on the control that opened it, and
+`ModalHost` deliberately does **not** play one on open (doing both would
+double it).
+
+So a modal that appears **on its own — with no click to feel** (onboarding,
+the app-review prompt, a timed or server-driven dialog) must play the open
+haptic itself, right before showing it:
+
+```csharp
+_ = Hub.TuneUI.Play(Tune.OpenModal);
+await ModalUI.Show(new OnboardingModal.Model());
+```
+
+Only for unprompted opens. If the code runs from a click handler, leave it
+out — the click already covers it.
+
 ### Registration Checklist
 
 When creating a new component with TS/CSS/Modal, register it in all required places:

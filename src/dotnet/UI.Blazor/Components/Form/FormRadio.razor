@@ -4,9 +4,10 @@
 @{
     var cls = "form-radio-hidden";
     cls += IsDisabled ? " form-radio-disabled" : " form-radio-active";
+    var clickTune = IsDisabled ? null : nameof(Services.Tune.ChangeToggle);
 }
 
-<label class="@cls">
+<label class="@cls" data-click-tune="@clickTune">
     <InputRadio TValue="TValue" id="@Id" disabled="@IsDisabled" Name="@Name" Value="@Value" />
     <span class="radio"></span>
 </label>

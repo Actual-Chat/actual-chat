@@ -67,6 +67,9 @@ public class AppReviewPromptUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICom
                 if (cPrompt.ValueOrDefault is { } settled && settled.Since == prompt.Since) {
                     shownSince = prompt.Since;
                     PromptCounter.Add(1, new KeyValuePair<string, object?>("result", "shown"));
+                    // Unprompted prompt (no tap to feel): play the open haptic itself, since ModalHost
+                    // no longer does - that avoids doubling the tap on click-driven modals.
+                    _ = Hub.TuneUI.Play(Tune.OpenModal);
                     await ModalUI.Show(new AppReviewModal.Model(RecordOutcome), cancellationToken)
                         .ConfigureAwait(false);
                 }
