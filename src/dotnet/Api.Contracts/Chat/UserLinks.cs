@@ -1,4 +1,4 @@
-namespace ActualChat.UI.Blazor.App.Services;
+namespace ActualChat.Chat;
 
 /// <summary>
 /// The inverse of <see cref="Links.User(UserId)"/>: the user a <c>/u/...</c> link points to.

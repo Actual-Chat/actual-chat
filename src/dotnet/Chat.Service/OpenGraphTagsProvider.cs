@@ -3,6 +3,8 @@ namespace ActualChat.Chat;
 public class OpenGraphTagsProvider(IServiceProvider services)
 {
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
+    private IAliases Aliases { get; } = services.GetRequiredService<IAliases>();
     private IContentLinksBackend ContentLinksBackend { get; } = services.GetRequiredService<IContentLinksBackend>();
 
     public async Task<ContentLinkInfo?> GetContentLinkInfo(
@@ -22,6 +24,14 @@ public class OpenGraphTagsProvider(IServiceProvider services)
                 }
                 else
                     contentRef = chatId.ContentRef;
+            }
+        }
+        else if (localUrl.IsUser()) {
+            var userId = await UserLinks.GetUserId(Aliases, localUrl, cancellationToken).ConfigureAwait(false);
+            if (!userId.IsGuestOrNull()) {
+                var account = await Accounts.Get(session, userId, cancellationToken).ConfigureAwait(false);
+                if (account is not null)
+                    contentRef = userId.ContentRef;
             }
         }
         if (contentRef is not null)

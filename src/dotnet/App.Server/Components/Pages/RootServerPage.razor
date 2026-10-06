@@ -55,11 +55,23 @@
             + "defer without fear of losing clarity, and connect more frequently to deepen "
             + "ties with those you cherish most — all free from the stress of traditional calls.";
         var siteDescription = title + Environment.NewLine + description;
-        var image = "voxt-site-preview.jpg";
+        var image = UrlMapper.ToAbsolute("voxt-site-preview.jpg");
+        var url = UrlMapper.BaseUrl;
+        var twitterCard = "summary_large_image";
         if (_contentLinkInfo is not null) {
             title = _contentLinkInfo.Title;
             description = _contentLinkInfo.Description;
-            if (_contentLinkInfo.Picture is not null)
+            url = _url.ToAbsolute(UrlMapper);
+            if (_contentLinkInfo.Id.ContentId is UserId userId) {
+                if (description.IsNullOrEmpty())
+                    description = $"Chat with {title} on {CoreConstants.AppName}";
+                var iconQuery = IconQuery.Create(
+                    _contentLinkInfo.Picture, AvatarKind.Beam,
+                    DefaultUserPicture.GetAvatarKey(userId.Value), UserAvatarSize);
+                image = UrlMapper.IconUrl(iconQuery);
+                twitterCard = "summary";
+            }
+            else if (_contentLinkInfo.Picture is not null)
                 image = UrlMapper.PicturePreview128Url(_contentLinkInfo.Picture);
         }
     }
@@ -71,13 +83,13 @@
     <meta property="og:title" content="@title" />
     <meta property="og:description" content="@description" />
     <meta property="og:image" content="@image" />
-    <meta property="og:url" content="@(UrlMapper.BaseUrl)" />
+    <meta property="og:url" content="@url" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="@(CoreConstants.AppName)}" />
+    <meta property="og:site_name" content="@(CoreConstants.AppName)" />
     <meta property="og:locale" content="en_US" />
 
     @* Twitter Cards (they can be beneficial too) *@
-    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:card" content="@twitterCard">
     <meta name="twitter:title" content="@title">
     <meta name="twitter:description" content="@description">
     <meta name="twitter:image" content="@image">
@@ -346,6 +358,7 @@
 
 @code {
     private static readonly TimeSpan MaintenanceReloadDelay = TimeSpan.FromSeconds(5);
+    private const int UserAvatarSize = 160;
 
     private bool _isInitialized;
     private LocalUrl _url;
