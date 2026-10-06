@@ -58,13 +58,7 @@ public abstract class DbInitializer<
         if (DbInfo.ShouldRecreateDb) {
             Log.LogInformation("Recreating DB '{DatabaseName}'...", dbName);
             await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
-            var mustMigrate = false;
-            if (HostInfo.IsTested)
-                mustMigrate = Random.Shared.Next(100) < 3; // 3% migration probability in tests
-            if (mustMigrate)
-                await MigrateDb(db, cancellationToken).ConfigureAwait(false);
-            else
-                await db.EnsureCreatedWithMigrationsMarkedAsCompleted(cancellationToken).ConfigureAwait(false);
+            await db.EnsureCreatedWithMigrationsMarkedAsCompleted(cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb)
             await MigrateDb(db, cancellationToken).ConfigureAwait(false);
