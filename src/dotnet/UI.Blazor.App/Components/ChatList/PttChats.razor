@@ -1,0 +1,76 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Components.Settings
+@using ActualChat.UI.Blazor.Events
+@inherits ComputedStateComponent<AppUIHub, List<Chat>>
+@{
+    var chats = State.Value;
+    var hasChats = chats is { Count: > 0 };
+    var previewChats = hasChats ? chats!.Take(PreviewCount).ToList() : [];
+    var cls = $"ptt-chats {(hasChats ? "open" : "")} {(_isExpanded ? "expanded" : "")}";
+}
+
+<div class="@cls" data-child="@(hasChats ? "ptt-chats" : null)">
+    <div class="c-inner">
+        @if (hasChats) {
+            <div class="c-preview" @onclick="@OnExpand">
+                <div class="c-preview-inner">
+                    <ButtonRound Class="c-expand-btn btn-sm" Click="@OnExpand" StopPropagation="true">
+                        <i class="icon-chevron-up"></i>
+                    </ButtonRound>
+                    @foreach (var chat in previewChats) {
+                        <div class="c-avatar" @key="@chat.Id">
+                            <ChatIcon Chat="@chat"/>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="c-expanded">
+                <div class="c-expanded-inner">
+                    <div class="c-settings-row">
+                        <ButtonRound Class="c-collapse-btn btn-xs" Click="@OnCollapse" StopPropagation="true">
+                            <i class="icon-chevron-up"></i>
+                        </ButtonRound>
+                        <Button Class="c-settings-btn btn-cancel btn-sm" Click="@OnOpenSettings">
+                            <span class="c-title">@L.Common_Settings</span>
+                            <i class="icon-chevron-right"></i>
+                        </Button>
+                    </div>
+                    <div class="c-list-scroll chat-list chat-list-active">
+                        @foreach (var chat in chats!) {
+                            <ChatListItem @key="@chat.Id" ListKind="@ChatListKind.Active" Chat="@chat"/>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private const int PreviewCount = 3;
+    private bool _isExpanded;
+
+    private IChats Chats => Hub.Chats;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+
+    protected override async Task<List<Chat>> ComputeState(CancellationToken cancellationToken) {
+        var chatIds = new List<ChatId>(await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false));
+        var mutedPttChatIds = await ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
+        chatIds.AddRange(mutedPttChatIds.Where(id => !chatIds.Contains(id)));
+        return (await chatIds
+                .Select(chatId => Chats.Get(Session, chatId, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false))
+            .SkipNullItems()
+            .ToList();
+    }
+
+    private void OnOpenSettings()
+        => _ = UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Ptt));
+
+    private void OnExpand()
+        => _isExpanded = true;
+
+    private void OnCollapse()
+        => _isExpanded = false;
+}

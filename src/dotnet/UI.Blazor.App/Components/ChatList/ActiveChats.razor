@@ -33,13 +33,15 @@
     protected override async Task<List<Chat>> ComputeState(CancellationToken cancellationToken) {
         DebugLog?.LogDebug("-> ComputeState: {List}", ChatListKind.Active);
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
-        var chatIds = activeChats.Select(ac => ac.ChatId).ToList();
-        // PTT-armed chats always belong here, even before their listening player starts;
-        // a muted one stays too, since the badge is where the mute is counted down and lifted.
+        // PTT-armed and muted chats have moved to their own PttChats section above this one, so they
+        // drop out here - otherwise a PTT chat that's also live would show in both lists at once.
         var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
-        chatIds.AddRange(pttChatIds.Where(id => !chatIds.Contains(id)));
         var mutedPttChatIds = await ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
-        chatIds.AddRange(mutedPttChatIds.Where(id => !chatIds.Contains(id)));
+        var pttSet = pttChatIds.Concat(mutedPttChatIds).ToHashSet();
+        var chatIds = activeChats
+            .Select(ac => ac.ChatId)
+            .Where(id => !pttSet.Contains(id))
+            .ToList();
         var chats = (await chatIds
                 .Select(chatId => Chats.Get(Session, chatId, cancellationToken))
                 .Collect(cancellationToken)
