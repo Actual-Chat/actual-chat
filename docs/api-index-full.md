@@ -28,6 +28,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `HashAlgorithm` (enum) - Specifies the hash algorithm to use.
 - `HashEncoding` (enum) - Specifies the encoding for hash output.
 - `HashInput` - Input for hash computation.
+- `MonotonicUlid` (static class) - Ulids that sort in the order they were made within the process.
 - `HashOutput` (struct) - Output of a hash computation.
 - `InternalError` - Exception for internal application errors.
 - `IRateLimiter<TKey>`, `IRateLimiter<TKey, TBudget>` - Rate limiter contracts (`ActualChat.Resilience`).
@@ -291,11 +292,15 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `FlowDef` - Flow definition.
 - `FlowDefs` - Flow definitions registry.
 - `FlowHub` - Hub for flows.
+- `FlowInbox` - A flow's inbox during a resume, tracking the changes the flow makes to it.
+- `FlowInboxDiff` (record) - Inbox messages added and removed, applied atomically.
+- `FlowInboxMessage` (record) - Inbox message: an Id from the inbox's growing sequence and a MessagePack payload.
 - `FlowRegistry` - Flow registry.
 - `FlowResumeEvent` (record) - Flow resume event.
 - `FlowRuntime` - Flow runtime.
 - `IFlowBackend` - Flow backend.
 - `IFlowImpl` - Flow implementation interface.
+- `IInboxProcessingFlow` - Marks a flow that reads its inbox (`Flow.Inbox`); only such flows accept posted messages.
 - `IHasLastRunAt` - Has last run time.
 - `IMasterFlow` - Master flow.
 - `IndexingFlow` (abstract class) - Indexing with cursor tracking.

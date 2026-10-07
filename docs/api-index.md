@@ -246,6 +246,8 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `IndexingFlow` — indexing with cursor tracking
 - `ThrottledFlow` — throttled execution
 - `FlowHub` — manages flow instances
+- `IInboxProcessingFlow`, `FlowInbox` — per-flow persistent message inbox; `FlowHub.PostToInbox` /
+  `Flows_ChangeInbox` post to it, the flow's commit applies its changes atomically
 
 ### Queues
 - `IQueues` — queue service interface

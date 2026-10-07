@@ -8,6 +8,7 @@ namespace ActualChat.Flows.Db;
 public class FlowsDbContext(DbContextOptions<FlowsDbContext> options) : DbContextBase(options)
 {
     public DbSet<DbFlow> Flows { get; protected set; } = null!;
+    public DbSet<DbFlowInbox> FlowInboxes { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -25,6 +26,8 @@ public class FlowsDbContext(DbContextOptions<FlowsDbContext> options) : DbContex
 
         var contact = model.Entity<DbFlow>();
         contact.Property(e => e.Id).UseCollation("C");
+        var inbox = model.Entity<DbFlowInbox>();
+        inbox.Property(e => e.Id).UseCollation("C");
 
         model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
 
