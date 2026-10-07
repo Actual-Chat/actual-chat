@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.Localization;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Resilience;
@@ -48,29 +49,30 @@ public partial class ChatVideoUI
     }
 
     [ComputeMethod]
-    protected virtual async Task<WatchingChange> GetWatchingChange(CancellationToken cancellationToken)
+    protected virtual async Task<ChatId?> GetChatIdToWatch(CancellationToken cancellationToken)
     {
+        // The chat whose video belongs on screen where the user is now. The watched chat is a part of
+        // the answer: a floating or full-screen video stays with the user across chats.
         var watchingChatId = await GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
-        var view = await Hub.CallScreensUI.GetCallView(cancellationToken).ConfigureAwait(false);
-        var callScreenChatId = view is { Kind: CallViewKind.FullScreen, Call: { } call } ? call.ChatId : (ChatId?)null;
+        var callScreenChatId = await GetCallScreenChatId(cancellationToken).ConfigureAwait(false);
 
         // A call screen covers the selected chat, so only its own chat's video can show there.
         var candidateChatId = callScreenChatId ?? selectedChatId;
         if (candidateChatId is { } chatId && chatId != watchingChatId
             && await MustWatch(chatId, cancellationToken).ConfigureAwait(false))
-            return new WatchingChange(chatId, callScreenChatId is not null);
+            return chatId;
+
+        if (watchingChatId is not { } watching || callScreenChatId == watching)
+            return watchingChatId;
 
         // An inline or hidden panel belongs to its chat's page: in another chat there is no place for
         // it. Own camera and screencast keep publishing - only the watching stops.
-        if (watchingChatId is not { } watching || selectedChatId is null || selectedChatId == watching
-            || callScreenChatId == watching)
-            return WatchingChange.None;
+        if (selectedChatId is null || selectedChatId == watching)
+            return watchingChatId;
 
-        var mode = await ChatActivityUI.GetPanelMode(watching, cancellationToken).ConfigureAwait(false);
-        return mode is VisualActivityPanelMode.Inline or VisualActivityPanelMode.Hidden
-            ? WatchingChange.Close
-            : WatchingChange.None;
+        var mode = await GetShownPanelMode(watching, cancellationToken).ConfigureAwait(false);
+        return mode is VisualActivityPanelMode.Inline or VisualActivityPanelMode.Hidden ? null : watchingChatId;
     }
 
     [ComputeMethod]
@@ -93,19 +95,28 @@ public partial class ChatVideoUI
 
     private async Task SyncWatching(CancellationToken cancellationToken)
     {
-        var cChange = await Computed
-            .Capture(() => GetWatchingChange(cancellationToken), cancellationToken)
+        var cChatId = await Computed
+            .Capture(() => GetChatIdToWatch(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        await foreach (var c in cChange.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (c.HasError)
+        await foreach (var c in cChatId.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (c.HasError || c.Value == _watchingChatId.Value)
                 continue;
 
-            var change = c.Value;
-            if (change.OpenChatId is { } chatId)
-                await OpenVideoPanelInternal(chatId, change.IsExpanded, cancellationToken).ConfigureAwait(false);
-            else if (change.MustClose)
+            if (c.Value is not { } chatId) {
                 CloseVideoPanel();
+                continue;
+            }
+
+            // A video that comes up under its call's screen is a part of that screen
+            var callScreenChatId = await GetCallScreenChatId(cancellationToken).ConfigureAwait(false);
+            await OpenVideoPanelInternal(chatId, callScreenChatId == chatId, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task<ChatId?> GetCallScreenChatId(CancellationToken cancellationToken)
+    {
+        var view = await Hub.CallScreensUI.GetCallView(cancellationToken).ConfigureAwait(false);
+        return view is { Kind: CallViewKind.FullScreen, Call: { } call } ? call.ChatId : null;
     }
 
     // Recording lifecycles

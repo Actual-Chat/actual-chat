@@ -64,6 +64,10 @@
             return ComputedModel.None;
 
         if (call.Phase == CallPhase.Active) {
+            // The call's video, inline or floating, carries the call itself then
+            if (await IsVideoShown(call.ChatId, cancellationToken).ConfigureAwait(false))
+                return ComputedModel.None;
+
             var joinedAt = await CallScreensUI.GetCallJoinedAt(call.ChatId, cancellationToken).ConfigureAwait(false);
             return new ComputedModel { ChatId = call.ChatId, IsInCall = true, JoinedAt = joinedAt };
         }
@@ -73,6 +77,15 @@
 
         var isIncoming = call.Role == CallRole.Callee;
         return new ComputedModel { ChatId = call.ChatId, PeerId = peerId, IsIncoming = isIncoming };
+    }
+
+    private async Task<bool> IsVideoShown(ChatId chatId, CancellationToken cancellationToken) {
+        var screen = await CallScreensUI.GetScreen(cancellationToken).ConfigureAwait(false);
+        if (screen is not { HasVideo: true } || screen.ChatId != chatId)
+            return false;
+
+        var mode = await Hub.ChatVideoUI.GetWatchingPanelMode(cancellationToken).ConfigureAwait(false);
+        return mode is VisualActivityPanelMode.Inline or VisualActivityPanelMode.Collapsed;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

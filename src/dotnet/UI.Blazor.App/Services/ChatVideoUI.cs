@@ -99,6 +99,34 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         => await GetWatchingChatId(cancellationToken).ConfigureAwait(false) == chatId;
 
     [ComputeMethod]
+    public virtual async Task<VisualActivityPanelMode> GetShownPanelMode(
+        ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var mode = await ChatActivityUI.GetPanelMode(chatId, cancellationToken).ConfigureAwait(false);
+        if (mode != VisualActivityPanelMode.Inline)
+            return mode;
+        if (!await IsWatching(chatId, cancellationToken).ConfigureAwait(false))
+            return mode;
+
+        var call = await Hub.CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
+        if (call is not { Phase: CallPhase.Active } || call.ChatId != chatId)
+            return mode;
+
+        // The chat list of a narrow screen covers the chat without unselecting it
+        var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var isOnChatPage = selectedChatId == chatId
+            && await Hub.PanelsUI.Middle.IsVisible(cancellationToken).ConfigureAwait(false);
+        return DecideCallVideoPanelMode(mode, isOnChatPage);
+    }
+
+    internal static VisualActivityPanelMode DecideCallVideoPanelMode(VisualActivityPanelMode mode, bool isOnChatPage)
+        // An inline video of a call stays in sight off its chat's page, floating there. The mode the
+        // user picked isn't touched, so it is inline again on the return.
+        => mode == VisualActivityPanelMode.Inline && !isOnChatPage
+            ? VisualActivityPanelMode.Collapsed
+            : mode;
+
+    [ComputeMethod]
     public virtual async Task<bool> GetIsVideoPanelEqualLayout(CancellationToken cancellationToken = default)
         => await _isVideoPanelEqualLayout.Use(cancellationToken).ConfigureAwait(false);
 
@@ -354,7 +382,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         SetWatching(chatId);
         // Set after the open, which resets the mode - and on a panel that is already up as well.
         if (isExpanded && _watchingChatId.Value == chatId)
-            Hub.CallScreensUI.Expand(chatId);
+            Hub.CallScreensUI.SetScreenMode(chatId, VisualActivityPanelMode.Expanded);
     }
 }
 
@@ -363,12 +391,6 @@ public sealed record VideoDevice(string DeviceId, string Label, string? Facing =
 {
     public bool IsFront => Facing == "user";
     public bool IsBack => Facing == "environment";
-}
-
-public readonly record struct WatchingChange(ChatId? OpenChatId, bool IsExpanded, bool MustClose = false)
-{
-    public static readonly WatchingChange None = default;
-    public static readonly WatchingChange Close = new(null, false, true);
 }
 
 public sealed record VideoPanelActions(

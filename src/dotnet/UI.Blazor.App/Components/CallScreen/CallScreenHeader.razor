@@ -9,6 +9,7 @@
 
     var isExpanded = m.Mode == VisualActivityPanelMode.Expanded;
     var isIsland = m.Mode == VisualActivityPanelMode.Collapsed;
+    var isInCall = m.Phase == CallPhase.Active;
 }
 
 <div class="call-screen-toolbar call-screen-header">
@@ -31,6 +32,13 @@
                 <HeaderButton Class="btn-glass btn-expand" Click="@OnExpandClick">
                     <i class="icon-expand text-lg"></i>
                 </HeaderButton>
+            }
+            @* Out of the call screen the video stands in for the call's island *@
+            @if (!isExpanded && isInCall && m.JoinedAt is { } callJoinedAt) {
+                <div class="c-call-timer">
+                    <i class="icon-phone"></i>
+                    <LiveDuration StartedAt="@callJoinedAt"/>
+                </div>
             }
         </div>
 
@@ -61,22 +69,22 @@
                     data-menu-trigger="Primary">
                     <i class="icon-more-vertical text-lg"></i>
                 </HeaderButton>
-            }
-            @if (isExpanded) {
-                <HeaderButton
-                    Class="btn-glass btn-hang-up talking"
-                    StopPropagation="true"
-                    PreventDefault="true"
-                    Click="@OnHangUpClick">
-                    <i class="icon-phone-off"></i>
-                </HeaderButton>
-            } else if (isIsland) {
+            } else {
                 <HeaderButton
                     Class="btn-glass btn-expand"
                     StopPropagation="true"
                     PreventDefault="true"
                     Click="@OnExpandClick">
                     <i class="icon-expand text-lg"></i>
+                </HeaderButton>
+            }
+            @if (isExpanded || isInCall) {
+                <HeaderButton
+                    Class="btn-glass btn-hang-up talking"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@OnHangUpClick">
+                    <i class="icon-phone-off"></i>
                 </HeaderButton>
             }
         </div>

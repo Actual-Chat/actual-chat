@@ -19,6 +19,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     // The ring that must not sound while it keeps going: silenced by the user, or already answered.
     private readonly MutableState<ChatId?> _mutedRingChatId;
     private int _overLockRingGeneration;
+    // The screen the user brought up from its island or inline video, rather than one that came up on its own
+    private ChatId? _userExpandedChatId;
 
     public IState<ChatId?> MutedRingChatId => _mutedRingChatId;
 
@@ -58,7 +60,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         var view = await GetCallView(cancellationToken).ConfigureAwait(false);
         var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
         var watchingMode = watchingChatId is { } chatId
-            ? await Hub.ChatActivityUI.GetPanelMode(chatId, cancellationToken).ConfigureAwait(false)
+            ? await ChatVideoUI.GetShownPanelMode(chatId, cancellationToken).ConfigureAwait(false)
             : VisualActivityPanelMode.Inline;
         return DecideScreen(view, watchingChatId, watchingMode);
     }
@@ -263,7 +265,10 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     }
 
     public void Expand(ChatId chatId)
-        => SetScreenMode(chatId, VisualActivityPanelMode.Expanded);
+    {
+        SetScreenMode(chatId, VisualActivityPanelMode.Expanded);
+        _userExpandedChatId = chatId;
+    }
 
     public void SetScreenMode(ChatId chatId, VisualActivityPanelMode mode)
     {
@@ -271,8 +276,12 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         // video's panel mode are two stores of it, and written apart they disagree.
         if (mode == VisualActivityPanelMode.Expanded)
             ClearIf(_collapsedChatId, chatId);
-        else if (CallUI.GetActiveCallNonComputed() is { Phase: not CallPhase.Ringing } call && call.ChatId == chatId)
-            _collapsedChatId.Value = chatId;
+        else {
+            if (_userExpandedChatId == chatId)
+                _userExpandedChatId = null;
+            if (CallUI.GetActiveCallNonComputed() is { Phase: not CallPhase.Ringing } call && call.ChatId == chatId)
+                _collapsedChatId.Value = chatId;
+        }
         if (ChatVideoUI.WatchingChatId == chatId)
             Hub.ChatActivityUI.SetPanelMode(chatId, mode);
     }
@@ -292,6 +301,19 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     {
         if (!await LeaveLockScreen(chatId).ConfigureAwait(true))
             return;
+
+        // Back where the user expanded the screen from, when that isn't the chat's own page: its video
+        // floats there, and a call without one goes to its island
+        var isOnChatPage = Hub.ChatUI.SelectedChatId.Value == chatId
+            && await Hub.PanelsUI.Middle.IsVisible(CancellationToken.None).ConfigureAwait(true);
+        if (_userExpandedChatId == chatId && !isOnChatPage) {
+            // A call's inline video floats off its chat's page by itself, and is inline again on the return
+            var isCallHere = CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Active } call
+                && call.ChatId == chatId;
+            SetScreenMode(chatId, isCallHere ? VisualActivityPanelMode.Inline : VisualActivityPanelMode.Collapsed);
+            ClearIf(_overLockRingChatId, chatId);
+            return;
+        }
 
         // The chat goes first, under the cover of the screen: an inline video belongs to its chat's
         // page, and is closed if that page isn't the one open.

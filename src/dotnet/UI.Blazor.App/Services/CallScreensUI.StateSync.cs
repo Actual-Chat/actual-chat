@@ -165,5 +165,7 @@ public partial class CallScreensUI
         ClearIf(_collapsedChatId, chatId);
         ClearIf(_overLockRingChatId, chatId);
         ClearIf(_mutedRingChatId, chatId);
+        if (_userExpandedChatId == chatId)
+            _userExpandedChatId = null;
     }
 }
