@@ -21,6 +21,9 @@ public sealed class AudioStreamDemuxer(
     private ILogger? Log { get; } = log;
     private ILogger? DebugLog { get; } = DebugMode ? log : null;
 
+    // Read when a stream is reported, i.e. while the input still sits on that stream's end item
+    public Func<int, ArrivalLag?>? ArrivalLagProvider { get; init; }
+
     public event Action<LiveAudioStreamInfo, TimeSpan, IAsyncEnumerable<AudioFrame>>? StreamStarted;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
@@ -101,11 +104,24 @@ public sealed class AudioStreamDemuxer(
     // Peak backlog is how we find out whether a listener ever falls far enough behind to need
     // catching up - the receiver itself never acts on it.
     private void Report(int streamIndex, StreamEntry entry)
-        => Log?.LogInformation(
-            "Stream N{StreamIndex} done: {FrameCount} frames, peak backlog {PeakBacklogMs}ms",
-            streamIndex,
-            entry.WrittenFrameCount,
-            entry.PeakQueuedFrameCount * Constants.Audio.FrameDurationMs);
+    {
+        if (Log is null)
+            return;
+
+        var peakBacklogMs = entry.PeakQueuedFrameCount * Constants.Audio.FrameDurationMs;
+        if (ArrivalLagProvider?.Invoke(streamIndex) is not { } lag) {
+            Log.LogInformation(
+                "Stream N{StreamIndex} done: {FrameCount} frames, peak backlog {PeakBacklogMs}ms",
+                streamIndex, entry.WrittenFrameCount, peakBacklogMs);
+            return;
+        }
+
+        Log.LogInformation(
+            "Stream N{StreamIndex} done: {FrameCount} frames, peak backlog {PeakBacklogMs}ms, "
+            + "arrival lag first/max/last {FirstLagMs:F0}/{MaxLagMs:F0}/{LastLagMs:F0}ms",
+            streamIndex, entry.WrittenFrameCount, peakBacklogMs,
+            lag.First.TotalMilliseconds, lag.Max.TotalMilliseconds, lag.Last.TotalMilliseconds);
+    }
 
     private void FlushAllStreams()
     {
@@ -128,6 +144,14 @@ public sealed class AudioStreamDemuxer(
     }
 
     // Nested types
+
+    // How late a stream's frames arrived relative to their capture time: first, worst and last frame
+    [StructLayout(LayoutKind.Auto)]
+    public readonly record struct ArrivalLag(TimeSpan First, TimeSpan Max, TimeSpan Last)
+    {
+        public ArrivalLag Add(TimeSpan lag)
+            => this with { Max = TimeSpanExt.Max(Max, lag), Last = lag };
+    }
 
     private sealed record StreamEntry(Channel<AudioFrame> Channel)
     {

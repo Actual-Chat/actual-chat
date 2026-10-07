@@ -73,6 +73,46 @@ public sealed class AudioStreamDemuxerTest
             Enumerable.Range(0, 5).Select(i => Constants.Audio.OpusFrameDuration * i));
     }
 
+    [Fact]
+    public async Task ArrivalLagShouldBeAskedForEachStreamAsItIsReported()
+    {
+        // arrange
+        var items = new List<MuxedAudioStreamItem> { Start(1), Start(2) };
+        items.AddRange(Frames(1, 3));
+        items.Add(new MuxedAudioStreamEnd { StreamIndex = 1 });
+        items.Add(new MuxedAudioStreamReset());
+        var askedStreamIndexes = new List<int>();
+
+        // act
+        await using var demuxer = new AudioStreamDemuxer(
+            items.ToAsyncEnumerable(), NullLogger.Instance) {
+            ArrivalLagProvider = streamIndex => {
+                askedStreamIndexes.Add(streamIndex);
+                return null;
+            },
+        };
+        await demuxer.Run();
+
+        // assert
+        askedStreamIndexes.Should().Equal([1, 2],
+            "an ended stream is reported on its end item, one still open on the reset that flushes it");
+    }
+
+    [Fact]
+    public void ArrivalLagShouldKeepTheFirstTheWorstAndTheLastFrame()
+    {
+        // arrange
+        var lag = new AudioStreamDemuxer.ArrivalLag(
+            TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100));
+
+        // act
+        lag = lag.Add(TimeSpan.FromMilliseconds(900)).Add(TimeSpan.FromMilliseconds(300));
+
+        // assert
+        lag.Should().Be(new AudioStreamDemuxer.ArrivalLag(
+            TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(900), TimeSpan.FromMilliseconds(300)));
+    }
+
     // Private methods
 
     private static async Task<List<AudioFrame>> RunAndCollect(

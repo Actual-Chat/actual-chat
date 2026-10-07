@@ -1,4 +1,5 @@
 using ActualChat.Audio;
+using ActualChat.Concurrency;
 using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
@@ -39,6 +40,8 @@ internal sealed class AndroidAudioPlaybackEngine(
     private int _lastPlayedSampleCount;
     private int _isEnded;
     private long _nextLagReportAtTicks;
+    private long _maxPresentationLagTicks = long.MinValue;
+    private int _underrunCountBeforeDrain = -1;
 
     private AudioFocusUI AudioFocusUI => field ??= services.GetRequiredService<AudioFocusUI>();
     private ChatAudioUI ChatAudioUI => field ??= services.GetRequiredService<ChatAudioUI>();
@@ -179,6 +182,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         lock (Lock) { // We must re-lock after await
             var audioTrack = Volatile.Read(ref _audioTrack);
             if (audioTrack.IsValid()) {
+                ReportTrackHealth(audioTrack);
                 try {
                     if (audioTrack.PlayState is PlayState.Playing or PlayState.Paused)
                         audioTrack.Stop();
@@ -328,6 +332,8 @@ internal sealed class AndroidAudioPlaybackEngine(
                 if (_remainingPreSkip < 0)
                     _remainingPreSkip = 0;
             }
+            // A drained track runs dry by design, so the underruns from here on aren't playback faults
+            Volatile.Write(ref _underrunCountBeforeDrain, audioTrack.UnderrunCount);
             await WhenPlaybackDrained(cancellationToken).ConfigureAwait(false);
             await End(true, CancellationToken.None).ConfigureAwait(false);
         }
@@ -373,6 +379,7 @@ internal sealed class AndroidAudioPlaybackEngine(
         var lag = Clocks.ServerClock.Now - anchor
             - TimeSpan.FromSeconds(playheadOffsetSeconds)
             + Constants.Audio.AudioEnginePlaybackLatency;
+        InterlockedExt.ExchangeIfGreater(ref _maxPresentationLagTicks, lag.Ticks);
         try {
             playerBackend.OnPresentationLag(lag);
         }
@@ -498,6 +505,30 @@ internal sealed class AndroidAudioPlaybackEngine(
 
             var delayMs = (int)Math.Clamp(remaining * 1000L / sampleRate, MinDrainPollMs, PositionReportPeriodMs);
             await Task.Delay(delayMs, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private void ReportTrackHealth(AudioTrack audioTrack)
+    {
+        // UnderrunCount is what AudioFlinger logs as "ACTIVE underrun"; the app can't read those lines,
+        // and AudioTrackPlayer's own count never moves here, as this engine doesn't report starving
+        try {
+            var played = TimeSpan.FromSeconds(
+                (double)Volatile.Read(ref _lastPlayedSampleCount) / Constants.Audio.PlaybackSampleRate);
+            var maxLagTicks = Interlocked.Read(ref _maxPresentationLagTicks);
+            var maxLag = maxLagTicks == long.MinValue ? "n/a" : TimeSpan.FromTicks(maxLagTicks).ToShortString();
+            var underrunCount = audioTrack.UnderrunCount;
+            var underrunCountBeforeDrain = Volatile.Read(ref _underrunCountBeforeDrain);
+            // An aborted track never reached the drain, so all its underruns count as mid-track
+            var drainUnderrunCount = underrunCountBeforeDrain < 0 ? 0 : underrunCount - underrunCountBeforeDrain;
+            Log.LogInformation(
+                "Track {Id} done: played {Played}, {UnderrunCount} underruns + {DrainUnderrunCount} on drain, "
+                + "buffer {BufferFrames}/{CapacityFrames} frames, max lag {MaxLag}",
+                info.TrackId, played.ToShortString(), underrunCount - drainUnderrunCount, drainUnderrunCount,
+                audioTrack.BufferSizeInFrames, audioTrack.BufferCapacityInFrames, maxLag);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Couldn't read the health of track {Id}", info.TrackId);
         }
     }
 
