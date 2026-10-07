@@ -61,6 +61,8 @@ public class ArrivalInfoTest
     [InlineData("/?utm_source=x&utm_campaign=spring", "campaign:spring")]
     [InlineData("/chats?c=promo1", "campaign:promo1")]
     [InlineData("utm_source=google-play&utm_campaign=play1", "campaign:play1")]
+    [InlineData("utm_campaign=asa-542370539", "campaign:asa-542370539")]
+    [InlineData("utm_campaign=asa-test", "campaign:asa-test")]
     [InlineData("/?utm_campaign=spring&c=other", "campaign:spring")]
     [InlineData("/?utm_campaign=has%20space", null)]
     [InlineData("/join/abc", null)]

@@ -52,8 +52,12 @@ The arrival travels from the client to sign-up in the `c.Arrival` session tempor
 
 - **A page that is a way in** calls `AccountUI.SetArrival(arrival)` while the visitor is a guest,
   as `ChatInvitePage` (`join:`) and `UserPage` (`user:`) do. The last link a guest opened wins.
-- **The landing URL** (`utm_campaign` or `c`) and the Android Play install referrer are captured
-  by `AccountUI` on its own. They only fill an empty arrival, so a link page always wins.
+- **The landing URL** (`utm_campaign` or `c`) and the store install referrer are captured by
+  `AccountUI` on its own. They only fill an empty arrival, so a link page always wins. On Android
+  the referrer is the Play install referrer; on iOS it is Apple Ads attribution (`IosInstallReferrer`),
+  which reports `campaign:asa-<campaignId>` for an Apple Ads install and `campaign:asa-test` on a
+  device with Developer Mode on, where Apple answers with its fixed test payload. Filter the report
+  on `campaign:asa-%` for Apple Ads and leave `asa-test` out.
 - `AccountUI` keeps the arrival in local storage until an account exists and re-sends it at start-up,
   every 5 minutes and when the sign-in dialog opens: the server forgets a session temporal 10
   minutes after its last write. The server consumes it on any sign-in.

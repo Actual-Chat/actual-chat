@@ -223,6 +223,10 @@ account.
 - [User and account merge](./user-account-merge.md) — unify `User` and
   `Account` into one type; incremental (the `AccountFull` step landed; DB
   schema and backend renames remain).
+- [Apple Ads attribution on iOS](./apple-ad-attribution.md) — an
+  `IosInstallReferrer` behind the existing `IInstallReferrer` seam reads the
+  AdServices token and resolves it in the app, so an Apple Ads install signs up
+  as `campaign:asa-<campaignId>` instead of `store` (#4915).
 
 ### Platform: macOS / Mac Catalyst
 

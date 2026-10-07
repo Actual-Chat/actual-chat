@@ -37,6 +37,7 @@ public static partial class MauiProgram
         services.AddSingleton<Action<ThemeInfo>>(_ => MauiThemeHandler.Instance.OnThemeChanged);
         services.AddScoped<IFileSaver>(c => new AppleFileSaver(c.UIHub()));
         services.AddScoped<IAppReviewer>(_ => new AppleAppReviewer());
+        services.AddScoped<IInstallReferrer>(c => new IosInstallReferrer(c.UIHub()));
         services.AddScoped<AddPhotoPermissionHandler>(c => new AddPhotoPermissionHandler(c.UIHub()));
         services.AddTransient<IAppIconBadge>(_ => new AppIconBadge());
         services.AddSingleton(c => new IosUploadKeepAlive(c.LogFor<IosUploadKeepAlive>()));
