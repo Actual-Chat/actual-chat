@@ -67,6 +67,11 @@
                 IsCheckedChanged="@(_ => OnAudioDiagnosticsEnabledClick())"/>
         </Right>
     </TileItem>
+    @if (MauiLogAccessor?.IsFileLogEnabled is { } isFileLogEnabled) {
+        <TileItem ToggleValue="@isFileLogEnabled" ToggleValueChanged="@OnFileLogEnabledChanged">
+            <Content>@L.DevTools_EnableFileLog</Content>
+        </TileItem>
+    }
     @if (MauiLogAccessor?.GetLogFile != null) {
         <TileItem Click="@OnGetLogFileClick">
             <Content>
@@ -137,6 +142,9 @@
         => UserSettingsUI.UserAppSettings().Update(x => x with {
             IsAudioDiagnosticsEnabled = !State.Value.IsAudioDiagnosticsEnabled,
         });
+
+    private void OnFileLogEnabledChanged(bool isEnabled)
+        => MauiLogAccessor!.SetFileLogEnabled(isEnabled);
 
     private Task OnGetLogFileClick()
         => MauiLogAccessor!.GetLogFile!.Invoke();

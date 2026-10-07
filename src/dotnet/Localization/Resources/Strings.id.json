@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "Aktifkan penampil log",
   "DevTools_EnableVideoDiagnostics": "Aktifkan diagnostik video",
   "DevTools_EnableAudioDiagnostics": "Aktifkan diagnostik audio",
+  "DevTools_EnableFileLog": "Tulis log ke file",
   "Diagnostics_Video": "Diagnostik video",
   "Diagnostics_Audio": "Diagnostik audio",
 

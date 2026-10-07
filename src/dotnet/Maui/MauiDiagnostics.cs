@@ -59,6 +59,21 @@ public static class MauiDiagnostics
         return services;
     }
 
+    public static FileInfo[] GetLogFiles()
+    {
+        // The sink rolls on size, so the log is every "ActualChat*.log" next to AppDataLogFilePath; oldest first
+        var basePath = AppDataLogFilePath;
+        if (basePath.IsEmpty)
+            return [];
+
+        var directory = new DirectoryInfo(basePath.DirectoryPath.Value);
+        if (!directory.Exists)
+            return [];
+
+        var pattern = basePath.FileNameWithoutExtension.Value + "*" + basePath.Extension;
+        return directory.EnumerateFiles(pattern).OrderBy(x => x.LastWriteTimeUtc).ToArray();
+    }
+
     public static void SetIsAnalyticsCollectionEnabled(bool isEnabled)
         => IsAnalyticsCollectionEnabled = isEnabled;
 
@@ -109,9 +124,19 @@ public static class MauiDiagnostics
                 rollOnFileSizeLimit: true,
                 retainedFileCountLimit: LoggingExt.RetainedFileCountLimit);
 #elif ANDROID
+        // The file is opt-in (Developer Tools), and the switch is checked per event, so it takes effect at once.
+        // The sink opens the file on its first write, so a switched-off app never creates one.
+        AppDataLogFilePath = Path.Combine(FileSystem.AppDataDirectory, "Logs", "ActualChat.log");
         logging = logging
             .WriteTo.AndroidTaggedLog(LogTag, outputTemplate: AndroidOutputTemplate)
-            .WriteTo.Sink(new AndroidFirebaseCrashlyticsSink());
+            .WriteTo.Sink(new AndroidFirebaseCrashlyticsSink())
+            .WriteTo.Conditional(
+                _ => MauiPreferences.IsFileLogEnabled,
+                sink => sink.File(AppDataLogFilePath,
+                    outputTemplate: LoggingExt.OutputTemplate,
+                    fileSizeLimitBytes: LoggingExt.FileSizeLimit,
+                    rollOnFileSizeLimit: true,
+                    retainedFileCountLimit: LoggingExt.RetainedFileCountLimit));
 #elif IOS
         logging = logging.WriteTo.AppleLog();
 #elif MACOS

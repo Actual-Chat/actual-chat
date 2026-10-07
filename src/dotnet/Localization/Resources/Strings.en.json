@@ -336,6 +336,7 @@
   "DevTools_EnableLogViewer": "Enable log viewer",
   "DevTools_EnableVideoDiagnostics": "Enable video diagnostics",
   "DevTools_EnableAudioDiagnostics": "Enable audio diagnostics",
+  "DevTools_EnableFileLog": "Write log to file",
   "Diagnostics_Video": "Video diagnostics",
   "Diagnostics_Audio": "Audio diagnostics",
 

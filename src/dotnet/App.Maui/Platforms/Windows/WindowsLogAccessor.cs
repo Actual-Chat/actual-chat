@@ -21,11 +21,14 @@ public sealed class WindowsLogAccessor : IMauiLogAccessor
             GetLogFile = OpenLogFileInternal;
     }
 
+    public Func<Task>? GetLogFile { get; }
 #pragma warning disable CA1822
     public string ActionName => "Open log file";
-#pragma warning restore CA1822
+    public bool? IsFileLogEnabled => null;
 
-    public Func<Task>? GetLogFile { get; }
+    public void SetFileLogEnabled(bool isEnabled)
+        => throw new NotSupportedException("The Windows app always writes its log to a file.");
+#pragma warning restore CA1822
 
     private Task OpenLogFileInternal()
     {
@@ -51,15 +54,11 @@ public sealed class WindowsLogAccessor : IMauiLogAccessor
 
     private string GetCurrentLogFilePath()
     {
-        // The sink rolls on size, so the file being written to is the newest
-        // "ActualChat*.log" rather than AppDataLogFilePath itself.
+        // The sink rolls on size, so the file being written to is the newest one rather than
+        // AppDataLogFilePath itself.
         var basePath = MauiDiagnostics.AppDataLogFilePath;
         try {
-            var pattern = basePath.FileNameWithoutExtension.Value + "*" + basePath.Extension;
-            var newestFile = new DirectoryInfo(basePath.DirectoryPath.Value)
-                .EnumerateFiles(pattern)
-                .MaxBy(x => x.LastWriteTimeUtc);
-            return newestFile?.FullName ?? basePath.Value;
+            return MauiDiagnostics.GetLogFiles().LastOrDefault()?.FullName ?? basePath.Value;
         }
         catch (Exception e) {
             _log.LogWarning(e, "Failed to find the current log file in {Folder}", basePath.DirectoryPath.Value);

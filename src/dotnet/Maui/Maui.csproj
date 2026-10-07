@@ -120,6 +120,7 @@
     <PackageReference Include="Xamarin.Firebase.Analytics" />
     <PackageReference Include="Xamarin.Firebase.Crashlytics" />
     <PackageReference Include="Xamarin.Firebase.Messaging" />
+    <PackageReference Include="Serilog.Sinks.File" />
     <!-- Backports Sharing Shortcuts API to Android 9 via ChooserTargetServiceCompat (no public API; only bundled for manifest entry + runtime class). -->
     <AndroidMavenLibrary
       Include="androidx.sharetarget:sharetarget"

@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "Protokollanzeige aktivieren",
   "DevTools_EnableVideoDiagnostics": "Videodiagnose aktivieren",
   "DevTools_EnableAudioDiagnostics": "Audiodiagnose aktivieren",
+  "DevTools_EnableFileLog": "Protokoll in Datei schreiben",
   "Diagnostics_Video": "Videodiagnose",
   "Diagnostics_Audio": "Audiodiagnose",
 

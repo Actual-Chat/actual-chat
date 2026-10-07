@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "Zapnout prohlížeč logů",
   "DevTools_EnableVideoDiagnostics": "Zapnout diagnostiku videa",
   "DevTools_EnableAudioDiagnostics": "Zapnout diagnostiku zvuku",
+  "DevTools_EnableFileLog": "Ukládat logy do souboru",
   "Diagnostics_Video": "Diagnostika videa",
   "Diagnostics_Audio": "Diagnostika zvuku",
 

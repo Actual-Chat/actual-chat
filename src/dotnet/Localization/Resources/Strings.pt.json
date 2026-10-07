@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "Ativar visualizador de logs",
   "DevTools_EnableVideoDiagnostics": "Ativar o diagnóstico de vídeo",
   "DevTools_EnableAudioDiagnostics": "Ativar o diagnóstico de áudio",
+  "DevTools_EnableFileLog": "Gravar logs em arquivo",
   "Diagnostics_Video": "Diagnóstico de vídeo",
   "Diagnostics_Audio": "Diagnóstico de áudio",
 
