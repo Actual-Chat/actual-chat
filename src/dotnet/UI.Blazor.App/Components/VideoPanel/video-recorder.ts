@@ -33,7 +33,7 @@ import {
     getVideoLayerBitratesKbps,
     kbpsToBitsPerSecond,
 } from 'app-constants';
-import { withTimeout } from 'actuallab-core';
+import { AsyncLock, withTimeout } from 'actuallab-core';
 import { getLogs } from 'logging';
 import { Api, WorkerKind } from 'api';
 import { rpcClientServer, rpcNoWait } from 'rpc';
@@ -450,6 +450,8 @@ export class VideoRecorder {
     private blazorRef: DotNet.DotNetObject;
 
     // Worker + RPC proxy.
+    private readonly lifecycleLock = new AsyncLock();
+    private lifecycleEpoch = 0;
     private workerInstance: Worker | null = null;
     private worker: (RecorderWorker & Disposable) | null = null;
 
@@ -640,19 +642,26 @@ export class VideoRecorder {
             return;
         }
 
-        if (this.worker) {
-            this.cleanupPreviewTrack();
-            try {
-                await this.worker.stop();
-            } catch (e) {
-                warnLog?.log('Stop during switch failed:', e);
-            }
-            this.tearDownWorker();
-            this.isRecording = false;
-            this.setRecordingState('stopped');
-        }
+        const lifecycleEpoch = ++this.lifecycleEpoch;
+        await this.lifecycleLock.run(async () => {
+            if (this.disposed || this.isStoppingRecording)
+                return;
 
-        await this.startRecording(this.chatId, this.audienceCodecs, this.currentMaxLayerCount);
+            if (this.worker) {
+                this.cleanupPreviewTrack();
+                try {
+                    await this.worker.stop();
+                } catch (e) {
+                    warnLog?.log('Stop during switch failed:', e);
+                }
+                this.tearDownWorker();
+                this.isRecording = false;
+                this.setRecordingState('stopped');
+            }
+
+            if (lifecycleEpoch === this.lifecycleEpoch)
+                await this.startRecording(this.chatId, this.audienceCodecs, this.currentMaxLayerCount);
+        });
     }
 
     public setBlurEnabled(enabled: boolean): void {
@@ -905,13 +914,14 @@ export class VideoRecorder {
     // The encoder either works on real frames or doesn't, and a failure
     // surfaces via the same OnRecordingError path as `startRecording`.
     public async warmup(chatId: string, audienceCodecs?: string[]): Promise<void> {
-        if (this.isRecording) {
-            warnLog?.log('warmup: already recording or warming up');
+        if (!this.canStartRecording()) {
+            warnLog?.log('warmup: cannot start recording');
             return;
         }
         this.chatId = chatId;
         this.audienceCodecs = audienceCodecs;
         this.currentMaxLayerCount = 1;
+        const lifecycleEpoch = ++this.lifecycleEpoch;
         this.setRecordingState('warming-up');
         this.currentMode = 'camera';
         infoLog?.log(`Warmup starting... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}]`);
@@ -939,6 +949,9 @@ export class VideoRecorder {
                 : probeBase;
 
             const supportedCodecs = await detectSupportedCodecs(probeSize.width, probeSize.height);
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
+
             this.supportedCodecs = supportedCodecs;
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
 
@@ -993,6 +1006,11 @@ export class VideoRecorder {
                 width: requestSize.width,
                 height: requestSize.height,
             });
+            if (!this.isCurrentLifecycle(lifecycleEpoch)) {
+                track.stop();
+                return;
+            }
+
             this.setFreshInputTrack(track);
             this.previewTrack = track;
 
@@ -1054,11 +1072,16 @@ export class VideoRecorder {
 
             this.ensureWorker();
             await this.startWorker(warmupActive, /*initialGateOpen*/ false);
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
 
             this.isRecording = true;
             // State stays 'warming-up' until openGate flips it to 'recording'.
             infoLog?.log('Warmup pipeline running (wire gate closed)');
         } catch (error) {
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
+
             this.setRecordingState('error');
             errorLog?.log('Failed to start warmup:', error);
             await this.reportStartError(error);
@@ -1175,14 +1198,15 @@ export class VideoRecorder {
     }
 
     public async startRecording(chatId: string, audienceCodecs?: string[], maxLayerCount = 3): Promise<void> {
-        this.chatId = chatId;
-        this.audienceCodecs = audienceCodecs;
-        this.currentMaxLayerCount = maxLayerCount;
-        if (this.isRecording) {
-            warnLog?.log('Already recording');
+        if (!this.canStartRecording()) {
+            warnLog?.log('Cannot start recording');
             return;
         }
 
+        this.chatId = chatId;
+        this.audienceCodecs = audienceCodecs;
+        this.currentMaxLayerCount = maxLayerCount;
+        const lifecycleEpoch = ++this.lifecycleEpoch;
         this.setRecordingState('starting');
         this.currentMode = 'camera';
         // Mobile maxes out at 2 spatial tiers (640×360 top). Phones can't usefully
@@ -1230,6 +1254,9 @@ export class VideoRecorder {
             this.requestedFramerate = targetFramerate;
 
             const supportedCodecs = await detectSupportedCodecs(targetSize.width, targetSize.height);
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
+
             this.supportedCodecs = supportedCodecs;
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
             infoLog?.log(`Supported encoder categories: [${this.supportedEncoderCategories.join(', ')}]`);
@@ -1264,6 +1291,9 @@ export class VideoRecorder {
             const best = await this.pickSimulcastCodec(
                 supportedCodecs, audienceCodecs, ladderTop, undefined, false,
                 tierCap >= 4 ? 'h264' : undefined);
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
+
             let bestCodecString = best?.codec ?? null;
             let ladder: LayerConfig[] = ladderTop;
             let chosenHwAccel: HardwareAcceleration = best?.accel ?? getDefaultHardwareAcceleration();
@@ -1278,9 +1308,13 @@ export class VideoRecorder {
                     maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
                     bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
                 });
-                infoLog?.log('4-tier 1080 probe failed for all non-H264 codecs — falling back to 3-tier @720 (H264 allowed)');
+                infoLog?.log(
+                    '4-tier 1080 probe failed for all non-H264 codecs — falling back to 3-tier @720 (H264 allowed)');
                 const codec3 = await this.pickSimulcastCodec(
                     supportedCodecs, audienceCodecs, ladder3);
+                if (!this.isCurrentLifecycle(lifecycleEpoch))
+                    return;
+
                 if (codec3) {
                     bestCodecString = codec3.codec;
                     chosenHwAccel = codec3.accel;
@@ -1301,6 +1335,9 @@ export class VideoRecorder {
                 infoLog?.log(`3-tier probe failed for all codecs — falling back to 2-tier @ 360p (drop 720p top)`);
                 const codec2 = await this.pickSimulcastCodec(
                     supportedCodecs, audienceCodecs, ladder2);
+                if (!this.isCurrentLifecycle(lifecycleEpoch))
+                    return;
+
                 if (codec2) {
                     bestCodecString = codec2.codec;
                     chosenHwAccel = codec2.accel;
@@ -1320,9 +1357,14 @@ export class VideoRecorder {
                     maxTierCount: VIDEO.cameraLayerBaseBitratesKbps.length,
                     bitratesKbps: VIDEO.cameraLayerBaseBitratesKbps,
                 });
-                infoLog?.log(`Tier-cap and drop-top probes failed — falling back to 1-tier @ ${targetSize.width}x${targetSize.height} with hardwareAcceleration='no-preference'`);
+                infoLog?.log(
+                    `Tier-cap and drop-top probes failed — falling back to 1-tier @ ` +
+                    `${targetSize.width}x${targetSize.height} with hardwareAcceleration='no-preference'`);
                 const codec1 = await this.pickSimulcastCodec(
                     supportedCodecs, audienceCodecs, ladder1, 'no-preference', /*excludeOnFail*/ true);
+                if (!this.isCurrentLifecycle(lifecycleEpoch))
+                    return;
+
                 if (codec1) {
                     bestCodecString = codec1.codec;
                     ladder = ladder1;
@@ -1366,6 +1408,11 @@ export class VideoRecorder {
                 width: captureWidth,
                 height: captureHeight,
             });
+            if (!this.isCurrentLifecycle(lifecycleEpoch)) {
+                track.stop();
+                return;
+            }
+
             this.setFreshInputTrack(track);
             this.previewTrack = track;
 
@@ -1418,6 +1465,8 @@ export class VideoRecorder {
 
             this.ensureWorker();
             await this.startWorker(ladder);
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
 
             this.isRecording = true;
             this.setRecordingState('recording');
@@ -1425,6 +1474,9 @@ export class VideoRecorder {
 
             infoLog?.log('Video recording started');
         } catch (error) {
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
+
             this.setRecordingState('error');
             errorLog?.log('Failed to start recording:', error);
             await this.reportStartError(error);
@@ -1432,14 +1484,15 @@ export class VideoRecorder {
     }
 
     public async startScreenCast(chatId: string, audienceCodecs?: string[], maxLayerCount = 2): Promise<void> {
-        this.chatId = chatId;
-        this.audienceCodecs = audienceCodecs;
-        this.currentMaxLayerCount = maxLayerCount;
-        if (this.isRecording) {
-            warnLog?.log('Already recording');
+        if (!this.canStartRecording()) {
+            warnLog?.log('Cannot start screencast');
             return;
         }
 
+        this.chatId = chatId;
+        this.audienceCodecs = audienceCodecs;
+        this.currentMaxLayerCount = maxLayerCount;
+        const lifecycleEpoch = ++this.lifecycleEpoch;
         this.setRecordingState('starting');
         this.currentMode = 'screen';
         infoLog?.log(`Starting screencast... maxLayerCount=${maxLayerCount} → tierCap=${this.screenCastTierCap()}`);
@@ -1448,6 +1501,9 @@ export class VideoRecorder {
             const detectionWidth = DeviceInfo.isMobile ? 1280 : 1920;
             const detectionHeight = DeviceInfo.isMobile ? 720 : 1080;
             const supportedCodecs = await detectSupportedCodecs(detectionWidth, detectionHeight);
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
+
             this.supportedCodecs = supportedCodecs;
             this.supportedEncoderCategories = this.extractEncoderCategories(supportedCodecs);
 
@@ -1456,6 +1512,11 @@ export class VideoRecorder {
             // Blazor server round-trip to here has already consumed). captureScreenCast
             // returns that gesture-acquired track.
             const screenTrack = await MediaCapture.captureScreenCast();
+            if (!this.isCurrentLifecycle(lifecycleEpoch)) {
+                screenTrack.stop();
+                return;
+            }
+
             this.setFreshInputTrack(screenTrack);
             this.previewTrack = screenTrack;
 
@@ -1464,6 +1525,9 @@ export class VideoRecorder {
             // The ladder takes the screen's own shape: normalize cover-crops whatever doesn't
             // match it, and on a screen that is the menu bar, the dock or the sides of a window.
             const screenSize = await this.watchScreenSize(screenTrack);
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
+
             this.cameraWidth = screenSize.width;
             this.cameraHeight = screenSize.height;
             const targetSize = screenCastTopSize(screenSize, this.screenCastMaxSize());
@@ -1490,6 +1554,8 @@ export class VideoRecorder {
 
             this.ensureWorker();
             await this.startWorker(actualScreenCastLadder);
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
 
             this.isRecording = true;
             this.isScreenCasting = true;
@@ -1498,6 +1564,9 @@ export class VideoRecorder {
             await this.blazorRef.invokeMethodAsync('OnRecordingStarted');
             infoLog?.log('ScreenCast started');
         } catch (error) {
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return;
+
             const isUserCancel = error instanceof DOMException && error.name === 'NotAllowedError';
             if (isUserCancel) {
                 this.setRecordingState('stopped');
@@ -1512,12 +1581,17 @@ export class VideoRecorder {
     }
 
     public async stopRecording(): Promise<void> {
-        if (this.isStoppingRecording || !this.isRecording) {
+        const isStarting = this._recordingState === 'starting' || this._recordingState === 'warming-up';
+        if (this.isStoppingRecording || (!this.isRecording && !isStarting)) {
             return;
         }
 
         infoLog?.log('Stopping video recording...');
         this.isStoppingRecording = true;
+        this.lifecycleEpoch++;
+        if (this.currentMode === 'screen')
+            MediaCapture.discardPendingScreenCast();
+        await this.lifecycleLock.acquire();
 
         try {
             if (this.worker) {
@@ -1550,6 +1624,7 @@ export class VideoRecorder {
             errorLog?.log('Failed to stop recording:', error);
         } finally {
             this.isStoppingRecording = false;
+            this.lifecycleLock.release();
         }
     }
 
@@ -1979,7 +2054,11 @@ export class VideoRecorder {
     public dispose() {
         if (this.disposed)
             return;
+
         this.disposed = true;
+        this.lifecycleEpoch++;
+        if (this.currentMode === 'screen')
+            MediaCapture.discardPendingScreenCast();
         this.unregister();
 
         this.previewFrameListeners.clear();
@@ -2018,6 +2097,9 @@ export class VideoRecorder {
                 void reason;
             },
             onError: (error: string) => {
+                if (this.workerInstance !== workerInstance || this.disposed || this.isStoppingRecording)
+                    return;
+
                 errorLog?.log(`RecorderWorker reported error: ${error}`);
                 if (isEncoderInitFailedError(error)) {
                     const failedCodec = parseEncoderInitFailedCodec(error);
@@ -2078,6 +2160,8 @@ export class VideoRecorder {
         if (!this.worker || !this.inputTrack) {
             throw new Error('startWorker: worker or input track missing');
         }
+        const worker = this.worker;
+        const lifecycleEpoch = this.lifecycleEpoch;
         // Recovery may call this while a prior MSTP readable / rVFC pump is still alive.
         this.tearDownWorkerSource();
         // The source path is re-chosen below; captureFpsApplied/Unsupported are
@@ -2119,7 +2203,10 @@ export class VideoRecorder {
                 // Transfer the readable across the worker boundary. The
                 // worker's createProcessor returns this readable to the
                 // mstpSource operator on the next start().
-                await this.worker.setSource(processor.readable);
+                await worker.setSource(processor.readable);
+                if (lifecycleEpoch !== this.lifecycleEpoch || this.worker !== worker)
+                    return;
+
                 this.workerSourceCancelled = false;
                 useMstp = true;
                 infoLog?.log('startWorker: capture path = MSTP-readable (source-bound)');
@@ -2127,6 +2214,9 @@ export class VideoRecorder {
                 warnLog?.log('startWorker: MSTP construction/transfer failed, falling back to rVFC pump:', e);
             }
         }
+
+        if (lifecycleEpoch !== this.lifecycleEpoch || this.worker !== worker)
+            return;
 
         // Safari: MSTP is worker-only, so main can't build it. Transfer a CLONE
         // of the camera track into the worker and let it build the processor in
@@ -2140,7 +2230,10 @@ export class VideoRecorder {
         } else if (!useMstp) {
             try {
                 const clone = this.inputTrack.clone();
-                const ok = await this.worker.setSourceTrack(clone);
+                const ok = await worker.setSourceTrack(clone);
+                if (lifecycleEpoch !== this.lifecycleEpoch || this.worker !== worker)
+                    return;
+
                 if (ok) {
                     this.workerSourceCancelled = false;
                     this.workerSourceUsesClone = true;
@@ -2159,6 +2252,9 @@ export class VideoRecorder {
             }
         }
 
+        if (lifecycleEpoch !== this.lifecycleEpoch || this.worker !== worker)
+            return;
+
         if (!useMstp) {
             infoLog?.log('startWorker: MSTP unavailable (main + worker), using rVFC pump');
             // FALLBACK: rVFC pump from a hidden <video>.
@@ -2174,6 +2270,13 @@ export class VideoRecorder {
             sourceVideo.style.height = '1px';
             document.body.appendChild(sourceVideo);
             await sourceVideo.play().catch(() => { /* tolerated */ });
+            if (lifecycleEpoch !== this.lifecycleEpoch || this.worker !== worker) {
+                sourceVideo.pause();
+                sourceVideo.srcObject = null;
+                sourceVideo.remove();
+                return;
+            }
+
             this.workerSourceVideo = sourceVideo;
             this.workerSourceCancelled = false;
             const workerForPump = this.worker;
@@ -2287,6 +2390,9 @@ export class VideoRecorder {
             initialGateOpen,
         };
 
+        if (lifecycleEpoch !== this.lifecycleEpoch || this.worker !== worker)
+            return;
+
         const sourceStartedAtMs = Date.now();
         // `sourceStartedAtMs` is the per-run wire stream reference (resets on
         // every restart — wire stream is fresh per run). `this.startedAtMs`
@@ -2322,10 +2428,13 @@ export class VideoRecorder {
             }
         }
 
-        void this.worker.start(
+        void worker.start(
             { sourceStartedAtMs, config, createPreviewInWorker },
             previewGenerator?.writable,
         ).catch((e: unknown) => {
+            if (lifecycleEpoch !== this.lifecycleEpoch || this.worker !== worker)
+                return;
+
             errorLog?.log('Worker start rejected:', e);
             if (previewGenerator && this.previewTrack === previewGenerator.track) {
                 this.cleanupGeneratedPreviewTrack();
@@ -2438,8 +2547,9 @@ export class VideoRecorder {
         // The timeout is what makes holding it safe: recoverNow() awaits a worker that
         // may be wedged too, and an await that never settles would retire recovery for
         // the session.
+        const lifecycleEpoch = this.lifecycleEpoch;
         window.setTimeout(() => {
-            if (!this.isRecording || this.disposed) {
+            if (lifecycleEpoch !== this.lifecycleEpoch || !this.isRecording || this.disposed) {
                 this.recoveryScheduled = false;
                 return;
             }
@@ -2451,6 +2561,10 @@ export class VideoRecorder {
                 (e: unknown) => {
                     warnLog?.log('scheduleRecovery: recoverNow failed', e);
                     this.recoveryScheduled = false;
+                    if (lifecycleEpoch !== this.lifecycleEpoch)
+                        return;
+
+                    this.lifecycleEpoch++;
                     this.scheduleRecovery('recovery attempt failed');
                 });
         }, delayMs);
@@ -2546,28 +2660,7 @@ export class VideoRecorder {
     }
 
     private async recoverNow(): Promise<void> {
-        if (!this.worker || !this.inputTrack) {
-            warnLog?.log('recoverNow: worker or input track missing — skipping');
-            return;
-        }
-        const ladder = this.resolveActiveLadder();
-        if (ladder.length === 0) {
-            warnLog?.log('recoverNow: no ladder, skipping');
-            return;
-        }
-        infoLog?.log(
-            `recoverNow: ladder=[${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], ` +
-            `codec=${this.currentCodecString}`);
-        try { await this.worker.stop(); }
-        catch (e) { warnLog?.log('recoverNow: worker.stop failed (continuing):', e); }
-        if (!this.isRecording || this.disposed)
-            return;
-
-        // Preserve the gate-closed warmup state across codec-switch
-        // restarts; without this, a warmup-time encoder failure would
-        // recover into a live stream.
-        const initialGateOpen = this._recordingState !== 'warming-up';
-        await this.startWorker(ladder, initialGateOpen);
+        await this.restartWithCurrentConfig();
     }
 
     private toEncoderConfigs(ladder: LayerConfig[]): EncoderConfigPerLayer[] {
@@ -2706,21 +2799,59 @@ export class VideoRecorder {
         await this.restartWithCurrentConfig();
     }
 
+    private canStartRecording(): boolean {
+        return !this.isRecording && !this.isStoppingRecording && !this.disposed
+            && this._recordingState !== 'starting' && this._recordingState !== 'warming-up';
+    }
+
+    private isCurrentLifecycle(lifecycleEpoch: number): boolean {
+        return lifecycleEpoch === this.lifecycleEpoch && !this.disposed && !this.isStoppingRecording;
+    }
+
     private async restartWithCurrentConfig(): Promise<void> {
-        if (!this.worker || !this.inputTrack) return;
-        const ladder = this.resolveActiveLadder();
-        if (ladder.length === 0) {
-            warnLog?.log('restartWithCurrentConfig: no ladder, skipping');
-            return;
-        }
-        infoLog?.log(`restartWithCurrentConfig: ladder=[${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], codec=${this.currentCodecString}`);
+        const lifecycleEpoch = this.lifecycleEpoch;
+        await this.lifecycleLock.run(async () => {
+            if (lifecycleEpoch !== this.lifecycleEpoch || !this.inputTrack)
+                return;
+            if (!this.isRecording || this.disposed || this.isStoppingRecording)
+                return;
+            if (!await this.stopWorkerForRestart('restartWithCurrentConfig'))
+                return;
+            if (lifecycleEpoch !== this.lifecycleEpoch)
+                return;
+
+            const ladder = this.resolveActiveLadder();
+            if (ladder.length === 0)
+                return;
+
+            infoLog?.log(
+                `restartWithCurrentConfig: ladder=[${ladder.map(l => `${l.width}x${l.height}`).join(', ')}], ` +
+                `codec=${this.currentCodecString}`);
+            const initialGateOpen = this._recordingState !== 'warming-up';
+            await this.startWorker(ladder, initialGateOpen);
+        });
+    }
+
+    private async stopWorkerForRestart(logPrefix: string): Promise<boolean> {
+        const worker = this.worker;
+        if (!worker)
+            return false;
+
         try {
-            await this.worker.stop();
-        } catch (e) {
-            warnLog?.log('restart: stop failed (continuing):', e);
+            await worker.stop();
+            return this.worker === worker && this.isRecording && !this.disposed && !this.isStoppingRecording;
         }
-        const initialGateOpen = this._recordingState !== 'warming-up';
-        await this.startWorker(ladder, initialGateOpen);
+        catch (e) {
+            warnLog?.log(`${logPrefix}: worker.stop failed:`, e);
+        }
+
+        if (this.worker !== worker || !this.isRecording || this.disposed || this.isStoppingRecording)
+            return false;
+
+        infoLog?.log(`${logPrefix}: replacing stopped worker after stop failure`);
+        this.tearDownWorker();
+        this.ensureWorker();
+        return true;
     }
 
     private withCodecBitrates(layers: readonly LayerConfig[], codec: string): LayerConfig[] {
@@ -3251,6 +3382,7 @@ export class VideoRecorder {
         // excluded ONLY if excludeOnFail (last fallback) so earlier failures
         // don't prevent subsequent attempts from trying the same codec
         // under different config.
+        const lifecycleEpoch = this.lifecycleEpoch;
         for (const { info: codecInfo, accel: rungAccel } of
             this.listCodecCandidatesByEfficiency(supportedCodecs, audienceCodecs)) {
             if (excludeCategory && codecInfo.category === excludeCategory)
@@ -3261,12 +3393,20 @@ export class VideoRecorder {
             const layersWithBitrates = this.withCodecBitrates(ladder, codecInfo.codec);
             const result = await probeEncoder(
                 codecInfo.codec, layersWithBitrates, undefined, undefined, accel);
+            if (!this.isCurrentLifecycle(lifecycleEpoch))
+                return null;
+
             if (result.supported) {
                 const top = layersWithBitrates[layersWithBitrates.length - 1];
-                infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) PASS @ ${top.width}x${top.height} (${ladder.length} layer(s)), hwAccel=${accel}, median=${result.medianEncodeMs.toFixed(1)}ms`);
+                infoLog?.log(
+                    `pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) PASS @ ` +
+                    `${top.width}x${top.height} (${ladder.length} layer(s)), ` +
+                    `hwAccel=${accel}, median=${result.medianEncodeMs.toFixed(1)}ms`);
                 return { codec: codecInfo.codec, accel };
             }
-            infoLog?.log(`pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) FAIL stage=${result.failedStage}, hwAccel=${accel}`);
+            infoLog?.log(
+                `pickSimulcastCodec: ${codecInfo.category} (${codecInfo.codec}) ` +
+                `FAIL stage=${result.failedStage}, hwAccel=${accel}`);
             if (excludeOnFail) {
                 // Last-resort fallback also failed for this codec — exclude
                 // it for the session so server-driven updateSupportedDecoderCodecs
