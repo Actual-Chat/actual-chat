@@ -14,4 +14,6 @@ public enum RateLimitClass
     UploadBytes,
     ImageGeneration,
     WebHookInbound,
+    SmsSend,
+    SmsSendDaily,
 }

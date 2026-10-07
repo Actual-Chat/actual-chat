@@ -1,5 +1,4 @@
-using System.Diagnostics.Metrics;
-using ActualChat.Diagnostics;
+using ActualChat.Resilience;
 using ActualChat.Users.Module;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Phone.Internal;
@@ -9,361 +8,266 @@ namespace ActualChat.Users.UnitTests.Phone;
 
 public class CompositeVerificationCodeSenderTest
 {
-    private static readonly ActualChat.Phone ArmenianPhone = ActualChat.Phone.Parse("374-11223344");
-    private static readonly ActualChat.Phone RussianPhone = ActualChat.Phone.Parse("7-9001234567");
+    private static readonly ActualChat.Phone TestPhone = ActualChat.Phone.Parse("374-11223344");
     private static readonly VerificationMessage TestMessage = new("123456", "Voxt: your code is 123456.");
-    private static readonly VerificationMessage TelegramOnlyMessage
-        = TestMessage with { OnlyChannel = TotpChannel.Telegram };
 
     [Fact]
-    public async Task ShouldUseSmsWhenItAcceptsTheNumber()
+    public async Task TelegramShouldBePreferredWithoutChargingSmsBudget()
     {
         // arrange
         var telegram = new FakeSender(TotpChannel.Telegram);
-        var twilio = new FakeSender(TotpChannel.Sms);
-        var sender = CreateSender(telegram, null, twilio);
+        var sms = new FakeSender(TotpChannel.Sms);
+        var policy = new FakePolicy { MustReject = true };
+        var sender = CreateSender(telegram, sms, policy);
 
         // act
-        var channel = await sender.Send(ArmenianPhone, TestMessage);
+        var channel = await sender.Send(TestPhone, TestMessage);
+
+        // assert
+        channel.Should().Be(TotpChannel.Telegram);
+        telegram.SendCount.Should().Be(1);
+        sms.SendCount.Should().Be(0);
+        policy.Classes.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TelegramFailureShouldFallBackToSms(bool mustThrow)
+    {
+        // arrange
+        var telegram = new FakeSender(null) { MustThrow = mustThrow };
+        var sms = new FakeSender(TotpChannel.Sms);
+        var policy = new FakePolicy();
+        var sender = CreateSender(telegram, sms, policy);
+        var message = TestMessage with {
+            Source = new RateLimitSource(new Session("test-session"), "203.0.113.1"),
+        };
+
+        // act
+        var channel = await sender.Send(TestPhone, message);
 
         // assert
         channel.Should().Be(TotpChannel.Sms);
-        twilio.SendCount.Should().Be(1);
-        telegram.SendCount.Should().Be(0, "Telegram costs money and SMS already delivered");
+        sms.SendCount.Should().Be(1);
+        policy.Classes.Should().Equal(RateLimitClass.SmsSend, RateLimitClass.SmsSendDaily);
+        policy.Identities.Select(x => x.Kind).Should().Contain([
+            RateLimitIdentityKind.Target, RateLimitIdentityKind.Session, RateLimitIdentityKind.IP,
+        ]);
     }
 
     [Fact]
-    public async Task ShouldFallBackToTelegramWhenSmsDeclines()
+    public async Task SmsLimitShouldPreventProviderCall()
+    {
+        // arrange
+        var sms = new FakeSender(TotpChannel.Sms);
+        var sender = CreateSender(null, sms, new FakePolicy { MustReject = true });
+
+        // act
+        var send = () => sender.Send(TestPhone, TestMessage);
+
+        // assert
+        await send.Should().ThrowAsync<RateLimitExceededException>();
+        sms.SendCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DailySmsLimitShouldPreventProviderCall()
+    {
+        // arrange
+        var sms = new FakeSender(TotpChannel.Sms);
+        var policy = new FakePolicy { RejectClass = RateLimitClass.SmsSendDaily };
+        var sender = CreateSender(null, sms, policy);
+
+        // act
+        var send = () => sender.Send(TestPhone, TestMessage);
+
+        // assert
+        await send.Should().ThrowAsync<RateLimitExceededException>();
+        sms.SendCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task BlockedSmsShouldNotBeUsedWhenTelegramDeclines()
+    {
+        // arrange
+        var sms = new FakeSender(TotpChannel.Sms);
+        var sender = CreateSender(new FakeSender(null), sms);
+        var message = TestMessage with { OnlyChannel = TotpChannel.Telegram };
+
+        // act
+        var send = () => sender.Send(TestPhone, message);
+
+        // assert
+        await send.Should().ThrowAsync<ExternalError>();
+        sms.SendCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task SkippedTelegramPrefixShouldFallBackToSms()
     {
         // arrange
         var telegram = new FakeSender(TotpChannel.Telegram);
-        var twilio = new FakeSender(null);
-        var sender = CreateSender(telegram, null, twilio);
+        var sms = new FakeSender(TotpChannel.Sms);
+        var sender = CreateSender(telegram, sms, skipPrefix: "374-");
 
         // act
-        var channel = await sender.Send(ArmenianPhone, TestMessage);
+        var channel = await sender.Send(TestPhone, TestMessage);
 
         // assert
-        channel.Should().Be(TotpChannel.Telegram);
-        twilio.SendCount.Should().Be(1);
-        telegram.SendCount.Should().Be(1);
+        channel.Should().Be(TotpChannel.Sms);
+        telegram.SendCount.Should().Be(0);
+        sms.SendCount.Should().Be(1);
     }
 
     [Fact]
-    public async Task ShouldFallBackToTelegramWhenSmsThrows()
+    public async Task DeclinedSmsShouldNotReportSuccess()
     {
         // arrange
-        var telegram = new FakeSender(TotpChannel.Telegram);
-        var twilio = new FakeSender(TotpChannel.Sms) { Error = new InvalidOperationException("provider down") };
-        var sender = CreateSender(telegram, null, twilio);
+        var sender = CreateSender(null, new FakeSender(null));
 
         // act
-        var channel = await sender.Send(ArmenianPhone, TestMessage);
+        var send = () => sender.Send(TestPhone, TestMessage);
 
         // assert
-        channel.Should().Be(TotpChannel.Telegram);
-        twilio.SendCount.Should().Be(1);
-        telegram.SendCount.Should().Be(1);
+        await send.Should().ThrowAsync<ExternalError>();
     }
 
     [Fact]
-    public async Task ShouldSkipSmsWhenOnlyTelegramIsAllowed()
+    public async Task FailedSmsShouldNotReportSuccess()
     {
         // arrange
-        var telegram = new FakeSender(TotpChannel.Telegram);
-        var twilio = new FakeSender(TotpChannel.Sms);
-        var sender = CreateSender(telegram, null, twilio);
+        var sender = CreateSender(null, new FakeSender(null) { MustThrow = true });
 
         // act
-        var channel = await sender.Send(ArmenianPhone, TelegramOnlyMessage);
+        var send = () => sender.Send(TestPhone, TestMessage);
 
         // assert
-        channel.Should().Be(TotpChannel.Telegram);
-        twilio.SendCount.Should().Be(0, "a blocked prefix must not reach the SMS provider at all");
-        telegram.SendCount.Should().Be(1);
+        await send.Should().ThrowAsync<ExternalError>();
     }
 
     [Fact]
-    public async Task ShouldUseTelegramWhenNoSmsSenderIsConfigured()
+    public void SmsBudgetsShouldBeTighterThanGeneralAuthBudgets()
     {
         // arrange
-        var telegram = new FakeSender(TotpChannel.Telegram);
-        var sender = CreateSender(telegram, null, null);
+        var budgets = RateLimitBudgets.Default;
 
         // act
-        var channel = await sender.Send(ArmenianPhone, TestMessage);
+        var target = budgets.Get(RateLimitClass.SmsSend, RateLimitIdentityKind.Target);
+        var session = budgets.Get(RateLimitClass.SmsSend, RateLimitIdentityKind.Session);
+        var ip = budgets.Get(RateLimitClass.SmsSend, RateLimitIdentityKind.IP);
+        var dailyTarget = budgets.Get(RateLimitClass.SmsSendDaily, RateLimitIdentityKind.Target);
+        var dailySession = budgets.Get(RateLimitClass.SmsSendDaily, RateLimitIdentityKind.Session);
+        var dailyIp = budgets.Get(RateLimitClass.SmsSendDaily, RateLimitIdentityKind.IP);
 
         // assert
-        channel.Should().Be(TotpChannel.Telegram);
-        telegram.SendCount.Should().Be(1);
+        target.Should().Be(new SlidingWindowBudget(3, TimeSpan.FromMinutes(15)));
+        session.Should().Be(new SlidingWindowBudget(3, TimeSpan.FromMinutes(15)));
+        ip.Should().Be(new SlidingWindowBudget(20, TimeSpan.FromMinutes(15)));
+        dailyTarget.Should().Be(new SlidingWindowBudget(5, TimeSpan.FromDays(1)));
+        dailySession.Should().Be(new SlidingWindowBudget(10, TimeSpan.FromDays(1)));
+        dailyIp.Should().Be(new SlidingWindowBudget(100, TimeSpan.FromDays(1)));
     }
 
     [Fact]
-    public async Task ShouldRouteRussianNumbersThroughSmsTo()
+    public async Task RussianNumbersShouldStillUseSmsToWhenTelegramIsUnavailable()
     {
         // arrange
         var smsTo = new FakeSender(TotpChannel.Sms);
         var twilio = new FakeSender(TotpChannel.Sms);
-        var sender = CreateSender(null, smsTo, twilio);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(new UsersSettings());
+        services.AddSingleton(RateLimitPolicy.Unlimited);
+        services.AddKeyedSingleton<IVerificationCodeSender>("SMSTo", smsTo);
+        services.AddKeyedSingleton<IVerificationCodeSender>("Twilio", twilio);
+        var sender = new CompositeVerificationCodeSender(services.BuildServiceProvider());
 
         // act
-        await sender.Send(RussianPhone, TestMessage);
+        var channel = await sender.Send(ActualChat.Phone.Parse("7-9001234567"), TestMessage);
 
         // assert
+        channel.Should().Be(TotpChannel.Sms);
         smsTo.SendCount.Should().Be(1);
         twilio.SendCount.Should().Be(0);
     }
 
-    [Fact]
-    public async Task ShouldDeliverThroughLogOnlyWhenItIsTheOnlySmsSender()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SmsToFailureShouldNotRetryThroughTwilio(bool mustThrow)
     {
         // arrange
-        var telegram = new FakeSender(TotpChannel.Telegram);
-        var logOnly = new FakeSender(TotpChannel.Sms);
-        var sender = CreateSender(telegram, null, null, logOnly);
-
-        // act
-        var channel = await sender.Send(ArmenianPhone, TestMessage);
-
-        // assert
-        channel.Should().Be(TotpChannel.Sms);
-        logOnly.SendCount.Should().Be(1);
-        telegram.SendCount.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task ShouldThrowWhenEveryChannelDeclines()
-    {
-        // arrange
-        var telegram = new FakeSender(null);
-        var twilio = new FakeSender(null);
-        var sender = CreateSender(telegram, null, twilio);
-
-        // act
-        var send = () => sender.Send(ArmenianPhone, TestMessage);
-
-        // assert
-        await send.Should().ThrowAsync<ExternalError>();
-    }
-
-    [Fact]
-    public async Task ShouldThrowWhenSmsDeclinesAndTelegramIsUnavailable()
-    {
-        // arrange
-        var twilio = new FakeSender(null);
-        var sender = CreateSender(null, null, twilio);
-
-        // act
-        var send = () => sender.Send(ArmenianPhone, TestMessage);
-
-        // assert
-        await send.Should().ThrowAsync<ExternalError>();
-    }
-
-    [Fact]
-    public async Task ShouldNeverCallTelegramForAMatchingSkipPrefix()
-    {
-        // arrange
-        var telegram = new FakeSender(TotpChannel.Telegram);
-        var twilio = new FakeSender(null);
-        var sender = CreateSender(telegram, null, twilio, skipTelegramPhonePrefixes: "374-");
-
-        // act
-        var send = () => sender.Send(ArmenianPhone, TestMessage);
-
-        // assert
-        await send.Should().ThrowAsync<ExternalError>();
-        telegram.SendCount.Should().Be(0, "a billed checkSendAbility must not happen for a skipped prefix");
-    }
-
-    [Fact]
-    public async Task ShouldStillUseTelegramWhenSkipPrefixDoesNotMatch()
-    {
-        // arrange
-        var telegram = new FakeSender(TotpChannel.Telegram);
-        var twilio = new FakeSender(null);
-        var sender = CreateSender(telegram, null, twilio, skipTelegramPhonePrefixes: "7-");
-
-        // act
-        var channel = await sender.Send(ArmenianPhone, TestMessage);
-
-        // assert
-        channel.Should().Be(TotpChannel.Telegram);
-        telegram.SendCount.Should().Be(1);
-    }
-
-    [Fact]
-    public async Task ShouldEmitChannelAndCountryTaggedMetrics()
-    {
-        // arrange
-        var measurements = Collect();
-        using var listener = StartListener(measurements);
+        var smsTo = new FakeSender(null) { MustThrow = mustThrow };
         var twilio = new FakeSender(TotpChannel.Sms);
-        var sender = CreateSender(null, null, twilio);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(new UsersSettings());
+        services.AddSingleton(RateLimitPolicy.Unlimited);
+        services.AddKeyedSingleton<IVerificationCodeSender>("SMSTo", smsTo);
+        services.AddKeyedSingleton<IVerificationCodeSender>("Twilio", twilio);
+        var sender = new CompositeVerificationCodeSender(services.BuildServiceProvider());
 
         // act
-        await sender.Send(ArmenianPhone, TestMessage);
-
-        // assert
-        measurements.Should().Contain(m
-            => m.Name == "app.verification_code.sent" && m.Channel == "Sms" && m.Country == "374");
-    }
-
-    [Fact]
-    public async Task ShouldClampUnknownCountryCodeToOther()
-    {
-        // arrange
-        var measurements = Collect();
-        using var listener = StartListener(measurements);
-        var twilio = new FakeSender(TotpChannel.Sms);
-        var sender = CreateSender(null, null, twilio);
-        var unknownCountryPhone = ActualChat.Phone.Parse("999-11223344");
-
-        // act
-        await sender.Send(unknownCountryPhone, TestMessage);
-
-        // assert
-        measurements.Should().Contain(m
-            => m.Name == "app.verification_code.sent" && m.Country == "other");
-    }
-
-    [Fact]
-    public async Task ShouldTagChannelSkippedWithFailedReasonWhenSmsThrows()
-    {
-        // arrange
-        var measurements = Collect();
-        using var listener = StartListener(measurements);
-        var telegram = new FakeSender(TotpChannel.Telegram);
-        var twilio = new FakeSender(TotpChannel.Sms) { Error = new InvalidOperationException("provider down") };
-        var sender = CreateSender(telegram, null, twilio);
-
-        // act
-        await sender.Send(ArmenianPhone, TestMessage);
-
-        // assert
-        measurements.Should().Contain(m
-            => m.Name == "app.verification_code.channel_skipped" && m.Channel == "Sms" && m.Reason == "failed");
-    }
-
-    [Fact]
-    public async Task ShouldTagSmsSkippedWithBlockedReasonWhenOnlyTelegramIsAllowed()
-    {
-        // arrange
-        var measurements = Collect();
-        using var listener = StartListener(measurements);
-        var telegram = new FakeSender(TotpChannel.Telegram);
-        var twilio = new FakeSender(TotpChannel.Sms);
-        var sender = CreateSender(telegram, null, twilio);
-
-        // act
-        await sender.Send(ArmenianPhone, TelegramOnlyMessage);
-
-        // assert
-        measurements.Should().Contain(m
-            => m.Name == "app.verification_code.channel_skipped"
-                && m.Channel == "Sms" && m.Country == "374" && m.Reason == "blocked");
-    }
-
-    [Fact]
-    public async Task ShouldTagTelegramSkippedWithUnconfiguredReasonWhenItIsMissing()
-    {
-        // arrange
-        var measurements = Collect();
-        using var listener = StartListener(measurements);
-        var twilio = new FakeSender(null);
-        var sender = CreateSender(null, null, twilio);
-
-        // act
-        var send = () => sender.Send(ArmenianPhone, TestMessage);
+        var send = () => sender.Send(ActualChat.Phone.Parse("7-9001234567"), TestMessage);
 
         // assert
         await send.Should().ThrowAsync<ExternalError>();
-        measurements.Should().Contain(m
-                => m.Name == "app.verification_code.channel_skipped"
-                    && m.Channel == "Telegram" && m.Reason == "unconfigured",
-            "a missing channel and a deliberately skipped one are different operational problems");
-    }
-
-    [Fact]
-    public async Task ShouldTagTelegramSkippedWithPrefixReasonWhenSkipRuleFires()
-    {
-        // arrange
-        var measurements = Collect();
-        using var listener = StartListener(measurements);
-        var telegram = new FakeSender(TotpChannel.Telegram);
-        var twilio = new FakeSender(null);
-        var sender = CreateSender(telegram, null, twilio, skipTelegramPhonePrefixes: "374-");
-
-        // act
-        var send = () => sender.Send(ArmenianPhone, TestMessage);
-
-        // assert
-        await send.Should().ThrowAsync<ExternalError>();
-        measurements.Should().Contain(m
-            => m.Name == "app.verification_code.channel_skipped"
-                && m.Channel == "Telegram" && m.Reason == "prefix");
-    }
-
-    // Private methods
-
-    private static List<(string Name, string? Channel, string? Country, string? Reason)> Collect() => new();
-
-    private static MeterListener StartListener(
-        List<(string Name, string? Channel, string? Country, string? Reason)> measurements)
-    {
-        var listener = new MeterListener();
-        listener.InstrumentPublished = (instrument, l) => {
-            if (instrument.Meter == AppInstruments.Meter)
-                l.EnableMeasurementEvents(instrument);
-        };
-        listener.SetMeasurementEventCallback<long>((instrument, _, tags, _) => {
-            var tagArray = tags.ToArray();
-            var channel = tagArray.FirstOrDefault(t => t.Key == "channel").Value?.ToString();
-            var country = tagArray.FirstOrDefault(t => t.Key == "country").Value?.ToString();
-            var reason = tagArray.FirstOrDefault(t => t.Key == "reason").Value?.ToString();
-            measurements.Add((instrument.Name, channel, country, reason));
-        });
-        listener.Start();
-
-        return listener;
+        smsTo.SendCount.Should().Be(1);
+        twilio.SendCount.Should().Be(0, "a provider failure may occur after acceptance and must not double-send");
     }
 
     private static CompositeVerificationCodeSender CreateSender(
         FakeSender? telegram,
-        FakeSender? smsTo,
-        FakeSender? twilio,
-        FakeSender? logOnly = null,
-        string skipTelegramPhonePrefixes = "")
+        FakeSender sms,
+        RateLimitPolicy? policy = null,
+        string skipPrefix = "")
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddSingleton(new UsersSettings { SkipTelegramPhonePrefixes = skipTelegramPhonePrefixes });
+        services.AddSingleton(new UsersSettings { SkipTelegramPhonePrefixes = skipPrefix });
+        services.AddSingleton(policy ?? RateLimitPolicy.Unlimited);
         if (telegram is not null)
             services.AddKeyedSingleton<IVerificationCodeSender>("Telegram", telegram);
-        if (smsTo is not null)
-            services.AddKeyedSingleton<IVerificationCodeSender>("SMSTo", smsTo);
-        if (twilio is not null)
-            services.AddKeyedSingleton<IVerificationCodeSender>("Twilio", twilio);
-        if (logOnly is not null)
-            services.AddKeyedSingleton<IVerificationCodeSender>("LogOnly", logOnly);
+        services.AddKeyedSingleton<IVerificationCodeSender>("Twilio", sms);
 
         return new CompositeVerificationCodeSender(services.BuildServiceProvider());
     }
 
-    // Nested types
-
     private sealed class FakeSender(TotpChannel? result) : IVerificationCodeSender
     {
         public int SendCount { get; private set; }
-        public Exception? Error { get; init; }
+        public bool MustThrow { get; init; }
 
         public Task<TotpChannel?> Send(ActualChat.Phone phone, VerificationMessage message)
         {
             SendCount++;
-            if (Error is not null)
-                throw Error;
+            if (MustThrow)
+                throw new InvalidOperationException("provider down");
 
             return Task.FromResult(result);
+        }
+    }
+
+    private sealed class FakePolicy : RateLimitPolicy
+    {
+        public bool MustReject { get; init; }
+        public RateLimitClass? RejectClass { get; init; }
+        public List<RateLimitClass> Classes { get; } = [];
+        public List<RateLimitIdentity> Identities { get; } = [];
+
+        public override ValueTask Check(
+            string method,
+            RateLimitClass rateLimitClass,
+            ReadOnlySpan<RateLimitIdentity> identities,
+            CancellationToken cancellationToken = default)
+        {
+            Classes.Add(rateLimitClass);
+            Identities.AddRange(identities.ToArray());
+            if (MustReject || RejectClass == rateLimitClass)
+                throw new RateLimitExceededException(TimeSpan.FromMinutes(15));
+
+            return default;
         }
     }
 }

@@ -13,6 +13,7 @@ public static class AppMeters
     public static readonly Counter<long> UITextCatalogMissCount;
     public static readonly Counter<long> VerificationCodeSent;
     public static readonly Counter<long> VerificationCodeChannelSkipped;
+    public static readonly Counter<long> VerificationCodeDeliveryStatus;
     public static readonly Counter<long> RpcEndpointConnectionCount;
     public static readonly Histogram<double> RpcEndpointProbeDuration;
 
@@ -74,11 +75,15 @@ public static class AppMeters
             null,
             "UI strings with no catalog entry, which fall back to AI translation; tags: language, kind");
         VerificationCodeSent = m.CreateCounter<long>(
-            "app.verification_code.sent", null, "Verification codes sent, tagged with the delivery channel");
+            "app.verification_code.sent", null,
+            "Verification codes accepted by a provider; tags: channel, country calling code, provider");
         VerificationCodeChannelSkipped = m.CreateCounter<long>(
             "app.verification_code.channel_skipped", null,
-            "Channels that didn't deliver a verification code; "
-            + "reason tag: blocked | unconfigured | prefix | declined | failed");
+            "Channels that didn't accept a verification code; tags: channel, country, provider, reason; "
+            + "reason: blocked | unconfigured | prefix | declined | failed | rate_limited");
+        VerificationCodeDeliveryStatus = m.CreateCounter<long>(
+            "app.verification_code.delivery_status", null,
+            "New stored delivery status transitions; tags: provider, channel, status");
         RpcEndpointConnectionCount = m.CreateCounter<long>(
             "app.rpc.endpoint.connection.count", null,
             "Client connections by the endpoint they arrived through; "

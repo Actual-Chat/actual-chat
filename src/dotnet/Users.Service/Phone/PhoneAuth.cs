@@ -128,8 +128,11 @@ public class PhoneAuth : IPhoneAuth
 
         var onlyChannel = IsSmsBlocked(phone) ? TotpChannel.Telegram : (TotpChannel?)null;
         var text = $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.";
+        var message = new VerificationMessage(sTotp, text, onlyChannel) {
+            Source = new RateLimitSource(session, RpcInboundContext.Current.GetRemoteIPAddress()),
+        };
         var sentChannel = await CodeSender
-            .Send(phone, new VerificationMessage(sTotp, text, onlyChannel))
+            .Send(phone, message)
             .ConfigureAwait(false);
         if (sentChannel is { } sent)
             await SetLastChannel(phone, sent, cancellationToken).ConfigureAwait(false);
