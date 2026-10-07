@@ -253,6 +253,7 @@ export class Recorder {
             encode({
                 controller: ladderController,
                 createEncoder: config.createEncoder,
+                abortSignal,
             }),
             traceDrops<EncodedBundle>(FrameDropStage.SenderEncode),
             stampEncoderDescription(),
