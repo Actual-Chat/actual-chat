@@ -220,10 +220,6 @@ jobs:
         run: |
           dotnet build ActualChat.CI.slnf --nologo --no-restore --configuration Debug
 
-      - name: Install Playwright Chromium
-        if: ${{ inputs.build-target == 'e2e-tests' }}
-        run: npx playwright install chromium --with-deps
-
       - name: Configure E2E server URL
         # CI has no nginx/cert/DNS for *.local.voxt.ai — override BaseUri so both the
         # managed server and test workers talk to Kestrel on localhost.

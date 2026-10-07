@@ -273,10 +273,11 @@ internal static class Program
         Target(Targets.NightlyTests,  () => RunTests("FullyQualifiedName~IntegrationTests&Category~Nightly", 30 * 60));
 
         Target(Targets.E2eTests, DependsOn(Targets.Build), async () => {
-            // Playwright's Chromium binary isn't tracked in node_modules; install it on demand.
-            // Safe to call repeatedly — no-op when the right version is already cached.
+            // Playwright's Chromium isn't in node_modules; a no-op when the right version is cached.
+            // On CI it also installs the browser's system libraries, which takes sudo apt.
+            var withDeps = Utils.IsGitHubActions() ? " --with-deps" : "";
             await Cli.Wrap(Utils.FindNpmExe())
-                .WithArguments("exec -- playwright install chromium")
+                .WithArguments("exec -- playwright install chromium" + withDeps)
                 .ToConsole(Blue("playwright: "))
                 .ExecuteAsync(cancellationToken).Task.ConfigureAwait(false);
 

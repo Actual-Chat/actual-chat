@@ -5,7 +5,7 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 
 export const TEST_EMAIL = 'test-claude-agent@actual.chat';
 export const TEST_EMAIL_2 = 'test-claude-agent-2@actual.chat';
@@ -121,34 +121,40 @@ function getCdpHosts(): string[] {
  *  AC_E2E_HEADED=1 launches a visible Chromium instead: the headless shell has no working WebGL,
  *  so without a CDP Chrome the map tests can't paint a map or place a marker. */
 async function launchHeadless(options: ConnectBrowserOptions): Promise<BrowserConnection> {
+    const hostResolverRules = process.env.AC_E2E_HOST_RESOLVER_RULES;
+    const isHeaded = process.env.AC_E2E_HEADED === '1';
+    const launch = () => chromium.launch({
+        headless: !isHeaded,
+        args: [
+            '--no-sandbox', '--disable-setuid-sandbox',
+            // A grantable fake mic, so tests can start recording (call activity)
+            '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
+            ...(options.fakeAudioFile ? [`--use-file-for-fake-audio-capture=${options.fakeAudioFile}`] : []),
+            ...(hostResolverRules ? [`--host-resolver-rules=${hostResolverRules}`] : []),
+        ],
+    });
+    let browser: Browser;
     try {
-        const hostResolverRules = process.env.AC_E2E_HOST_RESOLVER_RULES;
-        const isHeaded = process.env.AC_E2E_HEADED === '1';
-        const browser = await chromium.launch({
-            headless: !isHeaded,
-            args: [
-                '--no-sandbox', '--disable-setuid-sandbox',
-                // A grantable fake mic, so tests can start recording (call activity)
-                '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
-                ...(options.fakeAudioFile ? [`--use-file-for-fake-audio-capture=${options.fakeAudioFile}`] : []),
-                ...(hostResolverRules ? [`--host-resolver-rules=${hostResolverRules}`] : []),
-            ],
-        });
-        traceNavigationHangs(browser, true);
-        // Pinned locale: the UI follows the browser's when the account has no language set,
-        // and a developer machine's own locale would then break every English selector.
-        const context = await browser.newContext({ ignoreHTTPSErrors: true, locale: 'en-US' });
-        console.log(isHeaded ? 'Launched headed Chromium' : 'Launched headless Chromium');
-        return { browser, context, ownsBrowser: true };
+        browser = await launch();
     } catch (e: unknown) {
-        if (e instanceof Error
-            && (e.message.includes('Executable doesn\'t exist') || e.message.includes('browserType.launch'))) {
-            throw new Error(
-                'Chromium is not installed. Run: npm run test:e2e:install'
-            );
-        }
-        throw e;
+        if (!(e instanceof Error && e.message.includes('Executable doesn\'t exist')))
+            throw e;
+
+        // Each Playwright version runs only its own Chromium build, so the first launch after an update fetches it
+        console.log('Chromium for this Playwright version is missing, installing it');
+        const playwrightCli = path.resolve(process.cwd(), 'node_modules/playwright/cli.js');
+        const install = spawnSync(process.execPath, [playwrightCli, 'install', 'chromium'], { stdio: 'inherit' });
+        if (install.status !== 0)
+            throw new Error(`Chromium install failed with exit code ${install.status}. Run: npm run test:e2e:install`);
+
+        browser = await launch();
     }
+    traceNavigationHangs(browser, true);
+    // Pinned locale: the UI follows the browser's when the account has no language set,
+    // and a developer machine's own locale would then break every English selector.
+    const context = await browser.newContext({ ignoreHTTPSErrors: true, locale: 'en-US' });
+    console.log(isHeaded ? 'Launched headed Chromium' : 'Launched headless Chromium');
+    return { browser, context, ownsBrowser: true };
 }
 
 let navigationHangCount = 0;
