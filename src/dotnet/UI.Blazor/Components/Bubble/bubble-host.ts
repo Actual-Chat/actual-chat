@@ -1,7 +1,7 @@
 import { arrow, computePosition, flip, offset, Placement, shift, autoUpdate } from '@floating-ui/dom';
 import { Subject, debounceTime, startWith, takeUntil } from 'rxjs';
 import { ScreenOrientation } from 'orientation';
-import { getSafeAreaPadding } from 'safe-area';
+import { SafeAreas } from 'safe-area';
 import { getLogs } from 'logging';
 
 const bubbleViewportGap = 5;
@@ -261,7 +261,7 @@ export class BubbleHost {
                 middleware: [
                     offset(6),
                     flip({ fallbackAxisSideDirection: 'end' }),
-                    shift({ padding: getSafeAreaPadding(bubbleViewportGap) }),
+                    shift({ padding: SafeAreas.getPadding(bubbleViewportGap) }),
                     arrow({ element: arrowElement }),
                 ],
             });

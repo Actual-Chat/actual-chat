@@ -170,29 +170,7 @@ body.device-ios .safe-area-bottom-overlay::before {
     backdrop-filter: none;
 }
 
-/* Uncomment to force safe areas before JS loads (skeleton testing, etc.) */
-/*
-body {
-    --safe-area-top: 34px;
-    --safe-area-bottom: 34px;
-    --safe-area-left: 34px;
-    --safe-area-right: 34px;
-}
-*/
-
-/* Debug: debugUI.showSafeAreas(true|false|null) */
-body.show-safe-areas {
-    --safe-area-top: 34px;
-    --safe-area-bottom: 34px;
-    --safe-area-left: 34px;
-    --safe-area-right: 34px;
-}
-body.hide-safe-areas {
-    --safe-area-top: 0px;
-    --safe-area-bottom: 0px;
-    --safe-area-left: 0px;
-    --safe-area-right: 0px;
-}
+/* Debug overrides of these variables come from debugUI.showSafeAreas, which injects a stylesheet of its own */
 
 /* Styled inputs */
 

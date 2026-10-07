@@ -4,8 +4,8 @@
     @apply w-full h-full;
     @apply overflow-hidden;
     @apply bg-01;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: var(--safe-area-top);
+    padding-bottom: var(--safe-area-bottom);
 }
 /* The in-call toolbar opens modals and menus, so they must land on top; a ring still covers them. */
 .full-screen-call-view.in-call {

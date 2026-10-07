@@ -302,6 +302,10 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `needsPreviewConversion` (function) - True for formats a Chromium WebView cannot paint.
 
 
+- `SafeAreas` (class) - Safe-area insets and their desktop emulation: `Presets` (`uniform`, `none`, `iphone15`, `iphone15Landscape`, `iphoneSE`, `pixel8`), `getPadding` (the `--safe-area-*` insets plus a gap, for floating elements), `resolvePreset`, `getProblems` (why a box is under an inset or clipped by a corner), `getEmulationCss`, `emulate` (apply + persist; `null` clears), `restoreEmulation` (on load), `activeEmulation`, `findViolations` (on-screen interactive elements a preset would hide or clip).
+- `SafeAreaPreset` (interface) - A phone's viewport, safe-area insets and display corner radius in CSS px.
+- `SafeAreaInsets` / `Viewport` / `Box` / `SafeAreaViolation` (interface) - The shapes `SafeAreas` works with.
+
 ## Worklets (`src/nodejs/src/worklets`)
 
 - `WarmUpAudioWorkletProcessor` (class) - Audio worklet for warming up pipeline.

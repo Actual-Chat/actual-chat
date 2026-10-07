@@ -11,7 +11,7 @@ import {
     VirtualElement,
 } from '@floating-ui/dom';
 import { Disposable } from 'disposable';
-import { getSafeAreaPadding } from 'safe-area';
+import { SafeAreas } from 'safe-area';
 import { DocumentEvents, stopEvent } from 'event-handling';
 import { getOrInheritData, getSelectionOwner } from 'dom-helpers';
 import { delayAsync } from 'actuallab-core';
@@ -326,7 +326,7 @@ export class MenuHost implements Disposable {
         middleware.push(flip());
         // crossAxis: flip() alone leaves a too-tall menu at a negative top when neither side fits.
         middleware.push(shift({
-            padding: getSafeAreaPadding(menuViewportGap),
+            padding: SafeAreas.getPadding(menuViewportGap),
             crossAxis: true,
             limiter: limitShift(),
         }));
