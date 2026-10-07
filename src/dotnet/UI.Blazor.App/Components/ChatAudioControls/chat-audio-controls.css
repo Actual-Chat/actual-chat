@@ -7,11 +7,6 @@ body.narrow .chat-activity-panel .chat-audio-controls {
 .chat-audio-controls .btn-h i {
     @apply text-2xl;
 }
-/* phone-off glyph is a fuller square than the slim mic at the same font-size;
-   size it down so the two read as one (0.88 × text-2xl). */
-.chat-audio-controls .c-hangup i {
-    font-size: 1.32rem;
-}
 /* Red controls rest at danger-light and deepen to danger on hover/press;
    without these the base .btn-h:hover rule would repaint them gray. */
 .chat-audio-controls .c-mic,
