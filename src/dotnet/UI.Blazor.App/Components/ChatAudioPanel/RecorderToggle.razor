@@ -52,6 +52,7 @@
      data-render-script-tooltip-auto-show="@autoShowText">
     <ButtonRound
         Class="@recBtnCls"
+        IsDisabled="@IsDisabled"
         Click="@OnClick"
         PointerDownPreventDefault="true">
 
@@ -111,6 +112,7 @@
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter] public bool Compact { get; set; }
+    [Parameter] public bool IsDisabled { get; set; }
     private ChatId? ChatId => (ChatId?)Chat.Id;
 
     protected override void OnInitialized() {

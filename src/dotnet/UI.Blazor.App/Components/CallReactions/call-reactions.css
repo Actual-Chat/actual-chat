@@ -37,7 +37,7 @@
     text-overflow: ellipsis;
     background: rgba(0, 0, 0, 0.5);
 }
-.video-panel.collapsed .call-reactions-overlay .c-name {
+.call-screen.collapsed .call-reactions-overlay .c-name {
     @apply hidden;
 }
 @keyframes callReactionFloat {

@@ -27,6 +27,21 @@ public partial class CallScreensUI
         return new CallView(call, kind, false);
     }
 
+    internal static CallScreenState? DecideScreen(
+        CallView view, ChatId? watchingChatId, VisualActivityPanelMode watchingMode)
+    {
+        // A call's own full-screen view comes first, with or without video. Otherwise the screen is
+        // the watched chat's video, in whatever mode its panel is.
+        if (view is { Kind: CallViewKind.FullScreen, Call: { } call })
+            return new CallScreenState(
+                call.ChatId, call, VisualActivityPanelMode.Expanded, watchingChatId == call.ChatId, view.IsOverLock);
+        if (watchingChatId is not { } chatId)
+            return null;
+
+        var activeCall = view.Call is { Phase: CallPhase.Active } c && c.ChatId == chatId ? c : null;
+        return new CallScreenState(chatId, activeCall, watchingMode, true, false);
+    }
+
     internal static bool IsOverLockFlagStale(
         ChatId? overLockChatId, ChatId ringChatId, bool isSameRing, ChatId? heldChatId)
         => isSameRing && overLockChatId == ringChatId && heldChatId != ringChatId;

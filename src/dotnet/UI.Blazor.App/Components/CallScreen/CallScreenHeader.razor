@@ -1,0 +1,208 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
+@using ActualChat.UI.Blazor.App.Components.VideoPanel
+@inherits ComputedStateComponent<AppUIHub, CallScreenHeader.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.None))
+        return;
+
+    var isExpanded = m.Mode == VisualActivityPanelMode.Expanded;
+    var isIsland = m.Mode == VisualActivityPanelMode.Collapsed;
+}
+
+<div class="call-screen-toolbar call-screen-header">
+    <div class="header-row">
+        <div class="c-left">
+            @if (isExpanded) {
+                <HeaderButton Class="btn-glass btn-expand" Click="@OnCollapse">
+                    <i class="icon-collapse text-lg"></i>
+                </HeaderButton>
+                @if (m.HasVideo) {
+                    <HeaderButton
+                        Class="@("btn-glass btn-layout-toggle " + (m.IsEqualLayout ? "on" : ""))"
+                        StopPropagation="true"
+                        PreventDefault="true"
+                        Click="@(() => ChatVideoUI.SetVideoPanelEqualLayout(!m.IsEqualLayout))">
+                        <i class="icon-grid text-lg"></i>
+                    </HeaderButton>
+                }
+            } else if (!isIsland) {
+                <HeaderButton Class="btn-glass btn-expand" Click="@OnExpandClick">
+                    <i class="icon-expand text-lg"></i>
+                </HeaderButton>
+            }
+        </div>
+
+        @if (isExpanded && m.HasVideo) {
+            <div class="c-center">
+                <div class="c-chat-title">@Chat.Title</div>
+                <div class="c-member-count">
+                    @if (m.MemberCount > 0) {
+                        <span>@L.Chat_Members(m.MemberCount, m.MemberCount)</span>
+                    }
+                    @if (m.JoinedAt is { } joinedAt) {
+                        @if (m.MemberCount > 0) {
+                            <span>·</span>
+                        }
+                        <LiveDuration StartedAt="@joinedAt"/>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="c-right">
+            @if (!isIsland) {
+                <HeaderButton
+                    Class="btn-glass btn-video-menu"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    data-menu="@VideoMenuRef"
+                    data-menu-trigger="Primary">
+                    <i class="icon-more-vertical text-lg"></i>
+                </HeaderButton>
+            }
+            @if (isExpanded) {
+                <HeaderButton
+                    Class="btn-glass btn-hang-up talking"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@OnHangUpClick">
+                    <i class="icon-phone-off"></i>
+                </HeaderButton>
+            } else if (isIsland) {
+                <HeaderButton
+                    Class="btn-glass btn-expand"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@OnExpandClick">
+                    <i class="icon-expand text-lg"></i>
+                </HeaderButton>
+            }
+        </div>
+    </div>
+
+    @* Pin toggle: fixes the focused (big) tile on a chosen author instead of auto-following the
+       active speaker. Only in the default (non-equal) layout with a remote tile. *@
+    @if (m.HasRemoteVideo && !m.IsEqualLayout && !isIsland) {
+        <div class="header-row header-row-pin">
+            <HeaderButton
+                Class="@("btn-glass btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
+                StopPropagation="true"
+                PreventDefault="true"
+                Click="@OnTogglePinClick">
+                <i class="icon-pin text-lg"></i>
+            </HeaderButton>
+            @* Speaker view hides the speaker's tile label (the name is in the header), so its hand moves here too *@
+            @if (isExpanded && m.IsFocusedHandRaised) {
+                <div class="btn-glass btn-h btn-hand on">
+                    <i class="icon-hand text-lg"></i>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private CallScreensUI CallScreensUI => Hub.CallScreensUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private VideoPanelLayoutCalculator LayoutCalculator
+        => field ??= Hub.Services.GetRequiredService<VideoPanelLayoutCalculator>();
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter, EditorRequired] public string VideoMenuRef { get; set; } = "";
+    // Collapsing is the screen's own business: Back and Escape do the same
+    [Parameter] public EventCallback OnCollapse { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        // The screen is the one on display, whichever chat it shows
+        var screen = await CallScreensUI.GetScreen(cancellationToken).ConfigureAwait(false);
+        if (screen is null || screen.ChatId != chatId)
+            return Model.None;
+
+        var phase = screen.Call?.Phase;
+        var joinedAt = await CallScreensUI.GetCallJoinedAt(chatId, cancellationToken).ConfigureAwait(false);
+        var isEqualLayout = await CallScreensUI.IsEqualLayout(cancellationToken).ConfigureAwait(false);
+        var m = new Model {
+            Mode = screen.Mode,
+            Phase = phase,
+            JoinedAt = joinedAt,
+            HasVideo = screen.HasVideo,
+            IsEqualLayout = isEqualLayout,
+        };
+        if (!screen.HasVideo)
+            return m;
+
+        var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+        if (activeStreams.Count == 0)
+            return m;
+
+        var memberCount = await ChatVideoUI.GetVideoStreamMemberCount(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+        var layout = await LayoutCalculator.GetLayout(chatId, cancellationToken).ConfigureAwait(false);
+        var pinnedAuthorId = await LayoutCalculator.GetPinnedAuthor(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        var focusedAuthorId = layout.GetFocusedAuthorId(remoteStreams);
+        bool isFocusedHandRaised;
+        if (focusedAuthorId is not null) {
+            var raisedHandAuthorIds = await LiveSessionUI.ListRaisedHandAuthorIds(chatId, cancellationToken)
+                .ConfigureAwait(false);
+            isFocusedHandRaised = raisedHandAuthorIds.Contains(focusedAuthorId);
+        }
+        else
+            isFocusedHandRaised = layout.IsOwnCameraFocused
+                && await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
+        return m with {
+            HasRemoteVideo = remoteStreams.Length > 0,
+            MemberCount = memberCount,
+            FocusedAuthorId = focusedAuthorId,
+            IsPinned = pinnedAuthorId is not null,
+            IsFocusedHandRaised = isFocusedHandRaised,
+        };
+    }
+
+    // Private methods
+
+    private void OnExpandClick()
+        => CallScreensUI.Expand(Chat.Id);
+
+    private Task OnHangUpClick()
+        => CallScreensUI.HangUp(Chat.Id);
+
+    private void OnTogglePinClick() {
+        var m = State.Value;
+        if (m.IsPinned)
+            LayoutCalculator.SetPinnedAuthor(null);
+        else if (m.FocusedAuthorId is { } focusedAuthorId)
+            LayoutCalculator.SetPinnedAuthor(focusedAuthorId);
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+        public VisualActivityPanelMode Mode { get; init; }
+        // Null for the video of a chat nobody called in
+        public CallPhase? Phase { get; init; }
+        public Moment? JoinedAt { get; init; }
+        public bool HasVideo { get; init; }
+        public bool HasRemoteVideo { get; init; }
+        public int MemberCount { get; init; }
+        public bool IsEqualLayout { get; init; }
+        // Author shown in the big tile right now - what the pin button pins when toggled on
+        public AuthorId? FocusedAuthorId { get; init; }
+        public bool IsPinned { get; init; }
+        public bool IsFocusedHandRaised { get; init; }
+    }
+}

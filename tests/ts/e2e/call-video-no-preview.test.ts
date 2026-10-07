@@ -2,11 +2,10 @@
  * E2E test: turning the camera on mid-call starts video at once, without the join preview (#4932).
  *
  * Two users are on a call, and the caller turns the camera on:
- *   - narrow (phone-sized viewport): from the full-screen call screen, which only the narrow
- *     layout has. Video must open in the expanded video panel, and the call screen must stay up
- *     until that panel covers the screen - the chat never shows in between.
+ *   - narrow (phone-sized viewport): from the call screen. Video must show on that same screen -
+ *     it never goes away, so the chat never shows in between.
  *   - wide: from the chat's audio panel, where an active call lives on a wide screen. Video must
- *     open in the expanded video panel there too.
+ *     open the call screen there.
  * In both the join preview must not show.
  *
  * Outside a call the preview stays (#5016): with only the mic open in a chat, the camera button
@@ -27,7 +26,8 @@ import * as path from 'path';
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { TEST_EMAIL, connectBrowser, type BrowserConnection } from './helpers';
 import {
-    CALL_SCREEN, JOIN_PREVIEW, NARROW, OWN_VIDEO, REMOTE_VIDEO, WIDE, hangUpIfAny, isShown, isVideoCoveringScreen,
+    CALL_CONTROLS, CALL_SCREEN, JOIN_PREVIEW, NARROW, OWN_VIDEO, REMOTE_VIDEO, WIDE, hangUpIfAny, isShown,
+    isVideoCoveringScreen,
     newUserPage, signInBoth, signOutBoth, startPeerCall,
     type Users,
 } from './peer-call';
@@ -88,7 +88,7 @@ describe('camera on with only the mic open', () => {
             // assert - the camera goes live, in the chat rather than full-screen
             await page.locator(OWN_VIDEO).first().waitFor({ state: 'visible', timeout: 20_000 });
             await page.waitForTimeout(1_500);
-            expect(await isShown(page, '.video-panel.expanded'), 'video outside a call opens inline').toBe(false);
+            expect(await isShown(page, '.call-screen.expanded'), 'video outside a call opens inline').toBe(false);
             await page.screenshot({ path: shot(`${layout}-mic-3-video-inline`) });
         }
         finally {
@@ -121,32 +121,29 @@ describe('camera on during a call, narrow screen', () => {
         const { caller, callee } = users;
         await startPeerCall(caller, callee);
         for (const page of [caller, callee])
-            await page.locator(`${CALL_SCREEN} .c-toolbar`).first().waitFor({ state: 'visible', timeout: 30_000 });
+            await page.locator(CALL_CONTROLS).first().waitFor({ state: 'visible', timeout: 30_000 });
         await caller.screenshot({ path: shot('narrow-1-caller-call-screen') });
 
         // act - the caller turns the camera on from the call screen
         let hasSeenJoinPreview = false;
         let hasSeenChat = false;
-        await caller.locator(`${CALL_SCREEN} .c-toolbar .btn-video-toggle`).first().click();
+        await caller.locator(`${CALL_CONTROLS} .btn-video-toggle`).first().click();
         await expect.poll(async () => {
             hasSeenJoinPreview ||= await isShown(caller, JOIN_PREVIEW);
-            const isCovered = await isVideoCoveringScreen(caller);
-            // Neither the call screen nor the video covering the screen means the chat showed in between
-            hasSeenChat ||= !isCovered && !await isShown(caller, CALL_SCREEN);
-            return isCovered;
+            hasSeenChat ||= !await isShown(caller, CALL_SCREEN);
+            return isVideoCoveringScreen(caller);
         }, { timeout: 30_000, interval: 50 }).toBe(true);
 
-        // assert - the camera is on, full-screen, with nothing asked or shown in between
+        // assert - the camera is on, on the same screen, with nothing asked or shown in between
         expect(hasSeenJoinPreview, 'mid-call the camera starts without the join preview').toBe(false);
-        expect(hasSeenChat, 'the call screen stays up until the video covers the screen').toBe(false);
-        await caller.locator(CALL_SCREEN).first().waitFor({ state: 'hidden', timeout: 10_000 });
-        await caller.locator('.video-panel.expanded .video-streaming-preview').first()
+        expect(hasSeenChat, 'the call screen stays up while its video starts').toBe(false);
+        await caller.locator('.call-screen.expanded .video-streaming-preview').first()
             .waitFor({ state: 'visible', timeout: 20_000 });
         await caller.waitForTimeout(1_500);
         await caller.screenshot({ path: shot('narrow-2-caller-video-full-screen') });
 
-        // assert - the other side gets the video, full-screen as well (see call-screen-follows-video.test.ts)
-        await callee.locator('.video-panel.expanded .remote-video-container').first()
+        // assert - the other side gets the video on its call screen as well (see call-screen-video.test.ts)
+        await callee.locator('.call-screen.expanded .remote-video-container').first()
             .waitFor({ state: 'visible', timeout: 30_000 });
         await callee.waitForTimeout(1_500);
         await callee.screenshot({ path: shot('narrow-3-callee-video-full-screen') });
@@ -177,6 +174,8 @@ describe('camera on during a call, wide screen', () => {
         await caller.locator('.chat-audio-panel .recorder-wrapper.record-on:not(.applying-changes)').first()
             .waitFor({ state: 'attached', timeout: 30_000 });
         await videoToggle.waitFor({ state: 'visible', timeout: 30_000 });
+        await caller.locator('.chat-activity-panel .c-call-timer').first()
+            .waitFor({ state: 'visible', timeout: 10_000 });
         await caller.screenshot({ path: shot('wide-1-caller-in-call') });
 
         // act - the caller turns the camera on from the chat's audio panel
@@ -189,7 +188,7 @@ describe('camera on during a call, wide screen', () => {
 
         // assert - the camera is on with nothing asked, and a call's video opens full-screen
         expect(hasSeenJoinPreview, 'mid-call the camera starts without the join preview').toBe(false);
-        await caller.locator('.video-panel.expanded .video-streaming-preview').first()
+        await caller.locator('.call-screen.expanded .video-streaming-preview').first()
             .waitFor({ state: 'visible', timeout: 20_000 });
         await caller.waitForTimeout(1_500);
         await caller.screenshot({ path: shot('wide-2-caller-video-full-screen') });

@@ -3,64 +3,20 @@
 @inherits ComputedStateComponent<AppUIHub, VisualActivityPanel.Model>
 @{
     var m = State.Value;
-    var isWatching = m.IsWatching;
     var chatContext = m.ChatContext;
     var isHidden = m.Activity.PanelMode == VisualActivityPanelMode.Hidden;
-    // When hidden, the call view stays mounted regardless of the selected tab —
-    // unmounting VideoPanel would tear down the streams the pill stands for.
-    var showVideo = m.Activity.HasCall && (m.Activity.Tab == VisualActivityTab.Call || isHidden);
+    // The video itself is the call screen's, which is mounted outside the chat: this panel only
+    // keeps the place it moves into while it is inline.
+    var showVideoSlot = m.Activity is { HasCall: true, Tab: VisualActivityTab.Call };
     var showMap = !isHidden && m.Activity is { HasMap: true, Tab: VisualActivityTab.Map };
     var showPill = isHidden && (m.Activity.HasCall || m.Activity.HasMap);
-
-    // TODO(DF): move this logic to ChatVideoUI
-    // Clear watching when navigating to a different chat.
-    // Compare by ChatId, not ChatContext reference: ChatContext is recreated on every
-    // ChatPage.ComputeState run (it uses ByRef equality), so a reference change here
-    // means "the chat's data updated", not "the user switched chats".
-    var chatId = chatContext?.Chat.Id;
-    if (_lastWatchingChatId is { } lastChatId && chatId is { } currentChatId && lastChatId != currentChatId) {
-        // Leaving the chat only hides the panel: own camera & screencast keep publishing to it
-        _mustKeepStreamingOnClose = true;
-        ChatVideoUI.CloseVideoPanel();
-    }
-    _lastWatchingChatId = isWatching ? chatId : null;
-
-    // Handle show/hide transitions based on watching state and the Call/Map tab
-    if (!_isRendered && showVideo) {
-        _isRendered = true;
-        _chatContextToRender = chatContext;
-        _isClosing = false;
-        _mustKeepStreamingOnClose = false;
-    } else if (_isRendered && showVideo) {
-        _chatContextToRender = chatContext;
-        _isClosing = false;
-        _mustKeepStreamingOnClose = false;
-    } else if (_isRendered && !showVideo) {
-        if (isWatching) {
-            // Still on the call — switched to the Map tab; swap instantly, no closing animation
-            _isRendered = false;
-            _isClosing = false;
-        } else
-            _isClosing = true;
-    }
-
-    if (!_isRendered)
-        _chatContextToRender = null;
-
-    _isPanelRendered = _chatContextToRender is not null || ((showMap || showPill) && chatContext is not null);
+    _isPanelRendered = chatContext is not null && (showVideoSlot || showMap || showPill);
 }
 
-@if (_isPanelRendered) {
+@if (_isPanelRendered && chatContext is not null) {
     <div @ref="Ref" class="visual-activity-panel">
-        @if (_chatContextToRender is not null) {
-            <ErrorBarrier Name="VideoPanel" Kind="ErrorBarrierKind.Medium">
-                <CascadingValue Value="_chatContextToRender">
-                    <VideoPanel
-                        IsClosing="@_isClosing"
-                        MustStopStreamingOnClose="@(!_mustKeepStreamingOnClose)"
-                        OnClosed="@OnContentClosed"/>
-                </CascadingValue>
-            </ErrorBarrier>
+        @if (showVideoSlot) {
+            <RenderNomadSlot Name="@LayoutSlots.CallScreen" Key="@chatContext.Chat.Id.Value"/>
         } else if (showMap) {
             <ErrorBarrier Name="MapPanel" Kind="ErrorBarrierKind.Medium">
                 <CascadingValue Value="chatContext">
@@ -68,7 +24,7 @@
                 </CascadingValue>
             </ErrorBarrier>
         }
-        @if (showPill && chatContext is not null) {
+        @if (showPill) {
             @* The pill is positioned against the middle panel, not against this panel *@
             <RenderIntoSlot Name="@LayoutSlots.MainBodyOverlay">
                 <CascadingValue Value="chatContext">
@@ -76,12 +32,10 @@
                 </CascadingValue>
             </RenderIntoSlot>
         }
-        @if (chatContext is not null) {
-            <CascadingValue Value="chatContext">
-                <VisualActivityPanelTabSwitch/>
-            </CascadingValue>
-        }
-        @if (!_isClosing && m.Activity.PanelMode == VisualActivityPanelMode.Inline) {
+        <CascadingValue Value="chatContext">
+            <VisualActivityPanelTabSwitch/>
+        </CascadingValue>
+        @if (m.Activity.PanelMode == VisualActivityPanelMode.Inline) {
             <div class="c-drag-handle" data-child="drag-handle"><div class="c-bar"></div></div>
         }
     </div>
@@ -90,15 +44,8 @@
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VisualActivityPanel.create";
 
-    private ChatId? _lastWatchingChatId;
-    private ChatContext? _chatContextToRender;
-    private bool _isRendered;
-    private bool _isClosing;
-    private bool _mustKeepStreamingOnClose;
     private bool _isPanelRendered;
 
-    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
-    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
     private ElementReference Ref { get; set; }
@@ -136,57 +83,16 @@
         if (chatContext is null)
             return Model.None;
 
+        // Whether the chat's video is up at all is ChatVideoUI's to decide - see its SyncWatching
         var chatId = chatContext.Chat.Id;
-        var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
-        var isWatching = watchingChatId == chatId;
-
-        // Own video keeps publishing while the user is in another chat, so coming back reopens the panel.
-        // This reads the local intent, which clears synchronously on stop.
-        if (!isWatching) {
-            var ownSourceKind = await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
-            if (ownSourceKind is not null) {
-                ChatVideoUI.OpenVideoPanel(chatId);
-                isWatching = true;
-            }
-        }
-
-        // Auto-open the video panel when the user is listening and someone else is streaming.
-        // Remote-only on purpose: counting own streams from the server's list would reopen the panel
-        // VideoPanel just closed on own-stop — for as long as the server still lists the stopped stream.
-        if (!isWatching) {
-            var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
-            if (audioState.IsListening || audioState.IsRecording) {
-                var hasRemoteStreams = await ChatVideoUI.HasRemoteStreams(chatId, cancellationToken)
-                    .ConfigureAwait(false);
-                if (hasRemoteStreams) {
-                    // Under the call screen the video opens full-screen, and the call screen gives way to
-                    // it - see CallScreensUI.OnVideoExpanded. Inline, it would play there unseen.
-                    var isOnCallScreen = await Hub.CallScreensUI.IsOnCallScreen(chatId, cancellationToken)
-                        .ConfigureAwait(false);
-                    ChatVideoUI.OpenVideoPanel(chatId, isOnCallScreen);
-                    isWatching = true;
-                }
-            }
-        }
-        var panelState = await ChatActivityUI.Get(chatId, cancellationToken).ConfigureAwait(false);
-        return new Model(chatContext, isWatching, panelState);
-    }
-
-    // Private methods
-
-    private void OnContentClosed() {
-        _isRendered = false;
-        _isClosing = false;
-        _mustKeepStreamingOnClose = false;
+        var activity = await ChatActivityUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        return new Model(chatContext, activity);
     }
 
     // Nested types
 
-    public sealed record Model(
-        ChatContext? ChatContext,
-        [property: MemberNotNullWhen(true, nameof(Model.ChatContext))] bool IsWatching,
-        VisualActivity Activity
-    ) {
-        public static readonly Model None = new(null, false, VisualActivity.None);
+    public sealed record Model(ChatContext? ChatContext, VisualActivity Activity)
+    {
+        public static readonly Model None = new(null, VisualActivity.None);
     }
 }

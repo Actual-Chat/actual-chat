@@ -7,7 +7,6 @@
     var a = Actions;
     var isExpanded = a.Mode == VisualActivityPanelMode.Expanded;
     var isCollapsed = a.Mode == VisualActivityPanelMode.Collapsed;
-    var effectiveChatVisible = IsChatVisible ?? !a.IsNarrow;
     var hasLayoutActions = a.CanToggleFullscreen || a.CanToggleIsland || a.CanMinimize;
     var hasStreamActions = a.CanSwitchCamera || a.CanToggleVideo || a.CanToggleScreenCast || CanReact;
     var hasSettingsActions = a.CanShowVideoSettings || a.CanShowVoiceSettings;
@@ -95,7 +94,7 @@
     @if (hasChatActions) {
         <MenuEntry
             Icon="icon-message-ellipse"
-            Text="@(effectiveChatVisible ? L.Video_HideChat : L.Video_ShowChat)"
+            Text="@(IsChatVisible ? L.Video_HideChat : L.Video_ShowChat)"
             Click="@OnToggleChatPanel"/>
     }
 
@@ -116,23 +115,21 @@
     [Parameter, EditorRequired] public VideoPanelActions? Actions { get; set; }
     [Parameter] public bool IsOwnRecording { get; set; }
     [Parameter] public bool IsOwnScreenCasting { get; set; }
-    [Parameter] public bool? IsChatVisible { get; set; }
+    [Parameter] public bool IsChatVisible { get; set; }
     [Parameter] public bool CanReact { get; set; }
     [Parameter] public bool IsOwnHandRaised { get; set; }
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
-    private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
+    private CallScreensUI CallScreensUI => Hub.CallScreensUI;
 
     private void OnToggleFullscreen()
-        => ChatActivityUI.TogglePanelMode(ChatId, VisualActivityPanelMode.Expanded,
-            Actions?.Mode != VisualActivityPanelMode.Expanded);
+        => CallScreensUI.Expand(ChatId);
 
     private void OnToggleIsland()
-        => ChatActivityUI.TogglePanelMode(ChatId, VisualActivityPanelMode.Collapsed,
-            Actions?.Mode != VisualActivityPanelMode.Collapsed);
+        => CallScreensUI.SetScreenMode(ChatId, VisualActivityPanelMode.Collapsed);
 
     private void OnMinimize()
-        => ChatActivityUI.SetPanelMode(ChatId, VisualActivityPanelMode.Hidden);
+        => CallScreensUI.SetScreenMode(ChatId, VisualActivityPanelMode.Hidden);
 
     private Task OnSwitchCamera()
         => Hub.CameraUI.SwitchCamera();
@@ -146,11 +143,8 @@
     private Task OnToggleHand()
         => Hub.LiveSessionUI.SetOwnHandRaised(ChatId, !IsOwnHandRaised, CancellationToken.None);
 
-    private void OnToggleChatPanel() {
-        var a = Actions;
-        var current = IsChatVisible ?? (a is not null && !a.IsNarrow);
-        ChatVideoUI.SetVideoPanelChatVisible(!current);
-    }
+    private void OnToggleChatPanel()
+        => ChatVideoUI.SetVideoPanelChatVisible(!IsChatVisible);
 
     private void OnVoiceSettings()
         => ChatVideoUI.ShowVoiceSettings(ChatId);

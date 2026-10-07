@@ -18,13 +18,21 @@ const ZOOM_TRANSITION_MS = 250;
 const BADGE_GAP = 8;
 const BADGE_MIN_REM = 8;
 
-export class VideoPanel {
-    private static readonly bodyClass = 'has-video-panel';
+type Mode = 'inline' | 'expanded' | 'island' | 'hidden';
+
+// State this script owns lives in attributes: Blazor rewrites `class` on every render.
+const BarsHiddenAttribute = 'data-bars-hidden';
+// See nomad-slot.ts
+const NomadHoldAttribute = 'data-nomad-hold';
+
+/**
+ * The script half of CallScreen. The component decides the mode and renders it as a class; this
+ * follows it: it positions and drags the island, and handles the gestures of the full-screen video.
+ * Where the screen is in the DOM is RenderIntoNomadSlot's.
+ */
+export class CallScreen {
     private blazorRef: DotNet.DotNetObject;
-    private readonly videoPanel: HTMLElement;
-    private parentElement: HTMLElement | null = null;
-    private parentNextSibling: ChildNode | null = null;
-    private homeMarker: Comment | null = null;
+    private readonly root: HTMLElement;
     private disposed$: Subject<void> = new Subject<void>();
 
     // ScreenCast zoom/pan state
@@ -64,56 +72,35 @@ export class VideoPanel {
     private islandOrigTop = 0;
     private islandResizeObserver: ResizeObserver | null = null;
     private islandTeardown$: Subject<void> | null = null;
-    private panelMode: 'inline' | 'island' = 'inline';
+    private mode: Mode = 'inline';
+    private isScreenSizeFrozen = false;
     private compactReasons = new Set<string>();
     private forcedCollapseActive = false;
-    private closeTimer = 0;
-    private closeContent: Element | null = null;
-    private closeComplete: (() => void) | null = null;
-    private closing = false;
 
-    // Name-badge placement (expanded only): a rAF-coalesced relayout fed by a ResizeObserver
-    // (content resize) and a MutationObserver (tiles join/leave, name edits, toolbar-hidden and
-    // layout-equal class toggles). movedBadges holds the labels carrying inline styles this run,
+    // Name-badge placement (full-screen video only): a rAF-coalesced relayout fed by a ResizeObserver
+    // (stage resize) and a MutationObserver (tiles join/leave, name edits, bars-hidden and
+    // layout-equal toggles). movedBadges holds the labels carrying inline styles this run,
     // so they can be reset on teardown or when the layout stops needing them.
     private badgeResizeObserver: ResizeObserver | null = null;
     private badgeMutationObserver: MutationObserver | null = null;
     private badgeRaf = 0;
     private movedBadges = new Set<HTMLElement>();
 
-    static create(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject): VideoPanel {
-        return new VideoPanel(videoPanel, blazorRef);
+    static create(root: HTMLElement, blazorRef: DotNet.DotNetObject): CallScreen {
+        return new CallScreen(root, blazorRef);
     }
 
-    constructor(videoPanel: HTMLElement, blazorRef: DotNet.DotNetObject) {
+    constructor(root: HTMLElement, blazorRef: DotNet.DotNetObject) {
         this.blazorRef = blazorRef;
-        this.videoPanel = videoPanel;
-        // Guards the body:has(.video-panel...) rules. WebKit evaluates a compound left to right,
-        // so an absent class here short-circuits before :has() runs - and :has() otherwise rescans
-        // the whole body subtree on every DOM mutation just to re-prove the panel isn't there,
-        // which measured 16-18% of WebContent's main thread during a call on an iPhone 13 Pro.
-        document.body.classList.add(VideoPanel.bodyClass);
-
-        this.parentElement = this.videoPanel.parentElement;
-        this.parentNextSibling = this.videoPanel.nextSibling;
-        if (this.parentElement) {
-            this.homeMarker = document.createComment('video-panel-home');
-            this.parentElement.insertBefore(this.homeMarker, this.videoPanel);
-        }
-        const needToShowElements = this.videoPanel.querySelectorAll('.show-with-delay');
-        setTimeout(() => {
-            needToShowElements.forEach(element => element.classList.add('show'));
-            this.videoPanel.classList.remove('first-time-open');
-        }, 1000);
+        this.root = root;
 
         this.initGestures();
-        this.setupHomeGuard();
 
-        // Escape key handler
+        // A modal over the screen takes Escape first, in the capture phase, and marks the event as handled
         fromEvent<KeyboardEvent>(document, 'keydown')
             .pipe(
                 takeUntil(this.disposed$),
-                filter(e => e.key === 'Escape')
+                filter(e => e.key === 'Escape' && !e.defaultPrevented)
             )
             .subscribe(() => this.onEscPress());
 
@@ -128,7 +115,293 @@ export class VideoPanel {
         // Bootstrap from any reasons already active (e.g. app opened in landscape mobile).
         for (const reason of CompactLayout.reasons)
             this.compactReasons.add(reason);
+
+        // The component renders the mode as a class. Following it from an observer rather than from
+        // a call after the render moves the root within the task that changed the class - before a
+        // paint could show a full-screen root still sized by the chat header it was inline in.
+        const classObserver = new MutationObserver(() => this.update());
+        classObserver.observe(this.root, { attributes: true, attributeFilter: ['class'] });
+        this.disposed$.subscribe(() => classObserver.disconnect());
+        this.update();
+    }
+
+    public dispose() {
+        if (this.disposed$.closed)
+            return;
+
+        if (this.singleTapTimer) {
+            clearTimeout(this.singleTapTimer);
+            this.singleTapTimer = 0;
+        }
+        this.teardownBadgeLayout();
+        this.teardownIsland();
+        this.root.parentElement?.removeAttribute(NomadHoldAttribute);
+        this.setScreenSizeFrozen(false);
+        this.disposed$.next();
+        this.disposed$.complete();
+    }
+
+    // Private methods
+
+    private update(): void {
+        const mode = this.getMode();
+        if (mode !== this.mode) {
+            if (this.mode === 'island')
+                this.teardownIsland();
+            if (this.mode === 'expanded') {
+                this.resetZoom();
+                this.root.removeAttribute(BarsHiddenAttribute);
+            }
+            this.root.classList.remove('minimized');
+            this.mode = mode;
+            if (mode === 'island')
+                this.setupIsland();
+        }
+        this.syncNomadHold();
+        const hasVideo = this.root.classList.contains('has-video');
+        if (!hasVideo)
+            this.root.removeAttribute(BarsHiddenAttribute);
+        if (mode === 'expanded' && hasVideo)
+            this.setupBadgeLayout();
+        else
+            this.teardownBadgeLayout();
+        // Freeze narrow/wide state on mobile only: there a rotation would otherwise reflow the hidden app
+        // layout underneath (e.g. the left panel appearing in landscape). On desktop the user resizes
+        // deliberately and the full-screen video must honor it live - it drops the side chat and its
+        // controls once the viewport falls below Large.
+        this.setScreenSizeFrozen(mode === 'expanded' && hasVideo && DeviceInfo.isMobile);
         this.syncForcedCollapseToBlazor();
+    }
+
+    // ── Name-badge placement ──
+    // Multi-row grids are handled by css (the bottom row's badge moves to the tile top). This only
+    // runs the single-row case and the sidebar's big focused tile. Every badge stays at its base
+    // bottom-left (0.25rem from the edges); only a badge the central footer controls actually cover
+    // is touched — truncated to the room on their left, or pushed flush against their right edge and
+    // grown rightwards, or (only when neither side has room) lifted just above them. Right-side
+    // obstacles — the chat toggle on desktop, the small-tile column in the sidebar — clamp how far
+    // right a bottom badge may reach so it never slides under them.
+    private setupBadgeLayout(): void {
+        const stage = this.root.querySelector<HTMLElement>('.video-stage');
+        if (!stage || this.badgeResizeObserver)
+            return;
+
+        this.badgeResizeObserver = new ResizeObserver(() => this.scheduleBadgeLayout());
+        this.badgeResizeObserver.observe(stage);
+        this.badgeMutationObserver = new MutationObserver(() => this.scheduleBadgeLayout());
+        this.badgeMutationObserver.observe(stage, { childList: true, subtree: true, characterData: true });
+        this.badgeMutationObserver.observe(this.root, {
+            attributes: true,
+            attributeFilter: ['class', BarsHiddenAttribute],
+        });
+        void document.fonts.ready.then(() => this.scheduleBadgeLayout());
+        this.scheduleBadgeLayout();
+    }
+
+    private teardownBadgeLayout(): void {
+        this.badgeResizeObserver?.disconnect();
+        this.badgeResizeObserver = null;
+        this.badgeMutationObserver?.disconnect();
+        this.badgeMutationObserver = null;
+        if (this.badgeRaf) {
+            cancelAnimationFrame(this.badgeRaf);
+            this.badgeRaf = 0;
+        }
+        this.movedBadges.forEach(label => this.resetBadge(label));
+        this.movedBadges.clear();
+    }
+
+    private scheduleBadgeLayout(): void {
+        if (this.badgeRaf)
+            return;
+
+        this.badgeRaf = requestAnimationFrame(() => {
+            this.badgeRaf = 0;
+            this.layoutBadges();
+        });
+    }
+
+    private resetBadge(label: HTMLElement): void {
+        label.style.maxWidth = '';
+        label.style.transform = '';
+    }
+
+    // Union of the central footer control cluster — not the full-width bar. Excludes the invisible
+    // slot holder and the chat toggle (it sits at the right edge and is handled as a separate
+    // right-side obstacle, not something badges flow around). Null when the bars are tap-hidden.
+    private footerButtonsRect(): DOMRect | null {
+        const footer = this.root.querySelector<HTMLElement>('.call-screen-footer');
+        if (!footer || this.root.hasAttribute(BarsHiddenAttribute))
+            return null;
+
+        // The sides stretch to the bar's edges, so it's their controls that count, not the sides
+        return this.unionRect(Array.from(footer.querySelectorAll(
+            ':scope > :not(.c-side):not(.btn-chat), :scope > .c-side > :not(.btn-incut)')));
+    }
+
+    private unionRect(elements: Element[]): DOMRect | null {
+        let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+        for (const el of elements) {
+            const r = el.getBoundingClientRect();
+            if (r.width <= 0 || r.height <= 0)
+                continue;
+
+            left = Math.min(left, r.left);
+            top = Math.min(top, r.top);
+            right = Math.max(right, r.right);
+            bottom = Math.max(bottom, r.bottom);
+        }
+        return left === Infinity ? null : new DOMRect(left, top, right - left, bottom - top);
+    }
+
+    private layoutBadges(): void {
+        if (this.disposed$.closed)
+            return;
+
+        const stage = this.root.querySelector<HTMLElement>('.video-stage');
+        if (!stage)
+            return;
+
+        const isEqual = this.root.classList.contains('layout-equal');
+        const tiles = isEqual
+            ? Array.from(stage.querySelectorAll<HTMLElement>(
+                '.c-grid > .video-track-player.item-focused, .c-grid > .video-track-player.item-x'))
+            : Array.from(stage.querySelectorAll<HTMLElement>('.video-track-player.item-focused'));
+        const items = tiles
+            .map(tile => ({ tile, label: tile.querySelector<HTMLElement>('.video-participant-label') }))
+            .filter((it): it is { tile: HTMLElement; label: HTMLElement } => it.label != null);
+
+        // Reset first: clears any prior run so the css (multi-row) or the base bottom-left take over.
+        for (const it of items)
+            this.resetBadge(it.label);
+        this.movedBadges.forEach(label => {
+            if (!items.some(it => it.label === label))
+                this.resetBadge(label);
+        });
+        this.movedBadges = new Set<HTMLElement>();
+        if (!this.isExpanded() || items.length === 0)
+            return;
+
+        // Several rows → css owns it (the bottom-row badge sits at the tile top). Leave them reset.
+        if (isEqual && new Set(items.map(it => Math.round(it.tile.getBoundingClientRect().top))).size > 1)
+            return;
+
+        // Bars hidden → nothing to flow around; badges stay bottom-left.
+        const buttons = this.footerButtonsRect();
+        if (!buttons)
+            return;
+
+        // The central control cluster badges flow around, grown by GAP on the sides and top (the
+        // bottom edge is the screen edge, so it isn't padded).
+        const box = {
+            l: buttons.left - BADGE_GAP,
+            r: buttons.right + BADGE_GAP,
+            t: buttons.top - BADGE_GAP,
+            b: buttons.bottom,
+        };
+
+        // Right-side obstacles a bottom badge must never slide under: the chat toggle (desktop) and,
+        // in the sidebar, the small-tile column. They clamp each tile's usable right edge.
+        const rightObstacles: DOMRect[] = [];
+        const chatButton = this.root.querySelector<HTMLElement>('.call-screen-footer .btn-chat');
+        if (chatButton) {
+            const r = chatButton.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0)
+                rightObstacles.push(r);
+        }
+        if (!isEqual) {
+            const column = this.unionRect(
+                Array.from(stage.querySelectorAll<HTMLElement>('.video-track-player.item-x')));
+            if (column)
+                rightObstacles.push(column);
+        }
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const min = BADGE_MIN_REM * rem;
+
+        // Measure each badge at a generous width (left/bottom-anchored, so left/bottom stay put) and
+        // work out its tile's usable right edge after the right-side obstacles.
+        const measured = items.map(it => {
+            const tileRect = it.tile.getBoundingClientRect();
+            it.label.style.maxWidth = `${tileRect.width}px`;
+            const rect = it.label.getBoundingClientRect();
+            const inset = rect.left - tileRect.left;
+            let usableRight = tileRect.right - inset;
+            for (const o of rightObstacles) {
+                if (o.left < tileRect.right && o.right > tileRect.left && o.left > rect.left)
+                    usableRight = Math.min(usableRight, o.left - BADGE_GAP);
+            }
+            return {
+                ...it,
+                tileRect,
+                inset,
+                usableRight,
+                anchorLeft: rect.left,
+                anchorBottom: rect.bottom,
+                h: rect.height,
+                naturalW: rect.width,
+            };
+        });
+        for (const it of measured) {
+            let dx = 0, dy = 0, maxW = Math.max(0, it.usableRight - it.anchorLeft);
+            const hit = it.anchorLeft < box.r && it.anchorLeft + it.naturalW > box.l
+                && it.anchorBottom > box.t && it.anchorBottom - it.h < box.b;
+            if (hit) {
+                const leftRoom = box.l - it.anchorLeft;
+                const rightRoom = it.usableRight - box.r;
+                if (leftRoom >= min)
+                    maxW = leftRoom; // stays bottom-left, truncated before the buttons
+                else if (rightRoom >= Math.min(it.naturalW, min)) {
+                    maxW = rightRoom; // flush against the right of the buttons, grows rightwards
+                    dx = box.r - it.anchorLeft;
+                }
+                else {
+                    dy = box.t - it.anchorBottom; // no room beside the buttons: lift above them
+                    maxW = it.tileRect.width - 2 * it.inset;
+                }
+            }
+            it.label.style.maxWidth = `${Math.max(0, maxW)}px`;
+            if (dx !== 0 || dy !== 0)
+                it.label.style.transform = `translate(${dx}px, ${dy}px)`;
+            this.movedBadges.add(it.label);
+        }
+    }
+
+    private getMode(): Mode {
+        const cl = this.root.classList;
+        if (cl.contains('expanded'))
+            return 'expanded';
+        if (cl.contains('collapsed'))
+            return 'island';
+
+        return cl.contains('panel-hidden') ? 'hidden' : 'inline';
+    }
+
+    private syncNomadHold(): void {
+        // While compact mode is about to turn the inline screen into the island, it skips the chat header's
+        // slot: landing there for a frame reads as a flash in the header.
+        const isForcingIsland = this.compactReasons.size > 0 && !this.isMinimized();
+        this.root.parentElement?.toggleAttribute(NomadHoldAttribute, this.mode === 'inline' && isForcingIsland);
+    }
+
+    private setScreenSizeFrozen(mustFreeze: boolean): void {
+        if (mustFreeze === this.isScreenSizeFrozen)
+            return;
+
+        this.isScreenSizeFrozen = mustFreeze;
+        if (mustFreeze)
+            ScreenSize.freeze();
+        else
+            ScreenSize.unfreeze();
+    }
+
+    private toggleBars(): void {
+        this.root.toggleAttribute(BarsHiddenAttribute);
+    }
+
+    private onEscPress(): void {
+        // The menu host closes its menu on the same key, but hears it on window, after this handler
+        if (this.isExpanded() && !document.querySelector('.ac-menu-host[data-has-menu]'))
+            void this.blazorRef.invokeMethodAsync('OnEscape');
     }
 
     private syncForcedCollapseToBlazor(): void {
@@ -139,7 +412,7 @@ export class VideoPanel {
             // Skip when minimized: user explicitly swiped the panel down to 0 height, the
             // compact-mode requirement is already satisfied — don't reveal the panel as an
             // island just because the keyboard opened.
-            if (!this.isExpanded() && !this.isCollapsed() && !this.isMinimized()) {
+            if (this.mode === 'inline' && !this.isMinimized()) {
                 this.forcedCollapseActive = true;
                 void this.blazorRef.invokeMethodAsync('OnForceIsland', true);
             }
@@ -155,6 +428,7 @@ export class VideoPanel {
             return;
 
         this.compactReasons.add(reason);
+        this.syncNomadHold();
         this.syncForcedCollapseToBlazor();
     }
 
@@ -163,53 +437,18 @@ export class VideoPanel {
             return;
 
         this.compactReasons.delete(reason);
+        this.syncNomadHold();
         this.syncForcedCollapseToBlazor();
-    }
-
-    // Safety net: if the panel ever ends up under <body> without any of the
-    // state classes that move it there (expanded / collapsed), pull it back
-    // to its original Razor-rendered home. Catches races where Blazor's
-    // class-attribute rewrite drops a JS-added class but the JS teardown
-    // that would have reparented it never fires.
-    //
-    // Why a full teardown (it's idempotent): if we did partial cleanup here
-    // and just set panelMode='inline', the subsequent updatePanelMode() call
-    // from Blazor would short-circuit (panelMode already matches), leaving
-    // the stale island ResizeObserver alive — and the next size change would
-    // re-fire positionIslandDefault() and pin `top/right` back on the inline
-    // panel.
-    private setupHomeGuard(): void {
-        const observer = new MutationObserver(() => {
-            if (this.videoPanel.parentElement !== document.body)
-                return;
-
-            const cl = this.videoPanel.classList;
-            if (cl.contains('expanded') || cl.contains('collapsed'))
-                return;
-
-            this.teardownIsland();
-            this.panelMode = 'inline';
-        });
-        observer.observe(this.videoPanel, { attributes: true, attributeFilter: ['class'] });
-        this.disposed$.subscribe(() => observer.disconnect());
     }
 
     // region: Helpers
 
     private isExpanded(): boolean {
-        return this.videoPanel.classList.contains('expanded');
-    }
-
-    private isCollapsed(): boolean {
-        return this.videoPanel.classList.contains('collapsed');
-    }
-
-    private isInline(): boolean {
-        return !this.isExpanded() && !this.isCollapsed();
+        return this.root.classList.contains('expanded');
     }
 
     private isMinimized(): boolean {
-        return this.videoPanel.classList.contains('minimized');
+        return this.root.classList.contains('minimized');
     }
 
     private get maxScale(): number {
@@ -217,7 +456,7 @@ export class VideoPanel {
     }
 
     private getScreenCastContainer(): HTMLElement | null {
-        return this.videoPanel.querySelector<HTMLElement>('.remote-video-container.item-focused.screencast');
+        return this.root.querySelector<HTMLElement>('.remote-video-container.item-focused.screencast');
     }
 
     // Returns the visible render surface — canvas when canvas backend is active,
@@ -243,8 +482,8 @@ export class VideoPanel {
     // toggle the header/footer.
     private isOnFocusedTile(target: HTMLElement): boolean {
         return target.closest('.remote-video-container.item-focused') != null
-            && !target.closest('.video-panel-toolbar')
-            && !target.closest('.video-panel-chat');
+            && !target.closest('.call-screen-toolbar')
+            && !target.closest('.call-screen-chat');
     }
 
     private isOnScreenCast(target: HTMLElement): boolean {
@@ -290,7 +529,7 @@ export class VideoPanel {
     private initGestures(): void {
         // ── Desktop: mouse click for toolbar toggle ──
         // Suppressed when a touch tap just happened (prevents synthetic click double-toggle)
-        fromEvent<MouseEvent>(this.videoPanel, 'click')
+        fromEvent<MouseEvent>(this.root, 'click')
             .pipe(
                 takeUntil(this.disposed$),
                 filter(e => {
@@ -306,10 +545,10 @@ export class VideoPanel {
                     return this.isOnFocusedTile(e.target as HTMLElement);
                 })
             )
-            .subscribe(() => this.videoPanel.classList.toggle('toolbar-hidden'));
+            .subscribe(() => this.toggleBars());
 
         // ── Desktop: wheel zoom ──
-        fromEvent<WheelEvent>(this.videoPanel, 'wheel', { passive: false } as AddEventListenerOptions)
+        fromEvent<WheelEvent>(this.root, 'wheel', { passive: false } as AddEventListenerOptions)
             .pipe(
                 takeUntil(this.disposed$),
                 filter(e => this.isExpanded() && this.isOnScreenCast(e.target as HTMLElement))
@@ -317,7 +556,7 @@ export class VideoPanel {
             .subscribe(e => this.onWheel(e));
 
         // ── Desktop: mouse drag ──
-        fromEvent<PointerEvent>(this.videoPanel, 'pointerdown')
+        fromEvent<PointerEvent>(this.root, 'pointerdown')
             .pipe(
                 takeUntil(this.disposed$),
                 filter(e => e.pointerType === 'mouse' && this.isExpanded()
@@ -346,7 +585,7 @@ export class VideoPanel {
             .subscribe(stopMouseDrag);
 
         // ── Touch: unified handler for tap, double-tap, drag, pinch ──
-        fromEvent<TouchEvent>(this.videoPanel, 'touchstart', { passive: false } as AddEventListenerOptions)
+        fromEvent<TouchEvent>(this.root, 'touchstart', { passive: false } as AddEventListenerOptions)
             .pipe(
                 takeUntil(this.disposed$),
                 filter(() => this.isExpanded())
@@ -542,14 +781,14 @@ export class VideoPanel {
     }
 
     private onSingleTap(): void {
-        this.videoPanel.classList.toggle('toolbar-hidden');
+        this.toggleBars();
     }
 
     private onDoubleTap(screenX: number, screenY: number): void {
         const container = this.getScreenCastContainer();
         if (!container) {
-            // Non-screencast video — toggle toolbar
-            this.videoPanel.classList.toggle('toolbar-hidden');
+            // Non-screencast video — toggle the bars
+            this.toggleBars();
             return;
         }
 
@@ -711,33 +950,10 @@ export class VideoPanel {
 
     // region: Collapsed island positioning & drag
 
-    // Called from Blazor when collapsed/hidden state changes.
-    // Owns the transition between inline and island (collapsed) — island
-    // reparents to <body> for fixed positioning + drag. The hidden state needs
-    // no JS: `.panel-hidden` hides the panel in place, and the visible remnant
-    // is the separate ActivityPill component.
-    public updatePanelMode(): void {
-        this.videoPanel.classList.remove('minimized');
-        const isCollapsed = this.videoPanel.classList.contains('collapsed');
-        const newMode: 'inline' | 'island' = isCollapsed ? 'island' : 'inline';
-        if (newMode === this.panelMode)
-            return;
-
-        if (this.panelMode === 'island')
-            this.teardownIsland();
-        if (newMode === 'island')
-            this.setupIsland();
-        this.panelMode = newMode;
-    }
-
     private setupIsland(): void {
         this.teardownIsland(); // clean up any previous island state
         this.islandDragged = false;
         this.islandTeardown$ = new Subject<void>();
-        // Reparent to body so `position: fixed` works correctly.
-        // (.list-view-layout has `filter: opacity(1)` which creates a containing
-        // block that breaks fixed positioning for descendants.)
-        document.body.appendChild(this.videoPanel);
         this.positionIslandDefault();
         this.initIslandDrag();
 
@@ -755,7 +971,7 @@ export class VideoPanel {
                 this.islandResizeObserver.observe(subheader);
             if (headerContent)
                 this.islandResizeObserver.observe(headerContent);
-            this.islandResizeObserver.observe(this.videoPanel);
+            this.islandResizeObserver.observe(this.root);
         }
 
         // Clamp to viewport on resize/zoom.
@@ -772,194 +988,12 @@ export class VideoPanel {
         }
         this.islandResizeObserver?.disconnect();
         this.islandResizeObserver = null;
-        // Clear inline positioning and reparent back.
-        this.videoPanel.style.top = '';
-        this.videoPanel.style.left = '';
-        this.videoPanel.style.right = '';
-        this.videoPanel.removeAttribute('data-portrait-video');
-        this.videoPanel.style.removeProperty('--video-panel-island-aspect');
-        this.restoreToParent();
-    }
-
-    // ── Name-badge placement ──
-    // Multi-row grids are handled by css (the bottom row's badge moves to the tile top). This only
-    // runs the single-row case and the sidebar's big focused tile. Every badge stays at its base
-    // bottom-left (0.25rem from the edges); only a badge the central footer controls actually cover
-    // is touched — truncated to the room on their left, or pushed flush against their right edge and
-    // grown rightwards, or (only when neither side has room) lifted just above them. Right-side
-    // obstacles — the chat toggle on desktop, the small-tile column in the sidebar — clamp how far
-    // right a bottom badge may reach so it never slides under them.
-    private setupBadgeLayout(): void {
-        const content = this.videoPanel.querySelector<HTMLElement>('.video-panel-content');
-        if (!content)
-            return;
-
-        if (!this.badgeResizeObserver) {
-            this.badgeResizeObserver = new ResizeObserver(() => this.scheduleBadgeLayout());
-            this.badgeResizeObserver.observe(content);
-        }
-        if (!this.badgeMutationObserver) {
-            this.badgeMutationObserver = new MutationObserver(() => this.scheduleBadgeLayout());
-            this.badgeMutationObserver.observe(content, { childList: true, subtree: true, characterData: true });
-            this.badgeMutationObserver.observe(this.videoPanel, { attributes: true, attributeFilter: ['class'] });
-        }
-        void document.fonts.ready.then(() => this.scheduleBadgeLayout());
-        this.scheduleBadgeLayout();
-    }
-
-    private teardownBadgeLayout(): void {
-        this.badgeResizeObserver?.disconnect();
-        this.badgeResizeObserver = null;
-        this.badgeMutationObserver?.disconnect();
-        this.badgeMutationObserver = null;
-        if (this.badgeRaf) {
-            cancelAnimationFrame(this.badgeRaf);
-            this.badgeRaf = 0;
-        }
-        this.movedBadges.forEach(label => this.resetBadge(label));
-        this.movedBadges.clear();
-    }
-
-    private scheduleBadgeLayout(): void {
-        if (this.badgeRaf)
-            return;
-
-        this.badgeRaf = requestAnimationFrame(() => {
-            this.badgeRaf = 0;
-            this.layoutBadges();
-        });
-    }
-
-    private resetBadge(label: HTMLElement): void {
-        label.style.maxWidth = '';
-        label.style.transform = '';
-    }
-
-    // Union of the central footer control cluster — not the full-width bar. Excludes the invisible
-    // counterweight and the chat toggle (it sits at the right edge and is handled as a separate
-    // right-side obstacle, not something badges flow around). Null when the footer is tap-hidden.
-    private footerButtonsRect(): DOMRect | null {
-        const footer = this.videoPanel.querySelector<HTMLElement>('.video-panel-footer');
-        if (!footer || this.videoPanel.classList.contains('toolbar-hidden'))
-            return null;
-
-        return this.unionRect(Array.from(footer.children)
-            .filter(c => !c.classList.contains('btn-incut') && !c.classList.contains('chat-btn')));
-    }
-
-    private unionRect(elements: Element[]): DOMRect | null {
-        let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-        for (const el of elements) {
-            const r = el.getBoundingClientRect();
-            if (r.width <= 0 || r.height <= 0)
-                continue;
-
-            left = Math.min(left, r.left);
-            top = Math.min(top, r.top);
-            right = Math.max(right, r.right);
-            bottom = Math.max(bottom, r.bottom);
-        }
-        return left === Infinity ? null : new DOMRect(left, top, right - left, bottom - top);
-    }
-
-    private layoutBadges(): void {
-        if (this.disposed$.closed)
-            return;
-
-        const content = this.videoPanel.querySelector<HTMLElement>('.video-panel-content');
-        if (!content)
-            return;
-
-        const isEqual = this.videoPanel.classList.contains('layout-equal');
-        const tiles = isEqual
-            ? Array.from(content.querySelectorAll<HTMLElement>(
-                '.c-grid > .video-track-player.item-focused, .c-grid > .video-track-player.item-x'))
-            : Array.from(content.querySelectorAll<HTMLElement>('.video-track-player.item-focused'));
-        const items = tiles
-            .map(tile => ({ tile, label: tile.querySelector<HTMLElement>('.video-participant-label') }))
-            .filter((it): it is { tile: HTMLElement; label: HTMLElement } => it.label != null);
-
-        // Reset first: clears any prior run so the css (multi-row) or the base bottom-left take over.
-        for (const it of items)
-            this.resetBadge(it.label);
-        this.movedBadges.forEach(label => { if (!items.some(it => it.label === label)) this.resetBadge(label); });
-        this.movedBadges = new Set<HTMLElement>();
-        if (!this.isExpanded() || items.length === 0)
-            return;
-
-        // Several rows → css owns it (the bottom-row badge sits at the tile top). Leave them reset.
-        if (isEqual && new Set(items.map(it => Math.round(it.tile.getBoundingClientRect().top))).size > 1)
-            return;
-
-        // Footer hidden → nothing to flow around; badges stay bottom-left.
-        const buttons = this.footerButtonsRect();
-        if (!buttons)
-            return;
-
-        // The central control cluster badges flow around, grown by GAP on the sides and top (the
-        // bottom edge is the screen edge, so it isn't padded).
-        const box = {
-            l: buttons.left - BADGE_GAP,
-            r: buttons.right + BADGE_GAP,
-            t: buttons.top - BADGE_GAP,
-            b: buttons.bottom,
-        };
-
-        // Right-side obstacles a bottom badge must never slide under: the chat toggle (desktop) and,
-        // in the sidebar, the small-tile column. They clamp each tile's usable right edge.
-        const rightObstacles: DOMRect[] = [];
-        const chatBtn = this.videoPanel.querySelector<HTMLElement>('.video-panel-footer .chat-btn');
-        if (chatBtn) {
-            const r = chatBtn.getBoundingClientRect();
-            if (r.width > 0 && r.height > 0)
-                rightObstacles.push(r);
-        }
-        if (!isEqual) {
-            const column = this.unionRect(
-                Array.from(content.querySelectorAll<HTMLElement>('.video-track-player.item-x')));
-            if (column)
-                rightObstacles.push(column);
-        }
-        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
-        const min = BADGE_MIN_REM * rem;
-
-        // Measure each badge at a generous width (left/bottom-anchored, so left/bottom stay put) and
-        // work out its tile's usable right edge after the right-side obstacles.
-        const measured = items.map(it => {
-            const tileRect = it.tile.getBoundingClientRect();
-            it.label.style.maxWidth = `${tileRect.width}px`;
-            const rect = it.label.getBoundingClientRect();
-            const inset = rect.left - tileRect.left;
-            let usableRight = tileRect.right - inset;
-            for (const o of rightObstacles)
-                if (o.left < tileRect.right && o.right > tileRect.left && o.left > rect.left)
-                    usableRight = Math.min(usableRight, o.left - BADGE_GAP);
-            return { ...it, tileRect, inset, usableRight,
-                anchorLeft: rect.left, anchorBottom: rect.bottom, h: rect.height, naturalW: rect.width };
-        });
-        for (const it of measured) {
-            let dx = 0, dy = 0, maxW = Math.max(0, it.usableRight - it.anchorLeft);
-            const hit = it.anchorLeft < box.r && it.anchorLeft + it.naturalW > box.l
-                && it.anchorBottom > box.t && it.anchorBottom - it.h < box.b;
-            if (hit) {
-                const leftRoom = box.l - it.anchorLeft;
-                const rightRoom = it.usableRight - box.r;
-                if (leftRoom >= min)
-                    maxW = leftRoom;  // stays bottom-left, truncated before the buttons
-                else if (rightRoom >= Math.min(it.naturalW, min)) {
-                    maxW = rightRoom;  // flush against the right of the buttons, grows rightwards
-                    dx = box.r - it.anchorLeft;
-                }
-                else {
-                    dy = box.t - it.anchorBottom;  // no room beside the buttons: lift above them
-                    maxW = it.tileRect.width - 2 * it.inset;
-                }
-            }
-            it.label.style.maxWidth = `${Math.max(0, maxW)}px`;
-            if (dx !== 0 || dy !== 0)
-                it.label.style.transform = `translate(${dx}px, ${dy}px)`;
-            this.movedBadges.add(it.label);
-        }
+        this.root.style.top = '';
+        this.root.style.left = '';
+        this.root.style.right = '';
+        this.root.style.cursor = '';
+        this.root.removeAttribute('data-portrait-video');
+        this.root.style.removeProperty('--call-screen-island-aspect');
     }
 
     // Place the island top-right. Narrow: just below the main header title row
@@ -989,18 +1023,18 @@ export class VideoPanel {
             }
             right = '0.5rem';
         }
-        this.videoPanel.style.top = `${top}px`;
-        this.videoPanel.style.right = right;
-        this.videoPanel.style.left = '';
+        this.root.style.top = `${top}px`;
+        this.root.style.right = right;
+        this.root.style.left = '';
     }
 
     private initIslandDrag(): void {
         const teardown$ = this.islandTeardown$!;
         // Pointer events for unified mouse+touch drag.
-        fromEvent<PointerEvent>(this.videoPanel, 'pointerdown')
+        fromEvent<PointerEvent>(this.root, 'pointerdown')
             .pipe(
                 takeUntil(teardown$),
-                filter(() => this.videoPanel.classList.contains('collapsed')),
+                filter(() => this.root.classList.contains('collapsed')),
                 filter(e => e.button === 0),
                 filter(e => !(e.target as HTMLElement).closest('button')),
             )
@@ -1034,14 +1068,14 @@ export class VideoPanel {
         this.islandDragging = true;
         this.islandStartX = e.clientX;
         this.islandStartY = e.clientY;
-        const rect = this.videoPanel.getBoundingClientRect();
+        const rect = this.root.getBoundingClientRect();
         this.islandOrigLeft = rect.left;
         this.islandOrigTop = rect.top;
         // Switch to left-based positioning immediately so right doesn't fight.
-        this.videoPanel.style.left = `${rect.left}px`;
-        this.videoPanel.style.right = 'auto';
-        this.videoPanel.setPointerCapture(e.pointerId);
-        this.videoPanel.style.cursor = 'grabbing';
+        this.root.style.left = `${rect.left}px`;
+        this.root.style.right = 'auto';
+        this.root.setPointerCapture(e.pointerId);
+        this.root.style.cursor = 'grabbing';
     }
 
     private onIslandPointerMove(e: PointerEvent): void {
@@ -1051,26 +1085,26 @@ export class VideoPanel {
         // Clamp to viewport while dragging.
         const vw = window.innerWidth;
         const vh = window.innerHeight;
-        const w = this.videoPanel.offsetWidth;
-        const h = this.videoPanel.offsetHeight;
+        const w = this.root.offsetWidth;
+        const h = this.root.offsetHeight;
         const newLeft = Math.max(0, Math.min(vw - w, this.islandOrigLeft + dx));
         const newTop = Math.max(0, Math.min(vh - h, this.islandOrigTop + dy));
-        this.videoPanel.style.left = `${newLeft}px`;
-        this.videoPanel.style.top = `${newTop}px`;
+        this.root.style.left = `${newLeft}px`;
+        this.root.style.top = `${newTop}px`;
         if (Math.abs(dx) > 4 || Math.abs(dy) > 4)
             this.islandDragged = true;
     }
 
     private onIslandPointerUp(): void {
         this.islandDragging = false;
-        this.videoPanel.style.cursor = '';
+        this.root.style.cursor = '';
     }
 
     private clampIslandToViewport(): void {
-        if (!this.videoPanel.classList.contains('collapsed'))
+        if (!this.root.classList.contains('collapsed'))
             return;
 
-        const rect = this.videoPanel.getBoundingClientRect();
+        const rect = this.root.getBoundingClientRect();
         const vw = window.innerWidth;
         const vh = window.innerHeight;
         let left = rect.left;
@@ -1081,159 +1115,10 @@ export class VideoPanel {
         if (top + rect.height > vh) { top = vh - rect.height; changed = true; }
         if (top < 0) { top = 0; changed = true; }
         if (changed) {
-            this.videoPanel.style.left = `${left}px`;
-            this.videoPanel.style.top = `${top}px`;
-            this.videoPanel.style.right = 'auto';
+            this.root.style.left = `${left}px`;
+            this.root.style.top = `${top}px`;
+            this.root.style.right = 'auto';
         }
-    }
-
-    // endregion
-
-    // region: Panel expand/collapse
-
-    public dispose() {
-        if (this.disposed$.closed)
-            return;
-
-        document.body.classList.remove(VideoPanel.bodyClass);
-
-        // Hide before any DOM reshuffling (collapse/reparent) so callers that
-        // dispose without playing a close animation don't see the panel briefly
-        // snap to its inline location before unmount.
-        this.videoPanel.style.visibility = 'hidden';
-        if (this.singleTapTimer) {
-            clearTimeout(this.singleTapTimer);
-            this.singleTapTimer = 0;
-        }
-        this.teardownBadgeLayout();
-        this.teardownIsland();
-        this.collapse();
-        this.homeMarker?.parentNode?.removeChild(this.homeMarker);
-        this.homeMarker = null;
-        this.disposed$.next();
-        this.disposed$.complete();
-    }
-
-    public toggleExpand(): void {
-        if (this.videoPanel.parentElement !== document.body)
-            this.expand();
-        else
-            this.collapse();
-    }
-
-    public expand(): void {
-        if (this.videoPanel.parentElement === document.body)
-            return;
-
-        // Reparent BEFORE adding 'expanded' — otherwise position:fixed would
-        // resolve against the original (possibly transformed) ancestor for a frame.
-        document.body.appendChild(this.videoPanel);
-        this.videoPanel.classList.remove('minimized');
-        this.videoPanel.classList.add('expanded');
-        // Freeze narrow/wide state on mobile only: there a rotation would otherwise reflow the
-        // hidden app layout underneath (e.g. the left panel appearing in landscape). On desktop
-        // the user resizes deliberately and the fullscreen panel must honor it live - it drops
-        // the side chat and its controls once the viewport falls below Large.
-        if (DeviceInfo.isMobile)
-            ScreenSize.freeze();
-
-        void this.blazorRef.invokeMethodAsync('OnExpanded');
-        this.setupBadgeLayout();
-    }
-
-    public collapse() {
-        if (this.videoPanel.parentElement !== document.body)
-            return;
-
-        this.teardownBadgeLayout();
-        this.resetZoom();
-        // If compact reasons still demand island mode, stay attached to body — no point
-        // restoring to the inline parent only to setupIsland() will reparent right back.
-        // Going via inline causes a visible "video lands in chat header" flash.
-        const willReForceIsland = this.compactReasons.size > 0;
-        if (!willReForceIsland)
-            this.restoreToParent();
-        this.videoPanel.classList.remove('expanded', 'toolbar-hidden');
-        ScreenSize.unfreeze();
-        void this.blazorRef.invokeMethodAsync('OnCollapsed');
-        if (willReForceIsland)
-            this.videoPanel.classList.add('collapsed');
-        // While fullscreen, panelMode stayed at whatever it was before expand() ran.
-        // Reset so updatePanelMode runs the real transition from the current class state.
-        this.panelMode = 'inline';
-        this.updatePanelMode();
-        if (willReForceIsland) {
-            this.forcedCollapseActive = true;
-            void this.blazorRef.invokeMethodAsync('OnForceIsland', true);
-        }
-    }
-
-    private restoreToParent(): void {
-        const parent = this.parentElement;
-        if (!parent)
-            return;
-        if (this.homeMarker?.parentNode === parent) {
-            if (this.homeMarker.nextSibling !== this.videoPanel)
-                parent.insertBefore(this.videoPanel, this.homeMarker.nextSibling);
-            return;
-        }
-        if (this.parentNextSibling?.parentNode === parent)
-            parent.insertBefore(this.videoPanel, this.parentNextSibling);
-        else
-            parent.appendChild(this.videoPanel);
-    }
-
-    private onEscPress() {
-        if (this.videoPanel.classList.contains('expanded'))
-            this.collapse();
-    }
-
-    public startClosing() {
-        if (this.closing)
-            return;
-
-        this.closing = true;
-        this.videoPanel.classList.remove('first-time-open');
-        this.videoPanel.classList.add('closing');
-
-        const content = this.videoPanel.querySelector('.video-panel-content')!;
-        let handled = false;
-        const complete = () => {
-            if (handled || !this.closing)
-                return;
-
-            handled = true;
-            this.closing = false;
-            this.closeTimer = 0;
-            this.closeContent = null;
-            this.closeComplete = null;
-            content.removeEventListener('animationend', complete);
-            // Hide immediately so Blazor re-render can't flash the panel
-            // (re-render overwrites class attr, dropping JS-added "closing" → fill lost)
-            this.videoPanel.style.visibility = 'hidden';
-            void this.blazorRef.invokeMethodAsync('CloseVideoPanel');
-        };
-
-        this.closeContent = content;
-        this.closeComplete = complete;
-        content.addEventListener('animationend', complete);
-        this.closeTimer = window.setTimeout(complete, 500);
-    }
-
-    public cancelClosing() {
-        if (!this.closing && !this.videoPanel.classList.contains('closing'))
-            return;
-
-        this.closing = false;
-        if (this.closeTimer !== 0) {
-            window.clearTimeout(this.closeTimer);
-            this.closeTimer = 0;
-        }
-        if (this.closeContent && this.closeComplete)
-            this.closeContent.removeEventListener('animationend', this.closeComplete);
-        this.closeContent = null;
-        this.closeComplete = null;
-        this.videoPanel.classList.remove('closing');
     }
 
     // endregion

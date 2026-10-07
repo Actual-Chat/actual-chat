@@ -38,26 +38,25 @@ This document describes how to test the video streaming feature (VideoPanel) usi
 | Camera dropdown | `.camera-select` | `<select>` element listing available cameras |
 | Start/Join button | `.btn-modal.btn-primary` | Primary action button in modal footer |
 
-### VideoPanel
+### Call screen (the chat's video)
 
 | Element | Selector | Notes |
 |---------|----------|-------|
-| Panel container | `.video-panel` | Main wrapper |
-| Local video canvas | `.video-panel canvas.call-video` | Canvas element for local camera preview |
-| "You" label | `.video-panel .video-frame .video-participant-label` | Shows "You" with camera icon when recording |
-| Remote streams | `.video-panel .remote-streams` | Grid container for remote participant videos |
-| Remote video | `.video-panel .remote-streams canvas.remote-video` | Individual remote stream canvases |
-| Expand button | `.video-panel .expand-btn` | Fullscreen toggle |
+| Screen root | `.call-screen` | Main wrapper: inline in the chat header, floating, or full-screen |
+| Local video canvas | `.call-screen canvas.call-video` | Canvas element for local camera preview |
+| "You" label | `.call-screen .video-frame .video-participant-label` | Shows "You" with camera icon when recording |
+| Remote streams | `.call-screen .remote-streams` | Grid container for remote participant videos |
+| Remote video | `.call-screen .remote-streams canvas.remote-video` | Individual remote stream canvases |
+| Expand button | `.call-screen .btn-expand` | Fullscreen toggle |
 
-### VideoPanel States
+### Call screen states
 
 | Class | Meaning |
 |-------|---------|
-| `.video-panel.recording` | Local video is recording |
-| `.video-panel.has-remote-streams` | Remote participants are streaming |
-| `.video-panel.expanded` | Panel is in fullscreen mode |
-| `.video-panel.first-time-open` | Opening animation in progress |
-| `.video-panel.closing` | Closing animation in progress |
+| `.call-screen.has-video` | The stage shows video tiles rather than the avatar |
+| `.call-screen.expanded` | Full-screen mode |
+| `.call-screen.first-time-open` | Opening animation in progress |
+| `.call-screen.closing` | Closing animation in progress |
 
 ## Step-by-Step Implementation
 
@@ -225,10 +224,10 @@ await page.waitForTimeout(3000);
 After clicking Start, the VideoPanel should appear with a live camera preview rendered on a canvas:
 
 ```typescript
-const videoPanel = page.locator('.video-panel');
+const videoPanel = page.locator('.call-screen');
 await videoPanel.waitFor({ timeout: 15_000 });
 
-const canvas = page.locator('.video-panel canvas.call-video');
+const canvas = page.locator('.call-screen canvas.call-video');
 await canvas.waitFor({ timeout: 10_000 });
 
 // Allow time for the recording pipeline to render frames
@@ -236,7 +235,7 @@ await page.waitForTimeout(5000);
 
 // Sample pixel data to confirm the canvas is not all-black
 const result = await page.evaluate(() => {
-    const c = document.querySelector('.video-panel canvas.call-video') as HTMLCanvasElement;
+    const c = document.querySelector('.call-screen canvas.call-video') as HTMLCanvasElement;
     if (!c) return { found: false, hasContent: false };
 
     const ctx = c.getContext('2d');
@@ -264,7 +263,7 @@ console.log(`Canvas: ${result.width}x${result.height}, nonBlack=${result.nonBlac
 ### 9. Verify "You" Label
 
 ```typescript
-const label = page.locator('.video-panel .video-frame .video-participant-label');
+const label = page.locator('.call-screen .video-frame .video-participant-label');
 const visible = await label.isVisible({ timeout: 5000 }).catch(() => false);
 const text = (await label.textContent())?.trim() ?? '';
 const hasIcon = await label.locator('i.icon-video').isVisible().catch(() => false);

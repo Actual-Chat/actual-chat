@@ -1,7 +1,7 @@
 /**
  * Shared steps for e2e tests that need a call between two signed-in users in their peer chat:
- * signing both in at a given viewport, dialing and accepting, telling the call screen, the video
- * panel and the chat apart, and hanging up.
+ * signing both in at a given viewport, dialing and accepting, telling the call screen, its video
+ * and the chat apart, and hanging up.
  *
  * Calls are incomplete UI, which signInBoth turns on for both accounts - test agents are admins
  * only on a local server, so the tests that use it need one.
@@ -15,10 +15,14 @@ import {
 } from './helpers';
 import { SPEECH_WAV } from './video-call';
 
-export const CALL_SCREEN = '.full-screen-call-view.in-call';
+/** The full-screen call screen past ringing - the same one whether its stage shows an avatar or video. */
+export const CALL_SCREEN = '.call-screen.expanded:not(.ringing)';
+export const CALL_CONTROLS = `${CALL_SCREEN} .call-screen-footer`;
+export const CALL_HANG_UP = `${CALL_SCREEN} .call-screen-header .btn-hang-up`;
+export const CALL_COLLAPSE = `${CALL_SCREEN} .call-screen-header .btn-expand`;
 export const JOIN_PREVIEW = '.modal .camera-preview-video';
-export const OWN_VIDEO = '.video-panel .video-streaming-preview';
-export const REMOTE_VIDEO = '.video-panel .remote-video-container';
+export const OWN_VIDEO = '.call-screen .video-streaming-preview';
+export const REMOTE_VIDEO = '.call-screen .remote-video-container';
 
 export const NARROW = { width: 390, height: 844 };
 export const WIDE = { width: 1440, height: 900 };
@@ -118,6 +122,8 @@ export async function dialPeerCall(caller: Page, callee: Page) {
     const accept = callee.locator('.btn-call.c-accept').first();
     await accept.waitFor({ state: 'visible', timeout: 30_000 });
     await accept.click();
+    // Answered on the caller's side too: while it still dials, its camera button asks through the join preview
+    await caller.locator('.call-screen.dialing, .call-modal').first().waitFor({ state: 'hidden', timeout: 30_000 });
 }
 
 export async function startPeerCall(caller: Page, callee: Page) {
@@ -135,8 +141,7 @@ export async function hangUpIfAny(page: Page | undefined) {
 
     // Most specific first: the recorder toggle would restart a recording that a hang-up is still stopping.
     const controls = [
-        page.locator(`${CALL_SCREEN} .c-call-bar .btn-glass.talking`).first(),
-        page.locator('.video-panel .btn-glass.talking').first(),
+        page.locator(CALL_HANG_UP).first(),
         page.locator('.chat-audio-controls .c-hangup').first(),
         // On a wide screen an active call has no screen of its own: it ends with the recording
         page.locator('.chat-audio-panel .recorder-wrapper.record-on button').first(),
@@ -158,15 +163,14 @@ export async function hangUpIfAny(page: Page | undefined) {
     }
 }
 
-/** Expanded, opaque and not hidden: `isVisible` alone is true for a panel still fading in over the chat. */
+/** The call screen is up with video on its stage, opaque: `isVisible` alone is true for a stage still fading in. */
 export function isVideoCoveringScreen(page: Page): Promise<boolean> {
     return page.evaluate(() => {
-        const panel = document.querySelector('.video-panel.expanded');
-        const content = panel?.querySelector('.video-panel-content');
+        const panel = document.querySelector('.call-screen.expanded.has-video');
+        const content = panel?.querySelector('.video-stage');
         if (!panel || !content)
             return false;
 
-        // A panel being closed is hidden before it leaves the DOM
         const panelStyle = getComputedStyle(panel);
         return panelStyle.visibility !== 'hidden' && panelStyle.opacity === '1'
             && getComputedStyle(content).opacity === '1';

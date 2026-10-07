@@ -113,14 +113,14 @@ describe('call reaction author name', () => {
         // arrange - Bob reacts with the first quick emoji, and it floats over Alice's expanded panel
         await expandVideoPanel(alice);
         await expandVideoPanel(bob);
-        const reactButton = bob.locator('.video-panel .btn-react').first();
+        const reactButton = bob.locator('.call-screen .btn-react').first();
         await reactButton.waitFor({ state: 'visible', timeout: 20_000 });
         await reactButton.click();
         const menu = bob.locator('.call-reactions-menu').first();
         await menu.waitFor({ state: 'visible', timeout: 10_000 });
         await menu.locator('.reaction-select-reaction').first().click();
         await menu.waitFor({ state: 'hidden', timeout: 10_000 });
-        const reaction = alice.locator('.video-panel .call-reactions-overlay .c-reaction').first();
+        const reaction = alice.locator('.call-screen .call-reactions-overlay .c-reaction').first();
         await reaction.waitFor({ state: 'attached', timeout: 15_000 });
 
         for (const { kind, name, isTruncated } of NAMES) {
@@ -146,7 +146,7 @@ describe('call reaction author name', () => {
  *  and frozen mid-float; returns each copy's label metrics in that order. */
 async function showReactionsNamed(page: Page, name: string, leftPercents: number[]): Promise<LabelMetrics[]> {
     return page.evaluate(({ name, leftPercents, frozenAtMs }) => {
-        const overlay = document.querySelector<HTMLElement>('.video-panel .call-reactions-overlay')!;
+        const overlay = document.querySelector<HTMLElement>('.call-screen .call-reactions-overlay')!;
         const source = overlay.querySelector<HTMLElement>('.c-reaction:not(.e2e-copy)')!;
         overlay.querySelectorAll('.e2e-copy').forEach(e => e.remove());
         source.style.display = 'none';
@@ -175,7 +175,7 @@ async function showReactionsNamed(page: Page, name: string, leftPercents: number
 
 async function removeShownReactions(page: Page) {
     await page.evaluate(() => {
-        const overlay = document.querySelector('.video-panel .call-reactions-overlay');
+        const overlay = document.querySelector('.call-screen .call-reactions-overlay');
         overlay?.querySelectorAll('.e2e-copy').forEach(e => e.remove());
         overlay?.querySelectorAll<HTMLElement>('.c-reaction').forEach(e => { e.style.display = ''; });
     });

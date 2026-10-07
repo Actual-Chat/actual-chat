@@ -272,27 +272,47 @@ The first matching row wins:
 The width is reactive: narrowing the window mid-call brings up the full-screen view, widening it
 swaps the dialing full-screen view for the modal.
 
-On a narrow screen the call has a second full-screen surface, the expanded video panel, which lives
-in the chat under the full-screen view. The two hand the screen to each other through the collapsed
-flag, and each stays up until the other covers it, so the chat between them doesn't show:
+The full-screen view is `CallScreen`, and it is the only full-screen surface a call has. It has a
+header, a control bar and a stage between them; the stage shows the chat's avatar while the call has
+no video and the video tiles while it has. Video starting or ending changes the stage and nothing
+else, so the screen, its header and its control bar are the same elements throughout.
 
-- **Video starts** — the own camera turned on from the full-screen view, or a remote stream arriving
-  while it is up (`CallScreensUI.IsOnCallScreen`): the panel opens expanded, and
-  `OnVideoExpanded` sets the flag once the panel reports it covers the screen.
-- **The last video stops** while the panel is expanded: `VideoPanel` clears the flag
-  (`CallScreensUI.Expand`) before it closes, so the full-screen view is back first.
-- **The island is expanded** in a call with video (`CallScreensUI.ExpandToFullScreen`): the panel
-  expands, as its own expand button makes it, instead of the full-screen view coming back. A panel
-  that isn't up - the user is in another chat - opens expanded under the full-screen view, as when
-  video starts.
+The same component is the chat's video in every other mode as well - inline in the chat header, the
+floating island, hidden behind the activity pill - and the full-screen video of a chat nobody called
+in. `CallScreensUI.GetScreen` decides what it shows (`DecideScreen` is the pure rule):
 
-A panel that is inline when its video stops leaves the user in the chat, and over the lock screen
-the full-screen view stays: the chat, and the panel in it, are behind the keyguard.
+| Slot's view | Chat being watched | Screen |
+|---|---|---|
+| full-screen view | the call's chat, or none | the call, full-screen, with or without video |
+| anything else | a chat | that chat's video, in its panel mode; the call's too if the chat is the call's and it is active |
+| anything else | none | nothing |
+
+So on a wide screen, where an active call has no view of its own, the call screen exists only while
+the call's video is expanded, and goes back to the chat when that video ends. On a narrow screen it
+stays, with the avatar on its stage.
+
+"Is the screen full-screen" has two stores - the collapsed flag here and the panel mode in
+`ChatActivityUI` - and one writer, `CallScreensUI.SetScreenMode`, behind `Expand` and
+`LeaveCallScreen`. The collapse button, the island, the inline video's expand button, the video
+menu, Back and Escape all go through it. `LeaveCallScreen` opens the call's chat first: an inline
+video belongs to its chat's page.
+
+Which chat's video is up at all is `ChatVideoUI`'s (`SyncWatching`): it opens for a chat with own
+camera or screencast, and for a chat the user listens in once someone else streams there - the
+call's chat while its screen is up, the selected one otherwise - and closes an inline or hidden
+video when the user moves to another chat. A full-screen or floating video doesn't depend on the
+selected chat, so the island expands in place, and a video call answered over the lock screen
+shows its video there; the chat itself stays behind the keyguard.
+
+The component is mounted outside the chat page, in a `RenderIntoNomadSlot` (see
+[Moving rendered content between places](../ui/components.md#moving-rendered-content-between-places)).
+Inline, it targets the `RenderNomadSlot` the chat header keeps for it, keyed by the chat id, and
+its DOM moves there - and back out when the slot goes.
 
 | Surface | What it shows |
 |---|---|
 | `CallModal` | Decline, Mute, Message and Accept for a ring; Hang up while dialing. |
-| `FullScreenCallView` | The ring over the keyguard, and dialing or the call on a narrow screen. |
+| `CallScreen` | The ring over the keyguard, dialing or the call on a narrow screen, and a chat's video in every mode. |
 | `CollapsedCallView` | The draggable island. Collapsing a ring also mutes its ringtone. |
 
 `CallScreensUI` is a UI worker; it runs two reactive loops:

@@ -15,6 +15,7 @@ public partial class ChatVideoUI
             AsyncChain.From(SyncScreenCastLifecycle),
             AsyncChain.From(MonitorVideoIdleness),
             AsyncChain.From(SyncMemberRegistration),
+            AsyncChain.From(SyncWatching),
         };
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         await (
@@ -44,6 +45,67 @@ public partial class ChatVideoUI
     {
         var chatId = await _screenCastChatId.Use(cancellationToken).ConfigureAwait(false);
         return chatId is null ? null : new ScreenCastIntent(chatId);
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<WatchingChange> GetWatchingChange(CancellationToken cancellationToken)
+    {
+        var watchingChatId = await GetWatchingChatId(cancellationToken).ConfigureAwait(false);
+        var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var view = await Hub.CallScreensUI.GetCallView(cancellationToken).ConfigureAwait(false);
+        var callScreenChatId = view is { Kind: CallViewKind.FullScreen, Call: { } call } ? call.ChatId : (ChatId?)null;
+
+        // A call screen covers the selected chat, so only its own chat's video can show there.
+        var candidateChatId = callScreenChatId ?? selectedChatId;
+        if (candidateChatId is { } chatId && chatId != watchingChatId
+            && await MustWatch(chatId, cancellationToken).ConfigureAwait(false))
+            return new WatchingChange(chatId, callScreenChatId is not null);
+
+        // An inline or hidden panel belongs to its chat's page: in another chat there is no place for
+        // it. Own camera and screencast keep publishing - only the watching stops.
+        if (watchingChatId is not { } watching || selectedChatId is null || selectedChatId == watching
+            || callScreenChatId == watching)
+            return WatchingChange.None;
+
+        var mode = await ChatActivityUI.GetPanelMode(watching, cancellationToken).ConfigureAwait(false);
+        return mode is VisualActivityPanelMode.Inline or VisualActivityPanelMode.Hidden
+            ? WatchingChange.Close
+            : WatchingChange.None;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<bool> MustWatch(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Own video reads the local intent, which clears synchronously on stop.
+        var ownSourceKind = await GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false);
+        if (ownSourceKind is not null)
+            return true;
+
+        // Someone else is streaming and the user is listening. Remote-only on purpose: counting own
+        // streams from the server's list would reopen the panel just closed on own-stop - for as long
+        // as the server still lists the stopped stream.
+        var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        return (audioState.IsListening || audioState.IsRecording)
+            && await HasRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Watching
+
+    private async Task SyncWatching(CancellationToken cancellationToken)
+    {
+        var cChange = await Computed
+            .Capture(() => GetWatchingChange(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var c in cChange.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (c.HasError)
+                continue;
+
+            var change = c.Value;
+            if (change.OpenChatId is { } chatId)
+                await OpenVideoPanelInternal(chatId, change.IsExpanded, cancellationToken).ConfigureAwait(false);
+            else if (change.MustClose)
+                CloseVideoPanel();
+        }
     }
 
     // Recording lifecycles

@@ -56,7 +56,6 @@
 @import './Components/PlaybackRunningBorder/playback-running-border.css';
 @import './Components/CallModal/call-modal.css';
 @import './Components/CallReactions/call-reactions.css';
-@import './Components/FullScreenCallView/full-screen-call-view.css';
 @import './Components/CollapsedCallView/collapsed-call-view.css';
 @import './Components/OwnVideoIsland/own-video-island.css';
 @import './Components/AddMember/add-member-modal.css';
@@ -110,7 +109,7 @@
 @import './Components/StatusBadge/status-badge.css';
 @import './Components/SubHeader/sub-header.css';
 @import './Components/TranslationSubHeader/translation-sub-header.css';
-@import './Components/VideoPanel/video-panel.css';
+@import './Components/CallScreen/call-screen.css';
 @import './Components/VideoPanel/video-streaming-preview.css';
 @import './Components/VideoPanel/video-diagnostics-modal.css';
 @import './Components/AudioPanel/audio-diagnostics-modal.css';

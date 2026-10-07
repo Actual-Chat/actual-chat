@@ -52,7 +52,7 @@ export interface RecorderPreviewViewOptions {
 // The trigger is compositing: `.video-track-player` is `contain: strict` and the
 // surfaces inside carry `will-change: transform` (plus scaleX(-1) when
 // mirrored). Both are load-bearing - see the contain/will-change notes in
-// video-panel.css - so the layer gets nudged instead of unpromoted. Toggling
+// call-screen.css - so the layer gets nudged instead of unpromoted. Toggling
 // display forces a fresh compositing pass and the frame appears instantly;
 // every workaround in the upstream thread is a reset of this kind (background
 // the app, split-view, reload, picture-in-picture).
@@ -204,7 +204,7 @@ export class RecorderPreviewView {
         // the panel stays at the default 16:9 and a portrait camera ends up
         // letterboxed in a tiny landscape tile.
         updateCollapsedIslandAspect(
-            videoEl.closest<HTMLElement>('.video-panel'),
+            videoEl.closest<HTMLElement>('.call-screen'),
             frameW,
             frameH);
         // Same rule the receiver follows in VideoPlayer.applyFitDecision.

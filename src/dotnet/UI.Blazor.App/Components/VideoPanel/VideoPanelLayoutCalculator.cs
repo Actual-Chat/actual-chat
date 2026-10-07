@@ -14,21 +14,19 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     // the own-camera tile, so wide tops out at a 6-tile grid.
     private const int MaxDisplaySlotsWide = 5; // focused + up to 4 on sidebar
     private const int MaxDisplaySlotsNarrow = 3; // focused + up to 2 on sidebar
-    private readonly TaskCompletionSource _whenInitializedSource = TaskCompletionSourceExt.New();
-    private readonly MutableState<VideoPanelLayout> _layout;
+    private readonly MutableState<(ChatId? ChatId, VideoPanelLayout Layout)> _layout;
     private readonly MutableState<ImmutableArray<AuthorId>> _focusedSpeakerIds;
     private readonly MutableState<AuthorId?> _pinnedAuthorId;
     private readonly Lock _trackFocusLock = new Lock();
     private CancellationTokenSource? _focusDebounceCts;
     private AuthorId? _pendingFocusCandidate;
+    private ChatId? _focusChatId;
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
 
-    public ChatId ChatId { get; private set; } = default!;
-
     public VideoPanelLayoutCalculator(AppUIHub hub) : base(hub)
     {
-        _layout = hub.StateFactory.NewMutable(VideoPanelLayout.New);
+        _layout = StateFactory.NewMutable(((ChatId?)null, VideoPanelLayout.New));
         _focusedSpeakerIds = StateFactory.NewMutable(ImmutableArray<AuthorId>.Empty);
         _pinnedAuthorId = StateFactory.NewMutable((AuthorId?)null);
     }
@@ -36,25 +34,25 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    public void Initialize(ChatId chatId)
+    // The layout and the pin are those of the watched chat; right after it changes they still
+    // describe the previous one, hence the chat to ask them for.
+    public async Task<VideoPanelLayout> GetLayout(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (!_whenInitializedSource.TrySetResult())
-            throw StandardError.Constraint("Already initialized");
-        ChatId = chatId;
+        var (layoutChatId, layout) = await _layout.Use(cancellationToken).ConfigureAwait(false);
+        return layoutChatId == chatId ? layout : VideoPanelLayout.New;
     }
 
-    public Task<VideoPanelLayout> GetLayout(CancellationToken cancellationToken)
-        => _layout.Use(cancellationToken);
-
-    public Task<AuthorId?> GetPinnedAuthor(CancellationToken cancellationToken)
-        => _pinnedAuthorId.Use(cancellationToken);
+    public async Task<AuthorId?> GetPinnedAuthor(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var pinnedAuthorId = await _pinnedAuthorId.Use(cancellationToken).ConfigureAwait(false);
+        return pinnedAuthorId?.ChatId == chatId ? pinnedAuthorId : null;
+    }
 
     public void SetPinnedAuthor(AuthorId? authorId)
         => _pinnedAuthorId.Value = authorId;
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
-        await _whenInitializedSource.Task.ConfigureAwait(false);
         var baseChains = new[] {
             AsyncChain.From(TrackFocusedSpeaker),
             AsyncChain.From(CalculateLayout),
@@ -73,7 +71,10 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     [ComputeMethod]
     protected virtual async Task<ActiveSpeakerState> GetActiveSpeakerState(CancellationToken cancellationToken)
     {
-        var chatId = ChatId;
+        var chatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
+        if (chatId is null)
+            return ActiveSpeakerState.None;
+
         var audioStreamingAuthorIds = await Hub.LiveStreamUI
             .GetAudioStreamingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
         var activeVideoStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken)
@@ -100,7 +101,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             .Where(a => a != ownAuthorId)
             .ToArray();
 
-        return new ActiveSpeakerState(speakingWithVideo, screenCastAuthorIds);
+        return new ActiveSpeakerState(chatId, speakingWithVideo, screenCastAuthorIds);
     }
 
     [ComputeMethod]
@@ -108,10 +109,17 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
     {
         var focusedIds = await _focusedSpeakerIds.Use(cancellationToken).ConfigureAwait(false);
         var pinnedAuthorId = await _pinnedAuthorId.Use(cancellationToken).ConfigureAwait(false);
-        var isOwnRecording = await ChatVideoUI.IsOwnCameraRecording(ChatId, cancellationToken).ConfigureAwait(false);
-        var remoteStreams = await ChatVideoUI.GetRemoteStreams(ChatId, cancellationToken).ConfigureAwait(false);
+        var chatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
+        if (chatId is null) {
+            // The pin is passed on for CalculateLayout to drop: it doesn't outlive its video
+            return LayoutInputs.None with { PinnedAuthorId = pinnedAuthorId };
+        }
+
+        var isOwnRecording = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
         var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
         return new LayoutInputs(
+            chatId,
             screenSize.IsNarrow(),
             isOwnRecording,
             remoteStreams,
@@ -133,8 +141,19 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
             if (error is not null)
                 continue;
 
-            var (speakersWithVideo, screenCastAuthorIds) = state;
+            var (chatId, speakersWithVideo, screenCastAuthorIds) = state;
             lock (_trackFocusLock) {
+                if (chatId != _focusChatId) {
+                    // The focus history is that of one chat's video
+                    _focusChatId = chatId;
+                    _focusedSpeakerIds.Value = [];
+#pragma warning disable CA1849 // Use async overload
+                    _focusDebounceCts?.Cancel();
+#pragma warning restore CA1849
+                    _focusDebounceCts = null;
+                    _pendingFocusCandidate = null;
+                }
+
                 // ScreenCasts are primary-only. Backend/client gates allow only
                 // one, but stale/raced entries can overlap briefly; in that case
                 // the current speaker's screencast wins.
@@ -179,7 +198,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
                 && inputs.RemoteStreams.All(s => s.AuthorId != pinned))
                 _pinnedAuthorId.Value = null;
 
-            var layout = BuildLayout(inputs);
+            var layout = (inputs.ChatId, BuildLayout(inputs));
             if (layout != _layout.Value)
                 _layout.Value = layout;
         }
@@ -319,7 +338,7 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     private static VideoPanelLayout BuildLayout(LayoutInputs inputs)
     {
-        var (isNarrow, hasOwnCamera, remoteStreams, focusedIds, pinnedAuthorId) = inputs;
+        var (_, isNarrow, hasOwnCamera, remoteStreams, focusedIds, pinnedAuthorId) = inputs;
         var hasRemote = remoteStreams.Length > 0;
 
         // Manual pin: a pinned author takes (and holds) the focused slot in place of
@@ -437,19 +456,23 @@ public class VideoPanelLayoutCalculator : UIWorkerBase<AppUIHub>, IComputeServic
 
     // Nested types
 
-    protected sealed record ActiveSpeakerState(AuthorId[] SpeakersWithVideo, ImmutableArray<AuthorId> ScreenCastAuthorIds)
+    protected sealed record ActiveSpeakerState(
+        ChatId? ChatId,
+        AuthorId[] SpeakersWithVideo,
+        ImmutableArray<AuthorId> ScreenCastAuthorIds)
     {
-        public static readonly ActiveSpeakerState None = new([], []);
+        public static readonly ActiveSpeakerState None = new(null, [], []);
     }
 
     protected sealed record LayoutInputs(
+        ChatId? ChatId,
         bool IsNarrowScreen,
         bool HasOwnCameraPreview,
         VideoStreamInfo[] RemoteStreams,
         ImmutableArray<AuthorId> FocusedSpeakerIds,
         AuthorId? PinnedAuthorId)
     {
-        public static readonly LayoutInputs None = new(true, false, [], [], default);
+        public static readonly LayoutInputs None = new(null, true, false, [], [], default);
     }
 
     private sealed record RemoteScreenCastPrimary(AuthorStreamGroup Group);
@@ -468,13 +491,26 @@ public record VideoPanelLayout(
 
 #pragma warning disable CA1822 // Member can be static
     public string LayoutClass
-        => "video-panel-layout__sidebar";
+        => "video-stage-layout__sidebar";
 #pragma warning restore CA1822
 
     // Real video tiles (focused + sidebar cameras, excluding PiP overlays) — drives
     // the equal-split grid template (`tiles-N`) in the "equal" layout, see video-panel.css.
     public int TileCount
         => (OwnCameraPreviewClass.IsNullOrEmpty() ? 0 : 1) + RemoteStreamPlayerClasses.Length;
+
+    public bool IsOwnCameraFocused
+        => OwnCameraPreviewClass.Contains("item-focused", StringComparison.Ordinal);
+
+    public AuthorId? GetFocusedAuthorId(VideoStreamInfo[] remoteStreams)
+    {
+        var focused = RemoteStreamPlayerClasses
+            .FirstOrDefault(c => c.Class.Contains("item-focused", StringComparison.Ordinal));
+        if (focused is null)
+            return null;
+
+        return remoteStreams.FirstOrDefault(s => s.StreamId.Value == focused.StreamId)?.AuthorId;
+    }
 
     public string GetRemoteStreamPlayerClass(StreamId streamId)
         => RemoteStreamPlayerClasses.FirstOrDefault(c => c.StreamId == streamId.Value)?.Class ?? "";

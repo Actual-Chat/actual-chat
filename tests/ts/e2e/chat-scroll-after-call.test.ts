@@ -25,7 +25,7 @@ import { SPEECH_WAV } from './video-call';
 
 const shot = (name: string) => screenshot('e2e-chat-scroll-after-call', name);
 
-const CALL_SCREEN = '.full-screen-call-view';
+const CALL_SCREEN = '.call-screen.expanded';
 const CHAT_LIST = '.chat-view.virtual-list';
 /** Taller than the phone viewport, so the chat is longer than the screen whatever it held before */
 const TALL_MESSAGE_LINE_COUNT = 30;
@@ -54,7 +54,7 @@ async function hangUpIfAny(page: Page | undefined) {
     if (!page)
         return;
 
-    const hangUp = page.locator(`${CALL_SCREEN} .c-call-bar .btn-glass.talking`).first();
+    const hangUp = page.locator(`${CALL_SCREEN} .call-screen-header .btn-hang-up`).first();
     if (await hangUp.isVisible({ timeout: 1_000 }).catch(() => false))
         await hangUp.click().catch(() => { /* ignore */ });
 }
@@ -146,7 +146,7 @@ describe('chat scroll after a call ends', () => {
         await sendTallMessage(callee);
         await dialPeerCall(caller, callee);
         for (const page of [caller, callee]) {
-            await page.locator(`${CALL_SCREEN}.in-call .c-toolbar`).first()
+            await page.locator(`${CALL_SCREEN}.in-call .call-screen-footer`).first()
                 .waitFor({ state: 'visible', timeout: 30_000 });
         }
         const list = caller.locator(CHAT_LIST).first();

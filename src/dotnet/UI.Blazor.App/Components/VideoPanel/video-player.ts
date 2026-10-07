@@ -265,7 +265,7 @@ export class VideoPlayer {
     // canvas itself, so ResizeObserver alone misses them.
     private parentClassObserver: MutationObserver | null = null;
     // Minimize/maximize / collapse / expand are class swaps on the OUTER
-    // `.video-panel` ancestor (many levels above the canvas). Watch its
+    // `.call-screen` ancestor (many levels above the canvas). Watch its
     // class + size so we re-evaluate when the whole panel reshapes.
     private panelClassObserver: MutationObserver | null = null;
     private panelResizeObserver: ResizeObserver | null = null;
@@ -865,10 +865,10 @@ export class VideoPlayer {
             this.parentClassObserver.observe(parent, { attributes: true, attributeFilter: ['class'] });
         }
         // Backstop 2: collapse / expand / minimize / maximize toggle classes
-        // on the outer `.video-panel` ancestor, many levels above the canvas.
+        // on the outer `.call-screen` ancestor, many levels above the canvas.
         // Watch both its class and its size — the panel-level reshape is what
         // ultimately drives our viewport.
-        const panel = this.canvas.closest('.video-panel');
+        const panel = this.canvas.closest('.call-screen');
         if (panel) {
             this.panelClassObserver = new MutationObserver(() => this.scheduleViewportCheck());
             this.panelClassObserver.observe(panel, { attributes: true, attributeFilter: ['class'] });
@@ -899,7 +899,7 @@ export class VideoPlayer {
         const parent = this.canvas.parentElement;
         if (!parent) return;
         const isPrimary = isPrimaryTile(parent);
-        const isMinimized = !!document.querySelector('.video-panel.collapsed');
+        const isMinimized = !!document.querySelector('.call-screen.collapsed');
         // Only the truly focused tile drives the collapsed island's aspect —
         // in the equal layout every tile is primary, and the island shows one.
         if (parent.classList.contains('item-focused'))
@@ -934,7 +934,7 @@ export class VideoPlayer {
     }
 
     private updateCollapsedIslandAspect(): void {
-        const panel = this.canvas.closest<HTMLElement>('.video-panel');
+        const panel = this.canvas.closest<HTMLElement>('.call-screen');
         if (!panel) return;
         let frameW = this.lastFrameW;
         let frameH = this.lastFrameH;
@@ -945,10 +945,10 @@ export class VideoPlayer {
                 frameH = 1;
             }
         }
-        const prevAspect = panel.style.getPropertyValue('--video-panel-island-aspect');
+        const prevAspect = panel.style.getPropertyValue('--call-screen-island-aspect');
         const prevPortrait = panel.hasAttribute('data-portrait-video');
         updateCollapsedIslandAspect(panel, frameW, frameH);
-        const aspectChanged = panel.style.getPropertyValue('--video-panel-island-aspect') !== prevAspect;
+        const aspectChanged = panel.style.getPropertyValue('--call-screen-island-aspect') !== prevAspect;
         const portraitChanged = panel.hasAttribute('data-portrait-video') !== prevPortrait;
         if (aspectChanged || portraitChanged) {
             void panel.offsetHeight;
@@ -973,7 +973,7 @@ export class VideoPlayer {
             // inline size for one frame on mobile. Odd-quarter rotation bakes
             // that size into the inner canvas/video, so run one settled pass
             // after fixed-position layout has landed.
-            if (this.canvas.closest('.video-panel')?.classList.contains('expanded'))
+            if (this.canvas.closest('.call-screen')?.classList.contains('expanded'))
                 requestAnimationFrame(() => this.runViewportCheck());
         });
     }
