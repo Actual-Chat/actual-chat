@@ -10,8 +10,8 @@ namespace ActualChat.Users;
 public sealed partial record UserPttSettings
     : StoredSettings, IHasOrigin, IHasKvasKey<UserPttSettings>
 {
-    // Matches ActiveChatsUI.MaxActiveChatCount, and bounds server wake fan-out per speaker.
-    public const int MaxChatCount = 3;
+    // Up to 10 chats may be armed for Push-to-talk at once (was 3), all shown in the PttChats section.
+    public const int MaxChatCount = 10;
 
     // Legacy mirror of PttChats (ids only), kept in sync for pre-epoch readers.
     [DataMember, Key(0)]

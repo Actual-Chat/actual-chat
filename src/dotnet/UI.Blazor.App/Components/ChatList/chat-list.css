@@ -53,9 +53,28 @@
     @apply overflow-y-hidden;
 }
 .navbar-chats .c-active-chats {
-    @apply relative;
+    @apply relative z-10;
     @apply flex-none flex-y;
     @apply overflow-visible;
+}
+/* The bottom chats (Active + PTT) read as one block: the rounding, the magenta-to-indigo wash and the
+   lift all live on the wrapper, at the whole block's top edge. Active and PTT are plain sub-sections
+   inside it, told apart only by a thin separator. Shown once at least one is up. --shadow-main reads
+   in both themes; dark gets a soft translucent black instead of the opaque light gray. The gradient's
+   raw colour vars are the usual carve-out (no pal- utilities inside a gradient). */
+.navbar-chats .c-active-chats[data-has-active-chats],
+.navbar-chats .c-active-chats[data-has-ptt-chats] {
+    @apply rounded-t-2xl;
+    background: linear-gradient(
+        to bottom,
+        var(--magenta-90-10) 0,
+        var(--indigo-70-10) 2.5rem,
+        transparent 6.5rem);
+    box-shadow: 0 -4px 10px -3px var(--shadow-main);
+}
+.theme-dark .navbar-chats .c-active-chats[data-has-active-chats],
+.theme-dark .navbar-chats .c-active-chats[data-has-ptt-chats] {
+    box-shadow: 0 -5px 14px -4px var(--black-40);
 }
 .navbar-chats .c-active-chats > .c-delimiter {
     @apply hidden;
@@ -87,7 +106,9 @@
 body.narrow .chat-list-fab.btn.btn-round.marked-message .btn-content > i {
     transform: none;
 }
-.navbar-chats .c-active-chats[data-has-active-chats] .chat-list-fab {
+/* With a dock (Active or PTT) present the create button tucks up over the dock's top edge. */
+.navbar-chats .c-active-chats[data-has-active-chats] .chat-list-fab,
+.navbar-chats .c-active-chats[data-has-ptt-chats] .chat-list-fab {
     @apply bottom-full -mb-7;
 }
 .navbar-chats .chat-list {
@@ -105,55 +126,55 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
     height: 0.125rem;
 }
 
-/* Top-level container - active-chats, pinned-chats, etc. */
+/* A plain sub-section of the .c-active-chats block - the rounding, wash and lift are on the wrapper. */
 .active-chats {
     @apply relative flex-y bottom-0 p-2;
-    @apply border-t border-separator;
-    padding-bottom: calc(0.5rem + var(--safe-area-bottom));
 }
 .active-chats > .c-title {
     @apply px-2 pb-2;
     @apply text-sm font-medium;
 }
-.active-chats .navbar-item.active {
+/* Row-level styling shared by both docks (Active Chats and the PTT list), scoped to their common
+   .c-active-chats wrapper so the PTT section's expanded rows get the same badge/mute visuals. */
+.c-active-chats .navbar-item.active {
     @apply bg-selected;
 }
-.active-chats .navbar-item.active .navbar-item-content {
+.c-active-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
 }
-.active-chats .c-ptt-badge {
+.c-active-chats .c-ptt-badge {
     @apply text-primary;
 }
-.active-chats .c-ptt-mute-trigger {
+.c-active-chats .c-ptt-mute-trigger {
     @apply flex items-center justify-center;
 }
 /* Muted: the ring drains over the whole mute period around a struck-out gray glyph that
    alternates with the remaining time, mirroring the listening countdown ring. */
-.active-chats .c-ptt-muted {
+.c-active-chats .c-ptt-muted {
     @apply relative;
     @apply flex items-center justify-center;
     @apply w-8;
     @apply overflow-visible;
 }
-.active-chats .c-ptt-muted .c-ptt-mute-ring {
+.c-active-chats .c-ptt-muted .c-ptt-mute-ring {
     @apply absolute -inset-1;
     @apply pointer-events-none;
     @apply text-03;
     width: calc(100% + 0.5rem);
     height: calc(100% + 0.5rem);
 }
-.active-chats .c-ptt-muted .c-ptt-mute-ring .c-track {
+.c-active-chats .c-ptt-muted .c-ptt-mute-ring .c-track {
     @apply opacity-30;
     stroke: currentColor;
     stroke-width: 1.25;
 }
-.active-chats .c-ptt-muted .c-ptt-mute-ring .c-value {
+.c-active-chats .c-ptt-muted .c-ptt-mute-ring .c-value {
     transition: stroke-dashoffset 1s linear;
 }
-.active-chats .c-ptt-muted .c-ptt-badge {
+.c-active-chats .c-ptt-muted .c-ptt-badge {
     @apply relative text-03 text-lg;
 }
-.active-chats .c-ptt-muted .c-ptt-badge::after {
+.c-active-chats .c-ptt-muted .c-ptt-badge::after {
     @apply absolute top-1/2 left-1/2 rounded-full;
     content: "";
     width: 1.3em;
@@ -161,8 +182,133 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
     background: currentColor;
     transform: translate(-50%, -50%) rotate(-45deg);
 }
-.active-chats .c-ptt-muted .c-timer-text {
+.c-active-chats .c-ptt-muted .c-timer-text {
     @apply text-03 text-xxs font-semibold leading-none tabular-nums;
+}
+
+/* ── Push-to-talk dock ──
+   A collapsible section docked above Active Chats. Collapsed it shows a preview row of chat avatars;
+   expanded it swaps that for a scrollable list of full rows. The outer .ptt-chats is only the
+   enter/exit animator (grid 0fr↔1fr + slide + fade, kept mounted so it can fold away when the last
+   PTT chat leaves - display is transitioned with allow-discrete); .c-inner is the visible card. */
+.ptt-chats {
+    @apply grid;
+    grid-template-rows: 0fr;
+    @apply opacity-0;
+    transform: translateY(0.5rem);
+    transition: grid-template-rows 220ms ease, opacity 220ms ease, transform 220ms ease, display 220ms;
+    transition-behavior: allow-discrete;
+}
+.ptt-chats.open {
+    grid-template-rows: 1fr;
+    @apply opacity-100;
+    transform: translateY(0);
+    @starting-style {
+        grid-template-rows: 0fr;
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+}
+.ptt-chats:not(.open) {
+    @apply hidden;
+}
+/* A plain sub-section of the block too - no card of its own; the wrapper carries the wash/rounding/lift.
+   PTT is the bottom sub-section, so it takes the safe-area gap below the last row. */
+.ptt-chats > .c-inner {
+    @apply relative flex-y;
+    @apply min-h-0 overflow-hidden;
+    @apply p-2;
+    padding-bottom: calc(0.5rem + var(--safe-area-bottom));
+}
+/* A thin separator is all that divides PTT from Active above it - no second card. */
+.c-active-chats[data-has-active-chats] .ptt-chats > .c-inner {
+    @apply border-t border-separator;
+}
+/* When no PTT sub-section is below it, Active Chats is the bottom one and takes the safe-area gap. */
+.c-active-chats:not([data-has-ptt-chats]) .active-chats {
+    padding-bottom: calc(0.5rem + var(--safe-area-bottom));
+}
+/* Collapsed preview and expanded body each fold between 0fr and 1fr grid rows: the preview folds up
+   as the expanded body unfolds. */
+.ptt-chats .c-preview,
+.ptt-chats .c-expanded {
+    @apply grid;
+    transition: grid-template-rows 200ms ease, opacity 200ms ease;
+}
+.ptt-chats .c-preview {
+    grid-template-rows: 1fr;
+    @apply opacity-100 cursor-pointer;
+}
+.ptt-chats .c-expanded {
+    grid-template-rows: 0fr;
+    @apply opacity-0;
+}
+.ptt-chats.expanded .c-preview {
+    grid-template-rows: 0fr;
+    @apply opacity-0;
+}
+.ptt-chats.expanded .c-expanded {
+    grid-template-rows: 1fr;
+    @apply opacity-100;
+}
+.ptt-chats .c-preview-inner,
+.ptt-chats .c-expanded-inner {
+    @apply min-h-0 overflow-hidden;
+}
+/* Collapsed row: up to three avatars, then the expand button - kept left so the floating create
+   button (top-right of the panel) doesn't land on it. */
+/* No padding on this grid-collapse child: vertical padding doesn't fold with grid-template-rows: 0fr,
+   so it would leave a residual height in the expanded state. Outer spacing comes from .c-inner's p-2. */
+.ptt-chats .c-preview-inner {
+    @apply flex-x items-center gap-x-2;
+}
+.ptt-chats .c-avatar {
+    @apply flex-none;
+    transition: transform 180ms ease, opacity 180ms ease;
+    @starting-style {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+}
+/* Round chevron toggle (ButtonRound) - expand before the avatars (collapsed), collapse before Settings
+   (expanded). Both sit leftmost, clear of the floating create button; sized by btn-sm/btn-xs, kept
+   circular with aspect-square. */
+.ptt-chats .c-expand-btn.btn.btn-round,
+.ptt-chats .c-collapse-btn.btn.btn-round {
+    @apply aspect-square;
+}
+.ptt-chats .c-expand-btn i {
+    @apply text-title;
+}
+/* Expanded body: a collapse chevron + Settings link, then the scrollable list. */
+.ptt-chats .c-expanded-inner {
+    @apply flex-y gap-y-1;
+}
+.ptt-chats .c-settings-row {
+    @apply flex-x items-center gap-x-1;
+}
+.ptt-chats .c-settings-btn.btn {
+    @apply min-w-fit max-w-fit;
+}
+.ptt-chats .c-settings-btn .btn-content {
+    @apply flex-x items-center gap-x-0.5;
+}
+.ptt-chats .c-settings-btn .c-title {
+    @apply text-sm font-medium text-02;
+}
+.ptt-chats .c-settings-btn i {
+    @apply text-base text-03;
+}
+/* No chevron-down glyph in the icon font, so the up chevron is rotated to point down. */
+.ptt-chats .c-collapse-btn i {
+    @apply text-title;
+    transform: rotate(180deg);
+}
+/* The scroll cap lives on its own layer, held constant in both states so the list never snaps to full
+   height before folding; .c-expanded-inner is the grid-clip layer that folds, this one just scrolls. */
+.ptt-chats .c-list-scroll {
+    @apply max-h-44;
+    @apply overflow-y-auto custom-scrollbar;
 }
 
 /* PTT mute menu (PttMuteMenu) */
@@ -367,10 +513,10 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 }
 
 /* Badges */
-.active-chats .message-counter-badge {
+.c-active-chats .message-counter-badge {
     @apply hidden;
 }
-.active-chats .message-counter-with-time {
+.c-active-chats .message-counter-with-time {
     @apply hidden;
 }
 .navbar-item .message-counter-badge {
