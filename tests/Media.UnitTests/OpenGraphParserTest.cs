@@ -90,6 +90,27 @@ public class OpenGraphParserTest
     }
 
     [Fact]
+    public void ShouldDecodeDescriptionEncodedTwice()
+    {
+        // act
+        var graph = OpenGraphParser.Parse("""
+            <html>
+            <head>
+                <meta property="og:title" content="JIT: don&#39;t elide stack moves · Pull Request #135005">
+                <meta property="og:description" content="It couldn&amp;#39;t &amp;quot;Dump log file&amp;quot;">
+                <meta property="og:site_name" content="GitHub">
+            </head>
+            </html>
+            """);
+
+        // assert
+        graph.Should().Be(new OpenGraph("JIT: don't elide stack moves · Pull Request #135005") {
+            Description = "It couldn't \"Dump log file\"",
+            SiteName = "GitHub",
+        });
+    }
+
+    [Fact]
     public async Task ShouldEnrichImageRelativeUrl()
     {
         // arrange
