@@ -58,7 +58,47 @@ export async function startCamera(page: Page) {
         await expect.poll(async () => submit.isEnabled(), { timeout: 15_000 }).toBe(true);
         await submit.click();
     }
-    await preview.waitFor({ state: 'visible', timeout: 20_000 });
+    await preview.waitFor({ state: 'visible', timeout: 20_000 }).catch(async (e: unknown) => {
+        const details = await impl().catch((de: unknown) => `  failed: ${String(de)}`);
+        console.log(`CAMERA PREVIEW HIDDEN on ${page.url()}\n${details}`);
+        throw e;
+    });
+
+    // Playwright counts an element hidden at zero size or under display:none / visibility:hidden,
+    // its own or an ancestor's; this shows which, and whether the camera's frames got there at all
+    function impl(): Promise<string> {
+        return page.evaluate(() => {
+            const element = document.querySelector('.call-screen .video-streaming-preview');
+            if (!element)
+                return '  no .call-screen .video-streaming-preview';
+
+            const describe = (e: Element) => {
+                const style = getComputedStyle(e);
+                const rect = e.getBoundingClientRect();
+                return `${e.tagName.toLowerCase()}.${[...e.classList].join('.')} `
+                    + `${Math.round(rect.width)}x${Math.round(rect.height)} display:${style.display} `
+                    + `visibility:${style.visibility} opacity:${style.opacity}`;
+            };
+            const lines = ['  preview and its ancestors:'];
+            for (let e: Element | null = element; e && e !== document.body; e = e.parentElement)
+                lines.push(`    ${describe(e)}`);
+            lines.push(`  attributes: ${[...element.attributes].map(a => `${a.name}="${a.value}"`).join(' ')}`);
+            lines.push('  surfaces:');
+            for (const surface of element.querySelectorAll('video, canvas')) {
+                let line = `    ${describe(surface)}`;
+                if (surface instanceof HTMLVideoElement) {
+                    const tracks = surface.srcObject instanceof MediaStream ? surface.srcObject.getVideoTracks() : [];
+                    const trackStates = tracks
+                        .map(t => `${t.readyState}${t.muted ? ' muted' : ''}${t.enabled ? '' : ' disabled'}`);
+                    line += ` readyState:${surface.readyState} frame:${surface.videoWidth}x${surface.videoHeight}`
+                        + ` paused:${surface.paused} tracks:[${trackStates.join(', ')}]`;
+                }
+                lines.push(line);
+            }
+            lines.push(`  join modal open: ${document.querySelector('.modal .camera-preview-video') !== null}`);
+            return lines.join('\n');
+        });
+    }
 }
 
 export async function expandVideoPanel(page: Page) {
