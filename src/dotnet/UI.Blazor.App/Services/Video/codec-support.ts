@@ -1,4 +1,5 @@
 import { getLogs } from 'logging';
+import { getVideoCodecCategory } from 'api/video-codec';
 import { kbpsToBitsPerSecond } from 'app-constants';
 import { DeviceInfo } from 'device-info';
 import { WebCodecsCompat } from 'web-codecs-compat/init';
@@ -573,10 +574,7 @@ async function probeEncoderUncached(
 }
 
 export function getCodecCategory(codecString: string): 'h264' | 'hevc' | 'av1' | 'vp9' {
-    if (codecString.startsWith('av01')) return 'av1';
-    if (codecString.startsWith('hev1') || codecString.startsWith('hvc1')) return 'hevc';
-    if (codecString.startsWith('vp09')) return 'vp9';
-    return 'h264';
+    return getVideoCodecCategory(codecString) ?? 'h264';
 }
 
 export function getCodecForCategory(category: 'h264' | 'hevc' | 'av1' | 'vp9', width: number, height: number): string {

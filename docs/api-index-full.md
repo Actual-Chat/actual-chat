@@ -35,6 +35,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `Interest` (record struct) - Represents a user interest tag.
 - `Language` (record struct) - Represents a language identifier (BCP 47).
 - `MediaType` (enum) - Specifies the type of media content.
+- `VideoCodecExt` (static class) - Maps video codec strings to categories and matches decoder capabilities.
 - `MemSearchDocument` (readonly struct) - In-memory search match blob (`ActualChat.Search`): lowercased camelCase/digit-segment tokens; ctor / `IsMatch` / `GetCoverageScore` / `OrNew`.
 - `MemSearchQuery` (readonly struct) - Parsed in-memory search query (`ActualChat.Search`): precompiled prefix needles; ctor / `IsMatch` / `GetMatchParts`.
 - `NotFoundException` - Exception thrown when an entity is not found.

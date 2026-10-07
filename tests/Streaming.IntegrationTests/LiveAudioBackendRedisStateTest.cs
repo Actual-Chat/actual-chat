@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Live;
+using ActualChat.Redis;
 using ActualChat.Testing.Host;
 using ActualChat.Video;
 using ActualLab.Redis;
@@ -208,7 +209,8 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
         // Register a member
         var sessionId = $"session-{Guid.NewGuid():N}";
         var codecs = new ApiArray<string>(["h264"]);
-        await liveBackend.RegisterMember(chatId, sessionId, codecs, false, CancellationToken.None);
+        await liveBackend.RegisterReceiver(chatId, sessionId, sessionId, codecs,
+            AppHost.Services.MeshWatcher().ThisNode.Ref, CancellationToken.None);
 
         // Verify Redis has the data
         (await ReadRedisHash<VideoStreamInfo>("live-video:streams", chatId)).Should().NotBeEmpty();
@@ -240,17 +242,16 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
     {
         var (chatId, liveBackend) = await CreateChatWithVideoBackend("CodecInvalidate");
 
-        // Capture initial codec computed value (no members → all codecs available)
         var computed = await Computed.Capture(
             () => liveBackend.GetSupportedCodecs(chatId, CancellationToken.None));
-        computed.Value.Should().Contain("av1");
-        computed.Value.Should().Contain("h264");
+        computed.Value.Should().Equal(LiveVideoBackend.ChatState.FloorCodec);
         computed.IsConsistent().Should().BeTrue();
 
         // Register a member that only supports h264
         var sessionId = $"session-{Guid.NewGuid():N}";
-        await liveBackend.RegisterMember(chatId, sessionId,
-            new ApiArray<string>(["h264"]), false, CancellationToken.None);
+        await liveBackend.RegisterReceiver(chatId, sessionId, sessionId,
+            new ApiArray<string>(["h264"]),
+            AppHost.Services.MeshWatcher().ThisNode.Ref, CancellationToken.None);
 
         // Computed should be invalidated
         computed.IsConsistent().Should().BeFalse("registering member should invalidate codec computed");
@@ -302,8 +303,9 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
 
         // Register a member
         var sessionId = $"session-{Guid.NewGuid():N}";
-        await liveBackend.RegisterMember(chatId, sessionId,
-            new ApiArray<string>(["h264", "av1"]), false, CancellationToken.None);
+        await liveBackend.RegisterReceiver(chatId, sessionId, sessionId,
+            new ApiArray<string>(["h264", "av1"]),
+            AppHost.Services.MeshWatcher().ThisNode.Ref, CancellationToken.None);
 
         // Simulate shard switch: invalidate ALL compute methods
         using (Invalidation.Begin()) {
@@ -340,17 +342,44 @@ public class LiveAudioBackendRedisStateTest(AppHostFixture fixture, ITestOutputH
         var (chatId, liveBackend) = await CreateChatWithVideoBackend("Vp9Negotiate");
 
         // Member A supports everything
-        await liveBackend.RegisterMember(chatId, $"session-{Guid.NewGuid():N}",
-            new ApiArray<string>(["av1", "hevc", "vp9", "h264"]), false, CancellationToken.None);
+        await liveBackend.RegisterReceiver(chatId, $"session-{Guid.NewGuid():N}", "viewer",
+            new ApiArray<string>(["av1", "hevc", "vp9", "h264"]),
+            AppHost.Services.MeshWatcher().ThisNode.Ref, CancellationToken.None);
 
         // Member B only supports vp9 + h264
-        await liveBackend.RegisterMember(chatId, $"session-{Guid.NewGuid():N}",
-            new ApiArray<string>(["vp9", "h264"]), false, CancellationToken.None);
+        await liveBackend.RegisterReceiver(chatId, $"session-{Guid.NewGuid():N}", "viewer",
+            new ApiArray<string>(["vp9", "h264"]),
+            AppHost.Services.MeshWatcher().ThisNode.Ref, CancellationToken.None);
 
         var codecs = await liveBackend.GetSupportedCodecs(chatId, CancellationToken.None);
         codecs.Should().BeEquivalentTo(new[] { "vp9", "h264" },
             o => o.WithStrictOrdering(),
             "vp9 should be recommended when all members support it but not av1/hevc");
+    }
+
+    [Fact]
+    public async Task StaleReceiverShouldBlockUpgradesWhileItsNodeIsOnline()
+    {
+        // arrange
+        var (chatId, backend) = await CreateChatWithVideoBackend("StaleReceiver");
+        var nodeRef = AppHost.Services.MeshWatcher().ThisNode.Ref;
+        var everything = new ApiArray<string>(["av1", "hevc", "vp9", "h264"]);
+        await backend.RegisterReceiver(chatId, "capable", "capable", everything, nodeRef, CancellationToken.None);
+        await backend.RegisterReceiver(
+            chatId, "tablet", "tablet", new ApiArray<string>(["vp9", "h264"]), nodeRef, CancellationToken.None);
+        var members = new RedisMultiHashMap<VideoStreamMemberInfo>(
+            RedisDb, "live-video:members", AppHost.Services.LogFor<LiveVideoBackend>());
+        await members.Set(chatId.Value, "tablet", new VideoStreamMemberInfo(
+            new ApiArray<string>(["vp9", "h264"]), Clocks.SystemClock.Now - TimeSpan.FromMinutes(2), false, nodeRef));
+
+        // act
+        await backend.RegisterReceiver(chatId, "capable", "capable", everything, nodeRef, CancellationToken.None);
+        var codecs = await backend.GetSupportedCodecs(chatId, CancellationToken.None);
+        var stored = await ReadRedisHash<VideoStreamMemberInfo>("live-video:members", chatId);
+
+        // assert
+        codecs.Should().Equal("vp9");
+        stored.Should().ContainKey("tablet", "a late heartbeat is not proof that a receiving connection left");
     }
 
     // --- Helpers ---

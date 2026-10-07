@@ -10,6 +10,12 @@ public interface ILiveVideoStreams : IComputeService
         StreamId streamId,
         CancellationToken cancellationToken);
 
+    Task<RpcStream<VideoFrame>?> GetStreamWithCapabilities(
+        Session session,
+        StreamId streamId,
+        ApiArray<string> supportedDecoderCodecs,
+        CancellationToken cancellationToken);
+
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<ApiArray<VideoStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 

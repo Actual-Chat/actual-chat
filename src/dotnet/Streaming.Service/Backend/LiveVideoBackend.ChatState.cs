@@ -17,9 +17,10 @@ public partial class LiveVideoBackend
         private readonly Lock _codecLock = new();
 
         // Codec recommendation
-        private ApiArray<string> _currentSupportedDecoderCodecs = new(["av1", "hevc", "vp9", "h264"]);
+        private ApiArray<string> _currentSupportedDecoderCodecs = new([FloorCodec]);
         private CpuTimestamp _lastCodecDowngradeAt;
         private bool _isForced;
+        private bool _hasPendingUpgrade;
 
         public LiveVideoBackend Owner { get; } = owner;
         public ChatId ChatId { get; } = chatId;
@@ -28,6 +29,15 @@ public partial class LiveVideoBackend
             get {
                 lock (_codecLock)
                     return _currentSupportedDecoderCodecs;
+            }
+        }
+
+        public TimeSpan UpgradeDelay {
+            get {
+                lock (_codecLock)
+                    return _hasPendingUpgrade
+                        ? Constants.Video.CodecSwitchHysteresisWindow - _lastCodecDowngradeAt.Elapsed
+                        : TimeSpan.Zero;
             }
         }
 
@@ -44,9 +54,11 @@ public partial class LiveVideoBackend
         private bool RecomputeSupportedDecoderCodecs(Dictionary<string, VideoStreamMemberInfo> members)
         {
             var (newCodecs, isForced) = ComputeSupportedDecoderCodecs(members);
+            _hasPendingUpgrade = false;
             // Compared as a set: the list carries no order, so a reshuffle is
             // not a change.
-            if (_currentSupportedDecoderCodecs.Count == newCodecs.Count
+            if (_isForced == isForced
+                && _currentSupportedDecoderCodecs.Count == newCodecs.Count
                 && !newCodecs.Except(_currentSupportedDecoderCodecs, StringComparer.Ordinal).Any())
                 return false;
 
@@ -66,8 +78,10 @@ public partial class LiveVideoBackend
             if (!isForced
                 && !_isForced
                 && newBest > currentBest
-                && _lastCodecDowngradeAt.Elapsed < Constants.Video.CodecSwitchHysteresisWindow)
+                && _lastCodecDowngradeAt.Elapsed < Constants.Video.CodecSwitchHysteresisWindow) {
+                _hasPendingUpgrade = true;
                 return false;
+            }
 
             _isForced = isForced;
 
@@ -96,11 +110,11 @@ public partial class LiveVideoBackend
             return best;
         }
 
-        private static (ApiArray<string> Codecs, bool IsForced) ComputeSupportedDecoderCodecs(
+        private (ApiArray<string> Codecs, bool IsForced) ComputeSupportedDecoderCodecs(
             Dictionary<string, VideoStreamMemberInfo> members)
         {
             if (members.Count == 0)
-                return (new ApiArray<string>(["av1", "hevc", "vp9", "h264"]), false); // No viewers, all codecs available
+                return (new ApiArray<string>([FloorCodec]), false);
 
             // An admin advertising the marker is overriding the negotiation, not
             // reporting what it can play: its codecs become the call's list as-is,

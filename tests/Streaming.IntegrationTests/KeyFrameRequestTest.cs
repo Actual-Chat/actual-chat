@@ -99,6 +99,9 @@ public class KeyFrameRequestTest(AppHostFixture fixture, ITestOutputHelper @out)
         memberStream.Should().NotBeNull();
         await Assert.ThrowsAsync<SecurityException>(
             () => liveStreams.GetStream(nonMemberSession, streamId, cts.Token));
+        await FluentActions.Awaiting(() => liveStreams.GetStreamWithCapabilities(
+                nonMemberSession, streamId, new ApiArray<string>(["h264"]), cts.Token))
+            .Should().ThrowAsync<SecurityException>();
         await Assert.ThrowsAsync<SecurityException>(
             () => liveStreams.RequestKeyFrame(nonMemberSession, streamId.Value, cts.Token));
         await Assert.ThrowsAsync<SecurityException>(

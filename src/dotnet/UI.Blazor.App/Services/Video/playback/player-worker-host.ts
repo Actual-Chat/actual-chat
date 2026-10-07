@@ -5,6 +5,8 @@
 // player-worker-bootstrap.ts so worker logging is initialized first.
 
 import { rpcClientServer } from 'rpc';
+import { RpcError } from 'actuallab-rpc';
+import { filterSupportedVideoFrames } from 'api/video-codec';
 import { WebCodecsCompat } from 'web-codecs-compat/init';
 import { Api, streamingApi } from 'api';
 import { initAppConstants, type AppConstants } from 'app-constants';
@@ -71,14 +73,31 @@ function getConnectionState(): PlayerWorkerConnectionState {
     return { isConnected: Api.peer.isConnected, canConnect: Api.canConnect };
 }
 
-async function getStream(streamId: string): Promise<AsyncIterable<VideoFrameDto>> {
+async function getStream(
+    streamId: string, supportedDecoderCodecs?: string[],
+): Promise<AsyncIterable<VideoFrameDto>> {
     ensurePullApi();
     if (!Api.peer.isConnected) {
         infoLog?.log(`getStream: waiting for RPC connection before pulling stream ${streamId}`);
         await Api.peer.whenConnected();
     }
 
-    return streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId);
+    if (supportedDecoderCodecs) {
+        try {
+            return await streamingApi.liveVideoStreams.GetStreamWithCapabilities(
+                RPC_SESSION_DEFAULT, streamId, supportedDecoderCodecs);
+        } catch (e) {
+            if (!(e instanceof RpcError) || e.typeName !== 'ActualLab.Rpc.RpcException'
+                || !e.message.startsWith('Endpoint not found:') || !e.message.includes('GetStreamWithCapabilities'))
+                throw e;
+
+            warnLog?.log('getStream: older server without capability-aware reception; using legacy pull');
+        }
+    }
+    const legacyStream = await streamingApi.liveVideoStreams.GetStream(RPC_SESSION_DEFAULT, streamId);
+    return supportedDecoderCodecs
+        ? filterSupportedVideoFrames(legacyStream, supportedDecoderCodecs)
+        : legacyStream;
 }
 
 function createDecoder(

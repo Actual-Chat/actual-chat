@@ -1,5 +1,6 @@
 using ActualChat.Redis;
 using ActualChat.Video;
+using ActualLab.Locking;
 using ActualLab.Redis;
 using StreamingContext = ActualChat.Streaming.Db.StreamingContext;
 
@@ -14,6 +15,7 @@ public partial class LiveVideoBackend : ShardedComputeServiceBase, ILiveVideoBac
     private readonly LockingComputeMethodPrimer<ChatId, ApiArray<VideoStreamInfo>> _listRawPrimer;
     private readonly RedisMultiHashMap<VideoStreamInfo> _streams;
     private readonly RedisMultiHashMap<VideoStreamMemberInfo> _members;
+    private readonly AsyncLockSet<ChatId> _memberLocks = new(LockReentryMode.CheckedFail);
 
     private MeshWatcher MeshWatcher => ShardOwner.Host.MeshWatcher;
     private MomentClock SystemClock => Clocks.SystemClock;
@@ -49,9 +51,15 @@ public partial class LiveVideoBackend : ShardedComputeServiceBase, ILiveVideoBac
     // [ComputeMethod]
     public virtual async Task<int> GetVideoStreamMemberCount(ChatId chatId, CancellationToken cancellationToken)
     {
+        _ = await MeshWatcher.State.Use(cancellationToken).ConfigureAwait(false);
         var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
         var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
-        return activeMembers.Count;
+        var nextCheck = GetMemberRecheckDelay(allMembers.Values);
+        if (nextCheck > TimeSpan.Zero)
+            Computed.GetCurrent().Invalidate(nextCheck + TimeSpan.FromMilliseconds(50));
+        var cutoff = SystemClock.Now - MemberStalenessThreshold;
+        return activeMembers.Where(x => x.Value.RegisteredAt >= cutoff)
+            .Select(x => x.Value.ReceiverSessionId ?? x.Key).Distinct(StringComparer.Ordinal).Count();
     }
 
     public virtual async Task Register(ChatId chatId, VideoStreamInfo streamInfo, CancellationToken cancellationToken)
@@ -141,43 +149,68 @@ public partial class LiveVideoBackend : ShardedComputeServiceBase, ILiveVideoBac
     // [ComputeMethod]
     public virtual async Task<ApiArray<string>> GetSupportedCodecs(ChatId chatId, CancellationToken cancellationToken)
     {
+        _ = await MeshWatcher.State.Use(cancellationToken).ConfigureAwait(false);
         var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
         var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
         var chatState = GetChatState(chatId);
         chatState.RecomputeCodecs(activeMembers);
+        var nextCheck = GetMemberRecheckDelay(allMembers.Values);
+        var upgradeDelay = chatState.UpgradeDelay;
+        if (upgradeDelay > TimeSpan.Zero && (nextCheck <= TimeSpan.Zero || upgradeDelay < nextCheck))
+            nextCheck = upgradeDelay;
+        if (nextCheck > TimeSpan.Zero)
+            Computed.GetCurrent().Invalidate(nextCheck + TimeSpan.FromMilliseconds(50));
         return chatState.CurrentSupportedDecoderCodecs;
     }
 
-    public virtual async Task RegisterMember(ChatId chatId, string sessionId, ApiArray<string> supportedDecoderCodecs, bool isAdmin, CancellationToken cancellationToken)
+    public virtual async Task RegisterMember(
+        ChatId chatId,
+        string sessionId,
+        ApiArray<string> supportedDecoderCodecs,
+        bool isAdmin,
+        CancellationToken cancellationToken)
     {
         var memberInfo = new VideoStreamMemberInfo(supportedDecoderCodecs, SystemClock.Now, isAdmin);
-        var isAdded = await _members.Set(chatId.Value, sessionId, memberInfo).ConfigureAwait(false);
-        var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
-        var (activeMembers, staleKeys) = FilterStaleMembers(chatId, allMembers);
+        await RegisterMemberInfo(chatId, sessionId, memberInfo, cancellationToken).ConfigureAwait(false);
+    }
 
-        Log.LogDebug("RegisterVideoStreamMember({ChatId}): session={SessionId}, codecs=[{Codecs}], active={Active}, stale={Stale}",
-            chatId, sessionId, string.Join(", ", supportedDecoderCodecs), activeMembers.Count, staleKeys?.Count ?? 0);
+    public virtual async Task RegisterReceiver(
+        ChatId chatId,
+        string receiverId,
+        string sessionId,
+        ApiArray<string> supportedDecoderCodecs,
+        NodeRef receiverNodeRef,
+        CancellationToken cancellationToken)
+    {
+        if (receiverNodeRef.IsNone)
+            throw new ArgumentOutOfRangeException(nameof(receiverNodeRef));
 
-        // Most calls are heartbeats from members already registered with the same codecs;
-        // invalidating on those makes every recording client re-read an identical list.
-        var chatState = GetChatState(chatId);
-        var isCodecListChanged = chatState.RecomputeCodecs(activeMembers);
-        if (isAdded || staleKeys is { Count: > 0 })
-            InvalidateGetVideoStreamMemberCount(chatId);
-        if (isCodecListChanged)
-            InvalidateGetSupportedDecoderCodecs(chatId);
+        var memberInfo = new VideoStreamMemberInfo(
+            supportedDecoderCodecs, SystemClock.Now, false, receiverNodeRef, sessionId);
+        await RegisterMemberInfo(chatId, receiverId, memberInfo, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task<ApiArray<string>> GetMemberCodecs(
+        ChatId chatId, string sessionId, CancellationToken cancellationToken)
+    {
+        var members = await SafeGetAll(_members, chatId).ConfigureAwait(false);
+        return members.TryGetValue(sessionId, out var member)
+            && member.RegisteredAt >= SystemClock.Now - MemberStalenessThreshold
+                ? member.SupportedDecoderCodecs
+                : new ApiArray<string>([ChatState.FloorCodec]);
     }
 
     public virtual async Task UnregisterMember(ChatId chatId, string sessionId, CancellationToken cancellationToken)
     {
-        var removed = await _members.Remove(chatId.Value,sessionId).ConfigureAwait(false);
+        using var lockHolder = await _memberLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+        var removed = await _members.Remove(chatId.Value, sessionId).ConfigureAwait(false);
         if (removed) {
             var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
             var (activeMembers, _) = FilterStaleMembers(chatId, allMembers);
             var chatState = GetChatState(chatId);
             var isCodecListChanged = chatState.RecomputeCodecs(activeMembers);
             InvalidateGetVideoStreamMemberCount(chatId);
-            if (isCodecListChanged)
+            if (isCodecListChanged || chatState.UpgradeDelay > TimeSpan.Zero)
                 InvalidateGetSupportedDecoderCodecs(chatId);
         }
     }
@@ -209,7 +242,40 @@ public partial class LiveVideoBackend : ShardedComputeServiceBase, ILiveVideoBac
 
     // Private methods
 
+    private async Task RegisterMemberInfo(
+        ChatId chatId, string sessionId, VideoStreamMemberInfo memberInfo, CancellationToken cancellationToken)
+    {
+        using var lockHolder = await _memberLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
+        BumpChatEntry(chatId);
+        var allMembers = await SafeGetAll(_members, chatId).ConfigureAwait(false);
+        var isPreviouslyFresh = allMembers.TryGetValue(sessionId, out var previous)
+            && previous.RegisteredAt >= SystemClock.Now - MemberStalenessThreshold;
+        var isIdentityChanged = previous?.ReceiverSessionId != memberInfo.ReceiverSessionId
+            || previous?.ReceiverNodeRef != memberInfo.ReceiverNodeRef;
+        var isAdded = await _members.Set(chatId.Value, sessionId, memberInfo).ConfigureAwait(false);
+        allMembers[sessionId] = memberInfo;
+        var (activeMembers, staleKeys) = FilterStaleMembers(chatId, allMembers);
+
+        Log.LogDebug("RegisterVideoStreamMember({ChatId}): session={SessionId}, "
+            + "codecs=[{Codecs}], active={Active}, stale={Stale}",
+            chatId, sessionId, string.Join(", ", memberInfo.SupportedDecoderCodecs),
+            activeMembers.Count, staleKeys?.Count ?? 0);
+
+        // Most calls are heartbeats from members already registered with the same codecs;
+        // invalidating on those makes every recording client re-read an identical list.
+        var chatState = GetChatState(chatId);
+        var isCodecListChanged = chatState.RecomputeCodecs(activeMembers);
+        if (isAdded || !isPreviouslyFresh || isIdentityChanged || staleKeys is { Count: > 0 })
+            InvalidateGetVideoStreamMemberCount(chatId);
+        if (isCodecListChanged || chatState.UpgradeDelay > TimeSpan.Zero)
+            InvalidateGetSupportedDecoderCodecs(chatId);
+    }
+
     private static readonly TimeSpan MemberStalenessThreshold = TimeSpan.FromSeconds(90);
+
+    private TimeSpan GetMemberRecheckDelay(IEnumerable<VideoStreamMemberInfo> members)
+        => members.Select(x => x.RegisteredAt + MemberStalenessThreshold - SystemClock.Now)
+            .Where(x => x > TimeSpan.Zero).DefaultIfEmpty(TimeSpan.Zero).Min();
 
     private (Dictionary<string, VideoStreamMemberInfo> Active, List<string>? StaleKeys) FilterStaleMembers(
         ChatId chatId,
@@ -219,17 +285,24 @@ public partial class LiveVideoBackend : ShardedComputeServiceBase, ILiveVideoBac
         var active = new Dictionary<string, VideoStreamMemberInfo>(allMembers.Count, StringComparer.Ordinal);
         List<string>? staleKeys = null;
 
-        foreach (var (sessionId, info) in allMembers)
-            if (info.RegisteredAt >= cutoff)
+        // A late receiver heartbeat is not a departure; lease disposal or an offline owner removes it.
+        foreach (var (sessionId, info) in allMembers) {
+            var isReceiver = !info.ReceiverNodeRef.IsNone;
+            var isOwnerOffline = isReceiver
+                && MeshWatcher.State.Value[info.ReceiverNodeRef] is not { State: MeshNodeState.Online };
+            if (!isOwnerOffline && info.RegisteredAt >= cutoff)
                 active[sessionId] = info;
+            else if (isReceiver && !isOwnerOffline)
+                active[sessionId] = info with { SupportedDecoderCodecs = new ApiArray<string>([ChatState.FloorCodec]) };
             else {
                 staleKeys ??= new();
                 staleKeys.Add(sessionId);
             }
+        }
 
         // Fire-and-forget cleanup of stale entries from Redis
         if (staleKeys != null)
-            _ = CleanupStaleMembers(chatId, staleKeys);
+            _ = BackgroundTask.Run(() => CleanupStaleMembers(chatId, staleKeys));
 
         return (active, staleKeys);
     }
@@ -237,10 +310,22 @@ public partial class LiveVideoBackend : ShardedComputeServiceBase, ILiveVideoBac
     private async Task CleanupStaleMembers(ChatId chatId, List<string> staleSessionIds)
     {
         try {
-            foreach (var sessionId in staleSessionIds)
-                await _members.Remove(chatId.Value,sessionId).ConfigureAwait(false);
+            using var lockHolder = await _memberLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false);
+            var members = await SafeGetAll(_members, chatId).ConfigureAwait(false);
+            var cutoff = SystemClock.Now - MemberStalenessThreshold;
+            foreach (var sessionId in staleSessionIds) {
+                if (!members.TryGetValue(sessionId, out var member))
+                    continue;
 
-            Log.LogDebug("CleanupStaleMembers({ChatId}): removed {Count} stale member(s)", chatId, staleSessionIds.Count);
+                var isReceiver = !member.ReceiverNodeRef.IsNone;
+                var isOwnerOffline = isReceiver
+                    && MeshWatcher.State.Value[member.ReceiverNodeRef] is not { State: MeshNodeState.Online };
+                if (isOwnerOffline || (!isReceiver && member.RegisteredAt < cutoff))
+                    await _members.Remove(chatId.Value, sessionId).ConfigureAwait(false);
+            }
+
+            Log.LogDebug("CleanupStaleMembers({ChatId}): checked {Count} stale member(s)",
+                chatId, staleSessionIds.Count);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "CleanupStaleMembers({ChatId}): failed to remove stale _members", chatId);

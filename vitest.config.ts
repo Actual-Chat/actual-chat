@@ -46,6 +46,7 @@ export default defineConfig({
             'image-processing/jpegli-encoder': src('image-processing/jpegli-encoder'),
             'image-processing/placeholder-encoder': src('image-processing/placeholder-encoder'),
             'image-processing/image-processor-worker': src('image-processing/image-processor-worker'),
+            'api/video-codec': src('api/video-codec'),
             'actuallab-core': pkg('actuallab-core'),
             'actuallab-rpc': pkg('actuallab-rpc'),
         },

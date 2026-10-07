@@ -26,7 +26,9 @@ import {
     selectDecoderCodec,
     type DecoderHardwareAcceleration,
 } from '../../Services/Video/hevc-codec-selection';
-import { isDecoderCodecProven, markDecoderCodecProven } from '../../Services/Video/codec-support';
+import {
+    detectSupportedDecoderCodecs, getCodecForCategory, isDecoderCodecProven, markDecoderCodecProven,
+} from '../../Services/Video/codec-support';
 import { consumeVideoTraceKill, registerVideoTraceKillWorker } from '../../Services/Video/video-trace-kill-control';
 import { isCodecExhaustedError } from '../../Services/Video/operators/decode';
 import { ThroughputDeficitTicker } from '../../Services/Video/throughput-deficit-ticker';
@@ -664,7 +666,8 @@ export class VideoPlayer {
             }
 
             // Build ordered list of candidate codec strings to try
-            const candidates = getCodecCandidates(codec, description);
+            const requestedCodec = codec === 'vp9' ? getCodecForCategory('vp9', width, height) : codec;
+            const candidates = getCodecCandidates(requestedCodec, description);
             debugLog?.log(`Codec candidates: [${candidates.join(', ')}]`);
 
             const dims = (width && height) ? { width, height } : undefined;
@@ -1197,6 +1200,11 @@ export class VideoPlayer {
         if (!this.playerWorker || !this.selectedCodec)
             throw new Error('startWorkerForAttempt: worker or codec missing');
 
+        const worker = this.playerWorker;
+        const supportedDecoderCodecs = await detectSupportedDecoderCodecs();
+        if (!this.isPlaying || this.playerWorker !== worker)
+            return;
+
         const backend: 'mstg' | 'canvas' = this.renderBackend.isOffThread ? 'mstg' : 'canvas';
         let mstgWritable: WritableStream<VideoFrame> | undefined;
         let mstgGenerator: MediaStreamTrack | null = null;
@@ -1226,8 +1234,9 @@ export class VideoPlayer {
 
         try {
             this.workerStreamActive = true;
-            await this.playerWorker.start({
+            await worker.start({
                 streamId,
+                supportedDecoderCodecs,
                 initialDecoderConfig: {
                     codec: this.selectedCodec,
                     codedWidth: this.selectedCodecedWidth,

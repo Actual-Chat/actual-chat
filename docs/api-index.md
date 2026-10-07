@@ -22,6 +22,9 @@ See also: [Full C# API Index](api-index-full.md), [TypeScript API Index](api-ind
 - `ShardKey` — Unsigned 32-bit routing key with hexadecimal prefix and slice formatting
 - `ISymbolIdentifier<T>` / `SymbolIdentifier` — Symbol-based identifier contract and parsing helpers
 
+### Media
+- `VideoCodecExt` — maps video codec strings to categories and matches advertised decoder capabilities
+
 ### Text
 - `SpanLocator` — n-th whole-word occurrence of a word or phrase as a char range; validates LLM-returned spans
 

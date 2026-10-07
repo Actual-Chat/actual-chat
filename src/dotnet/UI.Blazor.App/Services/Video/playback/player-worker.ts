@@ -43,7 +43,9 @@ function ensureBgBlurController(streamId: string): BgBlurController {
 }
 
 interface PlayerWorkerHooks {
-    getStream: (streamId: string) => Promise<AsyncIterable<VideoFrameDto>> | AsyncIterable<VideoFrameDto>;
+    getStream: (
+        streamId: string, supportedDecoderCodecs?: string[],
+    ) => Promise<AsyncIterable<VideoFrameDto>> | AsyncIterable<VideoFrameDto>;
     createDecoder: (
         codec: string,
         handlers: { onFrame: (frame: VideoFrame) => void; onError: (e: Error) => void },
@@ -186,7 +188,7 @@ export const playerWorkerImpl: PlayerWorker = {
         const bgController = ensureBgBlurController(opts.streamId);
         const playerConfig: PlayerConfig = {
             streamId: opts.streamId,
-            getStream: h.getStream,
+            getStream: streamId => h.getStream(streamId, opts.supportedDecoderCodecs),
             targetBufferSpanMs: opts.targetBufferSpanMs,
             frameDurationMs: VIDEO.frameDurationMs,
             initialDecoderConfig: opts.initialDecoderConfig,

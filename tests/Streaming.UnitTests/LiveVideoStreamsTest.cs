@@ -1,9 +1,66 @@
 using ActualChat.Streaming.Services;
+using ActualChat.Video;
 
 namespace ActualChat.Streaming.UnitTests;
 
 public class LiveVideoStreamsTest
 {
+    [Fact]
+    public async Task AdmissionShouldBlockUnsupportedFramesUntilCompatibleKeyframe()
+    {
+        // arrange
+        var frames = new[] {
+            new VideoFrame { Index = 1, KeyFrameIndex = 1, Codec = "hvc1" },
+            new VideoFrame { Index = 2, KeyFrameIndex = 1 },
+            new VideoFrame { Index = 3, KeyFrameIndex = 3, Codec = "vp09" },
+            new VideoFrame { Index = 4, KeyFrameIndex = 3 },
+        };
+
+        // act
+        var admitted = await LiveVideoStreams.FilterSupportedCodecs(
+            frames.ToAsyncEnumerable(), new ApiArray<string>(["vp9"]), "hvc1", CancellationToken.None).ToListAsync();
+
+        // assert
+        admitted.Select(x => x.Index).Should().Equal(3, 4);
+    }
+
+    [Fact]
+    public async Task AdmissionShouldRequireCompatibleKeyframesPerLayer()
+    {
+        // arrange
+        var frames = new[] {
+            new VideoFrame { Index = 1, KeyFrameIndex = 0 },
+            new VideoFrame { Index = 2, KeyFrameIndex = 2, Codec = "vp09", LayerId = 0 },
+            new VideoFrame { Index = 3, KeyFrameIndex = 3, Codec = "hvc1", LayerId = 1 },
+            new VideoFrame { Index = 4, KeyFrameIndex = 2, LayerId = 0 },
+            new VideoFrame { Index = 5, KeyFrameIndex = 3, LayerId = 1 },
+        };
+
+        // act
+        var admitted = await LiveVideoStreams.FilterSupportedCodecs(
+            frames.ToAsyncEnumerable(), new ApiArray<string>(["vp9"]), "vp09", CancellationToken.None).ToListAsync();
+
+        // assert
+        admitted.Select(x => x.Index).Should().Equal(2, 4);
+    }
+
+    [Theory]
+    [InlineData("vp09", true)]
+    [InlineData("hvc1", false)]
+    [InlineData(null, false)]
+    public async Task AdmissionShouldUseStreamMetadataForLegacyKeyframes(string? codec, bool expected)
+    {
+        // arrange
+        var frames = new[] { new VideoFrame { Index = 1, KeyFrameIndex = 1 } };
+
+        // act
+        var admitted = await LiveVideoStreams.FilterSupportedCodecs(
+            frames.ToAsyncEnumerable(), new ApiArray<string>(["vp9"]), codec, CancellationToken.None).ToListAsync();
+
+        // assert
+        admitted.Any().Should().Be(expected);
+    }
+
     [Fact]
     public void GetUpgradedStreams_TreatsMissingPreviousStreamAsLowest()
     {
