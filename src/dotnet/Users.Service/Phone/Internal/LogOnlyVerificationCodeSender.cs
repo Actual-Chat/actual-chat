@@ -4,11 +4,11 @@ public sealed class LogOnlyVerificationCodeSender(IServiceProvider services) : I
 {
     private ILogger Log { get; } = services.LogFor<LogOnlyVerificationCodeSender>();
 
-    public Task<TotpChannel?> Send(ActualChat.Phone phone, VerificationMessage message)
+    public async Task<TotpChannel?> Send(ActualChat.Phone phone, VerificationMessage message)
     {
-        // just for debugging purpose
+        message = await message.Resolve().ConfigureAwait(false);
         Log.LogWarning("!!! Verification code to {Phone}: {Text}", phone.E164Value, message.Text.ToPrivate());
 
-        return Task.FromResult<TotpChannel?>(TotpChannel.Sms);
+        return TotpChannel.Sms;
     }
 }
