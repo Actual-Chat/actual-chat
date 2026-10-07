@@ -24,6 +24,7 @@ public sealed class TwilioVerificationCodeSender(IServiceProvider services) : IV
                 await Statuses.Begin(attemptId).ConfigureAwait(false);
             }
 
+            message = await message.Resolve().ConfigureAwait(false);
             var result = await MessageResource
                 .CreateAsync(new Twilio.Types.PhoneNumber(phone.E164Value),
                     from: UsersSettings.TwilioSmsFrom,
@@ -37,10 +38,17 @@ public sealed class TwilioVerificationCodeSender(IServiceProvider services) : IV
                 || result.Status == MessageResource.StatusEnum.Sent
                 || result.Status == MessageResource.StatusEnum.Delivered;
             if (attemptId is not null && !result.Sid.IsNullOrEmpty() && result.Status is not null) {
-                var isMatched = await Statuses.Update(attemptId, UsersSettings.TwilioAccountSid, result.Sid,
-                    result.Status.ToString(), result.ErrorCode?.ToString()).ConfigureAwait(false);
-                if (!isMatched)
-                    throw Errors.DeliveryFailed();
+                try {
+                    var isMatched = await Statuses.Update(attemptId, UsersSettings.TwilioAccountSid, result.Sid,
+                        result.Status.ToString(), result.ErrorCode?.ToString()).ConfigureAwait(false);
+                    if (!isMatched)
+                        Log.LogWarning("Twilio message {MessageSid} did not match tracking attempt {AttemptId}",
+                            result.Sid, attemptId);
+                }
+                catch (Exception e) {
+                    Log.LogError(e, "Could not track Twilio message {MessageSid} for attempt {AttemptId}",
+                        result.Sid, attemptId);
+                }
             }
             if (result.Sid.IsNullOrEmpty() || result.ErrorCode is not null || !isAccepted)
                 throw Errors.DeliveryFailed();

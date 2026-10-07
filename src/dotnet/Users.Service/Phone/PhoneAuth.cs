@@ -120,24 +120,34 @@ public class PhoneAuth : IPhoneAuth
         if (!canSendValidationMessage.IsNullOrEmpty())
             throw StandardError.Constraint(canSendValidationMessage);
 
-        var totp = await Totps.Generate(phone.Value, purpose, cancellationToken).ConfigureAwait(false);
         var nextSendAt = NextSendAt();
-        var sTotp = totp.ToString(TotpFormat);
-        if (!HostInfo.IsProductionInstance)
-            Log.LogWarning("!!! Phone verification code for {Phone}: {Code}", phone.Value, sTotp);
-
         var onlyChannel = IsSmsBlocked(phone) ? TotpChannel.Telegram : (TotpChannel?)null;
-        var text = $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.";
-        var message = new VerificationMessage(sTotp, text, onlyChannel) {
-            Source = new RateLimitSource(session, RpcInboundContext.Current.GetRemoteIPAddress()),
-        };
+        var source = new RateLimitSource(session, RpcInboundContext.Current.GetRemoteIPAddress());
+        var message = VerificationMessage.NewDeferred(CreateMessage, onlyChannel, source);
         var sentChannel = await CodeSender
             .Send(phone, message)
             .ConfigureAwait(false);
-        if (sentChannel is { } sent)
-            await SetLastChannel(phone, sent, cancellationToken).ConfigureAwait(false);
+        if (sentChannel is { } sent) {
+            try {
+                await SetLastChannel(phone, sent, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogError(e, "Could not store the channel of an accepted verification code");
+            }
+        }
 
         return new TotpSendResult(nextSendAt, sentChannel);
+
+        async Task<VerificationMessage> CreateMessage() {
+            var totp = await Totps.Generate(phone.Value, purpose, cancellationToken).ConfigureAwait(false);
+            var sTotp = totp.ToString(TotpFormat);
+            if (!HostInfo.IsProductionInstance)
+                Log.LogWarning("!!! Phone verification code for {Phone}: {Code}", phone.Value, sTotp);
+
+            var text = $"{CoreConstants.AppName}: your phone verification code is {sTotp}. Don't share it with anyone.";
+
+            return new VerificationMessage(sTotp, text, onlyChannel) { Source = source };
+        }
 
         DateTimeOffset NextSendAt()
             => Clocks.SystemClock.UtcNow + Settings.TotpUIThrottling;

@@ -36,18 +36,51 @@ public class TelegramGatewayCodeSenderTest
     }
 
     [Fact]
-    public async Task SendShouldReturnNullWhenNumberHasNoTelegram()
+    public async Task SendShouldNotGenerateCodeWhenNumberHasNoTelegram()
     {
         // arrange
         var handler = new FakeHandler([Ok("""{"ok":false}""")]);
         var sender = CreateSender(handler);
+        var creationCount = 0;
+        var message = VerificationMessage.NewDeferred(() => {
+            creationCount++;
+            return Task.FromResult(TestMessage);
+        }, null, default);
 
         // act
-        var channel = await sender.Send(TestPhone, TestMessage);
+        var channel = await sender.Send(TestPhone, message);
 
         // assert
         channel.Should().BeNull();
         handler.Requests.Should().HaveCount(1);
+        creationCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task EligibleTelegramSendShouldGenerateCodeOnlyOnce()
+    {
+        // arrange
+        var handler = new FakeHandler([
+            Ok("""{"ok":true,"result":{"request_id":"req-1"}}"""),
+            Ok("""{"ok":true}"""),
+        ]);
+        var sender = CreateSender(handler);
+        var creationCount = 0;
+        var message = VerificationMessage.NewDeferred(() => {
+            creationCount++;
+            handler.Requests.Should().HaveCount(1, "availability must be checked before replacing the code");
+            return Task.FromResult(TestMessage);
+        }, null, default);
+
+        // act
+        var channel = await sender.Send(TestPhone, message);
+        var resolved = await message.Resolve();
+
+        // assert
+        channel.Should().Be(TotpChannel.Telegram);
+        resolved.Should().BeSameAs(TestMessage);
+        creationCount.Should().Be(1);
+        GetProperty(handler.Requests[1].Body, "code").Should().Be("123456");
     }
 
     [Fact]

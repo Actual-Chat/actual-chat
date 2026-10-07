@@ -39,6 +39,7 @@ public sealed class TelegramGatewayCodeSender(IServiceProvider services) : IVeri
         if (requestId is null)
             return null;
 
+        message = await message.Resolve().ConfigureAwait(false);
         var ttl = (int)UsersSettings.TelegramGatewayMessageTtl.TotalSeconds;
         var payload = new {
             phone_number = phone.E164Value,

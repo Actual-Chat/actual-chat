@@ -25,6 +25,7 @@ public sealed class SMSToVerificationCodeSender(IServiceProvider services) : IVe
         }
 
         try {
+            message = await message.Resolve().ConfigureAwait(false);
             using var request = new HttpRequestMessage(HttpMethod.Post, SendUri);
 
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);

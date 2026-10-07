@@ -76,8 +76,11 @@ public class TwilioVerificationCodeSenderTest
         await send.Should().ThrowAsync<ExternalError>();
     }
 
-    [Fact]
-    public async Task ConfiguredCallbackShouldCreateAttemptBeforeSendingAndIncludeItsUrl()
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public async Task AcceptedSendShouldSucceedEvenWhenTrackingFails(bool mustFailTracking, bool isMatched)
     {
         // arrange
         var services = new ServiceCollection();
@@ -88,7 +91,10 @@ public class TwilioVerificationCodeSenderTest
             TwilioAuthToken = "test-auth-token",
             TwilioStatusCallbackUrl = "https://voxt.ai/api/webhooks/twilio/message-status",
         });
-        var statuses = new FakeStatuses(services.BuildServiceProvider());
+        var statuses = new FakeStatuses(services.BuildServiceProvider()) {
+            MustFailTracking = mustFailTracking,
+            IsMatched = isMatched,
+        };
         services.AddSingleton<TwilioMessageStatuses>(statuses);
         var handler = new FakeHandler(HttpStatusCode.Created, """{"sid":"SMtest","status":"queued"}""");
         var httpClient = new Twilio.Http.SystemNetHttpClient(new HttpClient(handler));
@@ -122,6 +128,8 @@ public class TwilioVerificationCodeSenderTest
     {
         public string? AttemptId { get; private set; }
         public string? MessageSid { get; private set; }
+        public bool MustFailTracking { get; init; }
+        public bool IsMatched { get; init; } = true;
 
         public override Task Begin(string attemptId, CancellationToken cancellationToken = default)
         {
@@ -140,8 +148,10 @@ public class TwilioVerificationCodeSenderTest
         {
             attemptId.Should().Be(AttemptId);
             MessageSid = messageSid;
+            if (MustFailTracking)
+                throw new InvalidOperationException("Redis unavailable after provider acceptance");
 
-            return Task.FromResult(true);
+            return Task.FromResult(IsMatched);
         }
     }
 
