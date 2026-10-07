@@ -85,14 +85,12 @@
 
 @code {
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private Moment Now => Hub.Clocks.CpuClock.Now;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter, EditorRequired] public ChatAudioState? AudioState { get; set; }
     [Parameter] public bool MustShowHangUp { get; set; }
     [Parameter] public bool ShowRecordingToggle { get; set; } = true;
-    [Parameter] public EventCallback OnHangUpRequested { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
     protected override async Task<Moment?> ComputeState(CancellationToken cancellationToken) {
@@ -115,24 +113,13 @@
     private void OnStopListening()
         => _ = ChatAudioUI.SetListeningState(Chat.Id, false);
 
-    private async Task OnHangUp() {
+    private Task OnHangUp() {
         // A call held here ends the way the call screen ends it: with its media alone gone,
         // the server notices the leave only after its grace, and the call lingers until then.
+        // A ring isn't answered by leaving what is live in its chat, so it is left to ring.
         var call = Hub.CallUI.GetActiveCallNonComputed();
-        if (call is { Phase: not CallPhase.Ringing } && call.ChatId == Chat.Id) {
-            await Hub.CallScreensUI.HangUp(Chat.Id).ConfigureAwait(true);
-            return;
-        }
-
-        if (OnHangUpRequested.HasDelegate) {
-            await OnHangUpRequested.InvokeAsync().ConfigureAwait(true);
-            return;
-        }
-
-        ChatVideoUI.LeaveVideoSession(Chat.Id);
-        var audioState = await ChatAudioUI.GetState(Chat.Id).ConfigureAwait(true);
-        if (audioState.IsRecording)
-            await ChatAudioUI.SetRecordingChatId(default).ConfigureAwait(true);
-        _ = ChatAudioUI.SetListeningState(Chat.Id, false);
+        return call is { Phase: not CallPhase.Ringing } && call.ChatId == Chat.Id
+            ? Hub.CallScreensUI.HangUp(Chat.Id)
+            : Hub.CallScreensUI.LeaveLiveSession(Chat.Id);
     }
 }

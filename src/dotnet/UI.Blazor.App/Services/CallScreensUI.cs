@@ -297,6 +297,16 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             : CallUI.HangUp(chatId);
     }
 
+    public async Task LeaveLiveSession(ChatId chatId)
+    {
+        // Outside a call there is no slot to release, only this chat's media to stop.
+        ChatVideoUI.LeaveVideoSession(chatId);
+        var chatAudioUI = Hub.ChatAudioUI;
+        if (await chatAudioUI.GetRecordingChatId().ConfigureAwait(true) == chatId)
+            await chatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
+        await chatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
+    }
+
     public async Task LeaveCallScreen(ChatId chatId)
     {
         if (!await LeaveLockScreen(chatId).ConfigureAwait(true))
@@ -325,16 +335,6 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     }
 
     // Private methods
-
-    private async Task LeaveLiveSession(ChatId chatId)
-    {
-        // Video outside a call: there is no slot to release, only this chat's media to stop.
-        ChatVideoUI.LeaveVideoSession(chatId);
-        var chatAudioUI = Hub.ChatAudioUI;
-        if (await chatAudioUI.GetRecordingChatId().ConfigureAwait(true) == chatId)
-            await chatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
-        await chatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
-    }
 
     private async Task<bool> LeaveLockScreen(ChatId chatId)
     {
