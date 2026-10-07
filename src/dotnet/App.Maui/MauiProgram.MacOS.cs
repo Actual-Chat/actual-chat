@@ -28,7 +28,5 @@ public static partial class MauiProgram
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
         => events.AddMacOS(macOS => macOS
-            .DidFinishLaunching(_ => WindowConfigurator.Configure())
-            .DidBecomeActive(_ => WindowConfigurator.UpdateBackgroundState())
-            .DidResignActive(_ => WindowConfigurator.UpdateBackgroundState()));
+            .DidFinishLaunching(_ => WindowConfigurator.Configure()));
 }

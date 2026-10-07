@@ -18,6 +18,7 @@ internal static partial class WindowConfigurator
 
     private static NSWindow? _window;
     private static WindowDelegate? _windowDelegate;
+    private static NSObject? _occlusionObserver;
     private static WKWebView? _webView;
     private static bool _isFullScreen;
     private static NSObject? _mouseMonitor;
@@ -36,6 +37,11 @@ internal static partial class WindowConfigurator
         _isFullScreen = window.StyleMask.HasFlag(NSWindowStyle.FullScreenWindow);
         _windowDelegate = new WindowDelegate(window.Delegate as NSWindowDelegate);
         window.Delegate = _windowDelegate;
+        // Not on NSWindowDelegate in the bindings, hence the raw notification
+        _occlusionObserver = NSNotificationCenter.DefaultCenter.AddObserver(
+            new NSString("NSWindowDidChangeOcclusionStateNotification"),
+            _ => UpdateBackgroundState(),
+            window);
         // A window drag must start from the press that began it, and once the page's request
         // arrives CurrentEvent has often moved on - to a trackpad pressure event, typically
         _mouseMonitor = NSEvent.AddLocalMonitorForEventsMatchingMask(
@@ -65,11 +71,12 @@ internal static partial class WindowConfigurator
 
     public static void UpdateBackgroundState()
     {
-        // Focus and visibility are the desktop's "is the user looking" signal: without them the app
-        // counts as foreground forever, so an open chat keeps auto-reading incoming messages - which
-        // also suppresses their notifications (the server hides read ones).
-        var isVisible = _window is null or { IsVisible: true };
-        MauiBackgroundState.Set(!NSApplication.SharedApplication.Active || !isVisible);
+        // "Can the user see the window", not "is the app active": the background state holds back
+        // renders and pauses incoming video, and a window in plain sight beside another app must keep
+        // both. Occlusion also covers a fully covered window, another Space and a locked screen.
+        var isVisible = _window is not { } window
+            || (window.IsVisible && window.OcclusionState.HasFlag(NSWindowOcclusionState.Visible));
+        MauiBackgroundState.Set(!isVisible);
     }
 
     public static void RemoveTitlebarDragOverlay(NSWindow window)
