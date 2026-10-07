@@ -144,6 +144,8 @@ export async function hangUpIfAny(page: Page | undefined) {
         page.locator(CALL_HANG_UP).first(),
         // A call's video out of its screen carries the hang-up, inline or floating
         page.locator('.call-screen.in-call .call-screen-header .btn-hang-up').first(),
+        // The chat's own first: on a narrow screen the chat list's copy is off-screen, yet counts as visible
+        page.locator('.chat-activity-panel .chat-audio-controls .c-hangup').first(),
         page.locator('.chat-audio-controls .c-hangup').first(),
         // On a wide screen an active call has no screen of its own: it ends with the recording
         page.locator('.chat-audio-panel .recorder-wrapper.record-on button').first(),
