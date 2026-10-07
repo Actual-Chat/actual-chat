@@ -74,12 +74,13 @@ wrong `Closes #N` on the PR.
 
 ### 2b. Create path
 
-Run the `/issue` command (`.claude/commands/issue.md`) with `--todo`, a
-laconic capitalized prefix-free title, and a problem-only body drafted from
-the text. It searches for duplicates again, creates the issue, assigns it to
-the current user, sets the type, and puts it on the board in **ToDo**.
+Run the `/issue` command (`.claude/commands/issue.md`) with a laconic
+capitalized prefix-free title and a problem-only body drafted from the text.
+It searches for duplicates again, creates the issue, assigns it to the current
+user, sets the type, and puts it on the board in **In Progress**.
 
-If an explicit assignee was given and it is not `$ME`:
+If an explicit assignee was given and it is not `$ME`, pass `--todo` to
+`/issue` — nobody has started on it, so it lands in **ToDo** — and then:
 
 ```bash
 gh issue edit <N> --add-assignee <login> --remove-assignee @me
@@ -180,10 +181,10 @@ here, or `git worktree add` in the launcher refuses it.
 
 ### 7. Board column
 
-`/issue --todo` already landed a new issue in **ToDo**. For an existing issue
-that is not on the board or is in **Backlog**, move it to **ToDo** with the
-ids and commands from `/track-issue` step 6 (b)–(c); never move an issue
-backward and never touch **In Progress**/**Done**. If the board update fails
+`/issue` already landed a new issue in **In Progress**. For an existing issue
+that is not on the board or is in **Backlog** or **ToDo**, move it to
+**In Progress** with the ids and commands from `/track-issue` step 6 (b)–(c);
+never move an issue backward and never touch **Done**. If the board update fails
 (token lacks `project` scope), report it and continue — it does not block the
 branch.
 
@@ -193,7 +194,7 @@ branch.
 Issue    #4321 Login page redirects in a loop (Bug) — https://github.com/Actual-Chat/actual-chat/issues/4321
 Assignee frolyo (created)                     | frolyo (existing) | frolyo (claimed, was unassigned)
 Branch   bugfix/4321-login-page-redirects ← origin/dev, linked on GitHub, branch.<name>.issue = 4321
-Board    Team project · ToDo
+Board    Team project · In Progress
 Next     ai bwt bugfix/4321-login-page-redirects       # Docker (sandboxed)
          ai os bwt bugfix/4321-login-page-redirects    # host OS
 ```
