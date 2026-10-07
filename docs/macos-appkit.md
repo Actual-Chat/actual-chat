@@ -153,8 +153,9 @@ markers:
   answers `windowShouldClose` with an `orderOut`, and a Dock click brings the same window back
   through `applicationShouldHandleReopen`. The labs backend has neither: its window closes for
   good and nothing reopens it, which left a windowless process in the Dock. The background
-  state follows focus and window visibility, so a hidden or minimized window stops auto-reading
-  chats. Cmd+Q quits as usual.
+  state follows whether the window is on screen (`NSWindow.occlusionState`), not focus: a hidden,
+  minimized or fully covered window stops rendering, auto-reading chats and playing incoming
+  video, while a window in plain sight beside another app keeps all three. Cmd+Q quits as usual.
 - **The web UI extends under the titlebar**, the way Telegram's does. The labs window is a
   full-size-content-view with a transparent titlebar and no title. While an expanded call fills the
   wide window, `MacWindowUI` (the AppKit half of `WindowUI`, which follows the video panel) has
