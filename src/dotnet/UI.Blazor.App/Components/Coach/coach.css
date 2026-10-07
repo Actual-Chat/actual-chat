@@ -167,11 +167,15 @@
 .coach-progress .c-scores-caption { @apply text-caption text-03 -mt-2; }
 .coach-week-deltas .c-badge { @apply font-medium min-w-11 text-right; }
 .coach-recent-summary .c-change.improving,
-.coach-week-deltas .c-badge.improving { color: var(--success); }
+.coach-week-deltas .c-badge.improving { color: var(--green-10); }
 .coach-recent-summary .c-change.stable,
-.coach-week-deltas .c-badge.stable { color: var(--emerald-30); }
+.coach-week-deltas .c-badge.stable { color: var(--emerald-10); }
 .coach-recent-summary .c-change.worsening,
-.coach-week-deltas .c-badge.worsening { color: var(--orange-50); }
+.coach-week-deltas .c-badge.worsening { color: var(--text-banner-warning); }
+.theme-dark .coach-recent-summary .c-change.improving,
+.theme-dark .coach-week-deltas .c-badge.improving { color: var(--green-70); }
+.theme-dark .coach-recent-summary .c-change.stable,
+.theme-dark .coach-week-deltas .c-badge.stable { color: var(--emerald-40); }
 .coach-milestones .c-check {
     @apply flex-x items-center justify-center w-5 h-5 rounded-full bg-success text-xs text-white;
 }
