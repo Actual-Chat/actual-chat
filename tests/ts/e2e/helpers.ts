@@ -127,6 +127,8 @@ async function launchHeadless(options: ConnectBrowserOptions): Promise<BrowserCo
                 '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
                 ...(options.fakeAudioFile ? [`--use-file-for-fake-audio-capture=${options.fakeAudioFile}`] : []),
                 ...(hostResolverRules ? [`--host-resolver-rules=${hostResolverRules}`] : []),
+                // In this mode leaving a page with AudioWorklets can deadlock its renderer (#5084)
+                '--disable-features=WebAudioBypassOutputBuffering',
             ],
         });
         // Pinned locale: the UI follows the browser's when the account has no language set,
