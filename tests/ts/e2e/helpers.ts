@@ -1,6 +1,10 @@
-import { chromium, type Browser, type BrowserContext, type Locator, type Page } from 'playwright';
+import {
+    chromium, type Browser, type BrowserContext, type CDPSession, type Locator, type Page, type Request,
+    type Response,
+} from 'playwright';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as zlib from 'zlib';
 import { execSync } from 'child_process';
 
 export const TEST_EMAIL = 'test-claude-agent@actual.chat';
@@ -82,6 +86,7 @@ async function tryCdp(): Promise<BrowserConnection | null> {
         const endpoint = `http://${host}:9222`;
         try {
             const browser = await chromium.connectOverCDP(endpoint, { timeout: 3000 });
+            traceNavigationHangs(browser, false);
             const contexts = browser.contexts();
             const context = contexts.length > 0 ? contexts[0] : await browser.newContext();
             console.log(`Connected to Chrome via CDP at ${endpoint}`);
@@ -131,6 +136,7 @@ async function launchHeadless(options: ConnectBrowserOptions): Promise<BrowserCo
                 '--disable-features=WebAudioBypassOutputBuffering',
             ],
         });
+        traceNavigationHangs(browser, true);
         // Pinned locale: the UI follows the browser's when the account has no language set,
         // and a developer machine's own locale would then break every English selector.
         const context = await browser.newContext({ ignoreHTTPSErrors: true, locale: 'en-US' });
@@ -144,6 +150,265 @@ async function launchHeadless(options: ConnectBrowserOptions): Promise<BrowserCo
             );
         }
         throw e;
+    }
+}
+
+let navigationHangCount = 0;
+
+/** Diagnoses `page.goto`/`page.reload` timeouts (#5084) in every context of the browser, including the ones
+ *  the specs create themselves: logs what the browser and its processes were doing and dumps a trace. */
+function traceNavigationHangs(browser: Browser, mustRecordTrace: boolean): void {
+    // A hung renderer's main thread waits inside a task; the trace shows which task and where it was posted from
+    const traceConfig = {
+        recordMode: 'recordContinuously' as const,
+        traceBufferSizeInKb: 64 * 1024,
+        includedCategories: [
+            'toplevel', 'toplevel.flow', 'ipc', 'mojom', 'navigation', 'loading', 'blink', 'renderer.scheduler',
+            'v8.execute', 'audio', 'webaudio', 'media',
+        ],
+    };
+    let tracingTask = mustRecordTrace ? startTracing() : undefined;
+    const newContext = browser.newContext.bind(browser) as Browser['newContext'];
+    browser.newContext = async options => {
+        const context = await newContext(options);
+        traceContext(context);
+        return context;
+    };
+    for (const context of browser.contexts())
+        traceContext(context);
+    return;
+
+    async function startTracing(session?: CDPSession): Promise<CDPSession | undefined> {
+        try {
+            const cdp = session ?? await browser.newBrowserCDPSession();
+            await cdp.send('Tracing.start', { transferMode: 'ReturnAsStream', traceConfig });
+            return cdp;
+        } catch (e) {
+            console.log(`NAVIGATION TRACE: failed to start: ${String(e)}`);
+            return undefined;
+        }
+    }
+
+    function traceContext(context: BrowserContext): void {
+        for (const page of context.pages())
+            tracePage(page);
+        context.on('page', tracePage);
+    }
+
+    function tracePage(page: Page): void {
+        const pending = new Map<Request, { startedAt: number, respondedAt?: number, response?: Response }>();
+        page.on('request', r => pending.set(r, { startedAt: performance.now() }));
+        page.on('response', r => {
+            const entry = pending.get(r.request());
+            if (!entry)
+                return;
+
+            entry.respondedAt = performance.now();
+            entry.response = r;
+        });
+        page.on('requestfinished', r => pending.delete(r));
+        page.on('requestfailed', r => pending.delete(r));
+
+        const goto = page.goto.bind(page) as Page['goto'];
+        const reload = page.reload.bind(page) as Page['reload'];
+        page.goto = (url, options) => reportHang(goto(url, options), `goto ${url}`);
+        page.reload = options => reportHang(reload(options), 'reload');
+
+        async function reportHang<T>(navigation: Promise<T>, what: string): Promise<T> {
+            try {
+                return await navigation;
+            } catch (e) {
+                if (e instanceof Error && e.name === 'TimeoutError')
+                    await impl();
+                throw e;
+            }
+
+            async function impl(): Promise<void> {
+                const now = performance.now();
+                const pendingCount = pending.size;
+                const requests = [...pending].flatMap(([r, { startedAt, respondedAt, response }]) => {
+                    const state = respondedAt === undefined
+                        ? 'no response'
+                        : `headers after ${Math.round(respondedAt - startedAt)}ms, body pending`;
+                    const openMs = Math.round(now - startedAt);
+                    const lines = [`    ${r.method()} ${r.url()} [${r.resourceType()}] open ${openMs}ms: ${state}`];
+                    if (response) {
+                        const headers = response.headers();
+                        const shownHeaders = ['content-type', 'content-length', 'transfer-encoding', 'cache-control']
+                            .filter(name => name in headers)
+                            .map(name => `${name}: ${headers[name]}`);
+                        lines.push(
+                            `      status ${response.status()}, from service worker: ${response.fromServiceWorker()}`,
+                            `      headers: ${shownHeaders.join('; ')}`);
+                    }
+                    lines.push(`      timing: ${JSON.stringify(r.timing())}`);
+                    return lines;
+                });
+                // evaluate waits for a script context, which a document stuck mid-parse may never give
+                const documentState = await withTimeout(
+                    page.evaluate(() => `${document.readyState} ${location.href}`), 2000,
+                ).catch((e: unknown) => `evaluate failed: ${String(e)}`);
+                // A renderer near 0% waits on something; a busy GPU or browser process shows what it waits for
+                const { lines: processCpu, rendererPids } = await sampleProcessCpu()
+                    .catch((e: unknown) => ({ lines: [`    failed: ${String(e)}`], rendererPids: [] as number[] }));
+                const rendererThreads = rendererPids.flatMap(describeThreads);
+                const memory = describeMemory();
+                // Each spec file runs in its own worker, so the pid keeps their dumps apart
+                const hangNumber = `${process.pid}-${++navigationHangCount}`;
+                let screenshotState = screenshot('e2e-navigation-hang', hangNumber);
+                // Not page.screenshot: it waits for fonts, which a document stuck mid-load never finishes loading
+                try {
+                    const cdp = await withTimeout(page.context().newCDPSession(page), 5000);
+                    const capture = cdp.send('Page.captureScreenshot')
+                        .finally(() => void cdp.detach().catch(() => { /* the page may be gone */ }));
+                    const { data } = await withTimeout(capture, 5000);
+                    fs.writeFileSync(screenshotState, Buffer.from(data, 'base64'));
+                } catch (e) {
+                    screenshotState = `failed: ${String(e)}`;
+                }
+                const traceState = await withTimeout(dumpTrace(), 60_000).catch((e: unknown) => `failed: ${String(e)}`);
+                console.log([
+                    `NAVIGATION HANG at ${new Date().toISOString()}: ${what}`,
+                    `  service workers running: ${page.context().serviceWorkers().length}`,
+                    `  document: ${documentState}`,
+                    `  CPU over 1s, per Chromium process:`,
+                    ...processCpu,
+                    `  renderer threads (count × name: state, kernel wait, syscall number):`,
+                    ...rendererThreads,
+                    `  memory: ${memory}`,
+                    `  pending requests (${pendingCount}):`,
+                    ...requests,
+                    `  screenshot: ${screenshotState}`,
+                    `  trace: ${traceState}`,
+                ].join('\n'));
+                return;
+
+                async function dumpTrace(): Promise<string> {
+                    const cdp = await tracingTask;
+                    if (!cdp)
+                        return 'not recorded';
+
+                    // A concurrent hang finds no recording rather than ending this one
+                    tracingTask = undefined;
+                    try {
+                        const completeTask = new Promise<{ stream?: string }>(
+                            resolve => cdp.once('Tracing.tracingComplete', resolve));
+                        await cdp.send('Tracing.end');
+                        const { stream } = await completeTask;
+                        if (!stream)
+                            return 'no stream';
+
+                        const chunks: Buffer[] = [];
+                        for (;;) {
+                            const { data, base64Encoded, eof } = await cdp.send('IO.read', { handle: stream });
+                            chunks.push(Buffer.from(data, base64Encoded ? 'base64' : 'utf8'));
+                            if (eof)
+                                break;
+                        }
+                        await cdp.send('IO.close', { handle: stream });
+                        const file = path.join(tmpDir, `e2e-navigation-hang-${hangNumber}.json.gz`);
+                        fs.writeFileSync(file, zlib.gzipSync(Buffer.concat(chunks)));
+                        return file;
+                    } finally {
+                        tracingTask = startTracing(cdp);
+                    }
+                }
+
+                async function sampleProcessCpu(): Promise<{ lines: string[], rendererPids: number[] }> {
+                    const cdp = await withTimeout(browser.newBrowserCDPSession(), 5000);
+                    try {
+                        const sample = async () =>
+                            (await withTimeout(cdp.send('SystemInfo.getProcessInfo'), 5000)).processInfo;
+                        const before = await sample();
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const after = await sample();
+                        const lines = after
+                            .map(p => {
+                                const cpuTime = before.find(b => b.id === p.id)?.cpuTime;
+                                const cpu = cpuTime === undefined
+                                    ? 'new'
+                                    : `${Math.max(0, Math.round((p.cpuTime - cpuTime) * 100))}%`;
+                                return `    ${p.type} pid ${p.id}: ${cpu}`;
+                            })
+                            .sort();
+                        const rendererPids = after.filter(p => p.type === 'renderer').map(p => p.id);
+                        return { lines, rendererPids };
+                    } finally {
+                        await withTimeout(cdp.detach(), 5000).catch(() => { /* the browser may be gone */ });
+                    }
+                }
+
+                // A main thread idle in its message loop waits in epoll; one blocked on a lock or a sync call, in futex
+                function describeThreads(pid: number): string[] {
+                    const taskDir = `/proc/${pid}/task`;
+                    const read = (file: string) => {
+                        try {
+                            return fs.readFileSync(file, 'utf8').trim();
+                        } catch (e) {
+                            return `<${(e as NodeJS.ErrnoException).code ?? String(e)}>`;
+                        }
+                    };
+                    let tids: string[];
+                    try {
+                        tids = fs.readdirSync(taskDir);
+                    } catch (e) {
+                        return [`    renderer pid ${pid}: ${taskDir} unreadable: ${String(e)}`];
+                    }
+
+                    const groups = new Map<string, number>();
+                    for (const tid of tids) {
+                        const dir = `${taskDir}/${tid}`;
+                        const comm = read(`${dir}/comm`);
+                        // comm may hold spaces and parentheses, so the state is the first field after the last ')'
+                        const stat = read(`${dir}/stat`);
+                        const state = stat.slice(stat.lastIndexOf(') ') + 2).split(' ')[0];
+                        const syscall = read(`${dir}/syscall`).split(' ')[0];
+                        const name = tid === `${pid}` ? `main thread ${comm}` : comm;
+                        const key = `${name}: ${state}, ${read(`${dir}/wchan`)}, ${syscall}`;
+                        groups.set(key, (groups.get(key) ?? 0) + 1);
+                    }
+                    const rss = /VmRSS:\s*(\d+)/.exec(read(`/proc/${pid}/status`))?.[1];
+                    return [
+                        `    renderer pid ${pid}, RSS ${rss === undefined ? '?' : Math.round(+rss / 1024)} MB:`,
+                        ...[...groups].map(([key, count]) => `      ${count} × ${key}`),
+                    ];
+                }
+
+                // Hangs only showed up late in a run, so this checks for memory pressure and leftover browsers
+                function describeMemory(): string {
+                    try {
+                        const meminfo = fs.readFileSync('/proc/meminfo', 'utf8');
+                        const mb = (name: string) => {
+                            const kb = new RegExp(`^${name}:\\s*(\\d+)`, 'm').exec(meminfo)?.[1];
+                            return kb === undefined ? '?' : `${Math.round(+kb / 1024)} MB`;
+                        };
+                        const chromiumCount = fs.readdirSync('/proc')
+                            .filter(entry => /^\d+$/.test(entry))
+                            .filter(pid => {
+                                try {
+                                    return /chrom|headless_shell/i.test(fs.readFileSync(`/proc/${pid}/comm`, 'utf8'));
+                                } catch {
+                                    return false;
+                                }
+                            })
+                            .length;
+                        return `available ${mb('MemAvailable')} of ${mb('MemTotal')}, `
+                            + `swap free ${mb('SwapFree')} of ${mb('SwapTotal')}, Chromium processes ${chromiumCount}`;
+                    } catch (e) {
+                        return `unavailable: ${String(e)}`;
+                    }
+                }
+
+                function withTimeout<T>(task: Promise<T>, timeoutMs: number): Promise<T> {
+                    task.catch(() => { /* reported by the race or abandoned */ });
+                    return Promise.race([
+                        task,
+                        new Promise<never>((_, reject) =>
+                            setTimeout(() => reject(new Error(`timed out after ${timeoutMs}ms`)), timeoutMs)),
+                    ]);
+                }
+            }
+        }
     }
 }
 

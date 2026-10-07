@@ -299,7 +299,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: e2e-screenshots
-          path: tmp/*.png
+          path: |
+            tmp/*.png
+            tmp/e2e-navigation-hang-*.json.gz
           if-no-files-found: ignore
           retention-days: 7
 
