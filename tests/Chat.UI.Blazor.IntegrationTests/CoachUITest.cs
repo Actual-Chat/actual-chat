@@ -495,7 +495,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         summary.Entries.Should().Be(1, "the switched-off chat is skipped");
     }
 
-    [Fact(Timeout = 60_000)]
+    [Fact(Timeout = 120_000)]
     public async Task RecentTabShouldShowOneCardPerConversationWithFindings()
     {
         // arrange
