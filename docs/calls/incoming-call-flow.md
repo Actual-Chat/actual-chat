@@ -294,15 +294,24 @@ stays, with the avatar on its stage.
 "Is the screen full-screen" has two stores - the collapsed flag here and the panel mode in
 `ChatActivityUI` - and one writer, `CallScreensUI.SetScreenMode`, behind `Expand` and
 `LeaveCallScreen`. The collapse button, the island, the inline video's expand button, the video
-menu, Back and Escape all go through it. `LeaveCallScreen` opens the call's chat first: an inline
-video belongs to its chat's page.
+menu, Back and Escape all go through it. `LeaveCallScreen` returns to where the screen was
+opened from: a screen the user expanded (`Expand`) from another chat or from the chat list stays
+there, with its video floating; one that came up on its own - a ring answered, a dial, the lock
+screen - opens the call's chat first, since an inline video belongs to its chat's page.
 
 Which chat's video is up at all is `ChatVideoUI`'s (`SyncWatching`): it opens for a chat with own
 camera or screencast, and for a chat the user listens in once someone else streams there - the
 call's chat while its screen is up, the selected one otherwise - and closes an inline or hidden
-video when the user moves to another chat. A full-screen or floating video doesn't depend on the
-selected chat, so the island expands in place, and a video call answered over the lock screen
-shows its video there; the chat itself stays behind the keyguard.
+video when the user moves to another chat. A call's inline video floats instead, whenever the
+call's chat isn't the page on screen (the chat list of a narrow screen covers it without
+unselecting it), and goes back inline once it is - unless the user moved it on meanwhile; a Float
+picked from the menu stays (`DecideCallVideoFloat`). A full-screen or floating video doesn't depend
+on the selected chat, so the island expands in place, and a video call answered over the lock
+screen shows its video there; the chat itself stays behind the keyguard.
+
+While a call's video is in sight, inline or floating, it stands in for the call's island: its
+header carries the call's timer and hang-up, and `CollapsedCallView` stays away. A hidden video, or
+one on the Map tab, gives the island back.
 
 The component is mounted outside the chat page, in a `RenderIntoNomadSlot` (see
 [Moving rendered content between places](../ui/components.md#moving-rendered-content-between-places)).
@@ -313,7 +322,7 @@ its DOM moves there - and back out when the slot goes.
 |---|---|
 | `CallModal` | Decline, Mute, Message and Accept for a ring; Hang up while dialing. |
 | `CallScreen` | The ring over the keyguard, dialing or the call on a narrow screen, and a chat's video in every mode. |
-| `CollapsedCallView` | The draggable island. Collapsing a ring also mutes its ringtone. |
+| `CollapsedCallView` | The draggable island, unless the call's video stands in for it. Collapsing a ring also mutes its ringtone. |
 
 `CallScreensUI` is a UI worker; it runs two reactive loops:
 

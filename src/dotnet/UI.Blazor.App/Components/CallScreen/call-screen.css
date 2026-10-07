@@ -53,6 +53,18 @@ nomad-slot-content:not([data-nomad-slot]) > .call-screen:not(.expanded):not(.col
 .call-screen.collapsed .call-screen-header .c-right {
     @apply gap-0;
 }
+/* The island of a call has its timer on the left */
+.call-screen.collapsed.in-call .call-screen-header {
+    @apply left-1;
+}
+.call-screen .call-screen-header .c-call-timer {
+    @apply flex-x items-center gap-1;
+    @apply h-8 px-2;
+    @apply rounded-full;
+    @apply text-caption-500 text-white whitespace-nowrap;
+    @apply pointer-events-none;
+    background: var(--black-50);
+}
 .call-screen.collapsed .video-stage {
     @apply relative;
     @apply w-full h-full;
