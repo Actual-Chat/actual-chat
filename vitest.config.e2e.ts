@@ -24,6 +24,7 @@ export default defineConfig({
     test: {
         include: ['tests/ts/e2e/**/*.test.ts'],
         globalSetup: ['tests/ts/e2e/global-setup.ts'],
+        setupFiles: ['tests/ts/e2e/setup.ts'],
         testTimeout: 60_000,
         hookTimeout: 120_000,
         // Run files sequentially: all tests share one test account and

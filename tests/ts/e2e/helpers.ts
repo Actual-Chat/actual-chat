@@ -158,6 +158,19 @@ async function launchHeadless(options: ConnectBrowserOptions): Promise<BrowserCo
 }
 
 let navigationHangCount = 0;
+const openPages = new Set<Page>();
+
+/** Screenshots every page still open, for the test that just failed (setup.ts calls it). */
+export async function screenshotOpenPages(testName: string): Promise<void> {
+    const name = testName.replace(/[^\w-]+/g, '-').slice(0, 60);
+    let index = 0;
+    for (const page of openPages) {
+        const file = screenshot('e2e-failed', `${name}-${++index}`);
+        const state = await page.screenshot({ path: file, timeout: 10_000 })
+            .then(() => file, (e: unknown) => `failed: ${String(e)}`);
+        console.log(`FAILED TEST SCREENSHOT: ${page.url()} -> ${state}`);
+    }
+}
 
 /** Diagnoses `page.goto`/`page.reload` timeouts (#5084) in every context of the browser, including the ones
  *  the specs create themselves: logs what the browser and its processes were doing and dumps a trace. */
@@ -200,6 +213,8 @@ function traceNavigationHangs(browser: Browser, mustRecordTrace: boolean): void 
     }
 
     function tracePage(page: Page): void {
+        openPages.add(page);
+        page.on('close', () => openPages.delete(page));
         const pending = new Map<Request, { startedAt: number, respondedAt?: number, response?: Response }>();
         page.on('request', r => pending.set(r, { startedAt: performance.now() }));
         page.on('response', r => {
