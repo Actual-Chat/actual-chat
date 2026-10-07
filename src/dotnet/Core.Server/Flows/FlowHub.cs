@@ -143,6 +143,31 @@ public sealed class FlowHub(IServiceProvider services) : IHasServices
         return flowData.GetFlow(this);
     }
 
+    // Inbox
+
+    public async Task<ApiArray<FlowInboxMessage>> GetInboxNonComputed(
+        FlowId flowId, CancellationToken cancellationToken = default)
+    {
+        using var _ = Computed.BeginIsolation();
+        return await Backend.GetInbox(flowId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task PostToInbox(
+        FlowId flowId,
+        IEnumerable<object> payloads,
+        bool mustResume = true,
+        CancellationToken cancellationToken = default)
+    {
+        var postCommand = Flows_ChangeInbox.Post(flowId, payloads) with { MustResume = mustResume };
+        return Commander.Call(postCommand, cancellationToken);
+    }
+
+    public Task RemoveFromInbox(FlowId flowId, IEnumerable<long> ids, CancellationToken cancellationToken = default)
+    {
+        var removeCommand = Flows_ChangeInbox.Remove(flowId, ids);
+        return Commander.Call(removeCommand, cancellationToken);
+    }
+
     // Internal methods
 
     internal async Task Schedule(FlowResumeEvent resumeEvent, CancellationToken cancellationToken)

@@ -21,6 +21,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
     private readonly AsyncLockSet<FlowId> _resumeLocks = new(LockReentryMode.CheckedPass);
     private readonly VersionedComputeMethodPrimer<FlowId, long, IFlowData?> _flowDataPrimer;
+    private readonly VersionedComputeMethodPrimer<FlowId, long, ApiArray<FlowInboxMessage>> _inboxPrimer;
 
     // Services
     private FlowHub FlowHub => field ??= Services.FlowHub();
@@ -37,6 +38,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     {
         EntityResolver = services.DbEntityResolver<string, DbFlow>();
         _flowDataPrimer = new VersionedComputeMethodPrimer<FlowId, long, IFlowData?>(TryGetData);
+        _inboxPrimer = new VersionedComputeMethodPrimer<FlowId, long, ApiArray<FlowInboxMessage>>(GetInbox);
     }
 
     // [ComputeMethod]
@@ -48,6 +50,21 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         var flowDef = FlowHub.Defs.Get(flowId.Name);
         var dbFlow = await EntityResolver.Get(flowId.Value, cancellationToken).ConfigureAwait(false);
         return dbFlow?.ToFlowData(flowDef.Type, flowId);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<FlowInboxMessage>> GetInbox(FlowId flowId, CancellationToken cancellationToken)
+    {
+        if (_inboxPrimer.TryUsePrimed(flowId, out var primed))
+            return primed;
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+
+        var dbInbox = await dbContext.FlowInboxes
+            .FirstOrDefaultAsync(x => x.Id == flowId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        return dbInbox?.GetMessages() ?? [];
     }
 
     // Regular RPC method!
@@ -280,6 +297,14 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 dbFlow = null;
             }
         }
+        // A removed or completed flow takes its inbox along - nothing would ever read it again.
+        // Otherwise only the changes the flow made are applied, so whatever was posted while it ran stays.
+        InboxChange? inboxChange = null;
+        if (flow is null || flow.UntypedResult is not null)
+            inboxChange = await RemoveInbox(dbContext, flowId, cancellationToken).ConfigureAwait(false);
+        else if (command.InboxDiff is { } inboxDiff)
+            inboxChange = await ApplyInboxDiff(dbContext, flowId, inboxDiff, cancellationToken).ConfigureAwait(false);
+        PrimeInboxOnCommit(context, flowId, inboxChange);
         if (command.Events is { } events)
             foreach (var e in events)
                 context.Operation.AddEvent(e);
@@ -332,10 +357,107 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         context.Operation.StoreMode = OperationStoreMode.None;
     }
 
+    // [CommandHandler]
+    public virtual async Task OnChangeInbox(Flows_ChangeInbox command, CancellationToken cancellationToken)
+    {
+        var (flowId, diff) = command;
+        var context = CommandContext.GetCurrent();
+
+        flowId.Require();
+        var flowDef = FlowHub.Defs.Get(flowId.Name);
+        if (!typeof(IInboxProcessingFlow).IsAssignableFrom(flowDef.Type))
+            throw StandardError.Constraint($"Flow '{flowDef.Name}' doesn't process an inbox.");
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _1 = dbContext.ConfigureAwait(false);
+        dbContext.EnableChangeTracking(true);
+
+        // The flow's lock orders this against its commits, which drop the inbox once it completes
+        await dbContext.Flows.Lock(flowId, cancellationToken).ConfigureAwait(false);
+        var isCompleted = await dbContext.Flows
+            .AnyAsync(x => x.Id == flowId.Value && x.IsCompleted, cancellationToken)
+            .ConfigureAwait(false);
+        if (isCompleted) {
+            Log.LogWarning("`{FlowId}` is completed, so its inbox change is ignored", flowId.Value);
+            return;
+        }
+
+        var inboxChange = await ApplyInboxDiff(dbContext, flowId, diff, cancellationToken).ConfigureAwait(false);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        PrimeInboxOnCommit(context, flowId, inboxChange);
+        if (command.MustResume)
+            context.Operation.AddEvent(FlowHub.NewResumeEvent(flowId));
+        // The primer, not the operation log, keeps GetInbox current: it's served by this node only
+        context.Operation.StoreMode = OperationStoreMode.None;
+    }
+
     // Private methods
+
+    private async Task<InboxChange?> ApplyInboxDiff(
+        FlowsDbContext dbContext, FlowId flowId, FlowInboxDiff diff, CancellationToken cancellationToken)
+    {
+        if (diff.IsEmpty)
+            return null;
+
+        await dbContext.FlowInboxes.Lock(flowId, cancellationToken).ConfigureAwait(false);
+        var dbInbox = await dbContext.FlowInboxes
+            .FirstOrDefaultAsync(x => x.Id == flowId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        var messages = dbInbox?.GetMessages() ?? [];
+        var lastId = dbInbox?.LastId ?? 0;
+        var newMessages = diff.ApplyTo(messages, ref lastId, VersionGenerator);
+        if (ReferenceEquals(newMessages.Items, messages.Items))
+            return null; // Nothing added, nothing that was there removed
+
+        if (dbInbox is null) {
+            dbInbox = new DbFlowInbox { Id = flowId.Value };
+            dbContext.Add(dbInbox);
+        }
+        dbInbox.LastId = lastId;
+        dbInbox.SetMessages(newMessages);
+        dbInbox.Version = VersionGenerator.NextVersion(dbInbox.Version);
+        return new InboxChange(dbInbox.Version, newMessages);
+    }
+
+    private async Task<InboxChange?> RemoveInbox(
+        FlowsDbContext dbContext, FlowId flowId, CancellationToken cancellationToken)
+    {
+        await dbContext.FlowInboxes.Lock(flowId, cancellationToken).ConfigureAwait(false);
+        var dbInbox = await dbContext.FlowInboxes
+            .FirstOrDefaultAsync(x => x.Id == flowId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbInbox is null)
+            return null;
+
+        dbContext.Remove(dbInbox);
+        return new InboxChange(VersionGenerator.NextVersion(dbInbox.Version), []);
+    }
+
+    private void PrimeInboxOnCommit(CommandContext context, FlowId flowId, InboxChange? inboxChange)
+    {
+        if (inboxChange is not { } change)
+            return;
+
+        // Hands the new inbox to GetInbox's next recompute, so the invalidation needs no DB read
+        context.Operation.AddCompletionHandler(async scope => {
+            if (scope.IsCommitted != true)
+                return;
+
+            await _inboxPrimer.Prime(flowId, change.Version, change.Messages, CancellationToken.None)
+                .ConfigureAwait(false);
+        });
+    }
 
     private long SkipStore(Flows_Store command, long version)
     {
+        // Inbox changes can't be dropped the way the flow's state is: the state is a snapshot the next
+        // commit replaces, while the changes are a diff that nothing would ever apply again. So the
+        // resume fails, and its retry starts over from what is stored.
+        if (command.InboxDiff is { IsEmpty: false })
+            throw new VersionMismatchException(
+                $"`{command.FlowId.Value}` store skipped: expected version {command.ExpectedVersion}, "
+                + $"stored {version}, so its inbox changes can't be applied.");
+
         // The caller gets the stored version back as if it had stored its own, so unless it checks
         // for that itself, this is the only trace of the state and events it just lost
         if (command.IsSkipExpected)
@@ -392,6 +514,8 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
             : isPeriodic ? FlowStatus.Stuck : FlowStatus.Idle;
 
     // Nested types
+
+    private readonly record struct InboxChange(long Version, ApiArray<FlowInboxMessage> Messages);
 
 #pragma warning disable CA1812 // Avoid uninstantiated internal classes (EF instantiates these via SqlQuery<T>)
     private sealed class AggRow

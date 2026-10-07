@@ -13,6 +13,11 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
     // Properties
     public bool AutoCommit { get; set; } = true;
+    // Set for an IInboxProcessingFlow only
+    public FlowInbox Inbox {
+        get => field ?? throw StandardError.Internal($"{Flow.GetType().GetName()} isn't an IInboxProcessingFlow.");
+        internal set;
+    }
     // Events
     public List<object?> StagedEvents { get; } = new();
 
@@ -48,14 +53,18 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
         // Always runs locally
         var events = GetStagedOperationEvents();
+        var inbox = Flow is IInboxProcessingFlow ? Inbox : null;
+        var inboxDiff = inbox?.GetDiff();
         var storeCommand = new Flows_Store(Flow.Id, Flow.Version) {
             Flow = Flow,
             Events = events,
+            InboxDiff = inboxDiff is { IsEmpty: false } ? inboxDiff : null,
         };
         var version = await Hub.Commander.Call(storeCommand, cancellationToken).ConfigureAwait(false);
 
         // Update own state
         StagedEvents.Clear();
+        inbox?.AcceptChanges();
 
         // Update Flow state
         ((IFlowImpl)Flow).Version = version;

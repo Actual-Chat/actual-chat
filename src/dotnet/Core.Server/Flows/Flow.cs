@@ -40,6 +40,9 @@ public abstract class Flow : IFlowImpl
     protected IServiceProvider Services => Runtime?.Services!;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected FlowDef FlowDef => Runtime.FlowDef;
+    // Available to an IInboxProcessingFlow during a resume
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    protected FlowInbox Inbox => Runtime.Inbox;
 
     // Properties that are persisted to the DB directly
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
@@ -101,6 +104,11 @@ public abstract class Flow : IFlowImpl
         var runtime = Runtime = CreateRuntime(hub, cancellationToken);
         ResumedAt = runtime.Hub.Clocks.SystemClock.Now;
         try {
+            if (this is IInboxProcessingFlow) {
+                var messages = await hub.GetInboxNonComputed(Id, cancellationToken).ConfigureAwait(false);
+                runtime.Inbox = new FlowInbox(messages);
+            }
+
             var exitReason = (string?)null;
             if (initReason is not null) {
                 Console.Log($"[Init] - {initReason}");
