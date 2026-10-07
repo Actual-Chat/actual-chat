@@ -5,14 +5,14 @@ using Android.Content;
 namespace ActualChat.App.Maui;
 
 /// <summary>
-/// Reports abnormal exits (ANRs, crashes) of the previous app process via
-/// <see cref="ApplicationExitInfo"/>, attaching the previous session's
-/// <see cref="MauiStartupBreadcrumbs"/> — the only way to attribute background-start
-/// ANRs, which die before any crash reporter persists its data.
+/// Reports how earlier app processes ended via <see cref="ApplicationExitInfo"/>: ANRs and crashes as
+/// warnings with the previous session's <see cref="MauiStartupBreadcrumbs"/> — the only way to attribute
+/// background-start ANRs, which die before any crash reporter persists its data — and other exits as info.
 /// </summary>
 public static class AndroidProcessExitReporter
 {
     private const string LastReportedExitAtKey = "last_reported_process_exit_at";
+    private const int MaxExitCount = 16;
     private static readonly TimeSpan StartDelay = TimeSpan.FromSeconds(10);
 
     private static int _isStarted;
@@ -44,29 +44,41 @@ public static class AndroidProcessExitReporter
         if (context.GetSystemService(Context.ActivityService) is not ActivityManager activityManager)
             return;
 
-        var exits = activityManager.GetHistoricalProcessExitReasons(context.PackageName, 0, 5);
+        var exits = activityManager.GetHistoricalProcessExitReasons(context.PackageName, 0, MaxExitCount);
         var lastReportedAt = MauiPreferences.Get<long>(LastReportedExitAtKey);
         var maxTimestamp = lastReportedAt;
-        var isNewestExit = true;
+        var isNewestOwnExit = true;
         foreach (var exit in exits) {
             var timestamp = exit.Timestamp;
+            // WebView's sandboxed renderer is listed under this package too and goes down with the app,
+            // so only its own crashes say anything; the breadcrumbs belong to the app's process
+            var isOwnProcess = exit.ProcessName == context.PackageName;
+            var isNewest = isOwnProcess && isNewestOwnExit;
+            if (isOwnProcess)
+                isNewestOwnExit = false;
+            if (timestamp <= lastReportedAt)
+                continue;
+
+            maxTimestamp = Math.Max(maxTimestamp, timestamp);
+            var at = DateTimeOffset.FromUnixTimeMilliseconds(timestamp);
             var isAbnormal = (ApplicationExitInfoReason)exit.Reason
                 is ApplicationExitInfoReason.Anr
                 or ApplicationExitInfoReason.Crash
                 or ApplicationExitInfoReason.CrashNative;
-            if (timestamp <= lastReportedAt || !isAbnormal) {
-                isNewestExit = false;
+            if (!isAbnormal) {
+                // Low memory, a signal from an OEM battery saver, excessive resource use: no crash
+                // report is filed for these, yet each explains an app or a call that just stopped
+                if (isOwnProcess)
+                    Log.LogInformation("Previous process exit at {At}: {Exit}", at, exit.ToString());
                 continue;
             }
 
-            maxTimestamp = Math.Max(maxTimestamp, timestamp);
             // Breadcrumbs cover only the most recent session, so attach them
             // only when the newest recorded exit is the one being reported.
-            var breadcrumbs = isNewestExit ? MauiStartupBreadcrumbs.ReadPrevious() : "";
-            isNewestExit = false;
+            var breadcrumbs = isNewest ? MauiStartupBreadcrumbs.ReadPrevious() : "";
             Log.LogWarning(
                 "Previous process exit at {At}: {Exit}\nLast session breadcrumbs:\n{Breadcrumbs}",
-                DateTimeOffset.FromUnixTimeMilliseconds(timestamp),
+                at,
                 exit.ToString(),
                 breadcrumbs);
         }

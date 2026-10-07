@@ -337,7 +337,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 isRejoined = intent.LeftCallId == callId;
                 _intent = intent with { Call = call, LeftCallId = isRejoined ? null : intent.LeftCallId };
             }
-            _activeCall.Value = call;
+            SetActiveCallUnsafe(call);
         }
         // The answers naming it were kept off the slot as the left call's; nothing else re-reads them.
         if (isRejoined)
@@ -353,7 +353,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             ? last.LeftCallId
             : null;
         _intent = new CallIntent(call, call.ChatId, Now, leftCallId);
-        _activeCall.Value = call;
+        SetActiveCallUnsafe(call);
     }
 
     // Caller must hold _lock.
@@ -362,7 +362,17 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // Recorded as an intent of its own: the server keeps naming this call mine until my absence
         // reaches it, and that answer must not put the screens back up.
         _intent = new CallIntent(null, chatId, Now, _activeCall.Value?.CallId);
-        _activeCall.Value = null;
+        SetActiveCallUnsafe(null);
+    }
+
+    // Caller must hold _lock.
+    private void SetActiveCallUnsafe(ActiveCall? call)
+    {
+        // Each change is logged: the lines between a call taking the slot and leaving it are that call's
+        var held = _activeCall.Value;
+        if (call != held)
+            Log.LogInformation("Call slot: {Held} -> {Call}", held?.ToString() ?? "none", call?.ToString() ?? "none");
+        _activeCall.Value = call;
     }
 
     // Nested types

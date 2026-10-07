@@ -12,6 +12,8 @@ public sealed class ListeningStreamProcessor : WorkerBase
 {
     private static bool DebugMode => Constants.DebugMode.LiveStreaming;
 
+    // Written by the watchdog, read by the demuxer as it reports a stream; both run in one item loop
+    private readonly Dictionary<int, AudioStreamDemuxer.ArrivalLag> _arrivalLags = new();
     private ResilientStream<MuxedAudioStreamItem>? _itemStream;
     private bool _isCatchUpConsumed;
     private CpuTimestamp? _lastReanchorAt;
@@ -88,7 +90,9 @@ public sealed class ListeningStreamProcessor : WorkerBase
 
         var watchedItems = WithArrivalLagWatchdog(
             itemStream, clocks.ServerClock, effectiveCatchUpFrom, cancellationToken);
-        var demuxer = new AudioStreamDemuxer(watchedItems, demuxerLog, cancellationToken.CreateLinkedTokenSource());
+        var demuxer = new AudioStreamDemuxer(watchedItems, demuxerLog, cancellationToken.CreateLinkedTokenSource()) {
+            ArrivalLagProvider = streamIndex => _arrivalLags.TryGetValue(streamIndex, out var lag) ? lag : null,
+        };
         await using var _ = demuxer.ConfigureAwait(false);
         demuxer.StreamStarted += (info, playsAt, frames) => StreamStarted?.Invoke(info, playsAt, frames);
 
@@ -134,6 +138,9 @@ public sealed class ListeningStreamProcessor : WorkerBase
                 && frame.Offset >= TimeSpan.Zero
                 && beginsAtByStreamIndex.TryGetValue(frame.StreamIndex, out var beginsAt):
                 var lag = serverClock.Now - (beginsAt + frame.Offset);
+                _arrivalLags[frame.StreamIndex] = _arrivalLags.TryGetValue(frame.StreamIndex, out var arrivalLag)
+                    ? arrivalLag.Add(lag)
+                    : new AudioStreamDemuxer.ArrivalLag(lag, lag, lag);
                 if (lag > Constants.Audio.ListeningMaxArrivalLag && CanReanchor()) {
                     _lastReanchorAt = CpuTimestamp.Now;
                     Log.LogWarning(
@@ -145,6 +152,12 @@ public sealed class ListeningStreamProcessor : WorkerBase
                 break;
             }
             yield return item;
+
+            // Dropped only now: the demuxer reports streams on their end item and on a reset
+            if (item is MuxedAudioStreamEnd streamEnd)
+                _arrivalLags.Remove(streamEnd.StreamIndex);
+            else if (item is MuxedAudioStreamReset)
+                _arrivalLags.Clear();
         }
     }
 

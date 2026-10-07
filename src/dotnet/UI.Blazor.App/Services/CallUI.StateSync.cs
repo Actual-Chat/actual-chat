@@ -140,7 +140,7 @@ public partial class CallUI
             if (next == held)
                 return;
 
-            _activeCall.Value = next;
+            SetActiveCallUnsafe(next);
             if (next is { Role: CallRole.Callee, Phase: CallPhase.Ringing })
                 ringingChatId = next.ChatId;
             if (ShouldStartCallAudio(held, next))
