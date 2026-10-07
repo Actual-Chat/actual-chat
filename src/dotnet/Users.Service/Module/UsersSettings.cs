@@ -25,6 +25,8 @@ public sealed class UsersSettings
     public string TwilioApiKey { get; set; } = "";
     public string TwilioApiSecret { get; set; } = "";
     public string TwilioSmsFrom { get; set; } = "";
+    public string TwilioAuthToken { get; set; } = "";
+    public string TwilioStatusCallbackUrl { get; set; } = "";
     public string SMSToApiKey { get; set; } = "";
     public string SMSToFrom { get; set; } = "SMSto";
     public string TelegramGatewayToken { get; set; } = "";

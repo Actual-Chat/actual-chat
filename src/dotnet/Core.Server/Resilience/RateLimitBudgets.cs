@@ -21,6 +21,13 @@ public sealed record RateLimitBudgets
             [(RateLimitClass.Auth, RateLimitIdentityKind.IP)] = new(600, TimeSpan.FromMinutes(5)),
             [(RateLimitClass.Auth, RateLimitIdentityKind.Target)] = new(30, TimeSpan.FromMinutes(5)),
 
+            [(RateLimitClass.SmsSend, RateLimitIdentityKind.Target)] = new(3, TimeSpan.FromMinutes(15)),
+            [(RateLimitClass.SmsSend, RateLimitIdentityKind.Session)] = new(3, TimeSpan.FromMinutes(15)),
+            [(RateLimitClass.SmsSend, RateLimitIdentityKind.IP)] = new(20, TimeSpan.FromMinutes(15)),
+            [(RateLimitClass.SmsSendDaily, RateLimitIdentityKind.Target)] = new(5, TimeSpan.FromDays(1)),
+            [(RateLimitClass.SmsSendDaily, RateLimitIdentityKind.Session)] = new(10, TimeSpan.FromDays(1)),
+            [(RateLimitClass.SmsSendDaily, RateLimitIdentityKind.IP)] = new(100, TimeSpan.FromDays(1)),
+
             [(RateLimitClass.SessionCreation, RateLimitIdentityKind.UserId)] = new(100, TimeSpan.FromDays(1)),
             [(RateLimitClass.SessionCreation, RateLimitIdentityKind.IP)] = new(100_000, TimeSpan.FromDays(1)),
 

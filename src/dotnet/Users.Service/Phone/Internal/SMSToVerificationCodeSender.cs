@@ -40,10 +40,22 @@ public sealed class SMSToVerificationCodeSender(IServiceProvider services) : IVe
 
             using var response = await Client.SendAsync(request).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) {
-                var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                Log.LogError("SMS.to send failed with status {StatusCode}. Body: {Body}", (int)response.StatusCode, content);
+                Log.LogError("SMS.to send failed with status {StatusCode}", (int)response.StatusCode);
                 throw Errors.DeliveryFailed();
             }
+
+            var result = await response.Content.ReadFromJsonAsync<SendResponse>().ConfigureAwait(false);
+            if (result?.Success is null)
+                throw Errors.DeliveryFailed();
+            if (result.Success == false) {
+                Log.LogWarning("SMS.to rejected verification SMS");
+
+                return null;
+            }
+            if (result.MessageId.IsNullOrWhiteSpace())
+                throw Errors.DeliveryFailed();
+
+            Log.LogInformation("SMS.to accepted verification SMS {MessageId}", result.MessageId);
 
             return TotpChannel.Sms;
         }
@@ -65,4 +77,10 @@ public sealed class SMSToVerificationCodeSender(IServiceProvider services) : IVe
             _client = null;
         }
     }
+
+    // Nested types
+
+    private sealed record SendResponse(
+        [property: JsonPropertyName("success")] bool? Success,
+        [property: JsonPropertyName("message_id")] string? MessageId);
 }
