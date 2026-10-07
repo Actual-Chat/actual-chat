@@ -90,8 +90,7 @@
                     Chat="@Chat"
                     AudioState="@m.AudioState"
                     MustShowHangUp="@(isOwnVideoStreaming || isWatchingHere)"
-                    ShowRecordingToggle="false"
-                    OnHangUpRequested="@OnHangUpClick"/>
+                    ShowRecordingToggle="false"/>
             }
         }
     </div>
@@ -99,8 +98,6 @@
 
 @code {
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.ChatActivityPanel.create";
-    private readonly TaskSerializer _taskSerializer = new();
-    private CpuTimestamp _lastActionAt;
 
     private ElementReference Ref { get; set; }
     private IJSObjectReference JSRef { get; set; } = null!;
@@ -110,7 +107,6 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private LocationUI LocationUI => Hub.LocationUI;
-    private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private AudioDiagnosticsUI AudioDiagnosticsUI => Hub.AudioDiagnosticsUI;
 
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
@@ -170,34 +166,6 @@
             ChatVideoUI.OpenVideoPanel(Chat.Id);
     }
 
-    private async Task OnHangUpClick() {
-        var audioState = await ChatAudioUI.GetState(Chat.Id).ConfigureAwait(false);
-        if (audioState.IsRecording)
-            StopRecording(Chat.Id);
-        ChatVideoUI.StopStreaming();
-        ChatVideoUI.CloseVideoPanel();
-        _ = ChatAudioUI.SetListeningState(Chat.Id, false);
-    }
-
-    private void StopRecording(ChatId chatId) {
-        if (!IsValidAction())
-            return;
-
-        _ = _taskSerializer.Enqueue(async _ => {
-            var activeChats = ActiveChatsUI.ActiveChats.Value;
-            var recordingChatId = activeChats.FirstOrDefault(c => c.IsRecording)?.ChatId;
-            if (recordingChatId == chatId)
-                await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false); // .ConfigureAwait(false) is fine here
-        }, mustAbortPreviousTasks: true);
-    }
-
-    private bool IsValidAction() {
-        if (_lastActionAt.Elapsed < TimeSpan.FromMilliseconds(500))
-            return false; // Rapid action sequence is likely a mistake
-
-        _lastActionAt = CpuTimestamp.Now;
-        return true;
-    }
 
     // Nested types
 
