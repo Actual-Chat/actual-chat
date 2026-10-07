@@ -22,6 +22,7 @@ public static class MauiPreferences
     private const string AttentionChannelConfigVersionKey = "attention_channel_config_version";
     private const string InstallationIdKey = "installation_id";
     private const string IsFileLogEnabledKey = "is_file_log_enabled";
+    private const string AppleAttributionFirstTryAtKey = "apple_attribution_first_try_at";
 
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
@@ -104,6 +105,12 @@ public static class MauiPreferences
         // read the process's first System.Text.Json use.
         get => Get<string>(IsFileLogEnabledKey) == "1";
         set => Set(IsFileLogEnabledKey, value ? "1" : null);
+    }
+
+    // When the iOS app first asked AdServices who brought the install; null until it has
+    public static Moment? AppleAttributionFirstTryAt {
+        get => Get<long?>(AppleAttributionFirstTryAtKey) is { } ticks ? new Moment(ticks) : null;
+        set => Set(AppleAttributionFirstTryAtKey, value?.EpochOffsetTicks);
     }
 
     public static string? GetHostIp(string hostName)
