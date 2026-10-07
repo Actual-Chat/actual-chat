@@ -3,20 +3,28 @@
     @apply bg-03;
     @apply overflow-hidden;
 }
+/* The header mirrors the chat side panel's, so switching Chat/Coach moves nothing: the cover starts
+   below the top inset, which stays the panel's colour, and the close button keeps its place. */
+.coach-header { @apply relative; }
 .coach-header .c-cover {
-    @apply relative flex-none h-26;
+    @apply flex-none h-26;
     background: linear-gradient(
         120deg,
         var(--primary) 0%,
         var(--primary-hover, var(--primary)) 60%,
         var(--background-03) 100%
     );
-    padding-top: var(--safe-area-top);
+    margin-top: var(--safe-area-top-narrow);
 }
-.coach-header .c-cover .right-panel-close-btn { @apply absolute top-2 right-2; }
+body:not(.narrow) .coach-header .c-cover { @apply rounded-b-lg; }
+body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
+.coach-header .c-cover .right-panel-close-btn {
+    @apply absolute right-4;
+    top: calc(0.5rem + var(--safe-area-top));
+}
 .coach-header .c-head { @apply relative px-4; }
 .coach-header .c-head > .c-avatar { @apply absolute left-4 -top-8 z-10; }
-.coach-header .c-buttons { @apply flex-x justify-end gap-x-2 h-12 pt-2; }
+.coach-header .c-buttons { @apply flex-x justify-end gap-x-2 h-8 pt-2; }
 .coach-header .c-settings-btn { @apply relative -top-7 bg-round-right-panel text-03; }
 .coach-header .c-settings-btn.is-active { @apply text-primary; }
 .coach-header .c-bottom { @apply flex-x items-center justify-between gap-x-2 pt-2; }
