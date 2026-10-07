@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "启用日志查看器",
   "DevTools_EnableVideoDiagnostics": "启用视频诊断",
   "DevTools_EnableAudioDiagnostics": "启用音频诊断",
+  "DevTools_EnableFileLog": "将日志写入文件",
   "Diagnostics_Video": "视频诊断",
   "Diagnostics_Audio": "音频诊断",
 

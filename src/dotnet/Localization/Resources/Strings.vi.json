@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "Bật trình xem nhật ký",
   "DevTools_EnableVideoDiagnostics": "Bật chẩn đoán video",
   "DevTools_EnableAudioDiagnostics": "Bật chẩn đoán âm thanh",
+  "DevTools_EnableFileLog": "Ghi nhật ký vào tệp",
   "Diagnostics_Video": "Chẩn đoán video",
   "Diagnostics_Audio": "Chẩn đoán âm thanh",
 

@@ -21,6 +21,7 @@ public static class MauiPreferences
     private const string IsPttArmedKey = "is_ptt_armed";
     private const string AttentionChannelConfigVersionKey = "attention_channel_config_version";
     private const string InstallationIdKey = "installation_id";
+    private const string IsFileLogEnabledKey = "is_file_log_enabled";
 
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
@@ -96,6 +97,13 @@ public static class MauiPreferences
     public static int AttentionChannelConfigVersion {
         get => Get<int?>(AttentionChannelConfigVersionKey) ?? 0;
         set => Set(AttentionChannelConfigVersionKey, value);
+    }
+
+    public static bool IsFileLogEnabled {
+        // Stored as a string: the logger reads it on the startup path, and Get<bool?> would make that
+        // read the process's first System.Text.Json use.
+        get => Get<string>(IsFileLogEnabledKey) == "1";
+        set => Set(IsFileLogEnabledKey, value ? "1" : null);
     }
 
     public static string? GetHostIp(string hostName)

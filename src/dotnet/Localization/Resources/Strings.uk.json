@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "Увімкнути перегляд журналу",
   "DevTools_EnableVideoDiagnostics": "Увімкнути діагностику відео",
   "DevTools_EnableAudioDiagnostics": "Увімкнути діагностику звуку",
+  "DevTools_EnableFileLog": "Записувати журнал у файл",
   "Diagnostics_Video": "Діагностика відео",
   "Diagnostics_Audio": "Діагностика звуку",
 

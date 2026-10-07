@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "Günlük görüntüleyiciyi etkinleştir",
   "DevTools_EnableVideoDiagnostics": "Video tanılamayı etkinleştir",
   "DevTools_EnableAudioDiagnostics": "Ses tanılamayı etkinleştir",
+  "DevTools_EnableFileLog": "Günlüğü dosyaya yaz",
   "Diagnostics_Video": "Video tanılama",
   "Diagnostics_Audio": "Ses tanılama",
 

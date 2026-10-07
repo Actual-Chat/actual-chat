@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "Укључите преглед записа",
   "DevTools_EnableVideoDiagnostics": "Укључите видео дијагностику",
   "DevTools_EnableAudioDiagnostics": "Укључите аудио дијагностику",
+  "DevTools_EnableFileLog": "Уписујте записе у фајлове",
   "Diagnostics_Video": "Видео дијагностика",
   "Diagnostics_Audio": "Аудио дијагностика",
 

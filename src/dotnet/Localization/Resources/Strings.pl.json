@@ -282,6 +282,7 @@
   "DevTools_EnableLogViewer": "Włącz podgląd logów",
   "DevTools_EnableVideoDiagnostics": "Włącz diagnostykę wideo",
   "DevTools_EnableAudioDiagnostics": "Włącz diagnostykę dźwięku",
+  "DevTools_EnableFileLog": "Zapisuj logi do pliku",
   "Diagnostics_Video": "Diagnostyka wideo",
   "Diagnostics_Audio": "Diagnostyka dźwięku",
 

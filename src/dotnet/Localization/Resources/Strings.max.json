@@ -336,6 +336,7 @@
   "DevTools_EnableLogViewer": "Activer la visionneuse de journaux",
   "DevTools_EnableVideoDiagnostics": "वीडियो डायग्नोस्टिक्स चालू करें",
   "DevTools_EnableAudioDiagnostics": "Включете аудиодиагностиката",
+  "DevTools_EnableFileLog": "Enregistrer le journal dans un fichier",
   "Diagnostics_Video": "वीडियो डायग्नोस्टिक्स",
   "Diagnostics_Audio": "ऑडियो डायग्नोस्टिक्स",
 

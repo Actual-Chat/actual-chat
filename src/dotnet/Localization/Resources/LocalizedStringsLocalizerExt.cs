@@ -320,6 +320,7 @@ public static class LocalizedStringsLocalizerExt
         public string DevTools_EnableLogViewer => l["DevTools_EnableLogViewer"].Value;
         public string DevTools_EnableVideoDiagnostics => l["DevTools_EnableVideoDiagnostics"].Value;
         public string DevTools_EnableAudioDiagnostics => l["DevTools_EnableAudioDiagnostics"].Value;
+        public string DevTools_EnableFileLog => l["DevTools_EnableFileLog"].Value;
         public string Diagnostics_Video => l["Diagnostics_Video"].Value;
         public string Diagnostics_Audio => l["Diagnostics_Audio"].Value;
 
