@@ -208,8 +208,13 @@ public partial class ChatVideoUI
         }
 
         try {
+            // Own screencasts don't count: the server replaces them, and one left by a reloaded page
+            // stays listed until its silence watchdog fires, with no page left to stop it.
             var activeStreams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(true);
-            if (activeStreams.Any(s => s.SourceKind == VideoSourceKind.ScreenCast)) {
+            var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(true);
+            var hasForeignScreenCast = activeStreams
+                .Any(s => s.SourceKind == VideoSourceKind.ScreenCast && s.AuthorId != ownAuthor?.Id);
+            if (hasForeignScreenCast) {
                 await ShowScreenCastAlreadyActiveModal(cancellationToken).ConfigureAwait(true);
                 return;
             }

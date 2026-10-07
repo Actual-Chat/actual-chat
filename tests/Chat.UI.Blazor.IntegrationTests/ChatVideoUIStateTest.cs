@@ -3,6 +3,8 @@ using ActualChat.Contacts;
 using ActualChat.Localization;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
+using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Components.VideoPanel;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Video;
 using Bunit;
@@ -246,6 +248,70 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
     }
 
     [Fact(Timeout = 120_000)]
+    public async Task ScreenCastShouldStartOverOwnLeftoverStream()
+    {
+        // arrange
+        var js = new BunitJSInterop { Mode = JSRuntimeMode.Loose };
+        var recorderJS = js.SetupModule(i => i.Identifier.EndsWith(".VideoRecorder.create"));
+        recorderJS.Mode = JSRuntimeMode.Loose;
+        var appHost = await NewAppHost("screen-cast-own-leftover", options => options with {
+            ConfigureServices = (_, services) => services.Replace(ServiceDescriptor.Scoped(_ => js.JSRuntime)),
+        });
+        await using var _1 = appHost;
+        await using var alice = appHost.NewWebClientTester(Out);
+        await alice.SignInAsUniqueAlice();
+        await using var bob = appHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        // What a reloaded page leaves behind: listed until the server's silence watchdog fires
+        await RegisterScreenCast(appHost, chatId, bobAuthor!.Id);
+        var hub = bob.ScopedAppServices.AppUIHub();
+        bob.RenderModalHost(hub);
+        var chatVideoUI = bob.ScopedAppServices.GetRequiredService<ChatVideoUI>();
+
+        // act
+        chatVideoUI.StartScreenCasting(chatId);
+
+        // assert
+        // Side effects on the fake JS object, so there is nothing for When to react to
+        await TestWait.WhenPolled(() => {
+            recorderJS.Invocations["startScreenCast"].Should().ContainSingle(
+                "the leftover is the user's own, and no page is left to stop it");
+            return Task.CompletedTask;
+        });
+        hub.ModalUI.ActiveModals.Value.Should().NotContain(x => x.Model is ScreenCastAlreadyActiveModal.Model);
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task ScreenCastShouldBeRefusedWhileSomeoneElseShares()
+    {
+        // arrange
+        await using var alice = AppHost.NewWebClientTester(Out);
+        await alice.SignInAsUniqueAlice();
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        var aliceAuthor = await alice.JoinChat(chatId, inviteId);
+        await RegisterScreenCast(AppHost, chatId, aliceAuthor.Id);
+        var hub = bob.ScopedAppServices.AppUIHub();
+        bob.RenderModalHost(hub);
+        var chatVideoUI = bob.ScopedAppServices.GetRequiredService<ChatVideoUI>();
+
+        // act
+        chatVideoUI.StartScreenCasting(chatId);
+
+        // assert
+        await TestWait.When(async ct => {
+            var modals = await hub.ModalUI.ActiveModals.Use(ct);
+            modals.Should().Contain(x => x.Model is ScreenCastAlreadyActiveModal.Model);
+        });
+        var screenCastChatId = await chatVideoUI.GetScreenCastChatId();
+        screenCastChatId.Should().BeNull();
+    }
+
+    [Fact(Timeout = 120_000)]
     public async Task RecorderShouldBeDisposedWhenItsCircuitIsGone()
     {
         // arrange
@@ -282,5 +348,17 @@ public class ChatVideoUIStateTest(ChatAppHostFixture fixture, ITestOutputHelper 
                 "only disposal stops the recorder's loops, and stopping fails once the circuit is gone");
             return Task.CompletedTask;
         });
+    }
+
+    // Private methods
+
+    private static async Task RegisterScreenCast(TestAppHost appHost, ChatId chatId, AuthorId authorId)
+    {
+        var streamId = StreamId.New(appHost.Services.MeshWatcher().ThisNode.Ref);
+        var format = new VideoFormat { Codec = "avc1", Size = new Size2D(1920, 1080) };
+        var streamInfo = new VideoStreamInfo(
+            streamId, chatId, authorId, format, appHost.Services.Clocks().SystemClock.Now, VideoSourceKind.ScreenCast);
+        var backend = appHost.Services.GetRequiredService<ILiveVideoBackend>();
+        await backend.Register(chatId, streamInfo, CancellationToken.None);
     }
 }
