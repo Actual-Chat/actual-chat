@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { PromiseSource } from 'actuallab-core';
 import {
     encode,
     isEncoderInitFailedError,
@@ -118,6 +119,7 @@ beforeEach(() => {
 
 afterEach(() => {
     delete (globalThis as unknown as GlobalWithVideoEncoder).VideoEncoder;
+    vi.restoreAllMocks();
     vi.useRealTimers();
 });
 
@@ -271,6 +273,69 @@ async function waitForInstances(count: number): Promise<void> {
 // ---- Tests ----------------------------------------------------------------
 
 describe('encode operator', () => {
+    it('should bound a hung encoder flush and dispose the encoder', async () => {
+        vi.useFakeTimers();
+        vi.spyOn(AsyncVideoEncoder.prototype, 'flush').mockReturnValue(new PromiseSource<void>());
+        const stats = makeStats();
+        const seg = encode({
+            controller: new LayerLadderController([cfg(640, 360)]),
+            createEncoder: makeFactory({ timeoutMs: 10000 }),
+            drainTimeoutMs: 50,
+        })(fromArray([makeBundle(1, stats, [{ width: 640, height: 360 }])]));
+        const whenDrained = drain(seg);
+        const whenRejected = expect(whenDrained).rejects.toThrow('encoder drain timed out');
+
+        await vi.advanceTimersByTimeAsync(51);
+        await whenRejected;
+
+        expect(MockVideoEncoder.instances[0].state).toBe('closed');
+    });
+
+    it('should abort a hung encoder flush before the drain budget expires', async () => {
+        const controller = new AbortController();
+        const whenFlushing = new PromiseSource<void>();
+        vi.spyOn(AsyncVideoEncoder.prototype, 'flush').mockImplementation(() => {
+            whenFlushing.resolve();
+            return new PromiseSource<void>();
+        });
+        const stats = makeStats();
+        const seg = encode({
+            controller: new LayerLadderController([cfg(640, 360)]),
+            createEncoder: makeFactory({ timeoutMs: 10000 }),
+            abortSignal: controller.signal,
+        })(fromArray([makeBundle(1, stats, [{ width: 640, height: 360 }])]));
+        const whenDrained = drain(seg);
+        const reason = new Error('recording stopped');
+        const whenRejected = expect(whenDrained).rejects.toBe(reason);
+        await whenFlushing;
+
+        controller.abort(reason);
+        await whenRejected;
+
+        expect(MockVideoEncoder.instances[0].state).toBe('closed');
+    });
+
+    it('should preserve pending output during a successful encoder flush', async () => {
+        vi.spyOn(AsyncVideoEncoder.prototype, 'flush').mockImplementation(() => {
+            for (const encoder of MockVideoEncoder.instances) {
+                while (encoder.encodeCalls.length > 0)
+                    encoder.emitNext();
+            }
+            return Promise.resolve();
+        });
+        const stats = makeStats();
+        const seg = encode({
+            controller: new LayerLadderController([cfg(640, 360)]),
+            createEncoder: makeFactory(),
+        })(fromArray([makeBundle(1, stats, [{ width: 640, height: 360 }])]));
+
+        const output = await drain(seg);
+
+        expect(output).toHaveLength(1);
+        expect(output[0].layers[0].index).toBe(1);
+        expect(MockVideoEncoder.instances[0].state).toBe('closed');
+    });
+
     it('single layer: 5 bundles → 5 EncodedFrames out, in order', async () => {
         MockVideoEncoder.autoEmit = true;
         const stats = makeStats();

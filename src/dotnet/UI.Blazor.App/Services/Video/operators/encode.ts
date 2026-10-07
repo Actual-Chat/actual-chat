@@ -1,7 +1,7 @@
 import type { MonotonicTime } from 'clocks';
 import { getLogs } from 'logging';
 import { from, type PipeOperator } from 'ix-ext';
-import { AsyncSignal } from 'actuallab-core';
+import { AsyncSignal, PromiseSource, abortPromise, withTimeout } from 'actuallab-core';
 import { RunningEMA } from 'math';
 import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from '../adapters';
 import { getEncoderPipelineDepth } from '../codec-support';
@@ -86,6 +86,8 @@ export interface EncodeOptions {
     // mode this catches. Default 3000 ms covers steady-state (1 frame ~=
     // 33 ms at 30 fps) plus first-frame warm-up; pass 0 to disable.
     bundleTimeoutMs?: number;
+    abortSignal?: AbortSignal;
+    drainTimeoutMs?: number;
 }
 
 // CapturedBundle -> EncodedBundle. Lazy-init one encoder per layer on
@@ -97,6 +99,8 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
     let configs: readonly EncoderConfigPerLayer[] = opts.controller.current.configs;
     const createEncoder = opts.createEncoder;
     const bundleTimeoutMs = opts.bundleTimeoutMs ?? 3000;
+    const drainTimeoutMs = opts.drainTimeoutMs ?? 3000;
+    const abortWait = opts.abortSignal ? abortPromise(opts.abortSignal) : new PromiseSource<never>();
     return source => {
         return from(impl());
 
@@ -222,6 +226,15 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 return p;
             };
 
+            const closePending = (p: PendingBundle): void => {
+                void Promise.allSettled(p.promises).then(results => {
+                    for (const result of results) {
+                        if (result.status === 'fulfilled')
+                            closeEncodedFrame(result.value);
+                    }
+                });
+            };
+
             type AwaitOutcome =
                 | { kind: 'yield'; bundle: EncodedBundle }
                 | { kind: 'skip' }
@@ -233,14 +246,14 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 try {
                     const all = Promise.allSettled(p.promises);
                     if (bundleTimeoutMs <= 0) {
-                        settled = await all;
+                        settled = await Promise.race([all, abortWait]);
                     } else {
                         const tagged = all.then(r => ({ kind: 'done' as const, r }));
                         bundleAwaitDeadline = performance.now() + bundleTimeoutMs;
                         for (;;) {
                             ensureBundleWatchdog();
                             const wake = bundleWatchdogSignal.wait().then(() => ({ kind: 'wd' as const }));
-                            const res = await Promise.race([tagged, wake]);
+                            const res = await Promise.race([tagged, wake, abortWait]);
                             if (res.kind === 'done') {
                                 settled = res.r;
                                 break;
@@ -253,6 +266,10 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         }
                     }
                 } catch (timeoutErr) {
+                    if (opts.abortSignal?.aborted) {
+                        closePending(p);
+                        opts.abortSignal.throwIfAborted();
+                    }
                     bundleHangAttempts++;
                     recordRestart(p.bundle.stats);
                     if (bundleHangAttempts >= maxBundleHangAttempts)
@@ -420,8 +437,13 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             // frames arrive. flush() is the codec's own "give me everything
             // you're holding", so ask for it before waiting.
             async function* drainPending(): AsyncIterable<EncodedBundle> {
-                if (pending.length > 0)
-                    await Promise.allSettled(encoders.map(enc => enc.flush()));
+                if (pending.length > 0) {
+                    opts.abortSignal?.throwIfAborted();
+                    await withTimeout(
+                        Promise.race([Promise.allSettled(encoders.map(enc => enc.flush())), abortWait]),
+                        drainTimeoutMs,
+                        'encode: encoder drain timed out');
+                }
 
                 while (pending.length > 0) {
                     const p = pending.shift()!;
@@ -651,6 +673,8 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 for (const enc of encoders) {
                     try { enc.dispose(); } catch { /* ignore */ }
                 }
+                for (const p of pending)
+                    closePending(p);
             }
         }
     };
