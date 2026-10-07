@@ -49,41 +49,57 @@ All safe area handling throughout the app references these variables rather than
 
 ## Testing Safe Areas
 
-On desktop browsers, `env(safe-area-inset-*)` resolves to `0px`, so safe areas are invisible by default. Two methods let you simulate them:
+On desktop browsers, `env(safe-area-inset-*)` resolves to `0px`, so safe areas are invisible by default. Two methods let you simulate them: `debugUI.showSafeAreas` in a running app, and the e2e suite's `emulateSafeAreas` under Playwright. Both use the same presets, so they agree about what "an iPhone" is.
 
-### Method 1: `debugUI` (runtime, after JS loads)
+### Method 1: `debugUI.showSafeAreas` — in the app
 
 Open the browser console and run:
 
 ```js
-debugUI.showSafeAreas(true)   // Force all 4 insets to 34px
-debugUI.showSafeAreas(false)  // Force all 4 insets to 0px
-debugUI.showSafeAreas(null)   // Reset to real env() values
+debugUI.showSafeAreas('iphone15')   // 393×852, insets 59/0/34/0, corner radius 55
+debugUI.showSafeAreas('pixel8')     // 412×915, insets 28/0/24/0, corner radius 29
+debugUI.showSafeAreas(true)         // 34px on every side, no corners (what it always did)
+debugUI.showSafeAreas(false)        // 0px on every side — hides a device's real insets
+debugUI.showSafeAreas(null)         // off: back to the real env() values
+debugUI.checkSafeAreas()            // interactive elements under an inset or in a corner
 ```
 
-This adds/removes `show-safe-areas` or `hide-safe-areas` classes on `<body>`, which override the CSS variables. The change takes effect immediately and persists until the page is reloaded.
+It forces the four CSS variables to the preset's insets, paints the display's rounded corners in black
+over everything and draws a dashed line along the safe area's edge, so a button in a corner is visibly
+cut while the colours the app paints under the insets stay real. The preset is remembered in
+`localStorage` (`ui.debug.safeAreas`) and re-applied by `init.ts` before Blazor starts, which is how
+the splash and the skeletons get it too; it stays until you pass `null`. The viewport is yours to set —
+Chrome's device toolbar, to the size the preset names. The presets, and the geometry behind
+`checkSafeAreas`, live in `src/nodejs/src/safe-area.ts` (`SafeAreas.Presets`); a custom `SafeAreaPreset`
+object is accepted in place of a name.
 
-**Use this for:** testing the app after it has fully loaded — navigating between pages, opening dialogs, menus, panels, etc.
+**Use this for:** everything — test pages, the chat, dialogs, menus, the skeleton. To calibrate a preset
+against a device, read `getComputedStyle(document.body).getPropertyValue('--safe-area-top')` and its
+siblings on the phone.
 
-**Shortcut:** the `Ctrl+Shift+L`, `S` chord (`⌘+⇧+L`, `S` on macOS) flips between forced 34px insets and the real `env()` values. It's registered only on development instances (`HostInfo.IsDevelopmentInstance`) and is deliberately omitted from the `Ctrl+/` keyboard shortcuts dialog. See `AlwaysVisibleComponents.razor` and `DebugUI.toggleSafeAreas`.
+**Shortcut:** the `Ctrl+Shift+L`, `S` chord (`⌘+⇧+L`, `S` on macOS) flips between the 34px band and the real `env()` values. It's registered only on development instances (`HostInfo.IsDevelopmentInstance`) and is deliberately omitted from the `Ctrl+/` keyboard shortcuts dialog. See `AlwaysVisibleComponents.razor` and `DebugUI.toggleSafeAreas`.
 
-### Method 2: CSS override in `main.css` (compile-time, before JS loads)
+### Method 2: the TS e2e suite — real `env()` values under Playwright
 
-Uncomment the block near the top of `src/nodejs/styles/main.css`:
+`tests/ts/e2e/safe-areas.ts` turns a Playwright page into a phone, with the same presets:
 
-```css
-/* Uncomment to force safe areas before JS loads (skeleton testing, etc.) */
-body {
-    --safe-area-top: 34px;
-    --safe-area-bottom: 34px;
-    --safe-area-left: 34px;
-    --safe-area-right: 34px;
-}
+```ts
+import { emulateSafeAreas, expectInsideSafeArea, findSafeAreaViolations, SafeAreas } from './safe-areas';
+
+const preset = await emulateSafeAreas(page, 'iphone15');   // before the first navigation
+await openChat(page);
+await expectInsideSafeArea(page.locator('.attach-btn'), preset, 'attach button');
+expect(await findSafeAreaViolations(page, preset)).toEqual([]);
 ```
 
-This forces safe areas from the very first paint, before any JavaScript runs. The `debugUI.showSafeAreas()` and `body.show-safe-areas` class will override it once JS kicks in.
-
-**Use this for:** testing the loading skeleton (`splash-page-skeleton`) and the initial render before Blazor starts. Remember to comment it back out when done.
+`emulateSafeAreas` sets the viewport, overrides the browser's own `env(safe-area-inset-*)` through CDP
+(`Emulation.setSafeAreaInsetsOverride`, Chromium 131+ — the bundled Playwright Chromium and a
+current host Chrome both have it) and installs the corner overlay as an init script, so it holds
+across navigations and is in the screenshots. Because the override is real `env()`, it also covers
+CSS that reads `env()` directly and JS that reads the variables. `expectInsideSafeArea` checks one
+element's box against the insets and the corner circles; `findSafeAreaViolations` is
+`debugUI.checkSafeAreas` run from the test, over every on-screen interactive element. The reference
+spec is `tests/ts/e2e/safe-areas.test.ts`.
 
 ### What to check
 

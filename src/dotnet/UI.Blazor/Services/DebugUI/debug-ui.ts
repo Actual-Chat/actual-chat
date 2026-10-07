@@ -9,6 +9,7 @@ import { getWebCodecsLevelOverride, setWebCodecsLevelOverride } from 'web-codecs
 import { SvgCache } from '../../Components/Avatar/svg-cache';
 import { VirtualListOverlay } from '../../Components/VirtualList/virtual-list-overlay';
 import { isEditable } from 'keyboard-visibility';
+import { SafeAreas, type SafeAreaPreset, type SafeAreaViolation } from 'safe-area';
 
 const { infoLog } = getLogs('DebugUI');
 
@@ -77,7 +78,10 @@ export class DebugUI {
     private static _kbOpenness = 0;
     private static _kbHeight = 0;
     private static _kbEl: HTMLElement | null = null;
-    private static _keyboardAutoHandlers: { focusin: (e: FocusEvent) => void; focusout: (e: FocusEvent) => void } | null = null;
+    private static _keyboardAutoHandlers: {
+        focusin: (e: FocusEvent) => void;
+        focusout: (e: FocusEvent) => void;
+    } | null = null;
 
     public static init(backendRef1: DotNet.DotNetObject): void {
         infoLog?.log(`init`);
@@ -329,19 +333,40 @@ export class DebugUI {
         infoLog?.log('clearSvgCache: done');
     }
 
-    public static showSafeAreas(show: boolean | null | undefined): void {
-        const cl = document.body.classList;
-        cl.remove('show-safe-areas', 'hide-safe-areas');
-        if (show === true)
-            cl.add('show-safe-areas');
-        else if (show === false)
-            cl.add('hide-safe-areas');
-        infoLog?.log(`showSafeAreas: ${show ?? 'default'}`);
+    /** Emulates safe areas on desktop. `true` forces 34px on every side, `false` forces 0px, a preset
+     *  name such as 'iphone15' or 'pixel8' (see `SafeAreas.Presets` in safe-area.ts) or a preset object
+     *  gives that phone's insets and paints its rounded corners plus a dashed safe-area edge above
+     *  everything; `null` turns it off. Persists across reloads, so the splash and the skeletons get it
+     *  too. The viewport itself is Chrome's device toolbar's job - the preset's `viewport` says what to
+     *  set it to. */
+    public static showSafeAreas(
+        show: boolean | string | SafeAreaPreset | null | undefined,
+    ): SafeAreaPreset | null {
+        const preset = show === true ? 'uniform' : show === false ? 'none' : show ?? null;
+        const applied = SafeAreas.emulate(preset);
+        infoLog?.log(`showSafeAreas: ${applied?.name ?? 'off'}`);
+        return applied;
     }
 
     // Flips between forced 34px insets and the real env() values; bound to the dev-only Ctrl+Shift+L, S chord.
     public static toggleSafeAreas(): void {
-        this.showSafeAreas(document.body.classList.contains('show-safe-areas') ? null : true);
+        this.showSafeAreas(SafeAreas.activeEmulation === null ? true : null);
+    }
+
+    /** Visible interactive elements the phone would hide under an inset or clip in a corner; the emulated
+     *  preset by default. Logs them too, as the console lets you click through to the elements. */
+    public static checkSafeAreas(preset?: SafeAreaPreset | string): SafeAreaViolation[] {
+        const resolved = preset === undefined ? SafeAreas.activeEmulation : SafeAreas.resolvePreset(preset);
+        if (resolved === null) {
+            console.warn('checkSafeAreas: nothing is emulated; call showSafeAreas first or pass a preset');
+            return [];
+        }
+
+        const violations = SafeAreas.findViolations(resolved);
+        for (const { element, problems } of violations)
+            console.warn(`checkSafeAreas: ${problems.join(', ')}`, element);
+        infoLog?.log(`checkSafeAreas: ${violations.length} violation(s) on ${resolved.name}`);
+        return violations;
     }
 
     /** Simulates the on-screen keyboard on desktop (e.g. Chrome device toolbar): slides up a visible bottom
