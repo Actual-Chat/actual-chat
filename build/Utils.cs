@@ -43,8 +43,9 @@ internal static class Utils {
         File.AppendAllLines(outputFile, [s]);
     }
 
-    private static bool IsGitHubActions()
-        => bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), out bool isGitHubActions) && isGitHubActions;
+    public static bool IsGitHubActions()
+        => bool.TryParse(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), out bool isGitHubActions)
+            && isGitHubActions;
 
     private static string? TryFindDotNetExePath()
     {
