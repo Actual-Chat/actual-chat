@@ -341,7 +341,7 @@
         // Register decoder codecs early — before creating JS player.
         // This ensures the server knows our capabilities ASAP, triggering
         // the sender to switch codecs if the current stream is unsupported.
-        await RegisterViewer();
+        var canPlay = await RegisterViewer();
         cancellationToken.ThrowIfCancellationRequested();
         _viewerHeartbeatTimer ??= new Timer(
             _ => _ = RegisterViewerHeartbeat(),
@@ -379,10 +379,10 @@
             BlazorRef,
             StreamInfo.StreamId.Value,
             StreamInfo.AuthorId.Value,
-            format.Codec,
+            canPlay ? format.Codec : "vp9",
             format.Size.Width,
             format.Size.Height,
-            format.CodecSettings,
+            canPlay ? format.CodecSettings : "",
             startedAtMs);
 
         await _jsPlayerRef.InvokeVoidAsync("start", cancellationToken);
@@ -436,22 +436,22 @@
         }
     }
 
-    private async Task RegisterViewer()
+    private async Task<bool> RegisterViewer()
     {
-        if (_isViewerRegistered)
-            return;
-
+        var cancellationToken = _disposeCts.Token;
         try {
             var decoderCodecs = await JS.InvokeAsync<string[]>(
-                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs");
+                $"{BlazorUIAppModule.ImportName}.detectSupportedDecoderCodecs", cancellationToken);
             await LiveVideoStreams.RegisterMember(
-                Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), CancellationToken.None);
+                Session, StreamInfo.ChatId, new ApiArray<string>(decoderCodecs), cancellationToken);
             _isViewerRegistered = true;
             DebugLog?.LogDebug("[VideoTrackPlayer #{StreamId}] Registered as viewer with decoder codecs: {Codecs}",
                 StreamInfo.StreamId, string.Join(", ", decoderCodecs));
+            return VideoCodecExt.IsSupported(StreamInfo.Format.Codec, decoderCodecs);
         }
         catch (Exception ex) {
             Log.LogError(ex, "[VideoTrackPlayer #{StreamId}] Failed to register as viewer", StreamInfo.StreamId);
+            throw;
         }
     }
 

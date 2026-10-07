@@ -18,6 +18,7 @@ export type { LatencySample } from '../operators/latency-tap';
 export interface PlayerWorkerOptions {
     // -- pull --
     streamId: string;
+    supportedDecoderCodecs?: string[];
 
     // -- buffer --
     targetBufferSpanMs: number;

@@ -30,6 +30,9 @@ const StreamControlTimeouts = new RpcCallTimeouts(10_000);
 // --- ILiveVideoStreams (per-stream video push/pull + quality control) ---
 export const LiveVideoStreamsDef = defineRpcService('ILiveVideoStreams', {
     GetStream: { args: ['session', 'streamId'], returns: RpcType.stream },
+    GetStreamWithCapabilities: {
+        args: ['session', 'streamId', 'supportedDecoderCodecs'], returns: RpcType.stream,
+    },
     PushStream: {
         args: ['session', 'chatId', 'clientStartAt', 'format', 'sourceKind', 'frameStream'],
         remoteExecutionMode: StreamPushMode,
@@ -198,6 +201,9 @@ export interface PlaybackQualityInfoDto {
 
 export interface LiveVideoStreamsClient {
     GetStream(session: string, streamId: string): Promise<AsyncIterable<VideoFrameDto>>;
+    GetStreamWithCapabilities(
+        session: string, streamId: string, supportedDecoderCodecs: string[],
+    ): Promise<AsyncIterable<VideoFrameDto>>;
     PushStream(
         session: string,
         chatId: string,

@@ -162,6 +162,9 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `secondsToMoment` (function) - Convert seconds to Moment.
 - `momentToSeconds` (function) - Convert Moment to seconds.
 - `VideoFrameDto` (interface) - Video frame data transfer object.
+- `VideoCodecCategory` (type) - H264, HEVC, VP9, or AV1 codec category.
+- `getVideoCodecCategory` (function) - Classifies codec strings; unknown codecs return null.
+- `filterSupportedVideoFrames` (function) - Gates each layer on compatible keyframes and forwards iterator closure.
 - `VideoFormatDto` (interface) - Video format specification.
 - `VideoLatencyReportDto` (interface) - Video latency metrics.
 - `VideoLatencyReportResponseDto` (interface) - Response to latency report.
