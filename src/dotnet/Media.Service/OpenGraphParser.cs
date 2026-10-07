@@ -25,7 +25,9 @@ public static class OpenGraphParser
 
         var urlExtractor = new UrlExtractor(requestUri);
         return new OpenGraph(title.HtmlDecode()) {
-            Description = metaMap.GetValueOrDefault("og:description", "").HtmlDecode(),
+            // The second pass is for sites that encode the description twice: GitHub's og:description
+            // carries "couldn&amp;#39;t" for "couldn't".
+            Description = metaMap.GetValueOrDefault("og:description", "").HtmlDecode().HtmlDecode(),
             ImageUrl = urlExtractor.GetUrl(metaMap, "og:image:secure_url", "og:image:url", "og:image"),
             SiteName = metaMap.GetValueOrDefault("og:site_name", "").HtmlDecode(),
             Video = new OpenGraphVideo {
