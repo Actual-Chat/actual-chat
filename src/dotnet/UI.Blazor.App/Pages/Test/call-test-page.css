@@ -318,7 +318,7 @@
 .dev-desktop .call-pill { top: .5rem; }
 
 /* ── Real-class stages: reproduce the production incoming-call surfaces on the test page using the
-   SAME classes (author-modal / call-modal / collapsed-call-view / full-screen-call-view),
+   SAME classes (author-modal / call-modal / collapsed-call-view / call-screen),
    so editing those stylesheets is reflected here. Only positioning is scoped to the preview frame. ── */
 .tp-stage {
   position: absolute;
@@ -338,7 +338,15 @@
   overflow: hidden;
   box-shadow: 0 8px 32px rgb(0 0 0 / 30%);
 }
-.dev-screen .full-screen-call-view { position: absolute; }
+.dev-screen .call-screen.expanded { position: absolute; }
+/* The frame is narrower than any phone: lay the screen out at phone width and scale it down. Without
+   the inset a wide body gives it, too - a phone's body is narrow. */
+.dev-phone .dev-screen .call-screen.expanded { zoom: .62; padding: 0; }
+.tp-ring-bg { background: linear-gradient(135deg, #f0c987, #b06a3a); filter: blur(1.5rem); }
+.tp-ring-avatar {
+  width: 6rem; height: 6rem; border-radius: 9999px;
+  background: linear-gradient(135deg, #f0c987, #b06a3a);
+}
 .dev-screen .collapsed-call-view { position: absolute; left: .75rem; top: 3.5rem; }
 
 /* how-to-call header hint */

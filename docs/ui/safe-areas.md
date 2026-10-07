@@ -411,17 +411,21 @@ padding-bottom: var(--safe-area-bottom);
 transform: translateY(calc(3.5rem + var(--safe-area-bottom)));  /* hide animation */
 ```
 
-### 11. Video Panel (Expanded)
+### 11. Call Screen (Full-Screen)
 
-**File:** `video-panel.css`
+**File:** `call-screen.css`
 
-When expanded to full-screen, the video panel adds all 4 safe area paddings:
+Full-screen, the call screen adds all 4 safe area paddings:
 
 ```css
-.video-panel.expanded {
+.call-screen.expanded {
     padding: var(--safe-area-top) var(--safe-area-right) var(--safe-area-bottom) var(--safe-area-left);
 }
 ```
+
+On a phone (`body.device-mobile.narrow`) the padding is dropped instead, so the video and the
+blurred avatar run under the insets, and the insets move to `--vp-safe-*`, which only the header,
+the control bar and the tile sidebar apply.
 
 ### 12. Landing Page
 

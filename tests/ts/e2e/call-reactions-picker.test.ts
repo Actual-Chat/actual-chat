@@ -90,7 +90,7 @@ describe('call reactions picker', () => {
         // arrange - Bob expands the panel (the React button lives in its footer) and opens the React
         // menu: six quick emojis and the chevron
         await expandVideoPanel(bob);
-        const reactButton = bob.locator('.video-panel .btn-react').first();
+        const reactButton = bob.locator('.call-screen .btn-react').first();
         await reactButton.waitFor({ state: 'visible', timeout: 20_000 });
         await reactButton.click();
         const menu = bob.locator('.call-reactions-menu').first();
@@ -116,7 +116,7 @@ describe('call reactions picker', () => {
 
         // assert - the menu closes, and the emoji floats over Alice's panel
         await menu.waitFor({ state: 'hidden', timeout: 10_000 });
-        const reaction = alice.locator('.video-panel .call-reactions-overlay .c-reaction').first();
+        const reaction = alice.locator('.call-screen .call-reactions-overlay .c-reaction').first();
         await reaction.waitFor({ state: 'attached', timeout: 15_000 });
         expect(await reaction.locator('.c-emoji').getAttribute('alt')).toBe(PICKED_EMOJI_TITLE);
         await alice.screenshot({ path: shot(`${layout}-3-reaction-on-other-side`) });

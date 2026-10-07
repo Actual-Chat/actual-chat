@@ -21,7 +21,7 @@ export function isPrimaryTile(tile: Element | null): boolean {
     // PiP overlays stay secondary: the equal layout hides them outright.
     if (tile.classList.contains('pip-overlay')) return false;
 
-    return tile.closest('.video-panel.layout-equal') !== null;
+    return tile.closest('.call-screen.layout-equal') !== null;
 }
 
 // Loss threshold: when frame and tile orientations DIFFER (one portrait,
@@ -95,7 +95,7 @@ export function updateCollapsedIslandAspect(
     if (!Number.isFinite(ratio)) return;
     const nextAspect = ratio.toFixed(4);
     const nextPortrait = ratio < 1;
-    panel.style.setProperty('--video-panel-island-aspect', nextAspect);
+    panel.style.setProperty('--call-screen-island-aspect', nextAspect);
     panel.toggleAttribute('data-portrait-video', nextPortrait);
 }
 

@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
 @using ActualChat.UI.Blazor.App.Module
 @inherits ComputedStateComponent<AppUIHub, ChatActivityPanel.Model?>
 @{
@@ -71,6 +72,10 @@
             </HeaderButton>
         }
         <StopLocationSharingButton/>
+        @* A narrow screen has the call's island or its video for that *@
+        @if (m.CallJoinedAt is { } callJoinedAt && !ScreenSize.IsNarrow()) {
+            <LiveDuration Class="c-call-timer" StartedAt="@callJoinedAt"/>
+        }
         @if (m.HasCallActivity) {
             if (m.CanJoinCall) {
                 <Button
@@ -139,6 +144,7 @@
         var isWatchingHere = chat.Id == watchingChatId;
         var canShowAudioDiagnostics = await AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
         var isSharingOwnLocation = await LocationUI.IsOwnLive(chat.Id, cancellationToken).ConfigureAwait(false);
+        var callJoinedAt = await Hub.CallScreensUI.GetCallJoinedAt(chat.Id, cancellationToken).ConfigureAwait(false);
         return new() {
             AudioState = audioState,
             IsPttArmed = isPttArmed,
@@ -149,6 +155,7 @@
             IsWatchingHere = isWatchingHere,
             IsAudioDiagnosticsEnabled = canShowAudioDiagnostics,
             IsSharingOwnLocation = isSharingOwnLocation,
+            CallJoinedAt = callJoinedAt,
         };
     }
 
@@ -204,6 +211,7 @@
         public required bool IsWatchingHere { get; init; }
         public required bool IsAudioDiagnosticsEnabled { get; init; }
         public required bool IsSharingOwnLocation { get; init; }
+        public Moment? CallJoinedAt { get; init; }
 
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;

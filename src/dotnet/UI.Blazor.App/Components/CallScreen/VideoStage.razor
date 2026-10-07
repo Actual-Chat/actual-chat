@@ -1,0 +1,232 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Video
+@using ActualChat.UI.Blazor.App.Components.VideoPanel
+@inherits ComputedStateComponent<AppUIHub, VideoStage.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.None)) {
+        <div class="video-stage" data-menu="@VideoMenuRef"></div>
+        return;
+    }
+
+    var layout = m.Layout;
+    var hasRemoteStreams = m.RemoteStreams.Length > 0;
+    var isOwnStreaming = m.IsOwnCameraOn || m.IsOwnScreenCasting;
+    var remoteStreamEndedSuccessfully = ChatVideoUI.ConsumeRemoteStreamEndedSuccessfully();
+
+    // Intentional-end signal (sender hung up / codec switch) wins over the
+    // 5s "Connecting..." overlay: when remote streams transition from present
+    // to empty we enter a short ending-grace window (~500ms) so a codec/
+    // quality switch can register a replacement stream before the video closes.
+    // Two paths trigger grace:
+    //   1. JS reports OnEnded(null) → NotifyRemoteStreamEnded sets the flag
+    //      consumed at line above.
+    //   2. Server removes the stream from the active list first (typical
+    //      for sender hang-up — B's player is unmounted before its OnEnded
+    //      JS callback fires) — caught by hasRemoteStreams transition below.
+    var lostAllStreams = !hasRemoteStreams && _hadRemoteStreams
+        && !_endingGraceActive && !_showConnecting && !_noStreamsTimedOut;
+    if (remoteStreamEndedSuccessfully || lostAllStreams)
+        _endingGraceActive = true;
+    if (hasRemoteStreams) {
+        _showConnecting = false;
+        _noStreamsTimedOut = false;
+        _hadRemoteStreams = true;
+        _endingGraceActive = false;
+    } else if (isOwnStreaming && !_hadRemoteStreams && !_noStreamsTimedOut) {
+        // Recording solo, never had remote peers — show preview, not "Connecting..."
+        _showConnecting = false;
+    } else if (_endingGraceActive) {
+        _showConnecting = false;
+    } else if (!_noStreamsTimedOut && _hadRemoteStreams) {
+        _showConnecting = true;
+    }
+
+    // TODO(DF): move this logic to ChatVideoUI
+    if (!isOwnStreaming && !hasRemoteStreams && !_showConnecting && !_endingGraceActive)
+        CloseVideoPanel();
+
+    var layoutCls = m.IsEqualLayout ? "video-stage-layout__equal" : layout.LayoutClass;
+}
+
+<div class="video-stage @layoutCls" data-menu="@VideoMenuRef">
+    <div class="c-grid tiles-@(layout.TileCount)">
+        @if (_showConnecting) {
+            <UITimer Period="@TimeSpan.FromSeconds(5)" IsRecurring="false" Tick="OnConnectingTimeout" />
+            <div class="connecting-overlay">
+                <div class="connecting-spinner"></div>
+                <span>@L.Video_Connecting</span>
+            </div>
+        } else if (_endingGraceActive) {
+            <UITimer Period="@TimeSpan.FromMilliseconds(500)" IsRecurring="false" Tick="OnEndingGraceTimeout" />
+        }
+        @foreach (var streamInfo in m.RemoteStreams.OrderBy(s => s.StartedAt).ThenBy(s => s.StreamId.Value)) {
+            var remoteStreamCls = layout.GetRemoteStreamPlayerClass(streamInfo.StreamId);
+            if (remoteStreamCls.IsNullOrEmpty()) {
+                // Hidden slot (e.g. the camera half of an author who's also
+                // screencasting — it renders as a separate `pip-overlay` sidebar tile).
+                continue;
+            }
+            if (m.SpeakingAuthorIds.Contains(streamInfo.AuthorId))
+                remoteStreamCls += " speaking";
+            var isHandRaised = m.RaisedHandAuthorIds.Contains(streamInfo.AuthorId);
+            <RemoteStreamPlayer
+                @key="streamInfo.StreamId.Value"
+                StreamInfo="@streamInfo"
+                Class="@remoteStreamCls"
+                IsHandRaised="@isHandRaised"
+                OnTileClick="@OnTileClick" />
+            var pipStream = layout.GetPipStreamFor(streamInfo.StreamId);
+            if (pipStream is not null) {
+                <RemoteStreamPlayer
+                    @key="@("pip-" + pipStream.StreamId.Value)"
+                    StreamInfo="@pipStream"
+                    Class="pip-overlay"
+                    IsHandRaised="@isHandRaised" />
+            }
+        }
+        @* Own screencast is normally not rendered — the primary slot is
+           reserved for whoever is actually talking remotely, and the
+           camera tile shows a screencast indicator when the local user
+           is dual-streaming. The exception is when own-screencast is
+           the only stream on the stage: without this tile the sharing
+           user sees nothing at all. *@
+        @if (m.IsOwnCameraOn) {
+            var ownSpeakingCls = m.OwnAuthorId is { } ownAuthorId && m.SpeakingAuthorIds.Contains(ownAuthorId)
+                ? " speaking"
+                : "";
+            <VideoStreamingPreview
+                @key="@("own-camera-" + ChatId.Value)"
+                SourceChatId="@ChatId"
+                SourceKind="@VideoSourceKind.Camera"
+                Class="@(layout.OwnCameraPreviewClass + ownSpeakingCls)"
+                IsHandRaised="@m.IsOwnHandRaised" />
+        } else if (m.IsOwnScreenCasting && !hasRemoteStreams) {
+            <VideoStreamingPreview
+                @key="@("own-screencast-" + ChatId.Value)"
+                SourceChatId="@ChatId"
+                SourceKind="@VideoSourceKind.ScreenCast"
+                Class="item-focused"
+                IsHandRaised="@m.IsOwnHandRaised" />
+        }
+    </div>
+    <CallReactionsOverlay ChatId="@ChatId"/>
+</div>
+
+@code {
+    private bool _noStreamsTimedOut;
+    private bool _showConnecting;
+    private bool _endingGraceActive;
+    private bool _hadRemoteStreams;
+    private Model _lastModel = Model.None;
+
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private VideoPanelLayoutCalculator LayoutCalculator
+        => field ??= Hub.Services.GetRequiredService<VideoPanelLayoutCalculator>();
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public string VideoMenuRef { get; set; } = "";
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        // A video that is closing keeps its last tiles for as long as its screen takes to go
+        if (!await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false))
+            return _lastModel;
+
+        var layout = await LayoutCalculator.GetLayout(chatId, cancellationToken).ConfigureAwait(false);
+        var isEqualLayout = await Hub.CallScreensUI.IsEqualLayout(cancellationToken).ConfigureAwait(false);
+        var isOwnCameraOn = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
+        var raisedHandAuthorIds = await LiveSessionUI.ListRaisedHandAuthorIds(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        var m = new Model {
+            Layout = layout,
+            IsEqualLayout = isEqualLayout,
+            IsOwnCameraOn = isOwnCameraOn,
+            IsOwnScreenCasting = isOwnScreenCasting,
+            IsOwnHandRaised = isOwnHandRaised,
+            RaisedHandAuthorIds = raisedHandAuthorIds,
+        };
+        var activeStreams = await ChatVideoUI.GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
+        if (activeStreams.Count == 0)
+            return _lastModel = m;
+
+        var remoteStreams = await ChatVideoUI.GetRemoteStreams(chatId, cancellationToken).ConfigureAwait(false);
+        // Authors currently streaming audio (VAD-gated) — includes the local user; used to
+        // ring the active speaker(s) in the equal layout, where focus alone can't (it never
+        // points at own).
+        var speakingAuthorIds = await Hub.LiveStreamUI.GetAudioStreamingAuthorIds(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return _lastModel = m with {
+            RemoteStreams = remoteStreams,
+            SpeakingAuthorIds = speakingAuthorIds.ToArray(),
+            OwnAuthorId = ownAuthor?.Id,
+        };
+    }
+
+    // Private methods
+
+    private void OnTileClick(AuthorId authorId) {
+        // Pin is a default-layout concept; equal has no focused tile.
+        // Tapping the focused (big) tile is a toolbar toggle, not a pin — only
+        // small tiles pin. The big tile is pinned via the pin button only.
+        var m = State.Value;
+        if (m.IsEqualLayout || authorId == m.Layout.GetFocusedAuthorId(m.RemoteStreams))
+            return;
+
+        LayoutCalculator.SetPinnedAuthor(authorId);
+    }
+
+    private void OnConnectingTimeout() {
+        _showConnecting = false;
+        _noStreamsTimedOut = true;
+        CloseIfEmpty();
+        StateHasChanged();
+    }
+
+    private void OnEndingGraceTimeout() {
+        _endingGraceActive = false;
+        _noStreamsTimedOut = true;
+        CloseIfEmpty();
+        StateHasChanged();
+    }
+
+    private void CloseIfEmpty() {
+        var m = State.Value;
+        if (m.RemoteStreams.Length == 0 && !m.IsOwnCameraOn && !m.IsOwnScreenCasting)
+            CloseVideoPanel();
+    }
+
+    private void CloseVideoPanel() {
+        // Another chat's video may be up by the time this one finds itself empty
+        if (ChatVideoUI.WatchingChatId == ChatId)
+            ChatVideoUI.CloseVideoPanel();
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model None = new();
+        public VideoPanelLayout Layout { get; init; } = VideoPanelLayout.New;
+        public VideoStreamInfo[] RemoteStreams { get; init; } = [];
+        public AuthorId[] SpeakingAuthorIds { get; init; } = [];
+        public ApiArray<AuthorId> RaisedHandAuthorIds { get; init; }
+        public AuthorId? OwnAuthorId { get; init; }
+        public bool IsOwnCameraOn { get; init; }
+        public bool IsOwnScreenCasting { get; init; }
+        public bool IsOwnHandRaised { get; init; }
+        public bool IsEqualLayout { get; init; }
+    }
+}

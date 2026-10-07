@@ -38,12 +38,21 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        // The call screen isn't a part of any chat's page: full-screen or floating, it shows a chat's
+        // video - the own one included - whichever chat is selected.
+        var screen = await Hub.CallScreensUI.GetScreen(cancellationToken).ConfigureAwait(false);
+        var shownChatId = screen is {
+                HasVideo: true,
+                Mode: VisualActivityPanelMode.Expanded or VisualActivityPanelMode.Collapsed,
+            }
+            ? screen.ChatId
+            : (ChatId?)null;
         var cameraChatId = await ChatVideoUI.GetCameraChatId(cancellationToken).ConfigureAwait(false);
-        if (cameraChatId is { } c && c != selectedChatId)
+        if (cameraChatId is { } c && c != selectedChatId && c != shownChatId)
             return new Model(c, VideoSourceKind.Camera);
 
         var screenCastChatId = await ChatVideoUI.GetScreenCastChatId(cancellationToken).ConfigureAwait(false);
-        if (screenCastChatId is { } s && s != selectedChatId)
+        if (screenCastChatId is { } s && s != selectedChatId && s != shownChatId)
             return new Model(s, VideoSourceKind.ScreenCast);
 
         return Model.None;

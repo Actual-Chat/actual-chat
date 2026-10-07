@@ -7,8 +7,8 @@
     transform-origin: center center;
     will-change: transform;
 }
-body.wide .video-panel.expanded .video-streaming-preview .call-video,
-body.wide .video-panel.expanded .video-streaming-preview .call-video-native {
+body.wide .call-screen.expanded .video-streaming-preview .call-video,
+body.wide .call-screen.expanded .video-streaming-preview .call-video-native {
     @apply rounded-lg;
 }
 .video-streaming-preview.screencast .call-video,
@@ -60,7 +60,7 @@ body.hoverable .video-streaming-preview .btn-h.btn-settings:hover {
     @apply text-white;
     @apply opacity-80;
 }
-.video-panel.expanded .video-streaming-preview .btn-h.btn-settings {
+.call-screen.expanded .video-streaming-preview .btn-h.btn-settings {
     @apply hidden;
 }
 

@@ -209,6 +209,9 @@ body.narrow .layout-header[data-has-video-streaming] {
     @apply min-w-0;
     @apply px-1;
 }
+.chat-activity-panel > .c-buttons > .c-call-timer {
+    @apply text-02 text-caption-500 tabular-nums;
+}
 .chat-activity-panel > .c-buttons > .btn {
     @apply px-0;
     @apply text-base;

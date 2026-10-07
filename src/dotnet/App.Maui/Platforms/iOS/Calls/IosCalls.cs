@@ -430,14 +430,9 @@ public sealed class IosCalls : CXProviderDelegate
         // The same switch the in-app recorder toggle flips: a call is muted by not recording into it.
         => services.GetRequiredService<ChatAudioUI>().SetRecordingChatId(isMuted ? null : chatId).AsTask();
 
-    private static async Task StartVideoLocally(IServiceProvider services, ChatId chatId)
-    {
-        // The same as the call screen's own video button: the video panel lives in the chat, under it.
-        if (!await services.GetRequiredService<CallScreensUI>().OpenChatUnderCallScreen(chatId).ConfigureAwait(true))
-            return;
-
-        await services.GetRequiredService<ChatVideoUI>().StartVideoCapture(chatId, true).ConfigureAwait(false);
-    }
+    private static Task StartVideoLocally(IServiceProvider services, ChatId chatId)
+        // The same as the call screen's own video button; the video opens on the call screen.
+        => services.GetRequiredService<ChatVideoUI>().StartVideoCapture(chatId, true);
 
     private void EndCalls(ChatId chatId, CXCallEndedReason reason)
     {

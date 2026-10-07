@@ -498,6 +498,10 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `ImageProcessingInterop` (class) - Blazor entry point to `ImageProcessor` for local content URLs.
 
 
+## UI Blazor.App — Call Screen (`src/dotnet/UI.Blazor.App/Components/CallScreen`)
+
+- `CallScreen` (class) - Script half of the call screen: island drag and full-screen video gestures.
+
 ## UI Blazor.App — Video Panel (`src/dotnet/UI.Blazor.App/Components/VideoPanel`)
 
 - `PresentableFrame` (interface) - Renderable video frame.
@@ -517,7 +521,6 @@ See also: [C# Full API Index](api-index-full.md), [Condensed API Index](api-inde
 - `VideoDebugSettings` (interface) - Video debugging configuration.
 - `getVideoDebugSettings` (function) - Get debug settings.
 - `setVideoDebugForceH264Only` (function) - Force H.264 codec.
-- `VideoPanel` (class) - Video streaming panel.
 - `getActivePlayers` (function) - Get active video players.
 - `RemoteStreamDiagnostics` (interface) - Remote stream diagnostics.
 - `VideoPlayer` (class) - Remote video player.

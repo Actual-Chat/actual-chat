@@ -2,7 +2,7 @@ import { fromEvent, Subject, takeUntil, filter } from 'rxjs';
 import { ScreenSize } from '../../../UI.Blazor/Services/ScreenSize/screen-size';
 import { CompactLayout } from 'compact-layout';
 
-const INLINE_FULL_HEIGHT_REM = 12; // body.narrow .video-panel min/max-h-48, .map-panel h-48
+const INLINE_FULL_HEIGHT_REM = 12; // body.narrow .call-screen min/max-h-48, .map-panel h-48
 const FADE_START_REM = 3; // content starts fading below this height
 
 function getRemSize(): number {
@@ -238,7 +238,7 @@ export class VisualActivityPanel {
         if (target.closest('.c-drag-handle'))
             return this.getInlinePanel();
 
-        const video = target.closest<HTMLElement>('.video-panel');
+        const video = target.closest<HTMLElement>('.call-screen');
         if (video && !target.closest('button, .btn-h') && this.isInline(video))
             return video;
 
@@ -246,7 +246,7 @@ export class VisualActivityPanel {
     }
 
     private getInlinePanel(): HTMLElement | null {
-        const video = this.root.querySelector<HTMLElement>(':scope > .video-panel');
+        const video = this.root.querySelector<HTMLElement>('render-nomad-slot > nomad-slot-content > .call-screen');
         if (video)
             return this.isInline(video) ? video : null;
 
@@ -260,7 +260,7 @@ export class VisualActivityPanel {
     }
 
     private getContent(panel: HTMLElement): HTMLElement | null {
-        return panel.classList.contains('video-panel')
+        return panel.classList.contains('call-screen')
             ? panel.querySelector<HTMLElement>('.c-container')
             : panel;
     }

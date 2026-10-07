@@ -53,13 +53,14 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     }
 
     [ComputeMethod]
-    public virtual async Task<bool> IsOnCallScreen(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<CallScreenState?> GetScreen(CancellationToken cancellationToken)
     {
-        // The in-app screen of a call that is on. Over the lock screen doesn't count: the chat, and the
-        // video panel in it, are behind the keyguard there.
         var view = await GetCallView(cancellationToken).ConfigureAwait(false);
-        return view is { Kind: CallViewKind.FullScreen, IsOverLock: false, Call: { Phase: CallPhase.Active } call }
-            && call.ChatId == chatId;
+        var watchingChatId = await ChatVideoUI.GetWatchingChatId(cancellationToken).ConfigureAwait(false);
+        var watchingMode = watchingChatId is { } chatId
+            ? await Hub.ChatActivityUI.GetPanelMode(chatId, cancellationToken).ConfigureAwait(false)
+            : VisualActivityPanelMode.Inline;
+        return DecideScreen(view, watchingChatId, watchingMode);
     }
 
     [ComputeMethod]
@@ -72,9 +73,24 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         return call?.PeerId;
     }
 
+    // The equal grid is a layout of the full screen: inline and floating, the video keeps its speaker view
     [ComputeMethod]
-    public virtual async Task<Moment?> GetOwnJoinedAt(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<bool> IsEqualLayout(CancellationToken cancellationToken)
     {
+        var screen = await GetScreen(cancellationToken).ConfigureAwait(false);
+        return screen is { Mode: VisualActivityPanelMode.Expanded }
+            && await ChatVideoUI.GetIsVideoPanelEqualLayout(cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<Moment?> GetCallJoinedAt(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // A call's timer runs once the call is on; null until my own join is known, as Accept commits
+        // the call before my audio starts.
+        var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
+        if (call is not { Phase: CallPhase.Active } || call.ChatId != chatId)
+            return null;
+
         // The session itself can predate the call - a call can ring into an ongoing one - so a call timer
         // counts from my own join, not from LiveSession.StartedAt.
         var live = await Hub.LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
@@ -247,73 +263,56 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     }
 
     public void Expand(ChatId chatId)
-        => ClearIf(_collapsedChatId, chatId);
+        => SetScreenMode(chatId, VisualActivityPanelMode.Expanded);
 
-    public async Task ExpandToFullScreen(ChatId chatId)
+    public void SetScreenMode(ChatId chatId, VisualActivityPanelMode mode)
     {
-        // What the island expands into: the call's video where there is one - the screen the video
-        // panel's own expand button leads to - and the call screen otherwise.
-        var isActive = CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Active } call && call.ChatId == chatId;
-        if (!isActive || !await HasVideo(chatId).ConfigureAwait(true)) {
-            Expand(chatId);
-            return;
-        }
-
-        // A panel that is up expands in place; otherwise the call screen covers the chat while the
-        // panel mounts there, and gives way to it in OnVideoExpanded.
-        if (ChatVideoUI.WatchingChatId != chatId)
-            Expand(chatId);
-        await OpenChat(chatId).ConfigureAwait(true);
-        ChatVideoUI.OpenVideoPanel(chatId, true);
+        // The one place the screen of a call and of its video changes mode: the collapsed flag and the
+        // video's panel mode are two stores of it, and written apart they disagree.
+        if (mode == VisualActivityPanelMode.Expanded)
+            ClearIf(_collapsedChatId, chatId);
+        else if (CallUI.GetActiveCallNonComputed() is { Phase: not CallPhase.Ringing } call && call.ChatId == chatId)
+            _collapsedChatId.Value = chatId;
+        if (ChatVideoUI.WatchingChatId == chatId)
+            Hub.ChatActivityUI.SetPanelMode(chatId, mode);
     }
 
     public Task HangUp(ChatId chatId)
-        => CallUI.GetActiveCallNonComputed() is { Role: CallRole.Caller, Phase: CallPhase.Dialing } call
-            && call.ChatId == chatId
+    {
+        var call = CallUI.GetActiveCallNonComputed();
+        if (call is null || call.ChatId != chatId)
+            return LeaveLiveSession(chatId);
+
+        return call is { Role: CallRole.Caller, Phase: CallPhase.Dialing }
             ? CancelCall(chatId)
             : CallUI.HangUp(chatId);
+    }
 
     public async Task LeaveCallScreen(ChatId chatId)
     {
         if (!await LeaveLockScreen(chatId).ConfigureAwait(true))
             return;
 
-        // Collapsed goes first: the over-lock flag cleared alone would bring the narrow full-screen view back.
-        _collapsedChatId.Value = chatId;
-        ClearIf(_overLockRingChatId, chatId);
+        // The chat goes first, under the cover of the screen: an inline video belongs to its chat's
+        // page, and is closed if that page isn't the one open.
         await OpenChat(chatId).ConfigureAwait(true);
-    }
-
-    public async Task<bool> OpenChatUnderCallScreen(ChatId chatId)
-    {
-        // For what needs the chat mounted but takes the screen itself, as the expanded video panel does:
-        // the call screen stays up meanwhile. False when the chat stays behind the keyguard.
-        if (!await LeaveLockScreen(chatId).ConfigureAwait(true))
-            return false;
-
+        // Collapsed goes before the over-lock flag, which cleared alone would bring the narrow
+        // full-screen view back.
+        SetScreenMode(chatId, VisualActivityPanelMode.Inline);
         ClearIf(_overLockRingChatId, chatId);
-        await OpenChat(chatId).ConfigureAwait(true);
-        return true;
-    }
-
-    public void OnVideoExpanded(ChatId chatId)
-    {
-        // The call screen gives way only now, with the video panel already covering the screen, so
-        // the chat between them never shows.
-        if (CallUI.GetActiveCallNonComputed() is not { } call || call.ChatId != chatId)
-            return;
-
-        // Only what DecideView shows full-screen: a ring keeps its modal, a wide screen has no call screen.
-        if (call.Phase != CallPhase.Ringing && Hub.BrowserInfo.ScreenSize.Value.IsNarrow())
-            _collapsedChatId.Value = chatId;
     }
 
     // Private methods
 
-    private async Task<bool> HasVideo(ChatId chatId)
-        => ChatVideoUI.WatchingChatId == chatId
-            || await ChatVideoUI.GetOwnSourceKind(chatId).ConfigureAwait(true) is not null
-            || await ChatVideoUI.HasRemoteStreams(chatId).ConfigureAwait(true);
+    private async Task LeaveLiveSession(ChatId chatId)
+    {
+        // Video outside a call: there is no slot to release, only this chat's media to stop.
+        ChatVideoUI.LeaveVideoSession(chatId);
+        var chatAudioUI = Hub.ChatAudioUI;
+        if (await chatAudioUI.GetRecordingChatId().ConfigureAwait(true) == chatId)
+            await chatAudioUI.SetRecordingChatId(null).ConfigureAwait(true);
+        await chatAudioUI.SetListeningState(chatId, false).ConfigureAwait(true);
+    }
 
     private async Task<bool> LeaveLockScreen(ChatId chatId)
     {

@@ -165,6 +165,118 @@ public class CallScreensUIDecisionsTest
         isFlagStale.Should().BeTrue("only the slot holding the ring's own chat keeps its flag");
     }
 
+    [Theory]
+    [InlineData(CallPhase.Dialing, false)]
+    [InlineData(CallPhase.Active, false)]
+    [InlineData(CallPhase.Active, true)]
+    public void CallScreenShouldBeTheSameWithAndWithoutVideo(CallPhase phase, bool hasVideo)
+    {
+        // arrange - a narrow call, not collapsed; its video, when there is one, sits in the inline panel mode
+        var call = Call(CallRole.Caller, phase);
+        var view = Decide(call, isNarrow: true);
+
+        // act
+        var screen = CallScreensUI.DecideScreen(view, hasVideo ? ChatA : null, VisualActivityPanelMode.Inline);
+
+        // assert
+        screen.Should().NotBeNull();
+        screen!.ChatId.Should().Be(ChatA);
+        screen.Call.Should().Be(call);
+        screen.Mode.Should().Be(
+            VisualActivityPanelMode.Expanded, "video starting or stopping must not move the call off its screen");
+        screen.HasVideo.Should().Be(hasVideo);
+    }
+
+    [Fact]
+    public void CallScreenShouldNotShowVideoOfAnotherChat()
+    {
+        // arrange
+        var view = Decide(Call(CallRole.Caller, CallPhase.Active), isNarrow: true);
+
+        // act
+        var screen = CallScreensUI.DecideScreen(view, ChatB, VisualActivityPanelMode.Expanded);
+
+        // assert
+        screen!.ChatId.Should().Be(ChatA);
+        screen.HasVideo.Should().BeFalse("the call's screen covers the chat whose video is being watched");
+    }
+
+    [Fact]
+    public void OverLockScreenShouldCarryItsFlag()
+    {
+        // arrange
+        var view = Decide(Call(CallRole.Callee, CallPhase.Active), isNarrow: true, Flags(overLock: ChatA));
+
+        // act
+        var screen = CallScreensUI.DecideScreen(view, ChatA, VisualActivityPanelMode.Inline);
+
+        // assert
+        screen!.IsOverLock.Should().BeTrue();
+        screen.HasVideo.Should().BeTrue("the video shows over the lock screen, the chat doesn't have to");
+    }
+
+    [Theory]
+    [InlineData(VisualActivityPanelMode.Inline)]
+    [InlineData(VisualActivityPanelMode.Expanded)]
+    [InlineData(VisualActivityPanelMode.Collapsed)]
+    [InlineData(VisualActivityPanelMode.Hidden)]
+    public void VideoWithoutCallShouldShowInItsPanelMode(VisualActivityPanelMode mode)
+    {
+        // act
+        var screen = CallScreensUI.DecideScreen(CallView.None, ChatA, mode);
+
+        // assert
+        screen.Should().Be(new CallScreenState(ChatA, null, mode, true, false));
+    }
+
+    [Theory]
+    [InlineData(VisualActivityPanelMode.Inline)]
+    [InlineData(VisualActivityPanelMode.Expanded)]
+    public void WideCallShouldHaveScreenOnlyForItsVideo(VisualActivityPanelMode mode)
+    {
+        // arrange - a wide active call has no view of its own
+        var call = Call(CallRole.Callee, CallPhase.Active);
+        var view = Decide(call, isNarrow: false);
+
+        // act
+        var audioOnlyScreen = CallScreensUI.DecideScreen(view, null, VisualActivityPanelMode.Inline);
+        var videoScreen = CallScreensUI.DecideScreen(view, ChatA, mode);
+
+        // assert
+        audioOnlyScreen.Should().BeNull("a wide call without video stays in its chat");
+        videoScreen.Should().Be(new CallScreenState(ChatA, call, mode, true, false));
+    }
+
+    [Fact]
+    public void CollapsedCallShouldLeaveOnlyItsVideo()
+    {
+        // arrange
+        var call = Call(CallRole.Caller, CallPhase.Active);
+        var view = Decide(call, isNarrow: true, Flags(collapsed: ChatA));
+
+        // act
+        var audioOnlyScreen = CallScreensUI.DecideScreen(view, null, VisualActivityPanelMode.Inline);
+        var videoScreen = CallScreensUI.DecideScreen(view, ChatA, VisualActivityPanelMode.Inline);
+
+        // assert
+        audioOnlyScreen.Should().BeNull("the island stands for a collapsed call that has no video");
+        videoScreen!.Mode.Should().Be(VisualActivityPanelMode.Inline);
+        videoScreen.Call.Should().Be(call, "the inline video is still the call's");
+    }
+
+    [Fact]
+    public void RingShouldNotClaimVideoOfItsChat()
+    {
+        // arrange - a ring that isn't over the lock screen shows as a modal
+        var view = Decide(Call(CallRole.Callee, CallPhase.Ringing), isNarrow: true);
+
+        // act
+        var screen = CallScreensUI.DecideScreen(view, ChatA, VisualActivityPanelMode.Expanded);
+
+        // assert
+        screen!.Call.Should().BeNull("the video being watched isn't the call's until it is answered");
+    }
+
     private static CallView Decide(ActiveCall? call, bool isNarrow, CallScreenFlags flags = default)
         => CallScreensUI.DecideView(call, isNarrow, flags);
 

@@ -120,7 +120,7 @@ When TypeScript needs to find a parent container via `closest()`, add a dedicate
 
 **Wrong:**
 ```typescript
-this.host = this.el.closest('.video-panel-chat') ?? this.el.closest('.list-view-layout');
+this.host = this.el.closest('.call-screen-chat') ?? this.el.closest('.list-view-layout');
 ```
 
 **Correct:**
@@ -230,7 +230,7 @@ The trigger is compositing, not media. `.video-track-player` sets
 (plus `scaleX(-1)` when the camera is mirrored). Re-attaching a track to a
 promoted layer inside a strictly-contained parent can leave WebKit with a
 GraphicsLayer it never repaints. Both properties are load-bearing — see the
-`contain` / `will-change` notes in `video-panel.css` — so the layer is nudged
+`contain` / `will-change` notes in `call-screen.css` — so the layer is nudged
 instead: `forceRecomposite()` in `recorder-preview-view.ts` toggles `display`
 once on `loadeddata`, which forces a fresh compositing pass.
 
@@ -1125,6 +1125,45 @@ verdict and is reported at once. An unnamed one is judged by age instead: it sta
 `Starting`/`Reconnecting` until it outlasts `Constants.Audio.RecordingProblemGracePeriod`, measured
 from the later of the press and the last recorder-pipeline transition, because a healthy start
 passes through the same states on its way up.
+
+## Component Models
+
+A component that computes its state declares the result as a nested `Model` record, at the end of
+its `@code` block under `// Nested types`:
+
+```csharp
+@inherits ComputedStateComponent<AppUIHub, AmazingPanel.Model>
+@{
+    var m = State.Value;
+}
+...
+@code {
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) { ... }
+
+    // Nested types
+
+    public sealed record Model(Chat Chat, bool IsActive);
+}
+```
+
+**A `Model` is for its own component's markup, and nothing else reads it.** Don't pass it to a
+child as a parameter, and don't declare one component's `Model` for another to build. A child that
+receives its parent's model depends on every field in it, re-renders when any of them changes, and
+can't be rendered without the parent's whole state.
+
+What a sub-component gets instead:
+
+- **Plain parameters**, when the parent already has the values for its own markup:
+  `VideoStage` takes the chat id and the menu reference from `CallScreen`.
+- **Its own computed `Model`**, when it shows state the parent has no other use for: `CallControls`
+  computes the camera, screen share and audio output state of its buttons itself, from the chat it
+  is given.
+
+Both can read the same compute methods: they are cached, so two components asking for one value
+cost one computation.
+
+The exception is a modal, whose `Model` is its input and is created by whoever opens it - see
+[Modal Components](#modal-components).
 
 ## Modal Components
 

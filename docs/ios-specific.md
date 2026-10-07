@@ -903,8 +903,10 @@ nothing here and why this had to be measured on device.
 The expensive case is the rule that *fails*: `.video-panel` is absent in an audio-only
 session, so each invalidation walks the whole subtree to prove a negative. WebKit evaluates a
 compound left-to-right, so **one class on `body` short-circuits the match before `:has()`
-runs** — `video-panel.ts` adds `has-video-panel` while a panel exists, and the three rule
-sites are now `body.has-video-panel:has(...)`.
+runs** — `video-panel.ts` added `has-video-panel` while a panel existed, and the three rule
+sites became `body.has-video-panel:has(...)`. (Those rules have since moved to the `data-has-*`
+presence attributes of `presence-tracker.ts`, which need no `:has()` at all; the class went with
+them when the panel became `CallScreen`.)
 
 ABAB in a live call, one build, one page, arms toggled by adding/removing the class over the
 WebView debugger (30 s arms, main-thread totals within 9.1-10.3 s of each other):

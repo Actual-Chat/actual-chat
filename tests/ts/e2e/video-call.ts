@@ -1,6 +1,6 @@
 /**
  * Shared steps for e2e tests that need a live video session between two signed-in users: opening
- * the call chat, starting the recorder and the camera, driving the video panel, and hanging up.
+ * the call chat, starting the recorder and the camera, driving the call screen's video, and hanging up.
  */
 
 import * as path from 'path';
@@ -50,7 +50,7 @@ export async function startCamera(page: Page) {
     await page.locator('.chat-audio-panel .video-wrapper button').first().click();
     // The first start asks through the join modal; a rejoin after a hang-up resumes without it
     const modal = page.locator('.modal').filter({ has: page.locator('.camera-preview-video') }).first();
-    const preview = page.locator('.video-panel .video-streaming-preview').first();
+    const preview = page.locator('.call-screen .video-streaming-preview').first();
     await expect.poll(async () => await modal.isVisible() || await preview.isVisible(), { timeout: 15_000 })
         .toBe(true);
     if (await modal.isVisible()) {
@@ -62,11 +62,11 @@ export async function startCamera(page: Page) {
 }
 
 export async function expandVideoPanel(page: Page) {
-    // The expand button fades in (show-with-delay), and a click that lands before then is lost.
-    const panel = page.locator('.video-panel').first();
+    // The expand button shows only once the opening animation ends (first-time-open); a click before then is lost.
+    const panel = page.locator('.call-screen').first();
     await expect.poll(async () => {
         if (!(await panel.getAttribute('class'))?.includes('expanded'))
-            await panel.locator('.expand-btn').first().click({ timeout: 2_000 }).catch(() => { /* retried */ });
+            await panel.locator('.btn-expand').first().click({ timeout: 2_000 }).catch(() => { /* retried */ });
         return (await panel.getAttribute('class')) ?? '';
     }, { timeout: 20_000, interval: 1_000 }).toContain('expanded');
 }
@@ -77,7 +77,7 @@ type MarkedElement = Element & { e2eMark?: boolean };
  *  elements, still stamped) from a recreated tile (new, unstamped elements). */
 export async function markVideoElements(page: Page): Promise<number> {
     return page.evaluate(() => {
-        const elements = [...document.querySelectorAll('.video-panel video, .video-panel canvas')];
+        const elements = [...document.querySelectorAll('.call-screen video, .call-screen canvas')];
         elements.forEach(e => { (e as MarkedElement).e2eMark = true; });
         return elements.length;
     });
@@ -86,25 +86,25 @@ export async function markVideoElements(page: Page): Promise<number> {
 /** How many of the panel's video and canvas elements carry the stamp, and how many don't. */
 export async function countVideoElements(page: Page): Promise<{ marked: number; unmarked: number }> {
     return page.evaluate(() => {
-        const elements = [...document.querySelectorAll('.video-panel video, .video-panel canvas')];
+        const elements = [...document.querySelectorAll('.call-screen video, .call-screen canvas')];
         const marked = elements.filter(e => (e as MarkedElement).e2eMark === true).length;
         return { marked, unmarked: elements.length - marked };
     });
 }
 
 export async function collapseVideoPanel(page: Page) {
-    const panel = page.locator('.video-panel').first();
+    const panel = page.locator('.call-screen').first();
     if ((await panel.getAttribute('class'))?.includes('expanded'))
-        await panel.locator('.expand-btn').first().click();
+        await panel.locator('.btn-expand').first().click();
     await expect.poll(async () => (await panel.getAttribute('class')) ?? '', { timeout: 10_000 })
         .not.toContain('expanded');
 }
 
 export async function setGallery(page: Page, isOn: boolean) {
-    const panel = page.locator('.video-panel').first();
+    const panel = page.locator('.call-screen').first();
     const isGallery = async () => ((await panel.getAttribute('class')) ?? '').includes('layout-equal');
     if (await isGallery() !== isOn)
-        await panel.locator('.layout-toggle-btn').first().click();
+        await panel.locator('.btn-layout-toggle').first().click();
     await expect.poll(isGallery, { timeout: 10_000 }).toBe(isOn);
 }
 
@@ -134,15 +134,22 @@ export async function hangUpIfAny(page: Page | undefined) {
     if (!page)
         return;
 
+    // An expanded call screen gives its Back step away only after it has hidden, and a page.goto
+    // that this history.back() lands in is aborted - so the caller's next navigation waits for it.
+    const whenWentBack = page.evaluate(() => new Promise<void>(resolve => {
+        window.addEventListener('popstate', () => resolve(), { once: true });
+    })).catch(() => { /* ignore */ });
     for (let i = 0; i < 2; i++) {
         await page.keyboard.press('Escape').catch(() => { /* ignore */ });
         await page.waitForTimeout(300);
     }
-    const hangUp = page.locator('.video-panel .btn-glass.talking').first();
+    const hangUp = page.locator('.call-screen .btn-hang-up').first();
     if (await hangUp.isVisible({ timeout: 1_000 }).catch(() => false)) {
         await hangUp.click().catch(() => { /* ignore */ });
-        await page.locator('.video-panel').first()
+        await page.locator('.call-screen').first()
             .waitFor({ state: 'hidden', timeout: 15_000 }).catch(() => { /* ignore */ });
+        // A screen that wasn't expanded has no step to give away
+        await Promise.race([whenWentBack, page.waitForTimeout(1_000)]);
     }
     // Recording outlives the page (it's restored with the account's active chats), so stop it too.
     const recordOn = page.locator('.chat-audio-panel .recorder-wrapper.record-on').first();
@@ -159,8 +166,11 @@ export async function startSession(host: Page, guest: Page) {
         await startRecording(guest);
         await startCamera(host);
         await startCamera(guest);
-        const canReact = await guest.locator('.video-panel-footer .btn-react').first()
+        // The React button is one of the call screen's controls, so it takes the full-screen mode to see it
+        await expandVideoPanel(guest);
+        const canReact = await guest.locator('.call-screen-footer .btn-react').first()
             .waitFor({ state: 'attached', timeout: 20_000 }).then(() => true, () => false);
+        await collapseVideoPanel(guest);
         if (canReact)
             break;
         if (attempt === 3)
@@ -171,6 +181,6 @@ export async function startSession(host: Page, guest: Page) {
         await hangUpIfAny(host);
         await host.waitForTimeout(3_000);
     }
-    await host.locator('.video-panel .remote-video-container').first()
+    await host.locator('.call-screen .remote-video-container').first()
         .waitFor({ state: 'visible', timeout: 30_000 });
 }

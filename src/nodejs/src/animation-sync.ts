@@ -60,9 +60,8 @@ const animationClasses = new Set<string>([
     'swap-b',                   // timer-swap
     'notify-mentioned-members', // shimmer
     'upload-plug',              // plugPulse
-    // Video panel
+    // Call screen
     'rec-btn',                  // bgShake / record-btn-on-pulse
-    'btn-rec',                  // same, in the full-screen call view
     'connecting-spinner',       // spin
     'c-live-dot',               // pulseLiveDot
     'c-title-inner',            // c-title-marquee

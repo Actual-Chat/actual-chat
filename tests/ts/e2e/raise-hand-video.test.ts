@@ -79,7 +79,7 @@ describe('raise hand and reactions in a video call', () => {
         await openCallChat(alice);
         await openCallChat(bob);
         await startSession(alice, bob);
-        const aliceBobTile = alice.locator('.video-panel .remote-video-container').first();
+        const aliceBobTile = alice.locator('.call-screen .remote-video-container').first();
         const bobName = (await aliceBobTile.locator('.video-participant-label span').first().innerText()).trim();
         expect(bobName.length).toBeGreaterThan(0);
         // The fake mic never stops talking, and a hand lowers itself once its owner says a few words
@@ -87,7 +87,7 @@ describe('raise hand and reactions in a video call', () => {
 
         // act - Bob expands the panel (the React button lives in its footer) and raises his hand
         await expandVideoPanel(bob);
-        const reactButton = bob.locator('.video-panel-footer .btn-react').first();
+        const reactButton = bob.locator('.call-screen-footer .btn-react').first();
         await reactButton.waitFor({ state: 'visible', timeout: 20_000 });
         await reactButton.click();
         const bobMenu = bob.locator('.call-reactions-menu').first();
@@ -115,7 +115,7 @@ describe('raise hand and reactions in a video call', () => {
 
         // assert - speaker view: Bob is the speaker, so his hand is a button-sized indicator in the header
         await expandVideoPanel(alice);
-        await alice.locator('.video-panel-header .btn-hand').waitFor({ state: 'visible', timeout: 10_000 });
+        await alice.locator('.call-screen-header .btn-hand').waitFor({ state: 'visible', timeout: 10_000 });
         await expect.poll(async () => aliceBobTile.locator('.video-hand-badge:visible').count()).toBe(0);
         await alice.screenshot({ path: shot('3-speaker-view-header') });
 
@@ -136,7 +136,7 @@ describe('raise hand and reactions in a video call', () => {
         await bobMenu.locator('.reaction-select-reaction').first().click();
 
         // assert - it floats over Alice's panel, labelled with Bob's name
-        const aliceReaction = alice.locator('.video-panel .call-reactions-overlay .c-reaction').first();
+        const aliceReaction = alice.locator('.call-screen .call-reactions-overlay .c-reaction').first();
         await aliceReaction.waitFor({ state: 'attached', timeout: 15_000 });
         expect((await aliceReaction.locator('.c-name').innerText()).trim()).toBe(bobName);
         await alice.screenshot({ path: shot('5-reaction') });
@@ -167,9 +167,9 @@ describe('raise hand and reactions in a video call', () => {
         await openCallChat(bob);
         await startSession(alice, bob);
         await stopRecording(bob);
-        const aliceBobTile = alice.locator('.video-panel .remote-video-container').first();
+        const aliceBobTile = alice.locator('.call-screen .remote-video-container').first();
         const aliceBadge = aliceBobTile.locator('.video-tile-caption .video-hand-badge');
-        const reactButton = bob.locator('.video-panel-footer .btn-react').first();
+        const reactButton = bob.locator('.call-screen-footer .btn-react').first();
         await expandVideoPanel(bob);
         await reactButton.waitFor({ state: 'visible', timeout: 20_000 });
         await reactButton.click();
@@ -191,7 +191,7 @@ describe('raise hand and reactions in a video call', () => {
         // assert - nobody touched the hand, yet it's down on both sides
         await expect.poll(async () => aliceBadge.count(), { timeout: 60_000 }).toBe(0);
         await alice.screenshot({ path: shot('10-lowered-after-speaking') });
-        await expect.poll(async () => bob.locator('.video-panel .video-hand-badge').count(), { timeout: 15_000 })
+        await expect.poll(async () => bob.locator('.call-screen .video-hand-badge').count(), { timeout: 15_000 })
             .toBe(0);
         // It was Bob's own client that lowered it, so the "lowered by someone else" notice must not show
         expect(await bob.getByText('Your hand was lowered').count()).toBe(0);

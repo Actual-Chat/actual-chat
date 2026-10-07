@@ -33,4 +33,13 @@ public sealed record CallView(ActiveCall? Call, CallViewKind Kind, bool IsOverLo
     public static readonly CallView None = new(null, CallViewKind.None, false);
 }
 
+// What the call screen shows: a call's own screen, or the video of a chat nobody called in (Call is null).
+// Mode is the mode of the whole screen; a call without video is only ever Expanded.
+public sealed record CallScreenState(
+    ChatId ChatId,
+    ActiveCall? Call,
+    VisualActivityPanelMode Mode,
+    bool HasVideo,
+    bool IsOverLock);
+
 internal readonly record struct CallScreenFlags(ChatId? CollapsedChatId, ChatId? OverLockChatId);

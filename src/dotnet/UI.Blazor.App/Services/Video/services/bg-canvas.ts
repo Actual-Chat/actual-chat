@@ -1,5 +1,5 @@
 // Blurred backdrop drawn behind a contain-fitted main video tile
-// (.remote-video-bg in video-panel.css). WebGL is preferred so blur happens in
+// (.remote-video-bg in call-screen.css). WebGL is preferred so blur happens in
 // the tiny bg-canvas pixel space; 2D canvas is the fallback.
 
 import { CanvasTarget } from './canvas-target';

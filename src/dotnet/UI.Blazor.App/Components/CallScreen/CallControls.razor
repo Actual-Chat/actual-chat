@@ -1,0 +1,195 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Live
+@inherits ComputedStateComponent<AppUIHub, CallControls.Model>
+@{
+    var m = State.Value;
+    if (ReferenceEquals(m, Model.Loading))
+        return;
+
+    var chat = Chat;
+
+    // A phone switches the front/back camera; a wide desktop shares the screen instead, which is
+    // where sharing actually makes sense. A smaller desktop window finds it in the menu.
+    var isMobileOrNarrow = !m.IsDesktopLayout;
+    var cameraMenuRef = MenuRef.New<CameraMenu>(CallScreen.CameraMenuRequester, m.SelectedCameraDeviceId ?? "")
+        .ToString();
+    var reactionsMenuRef = MenuRef.New<CallReactionsMenu>(chat.Id.Value).ToString();
+    RenderFragment videoToggle =
+        @<HeaderButton
+            Click="@(() => OnVideoClick(!m.IsCameraOn))"
+            Class="@("btn-glass btn-video-toggle " + (m.IsCameraOn ? "on" : ""))">
+            <i class="icon-video text-lg"></i>
+        </HeaderButton>;
+}
+
+@* The recorder holds the middle. The controls on either side line up from it outwards, so one that
+   appears or goes moves neither the recorder nor the controls before it. *@
+<div class="call-screen-toolbar call-screen-footer">
+    <div class="c-side c-before">
+        @if (isMobileOrNarrow) {
+            @videoToggle
+        } else {
+            <HeaderButton
+                Click="@(() => OnScreenShareClick(!m.IsScreenCasting))"
+                Class="@("btn-glass btn-screen-share " + (m.IsScreenCasting ? "on" : "screen-share-start"))">
+                <i class="icon-screen-share text-lg"></i>
+            </HeaderButton>
+        }
+    </div>
+    @* Dialing: nothing to record yet, so the mic waits for the peer to answer. *@
+    <RecorderToggle Chat="@chat" Compact="true" IsDisabled="@m.IsDialing"/>
+    <div class="c-side c-after">
+        @if (!isMobileOrNarrow) {
+            @videoToggle
+        } else if (IsMobile || m.IsCameraOn) {
+            @* Always there on a phone, as on its call screen before; a desktop window has it with the camera *@
+            <HeaderButton
+                Click="@OnSwitchCameraClick"
+                Class="btn-glass btn-camera-switch"
+                data-menu="@cameraMenuRef"
+                data-menu-trigger="@MenuTrigger.Secondary"
+                data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
+                <i class="icon-camera-switch text-lg"></i>
+            </HeaderButton>
+        } else if (HasOutputPicker || m.CanReact) {
+            @* Holds the slot, so the controls after it stay put when the camera toggles *@
+            <div class="btn-incut"></div>
+        }
+        @* Absent where the platform picks the output on its own - the web, the Mac. *@
+        @if (HasOutputPicker) {
+            var output = m.OutputRoutes;
+            var outputCls = output.Current?.Kind is AudioOutputKind.Phone or null ? "" : "on";
+            @* The speaker glyph stands for both built-in outputs and the tint tells them apart, as
+               on the system call screen; only an external device shows its own glyph. *@
+            var isBuiltin = output.Current?.Kind is AudioOutputKind.Phone or AudioOutputKind.Speaker or null;
+            var outputIcon = isBuiltin ? "icon-volume-up-2" : output.Current.GetIcon();
+            if (output.HasExternal) {
+                @* With a headset in play there are three or more places to go, so a toggle won't do. *@
+                <HeaderButton
+                    Class="@($"btn-glass btn-speaker {outputCls}")"
+                    data-menu="@(MenuRef.New<AudioOutputMenu>().ToString())"
+                    data-menu-trigger="@MenuTrigger.Primary"
+                    data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
+                    <i class="@outputIcon text-lg"></i>
+                </HeaderButton>
+            }
+            else {
+                <HeaderButton Class="@($"btn-glass btn-speaker {outputCls}")" Click="@OnSpeakerClick">
+                    <i class="icon-volume-up-2 text-lg"></i>
+                </HeaderButton>
+            }
+        }
+        @if (m.CanReact) {
+            <HeaderButton
+                Class="@("btn-glass btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
+                data-menu="@reactionsMenuRef"
+                data-menu-trigger="@MenuTrigger.Primary"
+                data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
+                <i class="@(m.IsOwnHandRaised ? "icon-hand" : "icon-add-reaction") text-lg"></i>
+            </HeaderButton>
+        }
+    </div>
+    @* Out of flow, at the right edge *@
+    @if (!isMobileOrNarrow && m.HasVideo) {
+        <HeaderButton
+            Click="@(() => ChatVideoUI.SetVideoPanelChatVisible(!m.IsChatVisible))"
+            Class="@("btn-glass btn-chat " + (m.IsChatVisible ? "on" : ""))">
+            <i class="icon-message-ellipse text-lg"></i>
+        </HeaderButton>
+    }
+</div>
+
+@code {
+    private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
+    private bool HasOutputPicker => Hub.AudioFocusUI.OutputRoutes is not null;
+    private bool IsMobile => Hub.BrowserInfo.IsMobile;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.Loading,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        // The screen is the one on display, whichever chat it shows
+        var screen = await Hub.CallScreensUI.GetScreen(cancellationToken).ConfigureAwait(false);
+        if (screen?.ChatId != chatId)
+            screen = null;
+        var isDesktopLayout = await ChatVideoUI.IsDesktopLayout(cancellationToken).ConfigureAwait(false);
+        var isChatVisible = await ChatVideoUI.GetIsVideoPanelChatVisible(cancellationToken).ConfigureAwait(false);
+        var outputRoutes = await Hub.CallUI.GetOutputRoutes(cancellationToken).ConfigureAwait(false);
+        var isCameraOn = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
+        var isScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
+        var canReact = await LiveSessionUI.CanReact(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
+        var selectedCameraDeviceId = await Hub.CameraUI.GetSelectedDeviceId(cancellationToken).ConfigureAwait(false);
+        return new Model {
+            IsDialing = screen?.Call?.Phase == CallPhase.Dialing,
+            HasVideo = screen?.HasVideo ?? false,
+            IsDesktopLayout = isDesktopLayout,
+            IsChatVisible = isChatVisible,
+            OutputRoutes = outputRoutes,
+            IsCameraOn = isCameraOn,
+            IsScreenCasting = isScreenCasting,
+            CanReact = canReact,
+            IsOwnHandRaised = isOwnHandRaised,
+            SelectedCameraDeviceId = selectedCameraDeviceId,
+        };
+    }
+
+    // Private methods
+
+    private void OnVideoClick(bool mustEnable) {
+        var chat = Chat;
+        if (!mustEnable) {
+            // Stop own camera only — screencast (if any) keeps running
+            ChatVideoUI.StopRecording();
+        } else if (ChatVideoUI.HasJoinedVideoSession(chat.Id)) {
+            // Already joined this call — resume without modal
+            ChatVideoUI.ResumeVideoStreaming(chat.Id);
+        } else {
+            // On a call the camera just joins in; outside one this opens the join preview
+            ChatVideoUI.JoinVideoSession(chat.Id);
+        }
+    }
+
+    private void OnScreenShareClick(bool mustEnable) {
+        var chat = Chat;
+        if (mustEnable) {
+            // Additive — does not stop the camera
+            ChatVideoUI.StartScreenCasting(chat.Id);
+        } else
+            ChatVideoUI.StopScreenCasting();
+    }
+
+    private Task OnSwitchCameraClick()
+        => Hub.CameraUI.SwitchCamera();
+
+    private void OnSpeakerClick() {
+        // Never routed through the listing: the toggle has to work even before the first one
+        // arrives, and the earpiece and the speaker are there whatever it says.
+        Hub.CallUI.ToggleSpeaker(State.Value.OutputRoutes);
+    }
+
+    // Nested types
+
+    public sealed record Model {
+        public static readonly Model Loading = new();
+        public bool IsDialing { get; init; }
+        public bool HasVideo { get; init; }
+        public bool IsDesktopLayout { get; init; }
+        public bool IsChatVisible { get; init; }
+        public AudioOutputRoutes OutputRoutes { get; init; } = AudioOutputRoutes.None;
+        public bool IsCameraOn { get; init; }
+        public bool IsScreenCasting { get; init; }
+        public bool CanReact { get; init; }
+        public bool IsOwnHandRaised { get; init; }
+        public string? SelectedCameraDeviceId { get; init; }
+    }
+}

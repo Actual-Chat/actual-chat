@@ -22,7 +22,7 @@ const CHAT_URL = `${BASE_URL}/chat/the-actual-one`;
 const SPEECH_WAV = path.resolve('lib/data/test-audio-1.wav');
 
 const videoToggle = (page: Page) => page.locator('.chat-audio-panel .video-wrapper button').first();
-const ownPreview = (page: Page) => page.locator('.video-panel .video-streaming-preview').first();
+const ownPreview = (page: Page) => page.locator('.call-screen .video-streaming-preview').first();
 
 async function openChat(page: Page, language: string) {
     await page.goto(withUILanguage(CHAT_URL, language), { waitUntil: 'domcontentloaded' });
@@ -144,13 +144,13 @@ describe('video recorder error localization', () => {
         await startRecording(alice);
         await startCamera(bob);
         await startCamera(alice);
-        await alice.locator('.video-panel .remote-video-container').first()
+        await alice.locator('.call-screen .remote-video-container').first()
             .waitFor({ state: 'visible', timeout: 30_000 });
         await stopVideo(alice);
 
         // act - a resume skips the join modal and goes straight to the recorder
         await videoToggle(alice).click();
-        const error = alice.locator('.video-panel .video-streaming-preview .video-error').first();
+        const error = alice.locator('.call-screen .video-streaming-preview .video-error').first();
         await error.waitFor({ state: 'visible', timeout: 30_000 });
         await alice.screenshot({ path: shot('camera-unavailable-ru') });
         const text = (await error.innerText()).trim();

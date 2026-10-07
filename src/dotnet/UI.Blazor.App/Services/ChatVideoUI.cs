@@ -36,7 +36,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<bool?> _isVideoPanelChatVisible;
 
     // Set when a remote stream completes normally (sender intentionally ended).
-    // Consumed by VideoPanel to suppress "Connecting..." overlay.
+    // Consumed by VideoStage to suppress "Connecting..." overlay.
     private volatile int _remoteStreamEndedSuccessfully;
     private readonly ConcurrentDictionary<string, CpuTimestamp> _locallyEndedRemoteStreams = new();
 
@@ -102,38 +102,74 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<bool> GetIsVideoPanelEqualLayout(CancellationToken cancellationToken = default)
         => await _isVideoPanelEqualLayout.Use(cancellationToken).ConfigureAwait(false);
 
+    // The side chat docks only on a genuinely wide desktop; below Large the full-screen video takes the
+    // phone's control set: no side chat, no chat toggle and no screen share.
     [ComputeMethod]
-    public virtual async Task<bool?> GetIsVideoPanelChatVisible(CancellationToken cancellationToken = default)
-        => await _isVideoPanelChatVisible.Use(cancellationToken).ConfigureAwait(false);
+    public virtual async Task<bool> IsDesktopLayout(CancellationToken cancellationToken = default)
+    {
+        var screenSize = await BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
+        return screenSize >= ScreenSize.Large && !BrowserInfo.IsMobile;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> GetIsVideoPanelChatVisible(CancellationToken cancellationToken = default)
+    {
+        if (!await IsDesktopLayout(cancellationToken).ConfigureAwait(false))
+            return false;
+
+        // Shown until the user hides it
+        return await _isVideoPanelChatVisible.Use(cancellationToken).ConfigureAwait(false) ?? true;
+    }
 
     [ComputeMethod]
     public virtual async Task<VisualActivityPanelMode> GetWatchingPanelMode(
         CancellationToken cancellationToken = default)
     {
-        // The panel mode of the chat being watched — the one governing video playback
-        var chatId = await GetWatchingChatId(cancellationToken).ConfigureAwait(false);
-        return chatId is { } id
-            ? await ChatActivityUI.GetPanelMode(id, cancellationToken).ConfigureAwait(false)
-            : VisualActivityPanelMode.Inline;
+        // The mode the watched chat's video really shows in — the one governing video playback
+        var screen = await Hub.CallScreensUI.GetScreen(cancellationToken).ConfigureAwait(false);
+        if (screen is not { HasVideo: true })
+            return VisualActivityPanelMode.Inline;
+        if (screen.Mode != VisualActivityPanelMode.Inline)
+            return screen.Mode;
+
+        // Inline, the video is a part of its chat's page, on the Call tab there. Anywhere else it is
+        // out of sight, though still mounted - which is what Hidden is.
+        var chatId = screen.ChatId;
+        var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (selectedChatId != chatId)
+            return VisualActivityPanelMode.Hidden;
+
+        var activity = await ChatActivityUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        return activity.Tab == VisualActivityTab.Call
+            ? VisualActivityPanelMode.Inline
+            : VisualActivityPanelMode.Hidden;
     }
 
     [ComputeMethod]
     public virtual async Task<VideoPanelActions> GetVideoPanelActions(
         ChatId chatId, bool isNarrow, CancellationToken cancellationToken = default)
     {
-        var mode = await ChatActivityUI.GetPanelMode(chatId, cancellationToken).ConfigureAwait(false);
+        // The mode of the whole call screen, not of the panel alone: a call without video is
+        // full-screen too, and has no video to float or hide.
+        var screen = await Hub.CallScreensUI.GetScreen(cancellationToken).ConfigureAwait(false);
+        var isOnScreen = screen?.ChatId == chatId;
+        var mode = isOnScreen
+            ? screen!.Mode
+            : await ChatActivityUI.GetPanelMode(chatId, cancellationToken).ConfigureAwait(false);
+        var hasVideo = isOnScreen && screen!.HasVideo;
         var isVideoAvailable = await IsVideoAvailable(chatId, cancellationToken).ConfigureAwait(false);
         var isDiagnosticsEnabled = await IsDiagnosticsEnabled(cancellationToken).ConfigureAwait(false);
+        var isDesktopLayout = await IsDesktopLayout(cancellationToken).ConfigureAwait(false);
         return new VideoPanelActions(
             Mode: mode,
             IsNarrow: isNarrow,
-            CanToggleFullscreen: true,
-            CanToggleIsland: true,
-            CanMinimize: !isNarrow && mode != VisualActivityPanelMode.Hidden,
+            CanToggleFullscreen: hasVideo,
+            CanToggleIsland: hasVideo,
+            CanMinimize: hasVideo && !isNarrow && mode != VisualActivityPanelMode.Hidden,
             CanSwitchCamera: isNarrow && isVideoAvailable,
             CanToggleVideo: isVideoAvailable,
-            CanToggleScreenCast: !isNarrow && !BrowserInfo.IsMobile && isVideoAvailable,
-            CanToggleChatPanel: !isNarrow && mode == VisualActivityPanelMode.Expanded,
+            CanToggleScreenCast: !BrowserInfo.IsMobile && isVideoAvailable,
+            CanToggleChatPanel: hasVideo && isDesktopLayout && mode == VisualActivityPanelMode.Expanded,
             CanShowDiagnostics: isDiagnosticsEnabled,
             CanShowVoiceSettings: true,
             CanShowVideoSettings: isVideoAvailable);
@@ -318,7 +354,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         SetWatching(chatId);
         // Set after the open, which resets the mode - and on a panel that is already up as well.
         if (isExpanded && _watchingChatId.Value == chatId)
-            ChatActivityUI.SetPanelMode(chatId, VisualActivityPanelMode.Expanded);
+            Hub.CallScreensUI.Expand(chatId);
     }
 }
 
@@ -327,6 +363,12 @@ public sealed record VideoDevice(string DeviceId, string Label, string? Facing =
 {
     public bool IsFront => Facing == "user";
     public bool IsBack => Facing == "environment";
+}
+
+public readonly record struct WatchingChange(ChatId? OpenChatId, bool IsExpanded, bool MustClose = false)
+{
+    public static readonly WatchingChange None = default;
+    public static readonly WatchingChange Close = new(null, false, true);
 }
 
 public sealed record VideoPanelActions(

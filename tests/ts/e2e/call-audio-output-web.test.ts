@@ -2,10 +2,10 @@
  * E2E test: the call screen's audio-output button on the web.
  *
  * A browser offers nothing to route call audio between - the base AudioFocusUI publishes no
- * output routes - so the full-screen call view must show no speaker button at all, on the
- * caller's side and on the callee's. Two users at a phone-sized viewport (the full-screen
- * view exists only on the narrow layout): one dials from the peer chat, the other accepts
- * from the incoming-call modal, both reach the in-call toolbar.
+ * output routes - so the call screen must show no speaker button at all, on the caller's side
+ * and on the callee's. Two users at a phone-sized viewport (an audio call has its screen only on
+ * the narrow layout): one dials from the peer chat, the other accepts from the incoming-call
+ * modal, both reach the call screen's control bar.
  *
  * Prerequisites:
  * - Server running (server-loop / run-watch), locally: calls are incomplete UI, which the test
@@ -21,11 +21,9 @@ import {
     TEST_EMAIL, TEST_EMAIL_2, connectBrowser, ensureSignedIn, screenshot, setIncompleteUI,
     type BrowserConnection,
 } from './helpers';
-import { openPeerChat } from './peer-call';
+import { CALL_HANG_UP, CALL_SCREEN, openPeerChat } from './peer-call';
 
 const shot = (name: string) => screenshot('e2e-call', name);
-
-const TOOLBAR = '.full-screen-call-view.in-call .c-toolbar';
 
 async function newPhoneContext(
     conn: BrowserConnection,
@@ -52,7 +50,7 @@ async function hangUpIfAny(page: Page | undefined) {
     if (!page)
         return;
 
-    const hangUp = page.locator('.full-screen-call-view .c-call-bar .btn-glass.talking').first();
+    const hangUp = page.locator(CALL_HANG_UP).first();
     if (await hangUp.isVisible({ timeout: 1_000 }).catch(() => false))
         await hangUp.click().catch(() => { /* ignore */ });
 }
@@ -97,23 +95,25 @@ describe('call audio output on the web', () => {
         const callButton = caller.locator('.btn-start-call').first();
         await callButton.waitFor({ state: 'visible', timeout: 30_000 });
         await callButton.click();
-        await caller.locator('.full-screen-call-view').first().waitFor({ state: 'visible', timeout: 20_000 });
+        await caller.locator(CALL_SCREEN).first().waitFor({ state: 'visible', timeout: 20_000 });
         await caller.screenshot({ path: shot('caller-dialing') });
         const accept = callee.locator('.btn-call.c-accept').first();
         await accept.waitFor({ state: 'visible', timeout: 30_000 });
         await callee.screenshot({ path: shot('callee-ringing') });
         await accept.click();
 
-        // assert - both in-call toolbars carry the four fixed buttons and no output button
+        // assert - both control bars carry the fixed buttons and no output button
         for (const [who, page] of [['caller', caller], ['callee', callee]] as const) {
-            const toolbar = page.locator(TOOLBAR).first();
-            await toolbar.waitFor({ state: 'visible', timeout: 30_000 });
+            const controls = page.locator('.call-screen.in-call .call-screen-footer').first();
+            await controls.waitFor({ state: 'visible', timeout: 30_000 });
             await page.waitForTimeout(1_000);
             await page.screenshot({ path: shot(`${who}-in-call`) });
-            expect(await toolbar.locator('.c-speaker').count(), `${who}: a browser has no outputs to pick from`)
+            expect(await controls.locator('.btn-speaker').count(), `${who}: a browser has no outputs to pick from`)
                 .toBe(0);
-            expect(await toolbar.locator('.btn-glass').count(), `${who}: share, video, record, options`)
-                .toBe(4);
+            for (const button of ['.btn-video-toggle', '.recorder-wrapper'])
+                expect(await controls.locator(button).count(), `${who}: ${button}`).toBe(1);
+            expect(await page.locator(`${CALL_SCREEN} .call-screen-header .btn-video-menu`).count(), `${who}: ⋮`)
+                .toBe(1);
         }
     }, 120_000);
 });
