@@ -32,7 +32,7 @@ public partial class ChatVideoUI
         var videoStreams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(false);
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
         return videoStreams
-            .Where(s => s.AuthorId != ownAuthor?.Id && !IsLocallyEndedRemoteStream(s.StreamId))
+            .Where(s => s.AuthorId != ownAuthor?.Id)
             .ToArray();
     }
 
@@ -51,41 +51,12 @@ public partial class ChatVideoUI
             return false;
 
         var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return videoStreams.Any(s => s.AuthorId != ownAuthor?.Id && !IsLocallyEndedRemoteStream(s.StreamId));
+        return videoStreams.Any(s => s.AuthorId != ownAuthor?.Id);
     }
 
-    public void NotifyRemoteStreamEnded(ChatId chatId, StreamId streamId, bool isEndedSuccessfully, bool isTerminal)
-    {
-        if (isEndedSuccessfully)
-            Interlocked.Exchange(ref _remoteStreamEndedSuccessfully, 1);
-        if (!isTerminal)
-            return;
-
-        _locallyEndedRemoteStreams[streamId.Value] = CpuTimestamp.Now;
-        InvalidateRemoteStreamAccessors(chatId);
-    }
+    public void NotifyRemoteStreamEndedSuccessfully()
+        => Interlocked.Exchange(ref _remoteStreamEndedSuccessfully, 1);
 
     public bool ConsumeRemoteStreamEndedSuccessfully()
         => Interlocked.Exchange(ref _remoteStreamEndedSuccessfully, 0) != 0;
-
-    // Private methods
-
-    private bool IsLocallyEndedRemoteStream(StreamId streamId)
-    {
-        if (!_locallyEndedRemoteStreams.TryGetValue(streamId.Value, out var endedAt))
-            return false;
-        if (endedAt.Elapsed <= LocallyEndedRemoteStreamRetention)
-            return true;
-
-        _locallyEndedRemoteStreams.TryRemove(streamId.Value, out _);
-        return false;
-    }
-
-    private void InvalidateRemoteStreamAccessors(ChatId chatId)
-    {
-        using (Invalidation.Begin()) {
-            _ = GetRemoteStreams(chatId, default);
-            _ = HasRemoteStreams(chatId, default);
-        }
-    }
 }

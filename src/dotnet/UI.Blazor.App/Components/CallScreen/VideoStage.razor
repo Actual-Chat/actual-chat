@@ -19,7 +19,7 @@
     // to empty we enter a short ending-grace window (~500ms) so a codec/
     // quality switch can register a replacement stream before the video closes.
     // Two paths trigger grace:
-    //   1. JS reports OnEnded(null) → NotifyRemoteStreamEnded sets the flag
+    //   1. JS reports OnEnded(null) → NotifyRemoteStreamEndedSuccessfully sets the flag
     //      consumed at line above.
     //   2. Server removes the stream from the active list first (typical
     //      for sender hang-up — B's player is unmounted before its OnEnded

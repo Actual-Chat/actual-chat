@@ -64,6 +64,8 @@
 
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.VideoPlayer.create";
 
+    private static readonly RetryDelaySeq InitRetryDelays = RetryDelaySeq.Exp(0.5, 30);
+
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly TaskCompletionSource _whenCompletedSource = new();
 
@@ -104,63 +106,11 @@
         if (!firstRender || _isDisposed)
             return;
 
-        try {
-            BlazorRef = DotNetObjectReference.Create(this);
-
-            // Register decoder codecs early — before creating JS player.
-            // This ensures the server knows our capabilities ASAP, triggering
-            // the sender to switch codecs if the current stream is unsupported.
-            await RegisterViewer();
-            _viewerHeartbeatTimer = new Timer(
-                _ => _ = RegisterViewerHeartbeat(),
-                null,
-                TimeSpan.FromSeconds(30),
-                TimeSpan.FromSeconds(30));
-
-            // Ensure server clock is synced before JS compares its clock to the stream origin.
-            // ServerTimeSync is only registered on client platforms (WASM/MAUI), not on Server
-            var serverTimeSync = Services.GetService<ServerTimeSync>();
-            if (serverTimeSync != null)
-                await serverTimeSync.EnsureSynced(_disposeCts.Token);
-
-            // Use the top layer (last format = highest LayerId) for the JS player init —
-            // canvas dims, codec settings (SPS/PPS), and starting resolution all align to the
-            // best tier the receiver may ever decode. The decoder reconfigures at keyframe
-            // boundaries if the actual forwarded layer is lower.
-            var format = StreamInfo.Format;
-            // StartedAt, not SourceStartedAt: they are equal unless the server's
-            // gross-skew guard rebased StartedAt onto server time — and then the raw
-            // claim is broken (a sender with a stale clock once anchored its stream
-            // 160s in the past, pinning the audio A/V-sync hold at its cap for the
-            // whole stream life).
-            var startedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;
-            Log.LogDebug(
-                "[VideoTrackPlayer #{StreamId}] Creating JS player: authorId={AuthorId}, startedAtMs={StartedAtMs}, format={Format}",
-                StreamInfo.StreamId, StreamInfo.AuthorId, startedAtMs, format);
-            _jsPlayerRef = await JS.InvokeAsync<IJSObjectReference>(
-                JSCreateMethod,
-                _disposeCts.Token,
-                CanvasRef,
-                VideoElRef,
-                BgCanvasRef,
-                BlazorRef,
-                StreamInfo.StreamId.Value,
-                StreamInfo.AuthorId.Value,
-                format.Codec,
-                format.Size.Width,
-                format.Size.Height,
-                format.CodecSettings,
-                startedAtMs);
-
-            await _jsPlayerRef.InvokeVoidAsync("start", _disposeCts.Token);
-
-            // Start playback in background
-            _playTask = Task.Run(async () => await PlayAsync(_disposeCts.Token), CancellationToken.None);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            Log.LogError(ex, "Failed to initialize VideoTrackPlayer for stream #{StreamId}", StreamInfo.StreamId);
-            _whenCompletedSource.TrySetResult();
-        }
+        BlazorRef = DotNetObjectReference.Create(this);
+        _playTask = Task.Run(async () => {
+            if (await InitializeWithRetry(_disposeCts.Token))
+                await PlayAsync(_disposeCts.Token);
+        }, CancellationToken.None);
     }
 
     [JSInvokable]
@@ -323,15 +273,10 @@
         if (errorMessage is not null)
             Log.LogWarning("[VideoTrackPlayer #{StreamId}] OnEnded: {Error}", StreamInfo.StreamId, errorMessage);
 
-        var isEndedSuccessfully = errorMessage is null;
-        var isTerminal = isEndedSuccessfully
-            || string.Equals(errorMessage, "evicted", StringComparison.Ordinal)
-            || (errorMessage?.StartsWith("Player stream stalled:", StringComparison.Ordinal) ?? false);
-        Hub.ChatVideoUI.NotifyRemoteStreamEnded(
-            StreamInfo.ChatId,
-            StreamInfo.StreamId,
-            isEndedSuccessfully,
-            isTerminal);
+        // A clean end is not final: the playback loop keeps pulling until the server
+        // list drops the stream and this player is unmounted.
+        if (errorMessage is null)
+            Hub.ChatVideoUI.NotifyRemoteStreamEndedSuccessfully();
         _whenCompletedSource.TrySetResult();
     }
 
@@ -361,15 +306,7 @@
             // Unregistering here causes codec oscillation when ComputeState re-renders
             // rapidly (e.g., isRecording changes), which cycles AV1↔HEVC endlessly.
 
-            if (_jsPlayerRef is {} jsRef) {
-                try {
-                    await jsRef.InvokeVoidAsync("stop");
-                }
-                catch {
-                    // Ignore JS errors during disposal
-                }
-                await jsRef.DisposeSilentlyAsync();
-            }
+            await DisposeJSPlayer();
 
             BlazorRef?.DisposeSilently();
         }
@@ -377,6 +314,91 @@
             _disposeCts.Dispose();
             _whenCompletedSource.TrySetResult();
         }
+    }
+
+    private async Task<bool> InitializeWithRetry(CancellationToken cancellationToken)
+    {
+        for (var failureCount = 1; !cancellationToken.IsCancellationRequested; failureCount++) {
+            try {
+                await Initialize(cancellationToken);
+                return true;
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested) {
+                var retryDelay = InitRetryDelays[failureCount];
+                Log.LogError(ex,
+                    "[VideoTrackPlayer #{StreamId}] Initialization failed (#{FailureCount}), retrying in {RetryDelay}",
+                    StreamInfo.StreamId, failureCount, retryDelay);
+                await DisposeJSPlayer();
+                await Task.Delay(retryDelay, cancellationToken).SilentAwait(false);
+            }
+        }
+        return false;
+    }
+
+    private async Task Initialize(CancellationToken cancellationToken)
+    {
+        // Register decoder codecs early — before creating JS player.
+        // This ensures the server knows our capabilities ASAP, triggering
+        // the sender to switch codecs if the current stream is unsupported.
+        await RegisterViewer();
+        _viewerHeartbeatTimer ??= new Timer(
+            _ => _ = RegisterViewerHeartbeat(),
+            null,
+            TimeSpan.FromSeconds(30),
+            TimeSpan.FromSeconds(30));
+
+        // Ensure server clock is synced before JS compares its clock to the stream origin.
+        // ServerTimeSync is only registered on client platforms (WASM/MAUI), not on Server
+        var serverTimeSync = Services.GetService<ServerTimeSync>();
+        if (serverTimeSync != null)
+            await serverTimeSync.EnsureSynced(cancellationToken);
+
+        // Use the top layer (last format = highest LayerId) for the JS player init —
+        // canvas dims, codec settings (SPS/PPS), and starting resolution all align to the
+        // best tier the receiver may ever decode. The decoder reconfigures at keyframe
+        // boundaries if the actual forwarded layer is lower.
+        var format = StreamInfo.Format;
+        // StartedAt, not SourceStartedAt: they are equal unless the server's
+        // gross-skew guard rebased StartedAt onto server time — and then the raw
+        // claim is broken (a sender with a stale clock once anchored its stream
+        // 160s in the past, pinning the audio A/V-sync hold at its cap for the
+        // whole stream life).
+        var startedAtMs = StreamInfo.StartedAt.EpochOffset.TotalMilliseconds;
+        Log.LogDebug(
+            "[VideoTrackPlayer #{StreamId}] Creating JS player:"
+            + " authorId={AuthorId}, startedAtMs={StartedAtMs}, format={Format}",
+            StreamInfo.StreamId, StreamInfo.AuthorId, startedAtMs, format);
+        _jsPlayerRef = await JS.InvokeAsync<IJSObjectReference>(
+            JSCreateMethod,
+            cancellationToken,
+            CanvasRef,
+            VideoElRef,
+            BgCanvasRef,
+            BlazorRef,
+            StreamInfo.StreamId.Value,
+            StreamInfo.AuthorId.Value,
+            format.Codec,
+            format.Size.Width,
+            format.Size.Height,
+            format.CodecSettings,
+            startedAtMs);
+
+        await _jsPlayerRef.InvokeVoidAsync("start", cancellationToken);
+    }
+
+    private async Task DisposeJSPlayer()
+    {
+        var jsRef = Interlocked.Exchange(ref _jsPlayerRef, null);
+        if (jsRef is null)
+            return;
+
+        try {
+            await jsRef.InvokeVoidAsync("stop");
+        }
+        catch {
+            // Ignore JS errors during disposal
+        }
+        await jsRef.DisposeSilentlyAsync();
     }
 
     private async Task PlayAsync(CancellationToken cancellationToken)
