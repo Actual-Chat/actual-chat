@@ -139,6 +139,17 @@ the provider, and health-based auto-ejection built on a new general
 offline) and Gemini 3 (offline), upgrades Google to Chirp 3 and OpenAI to
 `gpt-transcribe` / `gpt-live-transcribe`.
 
+### Speech Coach — skill details and personal baselines
+
+[Skill details, speaking-day history, and personal baselines](./speech-coach-skill-details-and-baselines.md)
+— approved scope for explanatory skill views, activity-compressed history, user-selected baseline
+snapshots, and Soniox-based segment pace distributions; tracked by #5128. The initial
+[measurement/storage spike](./speech-coach-measurement-storage-spike.md) includes actual binary,
+PostgreSQL, and WAL evidence plus a legacy Soniox boundary regression. Accurate provider-word timing
+and replay validation remain rollout gates. [Existing dev audio validation](./speech-coach-dev-timing-validation.md)
+identifies interpolated starts and tests a separate detailed map; English recordings are not a blocker.
+Existing scores and weekly comparisons stay unchanged.
+
 ### Localization
 
 [Localization: what's left](./localization-remaining.md) — the app UI, server

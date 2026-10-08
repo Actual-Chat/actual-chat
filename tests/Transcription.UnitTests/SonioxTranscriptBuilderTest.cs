@@ -364,7 +364,7 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
         finalized.Should().ContainSingle();
         finalized[0].Text.Should().Be("Hello world");
         finalized[0].IsStable.Should().BeTrue();
-        finalized[0].TimeMap.Length.Should().Be(3, "the map holds one point per token boundary: 0, 0.5, 0.8");
+        finalized[0].TimeMap.Length.Should().Be(4, "both trimmed word boundaries are retained");
         finalized[0].TimeRange.End.Should().BeApproximately(0.8f, 0.001f);
         completed.Text.Should().Be("Hello world");
     }
@@ -472,6 +472,143 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
         // assert
         folded.Text.Should().Be("Да.");
         folded.TimeRange.End.Should().BeApproximately(1.05f, 0.001f);
+    }
+
+    [Fact]
+    public void HistoricalEndOnlyMapShouldNotBeTrustedForFinePace()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder(StableTokenAge);
+        var tokens = Enumerable.Range(0, 25).Select(i => {
+            var start = i * 400 + (i >= 12 ? 2_000 : 0);
+            return Token(i == 0 ? "word" : " word", start, start + 400, true, "en");
+        }).ToArray();
+        builder.Update(tokens, 12_000);
+
+        // act
+        var transcript = builder.Complete();
+        var points = new List<float> { 0, 0 };
+        var offset = 0;
+        foreach (var token in tokens) {
+            offset += token.Text.Length;
+            points.Add(offset);
+            points.Add(token.EndMs / 1_000f);
+        }
+        var markup = new ActualChat.Chat.PlayableTextMarkup(transcript.Text, new LinearMap(points.ToArray()));
+        var legacy = ActualChat.Chat.SpeechTimingStats.Compute(markup, 12, 1);
+        var detailed = ActualChat.Chat.SpeechPaceStats.Compute(
+            markup, 12, Languages.English, hasDetailedTiming: false);
+
+        // assert
+        tokens[12].StartMs.Should().Be(6_800);
+        tokens[11].EndMs.Should().Be(4_800);
+        legacy!.Pauses.Should().Be(0);
+        detailed.Should().BeNull();
+    }
+
+    [Fact]
+    public void SingleMapShouldPreservePausesForPlaybackAndCoach()
+    {
+        // arrange
+        var builder = new SonioxTranscriptBuilder(StableTokenAge);
+        var tokens = Enumerable.Range(0, 25).Select(i => {
+            var start = i * 400 + (i >= 12 ? 2_000 : 0);
+            return Token(i == 0 ? "word" : " word", start, start + 400, true, "en");
+        }).ToArray();
+        builder.Update(tokens, 12_000);
+        var original = builder.Complete();
+
+        // act
+        var map = SonioxTranscriptBuilder.CreateDetailedTimeMap(tokens);
+        var markup = new ActualChat.Chat.PlayableTextMarkup(original.Text, map);
+        var timing = ActualChat.Chat.SpeechTimingStats.Compute(markup, 12, 1);
+        var pace = ActualChat.Chat.SpeechPaceStats.Compute(
+            markup, 12, Languages.English, hasDetailedTiming: true);
+
+        // assert
+        timing!.Pauses.Should().Be(1);
+        timing.PauseSeconds.Should().BeApproximately(2, 0.001);
+        pace!.PauseMilliseconds.Should().Be(2_000);
+        pace.Segments.Sum(x => x.Words).Should().Be(25);
+        pace.Segments.Should().OnlyContain(x => x.WordsPerMinute == 150);
+        builder.Complete().TimeMap.IsIdenticalTo(original.TimeMap).Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData("word", "en")]
+    [InlineData("слово", "ru")]
+    public void DetailedMapShouldPreserveLeadingAndTrailingSilence(string word, string iso)
+    {
+        // arrange
+        var tokens = Enumerable.Range(0, 25).Select(i => {
+            var start = 2_000 + i * 400;
+            return Token(i == 0 ? word : " " + word, start, start + 400, true, iso);
+        }).ToArray();
+        var text = string.Concat(tokens.Select(x => x.Text));
+
+        // act
+        var map = SonioxTranscriptBuilder.CreateDetailedTimeMap(tokens);
+        var markup = new ActualChat.Chat.PlayableTextMarkup(text, map);
+        var pace = ActualChat.Chat.SpeechPaceStats.Compute(
+            markup, 14, Language.Parse(iso), hasDetailedTiming: true);
+
+        // assert
+        map.YRange.Start.Should().Be(2);
+        pace!.Segments.Should().ContainSingle();
+        pace.Segments[0].WordsPerMinute.Should().Be(150);
+        pace.UnmappedMilliseconds.Should().Be(4_000);
+    }
+
+    [Fact]
+    public void DetailedMapShouldRetainSubwordTimingAndIgnoreStructuralMarkers()
+    {
+        // arrange
+        var tokens = new[] {
+            Token("  hel", 1_000, 1_200, true),
+            Token("lo ", 1_200, 1_500, true),
+            Token("<end>", 1_500, 1_520, true),
+            Token(" ", 1_520, 1_600, true),
+            Token("world", 3_000, 3_500, true),
+        };
+
+        // act
+        var map = SonioxTranscriptBuilder.CreateDetailedTimeMap(tokens);
+
+        // assert
+        map.Map(2).Should().Be(1);
+        map.Map(7).Should().Be(1.5f);
+        map.Map(9).Should().Be(3);
+        map.Map(14).Should().Be(3.5f);
+        map.IsValid().Should().BeTrue();
+    }
+
+    [Fact]
+    public void DetailedMapShouldRejectBackwardWordTiming()
+    {
+        // arrange
+        var tokens = new[] {
+            Token("first", 1_000, 1_500, true),
+            Token(" second", 1_200, 1_800, true),
+        };
+
+        // act
+        var act = () => SonioxTranscriptBuilder.CreateDetailedTimeMap(tokens);
+
+        // assert
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void DetailedMapShouldRejectNegativeTokenTiming()
+    {
+        // arrange
+        var tokens = new[] { Token("word", -1, 400, true) };
+
+        // act
+        var act = () => SonioxTranscriptBuilder.CreateDetailedTimeMap(tokens);
+
+        // assert
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 
     // Private methods
