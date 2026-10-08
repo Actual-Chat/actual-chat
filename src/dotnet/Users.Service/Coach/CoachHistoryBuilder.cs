@@ -41,6 +41,8 @@ public static class CoachHistoryBuilder
             MeasuredWords = totalWords,
             MeasuredSeconds = totalSeconds,
             MinimumWords = settings.MinScoreWords,
+            SpeakingDays = perDay.Count(d => kind == CoachMetricKind.Pace
+                ? d.Pace?.MeasuredEntries > 0 : d.TaggedWords > 0),
             Words = kind == CoachMetricKind.Pace ? ApiArray<CoachChip>.Empty : counts
                 .OrderByDescending(p => p.Value)
                 .ThenBy(p => p.Key)

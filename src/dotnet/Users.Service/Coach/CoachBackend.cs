@@ -15,7 +15,7 @@ namespace ActualChat.Users;
 /// The user side of the speech coach: an append-or-replace log of the chat-side analyses keyed by
 /// source id, day rows rebuilt from it, and the live tip decided after each entry record.
 /// </summary>
-public class CoachBackend(IServiceProvider services)
+public partial class CoachBackend(IServiceProvider services)
     : ShardedDbServiceBase<UsersDbContext>(services), ICoachBackend
 {
     // Occurrences are picked out of the latest entries, page by page, until enough are found or the
@@ -178,38 +178,10 @@ public class CoachBackend(IServiceProvider services)
             .Take(OccurrenceMaxRows + 1)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var summaries = new List<SpeechPaceSummary>();
-        var moments = new List<CoachPaceMoment>();
-        long below = 0, within = 0, above = 0;
-        foreach (var row in rows.Take(OccurrenceMaxRows)) {
-            var record = row.ToModel();
-            if (record.Entry?.Language is not { } l || Language.GetIsoCode(l) != iso
-                || record.Entry.Pace is not { } measurement)
-                continue;
-
-            summaries.Add(SpeechPaceSummary.FromMeasurement(measurement));
-            var distribution = ActualChat.Audio.SpeechPaceHistogram.Classify(
-                measurement.Analysis.Segments, band.Slow, band.Fast);
-            below = checked(below + distribution.BelowMilliseconds);
-            within = checked(within + distribution.WithinMilliseconds);
-            above = checked(above + distribution.AboveMilliseconds);
-            foreach (var segment in measurement.Analysis.Segments.Reverse()) {
-                if (segment.WordsPerMinute >= band.Slow && segment.WordsPerMinute <= band.Fast
-                    || moments.Count >= ICoach.MaxOccurrences)
-                    continue;
-
-                var occurrence = new CoachOccurrence(record.ChatId, record.Entry.EntryLid,
-                    segment.TextRange.Start, segment.TextRange.End - segment.TextRange.Start, record.OccurredAt);
-                moments.Add(new CoachPaceMoment(occurrence, segment));
-            }
-        }
-        return new CoachPaceDetails {
-            Summary = SpeechPaceSummary.Merge(summaries),
-            Distribution = new ActualChat.Audio.SpeechPaceDistribution(below, within, above),
-            Moments = moments.ToApiArray(),
+        var records = rows.Take(OccurrenceMaxRows).Select(r => r.ToModel())
+            .Where(r => r.Entry?.Language is { } l && Language.GetIsoCode(l) == iso);
+        return CoachPaceDetails.FromRecords(records, band.Slow, band.Fast) with {
             IsTruncated = rows.Count > OccurrenceMaxRows,
-            Slow = band.Slow,
-            Fast = band.Fast,
         };
     }
 
@@ -259,6 +231,7 @@ public class CoachBackend(IServiceProvider services)
         else
             dbEvent.UpdateFrom(record);
 
+        await InvalidateBaselines(dbContext, userId, [record.SourceId], cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await RebuildDay(dbContext, userId, record.Day, cancellationToken).ConfigureAwait(false);
         if (oldDay is { } movedFrom)
@@ -274,6 +247,9 @@ public class CoachBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
         await dbContext.CoachDays.Lock(userId.Value, cancellationToken).ConfigureAwait(false);
+        var baselinePrefix = BaselinePrefix(userId);
+        await dbContext.KvasEntries.Where(e => e.Key.StartsWith(baselinePrefix))
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         await dbContext.CoachEvents
             .Where(e => e.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
@@ -345,13 +321,16 @@ public class CoachBackend(IServiceProvider services)
             Language.GetIsoCode(language));
         var rowBySourceId = rows.ToDictionary(r => r.SourceId);
         var days = new HashSet<Moment>();
-        foreach (var member in members.Where(m => m.IsExcluded != isExcluded)) {
+        var changed = members.Where(m => m.IsExcluded != isExcluded).ToList();
+        foreach (var member in changed) {
             rowBySourceId[member.SourceId].UpdateFrom(member with { IsExcluded = isExcluded });
             days.Add(member.Day);
         }
         if (days.Count == 0)
             return;
 
+        await InvalidateBaselines(dbContext, userId, changed.Select(m => m.SourceId), cancellationToken)
+            .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         foreach (var day in days)
             await RebuildDay(dbContext, userId, day, cancellationToken).ConfigureAwait(false);

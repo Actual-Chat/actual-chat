@@ -3,7 +3,8 @@
 Status: Measurement capture/persistence and Fillers, Weak Words, and Pace detail screens implemented
 on `feat/coach-skill-details`, including daily language histograms and exact segment-based target percentages.
 Capture now defaults on at the developer's request; no historical backfill or remote deployment.
-Speaking-day history and UTC calendar navigation are implemented. Personal baselines remain open.
+Speaking-day history, UTC calendar navigation, and personal baseline snapshots/comparisons are implemented.
+Real-recording precision, broader playback/native validation, and whole-flow storage budgets remain open.
 Tracking: [#5128](https://github.com/Actual-Chat/actual-chat/issues/5128).
 The fine-timing rollout gate remains open; see the [spike evidence](./speech-coach-measurement-storage-spike.md).
 
@@ -528,7 +529,7 @@ for placement under src/nodejs/src rather than hidden inside one Coach component
    whitespace checks passed. Local browser checks confirmed month/week navigation, weighted values,
    compressed real-date gaps, 390-pixel layout, and 14-pixel chart labels in light/dark themes.
    The full CI build remains blocked by the pre-existing Core.Benchmarks solution
-   filter mismatch. Personal baseline save/replace/clear and cutoff comparisons are the next slice.
+   filter mismatch. Speaking-day history was committed as `9ea5eff8bb`; baseline work follows below.
 3. Pace detail: versioned segments, aggregation of stored measurements, distribution, coverage, and review playback.
    Implemented exact inclusive target classification from stored segments, measured-audio coverage,
    and out-of-range playback moments with stale-map checks. Queries use a bounded 5,000-recording sample,
@@ -539,6 +540,24 @@ for placement under src/nodejs/src rather than hidden inside one Coach component
    checks covered full word lists, occurrences, period switching, 390-pixel mobile layout, and
    light/dark unmeasured Pace states. Real-recording replay/alignment validation remains open.
 4. Personal baselines: consistent snapshots, provenance/lifecycle, post-cutoff comparisons, and selection UI.
+   Implemented own-user save/replace/clear, selected-period preview, immutable identities/raw totals/coverage,
+   capture cutoff and definition version, and bounded source IDs/versions through existing user-scoped KVAS.
+   Capture holds the existing per-user Coach database lock; no new table or migration is required.
+   Queries reject periods exceeding 5,000 entry rows rather than silently sampling the snapshot/comparison.
+   New/unrelated speech leaves a snapshot unchanged; source replacement, exclusion, or removal persistently
+   invalidates it. Restoration and stale delivery never revive it. Clearing Coach also removes snapshots.
+   Baseline mode uses only post-cutoff finalized speech for all displayed details, retains the real cutoff day,
+   and discloses omitted cutoff-crossing speech. Empty/incompatible/invalidated comparisons remain unavailable.
+   Pace reuses shared exact classification/context construction and existing comfortable-range improvement
+   semantics, with range-change notices. Rates retain zero references and percentage-point deltas.
+   The UI supports preview/save/replace/clear, explicit comparison toggling, and a dated baseline chart line;
+   targets remain separate. All new copy is localized, including regenerated BCMS/Max catalogs.
+   Validation: 137 Users Coach unit, 49 Users Coach integration, six focused Coach UI integration, and
+   50 localization/label/chart tests passed (242 total). Web verification, style, and whitespace checks passed.
+   Browser checks confirmed local preview/save/toggle/clear, no comparison without later speech, aligned chart
+   references, and a 390-pixel dark layout without overflow. The local test baseline was cleared afterwards.
+   Full CI remains blocked by the existing solution-filter mismatch. Native/real-recording playback and
+   whole-flow operation-log/transport/WAL/backup budgets remain rollout gates, not claims of this slice.
 5. Final accessibility/localization/native verification and controlled rollout.
 
 Create/link the implementation issue and feature branch before implementation; do not store a task link

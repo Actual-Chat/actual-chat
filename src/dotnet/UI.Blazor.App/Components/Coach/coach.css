@@ -166,14 +166,19 @@
 .coach-progress .c-deltas-hint { @apply text-caption text-03 -mt-2; }
 .coach-progress .c-scores-caption { @apply text-caption text-03 -mt-2; }
 .coach-week-deltas .c-badge { @apply font-medium min-w-11 text-right; }
+.coach-skill-detail .c-baseline-change.improving,
 .coach-recent-summary .c-change.improving,
 .coach-week-deltas .c-badge.improving { color: var(--green-10); }
+.coach-skill-detail .c-baseline-change.stable,
 .coach-recent-summary .c-change.stable,
 .coach-week-deltas .c-badge.stable { color: var(--emerald-10); }
+.coach-skill-detail .c-baseline-change.worsening,
 .coach-recent-summary .c-change.worsening,
 .coach-week-deltas .c-badge.worsening { color: var(--text-banner-warning); }
+.theme-dark .coach-skill-detail .c-baseline-change.improving,
 .theme-dark .coach-recent-summary .c-change.improving,
 .theme-dark .coach-week-deltas .c-badge.improving { color: var(--green-70); }
+.theme-dark .coach-skill-detail .c-baseline-change.stable,
 .theme-dark .coach-recent-summary .c-change.stable,
 .theme-dark .coach-week-deltas .c-badge.stable { color: var(--emerald-40); }
 .coach-milestones .c-check {
@@ -231,6 +236,15 @@
     @apply flex-x items-center justify-between gap-x-2;
     @apply text-caption text-02;
 }
+.coach-skill-detail .c-baseline {
+    @apply flex-y gap-y-2;
+    @apply p-4;
+}
+.coach-skill-detail .c-baseline .chip { @apply whitespace-normal; }
+.coach-skill-detail .c-baseline .btn-text { @apply text-01; }
+.coach-skill-detail .c-baseline .btn-save-baseline,
+.coach-skill-detail .c-baseline .chip.on { color: var(--black); }
+.coach-skill-detail .c-baseline h3 { @apply text-body-500 text-01; }
 .coach-skill-detail .c-history {
     @apply flex-y gap-y-3;
     @apply p-4;
@@ -241,9 +255,20 @@
     @apply overflow-x-auto;
     @apply py-2;
 }
-.coach-skill-detail .c-speaking-chart .c-column {
-    @apply min-w-16;
+.coach-skill-detail .c-speaking-chart {
+    --bar-chart-label-height: 1.5rem;
+    --bar-chart-value-height: 1.25rem;
 }
+.coach-skill-detail .c-speaking-chart .c-column {
+    @apply min-w-16 pt-5;
+}
+.coach-skill-detail .c-speaking-chart .c-bar-track { @apply relative; }
+.coach-skill-detail .c-speaking-chart .c-value {
+    @apply absolute w-full;
+    bottom: var(--bar-height);
+}
+.coach-skill-detail .c-speaking-chart .c-bar { @apply shrink-0; }
+.coach-skill-detail .c-speaking-chart .c-reference { @apply border-primary; }
 .coach-skill-detail .c-speaking-chart .c-bar { min-height: 2px; }
 .coach-skill-detail .bar-chart .c-value,
 .coach-skill-detail .bar-chart .c-label { @apply text-caption text-02; }

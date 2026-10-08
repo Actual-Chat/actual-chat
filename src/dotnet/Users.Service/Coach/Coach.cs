@@ -216,6 +216,31 @@ public class Coach(IServiceProvider services) : ICoach
             .ToApiArray();
     }
 
+    public virtual async Task<CoachBaselineComparison> GetOwnBaselineComparison(
+        Session session, CoachMetricKind kind, string language, CoachHistoryPeriod period,
+        Moment anchor, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull() || language.IsNullOrWhiteSpace())
+            return new CoachBaselineComparison();
+
+        var now = Clocks.SystemClock.Now;
+        var range = CoachHistoryRanges.Get(period, anchor, now);
+        var result = await Backend.GetBaselineComparison(account.Id, kind,
+            Language.GetIsoCode(language), range, cancellationToken).ConfigureAwait(false);
+        InvalidateAtMidnight(new Range<Moment>(range.Start, UsageDay.DayOf(now) + TimeSpan.FromDays(1)));
+        return result;
+    }
+
+    public virtual async Task OnSetBaseline(Coach_SetBaseline command, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeActive);
+        var setBaselineCmd = new CoachBackend_SetBaseline(account.Id, command.Kind,
+            command.Language, command.Period, command.Anchor);
+        await Commander.Call(setBaselineCmd, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task OnSetFocus(Coach_SetFocus command, CancellationToken cancellationToken)
     {

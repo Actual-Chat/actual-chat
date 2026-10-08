@@ -71,6 +71,88 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         });
 
     [Fact(Timeout = 60_000)]
+    public async Task BaselinesShouldRemainImmutableInvalidatePersistentlyAndClearWithCoachData()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var commander = AppHost.Services.Commander();
+        var original = Entry(account.Id, GroupChatId.New(), 1, 300, 150, T0, 15, "like");
+        var recordCmd = new CoachBackend_Record(account.Id, CoachRecord.FromEntry(original), false);
+        await commander.Call(recordCmd);
+        var baselineCmd = new CoachBackend_SetBaseline(account.Id, CoachMetricKind.Fillers, "en",
+            CoachHistoryPeriod.Day, T0);
+
+        // act
+        await commander.Call(baselineCmd);
+        var baseline = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        var other = original with { Id = ChatEntryId.New(GroupChatId.New(), 1) };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(other), false));
+        var unchanged = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(new CoachBackend_Record(account.Id,
+            CoachRecord.FromEntry(original with { Version = 2, Fillers = 0 }), false));
+        var invalid = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(recordCmd);
+        var stale = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(baselineCmd);
+        var replaced = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(baselineCmd with { Period = null });
+        var cleared = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(baselineCmd);
+        await commander.Call(new CoachBackend_DeleteUserData(account.Id));
+        var deleted = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+
+        // assert
+        baseline.Should().NotBeNull();
+        baseline!.Value.Should().Be(0.05);
+        unchanged.Should().BeEquivalentTo(baseline);
+        invalid!.Value.Should().Be(baseline.Value);
+        invalid.InvalidatedAt.Should().NotBeNull();
+        stale.Should().BeEquivalentTo(invalid);
+        replaced!.Id.Should().NotBe(baseline.Id);
+        replaced.InvalidatedAt.Should().BeNull();
+        replaced.Value.Should().Be(0.025);
+        cleared.Should().BeNull();
+        deleted.Should().BeNull();
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SourceExclusionRestorationAndRemovalShouldKeepBaselinesUnavailable()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var commander = AppHost.Services.Commander();
+        var original = Entry(account.Id, GroupChatId.New(), 1, 300, 150, T0, 15, "like");
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(original), false));
+        var baselineCmd = new CoachBackend_SetBaseline(account.Id, CoachMetricKind.Fillers, "en",
+            CoachHistoryPeriod.Day, T0);
+        await commander.Call(baselineCmd);
+        var exclusionCmd = new CoachBackend_SetConversationExcluded(account.Id,
+            original.Id.ChatId, original.Id.LocalId, "en", true);
+
+        // act
+        await commander.Call(exclusionCmd);
+        var excluded = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(exclusionCmd with { IsExcluded = false });
+        var restored = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(baselineCmd);
+        await commander.Call(new CoachBackend_Record(account.Id,
+            CoachRecord.FromEntry(original with { Version = 2 }), true));
+        var removed = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        var comparison = await Coach.GetOwnBaselineComparison(tester.Session, CoachMetricKind.Fillers,
+            "en", CoachHistoryPeriod.Day, T0, default);
+
+        // assert
+        excluded!.InvalidatedAt.Should().NotBeNull();
+        restored.Should().BeEquivalentTo(excluded);
+        removed!.InvalidatedAt.Should().NotBeNull();
+        removed.Value.Should().Be(0.05);
+        comparison.Baseline.Should().BeEquivalentTo(removed);
+        comparison.Change.Should().BeNull();
+    }
+
+    [Fact(Timeout = 60_000)]
     public async Task SkillHistoryShouldWeightDaysKeepRealDatesAndRefreshAfterExclusion()
     {
         // arrange

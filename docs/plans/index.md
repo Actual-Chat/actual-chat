@@ -152,7 +152,10 @@ backfill. Fillers/Weak Words details reuse filtered occurrences and playback; Pa
 segments exactly, never estimating target percentages from histogram bins. Provider timing accuracy and
 broader replay validation remain open. Skill details now share UTC calendar periods across totals,
 occurrences, and distributions, with eligible speaking-day charts, real dates/gaps, and weighted period
-values. Personal baseline snapshots and their lifecycle are still pending.
+values. Personal baselines now support explicit preview/save/replace/clear, immutable raw snapshots,
+bounded provenance in user-scoped KVAS, permanent source invalidation, and post-cutoff comparisons across
+all detail sections. Pace comparisons reuse the current comfortable range; baselines are not targets.
+Real-recording/native playback validation and whole-flow storage budgets remain rollout gates.
 [Existing dev audio validation](./speech-coach-dev-timing-validation.md) identifies interpolated starts;
 new Soniox recordings improve the single existing map. English recordings are not a blocker.
 Existing score formulas and weekly comparisons stay unchanged.

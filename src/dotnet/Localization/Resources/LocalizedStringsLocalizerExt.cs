@@ -2261,6 +2261,26 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_HistoryGap_Format(object arg0) => l["Coach_HistoryGap_Format", arg0].Value;
         public string Coach_HistoryMinimumWords_Format(object arg0)
             => l["Coach_HistoryMinimumWords_Format", arg0].Value;
+
+        public string Coach_PersonalBaseline => l["Coach_PersonalBaseline"].Value;
+
+        public string Coach_UseMeasurements => l["Coach_UseMeasurements"].Value;
+
+        public string Coach_ReplaceBaseline => l["Coach_ReplaceBaseline"].Value;
+
+        public string Coach_BaselineInvalid => l["Coach_BaselineInvalid"].Value;
+
+        public string Coach_CompareBaseline => l["Coach_CompareBaseline"].Value;
+
+        public string Coach_SinceBaseline_Format(object arg0)
+            => l["Coach_SinceBaseline_Format", arg0].Value;
+
+        public string Coach_BaselineRangeChanged => l["Coach_BaselineRangeChanged"].Value;
+
+        public string Coach_BaselineOmitted_Format(object arg0)
+            => l["Coach_BaselineOmitted_Format", arg0].Value;
+
+        public string Coach_BaselineReference => l["Coach_BaselineReference"].Value;
         public string Coach_MarkProfanityTitle => l["Coach_MarkProfanityTitle"].Value;
         public string Coach_MarkProfanityBody_Format(object arg0) => l["Coach_MarkProfanityBody_Format", arg0].Value;
 
