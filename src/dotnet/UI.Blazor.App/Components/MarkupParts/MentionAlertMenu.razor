@@ -1,0 +1,41 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Notifications
+@inherits Menu<AppUIHub>
+@{
+    var chatEntryId = ChatEntryId.TryParse(Arguments.ElementAtOrDefault(0));
+    var authorId = AuthorId.TryParse(Arguments.ElementAtOrDefault(1));
+}
+
+<div class="mention-alert-menu">
+    <MenuEntry
+        Icon="icon-bell"
+        Text="@L.Alert_Alert"
+        Click="@(() => OnAlert(chatEntryId, authorId))">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-info"
+        Text="@L.Alert_ShowInfo"
+        Click="@(() => OnShowInfo(authorId))">
+    </MenuEntry>
+</div>
+
+@code {
+    private Task OnAlert(ChatEntryId? chatEntryId, AuthorId? authorId) {
+        if (chatEntryId is not { } entryId || authorId is not { } aid)
+            return Task.CompletedTask;
+
+        var command = new Notifications_NotifyMentionedMembers {
+            Session = Hub.Session,
+            ChatEntryId = entryId,
+            AuthorIds = ApiArray.New(aid),
+        };
+        return UICommander.Run(command);
+    }
+
+    private Task OnShowInfo(AuthorId? authorId) {
+        if (authorId is { } aid)
+            return Hub.AuthorUI.Show(aid);
+
+        return Task.CompletedTask;
+    }
+}

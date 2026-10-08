@@ -1,0 +1,24 @@
+/* The round button clips its content (btn-content: overflow-hidden + rounded-full), so let the
+   count/checkmark badge spill past the button's edge instead of being cut off. */
+.btn-alert-mentioned,
+.btn-alert-mentioned .btn-content {
+    @apply overflow-visible;
+}
+.btn-alert-mentioned .c-bell {
+    @apply relative flex items-center justify-center;
+}
+.btn-alert-mentioned .c-count {
+    @apply absolute -top-1 -right-1;
+    @apply flex items-center justify-center;
+    @apply min-w-4 h-4 px-1;
+    @apply rounded-full bg-primary text-primary-title text-micro-500;
+}
+.btn-alert-mentioned .c-done {
+    @apply absolute -top-1 -right-1;
+    @apply flex items-center justify-center;
+    @apply min-w-4 h-4 px-1;
+    @apply rounded-full bg-primary text-primary-title;
+}
+.btn-alert-mentioned .c-done i {
+    @apply text-micro-500;
+}

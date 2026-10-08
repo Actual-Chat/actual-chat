@@ -1,12 +1,26 @@
 @namespace ActualChat.UI.Blazor.App.Components.MarkupParts
 
+@{
+    RenderFragment inner = @<text>
+        <div class="truncate">@Label</div>
+        @if (IsInOwnMessage) {
+            <i class="@StateIconCls"></i>
+        }
+    </text>;
+}
+
 @if (!Href.IsNullOrEmpty()) {
     <a href="@Href" class="@Cls" data-tooltip="@Tooltip" data-tooltip-position="@TooltipPosition">
-        <div class="truncate">@Label</div>
+        @inner
     </a>
+} else if (!AlertMenuRef.IsNullOrEmpty()) {
+    <span class="@Cls" data-tooltip="@Tooltip" data-tooltip-position="@TooltipPosition"
+          data-menu="@AlertMenuRef" data-menu-trigger="@MenuTrigger.Primary" data-menu-placement="@MenuPlacement">
+        @inner
+    </span>
 } else {
     <span class="@Cls" data-tooltip="@Tooltip" data-tooltip-position="@TooltipPosition" @onclick="OnClick">
-        <div class="truncate">@Label</div>
+        @inner
     </span>
 }
 
@@ -16,11 +30,23 @@
     [Parameter] public bool IsOwn { get; set; }
     [Parameter] public bool IsMember { get; set; } = true;
     [Parameter] public bool? HasRead { get; set; }
+    // True when this mention sits inside the current user's own message - the only case that shows the
+    // per-mention alert state (bell / filled bell / checkmark) and the alert menu.
+    [Parameter] public bool IsInOwnMessage { get; set; }
+    [Parameter] public bool IsNotified { get; set; }
+    // Non-empty only for a pending mention (own message, not yet alerted, not yet read): opens the alert menu.
+    [Parameter] public string AlertMenuRef { get; set; } = "";
     [Parameter] public string? Tooltip { get; set; }
     [Parameter] public EventCallback OnClick { get; set; }
 
     private string? TooltipPosition
         => Tooltip.IsNullOrEmpty() ? null : FloatingPosition.Top.ToPositionString();
+    private string MenuPlacement => FloatingPosition.Top.ToPositionString();
+
+    private string StateIconCls
+        => HasRead == true ? "icon-user-check c-mention-state"
+            : IsNotified ? "icon-bell-check c-mention-state"
+            : "icon-bell c-mention-state";
 
     private string Cls {
         get {
@@ -29,7 +55,13 @@
                 cls += " mention-markup-own";
             if (!IsMember)
                 cls += " mention-markup-non-member line-through";
-            if (HasRead == false)
+            if (IsInOwnMessage) {
+                cls += " mention-markup-alertable";
+                cls += HasRead == true ? " mention-read"
+                    : IsNotified ? " mention-notified"
+                    : " mention-pending";
+            }
+            else if (HasRead == false)
                 cls += " dim";
             return cls;
         }

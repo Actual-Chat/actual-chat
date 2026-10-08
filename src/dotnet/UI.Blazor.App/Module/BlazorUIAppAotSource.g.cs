@@ -358,7 +358,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyAllButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyCallPanel>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotifyMentionedMembers>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OAuthConsentModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OnboardingModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal>();
@@ -1238,7 +1237,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyAllButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyCallPanel), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.NotifyMentionedMembers), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OAuthConsentModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OnboardingModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.OwnAccountEditorModal), AotTypeKind.Component),

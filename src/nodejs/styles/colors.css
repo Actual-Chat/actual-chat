@@ -480,6 +480,9 @@
     --message-hover: var(--blue-50-05);
     --mention-other: var(--blue-95);
     --mention-other-text: var(--primary);
+    --mention-pending: var(--black-10);
+    --mention-muted-text: var(--black-60);
+    --mention-active: var(--blue-50-10);
     --mention-own: var(--violet-50-10);
     --mention-own-text: var(--violet-50);
     --mention-list-item-selected: var(--blue-50-10);
@@ -758,6 +761,9 @@
     --message-hover: var(--ash-99-08);
     --mention-other: var(--blue-50-20);
     --mention-other-text: var(--blue-80);
+    --mention-pending: var(--white-10);
+    --mention-muted-text: var(--white-60);
+    --mention-active: var(--blue-50-10);
     --mention-own: var(--violet-60-20);
     --mention-own-text: var(--violet-80);
     --mention-list-item-selected: var(--ash-99-04);
@@ -1031,6 +1037,9 @@
     --message-hover: var(--blue-50-10);
     --mention-other: var(--blue-95);
     --mention-other-text: var(--primary);
+    --mention-pending: var(--black-10);
+    --mention-muted-text: var(--black-60);
+    --mention-active: var(--blue-50-10);
     --mention-own: var(--violet-50-10);
     --mention-own-text: var(--violet-50);
     --mention-list-item-selected: var(--blue-50-10);

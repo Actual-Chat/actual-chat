@@ -1,0 +1,76 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Notifications
+@inherits ComputedStateComponent<AppUIHub, AlertMentionedButton.Model>
+@{
+    var m = State.Value;
+    if (!m.IsVisible)
+        return;
+
+    var tooltip = m.AlertableCount > 0
+        ? L.Alert_AlertAllCount_Format(m.AlertableCount)
+        : L.Alert_EveryoneAlerted;
+}
+
+<ButtonRound
+    Class="btn-xs btn-transparent btn-alert-mentioned"
+    Click="OnClick"
+    Tooltip="@tooltip"
+    TooltipPosition="FloatingPosition.Top">
+    <div class="c-bell">
+        <i class="icon-bell text-xl text-icon-01"></i>
+        @if (m.AlertableCount == 0) {
+            <span class="c-done"><i class="icon-checkmark-simple"></i></span>
+        } else if (m.NotifiedCount > 0) {
+            <span class="c-count">@m.NotifiedCount</span>
+        }
+    </div>
+</ButtonRound>
+
+@code {
+    private INotifications Notifications => Hub.Notifications;
+
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var alerts = await Notifications
+            .ListMentionedMemberAlerts(Session, Entry.Id, cancellationToken)
+            .ConfigureAwait(false);
+        if (alerts.Count == 0)
+            return Model.None; // Not the caller's own message, or no mentions.
+
+        var notified = alerts.Count(a => a.IsNotified);
+        var alertable = alerts
+            .Where(a => a is { IsNotified: false, IsRead: false })
+            .Select(a => a.AuthorId)
+            .ToApiArray();
+        return new(true, notified, alertable);
+    }
+
+    private Task OnClick() {
+        var alertable = State.Value.AlertableAuthorIds;
+        if (alertable.Count == 0)
+            return Task.CompletedTask;
+
+        var command = new Notifications_NotifyMentionedMembers {
+            Session = Session,
+            ChatEntryId = Entry.Id,
+            AuthorIds = alertable,
+        };
+        return UICommander.Run(command);
+    }
+
+    // Nested types
+
+    public sealed record Model(bool IsVisible, int NotifiedCount, ApiArray<AuthorId> AlertableAuthorIds) {
+        public static readonly Model None = new(false, 0, default);
+        public int AlertableCount => AlertableAuthorIds.Count;
+    }
+}
