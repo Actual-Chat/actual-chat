@@ -35,7 +35,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // Set when a remote stream completes normally (sender intentionally ended).
     // Consumed by VideoStage to suppress "Connecting..." overlay.
-    private int _remoteStreamEndedSuccessfully;
+    private int _isRemoteStreamEndedSuccessfully;
 
     // Raised to ask VideoStreamingPreview consumers to pause (true) / resume (false)
     // their local preview rendering while something else owns the preview canvas —
