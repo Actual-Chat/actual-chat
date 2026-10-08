@@ -8,14 +8,14 @@ namespace ActualChat.Users.Flows;
 
 // One note on Monday at the user's digest time, about the week before; it lands in the user's
 // stored settings and the Progress tab shows it
-[Flow(DelayQuanta = 3600)] // 1 Hour
+[Flow(DelayQuanta = 600)] // 10 minutes
 [DataContract, MessagePackObject(true)]
 public partial class CoachWeeklyNoteFlow : PeriodicFlow
 {
     protected override TimeSpan MaxResumeDelay => TimeSpan.FromDays(8);
 
     [IgnoreDataMember, IgnoreMember]
-    private UserId UserId { get; set; }
+    private UserId UserId { get; set; } = null!;
     [IgnoreDataMember, IgnoreMember]
     private TimeZoneInfo TimeZoneInfo { get; set; } = null!;
     [IgnoreDataMember, IgnoreMember]

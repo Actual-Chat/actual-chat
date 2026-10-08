@@ -19,7 +19,7 @@ public class EnumerableExtTest
             .Equal((null, 4), (null, 5), (null, 6));
 
     [Fact]
-    public void Merge_NoOverlappingElements_ReturnsInterleavedAsymetricPairs()
+    public void Merge_NoOverlappingElements_ReturnsInterleavedAsymmetricPairs()
         => Merge([1, 3, 5], [2, 4, 6])
             .Should()
             .Equal(
