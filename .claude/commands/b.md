@@ -97,6 +97,11 @@ iOS. `--prod` on macOS, `--no-web` and `-- <args>` work.
 
 `app pack` takes only `<PLATFORM>`, `--prod` and `--aot`.
 
+Device-side detail for `app run` — prerequisites, where the logs go, whether the
+command blocks, troubleshooting — lives in the per-platform skills: `/android-run`,
+`/ios-run` (device or simulator) and `/mac-run` (AppKit or Mac Catalyst). They show
+at most a flag or two; the full option list lives here only.
+
 ### `server` options
 
 | Command | Options |
