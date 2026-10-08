@@ -320,7 +320,6 @@ public class CallUIDecisionsTest
         => new() {
             CallId = callId ?? CallId.New(chatId, "0"),
             ChatId = chatId,
-            AuthorId = AuthorId.New(chatId, 2),
             Role = role,
             Phase = phase,
             PeerId = role == CallRole.Callee ? CallerA : null,

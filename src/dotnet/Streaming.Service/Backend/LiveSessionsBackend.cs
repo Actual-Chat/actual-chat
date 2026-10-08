@@ -1283,7 +1283,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         if (await GetUserId(chatId, authorId, cancellationToken).ConfigureAwait(false) is not { } userId)
             return true; // No user behind this author: nothing to arbitrate, so never block the call
 
-        var call = new UserCall {
+        var call = new UserCallClaim {
             ChatId = chatId,
             AuthorId = authorId,
             Role = role,

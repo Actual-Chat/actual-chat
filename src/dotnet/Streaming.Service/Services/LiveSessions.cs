@@ -109,7 +109,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
         var call = await CallsBackend.GetUserCall(account.Id, cancellationToken).ConfigureAwait(false);
-        return call is not null && IsOnClient(call, session.Hash, clientId) ? call : null;
+        return call is not null && IsOnClient(call, session.Hash, clientId) ? call.ToUserCall() : null;
     }
 
     public Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
@@ -357,7 +357,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
 
     // A ring is every client's to answer. Once placed or answered, the call is the client's that did it;
     // a claim naming no session or no client is shown to every client that could have taken it.
-    internal static bool IsOnClient(UserCall call, string sessionHash, string clientId)
+    internal static bool IsOnClient(UserCallClaim call, string sessionHash, string clientId)
         => call.Phase == CallPhase.Ringing
             || call.SessionHash is null
             || (call.SessionHash == sessionHash && (call.ClientId is null || call.ClientId == clientId));

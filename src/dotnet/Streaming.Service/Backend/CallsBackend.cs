@@ -27,7 +27,7 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
     // reaching Release - so a live claim re-checks itself on this period.
     private static readonly TimeSpan ClaimSelfHeal = TimeSpan.FromSeconds(10);
 
-    private readonly RedisScope<UserCall> _userCalls;
+    private readonly RedisScope<UserCallClaim> _userCalls;
     private readonly AsyncLockSet<UserId> _claimLocks = new(LockReentryMode.CheckedFail);
 
     private ILiveSessionsBackend LiveSessionsBackend
@@ -36,13 +36,13 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
     public CallsBackend(IServiceProvider services) : base(services, ShardScheme.LiveBackend)
     {
         var redisDb = services.GetRequiredService<RedisDb<StreamingContext>>();
-        _userCalls = new RedisScope<UserCall>(redisDb, "live-session:user-call", Log) {
+        _userCalls = new RedisScope<UserCallClaim>(redisDb, "live-session:user-call", Log) {
             DefaultTtl = ClaimTtl,
         };
     }
 
     // [ComputeMethod]
-    public virtual async Task<UserCall?> GetUserCall(UserId userId, CancellationToken cancellationToken)
+    public virtual async Task<UserCallClaim?> GetUserCall(UserId userId, CancellationToken cancellationToken)
     {
         // Not SafeGet: a failed read is no answer, and "no call" ends the call on the client that runs it.
         var call = await _userCalls.Get(userId.Value).ConfigureAwait(false);
@@ -67,7 +67,7 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
         return ToEnded(call, CallOutcome.None);
     }
 
-    public virtual async Task<bool> TryClaim(UserId userId, UserCall call, CancellationToken cancellationToken)
+    public virtual async Task<bool> TryClaim(UserId userId, UserCallClaim call, CancellationToken cancellationToken)
     {
         using (Computed.BeginIsolation())
         using (await _claimLocks.Lock(userId, cancellationToken).ConfigureAwait(false)) {
@@ -109,7 +109,7 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
 
     // Null when the chat's call no longer backs the claim. The phase stored with the claim is only its
     // initial one, and holds only for ClaimGrace, before the call exists.
-    private async Task<CallPhase?> GetPhase(UserCall call, CancellationToken cancellationToken)
+    private async Task<CallPhase?> GetPhase(UserCallClaim call, CancellationToken cancellationToken)
     {
         var liveCall = await LiveSessionsBackend.GetCall(call.ChatId, cancellationToken).ConfigureAwait(false);
         var live = liveCall is null
@@ -126,7 +126,7 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
     }
 
     internal static CallPhase? GetPhase(
-        UserCall call, LiveCall? liveCall, LiveSession? live, ApiArray<CallInvite> invites)
+        UserCallClaim call, LiveCall? liveCall, LiveSession? live, ApiArray<CallInvite> invites)
     {
         if (liveCall is null)
             return null;
@@ -156,7 +156,7 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
 
     // The claim was judged from a read that a TryClaim may have overtaken since: whatever is there now
     // is another call's claim, not this stale one.
-    private async Task EndIfUnchanged(UserId userId, UserCall call)
+    private async Task EndIfUnchanged(UserId userId, UserCallClaim call)
     {
         try {
             using (Computed.BeginIsolation())
@@ -173,10 +173,10 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
         }
     }
 
-    private UserCall ToEnded(UserCall call, CallOutcome outcome)
+    private UserCallClaim ToEnded(UserCallClaim call, CallOutcome outcome)
         => call with { Phase = CallPhase.Ended, Outcome = outcome, SinceAt = Clocks.SystemClock.Now };
 
-    private async Task<UserCall?> SafeGet(UserId userId)
+    private async Task<UserCallClaim?> SafeGet(UserId userId)
     {
         try {
             return await _userCalls.Get(userId.Value).ConfigureAwait(false);
