@@ -26,5 +26,17 @@ if (-not $dll -or $dll.LastWriteTimeUtc -lt $newestSource) {
     $dll = Get-BuildDll
 }
 
-& dotnet $dll.FullName @args
+# `pwsh -File` reads "-p:X=1" as a parameter with a value and hands the script "-p" and "X=1",
+# so when this script is the process entry point its arguments are taken from the command line.
+$rawArgs = $args
+$commandLine = [Environment]::GetCommandLineArgs()
+$scriptName = Split-Path -Leaf $PSCommandPath
+for ($i = 1; $i -lt $commandLine.Count; $i++) {
+    if ([IO.Path]::GetFileName($commandLine[$i]) -eq $scriptName) {
+        $rawArgs = @($commandLine | Select-Object -Skip ($i + 1))
+        break
+    }
+}
+
+& dotnet $dll.FullName @rawArgs
 exit $LASTEXITCODE
