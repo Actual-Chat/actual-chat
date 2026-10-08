@@ -167,10 +167,10 @@ straight to `CallScreensUI.Accept`.
 
 ::: info The push is only a hint
 A push can't make a client ring: `Touch()` invalidates the `GetMyCall` computed and nothing
-more. The answer comes from `CallsBackend.GetUserCall`, which returns the claim only while the
+more. The answer comes from `CallsBackend.GetUserCall`, which returns a live claim only while the
 chat's call still backs it - the reader's invite is `Ringing`, or they are the dialing
-caller, or the call is answered and they are in it. A stale push, or a call already answered on
-another device, therefore produces nothing.
+caller, or the call is answered and they are in it - and an `Ended` one after that. A stale push,
+or a call already answered on another device, therefore produces nothing.
 :::
 
 ## The user's call, and the client slot
@@ -185,13 +185,22 @@ and, for a callee, `ListInvites`):
 the chat's `LiveCall` is the claim's call, and the invite is `Ringing` for a `Ringing` claim,
 the call is unanswered and has no outcome yet for the caller's `Dialing` one, and for `Active`
 the call is answered and the user is its caller, an invitee who accepted, or a live member. A
-claim the call no longer backs is released on the spot, so a crashed client can't stay busy.
+claim the call no longer backs is ended on the spot, so a crashed client can't stay busy.
 Two exceptions keep that rule workable:
 
 - a claim younger than `ClaimGrace` (10 s) backs itself, because `StartCall` has to know who
   is free *before* it writes the call the claim would be checked against;
 - a live claim re-checks itself every `ClaimSelfHeal` (10 s), since nothing invalidates a
   claim that lapsed with its Redis TTL or outlived its call.
+
+**An ended claim.** A call's end doesn't delete its claims: it turns each one `Ended`, with the
+call's `CallOutcome` - `EndCall` for the parties, and every other place that lets a user go (a
+decline, a cancel, an expired ring, a refused late answer, a busy call) for the user it lets go. So
+does `GetUserCall` for a claim the call no longer backs, with no outcome, as it can't know one. An
+ended claim keeps nobody busy: `TryClaim` overwrites it. It isn't refreshed either, and lapses after
+`EndedTtl` (10 min), long enough for the client that ran the call to read how it went. A failed
+Redis read on the way - of the claim, the call or its invites - is an error of `GetUserCall`, not
+"no call": the latter ends the call on the client that runs it.
 
 Ambient live sessions never claim anything: recording or listening in a chat without a call
 doesn't make anyone busy - nor does being in the session a call rang into, unless you are one of
@@ -212,32 +221,39 @@ audio died with it anyway, and the call closes on the missing presence. A claim 
 session or no client - one taken through the backend directly, as tests do - is shown to every
 client that could have made it.
 
-**The client slot** is `CallUI._activeCall`, and it is a projection of `GetMyCall` plus the
-intent of a gesture this client just made - `StartCall` sets `Caller/Dialing`, `Accept` sets
-`Active`, hanging up clears it, each before its RPC, so the screens follow the tap and not the
-round trip. `CallUI.Reconcile` decides between the two:
+**The client slot** is `CallUI._activeCall`: the one call this client is in. A call enters it on a
+gesture made here - `StartCall` sets `Caller/Dialing`, `Accept` sets `Active`, each before its RPC,
+so the screens follow the tap and not the round trip - or on a ring `GetMyCall` names. It leaves on
+a hang-up made here, or on the server's word that it is over; never because the server doesn't name
+it for a while (#5053). Nothing in it runs on a timer.
 
-| Server says | Intent | Slot |
+That word can be trusted because `GetMyCall` is `NoCache`: it has no stand-in value, so a
+disconnected client waits for the real answer instead of reading "no call", and every answer it
+does get is the server's. `CallUI.Reconcile` applies one to the slot:
+
+| Server says | Slot holds | Slot |
 |---|---|---|
-| nothing | fresh, wants a call | the intent - "no call" is also what a disconnected client reads |
-| nothing | stale or none | empty |
-| the call just left | fresh | what the intent wants - empty, or the call placed since - until the server catches up |
-| another call to the chat just left | fresh, wants nothing | the server's - a call back must not wait the grace out |
-| this call | fresh, already `Active` | keep `Active` - a just-accepted ring must not blink back to ringing |
-| this call | otherwise | the server's |
+| a call this client left | any | unchanged - the server names it until the leave reaches it |
+| nothing, or this call ended | a gesture on its way | unchanged - the server can't know of it yet |
+| nothing | a named call | empty - the call is over, or was answered on another device |
+| this call ended | the call | empty |
+| a call ended | another call, or nothing | unchanged |
+| this call | the call `Active`, the server not yet | keep `Active` - a just-accepted ring must not blink back to ringing |
+| this call | the call, or a gesture in its chat | the server's - with its id |
 | another call, or another chat | any | the server's - it arbitrated, and the local claim lost |
 
-A gesture holds the slot before the server has named the call, so an intent's call has no id until
-`StartCall` returns one or a `GetMyCall` answer brings it; until then it matches any call in its
-chat. "The call just left" is
-told by the id the slot held when it was released - or by chat alone, when it held none.
+A gesture on its way is a call placed here whose `StartCall` hasn't answered, so it has no id, or a
+ring answered here whose `AcceptCall` hasn't: a late answer has its ring claim ended until the
+answer takes it back. A placed call can wait for its id a long time - a `StartCall` resent over a
+server restart got its answer 14 s after the tap (#5115) - and nothing about it expires meanwhile.
+
+"A call this client left" is the id the slot held when it was released, kept until the server stops
+naming that call live - for a group call that is when it ends, since it goes on without this
+client. A call cancelled before `StartCall` named it is known by chat alone until the id arrives.
 
 When the slot goes from one call straight to another in the same chat, the screens drop the first
 call's collapsed and muted state and stop its audio, but don't hang up or leave the screen by
 chat - that would do it to the new call. The over-lock flag stays, for the new call's release.
-
-An intent expires on its own timer (`IntentGrace`, 10 s), because the answer that ignores it
-may never change again.
 
 Everything that shows a call reads the slot. The modal, the island and the full-screen view
 read it through `CallScreensUI.GetCallView`; the ringtone through `GetIncomingCall`, the slot
@@ -332,7 +348,8 @@ its DOM moves there - and back out when the slot goes.
   the modal closes itself once the view moves on. When the slot is released it tears the
   screens down: it clears the chat's flags, moves the app back behind the lock screen if the
   call was shown over it, otherwise opens the chat if the call had the full-screen view, and
-  stops an active call's audio. This is the only place that tears down a call the slot held.
+  stops an active call's audio. This is the only place that tears down a call the slot held -
+  which is safe now that the slot is released only on a real end.
   It keeps the last view across restarts of the loop and skips a failed read, so a release
   can't slip through a gap. Decline, Hang up and the other actions don't tear the screens
   down; the one exception is a ring that ends before the slot ever held it, whose flags
@@ -435,18 +452,21 @@ call's card needs no summary to be kept. Any other session closes as an ambient 
 all.
 
 What decides when that happens is the clients' media. The hang-up button stops all of it: leaving a
-call is stopping its audio. A call that ends without this client's hang-up goes through
+call is stopping its media, a recording that predates the call included - by design, as nobody
+needs a recording to outlive their own hang-up.
+
+A call that ends without this client's hang-up leaves the slot on the server's word (see
+[the client slot](#the-users-call-and-the-client-slot)), and the release goes through
 `CallUI.EndCallMedia`:
 
-- **In a peer chat** it takes the recording, the listening and the video along. One party leaving
-  ends the call, the call's end stops the other's media, and with nobody recording the session
-  closes for both. Whoever has more to say starts a new call, or records in the chat, which starts
-  a new session.
+- **In a peer chat** the end takes the recording, the listening and the video along. One party
+  leaving ends the call, the call's end stops the other's media, and with nobody recording the
+  session closes for both. Whoever has more to say starts a new call, or records in the chat, which
+  starts a new session.
 - **Elsewhere** it touches nothing. Such a call ends only once its last party has hung up, so
   whatever media a client still runs there is its own.
 
-Membership in a call and media are one and the same, so a recording that predates a group call
-stops on one's own hang-up as well. Telling the two apart is #5053.
+The ended claim carries the call's `CallOutcome`, for a "Call ended" screen to say how it went (#5139).
 
 ### A call into an ongoing session
 
@@ -556,7 +576,7 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
 | `CallsBackend.ClaimTtl` | 2 min | Redis TTL on a user call, refreshed while the call lives. |
 | `CallsBackend.ClaimGrace` | 10 s | How long a fresh claim backs itself, before the call has to. |
 | `CallsBackend.ClaimSelfHeal` | 10 s | How often a live claim re-checks itself against the call. |
-| `CallUI.IntentGrace` | 10 s | How long a gesture's own view of the slot outlives an answer that ignores it. |
+| `CallsBackend.EndedTtl` | 10 min | How long an ended claim stays readable, for the client that ran the call to hear of its end. |
 
 ## Known gaps
 
@@ -579,6 +599,10 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
 - **A hang-up frees the user only as fast as presence travels.** The claim goes when the
   call stops backing it, which follows the participation the client drops on hang-up; the
   self-heal bounds the worst case at `ClaimSelfHeal`.
+- **A group call this client left keeps its claim live.** The server names it until it ends, and
+  the client ignores it all that time; `StartCall` meanwhile finds the user busy.
+- **The end doesn't say who ended it.** The outcome tells a hang-up from a ring that ran out, but
+  not a hang-up from a lost connection: both reach the server as the same presence drop.
 - **"Connecting" isn't shown yet.** Between the answer and both sides' presence the caller's
   status is `Connecting`, but neither side's screens tell it apart from a connected call.
 

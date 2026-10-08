@@ -64,6 +64,21 @@ public class UserCallVisibilityTest
     }
 
     [Fact]
+    public void EndOfAnAnsweredCallShouldBeOnlyOnTheClientThatRanIt()
+    {
+        // arrange — the end is what stops the call's media, and only the answering client runs any
+        var call = Call(CallRole.Callee, CallPhase.Ended, Phone, "phone-app");
+
+        // act
+        var isOnPhone = LiveSessions.IsOnClient(call, Phone, "phone-app");
+        var isOnDesktop = LiveSessions.IsOnClient(call, Desktop, "desktop-tab");
+
+        // assert
+        isOnPhone.Should().BeTrue();
+        isOnDesktop.Should().BeFalse();
+    }
+
+    [Fact]
     public void ClaimNamingNoSessionShouldBeOnEveryClient()
     {
         // arrange — taken by a pod predating the owner fields

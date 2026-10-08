@@ -158,8 +158,8 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         call.CallerId.Should().Be(bobAuthor.Id);
         var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
         var carolAccount = await carol.GetOwnAccount();
-        (await callsBackend.GetUserCall(carolAccount.Id, default))
-            .Should().BeNull("the refused call's claims are released");
+        (await callsBackend.GetUserCall(carolAccount.Id, default))!.Phase
+            .Should().Be(CallPhase.Ended, "the refused call's claims are ended");
     }
 
     [Fact]
@@ -235,7 +235,7 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task ReleaseOfAnEarlierCallShouldNotFreeTheUserOfTheNextOne()
+    public async Task EndOfAnEarlierCallShouldNotFreeTheUserOfTheNextOne()
     {
         // arrange
         await using var bob = AppHost.NewBlazorTester(Out);
@@ -255,18 +255,77 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         (await callsBackend.TryClaim(bobAccount.Id, claim, default)).Should().BeTrue();
 
         // act
-        await callsBackend.ReleaseCall(bobAccount.Id, firstCallId, default);
+        await callsBackend.EndCall(bobAccount.Id, firstCallId, CallOutcome.Canceled, default);
 
         // assert - a fresh claim backs itself, so it is still readable
         var held = await callsBackend.GetUserCall(bobAccount.Id, default);
         held.Should().NotBeNull();
         held!.CallId.Should().Be(secondCallId);
+        held.Phase.Should().Be(CallPhase.Dialing);
 
         // act
-        await callsBackend.ReleaseCall(bobAccount.Id, secondCallId, default);
+        await callsBackend.EndCall(bobAccount.Id, secondCallId, CallOutcome.Canceled, default);
+
+        // assert - the end stays readable, for the client that ran the call to hear of it
+        var ended = await callsBackend.GetUserCall(bobAccount.Id, default);
+        ended!.CallId.Should().Be(secondCallId);
+        ended.Phase.Should().Be(CallPhase.Ended);
+        ended.Outcome.Should().Be(CallOutcome.Canceled);
+    }
+
+    [Fact]
+    public async Task EndedClaimShouldNotKeepTheUserBusy()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        var bobAccount = await bob.SignInAsUniqueBob();
+        var (chatId, _) = await bob.CreateChat(false);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
+        var firstCallId = CallId.New(chatId, "1");
+        var claim = new UserCall {
+            ChatId = chatId,
+            AuthorId = bobAuthor!.Id,
+            Role = CallRole.Caller,
+            Phase = CallPhase.Dialing,
+            CallId = firstCallId,
+        };
+        (await callsBackend.TryClaim(bobAccount.Id, claim, default)).Should().BeTrue();
+        await callsBackend.EndCall(bobAccount.Id, firstCallId, CallOutcome.NoAnswer, default);
+
+        // act - a claim younger than ClaimGrace backs itself, so only its end can free the user this fast
+        var isClaimed = await callsBackend.TryClaim(
+            bobAccount.Id, claim with { CallId = CallId.New(chatId, "2") }, default);
 
         // assert
-        (await callsBackend.GetUserCall(bobAccount.Id, default)).Should().BeNull();
+        isClaimed.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SelfHealShouldNotOverwriteTheOutcomeOfAnEndedClaim()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        var bobAccount = await bob.SignInAsUniqueBob();
+        var (chatId, _) = await bob.CreateChat(false);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
+        var callId = CallId.New(chatId, "1");
+        var claim = new UserCall {
+            ChatId = chatId,
+            AuthorId = bobAuthor!.Id,
+            Role = CallRole.Caller,
+            Phase = CallPhase.Dialing,
+            CallId = callId,
+        };
+        (await callsBackend.TryClaim(bobAccount.Id, claim, default)).Should().BeTrue();
+        await callsBackend.EndCall(bobAccount.Id, callId, CallOutcome.Declined, default);
+
+        // act - a late end that knows nothing of how the call went
+        await callsBackend.EndCall(bobAccount.Id, callId, CallOutcome.None, default);
+
+        // assert
+        (await callsBackend.GetUserCall(bobAccount.Id, default))!.Outcome.Should().Be(CallOutcome.Declined);
     }
 
     // Private methods

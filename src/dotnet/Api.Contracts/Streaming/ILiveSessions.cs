@@ -50,11 +50,10 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<CallStatus> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
-    // The one call this user is in, as the client with this id sees it: a ring on every client, a placed
-    // or answered call only on the client that placed or answered it (#4929). Null means free - which
-    // is also what a disconnected client reads, so it is "unknown" until it reconnects.
+    // The one call this user is in, as this client sees it (#4929), then its end. NoCache, unlike the rest:
+    // CallUI leaves a call on this answer, so a disconnected client must wait for the real one (#5053).
     [ComputeMethod(ConsolidationDelay = 0)]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<UserCall?> GetMyCall(Session session, string clientId, CancellationToken cancellationToken);
 
     Task SetParticipation(
