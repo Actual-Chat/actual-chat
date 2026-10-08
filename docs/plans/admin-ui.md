@@ -30,7 +30,7 @@
 2. **Same origin, `/m/` prefix**, not `m.voxt.ai`. The Fusion session cookie, `/signIn`, and ingress routing already work for the main host; a second origin would need cookie-domain and CORS work for no gain now. The shell reads the path base from one setting, so moving to a subdomain stays cheap.
 3. **Hosted in the `App.Server` process**, not a new executable. The admin pages call `IDiagnostics` and the system commands, which are server-side services; in-process, they run without extra RPC hops, and the mesh fan-out in `Diagnostics.GetMeshDiagInfo` keeps working as is.
 4. **Isolated shell and bundle.** The admin root page renders its own `<html>`, loads only MudBlazor's static assets plus one `admin.css` and `blazor.web.js`. It does not load the app bundle, Tailwind CSS, or app TypeScript.
-5. **English-only UI.** `docs/CODING_STYLE.md` requires every user-visible string to come from the localization catalog. The admin UI is for staff, and the pages it replaces already hardcode English. This plan treats it as an explicit exception and records it in `docs/ui/admin.md`; confirmed.
+5. **English-only UI.** `docs/CODING_STYLE.md` requires every user-visible string to come from the localization catalog. The admin UI is for staff, and the pages it replaces already hardcode English. `docs/CODING_STYLE.md` and `docs/i18n.md` now list the admin UI (`/m/`) with the test pages as English-only developer surfaces.
 6. **Feature folders registered through one nav registry.** Each feature (`Flows`, `System`, `Mesh`, `Tools`) is a folder with its page(s) and a single `AdminNavEntry` registration. A new section is a new folder plus one registration line.
 7. **Migrated pages are removed from the app UI** once the admin versions are verified, so there is one place for each tool.
 
@@ -198,7 +198,7 @@ Ports `DigestTestPage` on `IEmails.GetDigestPreview`: mode selector (the viewer'
 **Files:**
 - Delete: `FlowsTestPage.razor`, `MeshTestPage.razor`, `SystemTestPage.razor`, `AdminCopyChatToPlacePage.razor`, `DigestTestPage.razor`, and any links/menu entries to them; delete `CopyChatToPlaceUI` pieces no longer used
 - Create: `docs/ui/admin.md` (purpose, hosting decision, how to add a section, theme, the English-only exception, the reference rule); add to `docs/ui/index.md`
-- Modify: `docs/architecture/project-structure.md` (new project row), `docs/plans/index.md` (this plan under Active), `docs/CODING_STYLE.md` (localization exception for `UI.Admin`)
+- Modify: `docs/architecture/project-structure.md` (new project row), `docs/plans/index.md` (this plan under Active)
 - Regenerate: `docs/api-index*.md` with the repo's generator if `UI.Admin` types should be listed
 
 **Verification:** `dotnet build ActualChat.CI.slnf`; grep shows no references to the removed pages; the app's own test pages index no longer lists them.

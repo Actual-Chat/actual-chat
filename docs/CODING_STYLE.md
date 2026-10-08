@@ -1075,7 +1075,8 @@ through the two lists below; if the string is in the first one, read
 - **Asset identifiers in `alt`** — `Web/Chrome/01`, `Tutorial slide #1`.
 - **Literals the user must type back** — `DeleteAccountModal` compares input
   against `DELETE`, so it cannot be translated.
-- **Developer surfaces** — test pages, admin-only pages, `EnableIncompleteUI`
+- **Developer surfaces** — test pages (`/test/*`), the admin UI (`UI.Admin`, served under `/m/`: English only,
+  entirely), other admin-only pages, `EnableIncompleteUI`
   mockups, and developer invariants thrown from markup
   (`"<Tab> component must be nested into <TabPanel>"`).
 - **Marketing pages and legal documents** — a separate, deliberate decision. The
