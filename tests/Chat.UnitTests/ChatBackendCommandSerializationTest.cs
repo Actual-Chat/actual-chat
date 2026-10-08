@@ -69,16 +69,9 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     }
 
     [Fact]
-    public void ChatsBackend_RemoveOwnChats_Basic()
+    public void ChatsBackend_RequestUserRemoval_Basic()
     {
-        var cmd = new ChatsBackend_RemoveOwnChats(TestUserId);
-        cmd.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
-    public void ChatsBackend_RemoveOwnEntries_Basic()
-    {
-        var cmd = new ChatsBackend_RemoveOwnEntries(TestUserId);
+        var cmd = new ChatsBackend_RequestUserRemoval(TestUserId);
         cmd.AssertPassesThroughSerializers();
     }
 

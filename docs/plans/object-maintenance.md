@@ -90,9 +90,9 @@ Do not hash the prefix again or pass a left-aligned prefix directly to modulo.
 ## Chat maintenance
 
 `ChatMaintenance` resolves direct status, then parent-thread and Place-root status.
-The administrator-only `Chats_SetMaintenance` command toggles any existing chat.
-Use `await debugUI.chatMaintenance(chatId, true)` to enable maintenance and pass
-`false` to clear the direct status. An inherited status remains effective.
+Maintenance is backend-only: `MaintenancesBackend_Set` is called by the operations
+that own it (imports, chat removal); tests use the `SetChatMaintenance` helper.
+Clearing the direct status leaves an inherited status in effect.
 
 The chat displays the maintenance robot and a read-only footer. Client content
 writes, pinning, chat changes, summarization, and live publishing are guarded.

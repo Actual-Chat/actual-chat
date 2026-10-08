@@ -51,6 +51,9 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 return null;
         }
         else {
+            if (dbAccount.Status == AccountStatus.Removed)
+                return null;
+
             account = dbAccount.ToModel();
             if (IsAdmin(account))
                 account = account with { IsAdmin = true };
@@ -70,6 +73,13 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         account = account with { Avatar = avatar };
         return account;
     }
+
+    // [ComputeMethod] - consolidated
+    public virtual async Task<bool> Exists(UserId userId, CancellationToken cancellationToken)
+        // Consolidated: this sits on the chat tile path through AuthorsBackend.Exists,
+        // and Get also depends on the avatar and the KVAS setting.
+        // Without consolidation every avatar change would invalidate every tile the account appears in.
+        => await Get(userId, cancellationToken).ConfigureAwait(false) is not null;
 
     // [ComputeMethod]
     public virtual async Task<UserId?> GetIdByUserIdentity(UserIdentity identity, CancellationToken cancellationToken)
@@ -366,12 +376,15 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
         await dbContext.Accounts.Lock(userId, cancellationToken).ConfigureAwait(false);
 
         var dbAccount = await dbContext.Accounts.Include(a => a.Identities)
             .FirstOrDefaultAsync(a => a.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
         dbAccount = dbAccount.Require().RequireVersion(expectedVersion);
+        if (dbAccount.Status == AccountStatus.Removed)
+            throw StandardError.NotFound<Account>();
 
         foreach (var identity in account.Identities.Keys) {
             if (identity.Schema is not (AuthSchema.Email or AuthSchema.Phone))
@@ -464,10 +477,23 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        await dbContext.Accounts
-            .Where(a => a.Id == userId.Value)
-            .ExecuteDeleteAsync(cancellationToken)
+        // The row stays as a tombstone so the id can never be reused, stripped of everything that
+        // identified its owner. The authors stay too: each chat's cleanup needs them to find the
+        // messages, and removes them once it has.
+        var dbAccount = await dbContext.Accounts
+            .FirstOrDefaultAsync(a => a.Id == userId.Value, cancellationToken)
             .ConfigureAwait(false);
+        if (dbAccount is not null) {
+            dbAccount.Status = AccountStatus.Removed;
+            dbAccount.Email = "";
+            dbAccount.IsEmailVerified = false;
+            dbAccount.Phone = "";
+            dbAccount.Name = "";
+            dbAccount.TimeZone = "";
+            dbAccount.AliasId = "";
+            dbAccount.Claims = ImmutableDictionary<string, string>.Empty;
+            dbAccount.Version = VersionGenerator.NextVersion(dbAccount.Version);
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -481,10 +507,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
         });
 
         context.Operation.AddEvent(new AccountChangedEvent(account, account, ChangeKind.Remove));
-
-        // Authors
-        var removeAuthorsCommand = new AuthorsBackend_Remove(null, null, userId);
-        await Commander.Call(removeAuthorsCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
     // Event handlers

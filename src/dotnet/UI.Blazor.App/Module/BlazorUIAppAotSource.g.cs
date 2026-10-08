@@ -87,6 +87,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsViewContainer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentsView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAuthorGroupView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryLine>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryMessageInternalView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryMessageView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatFooter>();
@@ -94,6 +95,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderCallButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderFollowThreadToggle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHistoryRetentionModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatHistoryRetentionTileItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatImportSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatImportStartModal>();
@@ -159,6 +162,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachOccurrences>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachProgressTab>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachRecentSkillSummary>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachRecentTab>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachScoreCard>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CoachScoreSheet>();
@@ -539,6 +543,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebHookTestButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WipeChatHistoryModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.CallTestPage>();
@@ -965,6 +970,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsViewContainer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentsView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAuthorGroupView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryLine), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryMessageInternalView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryMessageView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatFooter), AotTypeKind.Component),
@@ -972,6 +978,8 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderCallButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderFollowThreadToggle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHeaderRightPanelToggle), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHistoryRetentionModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatHistoryRetentionTileItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatImportSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatImportStartModal), AotTypeKind.Component),
@@ -1037,6 +1045,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.CoachOccurrences), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CoachPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CoachProgressTab), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CoachRecentSkillSummary), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CoachRecentTab), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CoachScoreCard), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CoachScoreSheet), AotTypeKind.Component),
@@ -1417,6 +1426,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebHookTestButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.WipeChatHistoryModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.CallTestPage), AotTypeKind.Component),

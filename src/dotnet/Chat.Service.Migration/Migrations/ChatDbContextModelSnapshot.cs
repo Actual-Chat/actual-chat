@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261005164448_Add_ChatImports";
+    public override string LastMigrationId => "20261008013151_Add_ChatCleanup";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -214,6 +214,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<DateTime?>("PttEnabledAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("ptt_enabled_at");
+
+                b.Property<TimeSpan?>("RetentionPeriod")
+                    .HasColumnType("interval")
+                    .HasColumnName("retention_period");
 
                 b.Property<string>("SystemTag")
                     .HasColumnType("text")
@@ -413,6 +417,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("boolean")
                     .HasColumnName("is_removed");
 
+                b.Property<bool>("IsRemovedAndPurged")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_removed_and_purged");
+
                 b.Property<bool>("IsSystemEntry")
                     .HasColumnType("boolean")
                     .HasColumnName("is_system_entry");
@@ -453,6 +461,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<string>("QuotedText")
                     .HasColumnType("text")
                     .HasColumnName("quoted_text");
+
+                b.Property<DateTime?>("RemovedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("removed_at");
 
                 b.Property<long?>("RepliedChatEntryId")
                     .HasColumnType("bigint")
@@ -495,6 +507,9 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
 
                 b.HasIndex("ChatId", "Kind", "IsRemoved", "LocalId")
                     .HasDatabaseName("ix_chat_entries_chat_id_kind_is_removed_local_id");
+
+                b.HasIndex("ChatId", "Kind", "IsRemoved", "RemovedAt")
+                    .HasDatabaseName("ix_chat_entries_chat_id_kind_is_removed_removed_at");
 
                 b.ToTable("chat_entries");
             });

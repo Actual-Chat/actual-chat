@@ -1,0 +1,60 @@
+/* History retention dialog and the wipe dialog it opens */
+
+/* .modal-frame sets font-medium for every modal; these dialogs are prose, so they read at body weight */
+.chat-history-retention-modal .dialog-body,
+.wipe-chat-history-modal .dialog-body {
+    @apply text-body;
+}
+.chat-history-retention-modal .c-hint {
+    @apply text-02;
+}
+.chat-history-retention-modal .c-error {
+    @apply text-danger;
+}
+.chat-history-retention-modal .c-warning {
+    @apply text-danger;
+}
+.chat-history-retention-modal b {
+    @apply font-semibold;
+}
+.chat-history-retention-modal .c-wipe-link {
+    @apply text-primary cursor-pointer;
+}
+.wipe-chat-history-modal .c-warning {
+    @apply text-danger;
+}
+.wipe-chat-history-modal .c-period {
+    @apply flex-y items-start gap-y-2;
+}
+.wipe-chat-history-modal .c-period > .period-input {
+    @apply w-full;
+}
+.wipe-chat-history-modal .c-everything {
+    @apply cursor-pointer;
+}
+.wipe-chat-history-modal .c-hint,
+.wipe-chat-history-modal .c-proposal {
+    @apply text-02;
+}
+.wipe-chat-history-modal .c-count {
+    @apply font-semibold text-danger;
+}
+.wipe-chat-history-modal .c-proposal code {
+    @apply font-mono font-semibold text-danger;
+}
+
+/* One line, as the chat list shows the last message */
+.chat-entry-line {
+    @apply flex-x min-w-0 gap-x-1;
+    @apply text-02;
+}
+.chat-entry-line .c-name {
+    @apply shrink-0 font-medium;
+}
+.chat-entry-line .c-text {
+    @apply truncate;
+}
+.chat-history-retention-modal .chat-entry-line,
+.wipe-chat-history-modal .chat-entry-line {
+    @apply p-2 rounded-md bg-02;
+}

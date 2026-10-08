@@ -235,3 +235,8 @@ body.hoverable .chat-header-control-panel .btn-start-call:disabled:hover {
     @apply flex-x items-center justify-center;
 }
 
+
+/* Leave / delete confirmation: a deletion warns in red */
+.leave-chat-confirmation-modal .c-warning {
+    @apply text-danger;
+}

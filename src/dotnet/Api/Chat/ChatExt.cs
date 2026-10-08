@@ -29,6 +29,14 @@ public static class ChatExt
         public bool IsWelcome => chat.SystemTag == Constants.Chat.System.Welcome.Tag;
     }
 
+    // A peer chat has no owner, so either side manages its history
+    public static bool CanManageHistory(this Chat chat)
+        => !chat.Id.IsThread()
+            && chat.Id is not PlaceChatId { IsRoot: true }
+            && (chat.Id is PeerChatId
+                ? chat.Rules.CanEditProperties()
+                : chat.Rules.IsOwner());
+
     public static bool RequiresOwner(this ChatDiff diff)
         => diff.Kind.HasValue
             || diff.IsPublic.HasValue
@@ -41,6 +49,7 @@ public static class ChatExt
             || diff.IsArchived.HasValue
             || diff.IsSummarized.HasValue
             || diff.PttEnabledAt.HasValue
+            || diff.RetentionPeriod.HasValue
             || diff.PlaceId is not null
             || diff.AliasId is not null;
 

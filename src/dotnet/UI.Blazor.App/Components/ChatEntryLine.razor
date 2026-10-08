@@ -1,0 +1,21 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+@{
+    var text = Hub.ChatMarkupHubFactory[Entry.ChatId]
+        .GetMarkup(Entry, MarkupConsumer.ChatListItemText)
+        .ToReadableText(MarkupConsumer.ChatListItemText);
+}
+
+@* An entry as the chat list shows the last one: its author and its text, on one line *@
+<div class="chat-entry-line @Class">
+    @if (!Entry.IsSystemEntry) {
+        <span class="c-name"><AuthorName
+            AuthorId="@Entry.AuthorId" ShowDetailsOnClick="false" ShowAsOwn="true"/>:</span>
+    }
+    <span class="c-text">@text</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "";
+}

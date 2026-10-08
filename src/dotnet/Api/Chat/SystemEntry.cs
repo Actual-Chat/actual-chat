@@ -5,7 +5,8 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Abstract base for system-generated chat entries — events such as members joining,
 /// leaving, or being notified, and calls. Concrete kinds: <see cref="MembersChangedEntry"/>,
-/// <see cref="NotifyMembersEntry"/>, <see cref="CallEntry"/>, <see cref="UnsupportedSystemEntry"/>.
+/// <see cref="NotifyMembersEntry"/>, <see cref="CallEntry"/>, <see cref="HistoryChangedEntry"/>,
+/// <see cref="UnsupportedSystemEntry"/>.
 /// </summary>
 [RpcSerializable]
 [DataContract, MessagePackObject]
@@ -13,6 +14,7 @@ namespace ActualChat.Chat;
 [Union(1, typeof(NotifyMembersEntry))]
 [Union(2, typeof(UnsupportedSystemEntry))]
 [Union(3, typeof(CallEntry))]
+[Union(4, typeof(HistoryChangedEntry))]
 public abstract partial record SystemEntry(ChatEntryId Id, long Version = 0)
     : ChatEntry(Id, Version), IForwardCompatibleUnion<SystemEntry>
 {

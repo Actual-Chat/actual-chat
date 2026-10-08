@@ -234,9 +234,7 @@ public class ChatEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
         var (chatId, _) = await NewChat();
         await using var admin = AppHost.NewWebClientTester(Out);
         await admin.SignInAsUniqueBobAdmin();
-        await admin.Commander.Call(new Chats_SetMaintenance {
-            Session = admin.Session, ChatId = chatId, IsEnabled = true,
-        });
+        await admin.SetChatMaintenance(chatId, true);
 
         try {
             // act
@@ -246,9 +244,7 @@ public class ChatEntryStreamerTest(ChatCollection.AppHostFixture fixture, ITestO
             await streamEntry.Should().ThrowAsync<Exception>();
         }
         finally {
-            await admin.Commander.Call(new Chats_SetMaintenance {
-                Session = admin.Session, ChatId = chatId, IsEnabled = false,
-            });
+            await admin.SetChatMaintenance(chatId, false);
         }
     }
 

@@ -7,6 +7,8 @@ namespace ActualChat.Chat.IntegrationTests;
 public sealed class ChatMaintenanceTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
+    private const string TestOwnerId = "chat-maintenance-test";
+
     private WebClientTester Admin => field ??= fixture.AppHost.NewWebClientTester(Out);
     private WebClientTester Owner => field ??= fixture.AppHost.NewWebClientTester(Out);
 
@@ -15,24 +17,6 @@ public sealed class ChatMaintenanceTest(ChatCollection.AppHostFixture fixture, I
         await Admin.DisposeSilentlyAsync();
         await Owner.DisposeSilentlyAsync();
         await base.DisposeAsync();
-    }
-
-    [Fact]
-    public async Task OnlyAdminsShouldToggleMaintenance()
-    {
-        // arrange
-        await Admin.SignInAsUniqueBobAdmin();
-        await Owner.SignInAsUniqueAlice();
-        var (chatId, _) = await Owner.CreateChat(true);
-        var command = new Chats_SetMaintenance { Session = Owner.Session, ChatId = chatId, IsEnabled = true };
-
-        // act, assert
-        await FluentActions.Awaiting(() => Owner.Commander.Call(command)).Should().ThrowAsync<Exception>();
-        await SetMode(chatId, true);
-        await FluentActions.Awaiting(() => Owner.Commander.Call(command with {
-            Uuid = ApiCommand.NewUuid(), IsEnabled = false,
-        })).Should().ThrowAsync<Exception>();
-        await SetMode(chatId, false);
     }
 
     [Fact]
@@ -151,13 +135,90 @@ public sealed class ChatMaintenanceTest(ChatCollection.AppHostFixture fixture, I
         await Admin.Commander.Call(new MaintenancesBackend_Set(first, MaintenanceMode.None));
     }
 
+    [Fact]
+    public async Task ConcurrentlyAddedTargetsShouldAllBeKept()
+    {
+        // arrange
+        var backend = Admin.AppServices.GetRequiredService<IMaintenancesBackend>();
+        var key = MaintenanceKey.New($"test:{RandomStringGenerator.Default.Next()}");
+        var targets = Enumerable.Range(0, 8).Select(i => $"target-{i}").ToArray();
+        var addTargetCmds = targets.Select(target => new MaintenancesBackend_Set(key, MaintenanceMode.System) {
+            OwnerId = TestOwnerId, TargetDiff = new([target]),
+        });
+
+        // act
+        await Task.WhenAll(addTargetCmds.Select(command => Admin.Commander.Call(command)));
+
+        // assert
+        await TestWait.When(async ct => {
+            var maintenance = await backend.Get(key, ct);
+            maintenance.Mode.Should().Be(MaintenanceMode.System);
+            maintenance.Targets.Should().BeEquivalentTo(targets, "no concurrent change may overwrite another");
+        });
+        var endCmd = new MaintenancesBackend_Set(key, MaintenanceMode.None) { OwnerId = TestOwnerId };
+        await Admin.Commander.Call(endCmd);
+    }
+
+    [Fact]
+    public async Task RemovingTheLastTargetShouldEndMaintenance()
+    {
+        // arrange
+        var backend = Admin.AppServices.GetRequiredService<IMaintenancesBackend>();
+        var key = MaintenanceKey.New($"test:{RandomStringGenerator.Default.Next()}");
+        var startCmd = new MaintenancesBackend_Set(key, MaintenanceMode.Removal) {
+            OwnerId = TestOwnerId, TargetDiff = new(["first", "second"]),
+        };
+        await Admin.Commander.Call(startCmd);
+        var removeFirstCmd = new MaintenancesBackend_Set(key, MaintenanceMode.None) {
+            OwnerId = TestOwnerId, TargetDiff = new([], ["first"]),
+        };
+        await Admin.Commander.Call(removeFirstCmd);
+        await TestWait.When(async ct => {
+            var maintenance = await backend.Get(key, ct);
+            maintenance.Mode.Should().Be(MaintenanceMode.Removal, "a target diff keeps the stored mode");
+            maintenance.Targets.Should().Equal("second");
+        });
+
+        // act
+        var removeSecondCmd = removeFirstCmd with { TargetDiff = new([], ["second"]) };
+        await Admin.Commander.Call(removeSecondCmd);
+
+        // assert
+        await TestWait.When(async ct => (await backend.Get(key, ct)).Should().Be(Maintenance.None));
+        await Admin.Commander.Call(removeSecondCmd);
+        var maintenance = await backend.Get(key, default);
+        maintenance.Should().Be(Maintenance.None, "removing a target from no row is a no-op");
+    }
+
+    [Fact]
+    public async Task TargetChangesShouldLeaveAWholeKeyMaintenanceAsItIs()
+    {
+        // arrange
+        var backend = Admin.AppServices.GetRequiredService<IMaintenancesBackend>();
+        var key = MaintenanceKey.New($"test:{RandomStringGenerator.Default.Next()}");
+        var startCmd = new MaintenancesBackend_Set(key, MaintenanceMode.Removal) { OwnerId = TestOwnerId };
+        await Admin.Commander.Call(startCmd);
+        await TestWait.When(async ct => (await backend.GetMode(key, ct)).Should().Be(MaintenanceMode.Removal));
+
+        // act
+        var addTargetCmd = startCmd with { TargetDiff = new(["added"]) };
+        await Admin.Commander.Call(addTargetCmd);
+        var removeTargetCmd = startCmd with { TargetDiff = new([], ["removed"]) };
+        await Admin.Commander.Call(removeTargetCmd);
+
+        // assert
+        var maintenance = await backend.Get(key, default);
+        maintenance.Mode.Should().Be(MaintenanceMode.Removal);
+        maintenance.Targets.Should().BeEmpty("a maintenance covering the whole key already covers every target");
+        var endCmd = new MaintenancesBackend_Set(key, MaintenanceMode.None) { OwnerId = TestOwnerId };
+        await Admin.Commander.Call(endCmd);
+    }
+
     // Private methods
 
     private async Task SetMode(ChatId chatId, bool isEnabled)
     {
-        await Admin.Commander.Call(new Chats_SetMaintenance {
-            Session = Admin.Session, ChatId = chatId, IsEnabled = isEnabled,
-        });
+        await Admin.SetChatMaintenance(chatId, isEnabled);
         await WaitMode(chatId, isEnabled ? MaintenanceMode.System : MaintenanceMode.None);
     }
 

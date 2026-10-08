@@ -37,6 +37,9 @@
         @if (_contact is not null) {
             <FormBlock Class="block-user-form-block">
                 <Tile>
+                    @if (_chat?.CanManageHistory() == true) {
+                        <ChatHistoryRetentionTileItem Chat="@_chat" Click="@OnHistoryRetentionClick"/>
+                    }
                     @if (_contact.IsBlocked) {
                         <TileItem Click="@OnToggleBlock">
                             <Icon>
@@ -84,6 +87,7 @@
     private Form _formRef = null!;
     private FormModel _form = null!;
     private Contact? _contact;
+    private Chat? _chat;
     private Avatar? _peerAvatar;
     private string? _peerOwnName;
     private string? _peerExternalContactName;
@@ -104,6 +108,7 @@
         if (_contact is null)
             return;
 
+        _chat = await Hub.Chats.Get(Session, peerContactId.ChatId, cancellationToken).ConfigureAwait(false);
         _peerExternalContactName = _contact.ExternalContactName;
         _peerAvatar = _contact.Account?.Avatar;
         _peerOwnName = _peerExternalContactName.NullIfWhiteSpace() ?? _peerAvatar?.Name ?? "";
@@ -133,6 +138,12 @@
         // Closing first keeps the block confirmation from stacking on top of this modal
         CloseModal();
         return PeerContactCommands.SetBlocked(Hub, _contact, !_contact.IsBlocked, _peerOwnName ?? "");
+    }
+
+    private Task OnHistoryRetentionClick() {
+        // Closing first keeps the retention settings from stacking on top of this modal
+        CloseModal();
+        return Hub.ModalUI.Show(new ChatHistoryRetentionModal.Model(_chat!.Id));
     }
 
     private void CloseModal()

@@ -46,7 +46,24 @@ public class MaintenancesBackend(IServiceProvider services)
         if (row is not null && row.OwnerId != command.OwnerId)
             throw StandardError.Constraint("Maintenance belongs to another operation.");
 
-        var targets = command.Targets.ToDelimitedString(" ");
+        var targets = "";
+        var targetDiff = command.TargetDiff;
+        if (!targetDiff.IsEmpty) {
+            if (row is null && mode == MaintenanceMode.None)
+                return;
+
+            var storedTargets = row?.ToModel().Targets ?? [];
+            // A maintenance covering the whole key already covers every target
+            if (row is not null && storedTargets.IsEmpty)
+                return;
+
+            var newTargets = storedTargets
+                .Except(targetDiff.RemovedItems, StringComparer.Ordinal)
+                .Union(targetDiff.AddedItems, StringComparer.Ordinal)
+                .ToList();
+            mode = newTargets.Count == 0 ? MaintenanceMode.None : row?.Mode ?? mode;
+            targets = newTargets.ToDelimitedString(" ");
+        }
         if (mode == MaintenanceMode.None) {
             if (row is not null)
                 dbContext.Remove(row);

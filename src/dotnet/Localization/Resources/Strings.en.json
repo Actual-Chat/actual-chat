@@ -438,6 +438,14 @@
   // The context menu of a chat list item - long press on mobile, right click on desktop.
   "ChatMenu_AddMembers": "Add members",
   "ChatMenu_EditContact": "Edit contact",
+  "ChatMenu_DisableNotifications": "Disable notifications",
+  "ChatMenu_EnableNotifications": "Enable notifications",
+  "ChatMenu_EditChat": "Edit chat",
+  "ChatMenu_CopyContactLink_Format": "Copy {0}'s contact link",
+  "ChatMenu_CopyChatLink": "Copy chat link",
+  "ChatMenu_CopyChatJoinLink": "Copy chat join link",
+  "ChatMenu_EnableSummaries": "Enable summaries",
+  "ChatMenu_DisableSummaries": "Disable summaries",
   "ChatMenu_LeaveChat": "Leave chat",
   "ChatMenu_BlockUser": "Block user",
   "ChatMenu_UnblockUser": "Unblock user",
@@ -503,6 +511,10 @@
   "SystemEntry_CallDeclined": " called. Declined.",
   "SystemEntry_CallCanceled": " called. Canceled.",
   "SystemEntry_CallEnded": " called.",
+  "SystemEntry_HistoryWiped": " wiped the chat history.",
+  "SystemEntry_HistoryWipedPeriod_Format": " wiped the last {0} of chat history.",
+  "SystemEntry_RetentionChanged_Format": " set history retention to {0}.",
+  "SystemEntry_RetentionTurnedOff": " turned off history retention.",
 
   // The bar that replaces the message editor when you cannot post: a read-only chat, a block in
   // either direction, or a chat you have not joined yet. Most of these are fragments wrapped
@@ -596,6 +608,7 @@
   "ThreadMenu_Mute": "Mute",
   "ThreadMenu_Unmute": "Unmute",
   "ThreadMenu_GoToStartMessage": "Go to start message",
+  "ThreadMenu_StartMessageRemoved": "The message this thread started from was removed.",
   "ThreadMenu_CopyThreadLink": "Copy thread link",
 
   // A location posted into a chat. LocationMessage_Place is the plain geographic word for a pin
@@ -809,6 +822,7 @@
   "AccountEditor_Title": "Edit account",
   "AccountEditor_DeleteAccount": "Delete account",
   "Common_Optional": " (optional)",
+  "Common_IUnderstand": "I understand this",
   "Common_Verified": "Verified",
   "Common_Unverified": "Unverified",
 
@@ -840,19 +854,25 @@
   "Form_Phone": "Phone",
   "Form_CustomLink": "Custom link",
 
-  // The delete-account confirmation. Every sentence is split so its middle renders emphasized.
+  // The delete-account confirmation. DeleteAccount_Irreversible renders bold as a whole; every
+  // other sentence is split so its middle renders bold. The SoleOwned sentence introduces the list
+  // of the chats and places the account is the only owner of.
   // DeleteAccount_Proposal_* wraps the word the user has to type back, and that word stays the
   // English "DELETE" in every language because it is compared against their input.
   "DeleteAccount_Title": "Delete your account",
   "DeleteAccount_Question_Prefix": "Are you sure you want to ",
   "DeleteAccount_QuestionTarget": "delete your account",
   "DeleteAccount_Question_Suffix": "?",
-  "DeleteAccount_Warning_Prefix": "This ",
-  "DeleteAccount_WarningTarget": "cannot be undone",
-  "DeleteAccount_Warning_Suffix": ".",
-  "DeleteAccount_Scope_Prefix": "We will delete your peer chats, every group chat and place you own, and all of your messages, recordings and attachments in other chats — ",
-  "DeleteAccount_ScopeTarget": "every bit of content you authored",
-  "DeleteAccount_Scope_Suffix": ".",
+  "DeleteAccount_Irreversible": "This cannot be undone.",
+  "DeleteAccount_Scope_Prefix": "We will ",
+  "DeleteAccount_ScopeTarget": "delete your peer chats",
+  "DeleteAccount_Scope_Middle": " and every ",
+  "DeleteAccount_ScopeContentTarget": "message, recording and attachment",
+  "DeleteAccount_Scope_Suffix": " you authored in other chats.",
+  "DeleteAccount_SoleOwned_Prefix": "We will also delete the ",
+  "DeleteAccount_SoleOwnedTarget": "group chats and places you're the sole owner of",
+  "DeleteAccount_SoleOwned_Suffix": ":",
+  "DeleteAccount_SoleOwnedHint": "To keep any of them, make someone else its owner before you delete your account.",
   "DeleteAccount_Proposal_Prefix": "Type ",
   "DeleteAccount_Proposal_Suffix": " below to confirm you want to permanently delete your account and everything associated with it.",
 
@@ -1844,13 +1864,13 @@
   "LeaveConfirm_LeaveChatTitle": "Leave chat",
   "LeaveConfirm_LeaveChatQuestion": "Are you sure you want to leave this chat?",
   "LeaveConfirm_DeleteChatTitle": "Delete chat",
-  "LeaveConfirm_DeleteChatForAllQuestion": "This chat will be deleted for everyone in it. This action cannot be undone.",
+  "LeaveConfirm_DeleteChatForAllQuestion": "This cannot be undone. All messages, media and files in this chat will be deleted for everyone in it.",
   "LeaveConfirm_DeleteThreadTitle": "Delete thread",
-  "LeaveConfirm_DeleteThreadQuestion": "Are you sure you want to delete this thread?",
+  "LeaveConfirm_DeleteThreadQuestion": "This cannot be undone. All messages, media and files in this thread will be deleted for everyone in it.",
   "LeaveConfirm_LeavePlaceTitle": "Leave place",
   "LeaveConfirm_LeavePlaceQuestion": "Are you sure you want to leave this place?",
   "LeaveConfirm_DeletePlaceTitle": "Delete place",
-  "LeaveConfirm_DeletePlaceForAllQuestion": "This place and all its chats will be deleted for everyone in it. This action cannot be undone.",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "This cannot be undone. This place and all its chats, with their messages, media and files, will be deleted for everyone in it.",
 
   // The last Owner leaving is offered a way out first - hand the chat or place over, or add
   // someone to hand it to; refusing it confirms with the matching delete question above.
@@ -2241,6 +2261,12 @@
   "Duration_Days_Format": "{0} d",
   "Duration_Hours_Format": "{0} h",
   "Duration_Minutes_Format": "{0} min",
+  "Duration_MinuteUnit": "minute|minutes",
+  "Duration_HourUnit": "hour|hours",
+  "Duration_DayUnit": "day|days",
+  "Duration_MinuteCount": "{0} minute|{0} minutes",
+  "Duration_HourCount": "{0} hour|{0} hours",
+  "Duration_DayCount": "{0} day|{0} days",
   "Distance_Meters_Format": "{0} m",
   "Distance_Kilometers_Format": "{0} km",
 
@@ -2249,6 +2275,29 @@
   "Invite_ManageLinks": "Manage links",
   "Invite_NewPrivateLink": "New private join link",
   "Invite_UnknownLink": "Unknown link",
+
+  // History retention and wiping, from chat settings and a peer chat's contact editor.
+  "HistoryRetention_Title": "History retention",
+  "HistoryRetention_Full": "Full",
+  "HistoryRetention_Short_Format": "Retention: {0}",
+  "HistoryRetention_PeriodLabel": "Retain",
+  "HistoryRetention_ZeroIsAll": "0 = All messages",
+  "HistoryRetention_TooShort_Format": "Set at least {0}.",
+  "HistoryRetention_Hint": "Older messages are deleted permanently for everyone. Set 0 to keep the whole history.",
+  "HistoryRetention_WillBeDeleted": "Once you click “OK”, {3}~{0} message{3} sent before {1} and covering {3}{2} of history{3} will be {3}deleted for everyone{3}, ending with:|Once you click “OK”, {3}~{0} messages{3} sent before {1} and covering {3}{2} of history{3} will be {3}deleted for everyone{3}, ending with:",
+  "HistoryRetention_RetainAfter_Format": "From that moment this chat will retain {1}just {0} of history.{1}",
+  "HistoryRetention_Nothing": "No messages are this old yet.",
+  "HistoryRetention_WipeLink_Prefix": "You can also ",
+  "HistoryRetention_WipeLinkTarget": "wipe recent history",
+  "HistoryRetention_WipeLink_Suffix": ".",
+  "HistoryWipe_Title": "Wipe chat history",
+  "HistoryWipe_Warning": "Wiped messages are deleted permanently for everyone in this chat. This cannot be undone.",
+  "HistoryWipe_PeriodLabel": "Wipe the last",
+  "HistoryWipe_Everything": "Everything",
+  "HistoryWipe_From_Format": "Messages sent since {0} will be deleted, starting with:",
+  "HistoryWipe_Count": "About {0} message will be deleted.|About {0} messages will be deleted.",
+  "HistoryWipe_Nothing": "No messages were sent in this period.",
+  "HistoryWipe_Wipe": "Wipe",
 
   // One more row in chat settings.
   "ChatSettings_UsePlaceSettingsForMembers": "Use place settings to edit members",

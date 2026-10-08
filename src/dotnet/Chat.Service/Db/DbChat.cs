@@ -36,6 +36,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string? SystemTag { get; set; }
     public bool IsPlaceRootChat { get; set; }
     public bool? IsSummarized { get; set; }
+    public TimeSpan? RetentionPeriod { get; set; }
 
     public DateTime? PttEnabledAt {
         get => field?.DefaultKind(DateTimeKind.Utc);
@@ -69,6 +70,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             MediaId = ActualChat.MediaId.ParseNullable(MediaId),
             AliasId = ActualChat.AliasId.ParseNullable(AliasId),
             IsSummarized = IsSummarized,
+            RetentionPeriod = RetentionPeriod,
             PttEnabledAt = PttEnabledAt is { } pttEnabledAt ? new Moment(pttEnabledAt) : null,
         };
 
@@ -98,6 +100,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsPlaceRootChat = model.Id is PlaceChatId { IsRoot: true };
         AliasId = model.AliasId?.NormalizedValue ?? "";
         IsSummarized = model.IsSummarized;
+        RetentionPeriod = model.RetentionPeriod;
         PttEnabledAt = model.PttEnabledAt?.ToDateTime();
     }
 }

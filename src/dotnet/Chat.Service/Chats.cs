@@ -53,6 +53,11 @@ public partial class Chats(IServiceProvider services) : IChats
     // [ComputeMethod]
     public virtual async Task<Chat?> Get(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
+        // The backend still sees a chat in removal maintenance while ChatPurgeFlow drains it,
+        // but to clients it is gone the moment the maintenance is set
+        if (await Backend.IsRemovalPending(chatId, cancellationToken).ConfigureAwait(false))
+            return null;
+
         var chat = await Backend.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (chatId.Kind == ChatKind.Peer) {
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -445,9 +450,14 @@ public partial class Chats(IServiceProvider services) : IChats
             }
         }
 
+        var oldRetentionPeriod = chat?.RetentionPeriod;
         chat = await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
         if (change.Create.HasValue)
             await Authors.EnsureJoined(session, chat.Id, cancellationToken).ConfigureAwait(false);
+        else if (change.IsUpdate(out _) && chat.RetentionPeriod != oldRetentionPeriod)
+            await PostHistoryChangedEntry(
+                    session, chat.Id, HistoryChangeKind.RetentionChanged, chat.RetentionPeriod, cancellationToken)
+                .ConfigureAwait(false);
         return chat;
 
         void ValidateThreadChatChangeConstraints(ChatDiff chatDiff)
@@ -464,7 +474,8 @@ public partial class Chats(IServiceProvider services) : IChats
                 || chatDiff.AliasId is not null
                 || chatDiff.AllowAnonymousAuthors.HasValue
                 || chatDiff.AllowGuestAuthors.HasValue
-                || chatDiff.PttEnabledAt.HasValue;
+                || chatDiff.PttEnabledAt.HasValue
+                || chatDiff.RetentionPeriod.HasValue;
             if (isReadOnlyProperty)
                 throw StandardError.Constraint("It's allowed to change only Title or Description for the thread.");
         }
@@ -1385,7 +1396,17 @@ public partial class Chats(IServiceProvider services) : IChats
         // Chat-scoped KVAS (prefix "c/{chatId}/") - shared across all members, no migration.
         var chatKvas = ServerKvasBackend.ForChat(chatId);
         var pinned = await chatKvas.Get<ChatPinnedEntries>(cancellationToken).ConfigureAwait(false);
-        return pinned?.EntryIds ?? default;
+        if (pinned is null)
+            return default;
+
+        // Pins are capped at a handful, and the KVAS list outlives the entries it points at.
+        var result = new List<ChatEntryId>(pinned.EntryIds.Count);
+        foreach (var entryId in pinned.EntryIds) {
+            var entry = await Backend.GetEntry(entryId, cancellationToken).ConfigureAwait(false);
+            if (entry is { IsRemoved: false })
+                result.Add(entryId);
+        }
+        return result.ToApiArray();
     }
 
     // [CommandHandler]

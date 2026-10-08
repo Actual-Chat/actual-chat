@@ -1,0 +1,158 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<WipeChatHistoryModal.Model>
+@implements IDisposable
+@inherits ComputedStateComponent<AppUIHub, ChatHistoryInfo>
+@{
+    var history = State.Value;
+    var firstEntry = _form.Period is null ? null : _firstEntry;
+    var canWipe = firstEntry is not null && _isConfirmed && !_isWiping;
+}
+
+<Form Class="h-full" Model="@_form" OnSubmit="@OnWipe">
+    <DialogFrame Title="@L.HistoryWipe_Title" Class="wipe-chat-history-modal compact-header modal-sm">
+        <Body>
+        <FormBlock>
+            <div class="c-warning">@L.HistoryWipe_Warning</div>
+        </FormBlock>
+        <FormBlock>
+            <div class="c-period">
+                <PeriodInput
+                    Id="@_periodInputId"
+                    Label="@L.HistoryWipe_PeriodLabel"
+                    IsDisabled="@_isEverything"
+                    Value="@_form.Period"
+                    ValueChanged="@OnPeriodChanged"/>
+                @* Checkbox cancels its own click, so the toggle belongs to the element around it *@
+                <div class="c-everything" @onclick="@(() => OnEverythingClick(history))">
+                    <Checkbox
+                        Label="@L.HistoryWipe_Everything"
+                        IsChecked="@_isEverything"
+                        IsDisabled="@(history.First is null)"/>
+                </div>
+            </div>
+            @if (_form.Period is not null) {
+                @if (firstEntry is null) {
+                    <div class="c-hint">@L.HistoryWipe_Nothing</div>
+                } else {
+                    var since = DateTimeConverter.ToLocalTime(_since);
+                    var sinceText = L.Date_At_Format(
+                        since.ToString("D", DateFormatter), since.ToString("t", DateFormatter));
+                    var count = Math.Max(history.IdRange.End - firstEntry.LocalId, 1);
+                    <div class="c-hint">@L.HistoryWipe_From_Format(sinceText)</div>
+                    <ChatEntryLine Class="c-first-entry" Entry="@firstEntry"/>
+                    <div class="c-count">@L.HistoryWipe_Count(count, count)</div>
+                }
+            }
+        </FormBlock>
+        <FormBlock>
+            <ConfirmationCheckbox @bind-IsChecked="@_isConfirmed"/>
+        </FormBlock>
+        </Body>
+        <Buttons>
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="@OnCancel" IsAutofocused="true">
+                @L.Common_Cancel
+            </Button>
+            <Button Type="@ButtonType.Submit" Class="btn-modal btn-danger" IsDisabled="@(!canWipe)">
+                @L.HistoryWipe_Wipe
+            </Button>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private readonly FormModel _form = new();
+    private CancellationTokenSource? _previewCts;
+    private string _periodInputId = "";
+    private Moment _since;
+    private ChatEntry? _firstEntry;
+    private bool _isWiping;
+    private bool _isEverything;
+    private bool _isConfirmed;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public void Dispose()
+        => _previewCts.CancelAndDisposeSilently();
+
+    protected override void OnInitialized() {
+        _periodInputId = ComponentIdGenerator.Next("wipe-history-period");
+        base.OnInitialized();
+    }
+
+    protected override ComputedState<ChatHistoryInfo>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ChatHistoryInfo>.Options() {
+                InitialValue = ChatHistoryInfo.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<ChatHistoryInfo> ComputeState(CancellationToken cancellationToken)
+        => Hub.ChatUI.GetHistoryInfo(ModalModel.ChatId, cancellationToken);
+
+    private void OnCancel()
+        => Modal.Close();
+
+    private Task OnPeriodChanged(TimeSpan? period) {
+        _form.Period = period;
+        return UpdatePreview();
+    }
+
+    private Task OnEverythingClick(ChatHistoryInfo history) {
+        if (history.First is null)
+            return Task.CompletedTask;
+
+        _isEverything = !_isEverything;
+        if (!_isEverything)
+            return Task.CompletedTask;
+
+        // The whole history in days, with a day to spare so it surely reaches the first message
+        var age = Clocks.SystemClock.Now - history.First.BeginsAt;
+        _form.Period = TimeSpan.FromDays(Math.Ceiling(age.TotalDays) + 1);
+        return UpdatePreview();
+    }
+
+    private async Task UpdatePreview() {
+        _previewCts.CancelAndDisposeSilently();
+        _firstEntry = null;
+        if (_form.Period is not { } period)
+            return;
+
+        var cts = _previewCts = new CancellationTokenSource();
+        var since = Clocks.SystemClock.Now - period;
+        try {
+            var reader = Hub.Chats.NewEntryReader(Session, ModalModel.ChatId);
+            var idRange = await Hub.Chats.GetIdRange(Session, ModalModel.ChatId, cts.Token);
+            var firstEntry = await reader.FindByMinBeginsAt(since, idRange, cts.Token);
+            if (cts.IsCancellationRequested)
+                return;
+
+            _since = since;
+            _firstEntry = firstEntry;
+            StateHasChanged();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private void OnWipe() {
+        if (_isWiping || _firstEntry is null || !_isConfirmed)
+            return;
+
+        _isWiping = true;
+        var command = new Chats_WipeHistory {
+            Session = Session,
+            ChatId = ModalModel.ChatId,
+            MinEntryLid = _isEverything ? 0 : _firstEntry.LocalId,
+        };
+        _ = Hub.UICommander.Run(command);
+        Modal.Close();
+    }
+
+    // Nested types
+
+    public sealed class FormModel {
+        public TimeSpan? Period { get; set; }
+    }
+
+    public sealed record Model(ChatId ChatId);
+}

@@ -67,12 +67,9 @@ public static partial class Constants
         public static readonly HashSet<ChatId> SystemChatIds = [DefaultChatId, AnnouncementsChatId, FeedbackTemplateChatId];
         public static readonly HashSet<string> SystemChatIdValues = SystemChatIds.Select(x => x.Value).ToHashSet();
 
-        // Entry fetches: the only tile IChatsBackend.GetTile and IChatEntryLanguagesBackend.GetTile accept
+        public static readonly TileLayer<int> ListIndexTiles = TileLayers.Int5;
         public static readonly TileLayer<long> EntryIdTiles = TileLayers.Long5;
-        // Range fetches: the only tile GetChatRangeTile, GetEntryRangeTile,
-        // IConversationsBackend.GetConversationRangeTile and IConversationsBackend.GetTile accept
         public static readonly TileLayer<long> ConversationIdTiles = TileLayers.Long1280;
-        public static readonly TileLayer<int> ChatListIndexTiles = TileLayers.Int5;
         public static readonly TimeSpan MaxVoiceEntryDuration = TimeSpan.FromMinutes(3);
         public static readonly TimeSpan StreamingEntryFixupDelay = MaxVoiceEntryDuration + TimeSpan.FromSeconds(30);
         // How long after the last interaction we still count an open chat at its tail as "being read".
@@ -90,6 +87,8 @@ public static partial class Constants
         public static readonly TimeSpan MaxTextEntryStreamDuration = TimeSpan.FromMinutes(30);
         // How long starting an import takes: the client counts it down, ChatSettings defaults to it
         public static readonly TimeSpan ImportStartSettleDelay = TimeSpan.FromSeconds(10);
+        public static readonly TimeSpan MinRetentionPeriod = TimeSpan.FromMinutes(10);
+        public static readonly TimeSpan MaxRetentionPeriod = TimeSpan.FromDays(36500);
         // An Ogg Opus utterance at ~32 kbps; well above any plausible single message
         public const int MaxVoiceStreamAudioBytes = 16 * 1024 * 1024;
         public const int MaxVoiceStreamChunkBytes = 1024 * 1024;

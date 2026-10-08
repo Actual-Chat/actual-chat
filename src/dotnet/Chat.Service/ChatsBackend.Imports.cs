@@ -73,6 +73,7 @@ public partial class ChatsBackend
         var sinceTime = since.ToDateTime();
         var entryId = await db.ChatEntries
             .Where(x => x.ChatId == chatId.Value && x.BeginsAt >= sinceTime && !x.IsRemoved)
+            .OrderBy(x => x.LocalId)
             .Select(x => x.Id)
             .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);

@@ -57,6 +57,15 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return null;
 
         var (translationSource, translation) = await GetExisting(id, cancellationToken).ConfigureAwait(false);
+        // The row outlives its source, so never serve a translation whose source is gone - removed,
+        // trimmed, or purged with its author - or whose content has changed underneath it. A
+        // streaming translation is exempt: its hash only settles once the stream finishes.
+        if (translationSource is null)
+            return null;
+        if (translation is { IsStreaming: false }
+            && translation.SourceContentHash != translationSource.ContentHash)
+            translation = null;
+
         if (!translateIfMissing || !translationSource.NeedsTranslation(translation))
             return translation;
 
@@ -154,8 +163,20 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
             return null;
 
         change.RequireValid();
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        if (!change.IsRemove()) {
+            var sourceId = id.SourceId;
+            var dbChat = await dbContext.Chats.ForShare()
+                .FirstOrDefaultAsync(c => c.Id == sourceId.ChatId.Value, cancellationToken).ConfigureAwait(false);
+            if (dbChat is null
+                || await ChatsBackend.IsRemovalPending(sourceId.ChatId, cancellationToken).ConfigureAwait(false))
+                return null;
+            if (await TryResolveTranslationSource(id, cancellationToken).ConfigureAwait(false) is null)
+                return null;
+        }
 
         var now = Clocks.SystemClock.Now;
 
@@ -316,19 +337,23 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 await publishStreamTask.ConfigureAwait(false);
             }
             finally {
-                var contentHash = translationSource.ContentHash.IsNone
-                    ? ChatEntryHashExt.GetContentHashString(translationSource.Content)
-                    : translationSource.ContentHash;
-                var finalizeChange = Change.Update(new TranslationDiff {
-                    StreamId = null,
-                    Content = KeepOriginalOnScriptMismatch(id, translationSource.Content, translatedTranscript.Text),
-                    SourceContentHash = contentHash,
-                });
-                var finalizeCmd = new TranslationsBackend_Change(
-                    id,
-                    translation.Version,
-                    finalizeChange);
-                translation = await Commander.Call(finalizeCmd, cancellationToken).ConfigureAwait(false);
+                // Null means OnChange declined to create it: the source was trimmed or removed meanwhile
+                if (translation is not null) {
+                    var contentHash = translationSource.ContentHash.IsNone
+                        ? ChatEntryHashExt.GetContentHashString(translationSource.Content)
+                        : translationSource.ContentHash;
+                    var finalizeChange = Change.Update(new TranslationDiff {
+                        StreamId = null,
+                        Content = KeepOriginalOnScriptMismatch(
+                            id, translationSource.Content, translatedTranscript.Text),
+                        SourceContentHash = contentHash,
+                    });
+                    var finalizeCmd = new TranslationsBackend_Change(
+                        id,
+                        translation.Version,
+                        finalizeChange);
+                    translation = await Commander.Call(finalizeCmd, cancellationToken).ConfigureAwait(false);
+                }
             }
             return translation;
         }

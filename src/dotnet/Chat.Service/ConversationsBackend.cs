@@ -23,6 +23,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IDbEntityResolver<string, DbConversation> DbConversationResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbConversation>>();
     private IConversationSummarizer ConversationSummarizer { get; } = services.GetRequiredService<IConversationSummarizer>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private ILiveSessionsBackend LiveSessionsBackend { get; } = services.GetRequiredService<ILiveSessionsBackend>();
     private ChatSettings Settings { get; } = services.GetRequiredService<ChatSettings>();
     private FlowHub FlowHub => field ??= Services.FlowHub();
@@ -34,6 +35,10 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var dbConversation = await DbConversationResolver.Get(conversationId.Value, cancellationToken).ConfigureAwait(false);
         var conversation = dbConversation?.ToModel();
+        if (conversation is not null
+            && await HasOnlyRemovedAuthors(conversation, cancellationToken).ConfigureAwait(false))
+            return null;
+
         if (conversation is null)
             return null;
 
@@ -138,6 +143,27 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         // neighbour's range tile is only known once the overlapping rows have been resolved
         var previousConversationLid = 0L;
         var nextConversationLid = 0L;
+        if (!change.IsRemove()) {
+            var dbChat = await dbContext.Chats.ForShare()
+                .FirstOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken).ConfigureAwait(false);
+            if (dbChat is null || await ChatsBackend.IsRemovalPending(chatId, cancellationToken).ConfigureAwait(false))
+                return null!;
+
+            // A summary can finish after a purge took the messages it was made of and removed their
+            // conversation: the chat lock is shared with the purge, so a source that is gone by now
+            // stays gone, and the conversation isn't recreated from it
+            if (change.IsCreate(out var createDiff)) {
+                var startEntryLid = conversationId.StartEntryLid;
+                var endEntryLid = createDiff.EndEntryLid ?? startEntryLid;
+                var hasSource = await dbContext.ChatEntries
+                    .AnyAsync(e => e.ChatId == chatId.Value && e.Kind == 0 && !e.IsRemoved
+                            && e.LocalId >= startEntryLid && e.LocalId <= endEntryLid,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                if (!hasSource)
+                    return null!;
+            }
+        }
 
         await dbContext.Conversations.Lock(conversationId, cancellationToken).ConfigureAwait(false);
 
@@ -345,7 +371,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (existing is { IsCall: true })
             conversation = KeepCallShape(existing, conversation, entries);
 
-        return await Persist(conversation, command.IsLiveMaterialization, cancellationToken).ConfigureAwait(false);
+        return (await Persist(conversation, command.IsLiveMaterialization, cancellationToken)
+            .ConfigureAwait(false))!;
     }
 
     [CommandHandler]
@@ -359,11 +386,13 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (conversation.IsCall)
             (conversation, words) = await SizeCallConversation(conversation, cancellationToken)
                 .ConfigureAwait(false);
+        // Persist writes nothing and returns null when the conversation is already below the chat's
+        // visibility boundary, so there is no call left to schedule a refresh for.
         var result = await Persist(conversation, isLiveMaterialization: true, cancellationToken)
             .ConfigureAwait(false);
-        if (conversation.IsCall)
+        if (conversation.IsCall && result is not null)
             await ScheduleCallRefresh(result, words, cancellationToken).ConfigureAwait(false);
-        return result;
+        return result!;
     }
 
     private Task ScheduleCallRefresh(Conversation conversation, int words, CancellationToken cancellationToken)
@@ -430,7 +459,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         };
     }
 
-    private async Task<Conversation> Persist(
+    // Returns null when OnChange declined the write - see its visibility boundary check
+    private async Task<Conversation?> Persist(
         Conversation conversation, bool isLiveMaterialization, CancellationToken cancellationToken)
     {
         var existing = await Get(conversation.Id, cancellationToken).ConfigureAwait(false);
@@ -491,6 +521,24 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Private methods
+
+    private async ValueTask<bool> HasOnlyRemovedAuthors(
+        Conversation conversation, CancellationToken cancellationToken)
+    {
+        // A summary is one blob of text, so it can't be filtered author by author: it survives
+        // while any of its authors does, and goes once none is left. Cleanup deletes the rest
+        // when it purges the messages the summary was built from.
+        var authorIds = conversation.AuthorIds;
+        if (authorIds.Count == 0)
+            return false;
+
+        var chatId = conversation.Id.ChatId;
+        foreach (var authorId in authorIds)
+            if (await AuthorsBackend.Exists(chatId, authorId, cancellationToken).ConfigureAwait(false))
+                return false;
+
+        return true;
+    }
 
     private async Task<ConversationEntriesInfo> GetTextEntries(ChatId chatId, Range<long>[] entryLidRanges, CancellationToken cancellationToken)
     {
