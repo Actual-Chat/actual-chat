@@ -104,44 +104,39 @@ Cache key: `codec@WxH×layer-count`.
 `VideoTrackPlayer` also registers before constructing its JS player and renews
 every 30 s. Registration includes camera-off viewers. If the advertised stream
 codec is unsupported, the component initializes a floor VP9 decoder with no
-incompatible codec description. Its capability-aware pull establishes a
-receiver lease while the sender replaces the stream; incompatible encoded
-frames never reach that decoder.
+incompatible codec description. The existing session-based registration narrows
+negotiation while the sender replaces the stream; incompatible encoded frames
+never reach that decoder.
 
 Playback workers send capabilities with
-`ILiveVideoStreams.GetStreamWithCapabilities`. Before yielding any frames, the
-API server registers a unique receiver lease with `LiveVideoBackend` and renews
-it every 20 s, independently of whether frames arrive or playback is paused.
-The server checks each layer's keyframe codec against the subscriber's decoder
-capabilities and never forwards its dependent frames until that layer has a
-compatible keyframe. Legacy `GetStream` uses the session's fresh registration,
-or VP9 when no capability report is available. During rolling deployments,
-workers fall back to the legacy pull only when the new API endpoint is absent,
-then enforce the same per-layer codec gate locally before decoding. Unknown
-legacy keyframe codecs fail closed. New API nodes use legacy receiver
-registrations when a backend node has not
-upgraded yet. Missing backend capability lookup also falls back to VP9, while
-frame admission remains enforced.
+`ILiveVideoStreams.GetStreamWithCapabilities`. The server checks each layer's
+keyframe codec against the subscriber's decoder capabilities and never forwards
+its dependent frames until that layer has a compatible keyframe. Reception does
+not create or remove membership: the existing UI registrations and heartbeats
+own that lifecycle. Pull restarts therefore cannot unregister a viewer or
+overwrite an admin codec override.
+
+Legacy `GetStream` admits only VP9 because it carries no decoder capabilities.
+Even a registered HEVC-capable legacy client cannot receive HEVC through that
+endpoint; it must use the capability-aware endpoint or receive a VP9 stream.
+During rolling deployments, new workers fall back to the legacy pull only when
+the new API endpoint is absent, then enforce the same per-layer codec gate
+locally before decoding. Unknown legacy keyframe codecs fail closed.
 
 Both peer and group chats expose the member capability intersection through
 `GetSupportedCodecs(chatId)`. Without any registered capabilities the
 recommendation is VP9. HEVC/AV1 become eligible when all registered members can
 decode them, even before the first stream exists: safety comes from reception
-admission rather than forcing a software VP9 bootstrap. A late joiner's lease
-narrows negotiation before any frames can reach its decoder. The sender's
-existing encoder ladder and runtime probes select among those options;
-healthy hardware HEVC ranks ahead of software VP9. Explicit admin codec
-overrides still bypass normal negotiation, but do not bypass reception checks.
+admission rather than forcing a software VP9 bootstrap. A late joiner's session
+registration narrows negotiation; admission withholds unsupported frames while
+the sender switches. The sender's existing encoder ladder and runtime probes
+select among those options; healthy hardware HEVC ranks ahead of software VP9.
+Explicit admin codec overrides still bypass normal negotiation, but do not
+bypass reception checks.
 
-Receiver leases remain for 20 s after a pull ends to cover codec restarts and
-stream replacement. Each pull has a distinct lease ID, so an obsolete cleanup
-cannot unregister its replacement. Cleanup retries transient backend failures
-so an abandoned lease cannot permanently pin a room to the floor. Member
-counts deduplicate leases by session.
-A stale lease whose API node is still online narrows negotiation to VP9 rather
-than being treated as a departure; disposal removes the lease, and leases owned
-by offline nodes can be cleaned up. Ordinary stale capability registrations
-retain the existing 90 s cleanup policy.
+Member counts are session-based. Capability registrations retain the existing
+90 s stale-member cleanup policy; there are no per-pull receiver leases,
+separate receiver heartbeats, or replacement-grace cleanup tasks.
 
 Codec **upgrades** are delayed by `CodecSwitchHysteresisWindow = 10 s` to avoid
 flapping; a pending upgrade schedules a computed-value recheck even without a
@@ -159,7 +154,7 @@ decode is uneven and hot - a 720p30 AV1 stream took a phone to its thermal
 throttling threshold in 15 minutes. The "Force decode codec" debug override
 still pins AV1 when asked.
 
-Most capability and receiver heartbeats leave negotiation unchanged. The server
+Most capability heartbeats leave negotiation unchanged. The server
 invalidates `GetSupportedCodecs` when the recommendation changes or a pending
 upgrade needs a timed recheck. Member counts also recheck freshness deadlines.
 

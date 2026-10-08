@@ -24,14 +24,6 @@ public interface ILiveVideoBackend : IComputeService, IBackendService
         bool isAdmin,
         CancellationToken cancellationToken);
     Task UnregisterMember(ChatId chatId, string sessionId, CancellationToken cancellationToken);
-    Task RegisterReceiver(
-        ChatId chatId,
-        string receiverId,
-        string sessionId,
-        ApiArray<string> supportedDecoderCodecs,
-        NodeRef receiverNodeRef,
-        CancellationToken cancellationToken);
-    Task<ApiArray<string>> GetMemberCodecs(ChatId chatId, string sessionId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ApiArray<string>> GetSupportedCodecs(ChatId chatId, CancellationToken cancellationToken);

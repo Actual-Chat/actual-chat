@@ -12,8 +12,6 @@ public class LiveVideoStreams : ILiveVideoStreams
     private static readonly TimeSpan ReceiveQualityCleanupPeriod = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan ReAddPliCooldown = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan ReAddPliRetention = TimeSpan.FromMinutes(10);
-    private static readonly TimeSpan ReceiverHeartbeatPeriod = TimeSpan.FromSeconds(20);
-    private static readonly TimeSpan ReceiverReplacementGrace = TimeSpan.FromSeconds(20);
 
     private IServiceProvider Services { get; }
     private ILiveVideoBackend Backend { get; }
@@ -123,21 +121,9 @@ public class LiveVideoStreams : ILiveVideoStreams
         StreamId streamId,
         CancellationToken cancellationToken)
     {
-        await LiveStreamAccess.RequireReadVideo(session, streamId, cancellationToken).ConfigureAwait(false);
-        var chatId = await VideoStreamingBackend.GetChatId(streamId, cancellationToken).ConfigureAwait(false);
-        if (chatId is null)
-            return null;
-
-        ApiArray<string> codecs;
-        try {
-            codecs = await Backend.GetMemberCodecs(chatId, session.Id, cancellationToken).ConfigureAwait(false);
-        }
-        catch (RpcException e) when (
-            e.Message.StartsWith("Endpoint not found:", StringComparison.Ordinal)
-            && e.Message.Contains(".GetMemberCodecs", StringComparison.Ordinal)) {
-            codecs = new ApiArray<string>([LiveVideoBackend.ChatState.FloorCodec]);
-        }
-        return await GetStreamWithCapabilities(session, streamId, codecs, cancellationToken).ConfigureAwait(false);
+        return await GetStreamWithCapabilities(
+            session, streamId, new ApiArray<string>([LiveVideoBackend.ChatState.FloorCodec]), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task<RpcStream<VideoFrame>?> GetStreamWithCapabilities(
@@ -204,36 +190,16 @@ public class LiveVideoStreams : ILiveVideoStreams
         async IAsyncEnumerable<VideoFrame> LogFirstFrame(
             [EnumeratorCancellation] CancellationToken streamCancellationToken = default)
         {
-            var receiverId = $"receiver:{Guid.NewGuid():N}";
-            using var receiverCts = CancellationTokenSource.CreateLinkedTokenSource(
-                cancellationToken, streamCancellationToken, HostLifetime.ApplicationStopping);
-            Task heartbeatTask = Task.CompletedTask;
-            try {
-                await RegisterReceiver(chatId, receiverId, session.Id, supportedDecoderCodecs, receiverCts.Token)
-                    .ConfigureAwait(false);
-                heartbeatTask = RefreshReceiver(
-                    chatId, receiverId, session.Id, supportedDecoderCodecs, receiverCts.Token);
-                if (!VideoCodecExt.IsSupported(initialCodec, supportedDecoderCodecs))
-                    Log.LogInformation("GetStream: awaiting compatible stream for {Session}, codec={Codec}",
-                        session, initialCodec);
-
-                var first = true;
-                await foreach (var f in filtered.WithCancellation(receiverCts.Token).ConfigureAwait(false)) {
-                    if (first) {
-                        first = false;
-                        Log.LogInformation(
-                            "GetStream: first frame yielded to RpcStream session={Session} "
-                            + "streamId={StreamId} in {ElapsedMs:F0}ms",
-                            session, streamIdValue, subscribedAt.Elapsed.TotalMilliseconds);
-                    }
-                    yield return f;
+            var first = true;
+            await foreach (var f in filtered.WithCancellation(streamCancellationToken).ConfigureAwait(false)) {
+                if (first) {
+                    first = false;
+                    Log.LogInformation(
+                        "GetStream: first frame yielded to RpcStream session={Session} "
+                        + "streamId={StreamId} in {ElapsedMs:F0}ms",
+                        session, streamIdValue, subscribedAt.Elapsed.TotalMilliseconds);
                 }
-            }
-            finally {
-                await receiverCts.CancelAsync().ConfigureAwait(false);
-                await heartbeatTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
-                _ = BackgroundTask.Run(
-                    () => ReleaseReceiver(chatId, receiverId), Log, "Video receiver cleanup failed");
+                yield return f;
             }
         }
     }
@@ -494,56 +460,6 @@ public class LiveVideoStreams : ILiveVideoStreams
     }
 
     // Private methods
-
-    private async Task RegisterReceiver(
-        ChatId chatId,
-        string receiverId,
-        string sessionId,
-        ApiArray<string> codecs,
-        CancellationToken cancellationToken)
-    {
-        try {
-            await Backend.RegisterReceiver(
-                chatId, receiverId, sessionId, codecs, MeshWatcher.ThisNode.Ref, cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (RpcException e) when (
-            e.Message.StartsWith("Endpoint not found:", StringComparison.Ordinal)
-            && e.Message.Contains(".RegisterReceiver", StringComparison.Ordinal)) {
-            await Backend.RegisterMember(chatId, receiverId, codecs, false, cancellationToken).ConfigureAwait(false);
-        }
-    }
-
-    private async Task RefreshReceiver(
-        ChatId chatId,
-        string receiverId,
-        string sessionId,
-        ApiArray<string> codecs,
-        CancellationToken cancellationToken)
-    {
-        while (!cancellationToken.IsCancellationRequested) {
-            await SystemClock.Delay(ReceiverHeartbeatPeriod, cancellationToken).ConfigureAwait(false);
-            try {
-                await RegisterReceiver(chatId, receiverId, sessionId, codecs, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
-                Log.LogWarning(e, "Video receiver heartbeat failed for {ChatId}, receiver={ReceiverId}",
-                    chatId, receiverId);
-            }
-        }
-    }
-
-    private async Task ReleaseReceiver(ChatId chatId, string receiverId)
-    {
-        try {
-            await SystemClock.Delay(ReceiverReplacementGrace, HostLifetime.ApplicationStopping).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) { }
-        await AsyncChain.From(ct => Backend.UnregisterMember(chatId, receiverId, ct))
-            .RetryForever(RetryDelaySeq.Exp(1, 20), SystemClock, Log)
-            .Run(HostLifetime.ApplicationStopping)
-            .ConfigureAwait(false);
-    }
 
     private async Task<ApiMap<string, ReceiveQuality>> KeepReadableStreams(
         Session session,

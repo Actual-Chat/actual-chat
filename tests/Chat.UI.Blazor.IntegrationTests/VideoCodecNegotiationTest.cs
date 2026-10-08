@@ -180,37 +180,19 @@ public class VideoCodecNegotiationTest(ChatAppHostFixture fixture, ITestOutputHe
     }
 
     [Fact]
-    public async Task ObsoleteReceiverReleaseShouldNotRemoveReplacement()
-    {
-        // arrange
-        var (chatId, backend, bob, _) = await Setup();
-        await backend.RegisterMember(chatId, bob, Everything, false, CancellationToken.None);
-        await RegisterViewer(backend, chatId, "old", Everything);
-        await RegisterViewer(backend, chatId, "new", new ApiArray<string>(["vp9", "h264"]));
-
-        // act
-        await backend.UnregisterMember(chatId, "old", CancellationToken.None);
-        var codecs = await backend.GetSupportedCodecs(chatId, CancellationToken.None);
-
-        // assert
-        codecs.Should().Equal("vp9", "h264");
-    }
-
-    [Fact]
-    public async Task ReceiverLeasesShouldNotDoubleCountSessions()
+    public async Task RepeatedRegistrationShouldCountOneMemberPerSession()
     {
         // arrange
         var (chatId, backend, bob, alice) = await Setup();
-        var nodeRef = AppHost.Services.MeshWatcher().ThisNode.Ref;
-        await backend.RegisterMember(chatId, bob, Everything, false, CancellationToken.None);
-        await backend.RegisterReceiver(chatId, "first", alice, Everything, nodeRef, CancellationToken.None);
-        await backend.RegisterReceiver(chatId, "second", alice, Everything, nodeRef, CancellationToken.None);
+        await RegisterViewer(backend, chatId, bob, Everything);
+        await RegisterViewer(backend, chatId, alice, Everything);
+        await RegisterViewer(backend, chatId, alice, Everything);
 
         // act
         var count = await backend.GetVideoStreamMemberCount(chatId, CancellationToken.None);
 
         // assert
-        count.Should().Be(2, "a camera and a screen subscription from one session are still one member");
+        count.Should().Be(2);
     }
 
     [Fact]
@@ -229,10 +211,8 @@ public class VideoCodecNegotiationTest(ChatAppHostFixture fixture, ITestOutputHe
     }
 
     private Task RegisterViewer(
-        ILiveVideoBackend backend, ChatId chatId, string receiverId, ApiArray<string> codecs)
-        => backend.RegisterReceiver(
-            chatId, receiverId, receiverId, codecs,
-            AppHost.Services.MeshWatcher().ThisNode.Ref, CancellationToken.None);
+        ILiveVideoBackend backend, ChatId chatId, string sessionId, ApiArray<string> codecs)
+        => backend.RegisterMember(chatId, sessionId, codecs, false, CancellationToken.None);
 
     private async Task<(ChatId ChatId, ILiveVideoBackend Backend, string Bob, string Alice)> Setup()
     {
