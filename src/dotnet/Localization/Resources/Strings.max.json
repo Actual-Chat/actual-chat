@@ -2124,6 +2124,8 @@
   "Call_IncomingVideo": "Przychodzące połączenie wideo",
   "Call_Outgoing": "Połączenie wychodzące",
   "Call_InCall": "Dalam panggilan",
+  "Call_NoConnection": "接続がありません: 声が相手に届いていません",
+  "Call_NoConnectionShort": "Nessuna connessione",
   // Where call audio plays: the call screen's speaker button and its menu. "Phone" is the
   // phone's own earpiece, as opposed to its loudspeaker or a headset.
   "Call_AudioOutputSpeaker": "Високоговорител",

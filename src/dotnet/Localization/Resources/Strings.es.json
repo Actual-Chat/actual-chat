@@ -1798,6 +1798,8 @@
   "Call_Incoming": "Llamada entrante",
   "Call_IncomingVideo": "Videollamada entrante",
   "Call_InCall": "En llamada",
+  "Call_NoConnection": "Sin conexión: no se te oye",
+  "Call_NoConnectionShort": "Sin conexión",
   "Call_AudioOutputSpeaker": "Altavoz",
   "Call_AudioOutputPhone": "Teléfono",
   "Call_AudioOutputBluetooth": "Bluetooth",

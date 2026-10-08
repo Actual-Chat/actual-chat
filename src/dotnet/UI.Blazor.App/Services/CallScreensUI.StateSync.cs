@@ -1,4 +1,7 @@
 using ActualChat.Live;
+using ActualChat.Localization;
+using ActualChat.UI.Blazor.Services;
+
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class CallScreensUI
@@ -14,6 +17,7 @@ public partial class CallScreensUI
             AsyncChain.From(SyncRingtone),
             AsyncChain.From(SyncRingback),
             AsyncChain.From(SyncCallView),
+            AsyncChain.From(SyncOfflineNotice),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 10);
         return (
@@ -37,6 +41,20 @@ public partial class CallScreensUI
 
         var mutedChatId = await _mutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
         return mutedChatId != call.ChatId;
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<bool> MustNoticeOffline(CancellationToken cancellationToken)
+    {
+        // The call screen and the island say it themselves, unless video takes their place; an answered call
+        // kept in its chat has no screen at all.
+        var view = await GetCallView(cancellationToken).ConfigureAwait(false);
+        var screen = await GetScreen(cancellationToken).ConfigureAwait(false);
+        if (view.Kind is CallViewKind.FullScreen or CallViewKind.Collapsed && screen is not { HasVideo: true })
+            return false;
+
+        return view.Call is { Phase: CallPhase.Active }
+            && await CallUI.IsCallOffline(cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
@@ -158,6 +176,19 @@ public partial class CallScreensUI
         catch (Exception e) {
             Log.LogWarning(e, "Closing the released call failed for chat #{ChatId}", call.ChatId);
         }
+    }
+
+    private async Task SyncOfflineNotice(CancellationToken cancellationToken)
+    {
+        // Once per disconnect: the toast fades, while the connection may stay down for the whole of
+        // CallUI's offline timeout - after which the call ends anyway.
+        var cMustNotice = await Computed
+            .Capture(() => MustNoticeOffline(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var c in cMustNotice.Changes(cancellationToken).ConfigureAwait(false))
+            if (c is { HasError: false, Value: true })
+                _ = Hub.Dispatcher.InvokeAsync(() => Hub.ToastUI.Show(
+                    L.Call_NoConnection, "icon-phone-off", ToastDismissDelay.Long));
     }
 
     private void ClearCallFlags(ChatId chatId)

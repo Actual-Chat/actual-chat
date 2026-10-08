@@ -1798,6 +1798,8 @@
   "Call_Incoming": "Вхідний дзвінок",
   "Call_IncomingVideo": "Вхідний відеодзвінок",
   "Call_InCall": "У дзвінку",
+  "Call_NoConnection": "Немає зв'язку: вас не чути",
+  "Call_NoConnectionShort": "Немає зв'язку",
   "Call_AudioOutputSpeaker": "Динамік",
   "Call_AudioOutputPhone": "Телефон",
   "Call_AudioOutputBluetooth": "Bluetooth",

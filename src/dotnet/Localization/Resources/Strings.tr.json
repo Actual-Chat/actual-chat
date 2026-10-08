@@ -1805,6 +1805,8 @@
   "Call_Incoming": "Gelen arama",
   "Call_IncomingVideo": "Gelen görüntülü arama",
   "Call_InCall": "Aramada",
+  "Call_NoConnection": "Bağlantı yok: sesiniz duyulmuyor",
+  "Call_NoConnectionShort": "Bağlantı yok",
   "Call_AudioOutputSpeaker": "Hoparlör",
   "Call_AudioOutputPhone": "Telefon",
   "Call_AudioOutputBluetooth": "Bluetooth",

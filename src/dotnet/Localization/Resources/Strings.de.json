@@ -1799,6 +1799,8 @@
   "Call_Incoming": "Eingehender Anruf",
   "Call_IncomingVideo": "Eingehender Videoanruf",
   "Call_InCall": "Im Anruf",
+  "Call_NoConnection": "Keine Verbindung: Sie sind nicht zu hören",
+  "Call_NoConnectionShort": "Keine Verbindung",
   "Call_AudioOutputSpeaker": "Lautsprecher",
   "Call_AudioOutputPhone": "Telefon",
   "Call_AudioOutputBluetooth": "Bluetooth",

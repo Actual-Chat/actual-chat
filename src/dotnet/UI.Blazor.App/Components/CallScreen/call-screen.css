@@ -255,6 +255,9 @@ body.wide .call-screen.expanded[data-has-call-screen-chat] > .c-container {
 .call-screen .call-screen-body .c-timer {
     @apply text-base text-white opacity-70;
 }
+.call-screen .call-screen-body .c-status.offline {
+    @apply text-warning opacity-100;
+}
 
 /* ── Bars ── */
 

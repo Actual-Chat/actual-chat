@@ -1798,6 +1798,8 @@
   "Call_Incoming": "Příchozí hovor",
   "Call_IncomingVideo": "Příchozí videohovor",
   "Call_InCall": "V hovoru",
+  "Call_NoConnection": "Bez připojení: není vás slyšet",
+  "Call_NoConnectionShort": "Bez připojení",
   "Call_AudioOutputSpeaker": "Reproduktor",
   "Call_AudioOutputPhone": "Telefon",
   "Call_AudioOutputBluetooth": "Bluetooth",

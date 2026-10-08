@@ -13,7 +13,7 @@
         @* Hanging up is left to the chat underneath: the whole island only expands the call screen back. *@
         <div class="c-in-call" @onclick="@OnExpandClick">
             <i class="icon-phone text-xl"></i>
-            <span class="c-status">@L.Call_InCall</span>
+            <CallStatus Text="@L.Call_InCall" IsAnswered="@true" IsShort="@true"/>
             @if (m.JoinedAt is { } joinedAt) {
                 <span>·</span>
                 <LiveDuration Class="c-timer" StartedAt="@joinedAt"/>

@@ -1798,6 +1798,8 @@
   "Call_Incoming": "수신 전화",
   "Call_IncomingVideo": "수신 영상 통화",
   "Call_InCall": "통화 중",
+  "Call_NoConnection": "연결 끊김: 상대방이 들을 수 없습니다",
+  "Call_NoConnectionShort": "연결 끊김",
   "Call_AudioOutputSpeaker": "스피커",
   "Call_AudioOutputPhone": "수화기",
   "Call_AudioOutputBluetooth": "블루투스",

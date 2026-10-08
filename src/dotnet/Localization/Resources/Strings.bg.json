@@ -1798,6 +1798,8 @@
   "Call_Incoming": "Входящо обаждане",
   "Call_IncomingVideo": "Входящо видеообаждане",
   "Call_InCall": "В разговор",
+  "Call_NoConnection": "Няма връзка: не ви се чува",
+  "Call_NoConnectionShort": "Няма връзка",
   "Call_AudioOutputSpeaker": "Високоговорител",
   "Call_AudioOutputPhone": "Телефон",
   "Call_AudioOutputBluetooth": "Bluetooth",

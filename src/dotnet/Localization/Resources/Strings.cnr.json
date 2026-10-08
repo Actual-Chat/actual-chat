@@ -1798,6 +1798,8 @@
   "Call_Incoming": "Dolazni poziv",
   "Call_IncomingVideo": "Dolazni video poziv",
   "Call_InCall": "U pozivu",
+  "Call_NoConnection": "Nema veze: ne čuju vas",
+  "Call_NoConnectionShort": "Nema veze",
   "Call_AudioOutputSpeaker": "Zvučnik",
   "Call_AudioOutputPhone": "Telefon",
   "Call_AudioOutputBluetooth": "Bluetooth",

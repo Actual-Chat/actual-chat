@@ -1798,6 +1798,8 @@
   "Call_Incoming": "Panggilan masuk",
   "Call_IncomingVideo": "Panggilan video masuk",
   "Call_InCall": "Dalam panggilan",
+  "Call_NoConnection": "Tidak ada koneksi: suara Anda tidak terdengar",
+  "Call_NoConnectionShort": "Tidak ada koneksi",
   "Call_AudioOutputSpeaker": "Speaker",
   "Call_AudioOutputPhone": "Telepon",
   "Call_AudioOutputBluetooth": "Bluetooth",
