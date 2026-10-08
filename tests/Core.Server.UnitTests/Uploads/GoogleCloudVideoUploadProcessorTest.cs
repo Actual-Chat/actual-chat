@@ -4,7 +4,7 @@ using Google.Cloud.Storage.V1;
 
 namespace ActualChat.Core.Server.UnitTests.Uploads;
 
-public class GoogleCloudVideoUploadProcessorTest
+public sealed class GoogleCloudVideoUploadProcessorTest
 {
     private readonly GoogleCloudVideoUploadProcessor _processor;
 
@@ -27,8 +27,14 @@ public class GoogleCloudVideoUploadProcessorTest
     [InlineData("image/jpeg", false)]
     [InlineData("text/plain", false)]
     [InlineData("application/pdf", false)]
-    public void Supports_ReturnsExpectedResult(string contentType, bool expected)
-        => _processor.Supports(contentType, default).Should().Be(expected);
+    public void SupportsShouldAcceptOnlyVideo(string contentType, bool expected)
+    {
+        // act
+        var result = _processor.Supports(contentType, default);
+
+        // assert
+        result.Should().Be(expected);
+    }
 
     [Theory]
     [InlineData("h264", true)]
@@ -51,12 +57,15 @@ public class GoogleCloudVideoUploadProcessorTest
     }
 
     [Fact]
-    public async Task Process_WithNonBlobFile_ThrowsInvalidOperationException()
+    public async Task ProcessShouldRejectFileNotInBlobStorage()
     {
+        // arrange
         var streamFile = new UploadedStreamFile("video.mp4", "video/mp4", 100, () => Task.FromResult(Stream.Null));
 
+        // act
         var act = () => _processor.Process(streamFile, null, CancellationToken.None);
 
+        // assert
         (await act.Should().ThrowAsync<InvalidOperationException>())
             .WithMessage($"*{nameof(UploadedBlobFile)}*");
     }
