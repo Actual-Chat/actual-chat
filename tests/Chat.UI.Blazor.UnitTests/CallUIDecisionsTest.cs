@@ -211,6 +211,35 @@ public class CallUIDecisionsTest
     }
 
     [Fact]
+    public void CallDroppedOfflineShouldBeCancelledOnceTheServerNamesIt()
+    {
+        // arrange - the StartCall reached the server just before the connection went, so its answer never came
+        var myCall = MyCall(ChatA, CallRole.Caller, CallPhase.Dialing, Call1);
+
+        // act
+        var lostCallId = CallUI.GetLostCallId(myCall, ChatA);
+
+        // assert
+        lostCallId.Should().Be(Call1);
+    }
+
+    [Fact]
+    public void OnlyALiveCallPlacedInTheDroppedChatShouldBeLost()
+    {
+        // act
+        var ended = CallUI.GetLostCallId(MyCall(ChatA, CallRole.Caller, CallPhase.Ended, Call1), ChatA);
+        var ring = CallUI.GetLostCallId(MyCall(ChatA, CallRole.Callee, CallPhase.Ringing, Call1), ChatA);
+        var otherChat = CallUI.GetLostCallId(MyCall(ChatB, CallRole.Caller, CallPhase.Dialing), ChatA);
+        var nothingDropped = CallUI.GetLostCallId(MyCall(ChatA, CallRole.Caller, CallPhase.Dialing, Call1), null);
+
+        // assert
+        ended.Should().BeNull("an ended call needs no cancel");
+        ring.Should().BeNull("a ring is the peer's call, not the one this client placed");
+        otherChat.Should().BeNull();
+        nothingDropped.Should().BeNull();
+    }
+
+    [Fact]
     public void AnsweredOutgoingCallShouldPutTheCallerOnTheLine()
     {
         // act

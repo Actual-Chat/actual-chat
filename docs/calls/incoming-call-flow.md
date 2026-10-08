@@ -49,6 +49,12 @@ the slot on the click and sends the request when the id arrives (never, if `Star
 `CallUI` sends its `StartCall`s and `CancelCall`s in the order they were made, so a redial right
 after a cancel can't reach the server first.
 
+Offline, a cancel drops the `StartCall` instead: it cancels the RPC, so the call isn't resent on
+reconnect and doesn't ring the callee for a call that is already over. Online it never does - an
+RPC that already reached the server would lose its id. A dropped `StartCall` can still have reached
+the server before the connection went, its answer lost; if `GetMyCall` names such a call once the
+client is back (a live caller claim in the chat the cancel dropped), `CallUI` cancels it by that id.
+
 ## Overview
 
 ```mermaid
@@ -261,8 +267,9 @@ island say so in place of "In call" - "No connection: you can't be heard", just 
 island - and where the call has no screen, a toast does. Both read the flag in `CallStatus`, apart from
 their own models: those wait on remote reads, which stall for `CacheFallbackDelay` while the server is
 away. Past `OfflineCallTimeout` (20 s) the client ends the call as the user would: cancels a dialing
-call, drops a ring, hangs up an answered one; the server hears of it once the connection is back. The
-server itself ends a peer call ~12 s after a client's connection drops
+call (dropping a `StartCall` still on its way, see above), drops a ring, hangs up an answered one; the
+server hears of it once the connection is back. The server itself ends a peer call ~12 s after a
+client's connection drops
 (`ParticipationDisconnectGrace` + `CallLeaveGrace`), so by then the call is over there too. A server
 restart doesn't end a call there - presence outlives it - but one longer than 20 s ends it here.
 
