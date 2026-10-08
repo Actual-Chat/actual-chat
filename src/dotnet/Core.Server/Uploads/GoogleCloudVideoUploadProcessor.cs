@@ -162,15 +162,16 @@ public sealed class GoogleCloudVideoUploadProcessor(
             Log.LogDebug("Transcoding completed in {Elapsed:N0}ms, state: {State}, job: '{JobName}'",
                 stepSw.ElapsedMilliseconds, job.State, job.Name);
 
-            progress?.Report(95);
-
             if (job.State is Job.Types.ProcessingState.Failed) {
                 Log.LogError("Transcoder job '{JobName}' failed, converting '{FileName}' locally: {Error}",
                     job.Name, upload.FileName, job.Error);
                 _ = DeleteState(stateObjectName);
+                // The local transcode starts over, and so does its progress
                 return await ProcessLocally(original, signedUrl, mediaInfo, conversion, progress, cancellationToken)
                     .ConfigureAwait(false);
             }
+
+            progress?.Report(95);
 
             // 5. Build result
             var outputObjectName = outputPrefix + "output.mp4";
