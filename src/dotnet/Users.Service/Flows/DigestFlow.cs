@@ -7,7 +7,7 @@ namespace ActualChat.Users.Flows;
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
 
-[Flow(DelayQuanta = 3600)] // 1 Hour
+[Flow(DelayQuanta = 600)] // 10 minutes
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class DigestFlow : PeriodicFlow
 {

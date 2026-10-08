@@ -32,11 +32,12 @@ public readonly partial struct SetDiff<TItem>(
 
     // Equality
     public bool Equals(SetDiff<TItem> other)
-        => AddedItems.Equals(other.AddedItems) && RemovedItems.Equals(other.RemovedItems);
+        => AddedItems.AsSpan().SequenceEqual(other.AddedItems)
+            && RemovedItems.AsSpan().SequenceEqual(other.RemovedItems);
     public override bool Equals(object? obj)
         => obj is SetDiff<TItem> other && Equals(other);
     public override int GetHashCode()
-        => HashCode.Combine(AddedItems, RemovedItems);
+        => HashCode.Combine(AddedItems.Length, RemovedItems.Length);
     public static bool operator ==(SetDiff<TItem> left, SetDiff<TItem> right)
         => left.Equals(right);
     public static bool operator !=(SetDiff<TItem> left, SetDiff<TItem> right)
@@ -74,11 +75,12 @@ public readonly partial struct SetDiff<TCollection, TItem>(
 
     // Equality
     public bool Equals(SetDiff<TCollection, TItem> other)
-        => AddedItems.Equals(other.AddedItems) && RemovedItems.Equals(other.RemovedItems);
+        => AddedItems.AsSpan().SequenceEqual(other.AddedItems)
+            && RemovedItems.AsSpan().SequenceEqual(other.RemovedItems);
     public override bool Equals(object? obj)
         => obj is SetDiff<TCollection, TItem> other && Equals(other);
     public override int GetHashCode()
-        => HashCode.Combine(AddedItems, RemovedItems);
+        => HashCode.Combine(AddedItems.Length, RemovedItems.Length);
     public static bool operator ==(SetDiff<TCollection, TItem> left, SetDiff<TCollection, TItem> right)
         => left.Equals(right);
     public static bool operator !=(SetDiff<TCollection, TItem> left, SetDiff<TCollection, TItem> right)
