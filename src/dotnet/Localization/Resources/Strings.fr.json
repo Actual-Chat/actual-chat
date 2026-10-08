@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": " {0}  est un gros mot ; un terme plus doux passera mieux.",
   "Coach_NotCounted": "Ne compte pas dans vos scores",
   "Coach_DontCount": "Ne pas compter",
-  "Coach_CountAgain": "Compter à nouveau"
+  "Coach_CountAgain": "Compter à nouveau",
+  "Coach_DetailCount_Format": "{0} comptés · {1} mots analysés",
+  "Coach_PaceDetailExplanation": "Le débit est mesuré sur de courts segments de parole, sans les longues pauses. Il diffère du débit global ci-dessus.",
+  "Coach_PaceUnavailable": "Le débit détaillé n’est pas encore disponible pour cette parole.",
+  "Coach_PaceBelow": "Sous la plage",
+  "Coach_PaceWithin": "Dans la plage",
+  "Coach_PaceAbove": "Au-dessus de la plage",
+  "Coach_PaceCoverage_Format": "{0} enregistrements mesurés · {1} de leur audio classé",
+  "Coach_PacePartial": "Un échantillon limité d’enregistrements mesurés est affiché."
 }

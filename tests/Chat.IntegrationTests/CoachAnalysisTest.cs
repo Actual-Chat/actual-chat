@@ -137,7 +137,7 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         analysis.Language.Should().Be(Languages.English);
         tagger.Calls.Should().Be(1);
         analysis.Pace.Should().BeNull();
-        appHost.Services.GetRequiredService<ChatSettings>().Coach.IsPaceEnabled.Should().BeFalse();
+        appHost.Services.GetRequiredService<ChatSettings>().Coach.IsPaceEnabled.Should().BeTrue();
     }
 
     [Fact(Timeout = 120_000)]

@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "«{0}» — грубе слово; м’якше може прозвучати краще.",
   "Coach_NotCounted": "Не враховується у ваших оцінках",
   "Coach_DontCount": "Не враховувати",
-  "Coach_CountAgain": "Враховувати знову"
+  "Coach_CountAgain": "Враховувати знову",
+  "Coach_DetailCount_Format": "Враховано: {0} · Проаналізовано слів: {1}",
+  "Coach_PaceDetailExplanation": "Темп вимірюється в коротких відрізках мовлення без довгих пауз. Він відрізняється від загального темпу вище.",
+  "Coach_PaceUnavailable": "Докладні дані про темп цього мовлення поки недоступні.",
+  "Coach_PaceBelow": "Нижче діапазону",
+  "Coach_PaceWithin": "У діапазоні",
+  "Coach_PaceAbove": "Вище діапазону",
+  "Coach_PaceCoverage_Format": "Виміряно записів: {0} · Класифіковано {1} їхнього аудіо",
+  "Coach_PacePartial": "Показано обмежену вибірку виміряних записів."
 }

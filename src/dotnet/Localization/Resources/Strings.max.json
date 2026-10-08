@@ -2485,5 +2485,13 @@
   "Coach_MarkProfanityBody_Format": "「{0}」は汚い言葉です。もっと穏やかな言い方のほうが伝わるかもしれません。",
   "Coach_NotCounted": "Не враховується у ваших оцінках",
   "Coach_DontCount": "カウントしない",
-  "Coach_CountAgain": "Compter à nouveau"
+  "Coach_CountAgain": "Compter à nouveau",
+  "Coach_DetailCount_Format": "Учтено: {0} · Проанализировано слов: {1}",
+  "Coach_PaceDetailExplanation": "Das Tempo wird in kurzen Sprachabschnitten ohne lange Pausen gemessen. Es unterscheidet sich vom Gesamttempo oben.",
+  "Coach_PaceUnavailable": "Für diese Rede ist noch keine detaillierte Tempomessung verfügbar.",
+  "Coach_PaceBelow": "Por debajo del rango",
+  "Coach_PaceWithin": "Dentro do intervalo",
+  "Coach_PaceAbove": "Au-dessus de la plage",
+  "Coach_PaceCoverage_Format": "{0} измјерених снимака · {1} њиховог звука класифицирано",
+  "Coach_PacePartial": "Es wird eine begrenzte Auswahl gemessener Aufnahmen angezeigt."
 }

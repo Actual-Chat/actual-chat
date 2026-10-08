@@ -147,7 +147,10 @@ snapshots, and Soniox-based segment pace distributions; tracked by #5128. The in
 [measurement/storage spike](./speech-coach-measurement-storage-spike.md) includes actual binary,
 PostgreSQL, and WAL evidence plus a legacy Soniox boundary regression. The backend now captures
 measurements into nullable binary columns in existing Coach rows, with per-language daily histograms
-and coverage merged across periods. Capture remains disabled by default with no historical backfill. Accurate provider-word timing and replay validation remain rollout gates.
+and coverage merged across periods. Capture now defaults on at the developer's request, with no historical
+backfill. Fillers/Weak Words details reuse filtered occurrences and playback; Pace details classify stored
+segments exactly, never estimating target percentages from histogram bins. Provider timing accuracy and
+broader replay validation remain open; speaking-day history and personal baselines are still pending.
 [Existing dev audio validation](./speech-coach-dev-timing-validation.md) identifies interpolated starts;
 new Soniox recordings improve the single existing map. English recordings are not a blocker.
 Existing score formulas and weekly comparisons stay unchanged.

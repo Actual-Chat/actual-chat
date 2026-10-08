@@ -14,8 +14,11 @@
 }
 
 <div class="coach-skills">
-    @if (m.Word is { } word) {
-        <CoachOccurrences Word="@word" Window="@m.Window" Back="@OnOccurrencesBack"/>
+    @if (m.Detail is { } detail) {
+        <CoachSkillDetail @key="@detail" Kind="@detail" Window="@m.Window" Language="@Language"
+                          Back="@OnDetailBack" WindowChanged="@OnWindow"/>
+    } else if (m.Word is { } word) {
+        <CoachOccurrences Word="@word" Window="@m.Window" Language="@Language" Back="@OnOccurrencesBack"/>
     } else {
         <div class="c-periods">
             <div class="c-chips">
@@ -43,6 +46,7 @@
                         IsFocusOverridden="@m.IsFocusOverridden"
                         IsNotMeasured="@(!m.IsWordSplittable && CoachSkillSets.IsLanguageBound(kind))"
                         WordClick="@OnWordClick"
+                        DetailClick="@OnDetailClick"
                         FocusClick="@OnFocusClick"
                         FocusClear="@OnFocusClear"/>
                 }
@@ -64,7 +68,8 @@
                     Summary="@s"
                     Language="@Language"
                     IsNotMeasured="@(!m.IsWordSplittable && CoachSkillSets.IsLanguageBound(metric.Kind))"
-                    WordClick="@OnWordClick"/>
+                    WordClick="@OnWordClick"
+                    DetailClick="@OnDetailClick"/>
             }
         </Card>
         <div class="c-footer">@L.Coach_TapMarkedWord</div>
@@ -78,12 +83,14 @@
 
     private MutableState<CoachWindow> _window = null!;
     private MutableState<string?> _word = null!;
+    private MutableState<CoachMetricKind?> _detail = null!;
 
     private CoachLabels Labels => field ??= new CoachLabels(L);
 
     protected override void OnInitialized() {
         _window = StateFactory.NewMutable(CoachWindow.Days7);
         _word = StateFactory.NewMutable((string?)null);
+        _detail = StateFactory.NewMutable((CoachMetricKind?)null);
     }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -92,6 +99,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var window = await _window.Use(cancellationToken).ConfigureAwait(false);
         var word = await _word.Use(cancellationToken).ConfigureAwait(false);
+        var detail = await _detail.Use(cancellationToken).ConfigureAwait(false);
         var summary = await Hub.Coach
             .GetOwnSummary(Session, window, Language, cancellationToken)
             .ConfigureAwait(false);
@@ -102,7 +110,7 @@
         var isSplittable = languages.FirstOrDefault(x => x.Iso == iso)?.IsWordSplittable ?? true;
         return new Model(
             window, word, summary, settings.LevelOf(iso), isSplittable, primary,
-            settings.FocusByLanguage.ContainsKey(iso));
+            settings.FocusByLanguage.ContainsKey(iso), detail);
     }
 
     private void OnWindow(CoachWindow window)
@@ -110,6 +118,12 @@
 
     private void OnWordClick(string word)
         => _word.Value = word;
+
+    private void OnDetailClick(CoachMetricKind kind)
+        => _detail.Value = kind;
+
+    private void OnDetailBack()
+        => _detail.Value = null;
 
     private void OnOccurrencesBack()
         => _word.Value = null;
@@ -135,8 +149,9 @@
         CoachLanguageLevel Level,
         bool IsWordSplittable,
         string PrimaryIso,
-        bool IsFocusOverridden) {
+        bool IsFocusOverridden,
+        CoachMetricKind? Detail) {
         public static readonly Model None = new(
-            CoachWindow.Days7, null, CoachSummary.None, CoachLanguageLevel.Native, true, "", false);
+            CoachWindow.Days7, null, CoachSummary.None, CoachLanguageLevel.Native, true, "", false, null);
     }
 }

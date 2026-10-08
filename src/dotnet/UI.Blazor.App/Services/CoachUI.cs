@@ -176,7 +176,11 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
         return ApiArray<SpeechSpan>.Empty;
     }
 
-    public async Task JumpTo(CoachOccurrence occurrence, CancellationToken cancellationToken, bool play = true)
+    public Task JumpTo(CoachPaceMoment moment, CancellationToken cancellationToken)
+        => JumpTo(moment.Occurrence, cancellationToken, true, moment.Segment.TimeRange.Start / 1_000d);
+
+    public async Task JumpTo(
+        CoachOccurrence occurrence, CancellationToken cancellationToken, bool play = true, double? offset = null)
     {
         var entryId = ChatEntryId.New(occurrence.ChatId, occurrence.EntryLid);
         // Navigation and replay need the Blazor dispatcher, so the awaits keep the context
@@ -193,7 +197,7 @@ public class CoachUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServi
         if (!play || entry.Audio?.TimeMap.TryMap(occurrence.Start) is not { } startTime)
             return;
 
-        var startAt = entry.BeginsAt + TimeSpan.FromSeconds(startTime - ReplayLeadSeconds);
+        var startAt = entry.BeginsAt + TimeSpan.FromSeconds(Math.Max(0, (offset ?? startTime) - ReplayLeadSeconds));
         await ChatAudioUI.StartReplay(occurrence.ChatId, startAt).ConfigureAwait(true);
     }
 

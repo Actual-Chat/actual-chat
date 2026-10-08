@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "“{0}” एक गाली है; कोई नरम शब्द बेहतर रहेगा।",
   "Coach_NotCounted": "आपके स्कोर में नहीं गिना जाता",
   "Coach_DontCount": "न गिनें",
-  "Coach_CountAgain": "फिर से गिनें"
+  "Coach_CountAgain": "फिर से गिनें",
+  "Coach_DetailCount_Format": "{0} गिने गए · {1} शब्दों का विश्लेषण",
+  "Coach_PaceDetailExplanation": "गति छोटे भाषण खंडों में मापी जाती है और लंबे विराम शामिल नहीं होते। यह ऊपर दी गई कुल गति से अलग है।",
+  "Coach_PaceUnavailable": "इस भाषण की विस्तृत गति अभी उपलब्ध नहीं है।",
+  "Coach_PaceBelow": "सीमा से नीचे",
+  "Coach_PaceWithin": "सीमा के भीतर",
+  "Coach_PaceAbove": "सीमा से ऊपर",
+  "Coach_PaceCoverage_Format": "{0} रिकॉर्डिंग मापी गईं · उनके ऑडियो का {1} वर्गीकृत",
+  "Coach_PacePartial": "मापी गई रिकॉर्डिंग का सीमित नमूना दिखाया जा रहा है।"
 }

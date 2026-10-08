@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "„{0}“ je nadávka; mírnější slovo může znít lépe.",
   "Coach_NotCounted": "Nezapočítává se do vašeho skóre",
   "Coach_DontCount": "Nezapočítávat",
-  "Coach_CountAgain": "Znovu započítat"
+  "Coach_CountAgain": "Znovu započítat",
+  "Coach_DetailCount_Format": "{0} započítáno · {1} analyzovaných slov",
+  "Coach_PaceDetailExplanation": "Tempo se měří v krátkých úsecích řeči bez dlouhých pauz. Liší se od celkového tempa výše.",
+  "Coach_PaceUnavailable": "Podrobné tempo pro tuto řeč zatím není dostupné.",
+  "Coach_PaceBelow": "Pod rozsahem",
+  "Coach_PaceWithin": "V rozsahu",
+  "Coach_PaceAbove": "Nad rozsahem",
+  "Coach_PaceCoverage_Format": "{0} měřených nahrávek · {1} jejich zvuku klasifikováno",
+  "Coach_PacePartial": "Zobrazuje se omezený vzorek měřených nahrávek."
 }

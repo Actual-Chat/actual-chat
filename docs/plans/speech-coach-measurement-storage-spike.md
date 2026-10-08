@@ -7,9 +7,10 @@ This is the initial implementation gate for
 **The fine-timing rollout gate is not cleared.** New Soniox timing is captured in the existing map,
 and timestamp corrections survive transport. Timing metadata, its binary codec/column, and the local
 migration were removed at the developer's request. No replacement timing marker was added.
-The follow-up adds nullable binary pace-measurement columns to existing Coach rows, with capture
-**disabled by default**. Nothing has been deployed. Historical conversion and UI precision claims
-remain out of scope.
+The follow-up adds nullable binary pace-measurement columns to existing Coach rows. Capture initially
+was disabled by default and now defaults on at the developer's request. Fillers, Weak Words, and Pace
+details are implemented; Pace target percentages are exact for the stored segments, not a claim of
+provider alignment accuracy. Nothing has been deployed, and there is no historical measurement backfill.
 
 ## Implemented prototype
 

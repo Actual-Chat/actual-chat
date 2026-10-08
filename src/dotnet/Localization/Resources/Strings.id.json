@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "“{0}” adalah kata kasar; kata yang lebih halus mungkin lebih baik.",
   "Coach_NotCounted": "Tidak dihitung dalam skor Anda",
   "Coach_DontCount": "Jangan hitung",
-  "Coach_CountAgain": "Hitung lagi"
+  "Coach_CountAgain": "Hitung lagi",
+  "Coach_DetailCount_Format": "{0} dihitung · {1} kata dianalisis",
+  "Coach_PaceDetailExplanation": "Tempo diukur dalam segmen ucapan pendek, tanpa jeda panjang. Ini berbeda dari tempo keseluruhan di atas.",
+  "Coach_PaceUnavailable": "Tempo terperinci belum tersedia untuk ucapan ini.",
+  "Coach_PaceBelow": "Di bawah rentang",
+  "Coach_PaceWithin": "Dalam rentang",
+  "Coach_PaceAbove": "Di atas rentang",
+  "Coach_PaceCoverage_Format": "{0} rekaman diukur · {1} audionya diklasifikasikan",
+  "Coach_PacePartial": "Menampilkan sampel terbatas dari rekaman yang diukur."
 }

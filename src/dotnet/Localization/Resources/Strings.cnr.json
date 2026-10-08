@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "„{0}“ je psovka; blaža riječ može biti bolja.",
   "Coach_NotCounted": "Ne računa se u vaše ocjene",
   "Coach_DontCount": "Ne računaj",
-  "Coach_CountAgain": "Računaj ponovo"
+  "Coach_CountAgain": "Računaj ponovo",
+  "Coach_DetailCount_Format": "{0} izbrojano · {1} analiziranih riječi",
+  "Coach_PaceDetailExplanation": "Tempo se mjeri u kratkim segmentima govora, bez dugih pauza. Razlikuje se od ukupnog tempa iznad.",
+  "Coach_PaceUnavailable": "Detaljan tempo još nije dostupan za ovaj govor.",
+  "Coach_PaceBelow": "Ispod raspona",
+  "Coach_PaceWithin": "Unutar raspona",
+  "Coach_PaceAbove": "Iznad raspona",
+  "Coach_PaceCoverage_Format": "{0} izmjerenih snimaka · {1} njihovog zvuka klasificirano",
+  "Coach_PacePartial": "Prikazan je ograničen uzorak izmjerenih snimaka."
 }

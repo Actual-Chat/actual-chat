@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "“{0}”是脏话；换个温和点的说法可能更好。",
   "Coach_NotCounted": "不计入你的得分",
   "Coach_DontCount": "不计入",
-  "Coach_CountAgain": "重新计入"
+  "Coach_CountAgain": "重新计入",
+  "Coach_DetailCount_Format": "已计数 {0} 次 · 已分析 {1} 个词",
+  "Coach_PaceDetailExplanation": "语速按短发言片段测量，不包括长停顿。它与上方的整体语速不同。",
+  "Coach_PaceUnavailable": "这段发言的详细语速暂不可用。",
+  "Coach_PaceBelow": "低于范围",
+  "Coach_PaceWithin": "范围内",
+  "Coach_PaceAbove": "高于范围",
+  "Coach_PaceCoverage_Format": "已测量 {0} 段录音 · 已分类其中 {1} 的音频",
+  "Coach_PacePartial": "显示已测量录音的有限样本。"
 }

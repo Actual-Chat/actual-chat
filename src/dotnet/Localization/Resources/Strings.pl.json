@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "„{0}” to przekleństwo; łagodniejsze słowo może brzmieć lepiej.",
   "Coach_NotCounted": "Nie wlicza się do Twoich wyników",
   "Coach_DontCount": "Nie licz",
-  "Coach_CountAgain": "Licz ponownie"
+  "Coach_CountAgain": "Licz ponownie",
+  "Coach_DetailCount_Format": "{0} zliczono · {1} przeanalizowanych słów",
+  "Coach_PaceDetailExplanation": "Tempo mierzy się w krótkich fragmentach mowy, bez długich pauz. Różni się od tempa ogólnego powyżej.",
+  "Coach_PaceUnavailable": "Szczegółowe tempo nie jest jeszcze dostępne dla tej wypowiedzi.",
+  "Coach_PaceBelow": "Poniżej zakresu",
+  "Coach_PaceWithin": "W zakresie",
+  "Coach_PaceAbove": "Powyżej zakresu",
+  "Coach_PaceCoverage_Format": "{0} zmierzonych nagrań · {1} ich dźwięku sklasyfikowano",
+  "Coach_PacePartial": "Wyświetlana jest ograniczona próbka zmierzonych nagrań."
 }

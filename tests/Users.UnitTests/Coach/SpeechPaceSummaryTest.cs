@@ -118,6 +118,35 @@ public class SpeechPaceSummaryTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void PaceDetailsShouldPreserveExactDistributionAndSegmentsAcrossSerialization()
+    {
+        // arrange
+        var measurement = Measurement();
+        var details = new CoachPaceDetails {
+            Summary = SpeechPaceSummary.FromMeasurement(measurement),
+            Distribution = SpeechPaceHistogram.Classify(measurement.Analysis.Segments, 60, 160),
+            Moments = ApiArray.New(new CoachPaceMoment(
+                new CoachOccurrence(GroupChatId.New(), 1, 0, 10, Day), measurement.Analysis.Segments[1])),
+            Slow = 60,
+            Fast = 160,
+            IsTruncated = true,
+        };
+        var serializer = new VersionedByteSerializer([MessagePackByteSerializer.Default]);
+
+        // act
+        using var bytes = serializer.Write(details);
+        var binary = (CoachPaceDetails)serializer.Read(bytes.WrittenMemory, typeof(CoachPaceDetails), out _)!;
+        var json = SystemJsonSerializer.Default.Read<CoachPaceDetails>(SystemJsonSerializer.Default.Write(details));
+
+        // assert
+        binary.Should().BeEquivalentTo(details);
+        json.Should().BeEquivalentTo(details);
+        binary.Distribution.WithinRate.Should().Be(0.5);
+        binary.Moments[0].Segment.WordsPerMinute.Should().Be(240);
+        CoachPaceDetails.None.Distribution.WithinRate.Should().BeNull();
+    }
+
+    [Fact]
     public void LegacyDailyJsonShouldRemainReadableWithoutInventingCoverage()
     {
         // arrange

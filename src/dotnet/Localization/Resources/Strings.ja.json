@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "「{0}」は汚い言葉です。もっと穏やかな言い方のほうが伝わるかもしれません。",
   "Coach_NotCounted": "スコアに含まれていません",
   "Coach_DontCount": "カウントしない",
-  "Coach_CountAgain": "再びカウントする"
+  "Coach_CountAgain": "再びカウントする",
+  "Coach_DetailCount_Format": "{0} 件を集計 · {1} 語を分析",
+  "Coach_PaceDetailExplanation": "話す速さは長い間を除いた短い発話区間で測定します。上の全体的な速さとは異なります。",
+  "Coach_PaceUnavailable": "この発話の詳細な速さはまだ利用できません。",
+  "Coach_PaceBelow": "範囲未満",
+  "Coach_PaceWithin": "範囲内",
+  "Coach_PaceAbove": "範囲超過",
+  "Coach_PaceCoverage_Format": "{0} 件の録音を測定 · 音声の {1} を分類",
+  "Coach_PacePartial": "測定済み録音の一部を表示しています。"
 }

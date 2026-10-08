@@ -39,10 +39,15 @@ public sealed record SpeechPaceHistogram(int BinWidth, IReadOnlyDictionary<int, 
     }
 }
 
+[DataContract, MessagePackObject]
 [StructLayout(LayoutKind.Auto)]
-public readonly record struct SpeechPaceDistribution(
-    long BelowMilliseconds, long WithinMilliseconds, long AboveMilliseconds)
+public readonly partial record struct SpeechPaceDistribution(
+    [property: DataMember, Key(0)] long BelowMilliseconds,
+    [property: DataMember, Key(1)] long WithinMilliseconds,
+    [property: DataMember, Key(2)] long AboveMilliseconds)
 {
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public long TotalMilliseconds => checked(BelowMilliseconds + WithinMilliseconds + AboveMilliseconds);
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public double? WithinRate => TotalMilliseconds > 0 ? (double)WithinMilliseconds / TotalMilliseconds : null;
 }

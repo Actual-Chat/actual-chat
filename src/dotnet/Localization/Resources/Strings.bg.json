@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "„{0}“ е ругатня; по-мек израз може да звучи по-добре.",
   "Coach_NotCounted": "Не се отчита в резултатите ви",
   "Coach_DontCount": "Не отчитай",
-  "Coach_CountAgain": "Отчитай отново"
+  "Coach_CountAgain": "Отчитай отново",
+  "Coach_DetailCount_Format": "{0} преброени · {1} анализирани думи",
+  "Coach_PaceDetailExplanation": "Темпото се измерва в кратки речеви сегменти, без дългите паузи. То се различава от общото темпо по-горе.",
+  "Coach_PaceUnavailable": "Подробно темпо все още не е налично за тази реч.",
+  "Coach_PaceBelow": "Под диапазона",
+  "Coach_PaceWithin": "В диапазона",
+  "Coach_PaceAbove": "Над диапазона",
+  "Coach_PaceCoverage_Format": "{0} измерени записа · {1} от звука им е класифициран",
+  "Coach_PacePartial": "Показва се ограничена извадка от измерените записи."
 }

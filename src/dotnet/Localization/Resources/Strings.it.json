@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "“{0}” è una parolaccia; una più mite può funzionare meglio.",
   "Coach_NotCounted": "Non conta nei tuoi punteggi",
   "Coach_DontCount": "Non contare",
-  "Coach_CountAgain": "Conta di nuovo"
+  "Coach_CountAgain": "Conta di nuovo",
+  "Coach_DetailCount_Format": "{0} contati · {1} parole analizzate",
+  "Coach_PaceDetailExplanation": "Il ritmo viene misurato in brevi segmenti di parlato, escludendo le pause lunghe. È diverso dal ritmo complessivo sopra.",
+  "Coach_PaceUnavailable": "Il ritmo dettagliato non è ancora disponibile per questo parlato.",
+  "Coach_PaceBelow": "Sotto l’intervallo",
+  "Coach_PaceWithin": "Nell’intervallo",
+  "Coach_PaceAbove": "Sopra l’intervallo",
+  "Coach_PaceCoverage_Format": "{0} registrazioni misurate · {1} del loro audio classificato",
+  "Coach_PacePartial": "È mostrato un campione limitato delle registrazioni misurate."
 }

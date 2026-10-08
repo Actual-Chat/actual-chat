@@ -2239,6 +2239,16 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_NotCounted => l["Coach_NotCounted"].Value;
         public string Coach_DontCount => l["Coach_DontCount"].Value;
         public string Coach_CountAgain => l["Coach_CountAgain"].Value;
+        public string Coach_DetailCount_Format(object arg0, object arg1)
+            => l["Coach_DetailCount_Format", arg0, arg1].Value;
+        public string Coach_PaceDetailExplanation => l["Coach_PaceDetailExplanation"].Value;
+        public string Coach_PaceUnavailable => l["Coach_PaceUnavailable"].Value;
+        public string Coach_PaceBelow => l["Coach_PaceBelow"].Value;
+        public string Coach_PaceWithin => l["Coach_PaceWithin"].Value;
+        public string Coach_PaceAbove => l["Coach_PaceAbove"].Value;
+        public string Coach_PaceCoverage_Format(object arg0, object arg1)
+            => l["Coach_PaceCoverage_Format", arg0, arg1].Value;
+        public string Coach_PacePartial => l["Coach_PacePartial"].Value;
         public string Coach_MarkProfanityTitle => l["Coach_MarkProfanityTitle"].Value;
         public string Coach_MarkProfanityBody_Format(object arg0) => l["Coach_MarkProfanityBody_Format", arg0].Value;
 

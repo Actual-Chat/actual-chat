@@ -20,6 +20,14 @@ public interface ICoachBackend : IComputeService, IBackendService
     Task<ApiArray<CoachOccurrence>> ListOccurrences(
         UserId userId, string word, Range<Moment> range, int limit, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<ApiArray<CoachOccurrence>> ListSkillOccurrences(
+        UserId userId, string word, Range<Moment> range, int limit,
+        string? language, CoachMetricKind? kind, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<CoachPaceDetails> GetPaceDetails(
+        UserId userId, Range<Moment> range, string language, CancellationToken cancellationToken);
+
     // Commands
 
     [CommandHandler]

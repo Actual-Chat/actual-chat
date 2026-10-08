@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "“{0}”은(는) 욕설입니다. 더 순한 표현이 나을 수 있어요.",
   "Coach_NotCounted": "점수에 반영되지 않았어요",
   "Coach_DontCount": "집계 제외",
-  "Coach_CountAgain": "다시 집계"
+  "Coach_CountAgain": "다시 집계",
+  "Coach_DetailCount_Format": "{0}회 집계 · {1}개 단어 분석",
+  "Coach_PaceDetailExplanation": "속도는 긴 쉼을 제외한 짧은 발화 구간에서 측정합니다. 위의 전체 속도와는 다릅니다.",
+  "Coach_PaceUnavailable": "이 발화의 상세 속도는 아직 제공되지 않습니다.",
+  "Coach_PaceBelow": "범위 미만",
+  "Coach_PaceWithin": "범위 내",
+  "Coach_PaceAbove": "범위 초과",
+  "Coach_PaceCoverage_Format": "녹음 {0}개 측정 · 오디오의 {1} 분류",
+  "Coach_PacePartial": "측정된 녹음의 제한된 표본을 표시합니다."
 }

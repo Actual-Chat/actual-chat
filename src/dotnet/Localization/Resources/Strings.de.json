@@ -2125,5 +2125,13 @@
   "Coach_MarkProfanityBody_Format": "„{0}“ ist ein Schimpfwort; ein milderes passt vielleicht besser.",
   "Coach_NotCounted": "Zählt nicht für Ihre Werte",
   "Coach_DontCount": "Nicht zählen",
-  "Coach_CountAgain": "Wieder zählen"
+  "Coach_CountAgain": "Wieder zählen",
+  "Coach_DetailCount_Format": "{0} gezählt · {1} analysierte Wörter",
+  "Coach_PaceDetailExplanation": "Das Tempo wird in kurzen Sprachabschnitten ohne lange Pausen gemessen. Es unterscheidet sich vom Gesamttempo oben.",
+  "Coach_PaceUnavailable": "Für diese Rede ist noch keine detaillierte Tempomessung verfügbar.",
+  "Coach_PaceBelow": "Unter dem Bereich",
+  "Coach_PaceWithin": "Im Bereich",
+  "Coach_PaceAbove": "Über dem Bereich",
+  "Coach_PaceCoverage_Format": "{0} gemessene Aufnahmen · {1} ihres Audios eingeordnet",
+  "Coach_PacePartial": "Es wird eine begrenzte Auswahl gemessener Aufnahmen angezeigt."
 }

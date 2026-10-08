@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "«{0}» — грубое слово; помягче может прозвучать лучше.",
   "Coach_NotCounted": "Не учитывается в ваших оценках",
   "Coach_DontCount": "Не учитывать",
-  "Coach_CountAgain": "Учитывать снова"
+  "Coach_CountAgain": "Учитывать снова",
+  "Coach_DetailCount_Format": "Учтено: {0} · Проанализировано слов: {1}",
+  "Coach_PaceDetailExplanation": "Темп измеряется в коротких отрезках речи без длинных пауз. Он отличается от общего темпа выше.",
+  "Coach_PaceUnavailable": "Подробные данные о темпе этой речи пока недоступны.",
+  "Coach_PaceBelow": "Ниже диапазона",
+  "Coach_PaceWithin": "В диапазоне",
+  "Coach_PaceAbove": "Выше диапазона",
+  "Coach_PaceCoverage_Format": "Измерено записей: {0} · Классифицировано {1} их аудио",
+  "Coach_PacePartial": "Показана ограниченная выборка измеренных записей."
 }

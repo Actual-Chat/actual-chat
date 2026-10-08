@@ -70,6 +70,88 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
             return days[0];
         });
 
+    [Fact(Timeout = 60_000)]
+    public async Task PaceDetailsShouldClassifyExactBoundariesAndRespectLanguageAndExclusion()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var commander = AppHost.Services.Commander();
+        var samples = new[] { (85, 30_000), (86, 30_000), (13, 6_000), (12, 6_000) };
+        for (var i = 0; i < samples.Length; i++) {
+            var (words, milliseconds) = samples[i];
+            var analysis = Entry(account.Id, chatId, i + 1, words, milliseconds / 1_000d, T0) with {
+                Pace = new SpeechPaceMeasurement(1, milliseconds, new SpeechPaceAnalysis(
+                    [new SpeechPaceSegment((0, 10), (0, milliseconds), words)], words, 0, 0, 0, 0, 0)),
+            };
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(analysis), false));
+        }
+        var russian = Entry(account.Id, GroupChatId.New(), 1, 40, 15, T0, language: Languages.Russian) with {
+            Pace = new SpeechPaceMeasurement(1, 15_000, new SpeechPaceAnalysis(
+                [new SpeechPaceSegment((0, 10), (0, 15_000), 40)], 40, 0, 0, 0, 0, 0)),
+        };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(russian), false));
+        var range = new Range<Moment>(T0, T0 + TimeSpan.FromDays(1));
+
+        // act
+        var details = await Backend.GetPaceDetails(account.Id, range, "en", default);
+
+        // assert
+        details.Slow.Should().Be(130);
+        details.Fast.Should().Be(170);
+        details.Distribution.WithinMilliseconds.Should().Be(36_000);
+        details.Distribution.AboveMilliseconds.Should().Be(30_000);
+        details.Distribution.BelowMilliseconds.Should().Be(6_000);
+        details.Distribution.WithinRate.Should().Be(0.5);
+        details.Summary!.MeasuredEntries.Should().Be(4);
+        details.Summary.Durations[34].Should().Be(60_000, "170 and 172 share a bin but not a target classification");
+        details.Moments.Should().HaveCount(2);
+        await commander.Call(new CoachBackend_SetConversationExcluded(account.Id, chatId, 1, "en", true));
+        var excluded = await TestWait.When(async ct => {
+            var result = await Backend.GetPaceDetails(account.Id, range, "en", ct);
+            result.Summary.Should().BeNull();
+            return result;
+        });
+        excluded.Distribution.WithinRate.Should().BeNull();
+        excluded.Moments.Should().BeEmpty();
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SkillOccurrencesShouldFilterLanguageAndKind()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var commander = AppHost.Services.Commander();
+        var filler = Entry(account.Id, GroupChatId.New(), 1, 30, 15, T0, 1, "like");
+        var weak = filler with {
+            Id = ChatEntryId.New(GroupChatId.New(), 1),
+            Spans = ApiArray.New(new SpeechSpan(SpeechSpanKind.Weak, "like", 0, 4, ApiArray<string>.Empty)),
+        };
+        var russian = filler with { Id = ChatEntryId.New(GroupChatId.New(), 1), Language = Languages.Russian };
+        foreach (var analysis in new[] { filler, weak, russian })
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(analysis), false));
+
+        // act
+        var occurrences = await Backend.ListSkillOccurrences(account.Id, "like", (T0, T0 + TimeSpan.FromDays(1)),
+            20, "en", CoachMetricKind.WeakWords, default);
+
+        // assert
+        occurrences.Should().ContainSingle();
+        occurrences[0].ChatId.Should().Be(weak.Id.ChatId);
+        for (var i = 0; i < 7; i++) {
+            var analysis = Entry(account.Id, GroupChatId.New(), 1, 30, 15, T0, 1, $"word{i}");
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(analysis), false));
+        }
+        var words = await Coach.ListOwnSkillWords(tester.Session, CoachWindow.AllTime,
+            "en", CoachMetricKind.Fillers, default);
+        words.Should().HaveCount(8, "detail lists are not restricted to the five summary chips");
+        var weakWords = await Coach.ListOwnSkillWords(tester.Session, CoachWindow.AllTime,
+            "en", CoachMetricKind.WeakWords, default);
+        weakWords.Should().ContainSingle().Which.Word.Should().Be("like");
+    }
+
     [Fact]
     public async Task EntryEventShouldBuildTheDay()
     {

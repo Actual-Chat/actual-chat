@@ -193,6 +193,53 @@
 .coach-skill + .coach-skill { @apply border-t border-separator; }
 .coach-skill .c-row { @apply flex-x items-baseline justify-between gap-x-3; }
 .coach-skill .c-name { @apply text-body-500 text-01; }
+.coach-skill .btn-skill-detail {
+    @apply flex-x items-center gap-x-2;
+    @apply text-left;
+}
+.coach-skill-detail {
+    @apply flex-y gap-y-3;
+    @apply min-w-0;
+}
+.coach-skill-detail .c-head {
+    @apply flex-x items-center gap-x-2;
+}
+.coach-skill-detail .c-moment-head {
+    @apply flex-x items-center justify-between gap-x-2;
+}
+.coach-skill-detail h2 { @apply text-heading-500 text-01; }
+.coach-skill-detail .c-periods {
+    @apply flex-x flex-wrap gap-2;
+}
+.coach-skill-detail .c-overview,
+.coach-skill-detail .c-distribution,
+.coach-skill-detail .c-moment {
+    @apply flex-y gap-y-3;
+    @apply p-4;
+    @apply text-body text-01;
+}
+.coach-skill-detail .c-value { @apply text-heading-500 text-01; }
+.coach-skill-detail .c-scope,
+.coach-skill-detail .c-rate,
+.coach-skill-detail .c-coverage,
+.coach-skill-detail .c-ranges,
+.coach-skill-detail .c-explanation { @apply text-caption text-02; }
+.coach-skill-detail .c-ranges {
+    @apply flex-y gap-y-1;
+}
+.coach-skill-detail .c-words {
+    @apply flex-y gap-y-2;
+    @apply p-4;
+}
+.coach-skill-detail .btn-word-detail {
+    @apply flex-x items-center justify-between gap-x-2;
+    @apply py-2;
+    @apply text-body text-01;
+}
+.coach-skill-detail .btn-word-detail:focus-visible,
+.coach-skill .btn-skill-detail:focus-visible {
+    @apply outline outline-2 outline-primary;
+}
 .coach-skill .c-value { @apply text-sm font-medium text-03 text-right; }
 .coach-skill .c-value.band-good { @apply text-success; }
 .coach-skill .c-value.band-medium { @apply text-warning; }

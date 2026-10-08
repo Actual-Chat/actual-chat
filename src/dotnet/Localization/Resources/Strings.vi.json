@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "“{0}” là từ thô tục; một từ nhẹ nhàng hơn có thể tốt hơn.",
   "Coach_NotCounted": "Không tính vào điểm của bạn",
   "Coach_DontCount": "Không tính",
-  "Coach_CountAgain": "Tính lại"
+  "Coach_CountAgain": "Tính lại",
+  "Coach_DetailCount_Format": "Đã đếm {0} · Đã phân tích {1} từ",
+  "Coach_PaceDetailExplanation": "Tốc độ được đo trong các đoạn nói ngắn, không tính khoảng dừng dài. Nó khác với tốc độ tổng thể ở trên.",
+  "Coach_PaceUnavailable": "Chưa có dữ liệu tốc độ chi tiết cho lời nói này.",
+  "Coach_PaceBelow": "Dưới khoảng",
+  "Coach_PaceWithin": "Trong khoảng",
+  "Coach_PaceAbove": "Trên khoảng",
+  "Coach_PaceCoverage_Format": "Đã đo {0} bản ghi · Đã phân loại {1} âm thanh của chúng",
+  "Coach_PacePartial": "Đang hiển thị mẫu giới hạn các bản ghi đã đo."
 }

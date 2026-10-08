@@ -2124,5 +2124,13 @@
   "Coach_MarkProfanityBody_Format": "“{0}” é um palavrão; uma palavra mais suave pode servir melhor.",
   "Coach_NotCounted": "Não conta nas suas pontuações",
   "Coach_DontCount": "Não contar",
-  "Coach_CountAgain": "Contar de novo"
+  "Coach_CountAgain": "Contar de novo",
+  "Coach_DetailCount_Format": "{0} contados · {1} palavras analisadas",
+  "Coach_PaceDetailExplanation": "O ritmo é medido em segmentos curtos de fala, excluindo pausas longas. Difere do ritmo geral acima.",
+  "Coach_PaceUnavailable": "O ritmo detalhado ainda não está disponível para esta fala.",
+  "Coach_PaceBelow": "Abaixo do intervalo",
+  "Coach_PaceWithin": "Dentro do intervalo",
+  "Coach_PaceAbove": "Acima do intervalo",
+  "Coach_PaceCoverage_Format": "{0} gravações medidas · {1} do áudio classificado",
+  "Coach_PacePartial": "É exibida uma amostra limitada das gravações medidas."
 }

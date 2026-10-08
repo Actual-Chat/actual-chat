@@ -1,8 +1,9 @@
 # Speech Coach: skill details, speaking-day history, and personal baselines
 
-Status: Approved scope; measurement/storage spike and disabled-by-default backend capture/persistence
-implemented on `feat/coach-skill-details`, including daily language histograms and period merges.
-Detail/history UI and baselines remain open.
+Status: Measurement capture/persistence and Fillers, Weak Words, and Pace detail screens implemented
+on `feat/coach-skill-details`, including daily language histograms and exact segment-based target percentages.
+Capture now defaults on at the developer's request; no historical backfill or remote deployment.
+Speaking-day history and personal baselines remain open.
 Tracking: [#5128](https://github.com/Actual-Chat/actual-chat/issues/5128).
 The fine-timing rollout gate remains open; see the [spike evidence](./speech-coach-measurement-storage-spike.md).
 
@@ -508,13 +509,23 @@ for placement under src/nodejs/src rather than hidden inside one Coach component
    prerequisites; legacy token-derived maps must not be promoted to fine measurements.
    Follow-up backend foundation implemented: shared versioned measurement contract, actual-media bounds,
    nullable binary columns in existing Chat/Users rows, revision-bound capture/invalidation, preserved
-   measurements during tagging, and reversible exclusion/tombstone behavior. Capture defaults off;
-   there is no historical backfill or replacement timing-quality marker. Daily language rows now carry
+   measurements during tagging, and reversible exclusion/tombstone behavior. Capture initially defaulted off
+   and now defaults on at the developer's request; there is no historical backfill or timing-quality marker. Daily language rows now carry
    target-independent sparse histograms and coverage in a nullable binary column; period merges reuse
    `CoachDayBuilder.Merge`. Exact target classification still requires the stored entry segments.
 2. Detail foundation: common navigation, explanations, calendar periods, speaking-day history, and
    existing filler/weak-word contexts. Add the shared chart only after confirming no existing fit.
-3. Pace detail: versioned segments, aggregation/backfill, distribution, coverage, and review playback.
+   Implemented skill navigation, explanations, existing period controls, full per-language word lists,
+   and kind/language-filtered occurrences with existing playback. Speaking-day history is still pending.
+3. Pace detail: versioned segments, aggregation of stored measurements, distribution, coverage, and review playback.
+   Implemented exact inclusive target classification from stored segments, measured-audio coverage,
+   and out-of-range playback moments with stale-map checks. Queries use a bounded 5,000-recording sample,
+   disclosed when truncated. Historical unmeasured speech remains unavailable, not zero.
+   Validation: 33 Core pace, 125 Users Coach unit, 114 Chat Coach unit, 45 Users Coach integration,
+   six focused Coach UI integration, and two capture/lifecycle integration tests passed (325 total).
+   `npm run build:Verify` passed; mechanical style and whitespace checks were clean. Local browser
+   checks covered full word lists, occurrences, period switching, 390-pixel mobile layout, and
+   light/dark unmeasured Pace states. Real-recording replay/alignment validation remains open.
 4. Personal baselines: consistent snapshots, provenance/lifecycle, post-cutoff comparisons, and selection UI.
 5. Final accessibility/localization/native verification and controlled rollout.
 

@@ -2485,5 +2485,13 @@
   "Coach_MarkProfanityBody_Format": "“{0}” is a swear word; a milder one may serve better.",
   "Coach_NotCounted": "Not counted in your scores",
   "Coach_DontCount": "Don't count",
-  "Coach_CountAgain": "Count again"
+  "Coach_CountAgain": "Count again",
+  "Coach_DetailCount_Format": "{0} counted · {1} words analyzed",
+  "Coach_PaceDetailExplanation": "Pace is measured in short speech segments, excluding long pauses. It differs from the overall pace above.",
+  "Coach_PaceUnavailable": "Detailed pace is not available for this speech yet.",
+  "Coach_PaceBelow": "Below range",
+  "Coach_PaceWithin": "Within range",
+  "Coach_PaceAbove": "Above range",
+  "Coach_PaceCoverage_Format": "{0} recordings measured · {1} of their audio classified",
+  "Coach_PacePartial": "Showing a limited sample of measured recordings."
 }

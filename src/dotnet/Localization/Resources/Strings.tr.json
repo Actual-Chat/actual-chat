@@ -2131,5 +2131,13 @@
   "Coach_MarkProfanityBody_Format": "“{0}” bir küfürdür; daha yumuşak bir söz daha iyi olabilir.",
   "Coach_NotCounted": "Puanlarınıza sayılmıyor",
   "Coach_DontCount": "Sayma",
-  "Coach_CountAgain": "Yeniden say"
+  "Coach_CountAgain": "Yeniden say",
+  "Coach_DetailCount_Format": "{0} sayıldı · {1} sözcük analiz edildi",
+  "Coach_PaceDetailExplanation": "Tempo, uzun duraklamalar hariç kısa konuşma bölümlerinde ölçülür. Yukarıdaki genel tempodan farklıdır.",
+  "Coach_PaceUnavailable": "Bu konuşma için ayrıntılı tempo henüz mevcut değil.",
+  "Coach_PaceBelow": "Aralığın altında",
+  "Coach_PaceWithin": "Aralık içinde",
+  "Coach_PaceAbove": "Aralığın üstünde",
+  "Coach_PaceCoverage_Format": "{0} kayıt ölçüldü · seslerinin {1} kadarı sınıflandırıldı",
+  "Coach_PacePartial": "Ölçülen kayıtların sınırlı bir örneği gösteriliyor."
 }

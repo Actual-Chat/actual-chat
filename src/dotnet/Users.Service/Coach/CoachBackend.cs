@@ -79,8 +79,14 @@ public class CoachBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<CoachOccurrence>> ListOccurrences(
+    public virtual Task<ApiArray<CoachOccurrence>> ListOccurrences(
         UserId userId, string word, Range<Moment> range, int limit, CancellationToken cancellationToken)
+        => ListSkillOccurrences(userId, word, range, limit, null, null, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachOccurrence>> ListSkillOccurrences(
+        UserId userId, string word, Range<Moment> range, int limit,
+        string? language, CoachMetricKind? kind, CancellationToken cancellationToken)
     {
         // Every write invalidates ListAllDays, so depending on it keeps this fresh
         await ListAllDays(userId, cancellationToken).ConfigureAwait(false);
@@ -89,6 +95,7 @@ public class CoachBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var found = new List<CoachOccurrence>();
+        var iso = language.IsNullOrEmpty() ? null : Language.GetIsoCode(language);
         var before = end;
         var beforeSourceId = "";
         // Keyset pages: each one continues right after the last row of the previous one
@@ -107,8 +114,12 @@ public class CoachBackend(IServiceProvider services)
                 .ConfigureAwait(false);
             found.AddRange(rows
                 .Select(r => r.ToModel())
+                .Where(r => iso is null || r.Entry!.Language is { } l && Language.GetIsoCode(l) == iso)
                 .SelectMany(r => r.Entry!.Spans
                     .Where(s => s.Word == word)
+                    .Where(s => kind is null || kind == CoachMetricKind.Fillers
+                        && s.Kind is SpeechSpanKind.Filler or SpeechSpanKind.FilledPause
+                        || kind == CoachMetricKind.WeakWords && s.Kind == SpeechSpanKind.Weak)
                     .Select(s => new CoachOccurrence(r.ChatId, r.Entry.EntryLid, s.Start, s.Length, r.OccurredAt))));
             if (rows.Count < OccurrencePageSize)
                 break;
@@ -121,6 +132,61 @@ public class CoachBackend(IServiceProvider services)
             .ThenByDescending(o => o.Start)
             .Take(limit)
             .ToApiArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<CoachPaceDetails> GetPaceDetails(
+        UserId userId, Range<Moment> range, string language, CancellationToken cancellationToken)
+    {
+        await ListAllDays(userId, cancellationToken).ConfigureAwait(false);
+        var start = range.Start.ToDateTimeClamped();
+        var end = range.End.ToDateTimeClamped();
+        var iso = Language.GetIsoCode(language);
+        var band = CoachScoring.PaceRange(Settings.Coach, iso);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var rows = await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry)
+            .Where(e => !e.IsRemoved && !e.IsExcluded && e.PaceData != null)
+            .Where(e => e.OccurredAt >= start && e.OccurredAt < end)
+            .OrderByDescending(e => e.OccurredAt)
+            .ThenByDescending(e => e.SourceId)
+            .Take(OccurrenceMaxRows + 1)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var summaries = new List<SpeechPaceSummary>();
+        var moments = new List<CoachPaceMoment>();
+        long below = 0, within = 0, above = 0;
+        foreach (var row in rows.Take(OccurrenceMaxRows)) {
+            var record = row.ToModel();
+            if (record.Entry?.Language is not { } l || Language.GetIsoCode(l) != iso
+                || record.Entry.Pace is not { } measurement)
+                continue;
+
+            summaries.Add(SpeechPaceSummary.FromMeasurement(measurement));
+            var distribution = ActualChat.Audio.SpeechPaceHistogram.Classify(
+                measurement.Analysis.Segments, band.Slow, band.Fast);
+            below = checked(below + distribution.BelowMilliseconds);
+            within = checked(within + distribution.WithinMilliseconds);
+            above = checked(above + distribution.AboveMilliseconds);
+            foreach (var segment in measurement.Analysis.Segments.Reverse()) {
+                if (segment.WordsPerMinute >= band.Slow && segment.WordsPerMinute <= band.Fast
+                    || moments.Count >= ICoach.MaxOccurrences)
+                    continue;
+
+                var occurrence = new CoachOccurrence(record.ChatId, record.Entry.EntryLid,
+                    segment.TextRange.Start, segment.TextRange.End - segment.TextRange.Start, record.OccurredAt);
+                moments.Add(new CoachPaceMoment(occurrence, segment));
+            }
+        }
+        return new CoachPaceDetails {
+            Summary = SpeechPaceSummary.Merge(summaries),
+            Distribution = new ActualChat.Audio.SpeechPaceDistribution(below, within, above),
+            Moments = moments.ToApiArray(),
+            IsTruncated = rows.Count > OccurrenceMaxRows,
+            Slow = band.Slow,
+            Fast = band.Fast,
+        };
     }
 
     // [CommandHandler]

@@ -24,6 +24,7 @@ public static class CoachScoring
             PaceSlow = pace.Slow,
             PaceFast = pace.Fast,
             FillerGood = FillerRange(s, language).Good,
+            TaggedWords = d.TaggedWords,
         };
     }
 
