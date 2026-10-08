@@ -1187,7 +1187,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         cut.FindAll(".coach-panel .c-coach-toggle")
             .Should().BeEmpty("the switch lives in the settings, not on the panel");
         await cut.InvokeAsync(() => cut.Find(".coach-header .c-settings-btn").Click());
-        cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-coach-toggle").TextContent
-            .Should().Contain("Coach me here"), TimeSpan.FromSeconds(10));
+        await TestWait.WhenRendered(cut, () => cut.Find(".coach-settings-page .c-coach-toggle").TextContent
+            .Should().Contain("Coach me in this chat"));
     }
 }

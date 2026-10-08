@@ -2217,7 +2217,7 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_YourDataCaption => l["Coach_YourDataCaption"].Value;
         public string Coach_DeleteData => l["Coach_DeleteData"].Value;
         public string Coach_DeleteDataConfirm => l["Coach_DeleteDataConfirm"].Value;
-        public string Coach_CoachMeHere => l["Coach_CoachMeHere"].Value;
+        public string Coach_CoachInChat => l["Coach_CoachInChat"].Value;
         public string Coach_TipCleanTitle => l["Coach_TipCleanTitle"].Value;
         public string Coach_TipCleanBody_Format(object arg0) => l["Coach_TipCleanBody_Format", arg0].Value;
         public string Coach_WeekNoteTitle => l["Coach_WeekNoteTitle"].Value;

@@ -2464,7 +2464,7 @@
   "Coach_YourDataCaption": "Only your own messages are analysed and only you can see the result. The people you talk to are never scored.",
   "Coach_DeleteData": "Delete coaching data",
   "Coach_DeleteDataConfirm": "This removes every coaching number and mark. Your messages stay.",
-  "Coach_CoachMeHere": "Coach me here",
+  "Coach_CoachInChat": "Coach me in this chat",
   "Coach_TipCleanTitle": "Clean run",
   "Coach_TipCleanBody_Format": "{0} minutes, no filler words. Keep going.",
   "Coach_WeekNoteTitle": "Your week with the coach",

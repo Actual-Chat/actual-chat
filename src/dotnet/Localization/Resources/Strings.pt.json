@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "Apenas as suas próprias mensagens são analisadas e só você vê o resultado. As pessoas com quem você conversa nunca são avaliadas.",
   "Coach_DeleteData": "Excluir dados do coach",
   "Coach_DeleteDataConfirm": "Isso remove todos os números e marcações do coach. Suas mensagens permanecem.",
-  "Coach_CoachMeHere": "Coach aqui",
+  "Coach_CoachInChat": "Coach neste chat",
   "Coach_TipCleanTitle": "Fala limpa",
   "Coach_TipCleanBody_Format": "{0} minutos sem vícios de linguagem. Continue assim.",
   "Coach_WeekNoteTitle": "Sua semana com o coach",

@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "Analiziraju se samo vaše poruke i samo vi vidite rezultat. Osobe s kojima razgovarate se nikada ne ocjenjuju.",
   "Coach_DeleteData": "Izbriši podatke o coachingu",
   "Coach_DeleteDataConfirm": "Ovo uklanja sve brojeve i oznake coachinga. Vaše poruke ostaju.",
-  "Coach_CoachMeHere": "Coach ovdje",
+  "Coach_CoachInChat": "Kouč u ovom chatu",
   "Coach_TipCleanTitle": "Čista serija",
   "Coach_TipCleanBody_Format": "{0} minuta bez poštapalica. Samo naprijed.",
   "Coach_WeekNoteTitle": "Vaša sedmica s coachem",

@@ -2110,7 +2110,7 @@
   "Coach_YourDataCaption": "Yalnızca kendi mesajlarınız analiz edilir ve sonucu yalnızca siz görürsünüz. Konuştuğunuz kişiler asla puanlanmaz.",
   "Coach_DeleteData": "Koçluk verilerini sil",
   "Coach_DeleteDataConfirm": "Bu, tüm koçluk sayılarını ve işaretlerini kaldırır. Mesajlarınız kalır.",
-  "Coach_CoachMeHere": "Burada bana koçluk yap",
+  "Coach_CoachInChat": "Bu sohbette bana koçluk yap",
   "Coach_TipCleanTitle": "Tertemiz konuşma",
   "Coach_TipCleanBody_Format": "{0} dakika, dolgu kelime yok. Böyle devam edin.",
   "Coach_WeekNoteTitle": "Koçla geçen haftanız",

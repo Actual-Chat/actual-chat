@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "Анализирају се само ваше поруке и само ви видите резултат. Особе с којима разговарате се никада не оцјењују.",
   "Coach_DeleteData": "Избриши податке о цоацхингу",
   "Coach_DeleteDataConfirm": "Ово уклања све бројеве и ознаке цоацхинга. Ваше поруке остају.",
-  "Coach_CoachMeHere": "Цоацх овде",
+  "Coach_CoachInChat": "Коуч у овом чету",
   "Coach_TipCleanTitle": "Чиста серија",
   "Coach_TipCleanBody_Format": "{0} минута без поштапалица. Само напред.",
   "Coach_WeekNoteTitle": "Ваша седмица с цоацхем",

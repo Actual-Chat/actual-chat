@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "Анализируются только ваши сообщения, и результат видите только вы. Собеседников никогда не оценивают.",
   "Coach_DeleteData": "Удалить данные коучинга",
   "Coach_DeleteDataConfirm": "Будут удалены все показатели и отметки коучинга. Ваши сообщения останутся.",
-  "Coach_CoachMeHere": "Коуч здесь",
+  "Coach_CoachInChat": "Коуч в этом чате",
   "Coach_TipCleanTitle": "Без слов-паразитов",
   "Coach_TipCleanBody_Format": "{0} мин без слов-паразитов. Так держать.",
   "Coach_WeekNoteTitle": "Ваша неделя с коучем",

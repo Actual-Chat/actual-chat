@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "Analyzují se jen vaše zprávy a výsledek vidíte jen vy. Lidé, se kterými mluvíte, se nikdy nehodnotí.",
   "Coach_DeleteData": "Smazat data koučování",
   "Coach_DeleteDataConfirm": "Tím se odstraní všechna čísla a značky koučování. Vaše zprávy zůstanou.",
-  "Coach_CoachMeHere": "Koučuj mě tady",
+  "Coach_CoachInChat": "Koučuj mě v tomto chatu",
   "Coach_TipCleanTitle": "Čistý výkon",
   "Coach_TipCleanBody_Format": "{0} minut bez vycpávkových slov. Pokračujte.",
   "Coach_WeekNoteTitle": "Váš týden s koučem",

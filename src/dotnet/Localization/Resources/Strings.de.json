@@ -2104,7 +2104,7 @@
   "Coach_YourDataCaption": "Nur deine eigenen Nachrichten werden analysiert, und nur du siehst das Ergebnis. Deine Gesprächspartner werden nie bewertet.",
   "Coach_DeleteData": "Coaching-Daten löschen",
   "Coach_DeleteDataConfirm": "Damit werden alle Coaching-Zahlen und Markierungen entfernt. Deine Nachrichten bleiben erhalten.",
-  "Coach_CoachMeHere": "Hier coachen",
+  "Coach_CoachInChat": "Mich in diesem Chat coachen",
   "Coach_TipCleanTitle": "Saubere Runde",
   "Coach_TipCleanBody_Format": "{0} Minuten ohne Füllwörter. Weiter so.",
   "Coach_WeekNoteTitle": "Deine Woche mit dem Coach",

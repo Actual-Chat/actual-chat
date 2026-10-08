@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "내 메시지만 분석하고 결과는 나만 볼 수 있어요. 대화 상대는 절대 점수를 매기지 않아요.",
   "Coach_DeleteData": "코칭 데이터 삭제",
   "Coach_DeleteDataConfirm": "모든 코칭 수치와 표시가 삭제돼요. 메시지는 그대로 남아요.",
-  "Coach_CoachMeHere": "여기서 코칭받기",
+  "Coach_CoachInChat": "이 채팅에서 코칭받기",
   "Coach_TipCleanTitle": "깔끔해요",
   "Coach_TipCleanBody_Format": "{0}분 동안 군더더기 말 없음. 계속 이어 가세요.",
   "Coach_WeekNoteTitle": "코치와 함께한 이번 주",

@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "Hanya pesan Anda sendiri yang dianalisis dan hanya Anda yang bisa melihat hasilnya. Lawan bicara Anda tidak pernah diberi skor.",
   "Coach_DeleteData": "Hapus data coaching",
   "Coach_DeleteDataConfirm": "Ini menghapus semua angka dan tanda coaching. Pesan Anda tetap ada.",
-  "Coach_CoachMeHere": "Coach saya di sini",
+  "Coach_CoachInChat": "Coach saya di chat ini",
   "Coach_TipCleanTitle": "Bersih",
   "Coach_TipCleanBody_Format": "{0} menit, tanpa kata pengisi. Pertahankan.",
   "Coach_WeekNoteTitle": "Minggu Anda bersama coach",

@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "分析されるのは自分のメッセージだけで、結果を見られるのもあなただけです。会話の相手が採点されることはありません。",
   "Coach_DeleteData": "コーチングデータを削除",
   "Coach_DeleteDataConfirm": "コーチングの数値とマークがすべて削除されます。メッセージは残ります。",
-  "Coach_CoachMeHere": "ここでコーチする",
+  "Coach_CoachInChat": "このチャットでコーチする",
   "Coach_TipCleanTitle": "順調です",
   "Coach_TipCleanBody_Format": "{0} 分間、つなぎ言葉なし。この調子です。",
   "Coach_WeekNoteTitle": "コーチと過ごした今週",

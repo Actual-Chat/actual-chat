@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "只分析你自己的消息，只有你能看到结果。与你交谈的人绝不会被评分。",
   "Coach_DeleteData": "删除教练数据",
   "Coach_DeleteDataConfirm": "这将删除所有教练数据和标记。你的消息会保留。",
-  "Coach_CoachMeHere": "在此教练我",
+  "Coach_CoachInChat": "在此聊天中指导我",
   "Coach_TipCleanTitle": "表现干净",
   "Coach_TipCleanBody_Format": "{0} 分钟，没有填充词。继续保持。",
   "Coach_WeekNoteTitle": "你本周与教练的记录",

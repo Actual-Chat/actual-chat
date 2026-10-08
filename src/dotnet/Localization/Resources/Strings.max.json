@@ -2464,7 +2464,7 @@
   "Coach_YourDataCaption": "Apenas as suas próprias mensagens são analisadas e só você vê o resultado. As pessoas com quem você conversa nunca são avaliadas.",
   "Coach_DeleteData": "Избриши податке о цоацхингу",
   "Coach_DeleteDataConfirm": "Damit werden alle Coaching-Zahlen und Markierungen entfernt. Deine Nachrichten bleiben erhalten.",
-  "Coach_CoachMeHere": "Burada bana koçluk yap",
+  "Coach_CoachInChat": "Coach trong cuộc trò chuyện này",
   "Coach_TipCleanTitle": "Без слов-паразитов",
   "Coach_TipCleanBody_Format": "{0} minutes, aucun mot de remplissage. Continuez ainsi.",
   "Coach_WeekNoteTitle": "Deine Woche mit dem Coach",

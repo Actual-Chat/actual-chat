@@ -2103,7 +2103,7 @@
   "Coach_YourDataCaption": "Chỉ tin nhắn của chính bạn được phân tích và chỉ bạn thấy kết quả. Những người bạn trò chuyện không bao giờ bị chấm điểm.",
   "Coach_DeleteData": "Xóa dữ liệu coaching",
   "Coach_DeleteDataConfirm": "Thao tác này xóa mọi chỉ số và đánh dấu coaching. Tin nhắn của bạn vẫn còn.",
-  "Coach_CoachMeHere": "Coach tại đây",
+  "Coach_CoachInChat": "Coach trong cuộc trò chuyện này",
   "Coach_TipCleanTitle": "Chạy sạch",
   "Coach_TipCleanBody_Format": "{0} phút, không có từ đệm. Hãy tiếp tục.",
   "Coach_WeekNoteTitle": "Tuần của bạn với coach",
