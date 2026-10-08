@@ -103,6 +103,20 @@ export class CallScreen {
                 filter(e => e.key === 'Escape' && !e.defaultPrevented)
             )
             .subscribe(() => this.onEscPress());
+        // The chat's editor takes the focus as the screen expands, and claims Escape to cancel what it
+        // holds. With nothing to cancel the key is the screen's, and only the capture phase gets ahead of it.
+        fromEvent<KeyboardEvent>(document, 'keydown', { capture: true })
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(e => e.key === 'Escape' && !e.defaultPrevented && this.isIdleEditor(e.target))
+            )
+            .subscribe(e => {
+                if (!this.onEscPress())
+                    return;
+
+                e.preventDefault();
+                e.stopPropagation();
+            });
 
         // Fold to island whenever any layout source requests compact mode
         // (on-screen keyboard, landscape mobile, etc.), restore when all sources release.
@@ -398,10 +412,20 @@ export class CallScreen {
         this.root.toggleAttribute(BarsHiddenAttribute);
     }
 
-    private onEscPress(): void {
+    private onEscPress(): boolean {
         // The menu host closes its menu on the same key, but hears it on window, after this handler
-        if (this.isExpanded() && !document.querySelector('.ac-menu-host[data-has-menu]'))
-            void this.blazorRef.invokeMethodAsync('OnEscape');
+        if (!this.isExpanded() || document.querySelector('.ac-menu-host[data-has-menu]'))
+            return false;
+
+        void this.blazorRef.invokeMethodAsync('OnEscape');
+        return true;
+    }
+
+    private isIdleEditor(target: EventTarget | null): boolean {
+        const editor = target instanceof Element ? target.closest('.chat-message-editor') : null;
+        return editor != null
+            && !editor.hasAttribute('data-has-related-entry')
+            && !editor.querySelector('[data-has-editor-content], .attachment-list-wrapper');
     }
 
     private syncForcedCollapseToBlazor(): void {
