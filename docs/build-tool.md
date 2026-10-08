@@ -189,8 +189,8 @@ an MSIX.
 ### iOS and macOS
 
 These delegate to `scripts/run-ios.sh` (a device, or a simulator with `--simulator`),
-`scripts/run-mac.sh` (the default AppKit app) and `scripts/run-maccatalyst.sh`
-(`--catalyst`), which handle device detection, certificate install and
+and `scripts/run-mac.sh` (the default AppKit app, or Mac Catalyst with
+`--catalyst`), which handle device detection, certificate install and
 the codesigning workarounds. They build, install and launch as one unit, so
 `b app install ios` is rejected rather than silently launching the app — use
 `b app run ios` or `b app build ios`.

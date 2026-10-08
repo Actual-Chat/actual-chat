@@ -29,10 +29,10 @@ The app commands differ only in how far down the pipeline they go, and `--launch
 | `b app run` | yes | yes | yes |
 | `b app pack` | store package, no install/launch | | |
 
-iOS and macOS delegate to `scripts/run-ios.sh` / `scripts/run-mac*.sh`
+iOS and macOS delegate to `scripts/run-ios.sh` / `scripts/run-mac.sh`
 (AppKit by default, `--catalyst` for Mac Catalyst), which build, install and launch as one unit — so `b app install ios` is rejected
 rather than silently launching. `b` forwards what they understand (`scripts/__run-args.sh`): `--build-only`
-for `b app build`, `--simulator`, `--prod`, `--no-web` and everything after `--`. They build Debug only, so `--release`,
+for `b app build`, `--simulator`, `--catalyst`, `--prod`, `--no-web` and everything after `--`. They build Debug only, so `--release`,
 `--aot` and `--publish` are rejected there, as is `--prod` on iOS - see `AppSettings.ValidateApple`.
 
 The server commands:

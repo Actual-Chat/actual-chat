@@ -150,11 +150,7 @@ internal static class MauiApp
 
     private static void AddScript(CommandPlan plan, AppSettings settings, bool mustLaunch)
     {
-        var scriptName = settings switch {
-            { Platform: AppPlatform.Mac, UseCatalyst: true } => "run-maccatalyst.sh",
-            { Platform: AppPlatform.Mac } => "run-mac.sh",
-            _ => "run-ios.sh",
-        };
+        var scriptName = settings.Platform == AppPlatform.Mac ? "run-mac.sh" : "run-ios.sh";
         var scriptPath = Path.Combine("scripts", scriptName);
         // scripts/__run-args.sh is the other end of this list
         var args = new List<string> { scriptPath };
@@ -162,6 +158,8 @@ internal static class MauiApp
             args.Add("--build-only");
         if (settings.UseSimulator)
             args.Add("--simulator");
+        if (settings.UseCatalyst)
+            args.Add("--catalyst");
         if (!settings.IsDev)
             args.Add("--prod");
         if (settings.MustSkipWebBuild)

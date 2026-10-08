@@ -20,20 +20,20 @@ Build and launch the ActualChat (Voxt) Mac Catalyst app on the local Mac.
 
 ## Usage
 
-Run the `./scripts/run-maccatalyst.sh` script which:
+Run `./b.cmd app run mac --catalyst`, which executes `scripts/run-mac.sh --catalyst`:
 1. Picks the Mac Catalyst RID for the host CPU (`maccatalyst-arm64` on Apple Silicon, `maccatalyst-x64` on Intel)
 2. Builds the JS bundle (`npm run build:Debug`)
 3. Builds the Mac Catalyst app (`net11.0-maccatalyst` target)
 4. Locates the produced `.app` bundle (`Voxt (Dev).app` for dev, `Voxt.app` for prod)
-5. Terminates any previous instance and launches the app binary directly so logs stream to the terminal
+5. Terminates any previous instance and launches the app via `open -W` (LaunchServices, so TCC prompts belong to the app), with stdout/stderr forwarded to the terminal
 
 ## Command
 
 ```bash
-./scripts/run-maccatalyst.sh
+./b.cmd app run mac --catalyst
 ```
 
-**Note:** The app binary is run directly (not via `open`), so this script runs until the app is quit. The console output shows app logs in real-time.
+**Note:** The app is launched with `open -W`, so this command runs until the app is quit. The console output shows app logs in real-time.
 
 ## Output
 
