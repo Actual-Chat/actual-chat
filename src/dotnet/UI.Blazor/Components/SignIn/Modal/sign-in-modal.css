@@ -1,6 +1,14 @@
 .sign-in-modal-header {
     @apply text-title-500 text-01;
 }
+/* The body is this modal's last region and owns the bottom inset, so the frame must not add it again. */
+.modal-frame.sign-in-modal {
+    padding-bottom: 0;
+}
+/* The keyboard covers the home indicator, and the modal ends at the keyboard's top edge. */
+body.keyboard-open .sign-in-modal {
+    --safe-area-bottom: 0px;
+}
 /* The stepper header is the modal's header: it sits at the top edge, as a DialogHeader does. */
 .sign-in-modal .dialog-body {
     @apply pt-0;
