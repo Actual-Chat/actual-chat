@@ -76,7 +76,8 @@ html.native-titlebar body.narrow {
     --safe-area-top: calc(env(safe-area-inset-top, 0px) + var(--titlebar-inset));
 }
 html.native-titlebar body.narrow .left-panel,
-html.native-titlebar body.narrow .chat-side-panel {
+html.native-titlebar body.narrow .chat-side-panel,
+html.native-titlebar body.narrow .coach-panel {
     --safe-area-top: env(safe-area-inset-top, 0px);
     --safe-area-top-narrow: env(safe-area-inset-top, 0px);
 }
