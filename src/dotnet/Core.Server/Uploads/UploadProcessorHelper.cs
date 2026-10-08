@@ -52,7 +52,7 @@ public static class UploadProcessorHelper
     public static T EnsureMp4Extension<T>(T file) where T : UploadedFile
         => string.Equals(file.FileName.Extension, ".mp4", StringComparison.OrdinalIgnoreCase)
             ? file
-            : file with { FileName = Path.ChangeExtension(file.FileName, ".mp4"), ContentType = "video/mp4" };
+            : file with { FileName = file.FileName.ChangeExtension(".mp4"), ContentType = "video/mp4" };
 
     public static (Size2D Size, TimeSpan Duration, double FrameRate) AnalyzeVideo(VideoStream videoStream)
     {
@@ -62,8 +62,8 @@ public static class UploadProcessorHelper
 
     public static bool MustConvertVideo(VideoStream videoStream)
     {
-        var codecName = videoStream.CodecName;
         // Skip transcoding for H.264 and HEVC (H.265) codecs — a simple rename to .mp4 is enough
+        var codecName = videoStream.CodecName;
         return !string.Equals(codecName, "h264", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(codecName, "libx264", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(codecName, "hevc", StringComparison.OrdinalIgnoreCase)
@@ -132,6 +132,7 @@ public static class UploadProcessorHelper
             File.Delete(outputPath);
             throw;
         }
+
         return new UploadedTempFile(fileName.ChangeExtension(".mp4"), "video/mp4", outputPath);
     }
 
@@ -178,8 +179,34 @@ public static class UploadProcessorHelper
         finally {
             TranscodeLock.Release();
         }
+
         var file = new UploadedTempFile(fileName.ChangeExtension(".mp4"), "video/mp4", outputPath);
         return (file, size);
+    }
+
+    private static async Task<UploadedTempFile?> SnapshotInternal(
+        Func<TimeSpan, FFMpegArguments> createInput,
+        FilePath fileName, TimeSpan totalVideoDuration)
+    {
+        if (totalVideoDuration <= TimeSpan.Zero)
+            return null;
+
+        try {
+            var captureTime = (totalVideoDuration * 0.1).Clamp(TimeSpan.Zero, TimeSpan.FromSeconds(10));
+            var snapshotId = RandomStringGenerator.Default.Next();
+            var snapshotPath = FilePath.GetApplicationTempDirectory() | $"snapshot_{snapshotId}.jpg";
+            var inputArgs = createInput(captureTime);
+            await inputArgs
+                .OutputToFile(snapshotPath, false, options => options.WithVideoCodec("mjpeg").WithFrameOutputCount(1))
+                .ProcessAsynchronously()
+                .ConfigureAwait(false);
+            var snapshotFileName = fileName.ChangeExtension(".thumbnail.jpg");
+            return new UploadedTempFile(snapshotFileName, MediaTypeNames.Image.Jpeg, snapshotPath);
+        }
+        catch (Exception e) {
+            Log.LogError(e, "Failed to extract snapshot for '{FileName}'", fileName);
+            return null;
+        }
     }
 
     private static FilePath NewConvertedFilePath(FilePath fileName)
@@ -199,29 +226,5 @@ public static class UploadProcessorHelper
 
         var brand = brand1.Trim();
         return brand is "isom" or "iso2" or "mp41" or "mp42";
-    }
-
-    private static async Task<UploadedTempFile?> SnapshotInternal(
-        Func<TimeSpan, FFMpegArguments> createInput,
-        FilePath fileName, TimeSpan totalVideoDuration)
-    {
-        if (totalVideoDuration <= TimeSpan.Zero)
-            return null;
-
-        try {
-            var captureTime = (totalVideoDuration * 0.1).Clamp(TimeSpan.Zero, TimeSpan.FromSeconds(10));
-            var snapshotPath = FilePath.GetApplicationTempDirectory() | $"snapshot_{Guid.NewGuid()}.jpg";
-            var inputArgs = createInput(captureTime);
-            await inputArgs
-                .OutputToFile(snapshotPath, false, options => options.WithVideoCodec("mjpeg").WithFrameOutputCount(1))
-                .ProcessAsynchronously()
-                .ConfigureAwait(false);
-            var snapshotFileName = fileName.ChangeExtension(".thumbnail.jpg");
-            return new UploadedTempFile(snapshotFileName, MediaTypeNames.Image.Jpeg, snapshotPath);
-        }
-        catch (Exception e) {
-            Log.LogError(e, "Failed to extract snapshot for '{FileName}'", fileName);
-            return null;
-        }
     }
 }

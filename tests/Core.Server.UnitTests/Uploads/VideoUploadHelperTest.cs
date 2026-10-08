@@ -3,7 +3,7 @@ using FFMpegCore;
 
 namespace ActualChat.Core.Server.UnitTests.Uploads;
 
-public class VideoUploadHelperTest
+public sealed class VideoUploadHelperTest
 {
     [Theory]
     [InlineData(0, 1920, 1080, 1920, 1080)]
@@ -12,10 +12,20 @@ public class VideoUploadHelperTest
     [InlineData(270, 1920, 1080, 1080, 1920)]
     [InlineData(-90, 1920, 1080, 1080, 1920)]
     [InlineData(-270, 1920, 1080, 1080, 1920)]
-    public void GetEffectiveSize_ReturnsCorrectSize(int rotation, int width, int height, int expectedW, int expectedH)
+    public void GetEffectiveSizeShouldSwapSidesWhenRotatedByQuarterTurn(
+        int rotation,
+        int width,
+        int height,
+        int expectedW,
+        int expectedH)
     {
+        // arrange
         var video = new VideoStream { Rotation = rotation, Width = width, Height = height };
+
+        // act
         var result = UploadProcessorHelper.GetEffectiveSize(video);
+
+        // assert
         result.Should().Be(new Size2D(expectedW, expectedH));
     }
 
@@ -25,10 +35,15 @@ public class VideoUploadHelperTest
     [InlineData("h265", false)]
     [InlineData("vp9", true)]
     [InlineData("av1", true)]
-    public void MustConvert_ReturnsExpectedResult(string codecName, bool expected)
+    public void MustConvertVideoShouldSkipOnlyH264AndHevc(string codecName, bool expected)
     {
+        // arrange
         var videoStream = new VideoStream { CodecName = codecName };
+
+        // act
         var result = UploadProcessorHelper.MustConvertVideo(videoStream);
+
+        // assert
         result.Should().Be(expected);
     }
 
