@@ -18,6 +18,9 @@
     @apply inline-flex items-center;
     @apply max-w-48 h-5;
     @apply px-1.5;
+    /* Vertical margin so wrapped mention chips don't touch the row above/below: for an atomic
+       inline box the line box fits its margin box, so this adds the inter-line gap. */
+    @apply my-0.5;
     @apply rounded-full bg-mention-other;
     @apply text-mention-other-text font-normal;
     @apply select-none;
@@ -31,6 +34,35 @@
 }
 .mention-markup > i {
     font-size: 1.25rem;
+}
+/* Own-message mention: squarer corners + a trailing alert-state icon (bell / filled bell / checkmark). */
+.mention-markup.mention-markup-alertable {
+    @apply gap-x-1;
+    border-radius: 0.5rem;
+}
+.mention-markup .c-mention-state {
+    @apply flex-none;
+    font-size: 1rem;
+}
+/* Own-message mention states (colours are theme tokens from colors.css): pending = muted grey,
+   notified = blue tint + blue bell, read = blue tint with text and icon in primary. */
+.mention-markup.mention-markup-alertable.mention-pending {
+    @apply bg-mention-pending text-mention-muted-text;
+}
+.mention-markup.mention-markup-alertable.mention-notified {
+    @apply bg-mention-active text-mention-muted-text;
+}
+.mention-markup.mention-markup-alertable.mention-read {
+    @apply bg-mention-active text-primary;
+}
+.mention-markup.mention-markup-alertable.mention-notified .c-mention-state,
+.mention-markup.mention-markup-alertable.mention-read .c-mention-state {
+    @apply text-primary;
+}
+/* Shake the pending bell on hover (desktop only) to signal it's actionable. */
+body.hoverable .mention-markup.mention-markup-alertable:hover .c-mention-state.icon-bell {
+    transform-origin: 50% 10%;
+    animation: bell-shake 0.7s ease-in-out;
 }
 
 .mention-markup.mention-markup-chat {

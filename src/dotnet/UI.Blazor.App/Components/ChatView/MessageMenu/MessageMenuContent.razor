@@ -62,6 +62,9 @@
                 Click="@Reply">
             </MenuEntry>
         }
+        @if (IsOwnEntry && !IsSystem && isTextEntry) {
+            <AlertMentionedMenuEntry Entry="@e"/>
+        }
         @if (canCopyText) {
             <MenuEntry
                 Icon="icon-copy"

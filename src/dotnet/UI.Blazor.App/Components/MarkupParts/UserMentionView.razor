@@ -1,6 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components.MarkupParts
 @using ActualChat.UI.Blazor.App.Components
 @using ActualChat.UI.Blazor.App.Services
+@using ActualChat.UI.Blazor.Components
+@using ActualChat.Notifications
 @inherits ComputedMarkupViewBase<UserMention, UserMentionView.Model>
 @{
     var m = State.Value;
@@ -21,16 +23,20 @@
     Label="@name"
     IsMember="@isMember"
     HasRead="@m.HasRead"
+    IsInOwnMessage="@m.IsInOwnMessage"
+    IsNotified="@m.IsNotified"
+    AlertMenuRef="@GetAlertMenuRef(m)"
     Tooltip="@tooltip"
     OnClick="OnClick"/>
 
 @code {
     private EditMembersUI EditMembersUI => Hub.Services.GetRequiredService<EditMembersUI>();
+    private INotifications Notifications => Hub.Notifications;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
-                InitialValue = new Model("", true, null),
+                InitialValue = new Model("", true, null, false, false, null),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -43,11 +49,25 @@
         var isMember = author is { HasLeft: false };
         var name = await AuthorUI.GetUserName(chatId, userId, cancellationToken).ConfigureAwait(false);
         if (chatEntry.IsSystemEntry || !isMember)
-            return new(name, isMember, null); // No read-tracking for system entries or non-members.
+            return new(name, isMember, null, false, false, null); // No tracking for system entries or non-members.
 
-        var hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntry.Id, Markup.Id, cancellationToken).ConfigureAwait(false);
-        return new(name, isMember, hasRead);
+        var alerts = await Notifications
+            .ListMentionedMemberAlerts(Session, chatEntry.Id, cancellationToken)
+            .ConfigureAwait(false);
+        var alert = alerts.FirstOrDefault(a => a.UserId == userId);
+        if (alert is not null)
+            return new(name, isMember, alert.IsRead, true, alert.IsNotified, alert.AuthorId); // Own message.
+
+        var hasRead = await Chats
+            .IsEntryReadByMentionedUser(Session, chatEntry.Id, Markup.Id, cancellationToken)
+            .ConfigureAwait(false);
+        return new(name, isMember, hasRead, false, false, null);
     }
+
+    private string GetAlertMenuRef(Model m)
+        => m is { IsInOwnMessage: true, IsNotified: false, HasRead: not true } && m.MenuAuthorId is { } authorId
+            ? MenuRef.New<MentionAlertMenu>(Entry.Id.Value, authorId.Value).ToString()
+            : "";
 
     private async Task OnClick() {
         var userId = Markup.UserId;
@@ -71,5 +91,6 @@
 
     // Nested types
 
-    public sealed record Model(string Name, bool IsMember, bool? HasRead);
+    public sealed record Model(
+        string Name, bool IsMember, bool? HasRead, bool IsInOwnMessage, bool IsNotified, AuthorId? MenuAuthorId);
 }

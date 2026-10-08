@@ -1,6 +1,6 @@
 @font-face {
   font-family: "icon";
-  src: url('icon.woff2?t=1790834743872') format('woff2');
+  src: url('icon.woff2?t=1791489257106') format('woff2');
 }
 
 [class^="icon-"], [class*=" icon-"] {
@@ -251,25 +251,26 @@
 .icon-unread::before { content: "\eaee"; }
 .icon-upload-cloud::before { content: "\eaef"; }
 .icon-upload::before { content: "\eaf0"; }
-.icon-vector-left::before { content: "\eaf1"; }
-.icon-vector-right::before { content: "\eaf2"; }
-.icon-video-and-voice-live::before { content: "\eaf3"; }
-.icon-video-collapse::before { content: "\eaf4"; }
-.icon-video-expand::before { content: "\eaf5"; }
-.icon-video-play-live::before { content: "\eaf6"; }
-.icon-video-play::before { content: "\eaf7"; }
-.icon-video::before { content: "\eaf8"; }
-.icon-voice-01::before { content: "\eaf9"; }
-.icon-voice-and-text::before { content: "\eafa"; }
-.icon-voice-message::before { content: "\eafb"; }
-.icon-voice-to-text-message::before { content: "\eafc"; }
-.icon-volume-off-fill::before { content: "\eafd"; }
-.icon-volume-off::before { content: "\eafe"; }
-.icon-volume-settings::before { content: "\eaff"; }
-.icon-volume-up-2::before { content: "\eb00"; }
-.icon-volume-up-fill::before { content: "\eb01"; }
-.icon-volume-up::before { content: "\eb02"; }
-.icon-voxt::before { content: "\eb03"; }
-.icon-wrap::before { content: "\eb04"; }
+.icon-user-check::before { content: "\eaf1"; }
+.icon-vector-left::before { content: "\eaf2"; }
+.icon-vector-right::before { content: "\eaf3"; }
+.icon-video-and-voice-live::before { content: "\eaf4"; }
+.icon-video-collapse::before { content: "\eaf5"; }
+.icon-video-expand::before { content: "\eaf6"; }
+.icon-video-play-live::before { content: "\eaf7"; }
+.icon-video-play::before { content: "\eaf8"; }
+.icon-video::before { content: "\eaf9"; }
+.icon-voice-01::before { content: "\eafa"; }
+.icon-voice-and-text::before { content: "\eafb"; }
+.icon-voice-message::before { content: "\eafc"; }
+.icon-voice-to-text-message::before { content: "\eafd"; }
+.icon-volume-off-fill::before { content: "\eafe"; }
+.icon-volume-off::before { content: "\eaff"; }
+.icon-volume-settings::before { content: "\eb00"; }
+.icon-volume-up-2::before { content: "\eb01"; }
+.icon-volume-up-fill::before { content: "\eb02"; }
+.icon-volume-up::before { content: "\eb03"; }
+.icon-voxt::before { content: "\eb04"; }
+.icon-wrap::before { content: "\eb05"; }
 
 

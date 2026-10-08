@@ -25,7 +25,7 @@ public class NotificationsService(IServiceProvider services) : INotifications
     }
 
     // [ComputeMethod]
-    public virtual async Task<bool> HasNotifiedMentionedMembers(
+    public virtual async Task<ApiArray<MentionAlertStatus>> ListMentionedMemberAlerts(
         Session session,
         ChatEntryId chatEntryId,
         CancellationToken cancellationToken)
@@ -33,19 +33,30 @@ public class NotificationsService(IServiceProvider services) : INotifications
         var chatId = chatEntryId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         if (chat is null)
-            return false;
+            return default;
 
         var chatEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).ConfigureAwait(false);
         if (chatEntry is null)
-            return false;
+            return default;
 
-        var author = chat.Rules.Author.Require();
-        if (chatEntry.AuthorId != author.Id)
-            return false;
+        var ownAuthor = chat.Rules.Author;
+        if (ownAuthor is null || chatEntry.AuthorId != ownAuthor.Id)
+            return default; // Only the message's own author sees per-mention alert state.
 
-        var notificationId = GetExplicitNotificationIdForNotifyMentionedMembers(author.UserId, chatEntryId);
-        var notification = await Backend.GetExplicit(notificationId, cancellationToken).ConfigureAwait(false);
-        return notification is not null;
+        var ownUserId = ownAuthor.UserId;
+        var mentionIds = await GetMentionIds(chatEntry, cancellationToken).ConfigureAwait(false);
+        var mentioned = await GetMentionedMembers(chatId, mentionIds, ownUserId, cancellationToken)
+            .ConfigureAwait(false);
+        var statuses = new List<MentionAlertStatus>(mentioned.Count);
+        foreach (var (authorId, userId, mentionRef) in mentioned) {
+            var notificationId = GetExplicitNotificationIdForNotifyMentionedMember(ownUserId, chatEntryId, authorId);
+            var notification = await Backend.GetExplicit(notificationId, cancellationToken).ConfigureAwait(false);
+            var hasRead = await Chats
+                .IsEntryReadByMentionedUser(session, chatEntryId, mentionRef, cancellationToken)
+                .ConfigureAwait(false);
+            statuses.Add(new MentionAlertStatus(authorId, userId, notification is not null, hasRead == true));
+        }
+        return statuses.ToApiArray();
     }
 
     // [ComputeMethod]
@@ -173,59 +184,37 @@ public class NotificationsService(IServiceProvider services) : INotifications
     public virtual async Task OnNotifyMentionedMembers(Notifications_NotifyMentionedMembers command, CancellationToken cancellationToken)
     {
         var session = command.Session;
-        var ChatEntryId = command.ChatEntryId;
-        var chatId = ChatEntryId.ChatId;
+        var chatEntryId = command.ChatEntryId;
+        var chatId = chatEntryId.ChatId;
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.IsMember().Require();
-        var chatEntry = await Chats.GetEntry(session, ChatEntryId, cancellationToken).Require().ConfigureAwait(false);
+        var chatEntry = await Chats.GetEntry(session, chatEntryId, cancellationToken).Require().ConfigureAwait(false);
         var ownAuthor = chat.Rules.Author.Require();
         if (chatEntry.AuthorId != ownAuthor.Id)
             throw StandardError.Unauthorized("Only the author is allowed to notify mentioned principals.");
 
-        var mentionIds = await GetMentionIds().ConfigureAwait(false);
         var ownUserId = ownAuthor.UserId;
-        var mentionedUserIds = await GetMentionedUserIds(ownUserId).ConfigureAwait(false);
-        if (mentionedUserIds.Length == 0)
+        var mentionIds = await GetMentionIds(chatEntry, cancellationToken).ConfigureAwait(false);
+        var mentioned = await GetMentionedMembers(chatId, mentionIds, ownUserId, cancellationToken)
+            .ConfigureAwait(false);
+        // Empty AuthorIds = alert everyone mentioned; otherwise restrict to the requested subset
+        if (command.AuthorIds.Count != 0) {
+            var selected = command.AuthorIds.ToHashSet();
+            mentioned = mentioned.Where(m => selected.Contains(m.AuthorId)).ToList();
+        }
+        if (mentioned.Count == 0)
             throw StandardError.Constraint("Nobody to notify.");
 
-        var notifyCommand = new NotificationsBackend_NotifyMentionedMembers(ownUserId, ChatEntryId, mentionedUserIds);
+        var userIds = mentioned.Select(m => m.UserId).Distinct().ToArray();
+        var notifyCommand = new NotificationsBackend_NotifyMentionedMembers(ownUserId, chatEntryId, userIds);
         await Commander.Run(notifyCommand, cancellationToken).ConfigureAwait(false);
 
-        var notificationId = GetExplicitNotificationIdForNotifyMentionedMembers(ownUserId, ChatEntryId);
-        var notification = new ExplicitNotification(notificationId);
-        var upsertNotificationCommand = new NotificationsBackend_UpsertExplicitNotification(notification);
-        await Commander.Run(upsertNotificationCommand, cancellationToken).ConfigureAwait(false);
-        return;
-
-        async Task<HashSet<MentionRef>> GetMentionIds()
-        {
-            var chatMarkupHub = ChatMarkupHubFactory[chatEntry.ChatId];
-            var markup = await chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.Notification, cancellationToken).ConfigureAwait(false);
-            return MentionExtractor.Instance.GetMentionIds(markup);
-        }
-
-        async Task<UserId[]> GetMentionedUserIds(UserId excludeUserId)
-        {
-            var authorIds = mentionIds
-                .Where(c => c.Target is AuthorId)
-                .Select(c => (AuthorId)c.Target);
-            var userIds = mentionIds
-                .Where(c => c.Target is UserId)
-                .Select(c => (UserId)c.Target);
-            var authorsFromAuthorMentions = authorIds
-                .Select(id => AuthorsBackend.Get(chatId, id, RequestedAuthorKind.Full, cancellationToken));
-            var authorsFromUserMentions = userIds
-                .Select(id => AuthorsBackend.GetByUserId(chatId, id, RequestedAuthorKind.Full, cancellationToken));
-            var allAuthors = await authorsFromAuthorMentions
-                .Concat(authorsFromUserMentions)
-                .Collect(cancellationToken)
-                .ConfigureAwait(false);
-            return allAuthors
-                .SkipNullItems()
-                .Select(a => a.UserId)
-                .Where(c => c != excludeUserId)
-                .Distinct()
-                .ToArray();
+        // One explicit notification per alerted author, so ListMentionedMemberAlerts can tell who's been alerted
+        foreach (var (authorId, _, _) in mentioned) {
+            var notificationId = GetExplicitNotificationIdForNotifyMentionedMember(ownUserId, chatEntryId, authorId);
+            var notification = new ExplicitNotification(notificationId);
+            var upsertCommand = new NotificationsBackend_UpsertExplicitNotification(notification);
+            await Commander.Run(upsertCommand, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -234,6 +223,45 @@ public class NotificationsService(IServiceProvider services) : INotifications
     private static Exception Unauthorized()
         => StandardError.Unauthorized("You can access only your own notifications.");
 
-    private static ExplicitNotificationId GetExplicitNotificationIdForNotifyMentionedMembers(UserId accountId, ChatEntryId chatEntryId)
-        => ExplicitNotificationId.New(accountId, ExplicitNotificationKind.NotifyMentionedMembers, chatEntryId.Value);
+    private async Task<HashSet<MentionRef>> GetMentionIds(ChatEntry chatEntry, CancellationToken cancellationToken)
+    {
+        var chatMarkupHub = ChatMarkupHubFactory[chatEntry.ChatId];
+        var markup = await chatMarkupHub.GetMarkup(chatEntry, MarkupConsumer.Notification, cancellationToken)
+            .ConfigureAwait(false);
+        return MentionExtractor.Instance.GetMentionIds(markup);
+    }
+
+    // Keeps the original MentionRef per member: IsEntryReadByMentionedUser validates the ref is the one
+    // actually in the markup, so a reconstructed author-ref would fail for a user-mention (@name u:...).
+    private async Task<List<(AuthorId AuthorId, UserId UserId, MentionRef MentionRef)>> GetMentionedMembers(
+        ChatId chatId,
+        IEnumerable<MentionRef> mentionIds,
+        UserId excludeUserId,
+        CancellationToken cancellationToken)
+    {
+        var resolved = await mentionIds.Select(Resolve).Collect(cancellationToken).ConfigureAwait(false);
+        return resolved
+            .Where(x => x.Author is { } a && a.UserId != excludeUserId)
+            .GroupBy(x => x.Author!.Id)
+            .Select(g => g.First())
+            .Select(x => (AuthorId: x.Author!.Id, UserId: x.Author!.UserId, MentionRef: x.MentionRef))
+            .ToList();
+
+        async Task<(MentionRef MentionRef, AuthorFull? Author)> Resolve(MentionRef mentionRef)
+        {
+            if (mentionRef.Target is AuthorId authorId)
+                return (mentionRef, await AuthorsBackend
+                    .Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false));
+            if (mentionRef.Target is UserId userId)
+                return (mentionRef, await AuthorsBackend
+                    .GetByUserId(chatId, userId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false));
+
+            return (mentionRef, null);
+        }
+    }
+
+    private static ExplicitNotificationId GetExplicitNotificationIdForNotifyMentionedMember(
+        UserId ownUserId, ChatEntryId chatEntryId, AuthorId authorId)
+        => ExplicitNotificationId.New(
+            ownUserId, ExplicitNotificationKind.NotifyMentionedMember, $"{chatEntryId.Value} {authorId.Value}");
 }

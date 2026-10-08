@@ -1,3 +1,7 @@
+@namespace ActualChat.UI.Blazor.App.Components.MarkupParts
+@using ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.Components
+@using ActualChat.Notifications
 @inherits ComputedMarkupViewBase<MentionMarkup, AuthorMentionView.Model>
 @{
     var m = State.Value;
@@ -18,6 +22,9 @@
         Label="@author.Avatar.Name"
         IsOwn="@context.IsOwn"
         HasRead="@m.HasRead"
+        IsInOwnMessage="@m.IsInOwnMessage"
+        IsNotified="@m.IsNotified"
+        AlertMenuRef="@GetAlertMenuRef(m)"
         Tooltip="@tooltip"
         OnClick="@(() => AuthorUI.Show(author.Id))"/>
 </AuthorBadgeTemplate>
@@ -25,13 +32,15 @@
 @code {
     private AuthorId? _authorId;
 
+    private INotifications Notifications => Hub.Notifications;
+
     protected override void OnParametersSet()
         => _authorId = Markup.Id.Target as AuthorId;
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<Model>.Options() {
-                InitialValue = new Model(null),
+                InitialValue = new Model(null, false, false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -39,17 +48,31 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatEntry = Entry;
         if (chatEntry.IsSystemEntry)
-            return new(null); // Do not track hasRead status for mentions inside system messages.
+            return new(null, false, false); // No read-tracking for mentions inside system messages.
 
         var chat = await Chats.Get(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
         if (chat?.Rules.Author?.Id == _authorId)
-            return new(true);
+            return new(true, false, false); // Mentioning yourself: reads as "read", no alert affordance.
 
-        var hasRead = await Chats.IsEntryReadByMentionedUser(Session, chatEntry.Id, Markup.Id, cancellationToken).ConfigureAwait(false);
-        return new(hasRead);
+        var alerts = await Notifications
+            .ListMentionedMemberAlerts(Session, chatEntry.Id, cancellationToken)
+            .ConfigureAwait(false);
+        var alert = _authorId is { } authorId ? alerts.FirstOrDefault(a => a.AuthorId == authorId) : null;
+        if (alert is not null)
+            return new(alert.IsRead, true, alert.IsNotified); // Own message: per-mention alert state.
+
+        var hasRead = await Chats
+            .IsEntryReadByMentionedUser(Session, chatEntry.Id, Markup.Id, cancellationToken)
+            .ConfigureAwait(false);
+        return new(hasRead, false, false);
     }
+
+    private string GetAlertMenuRef(Model m)
+        => m is { IsInOwnMessage: true, IsNotified: false, HasRead: not true } && _authorId is { } authorId
+            ? MenuRef.New<MentionAlertMenu>(Entry.Id.Value, authorId.Value).ToString()
+            : "";
 
     // Nested types
 
-    public sealed record Model(bool? HasRead);
+    public sealed record Model(bool? HasRead, bool IsInOwnMessage, bool IsNotified);
 }

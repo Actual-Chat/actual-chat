@@ -235,14 +235,6 @@
             @if (!isStateBadge && (entry.HasReactions || OptimisticReactions.HasPendingAdd(entry.Id))) {
                 <MessageReactions Entry="@entry"/>
             }
-            @if (!isForward && m.MentionedAuthorIds is not null && m.MentionedAuthorIds.Count != 0) {
-                <div class="notify-mentioned-members-line"> @* Takes full line *@
-                    <NotifyMentionedMembers
-                        ChatContext="@ChatContext"
-                        AuthorIds="m.MentionedAuthorIds"
-                        ChatEntry="@Entry"/>
-                </div>
-            }
         </div>
     </div>
     @if (!isStateBadge) {

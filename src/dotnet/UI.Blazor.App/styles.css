@@ -25,6 +25,7 @@
 @import './Components/ChatSettings/chat-settings-modal.css';
 @import './Components/ChatSettings/chat-history.css';
 @import './Components/ChatView/EmptyChatContent/empty-chat-content.css';
+@import './Components/ChatView/MessageMenu/alert-mentioned.css';
 @import './Components/ChatView/Items/Attachment/attachment.css';
 @import './Components/ChatView/Items/Call/call-message.css';
 @import './Components/ChatView/Items/ChatMessageSendingStatus/chat-message-sending-status.css';

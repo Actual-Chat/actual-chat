@@ -22,13 +22,15 @@
     @apply align-baseline;
 }
 .markup-editor .editor-content .editor-mention-user {
-    @apply px-1.5 mx-px -mb-1.5;
+    /* Negative bottom margin keeps a single input line compact; too negative and wrapped mention
+       rows merge, so it's eased from -1.5 to -0.5 to give the inter-row gap back. */
+    @apply px-1.5 mx-px -mb-1;
     @apply rounded-full;
     @apply bg-mention-other;
     @apply text-mention-other-text font-normal;
 }
 body.narrow .markup-editor .editor-content .editor-mention-user {
-    @apply -mb-1;
+    @apply -mb-0.5;
 }
 .markup-editor .editor-content .editor-mention-chat,
 .markup-editor .editor-content .editor-mention-place {

@@ -22,6 +22,9 @@
         @if (Entry.HasAudio) {
             <MessageMenuPlay Entry="@Entry"/>
         }
+        @if (!IsSystem) {
+            <AlertMentionedButton Entry="@Entry"/>
+        }
         <ButtonRound
             Class="btn-xs btn-transparent"
             data-menu="@(MenuRef.New<MessageMenu>(Entry.GetClientId(m.IsOwnMessage), IsSystem.ToString(), "", "").ToString())"

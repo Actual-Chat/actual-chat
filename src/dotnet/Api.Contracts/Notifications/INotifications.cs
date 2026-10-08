@@ -7,8 +7,10 @@ public interface INotifications : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 30)]
     Task<ApiArray<Notification>> ListActive(Session session, CancellationToken cancellationToken);
+    // Per mentioned author in an own message: whether they've been alerted and whether they've read it.
+    // Returns empty for messages that aren't the caller's own.
     [ComputeMethod(MinCacheDuration = 10)]
-    Task<bool> HasNotifiedMentionedMembers(
+    Task<ApiArray<MentionAlertStatus>> ListMentionedMemberAlerts(
         Session session, ChatEntryId chatEntryId, CancellationToken cancellationToken);
     // Bumped by every logged notification and by account removal: the reactive seam over
     // ListHistory, which itself is a plain method.
@@ -77,4 +79,14 @@ public sealed partial record Notifications_NotifyMembers : ApiCommand<Unit>
 public sealed partial record Notifications_NotifyMentionedMembers : ApiCommand<Unit>
 {
     [DataMember(Order = 2), Key(2)] public required ChatEntryId ChatEntryId { get; init; }
+    // Empty = alert everyone mentioned; otherwise only these mentioned authors are alerted
+    [DataMember(Order = 3), Key(3)] public ApiArray<AuthorId> AuthorIds { get; init; }
 }
+
+[DataContract, MessagePackObject]
+public sealed partial record MentionAlertStatus(
+    [property: DataMember, Key(0)] AuthorId AuthorId,
+    [property: DataMember, Key(1)] UserId UserId,
+    [property: DataMember, Key(2)] bool IsNotified,
+    [property: DataMember, Key(3)] bool IsRead
+);
