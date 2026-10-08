@@ -103,8 +103,6 @@ public sealed class GoogleCloudVideoUploadProcessor(
             .ConfigureAwait(false);
         Log.LogDebug("Snapshot extraction completed in {Elapsed:N0}ms for '{FileName}'",
             stepSw.ElapsedMilliseconds, upload.FileName);
-        if (snapshot is null)
-            return new ProcessedFile(upload.AsBinaryFile(), size) { Duration = duration };
 
         progress?.Report(15);
 
@@ -197,7 +195,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
             Log.LogError(e, "Cloud transcoding failed for '{File}' after {Elapsed:N0}ms",
                 upload.FileName, totalSw.ElapsedMilliseconds);
             _ = DeleteState(stateObjectName);
-            snapshot.Delete();
+            snapshot?.Delete();
             throw;
         }
     }

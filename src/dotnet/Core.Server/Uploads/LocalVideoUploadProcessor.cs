@@ -67,8 +67,6 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
             .ConfigureAwait(false);
         Log.LogDebug("Snapshot extraction completed in {Elapsed:N0}ms for '{FileName}'",
             stepSw.ElapsedMilliseconds, upload.FileName);
-        if (snapshot is null)
-            return new ProcessedFile(upload.AsBinaryFile(), size) { Duration = duration };
 
         progress?.Report(20);
         if (conversion is VideoConversion.None) {
@@ -95,7 +93,7 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
             return new ProcessedFile(convertedFile, convertedSize, snapshot) { Duration = duration };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            snapshot.Delete();
+            snapshot?.Delete();
             throw;
         }
         catch (Exception e) {

@@ -175,7 +175,8 @@ public static class UploadProcessorHelper
                     options.WithVideoFilters(vf => vf.Scale(size.Width, size.Height));
             })
             .CancellableThrough(cancellationToken);
-        if (progress is not null)
+        // Percentages are computed against the duration, so a video without one reports none
+        if (progress is not null && duration > TimeSpan.Zero)
             arguments = arguments.NotifyOnProgress(p => progress.Report(20 + (0.78 * p)), duration);
 
         await TranscodeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -198,23 +199,47 @@ public static class UploadProcessorHelper
         Func<TimeSpan, FFMpegArguments> createInput,
         FilePath fileName, TimeSpan totalVideoDuration)
     {
-        if (totalVideoDuration <= TimeSpan.Zero)
-            return null;
+        // The first frame is the fallback: a MediaRecorder WebM reports no duration,
+        // and in a truncated file the seek can land past the last frame
+        var captureTime = (totalVideoDuration * 0.1).Clamp(TimeSpan.Zero, TimeSpan.FromSeconds(10));
+        if (captureTime > TimeSpan.Zero) {
+            var snapshot = await TrySnapshot(createInput, fileName, captureTime).ConfigureAwait(false);
+            if (snapshot is not null)
+                return snapshot;
+        }
 
+        var firstFrame = await TrySnapshot(createInput, fileName, TimeSpan.Zero).ConfigureAwait(false);
+        if (firstFrame is null)
+            Log.LogError("Failed to extract snapshot for '{FileName}'", fileName);
+        return firstFrame;
+    }
+
+    private static async Task<UploadedTempFile?> TrySnapshot(
+        Func<TimeSpan, FFMpegArguments> createInput,
+        FilePath fileName,
+        TimeSpan captureTime)
+    {
+        var snapshotId = RandomStringGenerator.Default.Next();
+        var snapshotPath = FilePath.GetApplicationTempDirectory() | $"snapshot_{snapshotId}.jpg";
         try {
-            var captureTime = (totalVideoDuration * 0.1).Clamp(TimeSpan.Zero, TimeSpan.FromSeconds(10));
-            var snapshotId = RandomStringGenerator.Default.Next();
-            var snapshotPath = FilePath.GetApplicationTempDirectory() | $"snapshot_{snapshotId}.jpg";
-            var inputArgs = createInput(captureTime);
-            await inputArgs
+            await createInput(captureTime)
                 .OutputToFile(snapshotPath, false, options => options.WithVideoCodec("mjpeg").WithFrameOutputCount(1))
                 .ProcessAsynchronously()
                 .ConfigureAwait(false);
+            // ffmpeg exits cleanly with no output when it decodes no frame after the seek point
+            var snapshotFile = new FileInfo(snapshotPath);
+            if (snapshotFile is not { Exists: true, Length: > 0 }) {
+                Log.LogWarning("No frame at {CaptureTime} for a snapshot of '{FileName}'", captureTime, fileName);
+                File.Delete(snapshotPath);
+                return null;
+            }
+
             var snapshotFileName = fileName.ChangeExtension(".thumbnail.jpg");
             return new UploadedTempFile(snapshotFileName, MediaTypeNames.Image.Jpeg, snapshotPath);
         }
         catch (Exception e) {
-            Log.LogError(e, "Failed to extract snapshot for '{FileName}'", fileName);
+            Log.LogWarning(e, "Failed to extract snapshot at {CaptureTime} for '{FileName}'", captureTime, fileName);
+            File.Delete(snapshotPath);
             return null;
         }
     }
