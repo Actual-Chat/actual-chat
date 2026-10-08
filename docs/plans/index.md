@@ -36,7 +36,7 @@ transcripts with optional audio. Split into implementation plans for
 
 [Admin UI](./admin-ui.md) — a separate web-only admin front-end under `/m/`, built on
 Blazor Server and MudBlazor with its own shell and bundle. Phase 1 moves the flow, mesh,
-system and chat-copy pages out of the app's test pages; metrics, a query console and flow
+system, chat-copy and digest pages out of the app's test pages; metrics, a query console and flow
 resume come later.
 
 ### AI image suggestions

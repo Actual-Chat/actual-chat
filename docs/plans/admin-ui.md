@@ -1,6 +1,6 @@
 # Admin UI Implementation Plan
 
-**Goal:** A separate, web-only admin front-end under `/m/` ("manage"), built on MudBlazor and Blazor Server, that takes over the admin pages now living in the app's `/test/*` pages: flow monitoring, system commands, mesh info, and the chat-to-place copy tool. It shares no UI code, JS, or CSS with the app UI.
+**Goal:** A separate, web-only admin front-end under `/m/` ("manage"), built on MudBlazor and Blazor Server, that takes over the admin pages now living in the app's `/test/*` pages: flow monitoring, system commands, mesh info, the chat-to-place copy tool, and the digest preview. It shares no UI code, JS, or CSS with the app UI.
 
 **Architecture:** A new Razor class library `UI.Admin` is referenced by `App.Server`, which maps it at `/m/` with its own HTML shell and the interactive Server render mode only. Components inject contract interfaces (`IDiagnostics`, `ISystemProperties`, `IAccounts`, commands via `ICommander`) and never server-only types, so adding a WASM render mode later does not require rewriting them. Access is limited to admin accounts through the existing session cookie.
 
@@ -16,6 +16,7 @@
 | `SystemTestPage` (`/test/system`) | System | Host info, invalidate everything, prune computed graph, GC |
 | `MeshTestPage` (`/test/mesh`) | Mesh | Nodes, mesh RPC refs, RPC peers, copyable report |
 | `AdminCopyChatToPlacePage` (`/test/copy-chat2place`) | Tools | Copy chat to place, publish copied chat |
+| `DigestTestPage` (`/test/digest`) | Digest | Digest email preview for the viewer's unread chats or selected chats; rendered email and per-chat diagnostics |
 
 `SystemTestPage` actions that exist only to test the app UI ("Reload UI", "Throw Exception") are not moved. "Invalidate everything → on this front-end / locally" keep their current semantics; under Blazor Server "locally" is the whole server process, same as the existing guard in `SystemTestPage` says.
 
@@ -29,7 +30,7 @@
 2. **Same origin, `/m/` prefix**, not `m.voxt.ai`. The Fusion session cookie, `/signIn`, and ingress routing already work for the main host; a second origin would need cookie-domain and CORS work for no gain now. The shell reads the path base from one setting, so moving to a subdomain stays cheap.
 3. **Hosted in the `App.Server` process**, not a new executable. The admin pages call `IDiagnostics` and the system commands, which are server-side services; in-process, they run without extra RPC hops, and the mesh fan-out in `Diagnostics.GetMeshDiagInfo` keeps working as is.
 4. **Isolated shell and bundle.** The admin root page renders its own `<html>`, loads only MudBlazor's static assets plus one `admin.css` and `blazor.web.js`. It does not load the app bundle, Tailwind CSS, or app TypeScript.
-5. **English-only UI.** `docs/CODING_STYLE.md` requires every user-visible string to come from the localization catalog. The admin UI is for staff, and the pages it replaces already hardcode English. This plan treats it as an explicit exception and records it in `docs/ui/admin.md`; **it needs your confirmation** (open question 1).
+5. **English-only UI.** `docs/CODING_STYLE.md` requires every user-visible string to come from the localization catalog. The admin UI is for staff, and the pages it replaces already hardcode English. This plan treats it as an explicit exception and records it in `docs/ui/admin.md`; confirmed.
 6. **Feature folders registered through one nav registry.** Each feature (`Flows`, `System`, `Mesh`, `Tools`) is a folder with its page(s) and a single `AdminNavEntry` registration. A new section is a new folder plus one registration line.
 7. **Migrated pages are removed from the app UI** once the admin versions are verified, so there is one place for each tool.
 
@@ -182,10 +183,20 @@ Form with chat id and place id, validated through `MudForm` and the id parsers (
 - [ ] Investigate and decide on the service boundary
 - [ ] Page
 
-### Task 8: Remove migrated pages, document
+### Task 8: Digest page
+
+**Files:** `src/dotnet/UI.Admin/Features/Digest/DigestPage.razor`
+
+Ports `DigestTestPage` on `IEmails.GetDigestPreview`: mode selector (the viewer's unread chats, or selected chats with an "as of" time), chat ids as a comma-separated list, "Generate preview", the unsubscribe-link note, and two `MudTabs`: the rendered email in a sandboxed `iframe srcdoc`, and per-chat diagnostics (chat link, unread count, bullet points, "+N other unread chats"). The old "Pick chats" button opens the app's `ForwardMessageModal`, which is app UI and is not reused; the id list field replaces it.
+
+**Verification:** manual against a dev account; unit test for chat-id list parsing.
+
+- [ ] Page and both modes
+
+### Task 9: Remove migrated pages, document
 
 **Files:**
-- Delete: `FlowsTestPage.razor`, `MeshTestPage.razor`, `SystemTestPage.razor`, `AdminCopyChatToPlacePage.razor`, and any links/menu entries to them; delete `CopyChatToPlaceUI` pieces no longer used
+- Delete: `FlowsTestPage.razor`, `MeshTestPage.razor`, `SystemTestPage.razor`, `AdminCopyChatToPlacePage.razor`, `DigestTestPage.razor`, and any links/menu entries to them; delete `CopyChatToPlaceUI` pieces no longer used
 - Create: `docs/ui/admin.md` (purpose, hosting decision, how to add a section, theme, the English-only exception, the reference rule); add to `docs/ui/index.md`
 - Modify: `docs/architecture/project-structure.md` (new project row), `docs/plans/index.md` (this plan under Active), `docs/CODING_STYLE.md` (localization exception for `UI.Admin`)
 - Regenerate: `docs/api-index*.md` with the repo's generator if `UI.Admin` types should be listed
@@ -195,11 +206,11 @@ Form with chat id and place id, validated through `MudForm` and the id parsers (
 - [ ] Remove old pages after the admin versions are verified
 - [ ] Docs
 
-## Open questions
+## Resolved questions
 
-1. **English-only admin UI** (decision 5): confirm it as an explicit exception to the localization rule.
-2. **`/m/` vs. `m.voxt.ai`**: the plan assumes `/m/`. If you want the subdomain, add a task for cookie domain, ingress, and CORS before task 2.
-3. **Digest preview** (`DigestTestPage`): it looks like a developer tool, not a monitoring page. Left in the app's test pages for now; say if it should move.
+1. English-only admin UI: confirmed, recorded as an exception to the localization rule.
+2. `/m/` prefix, not `m.voxt.ai`: confirmed. A subdomain would need a task for cookie domain, ingress, and CORS first.
+3. `DigestTestPage` moves too (task 8).
 
 ## Risks
 
