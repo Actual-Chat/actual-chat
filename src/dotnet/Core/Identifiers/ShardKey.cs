@@ -1,8 +1,10 @@
 namespace ActualChat;
 
 /// <summary>
-/// A hex-digit key of <see cref="Size"/> digits; <see cref="Value"/> holds them in its lowest
-/// bits, so a key and its <see cref="Head"/> route identically under positive modulo.
+/// A key of <see cref="Size"/> hex digits, held in the lowest bits of <see cref="Value"/>.
+/// <see cref="Head"/> keeps the highest digits, <see cref="Tail"/> the lowest. Routing is
+/// <see cref="Value"/> modulo the shard count, so only <see cref="Tail"/>(n) routes like the
+/// full key, and only when that count is 16^n.
 /// </summary>
 [StructLayout(LayoutKind.Auto)]
 [DataContract, MessagePackObject]
