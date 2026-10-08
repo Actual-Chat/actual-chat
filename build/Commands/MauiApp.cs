@@ -26,11 +26,12 @@ internal static class MauiApp
         var plan = new CommandPlan();
         // The Apple scripts build the web assets and the app themselves, as one unit.
         if (settings.Platform is AppPlatform.Ios or AppPlatform.Mac) {
-            if (mustInstall && !mustLaunch)
+            if (mustInstall && !mustLaunch && settings.Platform == AppPlatform.Mac)
                 throw new WithoutStackException(
-                    $"{settings.Platform} can't install without launching - use 'b app run' or 'b app build'.");
+                    "A Mac build has nothing to install - it runs from artifacts/ as-is."
+                    + " Use 'b app run mac' or 'b app build mac'.");
 
-            AddScript(plan, settings, mustLaunch);
+            AddScript(plan, settings, mustInstall, mustLaunch);
             return plan;
         }
 
@@ -148,14 +149,14 @@ internal static class MauiApp
         }
     }
 
-    private static void AddScript(CommandPlan plan, AppSettings settings, bool mustLaunch)
+    private static void AddScript(CommandPlan plan, AppSettings settings, bool mustInstall, bool mustLaunch)
     {
         var scriptName = settings.Platform == AppPlatform.Mac ? "run-mac.sh" : "run-ios.sh";
         var scriptPath = Path.Combine("scripts", scriptName);
         // scripts/__run-args.sh is the other end of this list
         var args = new List<string> { scriptPath };
         if (!mustLaunch)
-            args.Add("--build-only");
+            args.Add(mustInstall ? "--no-launch" : "--build-only");
         if (settings.UseSimulator)
             args.Add("--simulator");
         if (settings.UseCatalyst)

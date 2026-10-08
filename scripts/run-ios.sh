@@ -149,11 +149,19 @@ if [ -n "$IS_BUILD_ONLY" ]; then
     exit 0
 fi
 
-# --console keeps the script alive until the app exits and streams its output
 if [ -n "$IS_SIMULATOR" ]; then
     xcrun simctl install "$SIMULATOR_UDID" "$APP_PATH" || exit 1
-    xcrun simctl launch --console --terminate-running-process "$SIMULATOR_UDID" "$BUNDLE_ID"
 else
     xcrun devicectl device install app --device "$DEVICE_UDID" "$APP_PATH" || exit 1
+fi
+if [ -n "$MUST_SKIP_LAUNCH" ]; then
+    echo "Installed: $BUNDLE_ID"
+    exit 0
+fi
+
+# --console keeps the script alive until the app exits and streams its output
+if [ -n "$IS_SIMULATOR" ]; then
+    xcrun simctl launch --console --terminate-running-process "$SIMULATOR_UDID" "$BUNDLE_ID"
+else
     xcrun devicectl device process launch --console --device "$DEVICE_UDID" --terminate-existing "$BUNDLE_ID"
 fi
