@@ -444,6 +444,10 @@ protected override async Task OnRun(CancellationToken cancellationToken)
 - **Braces for single statements** are not required,
   typically they're used only if the statement is prefixed with a comment,
   or when it significantly improves the readability.
+- **Collection expressions** are preferred over constructor-plus-`Add` code
+  whenever they perform the same: `HashSet<T> set = [with(capacity), ..items];`
+  compiles to the same `new HashSet<T>(capacity)` and `Add` calls. Keep the
+  explicit form only where it's measurably cheaper.
 - **`=> field ??= ...;` in a `record`**: the generated `Equals` compares every
   field and the copy constructor copies them, so an instance that's been read
   differs from one that hasn't, and `with` carries a stale value. Either drop
@@ -931,6 +935,18 @@ public override async Task Require(CancellationToken cancellationToken)
     The same applies to an `await` buried in a condition or in another expression
     (`if (!await db.X.AnyAsync(...).ConfigureAwait(false))`,
     `(await ...).ToHashSet()`): await into a named local, then use it.
+
+    An exception is an awaited result that only feeds a chain of calls. It can stay
+    inline when it's formatted as one chain: one call per line inside the parentheses,
+    and the closing `)` opening the line that continues the chain:
+    ```csharp
+    var pendingEntries = (await ChatsBackend
+        .ListEntries(entryIds, false, cancellationToken)
+        .ConfigureAwait(false)
+        ).SkipNullItems()
+        .Where(e => e.Attachments.Length > 0)
+        .ToList();
+    ```
 
     Don't pass `isOutermost: true` from an `ApiCommand` handler: `IApiCommand` is an
     `IDelegatingCommand`, and every command called from a delegating command's handler
