@@ -6,6 +6,10 @@ namespace ActualChat.UI.Blazor.App.Services.Gestures;
 /// </summary>
 public class SensorFeed
 {
+    // Proximity has two users - GestureUI's stop gesture and replay at the ear - and each states
+    // its own need, so one of them turning it off must not pull it from the other.
+    private readonly HashSet<object> _proximityHolders = new();
+
     public event Action<SensorSample>? SampleReceived;
     public event Action<bool>? ProximityChanged;
 
@@ -26,10 +30,28 @@ public class SensorFeed
     public virtual void StopAccelerometer()
     { }
 
-    public virtual void StartProximity()
+    public void StartProximity(object holder)
+    {
+        lock (_proximityHolders) {
+            if (_proximityHolders.Add(holder) && _proximityHolders.Count == 1)
+                StartProximityCore();
+        }
+    }
+
+    public void StopProximity(object holder)
+    {
+        lock (_proximityHolders) {
+            if (_proximityHolders.Remove(holder) && _proximityHolders.Count == 0)
+                StopProximityCore();
+        }
+    }
+
+    // Protected/internal methods
+
+    protected virtual void StartProximityCore()
     { }
 
-    public virtual void StopProximity()
+    protected virtual void StopProximityCore()
     { }
 
     protected void OnSample(SensorSample sample)
