@@ -77,6 +77,9 @@ features:
 - [Compute-method invalidation map](./invalidation-map.md) — where invalidations
   originate, how they amplify, which edges are conditional, and where
   `ConsolidationDelay` cuts a cascade that is effectively a no-op.
+- [Distributed services](./architecture/distributed-services.md) — how to write a
+  backend service that runs in `ServiceMode.Distributed`: mesh routing by shard key,
+  shard ownership, and the invalidation rules that differ from plain Fusion.
 - [Command idempotency](./architecture/command-idempotency.md) — how `ApiCommand`'s
   client-generated `Uuid` + an in-process server filter dedup retried commands, and how
   the version-gated deserializer keeps old clients working across a rollout.
