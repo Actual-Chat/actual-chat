@@ -119,27 +119,9 @@ public partial interface IChatsBackend : IComputeService, IBackendService
         PlaceId placeId,
         CancellationToken cancellationToken);
 
-    // Non-compute methods
-
-    Task<Chat[]> List(
-        Moment minCreatedAt,
-        ChatId? lastChatId,
-        int limit,
-        CancellationToken cancellationToken);
-
-    Task<Chat[]> ListChanged(ChangedChatsQuery query, CancellationToken cancellationToken);
-
-    Task<ChatEntry[]> ListChangedEntries(ChangedEntriesQuery query, CancellationToken cancellationToken);
-
     // entryId routes to its ChatId's shard through ChatEntryId.ShardKey.
     [ComputeMethod(MinCacheDuration = 60)]
     Task<ChatEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken);
-
-    Task<ChatEntry[]> ListNewEntries(
-        ChatId chatId,
-        long minLocalIdExclusive,
-        int limit,
-        CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ChatCopyState?> GetChatCopyState(ChatId chatId, CancellationToken cancellationToken);

@@ -1,4 +1,12 @@
-﻿namespace ActualChat.Chat;
+namespace ActualChat.Chat;
+
+// The batch enumeration API indexers scan with - not a [ComputeMethod], see IChatsBackend.Indexing.
+public partial interface IAuthorsBackend
+{
+    Task<AuthorFull[]> ListChanged(
+        ChangedAuthorsQuery query,
+        CancellationToken cancellationToken);
+}
 
 /// <summary>
 /// Query parameters for listing changed authors by version range.
