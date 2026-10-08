@@ -13,8 +13,6 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// </summary>
 public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
-    private static readonly TimeSpan LocallyEndedRemoteStreamRetention = TimeSpan.FromMinutes(3);
-
     // Centralized video state — camera and screencast are tracked independently
     // so an author can stream both at the same time.
     private readonly MutableState<ChatId?> _recordingChatId;        // camera target chat
@@ -37,8 +35,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // Set when a remote stream completes normally (sender intentionally ended).
     // Consumed by VideoStage to suppress "Connecting..." overlay.
-    private volatile int _remoteStreamEndedSuccessfully;
-    private readonly ConcurrentDictionary<string, CpuTimestamp> _locallyEndedRemoteStreams = new();
+    private int _remoteStreamEndedSuccessfully;
 
     // Raised to ask VideoStreamingPreview consumers to pause (true) / resume (false)
     // their local preview rendering while something else owns the preview canvas —

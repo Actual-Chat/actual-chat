@@ -410,6 +410,11 @@ export class VideoPlayer {
         debugLog?.log(`markTileEnding: ${reason}`);
     }
 
+    private clearTileEnding(): void {
+        this.tileEndingApplied = false;
+        this.canvas.parentElement?.classList.remove('is-ending');
+    }
+
     private applyBackendVisibility(canvas: HTMLCanvasElement, videoEl: HTMLVideoElement): void {
         if (this.renderBackend.kind === 'mstg') {
             videoEl.style.display = 'block';
@@ -662,8 +667,9 @@ export class VideoPlayer {
             const selection = await selectDecoderCodec(candidates, description, dims);
             if (!selection) {
                 warnLog?.log(`No HW-supported codec found among candidates: [${candidates.join(', ')}]`);
-                this.isPlaying = false;
-                void this.reportEnded(`Codec not supported`);
+                if (this.restartAttempts === 0)
+                    void this.blazorRef.invokeMethodAsync('OnPlaybackStalled', 'init-failed: no supported codec')
+                        .catch((e: unknown) => warnLog?.log('OnPlaybackStalled error:', e));
                 return;
             }
             const codecString = selection.codec;
@@ -1052,12 +1058,6 @@ export class VideoPlayer {
         // Wait for the player worker to finish initialization.
         await this.playerReady;
 
-        if (!this.playerWorker || !this.selectedCodec) {
-            warnLog?.log('startPull: player worker unavailable (codec selection failed?)');
-            void this.reportEnded('Codec not supported');
-            return;
-        }
-
         // skipToMs is informational on the new pipeline — epoch-reset
         // handles bootstrap automatically. Recorded for diagnostics.
         void skipToMs;
@@ -1079,7 +1079,9 @@ export class VideoPlayer {
                 await this.runOneAttempt(streamId);
                 this.markTileEnding('graceful-completion');
                 void this.reportEnded(undefined);
-                return;
+                // The server list is the authority on whether the stream is over: the tile
+                // is unmounted when it drops the stream, and until then we keep pulling.
+                await this.waitBeforeRestart();
             } catch (err) {
                 const e = err instanceof Error ? err : new Error(String(err));
 
@@ -1105,18 +1107,36 @@ export class VideoPlayer {
                 if (!this.shouldRunPlaybackLoop())
                     return;
 
-                this.restartAttempts++;
-                const delayMs = Math.min(3000, 150 * Math.pow(1.7, this.restartAttempts - 1));
+                this.pushBreadcrumb(`attempt ${this.restartAttempts + 1} failed: ${e.message}`);
+                const delayMs = await this.waitBeforeRestart();
                 warnLog?.log(
                     `runPlaybackLoop: attempt ${this.restartAttempts} failed — ` +
-                    `${e.message}; retrying in ${delayMs.toFixed(0)}ms`);
-                this.pushBreadcrumb(`attempt ${this.restartAttempts} failed: ${e.message}`);
-                await delayAsync(delayMs);
+                    `${e.message}; retried after ${delayMs.toFixed(0)}ms`);
             }
         }
     }
 
+    private async waitBeforeRestart(): Promise<number> {
+        this.restartAttempts++;
+        const delayMs = Math.min(3000, 150 * Math.pow(1.7, this.restartAttempts - 1));
+        await delayAsync(delayMs);
+
+        return delayMs;
+    }
+
+    private async ensurePlayerWorker(): Promise<void> {
+        await this.playerReady;
+        if (this.playerWorker && this.selectedCodec || !this.supportsWebCodecs())
+            return;
+
+        this.pushBreadcrumb('player worker init retry');
+        this.playerReady = this.initPlayerWorker(
+            this.sourceCodec, this.sourceWidth, this.sourceHeight, this.sourceCodecSettings);
+        await this.playerReady;
+    }
+
     private async runOneAttempt(streamId: string): Promise<void> {
+        await this.ensurePlayerWorker();
         if (!this.playerWorker || !this.selectedCodec)
             throw new Error('runOneAttempt: worker or codec missing');
 
@@ -1462,6 +1482,8 @@ export class VideoPlayer {
         this.presentedFrameCount = sample.playerStats.presented;
         if (this.restartAttempts > 0)
             this.restartAttempts = 0;
+        if (this.tileEndingApplied)
+            this.clearTileEnding();
 
         const tickMs = sample.sampledAtMs;
         const dt = tickMs - this.lastLatencyTickMs;
