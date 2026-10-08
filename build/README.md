@@ -31,7 +31,7 @@ The app commands differ only in how far down the pipeline they go, and `--launch
 
 iOS and macOS delegate to `scripts/run-ios*.sh` / `scripts/run-mac*.sh`
 (AppKit by default, `--catalyst` for Mac Catalyst), which build, install and launch as one unit — so `b app install ios` is rejected
-rather than silently launching.
+rather than silently launching. `b app build` passes them `--build-only`, which stops after the build.
 
 The server commands:
 

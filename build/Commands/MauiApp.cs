@@ -30,9 +30,7 @@ internal static class MauiApp
                 throw new WithoutStackException(
                     $"{settings.Platform} can't install without launching - use 'b app run' or 'b app build'.");
 
-            if (mustLaunch)
-                AddScript(plan, settings);
-
+            AddScript(plan, settings, mustLaunch);
             return plan;
         }
 
@@ -150,7 +148,7 @@ internal static class MauiApp
         }
     }
 
-    private static void AddScript(CommandPlan plan, AppSettings settings)
+    private static void AddScript(CommandPlan plan, AppSettings settings, bool mustLaunch)
     {
         var scriptName = settings switch {
             { Platform: AppPlatform.Mac, UseCatalyst: true } => "run-maccatalyst.sh",
@@ -159,7 +157,8 @@ internal static class MauiApp
             _ => "run-ios.sh",
         };
         var scriptPath = Path.Combine("scripts", scriptName);
-        plan.Add(new RunStep("bash", [scriptPath]) { RequiredPath = scriptPath });
+        string[] args = mustLaunch ? [scriptPath] : [scriptPath, "--build-only"];
+        plan.Add(new RunStep("bash", args) { RequiredPath = scriptPath });
     }
 
     private static string? GetArtifactPath(AppSettings settings)
