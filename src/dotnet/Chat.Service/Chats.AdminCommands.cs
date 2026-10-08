@@ -32,6 +32,10 @@ public partial class Chats
         if (match.Success)
             return await HandleLoremIpsum(chatId, author, match, cancellationToken).ConfigureAwait(false);
 
+        if (LoremIpsumStreamOptions.TryParse(text, out var streamOptions))
+            return await HandleLoremIpsumStream(chatId, author, streamOptions, cancellationToken)
+                .ConfigureAwait(false);
+
         match = TestUsersCommandRegex().Match(text);
         if (match.Success)
             return await HandleTestUsers(session, chatId, author, account, match, cancellationToken)
@@ -89,6 +93,30 @@ public partial class Chats
         return lastEntry!;
     }
 
+    private async Task<ChatEntry> HandleLoremIpsumStream(
+        ChatId chatId, Author author, LoremIpsumStreamOptions options,
+        CancellationToken cancellationToken)
+    {
+        var sample = LoremIpsum.GetMarkupSample(options.TextLength, options.MustIncludeReset);
+        var plan = LoremIpsum.GetStreamPlan(sample, options.CharsPerSecond, options.UpdatesPerSecond);
+        var entryCreatedSource = TaskCompletionSourceExt.New<ChatEntry>();
+        // The stream outlives this call: a command that waits for it runs past the client's call
+        // timeout, and the client then retries it, so the same command streams a second message.
+        _ = Task.Run(async () => {
+            try {
+                await ChatEntryStreamer
+                    .PushStream(chatId, author.Id, null, StreamLoremIpsum(plan, default), default,
+                        entryCreatedSource: entryCreatedSource)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "/lorem-ipsum-stream failed");
+            }
+        }, CancellationToken.None);
+
+        return await entryCreatedSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<ChatEntry> HandlePause(
         ChatId chatId, Author author, Match match,
         CancellationToken cancellationToken)
@@ -129,6 +157,16 @@ public partial class Chats
                 Content = message,
             }));
         return await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async IAsyncEnumerable<string> StreamLoremIpsum(
+        IEnumerable<(string Chunk, TimeSpan Delay)> plan,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        foreach (var (chunk, delay) in plan) {
+            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            yield return chunk;
+        }
     }
 
     private static int ParseArgument(

@@ -289,6 +289,13 @@ chat editor:
   way to populate the ChatList / People list.
 - `/lorem-ipsum N [min..max]` — posts N markdown messages, for stress-testing
   the chat view.
+- `/lorem-ipsum-stream [seconds][*cps][/ups] [with-reset]` — streams one message of random
+  markup from start to end (headers, lists, quotes, tables, code, dividers, links, styles), to
+  check how streaming markup renders. Defaults: 5 seconds, 100 chars per second, 10 updates per
+  second (an average: update timing and size vary around it). The text is `seconds * cps`
+  characters, cut wherever that lands. `with-reset`
+  puts one `<!--reset-->` at a random line outside code blocks. Examples: `/lorem-ipsum-stream`,
+  `/lorem-ipsum-stream 10*200/20 with-reset`, `/lorem-ipsum-stream with-reset`.
 
 To send, insert the text into the editor and press Enter (or click send).
 
