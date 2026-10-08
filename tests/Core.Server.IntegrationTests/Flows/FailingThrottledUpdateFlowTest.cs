@@ -1,11 +1,12 @@
 using ActualChat.Flows;
 using ActualChat.Testing.Host;
+using ActualLab.Generators;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
 [Collection(nameof(FailingThrottledUpdateFlowCollection))]
 [Trait("Category", "Slow")]
-public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fixture, ITestOutputHelper @out)
+public sealed class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<FailingThrottledUpdateFlowFixture>(fixture, @out)
 {
     // Three Run attempts are three commit + queue round trips; on CI one took up to 10 s, and
@@ -24,15 +25,15 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
     [Fact]
     public async Task RetryAndRecoverTest()
     {
-        // Arrange - fail first 2 calls, succeed on 3rd
+        // arrange - fail first 2 calls, succeed on 3rd
         FailingThrottledUpdateFlow.FailUntilCallCount = 2;
-        var target = $"test-{Guid.NewGuid():N}";
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
 
-        // Act
+        // act
         await FlowHub.TryScheduleUpdate<FailingThrottledUpdateFlow>(target);
 
-        // Assert - should eventually succeed after retries
+        // assert - should eventually succeed after retries
         await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<FailingThrottledUpdateFlow>(args, ct);
             flow.Should().NotBeNull();
@@ -49,7 +50,7 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
     {
         // arrange - always fail
         FailingThrottledUpdateFlow.FailUntilCallCount = int.MaxValue;
-        var target = $"test-{Guid.NewGuid():N}";
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
         var scheduledAt = FlowHub.SystemNow;
 
@@ -67,21 +68,22 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
             flow.NextRunAt.Should().BeGreaterThanOrEqualTo(scheduledAt + FailingThrottledUpdateFlow.Throttle);
             flow.Console.ToString().Should().Contain("giving up");
         }, WaitBudget);
-        FailingThrottledUpdateFlow.CallCounts.GetValueOrDefault(target).Should().Be(3, "Run is called MaxFailCount times");
+        FailingThrottledUpdateFlow.CallCounts.GetValueOrDefault(target)
+            .Should().Be(3, "Run is called MaxFailCount times");
     }
 
     [Fact]
     public async Task FailCountResetsOnSuccessTest()
     {
-        // Arrange - fail first call, succeed on 2nd
+        // arrange - fail first call, succeed on 2nd
         FailingThrottledUpdateFlow.FailUntilCallCount = 1;
-        var target = $"test-{Guid.NewGuid():N}";
+        var target = $"test-{RandomStringGenerator.Default.Next()}";
         var args = ThrottledUpdateFlow.GetArguments(target);
 
-        // Act
+        // act
         await FlowHub.TryScheduleUpdate<FailingThrottledUpdateFlow>(target);
 
-        // Assert - should succeed after 1 retry, FailCount reset to 0
+        // assert - should succeed after 1 retry, FailCount reset to 0
         await TestWait.When(async ct => {
             var flow = await FlowHub.TryGet<FailingThrottledUpdateFlow>(args, ct);
             flow.Should().NotBeNull();
@@ -94,13 +96,14 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
 }
 
 [CollectionDefinition(nameof(FailingThrottledUpdateFlowCollection))]
-public class FailingThrottledUpdateFlowCollection : ICollectionFixture<FailingThrottledUpdateFlowFixture>;
+public sealed class FailingThrottledUpdateFlowCollection : ICollectionFixture<FailingThrottledUpdateFlowFixture>;
 
-public class FailingThrottledUpdateFlowFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(
-    "failing-throttled-update-flow",
-    messageSink,
-    TestAppHostOptions.Default with {
-        ConfigureServices = (_, services) => {
-            services.AddFlows().Add<FailingThrottledUpdateFlow>();
-        },
-    });
+public sealed class FailingThrottledUpdateFlowFixture(IMessageSink messageSink)
+    : ActualChat.Testing.Host.AppHostFixture(
+        "failing-throttled-update-flow",
+        messageSink,
+        TestAppHostOptions.Default with {
+            ConfigureServices = (_, services) => {
+                services.AddFlows().Add<FailingThrottledUpdateFlow>();
+            },
+        });
