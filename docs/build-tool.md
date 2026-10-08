@@ -191,9 +191,9 @@ an MSIX.
 These delegate to `scripts/run-ios.sh` (a device, or a simulator with `--simulator`),
 and `scripts/run-mac.sh` (the default AppKit app, or Mac Catalyst with
 `--catalyst`), which handle device detection, certificate install and
-the codesigning workarounds. They build, install and launch as one unit, so
-`b app install ios` is rejected rather than silently launching the app — use
-`b app run ios` or `b app build ios`.
+the codesigning workarounds. `b app build` and `b app install ios` stop them after
+the build and after the install. A Mac app runs from `artifacts/` as-is, so
+`b app install mac` is rejected — use `b app run mac` or `b app build mac`.
 
 They build the Debug app only. A Release build of an Apple app is the store package,
 signed for distribution, and Native AOT applies to Release alone, so `--release`,
