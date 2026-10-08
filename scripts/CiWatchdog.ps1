@@ -218,6 +218,15 @@ function Split-CiLogByJob {
     return $sections
 }
 
+function Format-CiMilliseconds {
+    param([Parameter(Mandatory)][int]$Milliseconds)
+
+    if ($Milliseconds -lt 1000) {
+        return "$Milliseconds ms"
+    }
+    return "$([Math]::Round($Milliseconds / 1000)) s"
+}
+
 function Get-CiFailedTests {
     <#
     .SYNOPSIS
@@ -225,6 +234,11 @@ function Get-CiFailedTests {
     .DESCRIPTION
         Each failure appears several times in the log (the xUnit marker, the
         VSTest summary, and again on stderr), so results are unique by name.
+
+        Vitest names a failure "<file> > <suite> > <test>" on a FAIL line, with
+        the error on the next line, and its duration on a separate progress line
+        that names the test alone. The build tool prefixes every vitest line
+        with its target ("e2e: "), which is cut off the error.
     #>
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string]$LogText,
@@ -234,9 +248,39 @@ function Get-CiFailedTests {
     $durations = @{}
     $errors = @{}
     $order = [System.Collections.Generic.List[string]]::new()
+    $vitestDurations = @{}
 
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
+
+        if ($line -cmatch '^(?<prefix>.*?)\bFAIL\s+(?<name>\S+\.(?:test|spec)\.[cm]?[jt]sx?\b.*?)\s*$') {
+            # A file that failed to load is printed as "<file> [ <file> ]".
+            $name = $Matches.name -replace '\s+\[\s.*\]$', ''
+            $prefix = $Matches.prefix.Trim()
+            if (-not $order.Contains($name)) {
+                $order.Add($name)
+            }
+            if (-not $errors.ContainsKey($name)) {
+                for ($j = $i + 1; $j -lt [Math]::Min($i + 8, $lines.Count); $j++) {
+                    $next = $lines[$j].Trim()
+                    if ($prefix -and $next.StartsWith($prefix)) {
+                        $next = $next.Substring($prefix.Length).Trim()
+                    }
+                    if ($next) {
+                        $errors[$name] = $next
+                        break
+                    }
+                }
+            }
+            continue
+        }
+
+        if ($line -match '×\s+(?<test>.+?)\s+(?<ms>\d+)ms\s*$') {
+            if (-not $vitestDurations.ContainsKey($Matches.test)) {
+                $vitestDurations[$Matches.test] = [int]$Matches.ms
+            }
+            continue
+        }
 
         # The name is matched lazily rather than as \S+: a [Theory] case carries
         # its arguments, spaces and all, and losing the marker line loses the
@@ -268,6 +312,13 @@ function Get-CiFailedTests {
         }
     }
 
+    foreach ($name in $order) {
+        $test = ($name -split '\s+>\s+')[-1]
+        if (-not $durations.ContainsKey($name) -and $vitestDurations.ContainsKey($test)) {
+            $durations[$name] = Format-CiMilliseconds $vitestDurations[$test]
+        }
+    }
+
     return @($order | ForEach-Object {
         $flake = Find-CiFlake $_ $errors[$_] $Flakes
         [PSCustomObject]@{
@@ -284,10 +335,19 @@ function Get-CiAssemblyTotals {
     param([Parameter(Mandatory)][AllowEmptyString()][string]$LogText)
 
     $pattern = 'Failed!\s+-\s+Failed:\s+(?<failed>\d+),\s+Passed:\s+(?<passed>\d+),\s+Skipped:\s+(?<skipped>\d+),\s+Total:\s+(?<total>\d+).*?-\s+(?<assembly>\S+\.dll)'
+    # Vitest leaves out a count that is zero: "Tests  4 failed | 139 passed | 13 skipped (156)".
+    $vitestPattern = '\bTests\s+(?<failed>\d+) failed(?:\s+\|\s+(?<passed>\d+) passed)?(?:\s+\|\s+(?<skipped>\d+) skipped)?.*?\((?<total>\d+)\)'
     return @($LogText -split "`r?`n" | ForEach-Object { ConvertTo-CiPlainText $_ } | ForEach-Object {
+        $assembly = ''
         if ($_ -match $pattern) {
+            $assembly = $Matches.assembly
+        }
+        elseif ($_ -match $vitestPattern) {
+            $assembly = 'vitest'
+        }
+        if ($assembly) {
             [PSCustomObject]@{
-                Assembly = $Matches.assembly
+                Assembly = $assembly
                 Failed = [int]$Matches.failed
                 Passed = [int]$Matches.passed
                 Skipped = [int]$Matches.skipped
@@ -331,7 +391,8 @@ function Get-CiRunVerdict {
         return 'Collapse'
     }
     $tests = @($real | ForEach-Object { $_.Tests })
-    # TS E2E logs carry no [FAIL] markers, so a test job can yield no test names.
+    # A missing log, or a failure printed in a format the parser doesn't know,
+    # leaves a test job with no test names.
     if ($tests.Count -eq 0) {
         return 'Unparsed'
     }

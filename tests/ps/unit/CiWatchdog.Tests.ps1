@@ -35,6 +35,25 @@ Describe "CiWatchdog.ps1" {
             '[xUnit.net 00:00:37.78]     ActualChat.Core.Server.IntegrationTests.Flows.FailingThrottledUpdateFlowTest.RetryAndRecoverTest [FAIL]'
         )
 
+        # Lines of the nightly TS E2E run 37717072265, colors and the build tool's prefix included.
+        $script:vitestLog = New-JobLog -Job 'TS E2E Tests / TS E2E tests results' @(
+            "`e[34me2e: `e[0m`e[31m     `e[31m×`e[31m reloads the map when a request for it stalls`e[39m`e[33m 42927`e[2mms`e[22m`e[39m"
+            "`e[34me2e: `e[0m`e[31m     `e[31m×`e[31m fits the map card into a narrow screen`e[39m`e[33m 640`e[2mms`e[22m`e[39m"
+            "`e[34me2e: `e[0m`e[22m`e[39mFAILED TEST SCREENSHOT: http://localhost:7080/chat -> /home/runner/tmp/e2e-failed-reloads.png"
+            "`e[34me2e: `e[0m`e[31m`e[41m`e[1m FAIL `e[22m`e[49m tests/ts/e2e/map-link-preview.test.ts`e[2m > `e[22mmap link preview`e[2m > `e[22mreloads the map when a request for it stalls`e[0m"
+            "`e[34me2e: `e[0m`e[31m`e[31m`e[1mTimeoutError`e[22m: page.waitForResponse: Timeout 30000ms exceeded while waiting for event `"response`"`e[39m`e[0m"
+            "`e[34me2e: `e[0m`e[31m`e[36m `e[2m❯`e[22m tests/ts/e2e/map-link-preview.test.ts:`e[2m126:39`e[22m`e[39m`e[0m"
+            "`e[34me2e: `e[0m`e[31m`e[41m`e[1m FAIL `e[22m`e[49m tests/ts/e2e/map-link-preview.test.ts`e[2m > `e[22mmap link preview`e[2m > `e[22mfits the map card into a narrow screen`e[0m"
+            "`e[34me2e: `e[0m"
+            "`e[34me2e: `e[0m`e[31mAssertionError: expected null not to be null`e[0m"
+            "`e[34me2e: `e[0m`e[31m`e[41m`e[1m FAIL `e[22m`e[49m tests/ts/e2e/people-search.test.ts`e[2m > `e[22mglobal people search`e[0m"
+            "`e[34me2e: `e[0m`e[31mError: Hook timed out in 120000ms.`e[0m"
+            "`e[34me2e: `e[0m`e[31m`e[41m`e[1m FAIL `e[22m`e[49m tests/ts/e2e/map-link-preview.test.ts`e[2m > `e[22mmap link preview`e[2m > `e[22mreloads the map when a request for it stalls`e[0m"
+            "`e[34me2e: `e[0m`e[2m Test Files `e[22m `e[1m`e[31m2 failed`e[39m`e[22m`e[2m | `e[22m`e[1m`e[32m43 passed`e[39m`e[22m`e[90m (45)`e[39m"
+            "`e[34me2e: `e[0m`e[2m      Tests `e[22m `e[1m`e[31m3 failed`e[39m`e[22m`e[2m | `e[22m`e[1m`e[32m139 passed`e[39m`e[22m`e[2m | `e[22m`e[33m13 skipped`e[39m`e[90m (155)`e[39m"
+            "`e[90mBuild:`e[0m `e[34me2e-tests`e[37m:`e[0m `e[31mFAILED!`e[0m `e[31mCommand execution failed because the underlying process (npm#29201) returned a non-zero exit code (1)."
+        )
+
         function New-Flake {
             param([string]$Pattern, [string]$Symptom = '', [int]$Issue = 4645)
             return [PSCustomObject]@{ Issue = $Issue; Pattern = $Pattern; Symptom = $Symptom }
@@ -268,6 +287,44 @@ Describe "CiWatchdog.ps1" {
             $tests[0].Name | Should -Be $name
             $tests[0].Error | Should -Be 'Expected 3, but found 4.'
         }
+
+        It "names a vitest failure by its file, suite and test, once each" {
+            $tests = Get-CiFailedTests $script:vitestLog @()
+            $tests.Name | Should -Be @(
+                'tests/ts/e2e/map-link-preview.test.ts > map link preview > reloads the map when a request for it stalls'
+                'tests/ts/e2e/map-link-preview.test.ts > map link preview > fits the map card into a narrow screen'
+                'tests/ts/e2e/people-search.test.ts > global people search'
+            )
+        }
+
+        It "takes a vitest error from the next non-empty line, without the build tool's prefix" {
+            $tests = Get-CiFailedTests $script:vitestLog @()
+            $tests[0].Error | Should -Be 'TimeoutError: page.waitForResponse: Timeout 30000ms exceeded while waiting for event "response"'
+            $tests[1].Error | Should -Be 'AssertionError: expected null not to be null'
+            $tests[2].Error | Should -Be 'Error: Hook timed out in 120000ms.'
+        }
+
+        It "finds a vitest duration on the progress line that names the test alone" {
+            $tests = Get-CiFailedTests $script:vitestLog @()
+            $tests[0].Duration | Should -Be '43 s'
+            $tests[1].Duration | Should -Be '640 ms'
+            $tests[2].Duration | Should -BeNullOrEmpty
+        }
+
+        It "matches a vitest failure against the registry" {
+            $flakes = @(New-Flake '*map-link-preview.test.ts > map link preview > reloads*' 'TimeoutError' -Issue 5152)
+            $tests = Get-CiFailedTests $script:vitestLog $flakes
+            $tests[0].KnownFlake | Should -BeTrue
+            $tests[0].FlakeIssue | Should -Be 5152
+            $tests[1].KnownFlake | Should -BeFalse
+        }
+
+        It "drops the path vitest repeats after a file that failed to load" {
+            $log = New-JobLog @(' FAIL  tests/ts/e2e/broken.test.ts [ tests/ts/e2e/broken.test.ts ]', 'SyntaxError: Unexpected token')
+            $tests = Get-CiFailedTests $log @()
+            $tests[0].Name | Should -Be 'tests/ts/e2e/broken.test.ts'
+            $tests[0].Error | Should -Be 'SyntaxError: Unexpected token'
+        }
     }
 
     Context "Get-CiAssemblyTotals" {
@@ -279,6 +336,23 @@ Describe "CiWatchdog.ps1" {
             $totals[0].Passed | Should -Be 43
             $totals[0].Skipped | Should -Be 2
             $totals[0].Total | Should -Be 46
+        }
+
+        It "reads vitest's totals, not its file counts" {
+            $totals = Get-CiAssemblyTotals $script:vitestLog
+            $totals.Count | Should -Be 1
+            $totals[0].Assembly | Should -Be 'vitest'
+            $totals[0].Failed | Should -Be 3
+            $totals[0].Passed | Should -Be 139
+            $totals[0].Skipped | Should -Be 13
+            $totals[0].Total | Should -Be 155
+        }
+
+        It "counts a count vitest left out as zero" {
+            $totals = Get-CiAssemblyTotals (New-JobLog @('      Tests  2 failed (2)'))
+            $totals[0].Passed | Should -Be 0
+            $totals[0].Skipped | Should -Be 0
+            $totals[0].Total | Should -Be 2
         }
     }
 
@@ -438,6 +512,18 @@ Describe "CiWatchdog.ps1" {
             @($record.Jobs[1].Tests).Count | Should -Be 2
             $record.Jobs[0].Tests.Name | Should -Not -Contain 'ActualChat.chat.T1'
             # Four failures across two shards, not one collapsed fixture.
+            $record.Verdict | Should -Be 'NewFailure'
+        }
+
+        It "gives a TS E2E run a verdict instead of Unparsed" {
+            $job = [PSCustomObject]@{
+                name = 'TS E2E Tests / TS E2E tests results'
+                html_url = 'https://example.invalid/job/4'
+                steps = @([PSCustomObject]@{ name = 'Run tests'; conclusion = 'failure'; number = 1 })
+            }
+            $record = New-CiRunRecord $script:run @($job) $script:vitestLog @()
+            @($record.Jobs[0].Tests).Count | Should -Be 3
+            $record.Jobs[0].Totals[0].Assembly | Should -Be 'vitest'
             $record.Verdict | Should -Be 'NewFailure'
         }
 
