@@ -35,13 +35,13 @@ public sealed class VideoUploadHelperTest
     [InlineData("h265", false)]
     [InlineData("vp9", true)]
     [InlineData("av1", true)]
-    public void MustConvertVideoShouldSkipOnlyH264AndHevc(string codecName, bool expected)
+    public void MustTranscodeShouldSkipOnlyH264AndHevc(string codecName, bool expected)
     {
         // arrange
         var videoStream = new VideoStream { CodecName = codecName };
 
         // act
-        var result = UploadProcessorHelper.MustConvertVideo(videoStream);
+        var result = UploadProcessorHelper.MustTranscode(videoStream);
 
         // assert
         result.Should().Be(expected);
