@@ -66,6 +66,12 @@ public partial class CallUI
             : server;
     }
 
+    // The call a cancel dropped offline left on the server: its StartCall got there before the connection went.
+    internal static CallId? GetLostCallId(UserCall? myCall, ChatId? lostChatId)
+        => myCall is { Role: CallRole.Caller } && myCall.Phase != CallPhase.Ended && myCall.ChatId == lostChatId
+            ? myCall.CallId
+            : null;
+
     // Placing a call is itself the intent to talk, so an answered one puts the caller on the line - once.
     // Read from the slot it replaced, not latched: a latch outlives a slot this client frees itself, and
     // the next call to that chat then connects with no audio.
@@ -94,6 +100,9 @@ public partial class CallUI
 
     private void Apply(UserCall? myCall)
     {
+        if (TakeLostCallId(myCall) is { } lostCallId)
+            _ = CancelLostCall(lostCallId);
+
         ChatId? ringingChatId = null;
         ChatId? joinedChatId = null;
         ChatId? unansweredChatId = null;
@@ -176,6 +185,30 @@ public partial class CallUI
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Couldn't join the answered call in chat #{ChatId}", chatId);
             Release(chatId);
+        }
+    }
+
+    private CallId? TakeLostCallId(UserCall? myCall)
+    {
+        lock (_lock) {
+            var callId = GetLostCallId(myCall, _lostChatId);
+            if (callId is null)
+                return null;
+
+            // Left from here on, so the answers naming it until the cancel lands keep off the slot.
+            _lostChatId = null;
+            _leftCallIds.Add(callId);
+            return callId;
+        }
+    }
+
+    private async Task CancelLostCall(CallId callId)
+    {
+        try {
+            await LiveSessions.CancelCall(Session, callId, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Cancelling the lost call #{CallId} failed", callId);
         }
     }
 

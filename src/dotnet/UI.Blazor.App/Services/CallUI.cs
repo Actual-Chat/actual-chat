@@ -22,6 +22,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private readonly List<CallId> _leftCallIds = [];
     // A call cancelled before its StartCall named it: until that id arrives, it is known by chat alone.
     private ChatId? _cancelledChatId;
+    // A call cancelled offline before it was named: its StartCall was dropped, but may have reached the server
+    // before the connection did. If the server names it, Apply cancels it.
+    private ChatId? _lostChatId;
     // The ring answered here whose AcceptCall is still on its way: the server ends its ring claim on a late
     // answer, and only takes it back once the answer lands.
     private CallId? _acceptingCallId;
@@ -140,12 +143,12 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         catch (Exception e) {
             // Cancelled meanwhile: the slot is free, or already taken by the next call.
             var isCancelled = !EndPlacing(whenPlaced);
-            if (!isCancelled)
-                Release(chatId);
-            if (e is OperationCanceledException)
-                throw;
             if (isCancelled)
                 return;
+
+            Release(chatId);
+            if (e is OperationCanceledException)
+                throw;
 
             // Only StandardError.Constraint carries user-facing text - the peer-call gate, or this
             // user being in a call already, possibly on another device.
@@ -166,6 +169,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
     {
         Task whenCancelled;
+        CancellationTokenSource? droppedTokenSource = null;
         lock (_lock) {
             // Read before the release: the server must cancel the call this client held, not whichever
             // one the chat is in by the time the request lands.
@@ -175,26 +179,34 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 _placedCall = null;
             if (_activeCall.Value?.ChatId == chatId)
                 ReleaseUnsafe(chatId);
-            if (callId is null && placedCall is not null)
+            if (callId is null && placedCall is not null) {
                 _cancelledChatId = chatId;
-            whenCancelled = _whenCancelled = Cancel(callId, placedCall?.WhenPlaced);
+                // Offline, the StartCall waits to be resent on reconnect, and would ring the callee for a call
+                // that is over. Dropping it can lose the id of one that got through, so never online.
+                if (!ConnectivityUI.IsConnected.Value)
+                    droppedTokenSource = placedCall.StopTokenSource;
+            }
+            whenCancelled = _whenCancelled = Cancel(callId, placedCall?.WhenPlaced, droppedTokenSource is not null);
         }
+        droppedTokenSource.CancelSilently();
         SystemCallUI.OnOutgoingCallCancelled(chatId);
         return whenCancelled;
 
-        async Task Cancel(CallId? callId, Task<CallId>? whenPlaced) {
+        async Task Cancel(CallId? callId, Task<CallId>? whenPlaced, bool isDropped) {
             // The slot is free already; the server hears of it once it has said which call it placed.
             if (callId is null && whenPlaced is not null) {
                 callId = (await whenPlaced.ResultAwait(false)).ValueOrDefault;
                 lock (_lock) {
                     if (callId is not null)
                         _leftCallIds.Add(callId);
+                    else if (isDropped)
+                        _lostChatId = chatId;
                     if (_cancelledChatId == chatId)
                         _cancelledChatId = null;
                 }
             }
             if (callId is null)
-                return; // StartCall failed
+                return; // StartCall failed or was dropped
 
             await LiveSessions.CancelCall(Session, callId, cancellationToken).ConfigureAwait(false);
         }
@@ -320,15 +332,27 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         CancellationToken cancellationToken)
     {
         lock (_lock) {
-            var whenPlaced = Place(_whenCancelled);
-            _placedCall = new PlacedCall(chatId, whenPlaced);
+            var stopTokenSource = cancellationToken.CreateLinkedTokenSource();
+            var whenPlaced = Place(_whenCancelled, stopTokenSource);
+            _placedCall = new PlacedCall(chatId, whenPlaced, stopTokenSource);
             return whenPlaced;
         }
 
-        async Task<CallId> Place(Task whenCancelled) {
-            await whenCancelled.SilentAwait(false);
-            return await LiveSessions.StartCall(Session, chatId, invitees, hasVideo, ClientId, cancellationToken)
-                .ConfigureAwait(false);
+        async Task<CallId> Place(Task whenCancelled, CancellationTokenSource stopTokenSource) {
+            try {
+                await whenCancelled.SilentAwait(false);
+                lock (_lock) {
+                    // A redial takes over whatever the server holds in this chat.
+                    if (_lostChatId == chatId)
+                        _lostChatId = null;
+                }
+                return await LiveSessions
+                    .StartCall(Session, chatId, invitees, hasVideo, ClientId, stopTokenSource.Token)
+                    .ConfigureAwait(false);
+            }
+            finally {
+                stopTokenSource.DisposeSilently();
+            }
         }
     }
 
@@ -389,5 +413,5 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     // Nested types
 
-    private sealed record PlacedCall(ChatId ChatId, Task<CallId> WhenPlaced);
+    private sealed record PlacedCall(ChatId ChatId, Task<CallId> WhenPlaced, CancellationTokenSource StopTokenSource);
 }
