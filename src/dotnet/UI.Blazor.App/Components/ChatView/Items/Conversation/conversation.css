@@ -363,12 +363,12 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply rounded-2xl;
     @apply bg-01;
 }
-/* Tint overlay: the violet tint fading down, painted in FRONT of the sticky live header (z-30 > the
-   header item's z-20) but scrolling with the block. At rest it tints the top; as you scroll it slides up
-   off the pinned opaque header, so the header occludes the transcript cleanly. pointer-events:none keeps
-   the header's Join/expand buttons clickable through it. */
-.virtual-list .c-virtual-container .group[data-has-joined-live-card]::before,
-.virtual-list .c-virtual-container .group[data-has-live-block]::before {
+/* Unjoined tint overlay: the violet cast fading down the never-attended block, painted in FRONT of the
+   sticky header (z-30 > the header item's z-20) and scrolling with the block. pointer-events:none keeps
+   the header's Join/expand buttons clickable through it. The joined block tints its sticky header
+   directly instead (see .live-conversation-header below), so its colour pins with the header rather than
+   sliding off it. */
+.virtual-list .c-virtual-container .group[data-has-unjoined-live-block]::before {
     @apply content-empty;
     @apply absolute inset-0 z-30;
     @apply pointer-events-none;
@@ -415,6 +415,22 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     @apply p-4 min-h-14;
     @apply rounded-t-2xl;
     @apply bg-01;
+}
+/* Joined block: the violet tint rides on the sticky header itself, so it pins with the header instead
+   of scrolling off (the unjoined ::before above does the scroll-off job for never-attended blocks). The
+   ::after hangs the same tint a short way below the header as a soft fade over the content scrolling
+   under it, and it pins too since it's anchored to the header. A separator line divides the two. */
+.virtual-list .c-virtual-container .live-conversation-header:not(.unjoined) {
+    @apply relative;
+    background: linear-gradient(rgba(166, 53, 255, 0.1), rgba(166, 53, 255, 0.1)), var(--background-01);
+    border-bottom: 1px solid var(--separator);
+}
+.virtual-list .c-virtual-container .live-conversation-header:not(.unjoined)::after {
+    @apply content-empty;
+    @apply absolute inset-x-0 z-30 pointer-events-none;
+    top: 100%;
+    height: 3.5rem;
+    background: linear-gradient(180deg, rgba(166, 53, 255, 0.1) 0%, transparent 100%);
 }
 /* A header for a block you never attended shares the block's magenta tint instead of the joined
    violet, so the sticky header, body, and faded preview all read as one surface. Keyed on the
