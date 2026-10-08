@@ -36,6 +36,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
+    private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private IAuthors Authors => Hub.Authors;
     private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
@@ -88,6 +89,16 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // A named call is one the server took: the id comes from its StartCall answer or its own claim.
         var call = await GetActiveCall(cancellationToken).ConfigureAwait(false);
         return call is { Role: CallRole.Caller, Phase: CallPhase.Dialing, CallId: not null } ? call.ChatId : null;
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> IsCallOffline(CancellationToken cancellationToken)
+    {
+        // A call held while this client can't reach the server: nobody hears it, and its end can't reach it.
+        if (await GetActiveCall(cancellationToken).ConfigureAwait(false) is null)
+            return false;
+
+        return !await ConnectivityUI.IsConnected.Use(cancellationToken).ConfigureAwait(false);
     }
 
     public static AuthorId? GetPeerAuthorId(ChatId chatId, UserId ownUserId)

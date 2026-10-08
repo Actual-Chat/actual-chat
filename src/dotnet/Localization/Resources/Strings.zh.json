@@ -1798,6 +1798,8 @@
   "Call_Incoming": "来电",
   "Call_IncomingVideo": "视频来电",
   "Call_InCall": "通话中",
+  "Call_NoConnection": "无网络连接：对方听不到你",
+  "Call_NoConnectionShort": "无网络连接",
   "Call_AudioOutputSpeaker": "扬声器",
   "Call_AudioOutputPhone": "听筒",
   "Call_AudioOutputBluetooth": "蓝牙",

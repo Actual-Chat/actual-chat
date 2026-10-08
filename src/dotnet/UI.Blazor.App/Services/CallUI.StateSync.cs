@@ -4,6 +4,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class CallUI
 {
+    // How long a call outlives losing the server. The server ends a peer call ~12 s after a client's
+    // connection drops (ParticipationDisconnectGrace + CallLeaveGrace), so past this nobody hears the call
+    // and its end can't reach this client. A server restart shorter than this doesn't end a call.
+    private static readonly TimeSpan OfflineCallTimeout = TimeSpan.FromSeconds(20);
+
     private Computed<UserCall?>? _cMyCall;
 
     // Public methods
@@ -20,6 +25,7 @@ public partial class CallUI
     {
         var baseChains = new[] {
             AsyncChain.From(SyncMyCall),
+            AsyncChain.From(SyncOfflineCall),
             AsyncChain.From(SyncCallActivity),
             AsyncChain.From(SyncOutputRoute),
             AsyncChain.From(SyncOutputRouteTakeover),
@@ -123,6 +129,42 @@ public partial class CallUI
             // join can sit on a permission prompt for as long as it likes.
             SystemCallUI.OnOutgoingCallStatusChanged(joined, CallerStatus.Active);
             _ = StartAnsweredCallAudio(joined);
+        }
+    }
+
+    private async Task SyncOfflineCall(CancellationToken cancellationToken)
+    {
+        var cIsOffline = await Computed
+            .Capture(() => IsCallOffline(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        while (true) {
+            cIsOffline = await cIsOffline.When(x => x, cancellationToken).ConfigureAwait(false);
+            using var cts = cancellationToken.CreateLinkedTokenSource();
+            var whenBack = cIsOffline.When(x => !x, cts.Token);
+            await Task.WhenAny(whenBack, Clocks.CpuClock.Delay(OfflineCallTimeout, cts.Token)).ConfigureAwait(false);
+            cts.CancelAndDisposeSilently();
+            if (!whenBack.IsCompletedSuccessfully && _activeCall.Value is { } call)
+                await Hub.Dispatcher.InvokeAsync(() => EndOfflineCall(call)).ConfigureAwait(false);
+            cIsOffline = await cIsOffline.When(x => !x, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task EndOfflineCall(ActiveCall call)
+    {
+        // Ended as the user would end it: the cancel and the stopped presence reach the server once it is back.
+        var chatId = call.ChatId;
+        Log.LogWarning("Call #{CallId}: no connection for {Timeout}, ending it",
+            call.CallId?.Value ?? chatId.Value, OfflineCallTimeout.ToShortString());
+        try {
+            if (call is { Role: CallRole.Caller, Phase: CallPhase.Dialing })
+                await CancelCall(chatId, CancellationToken.None).ConfigureAwait(true);
+            else if (call.Phase == CallPhase.Ringing)
+                DropRing(chatId, call.CallId);
+            else
+                await HangUp(chatId).ConfigureAwait(true);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Ending the offline call failed for chat #{ChatId}", chatId);
         }
     }
 

@@ -1798,6 +1798,8 @@
   "Call_Incoming": "Cuộc gọi đến",
   "Call_IncomingVideo": "Cuộc gọi video đến",
   "Call_InCall": "Đang gọi",
+  "Call_NoConnection": "Mất kết nối: không ai nghe thấy bạn",
+  "Call_NoConnectionShort": "Mất kết nối",
   "Call_AudioOutputSpeaker": "Loa ngoài",
   "Call_AudioOutputPhone": "Điện thoại",
   "Call_AudioOutputBluetooth": "Bluetooth",

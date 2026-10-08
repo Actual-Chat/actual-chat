@@ -109,7 +109,7 @@
                             <div class="c-name">
                                 <span class="c-name-text">@chat.Title</span>
                             </div>
-                            <div class="c-status">@StatusText(m)</div>
+                            <CallStatus Text="@StatusText(m)" IsAnswered="@(m.Phase == CallPhase.Active)"/>
                             @if (m.JoinedAt is { } joinedAt) {
                                 <div class="c-timer"><LiveDuration StartedAt="@joinedAt"/></div>
                             }

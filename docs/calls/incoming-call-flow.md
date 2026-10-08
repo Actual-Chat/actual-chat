@@ -225,7 +225,7 @@ client that could have made it.
 gesture made here - `StartCall` sets `Caller/Dialing`, `Accept` sets `Active`, each before its RPC,
 so the screens follow the tap and not the round trip - or on a ring `GetMyCall` names. It leaves on
 a hang-up made here, or on the server's word that it is over; never because the server doesn't name
-it for a while (#5053). Nothing in it runs on a timer.
+it for a while (#5053). Nothing in it runs on a timer but the offline end (below).
 
 That word can be trusted because `GetMyCall` is `NoCache`: it has no stand-in value, so a
 disconnected client waits for the real answer instead of reading "no call", and every answer it
@@ -254,6 +254,17 @@ client. A call cancelled before `StartCall` named it is known by chat alone unti
 When the slot goes from one call straight to another in the same chat, the screens drop the first
 call's collapsed and muted state and stop its audio, but don't hang up or leave the screen by
 chat - that would do it to the new call. The over-lock flag stays, for the new call's release.
+
+**Offline.** A call held while the client can't reach the server (`ConnectivityUI.IsConnected`,
+the RPC connection) is heard by nobody, and its end can't reach the client. The call screen and the
+island say so in place of "In call" - "No connection: you can't be heard", just "No connection" in the
+island - and where the call has no screen, a toast does. Both read the flag in `CallStatus`, apart from
+their own models: those wait on remote reads, which stall for `CacheFallbackDelay` while the server is
+away. Past `OfflineCallTimeout` (20 s) the client ends the call as the user would: cancels a dialing
+call, drops a ring, hangs up an answered one; the server hears of it once the connection is back. The
+server itself ends a peer call ~12 s after a client's connection drops
+(`ParticipationDisconnectGrace` + `CallLeaveGrace`), so by then the call is over there too. A server
+restart doesn't end a call there - presence outlives it - but one longer than 20 s ends it here.
 
 Everything that shows a call reads the slot. The modal, the island and the full-screen view
 read it through `CallScreensUI.GetCallView`; the ringtone through `GetIncomingCall`, the slot
@@ -577,6 +588,7 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
 | `CallsBackend.ClaimGrace` | 10 s | How long a fresh claim backs itself, before the call has to. |
 | `CallsBackend.ClaimSelfHeal` | 10 s | How often a live claim re-checks itself against the call. |
 | `CallsBackend.EndedTtl` | 10 min | How long an ended claim stays readable, for the client that ran the call to hear of its end. |
+| `CallUI.OfflineCallTimeout` | 20 s | How long a call outlives the client losing the server before the client ends it. |
 
 ## Known gaps
 
@@ -599,6 +611,9 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
 - **A hang-up frees the user only as fast as presence travels.** The claim goes when the
   call stops backing it, which follows the participation the client drops on hang-up; the
   self-heal bounds the worst case at `ClaimSelfHeal`.
+- **A server restart longer than `OfflineCallTimeout` ends calls.** A client can't tell its own
+  network being down from the server being down, and ends the call either way; the server would
+  have kept it.
 - **A group call this client left keeps its claim live.** The server names it until it ends, and
   the client ignores it all that time; `StartCall` meanwhile finds the user busy.
 - **The end doesn't say who ended it.** The outcome tells a hang-up from a ring that ran out, but

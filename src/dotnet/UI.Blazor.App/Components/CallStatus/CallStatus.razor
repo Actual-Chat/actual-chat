@@ -1,0 +1,28 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+@{
+    var isOffline = IsAnswered && State.Value;
+}
+
+<span class="c-status @(isOffline ? "offline" : "")">
+    @(isOffline ? (IsShort ? L.Call_NoConnectionShort : L.Call_NoConnection) : Text)
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+    [Parameter] public bool IsAnswered { get; set; }
+    // The island's pill has no room for "you can't be heard" on a phone.
+    [Parameter] public bool IsShort { get; set; }
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    // Apart from the call screens' own models: those wait on chat and session reads, which stall for
+    // the cache fallback delay while the server is out of reach - exactly when this has to show.
+    protected override Task<bool> ComputeState(CancellationToken cancellationToken)
+        => Hub.CallUI.IsCallOffline(cancellationToken);
+}
