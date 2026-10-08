@@ -1,4 +1,5 @@
 using ActualChat.Uploads;
+using FFMpegCore;
 using Google.Cloud.Storage.V1;
 
 namespace ActualChat.Core.Server.UnitTests.Uploads;
@@ -28,6 +29,26 @@ public class GoogleCloudVideoUploadProcessorTest
     [InlineData("application/pdf", false)]
     public void Supports_ReturnsExpectedResult(string contentType, bool expected)
         => _processor.Supports(contentType, default).Should().Be(expected);
+
+    [Theory]
+    [InlineData("h264", true)]
+    [InlineData("hevc", true)]
+    [InlineData("vp9", true)]
+    [InlineData("mpeg4", true)]
+    [InlineData("prores", true)]
+    [InlineData("av1", false)]
+    [InlineData("gif", false)]
+    public void CanTranscodeShouldAcceptOnlyTranscoderInputCodecs(string codecName, bool expected)
+    {
+        // arrange
+        var videoStream = new VideoStream { CodecName = codecName };
+
+        // act
+        var result = GoogleCloudVideoUploadProcessor.CanTranscode(videoStream);
+
+        // assert
+        result.Should().Be(expected);
+    }
 
     [Fact]
     public async Task Process_WithNonBlobFile_ThrowsInvalidOperationException()

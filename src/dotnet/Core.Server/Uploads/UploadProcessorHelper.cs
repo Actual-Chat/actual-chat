@@ -1,13 +1,48 @@
 using System.Net.Mime;
+using ActualLab.Generators;
 using ActualLab.IO;
 using FFMpegCore;
+using FFMpegCore.Enums;
 using MediaFormat = FFMpegCore.MediaFormat;
 namespace ActualChat.Uploads;
 
 public static class UploadProcessorHelper
 {
+    private const int TranscodeThreadCount = 2;
+
     private static readonly ILogger Log = StaticLog.For(typeof(UploadProcessorHelper));
     private static readonly Size2D FullHd = new(1920, 1080);
+    // x264 takes every core it sees, so concurrent transcodes would starve the rest of the pod
+    private static readonly SemaphoreSlim TranscodeLock = new(1, 1);
+
+    public static VideoConversion GetConversion(IMediaAnalysis mediaInfo)
+    {
+        var videoStream = mediaInfo.PrimaryVideoStream!;
+        if (ExceedsFullHd(GetEffectiveSize(videoStream)) || MustConvertVideo(videoStream))
+            return VideoConversion.Transcode;
+
+        return MustConvertVideo(mediaInfo.Format) ? VideoConversion.Remux : VideoConversion.None;
+    }
+
+    public static async Task<(UploadedTempFile File, Size2D Size)> ConvertLocally(
+        Func<FFMpegArguments> createInput,
+        FilePath fileName,
+        IMediaAnalysis mediaInfo,
+        VideoConversion conversion,
+        IProgress<double>? progress,
+        CancellationToken cancellationToken)
+    {
+        if (conversion is VideoConversion.Remux) {
+            try {
+                var remuxed = await Remux(createInput, fileName, mediaInfo, cancellationToken).ConfigureAwait(false);
+                return (remuxed, GetEffectiveSize(mediaInfo.PrimaryVideoStream!));
+            }
+            catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+                Log.LogWarning(e, "Failed to remux '{FileName}', transcoding it instead", fileName);
+            }
+        }
+        return await Transcode(createInput, fileName, mediaInfo, progress, cancellationToken).ConfigureAwait(false);
+    }
 
     public static Size2D GetEffectiveSize(VideoStream video)
         => video.Rotation is 90 or 270 or -90 or -270
@@ -71,7 +106,87 @@ public static class UploadProcessorHelper
             at => FFMpegArguments.FromFileInput(source, true, options => options.Seek(at)),
             fileName, totalVideoDuration);
 
-    // Private helpers
+    // Private methods
+
+    private static async Task<UploadedTempFile> Remux(
+        Func<FFMpegArguments> createInput,
+        FilePath fileName,
+        IMediaAnalysis mediaInfo,
+        CancellationToken cancellationToken)
+    {
+        // Safari plays HEVC in MP4 only when it's tagged hvc1
+        var isHevc = mediaInfo.PrimaryVideoStream!.CodecName is "hevc" or "h265";
+        var outputPath = NewConvertedFilePath(fileName);
+        try {
+            await createInput()
+                .OutputToFile(outputPath, true, options => {
+                    options.CopyChannel().WithFastStart();
+                    if (isHevc)
+                        options.WithCustomArgument("-tag:v hvc1");
+                })
+                .CancellableThrough(cancellationToken)
+                .ProcessAsynchronously()
+                .ConfigureAwait(false);
+        }
+        catch {
+            File.Delete(outputPath);
+            throw;
+        }
+        return new UploadedTempFile(fileName.ChangeExtension(".mp4"), "video/mp4", outputPath);
+    }
+
+    private static async Task<(UploadedTempFile File, Size2D Size)> Transcode(
+        Func<FFMpegArguments> createInput,
+        FilePath fileName,
+        IMediaAnalysis mediaInfo,
+        IProgress<double>? progress,
+        CancellationToken cancellationToken)
+    {
+        var (size, duration, _) = AnalyzeVideo(mediaInfo.PrimaryVideoStream!);
+        var mustScale = ExceedsFullHd(size);
+        if (mustScale)
+            size = ScaleToFullHd(size);
+        var mustCopyAudio = mediaInfo.PrimaryAudioStream is null or { CodecName: "aac" };
+        var outputPath = NewConvertedFilePath(fileName);
+        var arguments = createInput()
+            .OutputToFile(outputPath, true, options => {
+                // yuv420p: AV1 and HEVC sources are often 10-bit, and browsers don't play 10-bit H.264
+                options.WithVideoCodec(VideoCodec.LibX264)
+                    .WithSpeedPreset(Speed.VeryFast)
+                    .ForcePixelFormat("yuv420p")
+                    .UsingThreads(TranscodeThreadCount)
+                    .WithFastStart();
+                if (mustCopyAudio)
+                    options.CopyChannel(FFMpegCore.Enums.Channel.Audio);
+                else
+                    options.WithAudioCodec(AudioCodec.Aac);
+                if (mustScale)
+                    options.WithVideoFilters(vf => vf.Scale(size.Width, size.Height));
+            })
+            .CancellableThrough(cancellationToken);
+        if (progress is not null)
+            arguments = arguments.NotifyOnProgress(p => progress.Report(20 + (0.78 * p)), duration);
+
+        await TranscodeLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            await arguments.ProcessAsynchronously().ConfigureAwait(false);
+        }
+        catch {
+            File.Delete(outputPath);
+            throw;
+        }
+        finally {
+            TranscodeLock.Release();
+        }
+        var file = new UploadedTempFile(fileName.ChangeExtension(".mp4"), "video/mp4", outputPath);
+        return (file, size);
+    }
+
+    private static FilePath NewConvertedFilePath(FilePath fileName)
+    {
+        var convertedFileName = FileExt.ShortenFileName(fileName.ChangeExtension(".mp4"));
+        return FilePath.GetApplicationTempDirectory() | $"{RandomStringGenerator.Default.Next()}_{convertedFileName}";
+    }
 
     private static bool IsMp4Container(MediaFormat mediaFormat)
     {

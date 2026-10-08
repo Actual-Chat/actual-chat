@@ -19,6 +19,14 @@ public sealed class GoogleCloudVideoUploadProcessor(
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan JobTimeout = TimeSpan.FromMinutes(14);
     private static readonly TimeSpan SignedUrlExpiry = TimeSpan.FromHours(1);
+    private static readonly TimeSpan MaxLocalTranscodeDuration = TimeSpan.FromMinutes(10);
+
+    // ffprobe codec names of the input codecs Transcoder lists as supported:
+    // https://docs.cloud.google.com/transcoder/docs/concepts/supported-input-and-output-formats
+    private static readonly HashSet<string> TranscoderInputCodecs = new(StringComparer.OrdinalIgnoreCase) {
+        "dnxhd", "dvvideo", "h261", "h263", "h264", "hevc", "mpeg1video", "mpeg2video",
+        "mpeg4", "prores", "theora", "vc1", "vp8", "vp9", "wmv3",
+    };
 
     private ILogger Log { get; } = log;
 
@@ -43,8 +51,9 @@ public sealed class GoogleCloudVideoUploadProcessor(
         Size2D size;
         TimeSpan duration;
         double frameRate;
-        bool mustConvert;
+        VideoConversion conversion;
         bool hasAudio;
+        IMediaAnalysis? mediaInfo = null;
 
         if (savedState != null) {
             Log.LogDebug("Resuming transcoder job '{JobName}' for '{FileName}'",
@@ -52,11 +61,10 @@ public sealed class GoogleCloudVideoUploadProcessor(
             size = new Size2D(savedState.VideoWidth, savedState.VideoHeight);
             duration = TimeSpan.FromSeconds(savedState.Duration);
             frameRate = 0; // Not important since we're resuming a job.
-            mustConvert = true;
+            conversion = VideoConversion.Transcode;
             hasAudio = false; // Irrelevant — job is already created with the right config.
         }
         else {
-            IMediaAnalysis? mediaInfo = null;
             try {
                 mediaInfo = await FFProbe.AnalyseAsync(new Uri(signedUrl), cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -74,9 +82,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
                 return new ProcessedFile(upload.AsBinaryFile(), null);
 
             (size, duration, frameRate) = UploadProcessorHelper.AnalyzeVideo(videoStream);
-            mustConvert = UploadProcessorHelper.ExceedsFullHd(size)
-                || UploadProcessorHelper.MustConvertVideo(videoStream)
-                || UploadProcessorHelper.MustConvertVideo(mediaInfo!.Format);
+            conversion = UploadProcessorHelper.GetConversion(mediaInfo!);
             hasAudio = mediaInfo!.PrimaryAudioStream is not null;
         }
 
@@ -92,12 +98,23 @@ public sealed class GoogleCloudVideoUploadProcessor(
 
         progress?.Report(15);
 
-        if (!mustConvert)
-            return new ProcessedFile(UploadProcessorHelper.EnsureMp4Extension(upload), size, snapshot) { Duration = duration };
+        if (conversion is VideoConversion.None) {
+            var renamed = UploadProcessorHelper.EnsureMp4Extension(upload);
+            return new ProcessedFile(renamed, size, snapshot) { Duration = duration };
+        }
 
+        var original = new ProcessedFile(upload, size, snapshot) { Duration = duration };
         // 3. Create or resume a transcoder job + poll
         try {
             progress?.Report(20);
+            var transcodedVideo = mediaInfo?.PrimaryVideoStream;
+            var isTranscodable = transcodedVideo is null || CanTranscode(transcodedVideo);
+            if (conversion is VideoConversion.Remux || !isTranscodable) {
+                Log.LogInformation("Converting '{FileName}' locally: {Conversion}, codec '{Codec}'",
+                    upload.FileName, conversion, transcodedVideo?.CodecName);
+                return await ProcessLocally(original, signedUrl, mediaInfo, conversion, progress, cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
             string outputPrefix;
             string jobName;
@@ -133,8 +150,11 @@ public sealed class GoogleCloudVideoUploadProcessor(
             progress?.Report(95);
 
             if (job.State == Job.Types.ProcessingState.Failed) {
-                Log.LogError("Transcoder job '{JobName}' failed: {Error}", job.Name, job.Error);
-                return new ProcessedFile(upload.AsBinaryFile(), size, snapshot) { Duration = duration };
+                Log.LogError("Transcoder job '{JobName}' failed, converting '{FileName}' locally: {Error}",
+                    job.Name, upload.FileName, job.Error);
+                _ = DeleteState(stateObjectName);
+                return await ProcessLocally(original, signedUrl, mediaInfo, conversion, progress, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             // 5. Build result
@@ -169,7 +189,50 @@ public sealed class GoogleCloudVideoUploadProcessor(
         }
     }
 
+    public static bool CanTranscode(FFMpegCore.VideoStream videoStream)
+        => TranscoderInputCodecs.Contains(videoStream.CodecName);
+
     // Private methods
+
+    private async Task<ProcessedFile> ProcessLocally(
+        ProcessedFile original,
+        string signedUrl,
+        IMediaAnalysis? mediaInfo,
+        VideoConversion conversion,
+        IProgress<double>? progress,
+        CancellationToken cancellationToken)
+    {
+        var fileName = original.File.FileName;
+        if (conversion is VideoConversion.Transcode && original.Duration > MaxLocalTranscodeDuration) {
+            Log.LogWarning("'{FileName}' is too long to transcode locally ({Duration}), keeping the original",
+                fileName, original.Duration);
+            return original;
+        }
+
+        var sw = Stopwatch.StartNew();
+        try {
+            var source = new Uri(signedUrl);
+            mediaInfo ??= await FFProbe.AnalyseAsync(source, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            var (file, size) = await UploadProcessorHelper
+                .ConvertLocally(
+                    () => FFMpegArguments.FromUrlInput(source),
+                    fileName,
+                    mediaInfo,
+                    conversion,
+                    progress,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            Log.LogInformation("Local {Conversion} of '{FileName}' completed in {Elapsed:N0}ms",
+                conversion, fileName, sw.ElapsedMilliseconds);
+            return new ProcessedFile(file, size, original.Thumbnail) { Duration = original.Duration };
+        }
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+            Log.LogError(e, "Could not convert '{FileName}' locally after {Elapsed:N0}ms, keeping the original",
+                fileName, sw.ElapsedMilliseconds);
+            return original;
+        }
+    }
 
     private async Task<string> GenerateSignedReadUrl(string objectName)
     {

@@ -268,3 +268,39 @@ edited. The reason can be as short as whose decision it was.
   catches the deserialization failure and returns null, so a record in the old shape
   reads as "nothing cached" and the next check overwrites it. Sequential keys beat
   carrying gaps for a value nothing needs to survive.
+
+## src/dotnet/Core.Server/Uploads/GoogleCloudVideoUploadProcessor.cs
+
+- `outputPrefix = $"transcode-output/{Guid.NewGuid():N}/"` — `Guid.NewGuid()` instead of
+  `RandomStringGenerator`; `CleanupGcsOutputAsync` — `Async` suffix; `savedState != null` —
+  not pattern matching; `EstimateVideoBitrate` and `GetStateObjectName` — pure utilities in
+  the middle of `// Private methods`; primary-constructor parameters used in member bodies;
+  `job.State == …Failed` and `e.HttpStatusCode == …NotFound` — not pattern matching;
+  `Path.ChangeExtension(upload.FileName, ".mp4")` — not `FilePath` —
+  Dmitrii Filippov's decision: all predate #5153, which only adds the Transcoder fallback, and
+  are left for a dedicated cleanup rather than mixed into that fix
+
+## tests/Core.Server.UnitTests/Uploads/GoogleCloudVideoUploadProcessorTest.cs
+
+- `Supports_ReturnsExpectedResult`, `Process_WithNonBlobFile_ThrowsInvalidOperationException` —
+  underscores and no `Should` phrasing, no `// act` / `// assert`; the class isn't `sealed` —
+  Dmitrii Filippov's decision: they predate #5153, which only adds a test beside them
+
+## src/dotnet/Core.Server/Uploads/UploadProcessorHelper.cs
+
+- `snapshot_{Guid.NewGuid()}.jpg` in `SnapshotInternal` — `Guid.NewGuid()` instead of
+  `RandomStringGenerator`; `IsMp4Container` — a pure utility above `SnapshotInternal` —
+  Dmitrii Filippov's decision: both predate #5153 and are left for a dedicated cleanup
+
+## src/dotnet/Core.Server/Uploads/LocalVideoUploadProcessor.cs
+
+- No blank line after the `catch { …; throw; }` block in `Process`; no `// Private methods`
+  before `ProcessInternal` — Dmitrii Filippov's decision: both predate #5153 and are left
+  for a dedicated cleanup
+
+## tests/Core.Server.UnitTests/Uploads/VideoUploadHelperTest.cs
+
+- `GetEffectiveSize_ReturnsCorrectSize`, `MustConvert_ReturnsExpectedResult` — underscores,
+  no `Should` phrasing, no `// act` / `// assert`, five parameters on one line; the class
+  isn't `sealed` — Dmitrii Filippov's decision: they predate #5153, which only adds a test
+  beside them

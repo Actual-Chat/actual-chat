@@ -1,6 +1,4 @@
-using ActualLab.IO;
 using FFMpegCore;
-using FFMpegCore.Enums;
 namespace ActualChat.Uploads;
 
 public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor> log) : IUploadProcessor
@@ -50,10 +48,7 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
             return new ProcessedFile(upload.AsBinaryFile(), null);
 
         var (size, duration, _) = UploadProcessorHelper.AnalyzeVideo(videoStream);
-        var mustScale = UploadProcessorHelper.ExceedsFullHd(size);
-        var mustConvert = mustScale
-            || UploadProcessorHelper.MustConvertVideo(videoStream)
-            || UploadProcessorHelper.MustConvertVideo(mediaInfo!.Format);
+        var conversion = UploadProcessorHelper.GetConversion(mediaInfo!);
 
         progress?.Report(10);
 
@@ -65,49 +60,28 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
             return new ProcessedFile(upload.AsBinaryFile(), size) { Duration = duration };
 
         progress?.Report(20);
-        if (!mustConvert)
-            return new ProcessedFile(UploadProcessorHelper.EnsureMp4Extension(upload), size, snapshot) { Duration = duration };
+        if (conversion is VideoConversion.None) {
+            var renamed = UploadProcessorHelper.EnsureMp4Extension(upload);
+            return new ProcessedFile(renamed, size, snapshot) { Duration = duration };
+        }
 
         try {
             stepSw.Restart();
-            var tempDir = FilePath.GetApplicationTempDirectory();
-            var convertedFileName = Guid.NewGuid().ToString("N") + "_" + FileExt.ShortenFileName(Path.ChangeExtension(upload.FileName, ".mp4"));
-            var convertedFilePath = tempDir | convertedFileName;
-            if (mustScale)
-                size = UploadProcessorHelper.ScaleToFullHd(size);
-            var ffMpegArguments = FFMpegArguments.FromFileInput(upload.TempFilePath)
-                .OutputToFile(convertedFilePath,
-                    false,
-                    options => {
-                        options.WithVideoCodec(VideoCodec.LibX264)
-                            .WithFastStart()
-                            .WithVariableBitrate(4);
-                        if (mustScale)
-                            options.WithVideoFilters(vf => vf.Scale(size.Width, size.Height));
-                    });
-            if (progress is not null) {
-                // Progress from 20% to 98% during conversion
-                Action<double> onPercentageProgress = p => {
-                    var reportProgress = 20 + (0.78 * p);
-                    progress.Report(reportProgress);
-                };
-                ffMpegArguments = ffMpegArguments.NotifyOnProgress(onPercentageProgress, duration);
-            }
-            await ffMpegArguments
-                .ProcessAsynchronously()
+            var (convertedFile, convertedSize) = await UploadProcessorHelper
+                .ConvertLocally(
+                    () => FFMpegArguments.FromFileInput(upload.TempFilePath),
+                    upload.FileName,
+                    mediaInfo!,
+                    conversion,
+                    progress,
+                    cancellationToken)
                 .ConfigureAwait(false);
-            Log.LogDebug("Local transcoding completed in {Elapsed:N0}ms for '{FileName}'",
-                stepSw.ElapsedMilliseconds, upload.FileName);
+            Log.LogDebug("Local {Conversion} completed in {Elapsed:N0}ms for '{FileName}'",
+                conversion, stepSw.ElapsedMilliseconds, upload.FileName);
             progress?.Report(98);
             Log.LogDebug("Total video processing completed in {Elapsed:N0}ms for '{FileName}'",
                 totalSw.ElapsedMilliseconds, upload.FileName);
-            return new ProcessedFile(
-                new UploadedTempFile(
-                    Path.ChangeExtension(upload.FileName, ".mp4"),
-                    "video/mp4",
-                    convertedFilePath),
-                size,
-                snapshot) { Duration = duration };
+            return new ProcessedFile(convertedFile, convertedSize, snapshot) { Duration = duration };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             snapshot.Delete();
