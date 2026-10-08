@@ -236,9 +236,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 // is unacceptable with always-on arming - iOS keeps the orientation guard only.
                 // The hush window is as short as a transmit, so that concern does not apply to it.
                 if (mustSenseStop || mustSenseHush || (mustSenseStart && OperatingSystem.IsAndroid()))
-                    Feed.StartProximity();
+                    Feed.StartProximity(this);
                 else
-                    Feed.StopProximity();
+                    Feed.StopProximity(this);
 
                 // PttIdleCheckPeriod is the wall-clock floor for the answer-window expiry;
                 // everything else races it so a state change takes effect on the next tick.
@@ -257,7 +257,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         }
         finally {
             Feed.StopAccelerometer();
-            Feed.StopProximity();
+            Feed.StopProximity(this);
             Volatile.Write(ref _isHushArmed, false);
             // The sensors are down, so nothing can fire - a readiness left latched here would
             // have the notification promising a gesture for the rest of the scope's life.
@@ -303,8 +303,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             Log.LogWarning("{Kind} fired: {Info}; samples: {Samples}",
                 gesture.Kind, _recognizer.FaceDownLastFireInfo, FormatRecentSamples());
         if (gesture.Kind == GestureKind.Pocket) {
-            // Read at fire time rather than tracked: the route is a native query, too costly per sample
-            var outputKind = Hub.AudioFocusUI.GetCurrentOutputKind();
+            var outputKind = Hub.AudioFocusUI.OutputKind?.Value;
             var isCarProjectionActive = Volatile.Read(ref _isCarProjectionActive);
             if (!GestureActivationPolicy.IsPocketPlausible(outputKind, isCarProjectionActive)) {
                 Log.LogInformation("Pocket ignored: output={OutputKind}, car={IsCarProjectionActive}",
