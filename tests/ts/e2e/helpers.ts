@@ -696,13 +696,21 @@ export async function newUserContext(
  *  its icon rather than its title, which is itself localized and therefore unusable as a handle. */
 export async function openLanguageSelect(page: Page): Promise<Locator> {
     for (let attempt = 1; attempt <= 3; attempt++) {
-        await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' });
-        await waitForAppReady(page);
-        await dismissCookieConsent(page);
-        const visible = await page.locator('.settings-modal').waitFor({ state: 'visible', timeout: 15_000 })
-            .then(() => true, () => false);
-        if (visible)
-            break;
+        // A reload the app itself started (e.g. after a language change) aborts this goto with ERR_ABORTED
+        const isOpened = await page.goto(`${BASE_URL}/settings`, { waitUntil: 'domcontentloaded' })
+            .then(() => true, (e: unknown) => {
+                const reason = String(e).split('\n')[0];
+                console.log(`openLanguageSelect: goto /settings failed (attempt ${attempt}): ${reason}`);
+                return false;
+            });
+        if (isOpened) {
+            await waitForAppReady(page);
+            await dismissCookieConsent(page);
+            const visible = await page.locator('.settings-modal').waitFor({ state: 'visible', timeout: 15_000 })
+                .then(() => true, () => false);
+            if (visible)
+                break;
+        }
 
         if (attempt === 3)
             throw new Error('settings-modal did not become visible after 3 goto attempts');
