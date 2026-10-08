@@ -119,6 +119,8 @@ public abstract record AsyncMarkupRewriter : AsyncMarkupVisitor<Markup>
 
     protected override ValueTask<Markup> VisitUrl(UrlMarkup markup, CancellationToken cancellationToken)
         => new (markup);
+    protected override ValueTask<Markup> VisitDivider(DividerMarkup markup, CancellationToken cancellationToken)
+        => new (markup);
     protected override ValueTask<Markup> VisitMention(MentionMarkup markup, CancellationToken cancellationToken)
         => new (markup);
     protected override ValueTask<Markup> VisitCodeBlock(CodeBlockMarkup markup, CancellationToken cancellationToken)

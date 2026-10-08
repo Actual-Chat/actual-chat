@@ -7,6 +7,7 @@ public abstract record AsyncMarkupVisitor<TResult>
             MarkupSeq markupSeq => VisitSeq(markupSeq, cancellationToken),
             ParagraphMarkup paragraphMarkup => VisitParagraph(paragraphMarkup, cancellationToken),
             HeaderMarkup headerMarkup => VisitHeader(headerMarkup, cancellationToken),
+            DividerMarkup dividerMarkup => VisitDivider(dividerMarkup, cancellationToken),
             BlockQuoteMarkup blockQuoteMarkup => VisitBlockQuote(blockQuoteMarkup, cancellationToken),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup, cancellationToken),
             MentionMarkup mention => VisitMention(mention, cancellationToken),
@@ -40,6 +41,8 @@ public abstract record AsyncMarkupVisitor<TResult>
     protected abstract ValueTask<TResult> VisitTableCell(TableCellMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitParagraph(ParagraphMarkup markup, CancellationToken cancellationToken);
     protected abstract ValueTask<TResult> VisitHeader(HeaderMarkup markup, CancellationToken cancellationToken);
+    protected virtual ValueTask<TResult> VisitDivider(DividerMarkup markup, CancellationToken cancellationToken)
+        => VisitUnknown(markup, cancellationToken);
     protected virtual ValueTask<TResult> VisitBlockQuote(BlockQuoteMarkup markup, CancellationToken cancellationToken)
         => Visit(markup.Content, cancellationToken);
 

@@ -33,6 +33,11 @@ public sealed partial class MarkupParser : IMarkupParser
         return markup;
     }
 
+    public static string DropResets(string streamedText)
+        // For a view that shows streamed text without parsing it: what a reader sees once the resets
+        // are applied, with a half-arrived marker at the end hidden.
+        => DropResets(streamedText.NormalizeNewLines(NewLineMarkup.Instance.Text), true);
+
     public static Markup ParseRaw(
         string text,
         bool useUnparsedTextMarkup = false,
@@ -45,6 +50,10 @@ public sealed partial class MarkupParser : IMarkupParser
         // The grammar sees a single line ending style, so any input produces the same markup.
         // Without this a lone '\r' ends the parse early and silently truncates the message.
         text = text.NormalizeNewLines(NewLineMarkup.Instance.Text);
+        text = DropResets(text, allowIncompleteMarkup);
+        if (text.Length == 0)
+            return EmptyResult;
+
         var parser = (useUnparsedTextMarkup, allowIncompleteMarkup) switch {
             (false, false) => FullMarkup,
             (true, false) => FullWithUnparsedMarkup,
@@ -115,7 +124,7 @@ public sealed partial class MarkupParser : IMarkupParser
     // Character classes
 
     // Everything that can start markup, plus every line separator the grammar knows - see IsPlainText
-    private static readonly SearchValues<char> MarkupStartChars = SearchValues.Create("*`@|#\r\n\u2028");
+    private static readonly SearchValues<char> MarkupStartChars = SearchValues.Create("*`@|#[<\r\n\u2028");
 
     // The predicates are separate from the parsers because CharRun builds its scanners straight
     // from them - see CharRunParser for why a character run doesn't go through a combinator.
@@ -224,13 +233,25 @@ public sealed partial class MarkupParser : IMarkupParser
         .Guard(isTableStart => isTableStart)
         .ThenReturn(TableMarkup.CellSeparator);
 
+    // Divider: a line of 3+ dashes
+    private static readonly Parser<char, char> DividerLine =
+        Try(CharRun.String(c => c == '-', 3)
+            .Then(CharRun.Skip(IsWhitespaceChar))
+            .Then(Lookahead(EndOfLineChar.OrEnd())));
+    private static readonly Parser<char, Markup> Divider =
+        DividerLine.Select(_ => (Markup)new DividerMarkup()).Debug("---");
+
+    // Reset marker: a line that tells everything above it, itself included, to go
+    public const string ResetMarker = "<!--reset-->";
+
     // Check if next line starts a block element (CodeBlock, ListBlock, Header, BlockQuote, or Table)
     private static readonly Parser<char, char> BlockElementAhead =
         Lookahead(Try(CodeBlockToken.ThenReturn('`'))
             .Or(Try(OneOf(Char('-'), Char('*')).Before(WhitespaceChar)))
             .Or(Try(HeaderLevel.ThenReturn('#')))
             .Or(Try(Char('>').Before(WhitespaceChar.Or(EndOfLineChar).OrEnd())))
-            .Or(Try(TableStart)));
+            .Or(Try(TableStart))
+            .Or(DividerLine));
     // What ends an inline run at the start of a line: an empty line (i.e. a paragraph break),
     // or any block element.
     private static readonly Parser<char, char> InlineBreakAhead =
@@ -379,6 +400,25 @@ public sealed partial class MarkupParser : IMarkupParser
         select (Markup)new CodeBlockMarkup(code.GetValueOrDefault(""), language)
         ).Debug("<Code>");
 
+    // Link: [title](url) or <url>. The target must be a url or an e-mail, anything else stays text.
+    private static readonly Parser<char, string> LinkTitle =
+        CharRun.String(c => c is not ('[' or ']' or '\r' or '\n' or '\u2028'), 1)
+            .Guard(s => !s.IsNullOrWhiteSpace());
+    private static readonly Parser<char, Markup> TitledLink = (
+        from title in Char('[').Then(LinkTitle).Before(String("]("))
+        from target in LinkTargetParser.Instance.Before(Char(')'))
+        select TryBuildLink(title, target, false))
+        .Guard(x => x != null)
+        .Select(x => x!)
+        .Debug("[](");
+    private static readonly Parser<char, Markup> EnclosedLink =
+        Char('<').Then(CharRun.String(c => c is not ('>' or '<') && !char.IsWhiteSpace(c), 1))
+            .Before(Char('>'))
+            .Select(target => TryBuildLink(null, target, true))
+            .Guard(x => x != null)
+            .Select(x => x!)
+            .Debug("<>");
+
     // Block-level pieces that don't depend on any grammar variant, so they're built once rather
     // than per InternalParsers instance. Everything downstream of TextBlock or of the unparsed
     // text markup kind does vary, and lives in InternalParsers.Build instead.
@@ -417,6 +457,90 @@ public sealed partial class MarkupParser : IMarkupParser
     }
 
     // Private methods
+
+    private static Markup? TryBuildLink(string? title, string target, bool isEnclosed)
+    {
+        var kind = IsUrl(target) ? UrlMarkupKind.Www
+            : IsEmail(target) ? UrlMarkupKind.Email
+            : (UrlMarkupKind?)null;
+        return kind is { } vKind
+            ? new UrlMarkup(target, vKind) { Title = title, IsEnclosed = isEnclosed }
+            : null;
+    }
+
+    private static string DropResets(string text, bool mustHidePartialMarker)
+    {
+        text = DropThroughLastReset(text);
+        return mustHidePartialMarker ? TrimPartialResetMarker(text) : text;
+    }
+
+    private static string DropThroughLastReset(string text)
+    {
+        // Not a grammar element: what's above a reset is never parsed, so it costs nothing however long
+        // it is. The scan follows the code block fences, since a marker inside one is code. Line breaks
+        // after the marker go with it, up to the first line that has something on it.
+        if (!text.Contains(ResetMarker))
+            return text;
+
+        var cut = ScanResets(text, out _);
+        if (cut < 0)
+            return text;
+
+        var newLine = NewLineMarkup.Instance.Text;
+        while (text.AsSpan(cut).StartsWith(newLine))
+            cut += newLine.Length;
+        return text[cut..];
+    }
+
+    private static string TrimPartialResetMarker(string text)
+    {
+        // A stream that has delivered "<!--re" can't tell yet whether it is a marker, and showing it
+        // for the moment until the rest arrives would be a flicker of raw syntax. In a code block it's
+        // code, which stays as it arrives.
+        var lineStart = text.LastIndexOf('\n') + 1;
+        var tail = text.AsSpan(lineStart);
+        if (tail.Length == 0 || tail.Length >= ResetMarker.Length || !ResetMarker.AsSpan().StartsWith(tail))
+            return text;
+
+        ScanResets(text, out var isInCodeBlock);
+        if (isInCodeBlock)
+            return text;
+
+        // Take the line break in front of it as well, so it doesn't leave an empty line behind
+        var end = lineStart > 0 ? lineStart - 1 : 0;
+        if (end > 0 && text[end - 1] == '\r')
+            end--;
+        return text[..end];
+    }
+
+    private static int ScanResets(string text, out bool isInCodeBlock)
+    {
+        // Only fenced blocks hide a marker, not a multi-line inline code span; a fence can close on its
+        // opening line, as "``` ```" does in the grammar. Returns the start of the line after the last marker.
+        var cut = -1;
+        isInCodeBlock = false;
+        var lineStart = 0;
+        while (lineStart < text.Length) {
+            var lineEnd = text.IndexOf('\n', lineStart);
+            var nextLineStart = lineEnd < 0 ? text.Length : lineEnd + 1;
+            var line = text.AsSpan(lineStart, (lineEnd < 0 ? text.Length : lineEnd) - lineStart);
+            if (isInCodeBlock)
+                isInCodeBlock = !IsCodeBlockEnd(line);
+            else if (line.StartsWith("```"))
+                isInCodeBlock = !IsCodeBlockEnd(line[3..]);
+            else if (line.TrimEnd().SequenceEqual(ResetMarker))
+                cut = nextLineStart;
+            lineStart = nextLineStart;
+        }
+
+        return cut;
+    }
+
+    private static bool IsCodeBlockEnd(ReadOnlySpan<char> line)
+    {
+        line = line.TrimStart();
+        return line.StartsWith("```") && (line.Length == 3 || char.IsWhiteSpace(line[3]));
+    }
 
     private static bool IsUrl(ReadOnlySpan<char> span)
         // The regex decides; the scan in front of it is what keeps it off every h/f/w word.
@@ -527,6 +651,7 @@ public sealed partial class MarkupParser : IMarkupParser
             var textMarkupKind = UseUnparsedTextMarkup ? TextMarkupKind.Unparsed : TextMarkupKind.Plain;
 
             var preformattedText = CreatePreformattedText();
+            var titledLink = CreateTitledLink();
             var boldMarkup = CreateStylized(Try(BoldToken), TextStyle.Bold).Debug("**");
             var italicMarkup = CreateStylized(ItalicToken, TextStyle.Italic).Debug("*");
             var spoilerMarkup = CreateStylized(Try(SpoilerToken), TextStyle.Spoiler).Debug("||");
@@ -537,7 +662,8 @@ public sealed partial class MarkupParser : IMarkupParser
             // The order is exactly what the nested form tried, and every alternative backtracks.
             Parser<char, Markup>[] inlineElements = [
                 StyleTokenRunText, boldMarkup, italicMarkup, spoilerMarkup,
-                NamedMention, UnnamedMention, preformattedText, WwwUrl, Email, Hashtag, NonWhitespaceText,
+                NamedMention, UnnamedMention, preformattedText, titledLink, EnclosedLink, WwwUrl, Email,
+                Hashtag, NonWhitespaceText,
             ];
 
             // Both text blocks are memoized by position: a stylized span recurses into TextBlock, so
@@ -627,6 +753,9 @@ public sealed partial class MarkupParser : IMarkupParser
                 .Select(s => (Markup)new PreformattedTextMarkup(s))
                 .Debug("`");
 
+        protected virtual Parser<char, Markup> CreateTitledLink()
+            => TitledLink;
+
         protected virtual Parser<char, Markup> CreateStylized(Parser<char, TextStyle> token, TextStyle style)
             => Rec(() => TextBlock).Between(token)
                 .Select(t => (Markup)new StylizedMarkup(t, style));
@@ -640,9 +769,13 @@ public sealed partial class MarkupParser : IMarkupParser
         {
             // Any standalone block (list/code/header/quote/table, or paragraph including empty/inline-only).
             // Past the nesting cap the quote alternative is gone, so a "> " line there is just text.
-            var blockOrHeader = quoteLevel < BlockQuoteMarkup.MaxLevel
-                ? SafeTryOneOf(CodeBlock, ListBlock, Header, CreateBlockQuote(quoteLevel), Table)
-                : SafeTryOneOf(CodeBlock, ListBlock, Header, Table);
+            var blocks = new List<Parser<char, Markup>> { CodeBlock, Divider };
+            blocks.Add(ListBlock);
+            blocks.Add(Header);
+            if (quoteLevel < BlockQuoteMarkup.MaxLevel)
+                blocks.Add(CreateBlockQuote(quoteLevel));
+            blocks.Add(Table);
+            var blockOrHeader = SafeTryOneOf(blocks.ToArray());
             var block = SafeTryOneOf(blockOrHeader, Paragraph);
 
             // After the first block, every subsequent block is preceded by one or more
@@ -772,6 +905,16 @@ public sealed partial class MarkupParser : IMarkupParser
                     .Before(End)
                     .Select(s => (Markup)new PreformattedTextMarkup(s) { IsIncomplete = true })
                     .Debug("`?"));
+
+        protected override Parser<char, Markup> CreateTitledLink()
+            => SafeTryOneOf(
+                base.CreateTitledLink(),
+                // "[Guide](https://exa": the title alone, until the rest of the link arrives
+                Char('[').Then(LinkTitle).Before(String("]("))
+                    .Before(LinkTargetParser.Partial)
+                    .Before(End)
+                    .ToTextMarkup(TextMarkupKind.Plain, false)
+                    .Debug("[](?"));
 
         protected override Parser<char, Markup> CreateStylized(Parser<char, TextStyle> token, TextStyle style)
         {

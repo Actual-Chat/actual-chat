@@ -130,6 +130,9 @@ public abstract record MarkupFormatterBase : MarkupVisitorWithState<StringBuilde
     protected override void VisitParagraph(ParagraphMarkup markup, ref StringBuilder state)
         => Visit(markup.Content, ref state);
 
+    protected override void VisitDivider(DividerMarkup markup, ref StringBuilder state)
+        => state.Append(markup.Format());
+
     protected override void VisitHeader(HeaderMarkup markup, ref StringBuilder state)
     {
         for (var i = 0; i < markup.Level; i++)
@@ -207,10 +210,15 @@ public sealed record MarkupFormatter(
 
     protected override void VisitUrl(UrlMarkup markup, ref StringBuilder state)
     {
-        if (IsSpoken && markup.Kind == UrlMarkupKind.Www)
+        if (IsSpoken && markup.Kind == UrlMarkupKind.Www && markup.Title == null)
             return;
 
-        state.Append(UrlFormatter?.Invoke(markup) ?? markup.Format());
+        if (!ShowStyleTokens && markup.Title != null) {
+            state.Append(markup.Title);
+            return;
+        }
+
+        state.Append(UrlFormatter?.Invoke(markup) ?? (ShowStyleTokens ? markup.Format() : markup.Url));
     }
 
     protected override void VisitMention(MentionMarkup markup, ref StringBuilder state)
@@ -236,6 +244,12 @@ public sealed record MarkupFormatter(
         base.VisitParagraph(markup, ref state);
         if (IsSpoken)
             EndSentence(state, start);
+    }
+
+    protected override void VisitDivider(DividerMarkup markup, ref StringBuilder state)
+    {
+        if (ShowStyleTokens)
+            base.VisitDivider(markup, ref state);
     }
 
     protected override void VisitHeader(HeaderMarkup markup, ref StringBuilder state)
@@ -331,5 +345,5 @@ public sealed record MarkupFormatter(
         => markup.Kind is UrlMarkupKind.Www
             && markup.Url.EndsWith(".gif", StringComparison.OrdinalIgnoreCase)
             ? "GIF"
-            : markup.Format();
+            : markup.Url;
 }

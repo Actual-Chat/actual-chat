@@ -7,6 +7,7 @@ public abstract record MarkupVisitor<TResult>
             MarkupSeq markupSeq => VisitSeq(markupSeq),
             ParagraphMarkup paragraphMarkup => VisitParagraph(paragraphMarkup),
             HeaderMarkup headerMarkup => VisitHeader(headerMarkup),
+            DividerMarkup dividerMarkup => VisitDivider(dividerMarkup),
             BlockQuoteMarkup blockQuoteMarkup => VisitBlockQuote(blockQuoteMarkup),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup),
             MentionMarkup mention => VisitMention(mention),
@@ -39,6 +40,8 @@ public abstract record MarkupVisitor<TResult>
     protected abstract TResult VisitTableCell(TableCellMarkup markup);
     protected abstract TResult VisitParagraph(ParagraphMarkup markup);
     protected abstract TResult VisitHeader(HeaderMarkup markup);
+    protected virtual TResult VisitDivider(DividerMarkup markup)
+        => VisitUnknown(markup);
     protected virtual TResult VisitBlockQuote(BlockQuoteMarkup markup)
         => Visit(markup.Content);
 

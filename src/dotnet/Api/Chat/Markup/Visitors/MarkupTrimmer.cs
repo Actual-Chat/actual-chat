@@ -126,10 +126,11 @@ public sealed record MarkupTrimmer : MarkupRewriter<MarkupTrimmer.State>, IMarku
 
     protected override Markup VisitUrl(UrlMarkup markup, ref State state)
     {
-        if (!state.CanAppend(markup.Url.Length))
+        var length = markup.DisplayText.Length;
+        if (!state.CanAppend(length))
             return state.TryAppendEllipsis();
 
-        state.Append(markup.Url.Length);
+        state.Append(length);
         return base.VisitUrl(markup, ref state);
     }
 

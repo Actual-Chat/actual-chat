@@ -31,6 +31,7 @@ namespace ActualChat.Chat;
 [Union(21, typeof(TableRowMarkup))]
 [Union(22, typeof(TableCellMarkup))]
 [Union(23, typeof(MarkupSuffix))]
+[Union(24, typeof(DividerMarkup))]
 public abstract class Markup : ISanitized, IForwardCompatibleUnion<Markup>
 {
     protected static ArrayPool<Markup> MarkupArrayPool = ArrayPool<Markup>.Shared;
