@@ -11,11 +11,14 @@ public class SmsBudgetCodePreservationTest(AppHostFixture fixture, ITestOutputHe
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Theory]
-    [InlineData(false, RateLimitClass.SmsSend)]
-    [InlineData(true, RateLimitClass.SmsSend)]
-    [InlineData(false, RateLimitClass.SmsSendDaily)]
-    [InlineData(true, RateLimitClass.SmsSendDaily)]
-    public async Task RejectedSmsShouldPreservePreviouslyDeliveredCode(bool isLegacy, RateLimitClass rejectedClass)
+    [InlineData(false, RateLimitClass.SmsSend, true)]
+    [InlineData(true, RateLimitClass.SmsSend, true)]
+    [InlineData(false, RateLimitClass.SmsSendDaily, true)]
+    [InlineData(true, RateLimitClass.SmsSendDaily, true)]
+    [InlineData(false, RateLimitClass.SmsSend, false)]
+    [InlineData(true, RateLimitClass.SmsSendDaily, false)]
+    public async Task RejectedSmsShouldPreservePreviouslyDeliveredCode(
+        bool isLegacy, RateLimitClass rejectedClass, bool isSmsFirst)
     {
         // arrange
         var sms = new FakeSender(TotpChannel.Sms);
@@ -33,7 +36,10 @@ public class SmsBudgetCodePreservationTest(AppHostFixture fixture, ITestOutputHe
         });
         await using var tester = host.NewWebClientTester(Out);
         var codes = host.Services.GetRequiredService<ITotpCodesBackend>();
-        var phone = ActualChat.Phone.New("1", $"555{Random.Shared.Next(1_000_000, 9_999_999)}");
+        var phone = isSmsFirst
+            ? ActualChat.Phone.New("1", $"201555{Random.Shared.Next(1_000, 10_000)}")
+            : ActualChat.Phone.New("1", $"555{Random.Shared.Next(1_000_000, 9_999_999)}");
+        VerificationCodeRouting.PreferSms(phone, "twilio").Should().Be(isSmsFirst);
         var previousCode = await codes.Generate(phone.Value, TotpPurpose.SignInPhone);
         Func<Task> send = isLegacy
             ? async () => {
@@ -55,7 +61,7 @@ public class SmsBudgetCodePreservationTest(AppHostFixture fixture, ITestOutputHe
 
         // assert
         isPreviousCodeValid.Should().BeTrue("a rejected resend must not replace the code the user already received");
-        telegram.SendCount.Should().Be(1);
+        telegram.SendCount.Should().Be(isSmsFirst ? 0 : 1);
         sms.SendCount.Should().Be(0);
     }
 

@@ -24,32 +24,51 @@ public sealed class CompositeVerificationCodeSender(IServiceProvider services) :
         if (message.OnlyChannel == TotpChannel.Telegram)
             SkipChannel(TotpChannel.Sms, phone, "blocked");
 
-        var telegramChannel = await SendTelegram(phone, message).ConfigureAwait(false);
-        if (telegramChannel is not null)
-            return telegramChannel;
-        if (message.OnlyChannel == TotpChannel.Telegram)
-            throw NoChannelLeft(phone, "Telegram couldn't accept the code");
-
-        if (PickSmsSender(phone) is { } sms) {
-            try {
-                await CheckSmsLimits(phone, message).ConfigureAwait(false);
-            }
-            catch (RateLimitExceededException) {
-                SkipChannel(TotpChannel.Sms, phone, "rate_limited", GetProvider(sms));
-                throw;
-            }
-
-            var channel = await TrySend(sms, TotpChannel.Sms, phone, message).ConfigureAwait(false);
+        var sms = PickSmsSender(phone);
+        var isSmsFirst = message.OnlyChannel != TotpChannel.Telegram && sms is not null
+            && (message.OnlyChannel == TotpChannel.Sms || VerificationCodeRouting.PreferSms(phone, GetProvider(sms)));
+        if (isSmsFirst) {
+            var channel = await SendSms(sms, phone, message).ConfigureAwait(false);
             if (channel is not null)
                 return channel;
         }
-        else
-            SkipChannel(TotpChannel.Sms, phone, "unconfigured");
+
+        if (message.OnlyChannel != TotpChannel.Sms) {
+            var channel = await SendTelegram(phone, message).ConfigureAwait(false);
+            if (channel is not null)
+                return channel;
+        }
+
+        if (!isSmsFirst && message.OnlyChannel != TotpChannel.Telegram) {
+            var channel = await SendSms(sms, phone, message).ConfigureAwait(false);
+            if (channel is not null)
+                return channel;
+        }
 
         throw NoChannelLeft(phone, "no provider accepted the code");
     }
 
     // Private methods
+
+    private async Task<TotpChannel?> SendSms(
+        IVerificationCodeSender? sms, ActualChat.Phone phone, VerificationMessage message)
+    {
+        if (sms is null) {
+            SkipChannel(TotpChannel.Sms, phone, "unconfigured");
+
+            return null;
+        }
+
+        try {
+            await CheckSmsLimits(phone, message).ConfigureAwait(false);
+        }
+        catch (RateLimitExceededException) {
+            SkipChannel(TotpChannel.Sms, phone, "rate_limited", GetProvider(sms));
+            throw;
+        }
+
+        return await TrySend(sms, TotpChannel.Sms, phone, message).ConfigureAwait(false);
+    }
 
     private async Task CheckSmsLimits(ActualChat.Phone phone, VerificationMessage message)
     {
@@ -128,7 +147,8 @@ public sealed class CompositeVerificationCodeSender(IServiceProvider services) :
                 "{Provider} failed to accept a verification code via {Channel}",
                 provider, channel);
 
-            return null;
+            // A failed request may already have been accepted; sending via another channel could double-send.
+            throw Errors.DeliveryFailed();
         }
     }
 

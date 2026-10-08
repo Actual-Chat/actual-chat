@@ -3,6 +3,7 @@ using ActualChat.Users.Module;
 using ActualChat.Users.Phone;
 using ActualChat.Users.Phone.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using PhoneNumbers;
 
 namespace ActualChat.Users.UnitTests.Phone;
 
@@ -33,7 +34,7 @@ public class CompositeVerificationCodeSenderTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task TelegramFailureShouldFallBackToSms(bool mustThrow)
+    public async Task OnlyDefiniteTelegramDeclineShouldFallBackToSms(bool mustThrow)
     {
         // arrange
         var telegram = new FakeSender(null) { MustThrow = mustThrow };
@@ -45,6 +46,16 @@ public class CompositeVerificationCodeSenderTest
         };
 
         // act
+        if (mustThrow) {
+            var send = () => sender.Send(TestPhone, message);
+            await send.Should().ThrowAsync<ExternalError>();
+
+            // assert
+            sms.SendCount.Should().Be(0);
+            policy.Classes.Should().BeEmpty();
+            return;
+        }
+
         var channel = await sender.Send(TestPhone, message);
 
         // assert
@@ -215,6 +226,108 @@ public class CompositeVerificationCodeSenderTest
         await send.Should().ThrowAsync<ExternalError>();
         smsTo.SendCount.Should().Be(1);
         twilio.SendCount.Should().Be(0, "a provider failure may occur after acceptance and must not double-send");
+    }
+
+    [Theory]
+    [InlineData("US")]
+    [InlineData("GB")]
+    [InlineData("IN")]
+    public async Task CheapTwilioDestinationShouldTrySmsBeforeTelegram(string region)
+    {
+        // arrange
+        var sms = new FakeSender(TotpChannel.Sms);
+        var telegram = new FakeSender(TotpChannel.Telegram);
+        var policy = new FakePolicy();
+        var sender = CreateSender(telegram, sms, policy);
+        var phone = PhoneNumberUtil.GetInstance().GetExampleNumber(region).ToPhone();
+
+        // act
+        var channel = await sender.Send(phone, TestMessage);
+
+        // assert
+        channel.Should().Be(TotpChannel.Sms);
+        sms.SendCount.Should().Be(1);
+        telegram.SendCount.Should().Be(0);
+        policy.Classes.Should().Equal(RateLimitClass.SmsSend, RateLimitClass.SmsSendDaily);
+    }
+
+    [Fact]
+    public async Task DefiniteSmsDeclineShouldFallBackToTelegram()
+    {
+        // arrange
+        var sms = new FakeSender(null);
+        var telegram = new FakeSender(TotpChannel.Telegram);
+        var sender = CreateSender(telegram, sms);
+        var phone = PhoneNumberUtil.GetInstance().GetExampleNumber("US").ToPhone();
+
+        // act
+        var channel = await sender.Send(phone, TestMessage);
+
+        // assert
+        channel.Should().Be(TotpChannel.Telegram);
+        sms.SendCount.Should().Be(1);
+        telegram.SendCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AmbiguousSmsFailureShouldNotFallBackToTelegram()
+    {
+        // arrange
+        var sms = new FakeSender(null) { MustThrow = true };
+        var telegram = new FakeSender(TotpChannel.Telegram);
+        var sender = CreateSender(telegram, sms);
+        var phone = PhoneNumberUtil.GetInstance().GetExampleNumber("US").ToPhone();
+
+        // act
+        var send = () => sender.Send(phone, TestMessage);
+
+        // assert
+        await send.Should().ThrowAsync<ExternalError>();
+        sms.SendCount.Should().Be(1);
+        telegram.SendCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task TelegramOnlyRestrictionShouldOverrideCheapSmsPrice()
+    {
+        // arrange
+        var sms = new FakeSender(TotpChannel.Sms);
+        var telegram = new FakeSender(TotpChannel.Telegram);
+        var policy = new FakePolicy { MustReject = true };
+        var sender = CreateSender(telegram, sms, policy);
+        var phone = PhoneNumberUtil.GetInstance().GetExampleNumber("US").ToPhone();
+
+        // act
+        var channel = await sender.Send(phone, TestMessage with { OnlyChannel = TotpChannel.Telegram });
+
+        // assert
+        channel.Should().Be(TotpChannel.Telegram);
+        sms.SendCount.Should().Be(0);
+        policy.Classes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SmsToShouldPreferTelegramEvenForCheapTwilioDestinations()
+    {
+        // arrange
+        var sms = new FakeSender(TotpChannel.Sms);
+        var telegram = new FakeSender(TotpChannel.Telegram);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(new UsersSettings());
+        services.AddSingleton(RateLimitPolicy.Unlimited);
+        services.AddKeyedSingleton<IVerificationCodeSender>("SMSTo", sms);
+        services.AddKeyedSingleton<IVerificationCodeSender>("Telegram", telegram);
+        var sender = new CompositeVerificationCodeSender(services.BuildServiceProvider());
+        var phone = PhoneNumberUtil.GetInstance().GetExampleNumber("US").ToPhone();
+
+        // act
+        var channel = await sender.Send(phone, TestMessage);
+
+        // assert
+        channel.Should().Be(TotpChannel.Telegram);
+        sms.SendCount.Should().Be(0);
+        telegram.SendCount.Should().Be(1);
     }
 
     private static CompositeVerificationCodeSender CreateSender(
