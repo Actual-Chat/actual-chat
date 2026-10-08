@@ -423,7 +423,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{BA67
 		scripts\Common.ps1 = scripts\Common.ps1
 		scripts\ServerPorts.ps1 = scripts\ServerPorts.ps1
 		scripts\run-ios.sh = scripts\run-ios.sh
-		scripts\run-ios-release.sh = scripts\run-ios-release.sh
 		scripts\r-ios-release.sh = scripts\r-ios-release.sh
 		scripts\__detect-ios-device.sh = scripts\__detect-ios-device.sh
 		scripts\run-macos.sh = scripts\run-macos.sh
