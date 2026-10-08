@@ -10,7 +10,8 @@
 
 <div class="coach-skill-detail" data-metric="@Kind">
     @if (m.Word is { } word) {
-        <CoachOccurrences Word="@word" Window="@m.Window" Language="@m.Language" Kind="@Kind" Back="@OnWordBack"/>
+        <CoachOccurrences Word="@word" Language="@m.Language" Kind="@Kind"
+                          PeriodRange="@m.History.Range" Back="@OnWordBack"/>
     } else {
         <div class="c-head">
             <ButtonRound Click="@(() => Back.InvokeAsync())" Class="btn-sm" Title="@L.Common_Back">
@@ -20,12 +21,22 @@
         </div>
         <div class="c-scope">@(m.Language is null ? L.Coach_AllLanguages : labels.LanguageName(m.Language))</div>
         <div class="c-periods">
-            @foreach (var window in new[] { CoachWindow.Days7, CoachWindow.Days30, CoachWindow.AllTime }) {
-                <button type="button" class="chip @(window == m.Window ? "on" : "")"
-                        aria-pressed="@(window == m.Window)" @onclick="@(() => WindowChanged.InvokeAsync(window))">
-                    @labels.Window(window)
+            @foreach (var period in Enum.GetValues<CoachHistoryPeriod>()) {
+                <button type="button" class="chip @(period == m.Selection.Period ? "on" : "")"
+                        aria-pressed="@(period == m.Selection.Period)" @onclick="@(() => OnPeriod(period))">
+                    @PeriodLabel(period)
                 </button>
             }
+        </div>
+        <div class="c-calendar">
+            <ButtonRound Click="@(() => OnMove(-1))" Class="btn-sm" Title="@L.Coach_PreviousPeriod">
+                <i class="icon-arrow-left" aria-hidden="true"></i>
+            </ButtonRound>
+            <span>@PeriodDates(m.History.Range) · UTC</span>
+            <ButtonRound Click="@(() => OnMove(1))" Class="btn-sm" Title="@L.Coach_NextPeriod"
+                         IsDisabled="@(!m.CanMoveForward)">
+                <i class="icon-arrow-right" aria-hidden="true"></i>
+            </ButtonRound>
         </div>
         <Card Class="c-overview">
             <div class="c-value">@(metric?.Value is null ? L.Coach_NotEnoughSpeech : labels.Value(metric))</div>
@@ -39,6 +50,28 @@
                 <div class="c-explanation">@labels.Explain(Kind, m.Language, m.Summary)</div>
             } else {
                 <div class="c-explanation">@L.Coach_PaceDetailExplanation</div>
+            }
+        </Card>
+        <Card Class="c-history">
+            <h3>@L.Coach_SpeakingDays</h3>
+            @if (m.History.MinimumWords > 0) {
+                <div class="c-coverage">@L.Coach_HistoryMinimumWords_Format(m.History.MinimumWords)</div>
+            }
+            @if (m.History.Value is { } value) {
+                <div class="c-history-value">@HistoryValue(value)</div>
+                @if (Kind == CoachMetricKind.Pace) {
+                    <div class="c-coverage">@L.Coach_SegmentPace</div>
+                }
+                <div class="c-coverage">@L.Coach_Words(m.History.MeasuredWords, m.History.MeasuredWords)</div>
+            }
+            @if (m.History.Days.Count == 0) {
+                <div class="c-coverage">@L.Coach_NotEnoughSpeech · @L.Coach_HistorySparse</div>
+            } else {
+                <div class="c-chart">
+                    <BarChart Items="@HistoryItems(m)" ShowValues="true" ShowZeroValues="true"
+                              ValueFormat="0.#" ItemClick="@OnDay" Class="c-speaking-chart"/>
+                </div>
+                <div class="c-coverage">@L.Coach_HistoryDates</div>
             }
         </Card>
         @if (Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords) {
@@ -110,33 +143,36 @@
     [Parameter] public CoachWindow Window { get; set; }
     [Parameter] public string? Language { get; set; }
     [Parameter] public EventCallback Back { get; set; }
-    [Parameter] public EventCallback<CoachWindow> WindowChanged { get; set; }
 
     private MutableState<string?> _word = null!;
+    private MutableState<Selection> _selection = null!;
     private CoachLabels Labels => field ??= new CoachLabels(L);
 
-    protected override void OnInitialized()
-        => _word = StateFactory.NewMutable((string?)null);
+    protected override void OnInitialized() {
+        _word = StateFactory.NewMutable((string?)null);
+        var period = Window is CoachWindow.Days30 or CoachWindow.Month or CoachWindow.AllTime
+            ? CoachHistoryPeriod.Month
+            : CoachHistoryPeriod.Week;
+        _selection = StateFactory.NewMutable(new Selection(period,
+            UsageDay.DayOf(Clocks.SystemClock.Now)));
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var kind = Kind;
-        var window = Window;
-        var language = kind == CoachMetricKind.Pace
-            ? Language ?? await Hub.CoachUI.GetComparisonLanguage(cancellationToken).ConfigureAwait(false)
-            : Language;
-        var word = await _word.Use(cancellationToken).ConfigureAwait(false);
-        var summary = await Hub.Coach.GetOwnSummary(Session, window, language, cancellationToken)
-            .ConfigureAwait(false);
-        var pace = kind == CoachMetricKind.Pace
-            ? await Hub.Coach.GetOwnPaceDetails(Session, window, language ?? "", cancellationToken).ConfigureAwait(false)
-            : CoachPaceDetails.None;
-        var words = kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords
-            ? await Hub.Coach.ListOwnSkillWords(Session, window, language, kind, cancellationToken)
-                .ConfigureAwait(false)
-            : ApiArray<CoachChip>.Empty;
+        var language = Language;
+        var wordState = _word;
+        var selectionState = _selection;
+        var now = Clocks.SystemClock.Now;
+        await ThreadPoolExt.Yield();
+        language ??= await Hub.CoachUI.GetComparisonLanguage(cancellationToken).ConfigureAwait(false);
+        var word = await wordState.Use(cancellationToken).ConfigureAwait(false);
+        var selection = await selectionState.Use(cancellationToken).ConfigureAwait(false);
+        var history = await Hub.Coach.GetOwnSkillHistory(Session, kind, language,
+            selection.Period, selection.Anchor, cancellationToken).ConfigureAwait(false);
+        var pace = history.Pace;
         var moments = new List<MomentItem>();
         foreach (var moment in pace.Moments) {
             var occurrence = moment.Occurrence;
@@ -155,8 +191,61 @@
             moments.Add(new MomentItem(moment, chat.Title,
                 entry.Content.Substring(textRange.Start, textRange.End - textRange.Start), canReplay));
         }
-        return new Model(window, language, word, summary, pace, moments, words);
+        var canMoveForward = CoachHistoryRanges.Move(selection.Period, selection.Anchor, 1) <= now;
+        return new Model(language, word, selection, history, moments, canMoveForward);
     }
+
+    private void OnPeriod(CoachHistoryPeriod period) {
+        var selection = _selection.Value;
+        var now = Clocks.SystemClock.Now;
+        var isCurrent = CoachHistoryRanges.Start(selection.Period, selection.Anchor)
+            == CoachHistoryRanges.Start(selection.Period, now);
+        var anchor = isCurrent ? UsageDay.DayOf(now) : selection.Anchor;
+        _selection.Value = new Selection(period, anchor);
+    }
+
+    private void OnMove(int offset) {
+        var selection = _selection.Value;
+        var anchor = CoachHistoryRanges.Move(selection.Period, selection.Anchor, offset);
+        if (anchor <= Clocks.SystemClock.Now)
+            _selection.Value = selection with { Anchor = anchor };
+    }
+
+    private void OnDay(ChartItem item) {
+        var m = State.Value;
+        var index = HistoryItems(m).ToList().IndexOf(item);
+        if (index >= 0)
+            _selection.Value = new Selection(CoachHistoryPeriod.Day, m.History.Days[index].Day);
+    }
+
+    private string PeriodLabel(CoachHistoryPeriod period)
+        => period switch {
+            CoachHistoryPeriod.Day => L.Coach_CalendarDay,
+            CoachHistoryPeriod.Week => L.Coach_CalendarWeek,
+            _ => L.Coach_CalendarMonth,
+        };
+
+    private string PeriodDates(Range<Moment> range) {
+        var end = range.End > range.Start ? range.End - TimeSpan.FromTicks(1) : range.Start;
+        return range.Start.ToDateTime().ToString("d MMM yyyy", DateFormatter)
+            + " – " + end.ToDateTime().ToString("d MMM yyyy", DateFormatter);
+    }
+
+    private string HistoryValue(double value)
+        => Kind == CoachMetricKind.Pace
+            ? L.Coach_Wpm_Format(value.ToString("0.#", null))
+            : L.Coach_Percent_Format((100 * value).ToString("0.#", null));
+
+    private IReadOnlyList<ChartItem> HistoryItems(Model m)
+        => m.History.Days.Select(day => {
+            var date = day.Day.ToDateTime().ToString("d MMM", DateFormatter);
+            var hint = day.Day.ToDateTime().ToString("d MMM yyyy", DateFormatter) + " · " + HistoryValue(day.Value);
+            if (day.GapDays > 0)
+                hint += " · " + L.Coach_HistoryGap_Format(day.GapDays);
+
+            return new ChartItem(date, Kind == CoachMetricKind.Pace ? day.Value : day.Value * 100,
+                "text-primary", hint, day.GapDays > 0);
+        }).ToList();
 
     private void OnWord(string word)
         => _word.Value = word;
@@ -187,10 +276,16 @@
 
     public sealed record MomentItem(CoachPaceMoment Moment, string ChatTitle, string Text, bool CanReplay);
 
+    public sealed record Selection(CoachHistoryPeriod Period, Moment Anchor);
+
     public sealed record Model(
-        CoachWindow Window, string? Language, string? Word, CoachSummary Summary,
-        CoachPaceDetails Pace, List<MomentItem> Moments, ApiArray<CoachChip> Words) {
-        public static readonly Model None = new(CoachWindow.Days7, null, null, CoachSummary.None,
-            CoachPaceDetails.None, [], ApiArray<CoachChip>.Empty);
+        string? Language, string? Word, Selection Selection, CoachSkillHistory History,
+        List<MomentItem> Moments, bool CanMoveForward) {
+        public static readonly Model None = new(null, null,
+            new Selection(CoachHistoryPeriod.Week, Moment.EpochStart), CoachSkillHistory.None, [], false);
+
+        public CoachSummary Summary => History.Summary;
+        public CoachPaceDetails Pace => History.Pace;
+        public ApiArray<CoachChip> Words => History.Words;
     }
 }

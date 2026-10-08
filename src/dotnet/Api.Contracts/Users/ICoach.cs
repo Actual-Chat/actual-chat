@@ -44,6 +44,15 @@ public interface ICoach : IComputeService
         Session session, CoachWindow window, string language, CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<CoachSkillHistory> GetOwnSkillHistory(
+        Session session, CoachMetricKind kind, string language, CoachHistoryPeriod period,
+        Moment anchor, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ApiArray<CoachOccurrence>> ListOwnSkillOccurrencesInRange(
+        Session session, string word, Range<Moment> range, string language,
+        CoachMetricKind kind, CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<CoachMetricKind?> GetOwnFocus(Session session, string? language, CancellationToken cancellationToken);
 
     [ComputeMethod]

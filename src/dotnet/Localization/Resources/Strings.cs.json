@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "V rozsahu",
   "Coach_PaceAbove": "Nad rozsahem",
   "Coach_PaceCoverage_Format": "{0} měřených nahrávek · {1} jejich zvuku klasifikováno",
-  "Coach_PacePartial": "Zobrazuje se omezený vzorek měřených nahrávek."
+  "Coach_PacePartial": "Zobrazuje se omezený vzorek měřených nahrávek.",
+  "Coach_HistoryMinimumWords_Format": "Alespoň {0} měřených slov na zobrazený den.",
+  "Coach_CalendarDay": "Den",
+  "Coach_CalendarWeek": "Týden",
+  "Coach_CalendarMonth": "Měsíc",
+  "Coach_PreviousPeriod": "Předchozí období",
+  "Coach_NextPeriod": "Další období",
+  "Coach_SpeakingDays": "Dny s řečí",
+  "Coach_SegmentPace": "Průměrné tempo v měřených úsecích řeči",
+  "Coach_HistorySparse": "Zkuste delší období.",
+  "Coach_HistoryDates": "Data označují dny s dostatkem řeči; mezery nejsou nulové hodnoty.",
+  "Coach_HistoryGap_Format": "Dny bez vhodných měření: {0}"
 }

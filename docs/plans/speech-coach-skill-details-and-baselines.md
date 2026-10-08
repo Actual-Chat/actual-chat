@@ -3,7 +3,7 @@
 Status: Measurement capture/persistence and Fillers, Weak Words, and Pace detail screens implemented
 on `feat/coach-skill-details`, including daily language histograms and exact segment-based target percentages.
 Capture now defaults on at the developer's request; no historical backfill or remote deployment.
-Speaking-day history and personal baselines remain open.
+Speaking-day history and UTC calendar navigation are implemented. Personal baselines remain open.
 Tracking: [#5128](https://github.com/Actual-Chat/actual-chat/issues/5128).
 The fine-timing rollout gate remains open; see the [spike evidence](./speech-coach-measurement-storage-spike.md).
 
@@ -516,7 +516,19 @@ for placement under src/nodejs/src rather than hidden inside one Coach component
 2. Detail foundation: common navigation, explanations, calendar periods, speaking-day history, and
    existing filler/weak-word contexts. Add the shared chart only after confirming no existing fit.
    Implemented skill navigation, explanations, existing period controls, full per-language word lists,
-   and kind/language-filtered occurrences with existing playback. Speaking-day history is still pending.
+   and kind/language-filtered occurrences with existing playback. Detail periods now use UTC Day,
+   Monday–Sunday Week, and calendar Month with previous/next navigation and a captured request-time end.
+   One period governs displayed totals, word lists, occurrences, and Pace distribution. Historical rows
+   reuse daily aggregates; a current partial day reads only its finalized contributions before the cutoff.
+   Speaking-day charts reuse `BarChart` with accessible day selection, measured zeroes, real dates and gap
+   markers, and the existing configured word floor. Short days still contribute to weighted period totals.
+   Pace history uses classified word/time totals, not histogram-bin centers or fabricated legacy measurements.
+   Validation: 132 Users Coach unit, 47 Users Coach integration, seven focused Coach UI integration,
+   and 46 localization/label tests passed (232 total); `npm run build:Verify`, mechanical style, and
+   whitespace checks passed. Local browser checks confirmed month/week navigation, weighted values,
+   compressed real-date gaps, 390-pixel layout, and 14-pixel chart labels in light/dark themes.
+   The full CI build remains blocked by the pre-existing Core.Benchmarks solution
+   filter mismatch. Personal baseline save/replace/clear and cutoff comparisons are the next slice.
 3. Pace detail: versioned segments, aggregation of stored measurements, distribution, coverage, and review playback.
    Implemented exact inclusive target classification from stored segments, measured-audio coverage,
    and out-of-range playback moments with stale-map checks. Queries use a bounded 5,000-recording sample,

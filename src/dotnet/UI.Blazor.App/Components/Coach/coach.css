@@ -227,6 +227,26 @@
 .coach-skill-detail .c-ranges {
     @apply flex-y gap-y-1;
 }
+.coach-skill-detail .c-calendar {
+    @apply flex-x items-center justify-between gap-x-2;
+    @apply text-caption text-02;
+}
+.coach-skill-detail .c-history {
+    @apply flex-y gap-y-3;
+    @apply p-4;
+}
+.coach-skill-detail .c-history h3 { @apply text-body-500 text-01; }
+.coach-skill-detail .c-history-value { @apply text-heading-500 text-01; }
+.coach-skill-detail .c-chart {
+    @apply overflow-x-auto;
+    @apply py-2;
+}
+.coach-skill-detail .c-speaking-chart .c-column {
+    @apply min-w-16;
+}
+.coach-skill-detail .c-speaking-chart .c-bar { min-height: 2px; }
+.coach-skill-detail .bar-chart .c-value,
+.coach-skill-detail .bar-chart .c-label { @apply text-caption text-02; }
 .coach-skill-detail .c-words {
     @apply flex-y gap-y-2;
     @apply p-4;

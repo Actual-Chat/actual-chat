@@ -150,7 +150,9 @@ measurements into nullable binary columns in existing Coach rows, with per-langu
 and coverage merged across periods. Capture now defaults on at the developer's request, with no historical
 backfill. Fillers/Weak Words details reuse filtered occurrences and playback; Pace details classify stored
 segments exactly, never estimating target percentages from histogram bins. Provider timing accuracy and
-broader replay validation remain open; speaking-day history and personal baselines are still pending.
+broader replay validation remain open. Skill details now share UTC calendar periods across totals,
+occurrences, and distributions, with eligible speaking-day charts, real dates/gaps, and weighted period
+values. Personal baseline snapshots and their lifecycle are still pending.
 [Existing dev audio validation](./speech-coach-dev-timing-validation.md) identifies interpolated starts;
 new Soniox recordings improve the single existing map. English recordings are not a blocker.
 Existing score formulas and weekly comparisons stay unchanged.

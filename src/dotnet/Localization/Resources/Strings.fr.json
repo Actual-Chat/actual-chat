@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "Dans la plage",
   "Coach_PaceAbove": "Au-dessus de la plage",
   "Coach_PaceCoverage_Format": "{0} enregistrements mesurés · {1} de leur audio classé",
-  "Coach_PacePartial": "Un échantillon limité d’enregistrements mesurés est affiché."
+  "Coach_PacePartial": "Un échantillon limité d’enregistrements mesurés est affiché.",
+  "Coach_HistoryMinimumWords_Format": "Au moins {0} mots mesurés par jour affiché.",
+  "Coach_CalendarDay": "Jour",
+  "Coach_CalendarWeek": "Semaine",
+  "Coach_CalendarMonth": "Mois",
+  "Coach_PreviousPeriod": "Période précédente",
+  "Coach_NextPeriod": "Période suivante",
+  "Coach_SpeakingDays": "Jours de parole",
+  "Coach_SegmentPace": "Débit moyen dans les segments de parole mesurés",
+  "Coach_HistorySparse": "Essayez une période plus longue.",
+  "Coach_HistoryDates": "Les dates indiquent les jours avec assez de parole ; les intervalles ne sont pas des valeurs nulles.",
+  "Coach_HistoryGap_Format": "Jours sans mesures admissibles : {0}"
 }

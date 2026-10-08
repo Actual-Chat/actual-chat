@@ -2493,5 +2493,16 @@
   "Coach_PaceWithin": "Within range",
   "Coach_PaceAbove": "Above range",
   "Coach_PaceCoverage_Format": "{0} recordings measured · {1} of their audio classified",
-  "Coach_PacePartial": "Showing a limited sample of measured recordings."
+  "Coach_PacePartial": "Showing a limited sample of measured recordings.",
+  "Coach_HistoryMinimumWords_Format": "At least {0} measured words per plotted day.",
+  "Coach_CalendarDay": "Day",
+  "Coach_CalendarWeek": "Week",
+  "Coach_CalendarMonth": "Month",
+  "Coach_PreviousPeriod": "Previous period",
+  "Coach_NextPeriod": "Next period",
+  "Coach_SpeakingDays": "Speaking days",
+  "Coach_SegmentPace": "Average pace in measured speech segments",
+  "Coach_HistorySparse": "Try a longer period.",
+  "Coach_HistoryDates": "Dates mark eligible speaking days; gaps are not zero values.",
+  "Coach_HistoryGap_Format": "Days without eligible measurements: {0}"
 }

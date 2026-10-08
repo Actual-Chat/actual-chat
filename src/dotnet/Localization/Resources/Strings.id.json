@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "Dalam rentang",
   "Coach_PaceAbove": "Di atas rentang",
   "Coach_PaceCoverage_Format": "{0} rekaman diukur · {1} audionya diklasifikasikan",
-  "Coach_PacePartial": "Menampilkan sampel terbatas dari rekaman yang diukur."
+  "Coach_PacePartial": "Menampilkan sampel terbatas dari rekaman yang diukur.",
+  "Coach_HistoryMinimumWords_Format": "Setidaknya {0} kata terukur per hari yang ditampilkan.",
+  "Coach_CalendarDay": "Hari",
+  "Coach_CalendarWeek": "Minggu",
+  "Coach_CalendarMonth": "Bulan",
+  "Coach_PreviousPeriod": "Periode sebelumnya",
+  "Coach_NextPeriod": "Periode berikutnya",
+  "Coach_SpeakingDays": "Hari berbicara",
+  "Coach_SegmentPace": "Tempo rata-rata dalam segmen ucapan yang diukur",
+  "Coach_HistorySparse": "Coba periode yang lebih panjang.",
+  "Coach_HistoryDates": "Tanggal menandai hari dengan cukup ucapan; jeda bukan nilai nol.",
+  "Coach_HistoryGap_Format": "Hari tanpa pengukuran yang memenuhi syarat: {0}"
 }

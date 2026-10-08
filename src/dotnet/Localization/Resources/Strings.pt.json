@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "Dentro do intervalo",
   "Coach_PaceAbove": "Acima do intervalo",
   "Coach_PaceCoverage_Format": "{0} gravações medidas · {1} do áudio classificado",
-  "Coach_PacePartial": "É exibida uma amostra limitada das gravações medidas."
+  "Coach_PacePartial": "É exibida uma amostra limitada das gravações medidas.",
+  "Coach_HistoryMinimumWords_Format": "Pelo menos {0} palavras medidas por dia apresentado.",
+  "Coach_CalendarDay": "Dia",
+  "Coach_CalendarWeek": "Semana",
+  "Coach_CalendarMonth": "Mês",
+  "Coach_PreviousPeriod": "Período anterior",
+  "Coach_NextPeriod": "Próximo período",
+  "Coach_SpeakingDays": "Dias com fala",
+  "Coach_SegmentPace": "Ritmo médio nos segmentos de fala medidos",
+  "Coach_HistorySparse": "Experimente um período mais longo.",
+  "Coach_HistoryDates": "As datas indicam dias com fala suficiente; as lacunas não são valores zero.",
+  "Coach_HistoryGap_Format": "Dias sem medições válidas: {0}"
 }

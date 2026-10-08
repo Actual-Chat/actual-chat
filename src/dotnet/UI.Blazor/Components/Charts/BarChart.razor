@@ -1,24 +1,22 @@
 @namespace ActualChat.UI.Blazor.Components
 @{
-    var max = Items.Count == 0 ? 0 : Items.Max(i => i.Value);
+    var max = Math.Max(Maximum ?? 0, Items.Count == 0 ? 0 : Items.Max(i => i.Value));
 }
 
 <div class="bar-chart @Class">
     @if (ReferenceValue is { } reference && max > 0) {
-        <div class="c-reference" style="bottom: @((Math.Clamp(reference / max, 0, 1) * 100).ToString("F0", null))%"></div>
+        <div class="c-reference"
+             style="bottom: @((Math.Clamp(reference / max, 0, 1) * 100).ToString("F0", null))%"></div>
     }
     @foreach (var item in Items) {
-        var height = max > 0 ? item.Value / max * 100 : 0;
-        <div class="c-column">
-            <div class="c-bar-track">
-                @if (ShowValues && item.Value > 0) {
-                    <div class="c-value">@item.Value.ToString(ValueFormat, null)</div>
-                }
-                <div class="c-bar @item.Class" style="height: @(height.ToString("F0", null))%"
-                     title="@item.Value.ToString(ValueFormat, null)"></div>
-            </div>
-            <div class="c-label">@item.Label</div>
-        </div>
+        @if (ItemClick.HasDelegate) {
+            <button type="button" class="c-column btn-chart-item" aria-label="@item.Hint"
+                    @onclick="@(() => ItemClick.InvokeAsync(item))">
+                @Column(item, max)
+            </button>
+        } else {
+            <div class="c-column">@Column(item, max)</div>
+        }
     }
 </div>
 
@@ -28,4 +26,22 @@
     [Parameter] public string ValueFormat { get; set; } = "F0";
     [Parameter] public double? ReferenceValue { get; set; }
     [Parameter] public bool ShowValues { get; set; }
+    [Parameter] public bool ShowZeroValues { get; set; }
+    [Parameter] public double? Maximum { get; set; }
+    [Parameter] public EventCallback<ChartItem> ItemClick { get; set; }
+
+    private RenderFragment Column(ChartItem item, double max) => @<text>
+        @if (item.HasGap) {
+            <span class="c-gap" aria-hidden="true">⋯</span>
+        }
+        <div class="c-bar-track">
+            @if (ShowValues && (ShowZeroValues || item.Value > 0)) {
+                <div class="c-value">@item.Value.ToString(ValueFormat, null)</div>
+            }
+            <div class="c-bar @item.Class"
+                 style="height: @((max > 0 ? item.Value / max * 100 : 0).ToString("F0", null))%"
+                 title="@(item.Hint ?? item.Value.ToString(ValueFormat, null))"></div>
+        </div>
+        <div class="c-label">@item.Label</div>
+    </text>;
 }

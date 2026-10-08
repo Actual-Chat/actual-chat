@@ -2133,5 +2133,16 @@
   "Coach_PaceWithin": "Im Bereich",
   "Coach_PaceAbove": "Über dem Bereich",
   "Coach_PaceCoverage_Format": "{0} gemessene Aufnahmen · {1} ihres Audios eingeordnet",
-  "Coach_PacePartial": "Es wird eine begrenzte Auswahl gemessener Aufnahmen angezeigt."
+  "Coach_PacePartial": "Es wird eine begrenzte Auswahl gemessener Aufnahmen angezeigt.",
+  "Coach_HistoryMinimumWords_Format": "Mindestens {0} gemessene Wörter pro dargestelltem Tag.",
+  "Coach_CalendarDay": "Tag",
+  "Coach_CalendarWeek": "Woche",
+  "Coach_CalendarMonth": "Monat",
+  "Coach_PreviousPeriod": "Vorheriger Zeitraum",
+  "Coach_NextPeriod": "Nächster Zeitraum",
+  "Coach_SpeakingDays": "Tage mit Sprache",
+  "Coach_SegmentPace": "Durchschnittstempo in gemessenen Sprachabschnitten",
+  "Coach_HistorySparse": "Versuchen Sie einen längeren Zeitraum.",
+  "Coach_HistoryDates": "Daten markieren Tage mit ausreichend Sprache; Lücken sind keine Nullwerte.",
+  "Coach_HistoryGap_Format": "Tage ohne geeignete Messungen: {0}"
 }

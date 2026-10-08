@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "Trong khoảng",
   "Coach_PaceAbove": "Trên khoảng",
   "Coach_PaceCoverage_Format": "Đã đo {0} bản ghi · Đã phân loại {1} âm thanh của chúng",
-  "Coach_PacePartial": "Đang hiển thị mẫu giới hạn các bản ghi đã đo."
+  "Coach_PacePartial": "Đang hiển thị mẫu giới hạn các bản ghi đã đo.",
+  "Coach_HistoryMinimumWords_Format": "Ít nhất {0} từ được đo mỗi ngày hiển thị.",
+  "Coach_CalendarDay": "Ngày",
+  "Coach_CalendarWeek": "Tuần",
+  "Coach_CalendarMonth": "Tháng",
+  "Coach_PreviousPeriod": "Khoảng trước",
+  "Coach_NextPeriod": "Khoảng tiếp theo",
+  "Coach_SpeakingDays": "Ngày có lời nói",
+  "Coach_SegmentPace": "Tốc độ trung bình trong các đoạn nói đã đo",
+  "Coach_HistorySparse": "Hãy thử khoảng thời gian dài hơn.",
+  "Coach_HistoryDates": "Ngày đánh dấu thời điểm có đủ lời nói; khoảng trống không phải giá trị bằng không.",
+  "Coach_HistoryGap_Format": "Ngày không có phép đo đủ điều kiện: {0}"
 }

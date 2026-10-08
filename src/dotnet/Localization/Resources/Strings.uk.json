@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "У діапазоні",
   "Coach_PaceAbove": "Вище діапазону",
   "Coach_PaceCoverage_Format": "Виміряно записів: {0} · Класифіковано {1} їхнього аудіо",
-  "Coach_PacePartial": "Показано обмежену вибірку виміряних записів."
+  "Coach_PacePartial": "Показано обмежену вибірку виміряних записів.",
+  "Coach_HistoryMinimumWords_Format": "Щонайменше {0} виміряних слів за кожен день на графіку.",
+  "Coach_CalendarDay": "День",
+  "Coach_CalendarWeek": "Тиждень",
+  "Coach_CalendarMonth": "Місяць",
+  "Coach_PreviousPeriod": "Попередній період",
+  "Coach_NextPeriod": "Наступний період",
+  "Coach_SpeakingDays": "Дні з мовленням",
+  "Coach_SegmentPace": "Середній темп у виміряних відрізках мовлення",
+  "Coach_HistorySparse": "Спробуйте довший період.",
+  "Coach_HistoryDates": "Дати позначають дні з достатнім обсягом мовлення; пропуски не означають нульові значення.",
+  "Coach_HistoryGap_Format": "Днів без придатних вимірювань: {0}"
 }

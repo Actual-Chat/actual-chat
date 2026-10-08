@@ -2139,5 +2139,16 @@
   "Coach_PaceWithin": "Aralık içinde",
   "Coach_PaceAbove": "Aralığın üstünde",
   "Coach_PaceCoverage_Format": "{0} kayıt ölçüldü · seslerinin {1} kadarı sınıflandırıldı",
-  "Coach_PacePartial": "Ölçülen kayıtların sınırlı bir örneği gösteriliyor."
+  "Coach_PacePartial": "Ölçülen kayıtların sınırlı bir örneği gösteriliyor.",
+  "Coach_HistoryMinimumWords_Format": "Gösterilen her gün için en az {0} ölçülen sözcük.",
+  "Coach_CalendarDay": "Gün",
+  "Coach_CalendarWeek": "Hafta",
+  "Coach_CalendarMonth": "Ay",
+  "Coach_PreviousPeriod": "Önceki dönem",
+  "Coach_NextPeriod": "Sonraki dönem",
+  "Coach_SpeakingDays": "Konuşulan günler",
+  "Coach_SegmentPace": "Ölçülen konuşma bölümlerindeki ortalama tempo",
+  "Coach_HistorySparse": "Daha uzun bir dönem deneyin.",
+  "Coach_HistoryDates": "Tarihler yeterli konuşma olan günleri gösterir; boşluklar sıfır değer değildir.",
+  "Coach_HistoryGap_Format": "Uygun ölçüm olmayan günler: {0}"
 }

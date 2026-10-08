@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "В диапазона",
   "Coach_PaceAbove": "Над диапазона",
   "Coach_PaceCoverage_Format": "{0} измерени записа · {1} от звука им е класифициран",
-  "Coach_PacePartial": "Показва се ограничена извадка от измерените записи."
+  "Coach_PacePartial": "Показва се ограничена извадка от измерените записи.",
+  "Coach_HistoryMinimumWords_Format": "Поне {0} измерени думи за всеки показан ден.",
+  "Coach_CalendarDay": "Ден",
+  "Coach_CalendarWeek": "Седмица",
+  "Coach_CalendarMonth": "Месец",
+  "Coach_PreviousPeriod": "Предишен период",
+  "Coach_NextPeriod": "Следващ период",
+  "Coach_SpeakingDays": "Дни с реч",
+  "Coach_SegmentPace": "Средно темпо в измерените речеви сегменти",
+  "Coach_HistorySparse": "Опитайте по-дълъг период.",
+  "Coach_HistoryDates": "Датите показват дни с достатъчно реч; пропуските не са нулеви стойности.",
+  "Coach_HistoryGap_Format": "Дни без подходящи измервания: {0}"
 }

@@ -2493,5 +2493,16 @@
   "Coach_PaceWithin": "Dentro do intervalo",
   "Coach_PaceAbove": "Au-dessus de la plage",
   "Coach_PaceCoverage_Format": "{0} измјерених снимака · {1} њиховог звука класифицирано",
-  "Coach_PacePartial": "Es wird eine begrenzte Auswahl gemessener Aufnahmen angezeigt."
+  "Coach_PacePartial": "Es wird eine begrenzte Auswahl gemessener Aufnahmen angezeigt.",
+  "Coach_HistoryMinimumWords_Format": "表示する各日には少なくとも {0} 語の測定済み発話が必要です。",
+  "Coach_CalendarDay": "Giorno",
+  "Coach_CalendarWeek": "Settimana",
+  "Coach_CalendarMonth": "Miesiąc",
+  "Coach_PreviousPeriod": "Предыдущий период",
+  "Coach_NextPeriod": "Следующий период",
+  "Coach_SpeakingDays": "Giorni con parlato",
+  "Coach_SegmentPace": "Durchschnittstempo in gemessenen Sprachabschnitten",
+  "Coach_HistorySparse": "Versuchen Sie einen längeren Zeitraum.",
+  "Coach_HistoryDates": "Дати позначають дні з достатнім обсягом мовлення; пропуски не означають нульові значення.",
+  "Coach_HistoryGap_Format": "Hari tanpa pengukuran yang memenuhi syarat: {0}"
 }

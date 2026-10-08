@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "सीमा के भीतर",
   "Coach_PaceAbove": "सीमा से ऊपर",
   "Coach_PaceCoverage_Format": "{0} रिकॉर्डिंग मापी गईं · उनके ऑडियो का {1} वर्गीकृत",
-  "Coach_PacePartial": "मापी गई रिकॉर्डिंग का सीमित नमूना दिखाया जा रहा है।"
+  "Coach_PacePartial": "मापी गई रिकॉर्डिंग का सीमित नमूना दिखाया जा रहा है।",
+  "Coach_HistoryMinimumWords_Format": "हर दिखाए गए दिन में कम से कम {0} मापे गए शब्द।",
+  "Coach_CalendarDay": "दिन",
+  "Coach_CalendarWeek": "सप्ताह",
+  "Coach_CalendarMonth": "महीना",
+  "Coach_PreviousPeriod": "पिछली अवधि",
+  "Coach_NextPeriod": "अगली अवधि",
+  "Coach_SpeakingDays": "बोलने वाले दिन",
+  "Coach_SegmentPace": "मापे गए भाषण खंडों में औसत गति",
+  "Coach_HistorySparse": "लंबी अवधि चुनकर देखें।",
+  "Coach_HistoryDates": "तारीखें पर्याप्त भाषण वाले दिन दिखाती हैं; अंतराल शून्य मान नहीं हैं।",
+  "Coach_HistoryGap_Format": "उपयुक्त माप के बिना दिन: {0}"
 }

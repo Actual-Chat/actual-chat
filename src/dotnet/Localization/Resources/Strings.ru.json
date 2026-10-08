@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "В диапазоне",
   "Coach_PaceAbove": "Выше диапазона",
   "Coach_PaceCoverage_Format": "Измерено записей: {0} · Классифицировано {1} их аудио",
-  "Coach_PacePartial": "Показана ограниченная выборка измеренных записей."
+  "Coach_PacePartial": "Показана ограниченная выборка измеренных записей.",
+  "Coach_HistoryMinimumWords_Format": "Не менее {0} измеренных слов за каждый день на графике.",
+  "Coach_CalendarDay": "День",
+  "Coach_CalendarWeek": "Неделя",
+  "Coach_CalendarMonth": "Месяц",
+  "Coach_PreviousPeriod": "Предыдущий период",
+  "Coach_NextPeriod": "Следующий период",
+  "Coach_SpeakingDays": "Дни с речью",
+  "Coach_SegmentPace": "Средний темп в измеренных отрезках речи",
+  "Coach_HistorySparse": "Попробуйте более длинный период.",
+  "Coach_HistoryDates": "Даты отмечают дни с достаточным объёмом речи; пропуски не означают нулевые значения.",
+  "Coach_HistoryGap_Format": "Дней без подходящих измерений: {0}"
 }

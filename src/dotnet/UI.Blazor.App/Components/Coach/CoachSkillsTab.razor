@@ -16,7 +16,7 @@
 <div class="coach-skills">
     @if (m.Detail is { } detail) {
         <CoachSkillDetail @key="@detail" Kind="@detail" Window="@m.Window" Language="@Language"
-                          Back="@OnDetailBack" WindowChanged="@OnWindow"/>
+                          Back="@OnDetailBack"/>
     } else if (m.Word is { } word) {
         <CoachOccurrences Word="@word" Window="@m.Window" Language="@Language" Back="@OnOccurrencesBack"/>
     } else {

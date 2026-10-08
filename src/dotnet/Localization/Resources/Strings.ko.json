@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "범위 내",
   "Coach_PaceAbove": "범위 초과",
   "Coach_PaceCoverage_Format": "녹음 {0}개 측정 · 오디오의 {1} 분류",
-  "Coach_PacePartial": "측정된 녹음의 제한된 표본을 표시합니다."
+  "Coach_PacePartial": "측정된 녹음의 제한된 표본을 표시합니다.",
+  "Coach_HistoryMinimumWords_Format": "표시되는 하루에 측정된 단어가 최소 {0}개 필요합니다.",
+  "Coach_CalendarDay": "일",
+  "Coach_CalendarWeek": "주",
+  "Coach_CalendarMonth": "월",
+  "Coach_PreviousPeriod": "이전 기간",
+  "Coach_NextPeriod": "다음 기간",
+  "Coach_SpeakingDays": "발화가 있는 날",
+  "Coach_SegmentPace": "측정된 발화 구간의 평균 속도",
+  "Coach_HistorySparse": "더 긴 기간을 선택해 보세요.",
+  "Coach_HistoryDates": "날짜는 충분한 발화가 있는 날을 나타냅니다. 공백은 0을 뜻하지 않습니다.",
+  "Coach_HistoryGap_Format": "유효한 측정이 없는 날: {0}"
 }

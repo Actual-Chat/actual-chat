@@ -2249,6 +2249,18 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_PaceCoverage_Format(object arg0, object arg1)
             => l["Coach_PaceCoverage_Format", arg0, arg1].Value;
         public string Coach_PacePartial => l["Coach_PacePartial"].Value;
+        public string Coach_CalendarDay => l["Coach_CalendarDay"].Value;
+        public string Coach_CalendarWeek => l["Coach_CalendarWeek"].Value;
+        public string Coach_CalendarMonth => l["Coach_CalendarMonth"].Value;
+        public string Coach_PreviousPeriod => l["Coach_PreviousPeriod"].Value;
+        public string Coach_NextPeriod => l["Coach_NextPeriod"].Value;
+        public string Coach_SpeakingDays => l["Coach_SpeakingDays"].Value;
+        public string Coach_SegmentPace => l["Coach_SegmentPace"].Value;
+        public string Coach_HistorySparse => l["Coach_HistorySparse"].Value;
+        public string Coach_HistoryDates => l["Coach_HistoryDates"].Value;
+        public string Coach_HistoryGap_Format(object arg0) => l["Coach_HistoryGap_Format", arg0].Value;
+        public string Coach_HistoryMinimumWords_Format(object arg0)
+            => l["Coach_HistoryMinimumWords_Format", arg0].Value;
         public string Coach_MarkProfanityTitle => l["Coach_MarkProfanityTitle"].Value;
         public string Coach_MarkProfanityBody_Format(object arg0) => l["Coach_MarkProfanityBody_Format", arg0].Value;
 

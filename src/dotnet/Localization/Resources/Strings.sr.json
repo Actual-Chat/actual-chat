@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "Унутар распона",
   "Coach_PaceAbove": "Изнад распона",
   "Coach_PaceCoverage_Format": "{0} измјерених снимака · {1} њиховог звука класифицирано",
-  "Coach_PacePartial": "Приказан је ограничен узорак измјерених снимака."
+  "Coach_PacePartial": "Приказан је ограничен узорак измјерених снимака.",
+  "Coach_HistoryMinimumWords_Format": "Најмање {0} измјерених речи по приказаном дану.",
+  "Coach_CalendarDay": "Дан",
+  "Coach_CalendarWeek": "Седмица",
+  "Coach_CalendarMonth": "Мјесец",
+  "Coach_PreviousPeriod": "Претходни период",
+  "Coach_NextPeriod": "Следећи период",
+  "Coach_SpeakingDays": "Дани с говором",
+  "Coach_SegmentPace": "Просјечан темпо у измјереним сегментима говора",
+  "Coach_HistorySparse": "Покушајте с дужим периодом.",
+  "Coach_HistoryDates": "Датуми означавају дане с довољно говора; празнине нису нулте вриједности.",
+  "Coach_HistoryGap_Format": "Дани без одговарајућих мјерења: {0}"
 }

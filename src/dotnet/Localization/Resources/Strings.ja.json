@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "範囲内",
   "Coach_PaceAbove": "範囲超過",
   "Coach_PaceCoverage_Format": "{0} 件の録音を測定 · 音声の {1} を分類",
-  "Coach_PacePartial": "測定済み録音の一部を表示しています。"
+  "Coach_PacePartial": "測定済み録音の一部を表示しています。",
+  "Coach_HistoryMinimumWords_Format": "表示する各日には少なくとも {0} 語の測定済み発話が必要です。",
+  "Coach_CalendarDay": "日",
+  "Coach_CalendarWeek": "週",
+  "Coach_CalendarMonth": "月",
+  "Coach_PreviousPeriod": "前の期間",
+  "Coach_NextPeriod": "次の期間",
+  "Coach_SpeakingDays": "発話のある日",
+  "Coach_SegmentPace": "測定済み発話区間の平均速度",
+  "Coach_HistorySparse": "より長い期間を選んでください。",
+  "Coach_HistoryDates": "日付は十分な発話がある日を示します。空白期間はゼロ値ではありません。",
+  "Coach_HistoryGap_Format": "有効な測定がない日数：{0}"
 }

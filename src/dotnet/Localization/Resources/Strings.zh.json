@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "范围内",
   "Coach_PaceAbove": "高于范围",
   "Coach_PaceCoverage_Format": "已测量 {0} 段录音 · 已分类其中 {1} 的音频",
-  "Coach_PacePartial": "显示已测量录音的有限样本。"
+  "Coach_PacePartial": "显示已测量录音的有限样本。",
+  "Coach_HistoryMinimumWords_Format": "每个显示日期至少需要 {0} 个已测量词语。",
+  "Coach_CalendarDay": "日",
+  "Coach_CalendarWeek": "周",
+  "Coach_CalendarMonth": "月",
+  "Coach_PreviousPeriod": "上一时段",
+  "Coach_NextPeriod": "下一时段",
+  "Coach_SpeakingDays": "有发言的日期",
+  "Coach_SegmentPace": "已测量发言片段的平均语速",
+  "Coach_HistorySparse": "请尝试更长的时段。",
+  "Coach_HistoryDates": "日期标记发言量充足的日子；空白时段不代表零值。",
+  "Coach_HistoryGap_Format": "没有有效测量的天数：{0}"
 }

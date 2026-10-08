@@ -373,6 +373,44 @@ public class Coach(IServiceProvider services) : ICoach
         return await Backend.GetPaceDetails(account.Id, range, language, cancellationToken).ConfigureAwait(false);
     }
 
+    public virtual async Task<CoachSkillHistory> GetOwnSkillHistory(
+        Session session, CoachMetricKind kind, string language, CoachHistoryPeriod period,
+        Moment anchor, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull() || language.IsNullOrWhiteSpace())
+            return CoachSkillHistory.None;
+
+        var now = Clocks.SystemClock.Now;
+        var range = CoachHistoryRanges.Get(period, anchor, now);
+        var iso = Language.GetIsoCode(language);
+        var days = await Backend.ListHistoryDays(account.Id, range, iso, cancellationToken).ConfigureAwait(false);
+        var history = CoachHistoryBuilder.Build(range, kind, days, Settings.Coach, iso);
+        if (kind == CoachMetricKind.Pace) {
+            var pace = await Backend.GetPaceDetails(account.Id, range, iso, cancellationToken).ConfigureAwait(false);
+            history = history with { Pace = pace };
+        }
+        InvalidateAtMidnight(new Range<Moment>(range.Start, UsageDay.DayOf(now) + TimeSpan.FromDays(1)));
+        return history;
+    }
+
+    public virtual async Task<ApiArray<CoachOccurrence>> ListOwnSkillOccurrencesInRange(
+        Session session, string word, Range<Moment> range, string language,
+        CoachMetricKind kind, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull() || word.IsNullOrWhiteSpace() || language.IsNullOrWhiteSpace()
+            || kind is not (CoachMetricKind.Fillers or CoachMetricKind.WeakWords))
+            return ApiArray<CoachOccurrence>.Empty;
+        if (range.Start > range.End || range.End - range.Start > TimeSpan.FromDays(31))
+            throw new ArgumentOutOfRangeException(nameof(range));
+
+        var end = Moment.Min(range.End, Clocks.SystemClock.Now);
+        return await Backend.ListSkillOccurrences(account.Id, word.Trim().ToLower(),
+            new Range<Moment>(range.Start, end), ICoach.MaxOccurrences, language, kind, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task OnDismissTip(Coach_DismissTip command, CancellationToken cancellationToken)
     {

@@ -2132,5 +2132,16 @@
   "Coach_PaceWithin": "W zakresie",
   "Coach_PaceAbove": "Powyżej zakresu",
   "Coach_PaceCoverage_Format": "{0} zmierzonych nagrań · {1} ich dźwięku sklasyfikowano",
-  "Coach_PacePartial": "Wyświetlana jest ograniczona próbka zmierzonych nagrań."
+  "Coach_PacePartial": "Wyświetlana jest ograniczona próbka zmierzonych nagrań.",
+  "Coach_HistoryMinimumWords_Format": "Co najmniej {0} zmierzonych słów na wyświetlany dzień.",
+  "Coach_CalendarDay": "Dzień",
+  "Coach_CalendarWeek": "Tydzień",
+  "Coach_CalendarMonth": "Miesiąc",
+  "Coach_PreviousPeriod": "Poprzedni okres",
+  "Coach_NextPeriod": "Następny okres",
+  "Coach_SpeakingDays": "Dni z mową",
+  "Coach_SegmentPace": "Średnie tempo w zmierzonych fragmentach mowy",
+  "Coach_HistorySparse": "Spróbuj dłuższego okresu.",
+  "Coach_HistoryDates": "Daty oznaczają dni z wystarczającą ilością mowy; przerwy nie są wartościami zerowymi.",
+  "Coach_HistoryGap_Format": "Dni bez odpowiednich pomiarów: {0}"
 }
