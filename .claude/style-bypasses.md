@@ -246,13 +246,6 @@ edited. The reason can be as short as whose decision it was.
   — line longer than 120 chars — predates the branch that surfaced it; Dmitrii's
   standing rule is to leave violations outside one's own change as they are
 
-## tests/Core.Server.IntegrationTests/Flows/TimerFlowTest.cs
-
-- L125 `private async Task<TFlow> GetLocalFlow<TFlow>(FlowHub hub, Func<int, string> argumentFactory, CancellationToken cancellationToken)`
-  and the same line of `GetRemoteFlow<TFlow>` — line longer than 120 chars — predates
-  the branch that surfaced it; Dmitrii's standing rule is to leave violations outside
-  one's own change as they are
-
 ## tests/ps/unit/StyleCheck/Rules.cs
 
 - The whole file — `volatile`, a same-line `return`, a method brace on the

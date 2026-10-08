@@ -25,33 +25,37 @@ public class TimerFlowTest(ITestOutputHelper @out)
         },
     }, @out)
 {
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
-    // Above DefaultTimeout scaled plus the two app hosts, below the Timeout attribute, and not
-    // scaled itself - the constant it has to stay under cannot scale either
+    private static readonly TimeSpan WaitBudget = TimeSpan.FromSeconds(15);
+    // Above WaitBudget scaled, below the Timeout attribute, and not scaled itself - the
+    // constant it has to stay under cannot scale either
     private static readonly TimeSpan CancelAfter = TimeSpan.FromSeconds(90);
 
-    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 120_000)]
+    private TestAppHost H0 { get; set; } = null!;
+    private TestAppHost H1 { get; set; } = null!;
+
+    protected override async Task DisposeAsync()
+    {
+        if (H1 is not null)
+            await H1.DisposeSilentlyAsync();
+        if (H0 is not null)
+            await H0.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
+
+    [Fact(Timeout = 120_000)]
     public async Task BasicTest()
     {
         using var cts = new CancellationTokenSource(CancelAfter);
         var cancellationToken = cts.Token;
 
-        await using var h0 = await NewAppHost();
-        await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
-        var h0node = h0.Services.MeshWatcher().ThisNode;
-        var h1node = h1.Services.MeshWatcher().ThisNode;
-        WriteLine($"h0.ThisNode: {h0node}");
-        WriteLine($"h1.ThisNode: {h1node}");
-        await WhenFlowsStarted(h0, h1);
-
-        var flowHub = h0.Services.FlowHub();
+        var flowHub = H0.Services.FlowHub();
 
         var flowDef = flowHub.Defs.Get<TimerFlow>();
         flowDef.DataVersion.Should().Be(2);
         flowDef.ResumeTimeout.Should().Be(TimeSpan.FromSeconds(60));
 
         var command = flowHub.NewResumeEvent<TimerFlow>("f0,1");
-        var queueRef = QueueRef.For(command, h0.Services);
+        var queueRef = QueueRef.For(command, H0.Services);
         queueRef.ShardScheme.Should().Be(ShardScheme.SlowQueue); // See [Flow] attribute on TimerFlow
 
         var f = await GetRemoteFlow<TimerFlow>(flowHub, i => $"f{i},2", cancellationToken);
@@ -60,19 +64,13 @@ public class TimerFlowTest(ITestOutputHelper @out)
         await WhenCompleted(flowHub, f.Id);
     }
 
-    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 120_000)]
+    [Fact(Timeout = 120_000)]
     public async Task TwoFlowsTest()
     {
         using var cts = new CancellationTokenSource(CancelAfter);
         var cancellationToken = cts.Token;
 
-        await using var h0 = await NewAppHost();
-        await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
-        WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
-        WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
-        await WhenFlowsStarted(h0, h1);
-
-        var flowHub = h0.Services.FlowHub();
+        var flowHub = H0.Services.FlowHub();
 
         var f = await GetRemoteFlow<TimerFlow>(flowHub, i => $"f{i},2", cancellationToken);
         f.Should().NotBeNull();
@@ -84,20 +82,14 @@ public class TimerFlowTest(ITestOutputHelper @out)
             WhenCompleted(flowHub, g.Id));
     }
 
-    [FlakyFact("AY: Slow on GitHub", 3, Timeout = 120_000)]
+    [Fact(Timeout = 120_000)]
     public async Task ResetTest()
     {
         using var cts = new CancellationTokenSource(CancelAfter);
         var cancellationToken = cts.Token;
 
-        await using var h0 = await NewAppHost();
-        await using var h1 = await NewAppHost(o => o with { MustInitializeDb = false });
-        WriteLine($"h0.ThisNode: {h0.Services.MeshWatcher().ThisNode}");
-        WriteLine($"h1.ThisNode: {h1.Services.MeshWatcher().ThisNode}");
-        await WhenFlowsStarted(h0, h1);
-
-        var flowHub = h0.Services.FlowHub();
-        var queues = h0.Services.Queues();
+        var flowHub = H0.Services.FlowHub();
+        var queues = H0.Services.Queues();
 
         var f = await GetRemoteFlow<TimerFlow>(flowHub, i => $"f{i},5", cancellationToken);
         f.Should().NotBeNull();
@@ -109,7 +101,7 @@ public class TimerFlowTest(ITestOutputHelper @out)
             var hasProgressed = flow!.RemainingCount is > 0 and <= 3 || flow.UntypedResult is not null;
             hasProgressed.Should().BeTrue(
                 $"the flow must count down to 3 or below, but it's at {flow.RemainingCount}");
-        }, DefaultTimeout);
+        }, WaitBudget);
         var initCount = TimerFlow.InitCounts.GetValueOrDefault(f.Id);
 
         await queues.Enqueue(flowHub.NewResumeEvent(f.Id).WithReset(), cancellationToken);
@@ -117,20 +109,30 @@ public class TimerFlowTest(ITestOutputHelper @out)
         await TestWait.WhenPolled(
             () => TimerFlow.InitCounts.GetValueOrDefault(f.Id).Should().BeGreaterThan(initCount,
                 "the reset must re-run Init"),
-            DefaultTimeout);
+            WaitBudget);
 
         await WhenCompleted(flowHub, f.Id);
     }
 
-    // Private methods
+    // Protected/internal methods
 
-    private static async Task WhenFlowsStarted(params TestAppHost[] hosts)
+    protected override async Task InitializeAsync()
     {
-        foreach (var host in hosts)
-            await host.Services.WhenFlowsStarted();
+        await base.InitializeAsync();
+        // Keeps the hosts' startup out of the test's timeout: on a loaded CI runner H0's DB recreation
+        // and migrations took 60-80 s, leaving the flow 10-20 s of CancelAfter.
+        H0 = await NewAppHost();
+        H1 = await NewAppHost(o => o with { MustInitializeDb = false });
+        WriteLine($"h0.ThisNode: {H0.Services.MeshWatcher().ThisNode}");
+        WriteLine($"h1.ThisNode: {H1.Services.MeshWatcher().ThisNode}");
+        await H0.Services.WhenFlowsStarted();
+        await H1.Services.WhenFlowsStarted();
     }
 
-    private async Task<TFlow> GetLocalFlow<TFlow>(FlowHub hub, Func<int, string> argumentFactory, CancellationToken cancellationToken)
+    // Private methods
+
+    private async Task<TFlow> GetLocalFlow<TFlow>(
+        FlowHub hub, Func<int, string> argumentFactory, CancellationToken cancellationToken)
         where TFlow : Flow
     {
         FlowId flowId;
@@ -147,7 +149,8 @@ public class TimerFlowTest(ITestOutputHelper @out)
         return flow;
     }
 
-    private async Task<TFlow> GetRemoteFlow<TFlow>(FlowHub hub, Func<int, string> argumentFactory, CancellationToken cancellationToken)
+    private async Task<TFlow> GetRemoteFlow<TFlow>(
+        FlowHub hub, Func<int, string> argumentFactory, CancellationToken cancellationToken)
         where TFlow : Flow
     {
         FlowId flowId;
@@ -191,5 +194,5 @@ public class TimerFlowTest(ITestOutputHelper @out)
             var flow = c.Value?.GetFlow(hub);
             flow.Require();
             flow.UntypedResult.Should().NotBeNull();
-        }, DefaultTimeout);
+        }, WaitBudget);
 }
