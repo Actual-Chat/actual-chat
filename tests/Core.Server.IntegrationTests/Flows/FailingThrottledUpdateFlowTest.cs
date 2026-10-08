@@ -8,7 +8,9 @@ namespace ActualChat.Core.Server.IntegrationTests.Flows;
 public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<FailingThrottledUpdateFlowFixture>(fixture, @out)
 {
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
+    // Three Run attempts are three commit + queue round trips; on CI one took up to 10 s, and
+    // RetryAndRecoverTest used 25 s of a 30 s budget on a green run
+    private static readonly TimeSpan WaitBudget = TimeSpan.FromSeconds(20);
 
     protected override async Task InitializeAsync()
     {
@@ -36,7 +38,7 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
             flow.Should().NotBeNull();
             flow!.SuccessCount.Should().Be(1);
             flow.FailCount.Should().Be(0);
-        }, DefaultTimeout);
+        }, WaitBudget);
 
         // Verify Run was called 3 times
         FailingThrottledUpdateFlow.CallCounts.GetValueOrDefault(target).Should().Be(3);
@@ -64,7 +66,7 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
             flow.FailCount.Should().Be(0, "it is reset after giving up");
             flow.NextRunAt.Should().BeGreaterThanOrEqualTo(scheduledAt + FailingThrottledUpdateFlow.Throttle);
             flow.Console.ToString().Should().Contain("giving up");
-        }, DefaultTimeout);
+        }, WaitBudget);
         FailingThrottledUpdateFlow.CallCounts.GetValueOrDefault(target).Should().Be(3, "Run is called MaxFailCount times");
     }
 
@@ -87,7 +89,7 @@ public class FailingThrottledUpdateFlowTest(FailingThrottledUpdateFlowFixture fi
             flow.FailCount.Should().Be(0);
             flow.Console.ToString().Should().Contain("attempt 1/3");
             flow.Console.ToString().Should().Contain("Run() #1 completed");
-        }, DefaultTimeout);
+        }, WaitBudget);
     }
 }
 
