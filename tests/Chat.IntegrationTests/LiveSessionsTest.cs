@@ -2089,7 +2089,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await Task.Delay(TimeSpan.FromSeconds(21));
         await backend.ExpireRings(chatId);
         var otherChatId = ChatId.Parse(GroupChatId.New().Value);
-        var otherCall = new UserCall {
+        var otherCall = new UserCallClaim {
             ChatId = otherChatId,
             AuthorId = AuthorId.New(otherChatId, 2),
             Role = CallRole.Callee,
@@ -2916,15 +2916,15 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         return (chatId, bobAuthor, aliceAuthor);
     }
 
-    private static (UserCall Callee, UserCall Caller, AuthorId CalleeId) NewPeerCallClaims()
+    private static (UserCallClaim Callee, UserCallClaim Caller, AuthorId CalleeId) NewPeerCallClaims()
     {
         var chatId = ChatId.Parse(GroupChatId.New().Value);
         var callerId = AuthorId.New(chatId, 1);
         var calleeId = AuthorId.New(chatId, 2);
-        var callee = new UserCall {
+        var callee = new UserCallClaim {
             ChatId = chatId, AuthorId = calleeId, Role = CallRole.Callee, Phase = CallPhase.Ringing, PeerId = callerId,
         };
-        var caller = new UserCall {
+        var caller = new UserCallClaim {
             ChatId = chatId, AuthorId = callerId, Role = CallRole.Caller, Phase = CallPhase.Dialing, PeerId = calleeId,
         };
         return (callee, caller, calleeId);

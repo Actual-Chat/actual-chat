@@ -245,7 +245,7 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
         var firstCallId = CallId.New(chatId, "1");
         var secondCallId = CallId.New(chatId, "2");
-        var claim = new UserCall {
+        var claim = new UserCallClaim {
             ChatId = chatId,
             AuthorId = bobAuthor!.Id,
             Role = CallRole.Caller,
@@ -283,7 +283,7 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
         var firstCallId = CallId.New(chatId, "1");
-        var claim = new UserCall {
+        var claim = new UserCallClaim {
             ChatId = chatId,
             AuthorId = bobAuthor!.Id,
             Role = CallRole.Caller,
@@ -311,7 +311,7 @@ public sealed class CallIdentityTest(ChatCollection.AppHostFixture fixture, ITes
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
         var callId = CallId.New(chatId, "1");
-        var claim = new UserCall {
+        var claim = new UserCallClaim {
             ChatId = chatId,
             AuthorId = bobAuthor!.Id,
             Role = CallRole.Caller,

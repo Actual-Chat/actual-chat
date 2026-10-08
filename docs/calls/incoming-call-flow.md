@@ -20,7 +20,7 @@ Android ring only nudge a client to re-read that answer - none of them decides a
 Every call has a `CallId`: the chat it is placed in plus a local id no other call to that chat
 shares (`<chatId>:<localId>`). `LiveSessionsBackend.StartCall` issues it, and everything that
 refers to the call carries it - the chat's `LiveCall`, its `CallState` and `CallInvite`s,
-each party's `UserCall` claim, the ring notification's id and push tag, and the client's slot. So
+each party's `UserCallClaim`, the ring notification's id and push tag, and the client's slot. So
 "the same call" and "a later call to the same chat" are never confused:
 
 - a claim is backed only by *its* call, and `ReleaseCall` frees a user only from the
@@ -123,7 +123,7 @@ ordered by `RingingAt`; both are backend-only. `Get` - the `LiveSession` the cli
 the call only as `Kind = Call`: a call with no session yet reads as a `Kind = Call` session with the
 caller in `Members` and no `Conversation`, and a call into an ongoing session overlays `Kind = Call`
 on that session's own view until it ends. A client learns its own part in a call - ringing, dialing,
-in it, and who the other side is - from its `UserCall` claim, not from the session.
+in it, and who the other side is - from the `UserCall` `GetMyCall` gives it, not from the session.
 
 ## Delivering the ring
 
@@ -181,7 +181,7 @@ or a call already answered on another device, therefore produces nothing.
 
 ## The user's call, and the client slot
 
-**The user's call** is the server's: `CallsBackend` keeps one record per user, keyed by
+**The user's call** is the server's: `CallsBackend` keeps one `UserCallClaim` per user, keyed by
 `UserId` so it lives on that user's shard - `CallId`, `ChatId`, `AuthorId`, `Role` (`Caller` /
 `Callee`), `Phase` (`Ringing`, `Dialing`, `Active`), with a two-minute TTL.
 
@@ -216,10 +216,12 @@ the call's own parties.
 it or answered the ring. The claim names that client - `SessionHash` for the device, and
 `ClientId` for the running app instance or browser tab, a random id `CallUI` makes at start
 and sends with `StartCall`, `AcceptCall` and `GetMyCall`. `GetMyCall` answers with the claim
-only on that client (`LiveSessions.IsOnClient`); every other client of the user reads "no call"
-and behaves as it would without one - no screens, no ringback, no call audio mode, no audio
-(#4929). A ring is the exception: its claim names no client, so it rings on all of them, and
-answering it makes it the answering client's (`LiveSessionsBackend.ClaimAnswer`). The user
+only on that client (`LiveSessions.IsOnClient`), as a `UserCall`: the claim less the fields
+only the server needs (`AuthorId`, `SinceAt`, `SessionHash`, `ClientId`). Every other client
+of the user reads "no call" and behaves as it would without one - no screens, no ringback, no
+call audio mode, no audio (#4929). A ring is the exception: its claim names no client, so it
+rings on all of them, and answering it makes it the answering client's
+(`LiveSessionsBackend.ClaimAnswer`). The user
 stays busy on every client all the same: `StartCall` is still arbitrated by the per-user claim.
 
 A reloaded tab or a restarted app is a new client and doesn't see the call it had - the call's

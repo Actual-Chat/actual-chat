@@ -106,7 +106,7 @@ public class UserCallVisibilityTest
         isOnPhone.Should().BeFalse();
     }
 
-    private static UserCall Call(CallRole role, CallPhase phase, string? sessionHash, string? clientId)
+    private static UserCallClaim Call(CallRole role, CallPhase phase, string? sessionHash, string? clientId)
         => new() {
             ChatId = ChatA,
             AuthorId = AuthorId.New(ChatA, 1),
