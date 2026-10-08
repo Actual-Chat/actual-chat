@@ -2,7 +2,7 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
-source "$SCRIPT_DIR/__run-args.sh"
+source "$SCRIPT_DIR/__run-common.sh"
 parse_run_args "$@"
 
 # Debug signing identity: the developer's own Apple Development cert issued under the team.
@@ -35,12 +35,7 @@ else
     OUT_DIR="$REPO_ROOT/artifacts/bin/App.Maui/debug_net11.0-maccatalyst_$RID"
 fi
 
-if [ -z "$MUST_SKIP_WEB" ]; then
-    if [ -z "$IS_CATALYST" ]; then
-        npm ci || exit 1
-    fi
-    npm run build:Debug || exit 1
-fi
+build_web_assets
 dotnet build src/dotnet/App.Maui/ "${TARGET_ARGS[@]}" "${CODESIGN_ARGS[@]}" "${BUILD_ARGS[@]}" || exit 1
 
 # Dev and prod bundles differ in name and may sit side by side, so the name is exact.

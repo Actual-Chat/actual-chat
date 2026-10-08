@@ -45,8 +45,11 @@ internal static class MauiApp
         if (settings.MustUseCiBuild)
             AddCiDownload(plan, settings);
         else {
-            if (!settings.MustSkipWebBuild)
+            if (!settings.MustSkipWebBuild) {
+                if (!Utils.HasNpmPackages())
+                    plan.AddRun(Utils.FindNpmExe(), ["ci"]);
                 plan.AddRun(Utils.FindNpmExe(), ["run", $"build:{settings.ResolvedConfiguration}"]);
+            }
             AddDotnet(plan, settings, isPackaged);
         }
         // Announced before the install step, so the path stays visible once the app takes over the console.
@@ -153,7 +156,7 @@ internal static class MauiApp
     {
         var scriptName = settings.Platform == AppPlatform.Mac ? "run-mac.sh" : "run-ios.sh";
         var scriptPath = Path.Combine("scripts", scriptName);
-        // scripts/__run-args.sh is the other end of this list
+        // scripts/__run-common.sh is the other end of this list
         var args = new List<string> { scriptPath };
         if (!mustLaunch)
             args.Add(mustInstall ? "--no-launch" : "--build-only");

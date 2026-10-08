@@ -16,6 +16,12 @@ internal static class Utils {
         => TryFindCommandPath("npm")
             ?? throw new WithoutStackException(new FileNotFoundException("'npm' command isn't found. Install nodejs from https://nodejs.org/"));
 
+    public static bool HasNpmPackages()
+        // npm writes node_modules/.package-lock.json only after a successful install,
+        // so it's a reliable marker — unlike checking the directory itself, which ai.ps1
+        // pre-creates as an empty Docker mount point in worktrees.
+        => File.Exists(Path.Combine("node_modules", ".package-lock.json"));
+
     public static string FindGhExe()
         => TryFindCommandPath("gh")
             ?? throw new WithoutStackException(new FileNotFoundException(

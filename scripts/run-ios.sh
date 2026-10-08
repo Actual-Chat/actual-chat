@@ -3,7 +3,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 source "$SCRIPT_DIR/__detect-ios-device.sh"
-source "$SCRIPT_DIR/__run-args.sh"
+source "$SCRIPT_DIR/__run-common.sh"
 parse_run_args "$@"
 
 # Finds a booted simulator or boots the newest available iPhone one. Sets SIMULATOR_UDID.
@@ -127,9 +127,7 @@ if [ -z "$IS_BUILD_ONLY" ]; then
     fi
 fi
 
-if [ -z "$MUST_SKIP_WEB" ]; then
-    npm run build:Debug || exit 1
-fi
+build_web_assets
 # Device and simulator builds share one intermediate folder (IntermediateOutputPath in App.Maui.csproj),
 # and the objects of one don't link into the other, so it is cleared whenever the target changes.
 OBJ_DIR="$REPO_ROOT/artifacts/out"

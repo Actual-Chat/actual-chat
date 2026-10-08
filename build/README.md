@@ -31,7 +31,7 @@ The app commands differ only in how far down the pipeline they go, and `--launch
 
 iOS and macOS delegate to `scripts/run-ios.sh` / `scripts/run-mac.sh`
 (AppKit by default, `--catalyst` for Mac Catalyst), which build, install and launch as one unit.
-`b` forwards what they understand (`scripts/__run-args.sh`): `--build-only` for `b app build`, `--no-launch`
+`b` forwards what they understand (`scripts/__run-common.sh`): `--build-only` for `b app build`, `--no-launch`
 for `b app install ios` (a Mac build has nothing to install, so `b app install mac` is rejected), `--simulator`, `--catalyst`, `--prod`, `--no-web` and everything after `--`. They build Debug only, so `--release`,
 `--aot` and `--publish` are rejected there, as is `--prod` on iOS - see `AppSettings.ValidateApple`.
 

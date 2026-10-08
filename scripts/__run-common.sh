@@ -41,3 +41,16 @@ parse_run_args() {
         shift
     done
 }
+
+# Builds the web assets unless --no-web was passed, installing the npm packages first when they are missing.
+build_web_assets() {
+    if [ -n "$MUST_SKIP_WEB" ]; then
+        return
+    fi
+
+    # npm writes this file only after a successful install; the npm-install target of `b` checks it too.
+    if [ ! -f node_modules/.package-lock.json ]; then
+        npm ci || exit 1
+    fi
+    npm run build:Debug || exit 1
+}
