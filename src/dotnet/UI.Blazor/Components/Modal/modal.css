@@ -156,7 +156,7 @@ body.wide .modal-overlay-fullscreen .modal .modal-content {
     @apply w-full h-full max-h-screen;
     @apply md:w-96 xl:w-104 2xl:w-112 md:h-auto md:max-h-192;
     @apply rounded-lg;
-    @apply font-medium;
+    @apply text-body;
     @apply md:shadow-modal-wide;
     padding-bottom: calc(1rem + var(--safe-area-bottom));
     transition-duration: 320ms;
