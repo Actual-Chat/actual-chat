@@ -79,7 +79,7 @@ describe('map link preview', () => {
             const card = message.locator('.map-link-preview').first();
             await card.waitFor({ state: 'visible', timeout: 30_000 });
             await card.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 30_000 });
-            await mapPainted(card);
+            await mapPainted();
             expect(await card.getAttribute('href')).toBe(link.url);
             expect((await card.locator('.c-caption').innerText()).trim()).toBe(link.caption);
             if (link.title != null)

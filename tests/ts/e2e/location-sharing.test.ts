@@ -124,7 +124,7 @@ describe('location sharing', () => {
         // assert — the inline panel renders a MapLibre marker, and the map itself isn't blank
         // (with tiles: CSP allows the maps host; without them: the map got a real viewport)
         await mapPanel.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
-        await mapPainted(mapPanel);
+        await mapPainted();
         await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
         await page.screenshot({ path: shot('loc-panel') });
 
@@ -219,7 +219,7 @@ describe('location sharing', () => {
         expect(await marker.locator('map-marker-pin').count()).toBe(0);
 
         // assert — the inline map isn't blank
-        await mapPainted(locationMessage);
+        await mapPainted();
         await page.waitForTimeout(1_500); // let the tiles paint before the screenshot
         await page.screenshot({ path: shot('loc-one-shot') });
 

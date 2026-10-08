@@ -106,7 +106,7 @@ describe('multi-user location sharing', () => {
         await alicePanel.waitFor({ state: 'visible', timeout: 20_000 });
         await alicePanel.locator('.btn-stop-sharing').first().waitFor({ state: 'visible', timeout: 10_000 });
         expect(await alicePanel.locator('.btn-share-location').count()).toBe(0);
-        await alicePainted(alicePanel);
+        await alicePainted();
 
         // assert — no Call/Map switch on either side: the map is the only panel activity (#4067)
         expect(await alice.locator('.call-map-switch').count()).toBe(0);
@@ -120,7 +120,7 @@ describe('multi-user location sharing', () => {
         await bobPanel.waitFor({ state: 'visible', timeout: 20_000 });
         expect(await bobPanel.locator('.btn-stop-sharing').count()).toBe(0);
         await bobPanel.locator('.btn-share-location').first().waitFor({ state: 'visible', timeout: 10_000 });
-        await bobPainted(bobPanel);
+        await bobPainted();
         await bob.screenshot({ path: shot('bob-sees-alice') });
 
         // assert — Bob's inline panel shows both markers: Alice's share + his own location

@@ -16,12 +16,16 @@ public class UrlMapperTest
 
     [Theory]
     [InlineData("https://actual.chat/")]
-    [InlineData("https://localhost:7080/")]
+    [InlineData("http://localhost:7080/")]
     [InlineData("https://example.com/")]
-    public void MapTilesBaseUrlIsEmptyForNonVoxtHosts(string baseUrl)
+    public void MapTilesBaseUrlShouldDefaultToDevProxyForNonVoxtHosts(string baseUrl)
     {
+        // act
         var mapper = new UrlMapper(baseUrl);
-        mapper.MapTilesBaseUrl.Should().BeEmpty();
+
+        // assert
+        mapper.MapTilesBaseUrl.Should().Be("https://maps.dev.voxt.ai/", "such a host has no maps.* proxy of its own");
+        mapper.HasImageProxy.Should().BeFalse();
     }
 
     [Theory]

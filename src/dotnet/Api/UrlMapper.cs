@@ -68,7 +68,8 @@ public sealed partial class UrlMapper
         ApiBaseUrl = $"{BaseUrl}api/";
         ContentBaseUrl = $"{ApiBaseUrl}content/";
         ImageProxyBaseUrl = "";
-        MapTilesBaseUrl = "";
+        // A host with no maps.* proxy of its own (a CI e2e run on loopback) borrows dev's: it answers any origin
+        MapTilesBaseUrl = $"https://maps.{Constants.Hosts.DevVoxt}/";
         HasImageProxy = false;
         if (IsVoxt || IsDevVoxt || IsLocalVoxt) {
             var cdnSubdomainSeparator =
