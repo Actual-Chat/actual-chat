@@ -42,7 +42,7 @@ Core/Serialization, but these prototype readers are not production contracts or 
 both transport/domain contracts are needed by services and the future UI. Dependency-free histogram
 math stays in Core; no feature-local duplicate aggregation service or serializer framework is added.
 
-## Disabled-by-default capture and persistence
+## Default-on capture and persistence
 
 The backend follow-up now connects the existing measurement algorithm to finalized-entry analysis:
 
@@ -52,9 +52,9 @@ The backend follow-up now connects the existing measurement algorithm to finaliz
 - Generated `AddCoachPace` migrations add nullable `pace_data bytea` columns to `coach_entries` and
   `coach_events`. A generated `AddCoachDailyPace` migration adds the same nullable binary field on
   `coach_days`. There are no new tables, raw timing maps, or timing-quality markers.
-- `ChatSettings.Coach.IsPaceEnabled` defaults to false. Newly finalized entries are the only automatic
-  capture path. Commands bind capture/invalidation to the entry revision; stale commands cannot
-  overwrite newer measurements. Ordinary entry/conversation tagging preserves current measurements.
+- `ChatSettings.Coach.IsPaceEnabled` defaults to true at the developer's explicit request. Newly finalized
+  entries are the only automatic capture path. Commands bind capture/invalidation to the entry revision;
+  stale commands cannot overwrite newer measurements. Ordinary entry/conversation tagging preserves current measurements.
 - Bounds come from `Media.DurationMs`, not shortened entry content duration. Text/audio edits and
   remapping clear the measurement rather than treating remapped timing as accurate. Removing audio
   drops the analysis. Exclusion retains the contribution for reversibility; tombstones erase it and
@@ -65,9 +65,10 @@ The backend follow-up now connects the existing measurement algorithm to finaliz
 Enabling capture is an operator assertion about the source pipeline, not evidence of timing accuracy.
 Exact structural boundaries cannot establish provider accuracy or identify legacy/DTW-remapped maps.
 The accuracy/replay gate remains open, and no user-facing pace-detail precision claim is authorized.
-Daily language histograms and period merges are implemented below. Detail/history UI and baselines
-remain unimplemented. Capture must stay off during mixed-version deployment until all contribution
-and daily-row writers support the binary fields; an older writer cannot keep the new aggregates current.
+Daily language histograms and period merges are implemented below. Detail/history UI and immutable
+personal baselines are implemented; real-recording timing/replay and whole-flow budgets remain open.
+Capture must stay off during mixed-version deployment until all contribution and daily-row writers
+support the binary fields; an older writer cannot keep the new aggregates current.
 
 ### Actual measurement contract cost
 

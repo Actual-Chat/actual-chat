@@ -103,9 +103,11 @@ Nothing has been deployed. This does not promote historical maps to precise meas
 - Attribution uses the utterance's language; mixed language does not block segmentation. Unsupported
   word segmentation remains unavailable. Accurate audio bounds still come from existing media data.
 
-Fine pace is not yet connected to persisted Coach contributions. Fine-accuracy/replay validation,
-full-flow PostgreSQL costs, and the rollout gate remain open. The discarded duplicate-map/metadata
-cost experiments are recorded in the [storage spike](./speech-coach-measurement-storage-spike.md).
+Fine pace is connected to revision-bound binary Coach contributions and daily language aggregates.
+Capture defaults on at the developer's request; detail/history UI and immutable personal baselines
+are implemented. Fine-accuracy/replay validation, full-flow PostgreSQL costs, and the rollout gate
+remain open. The discarded duplicate-map/metadata cost experiments are recorded in the
+[storage spike](./speech-coach-measurement-storage-spike.md).
 
 The 25-word regression now uses the single precise map: the raw two-second pause is retained,
 classified speech totals ten seconds, and both speech blocks measure 150 WPM. English/Russian
@@ -119,6 +121,48 @@ Reuse `SonioxTranscriptBuilder`, its endpoint handling, `LinearMap`, and `TryApp
 The source-specific factory stays in the existing Soniox builder instead of introducing a new
 provider service or generic Core token framework. Any provider-independent timing math continues
 to belong in Core; this method consumes Soniox's own token model.
+
+## Fresh-provider and native validation, 2026-10-08
+
+Two existing Soniox streaming integration cases (`196050.webm` and `0004-AK.webm`) passed
+against the live provider in 15.97 seconds with the key configured; neither took the missing-key
+skip path. Only checked-in fixtures were sent, not the private historical dev recordings above.
+These tests assert nonempty transcripts and log the final maps. They do not establish perceptual
+word alignment, classified Pace coverage, or replay accuracy; those gates remain open.
+
+Apple builds are now available through `ssh mba`, rather than blocked by the Linux host.
+Validation uses an isolated detached worktree at `47d4bb08ca`; the Mac's existing checkout
+and unrelated changes are preserved. `npm ci` and `npm run build:Debug` both passed there.
+
+- The unsigned ARM64 iOS simulator build passed with zero errors in 3m24s.
+- The compile-only ARM64 iOS device build passed with zero errors in 1m21s after clearing
+  generated `artifacts/out` in the isolated checkout. Signing, profile-bound entitlements,
+  and Swift extension signing teams were disabled through build arguments, not source changes.
+- The compile-only ARM64 Mac Catalyst build passed with zero errors in 1m13s.
+  It disables code signing and clears `CodesignEntitlements` only via build arguments, because
+  the normal entitlements require a provisioning profile. This is not a signed-app or
+  entitlement-dependent behavior check.
+- Normal signed iOS and Mac Catalyst builds failed because the SSH session exposes zero valid
+  code-signing identities. The iOS failure occurs in the Swift notification service extension.
+- The physical iPhone is currently unavailable to `devicectl`; simulators are available.
+  No native app was installed or launched, and no remote application data was written.
+
+The existing iOS project pins `IntermediateOutputPath` to shared `artifacts/out` across RIDs.
+Switching from simulator to device initially reused simulator objects (`r2r_modules.o` and
+`posttrim-info-compiled/arm64/inlined-class-gethandle.o`), which the device linker rejected.
+Clearing only `nativelibraries` was insufficient; clearing the complete generated `artifacts/out`
+resolved the error. Source build configuration was not changed. Keep these outputs clean when
+switching iOS RIDs, or isolate them in a separate build-infrastructure follow-up.
+
+Native compilation does not clear playback, microphone, serialization-runtime, baseline UI,
+or whole-flow storage/transport budgets. Signed-device checks still require an available
+Apple development signing identity and connected phone. Build/linker warnings remain recorded
+in ignored logs; zero errors does not imply a warning-free or runtime-validated build.
+
+Reuse: existing MAUI targets, frontend build, Swift extension scripts, and Soniox integration
+fixtures. No new production component, shared framework, or alternate timing map was introduced.
+Build scripts and logs are under ignored `tmp/coach-skill-details/native-*` on both hosts;
+provider-test evidence is in `tmp/coach-skill-details/validation-soniox-streaming.log` locally.
 
 ## Implementation consequences
 
