@@ -123,18 +123,14 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
         var client = await CreateClient();
         await using var admin = AppHost.NewWebClientTester(Out);
         await admin.SignInAsUniqueBobAdmin();
-        await admin.Commander.Call(new Chats_SetMaintenance {
-            Session = admin.Session, ChatId = chatId, IsEnabled = true,
-        });
+        await admin.SetChatMaintenance(chatId, true);
 
         try {
             // act, assert
             await CallToolExpectingError(client, "start_message_stream", new { chatId = chatId.Value });
         }
         finally {
-            await admin.Commander.Call(new Chats_SetMaintenance {
-                Session = admin.Session, ChatId = chatId, IsEnabled = false,
-            });
+            await admin.SetChatMaintenance(chatId, false);
         }
     }
 

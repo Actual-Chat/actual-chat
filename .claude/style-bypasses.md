@@ -261,3 +261,10 @@ edited. The reason can be as short as whose decision it was.
   catches the deserialization failure and returns null, so a record in the old shape
   reads as "nothing cached" and the next check overwrites it. Sequential keys beat
   carrying gaps for a value nothing needs to survive.
+
+## src/dotnet/Chat.Service/Db/DbChatEntry.cs
+
+- L42 `public bool IsRemovedAndPurged { get; set; }`, L66 `ClientSideBeginsAt`, L77 `ContentEndsAt`,
+  L83 `Duration`, L87 `Kind`, L97 `AudioEntryId`
+  — member comment above the declaration — auto-properties (and the column notes on the
+  other ones) have no body to host it; Alex Yakunin's decision

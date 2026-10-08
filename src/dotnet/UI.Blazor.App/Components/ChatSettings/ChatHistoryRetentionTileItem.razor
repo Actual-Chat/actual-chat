@@ -1,0 +1,19 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@{
+    var retention = Chat.RetentionPeriod is { } period ? L.PeriodText(period) : L.HistoryRetention_Full;
+}
+
+<TileItem Class="item-history-retention" Click="@Click">
+    <Icon><i class="icon-history"></i></Icon>
+    <Content>@L.HistoryRetention_Title</Content>
+    <Right>
+        <span class="c-count">@retention</span>
+        <i class="icon-chevron-right text-xl"></i>
+    </Right>
+</TileItem>
+
+@code {
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter] public EventCallback Click { get; set; }
+}

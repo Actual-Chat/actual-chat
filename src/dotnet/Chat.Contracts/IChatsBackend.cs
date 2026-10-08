@@ -119,7 +119,6 @@ public partial interface IChatsBackend : IComputeService, IBackendService
         PlaceId placeId,
         CancellationToken cancellationToken);
 
-    // entryId routes to its ChatId's shard through ChatEntryId.ShardKey.
     [ComputeMethod(MinCacheDuration = 60)]
     Task<ChatEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken);
 
@@ -154,10 +153,6 @@ public partial interface IChatsBackend : IComputeService, IBackendService
     Task OnUpdateChatFileIndex(ChatsBackend_UpdateChatFileIndex command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnUpdateChatLinkIndex(ChatsBackend_UpdateChatLinkIndex command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnRemoveOwnChats(ChatsBackend_RemoveOwnChats command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task OnRemoveOwnEntries(ChatsBackend_RemoveOwnEntries command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -279,32 +274,6 @@ public sealed partial record ChatsBackend_ChangeEntry(
 }
 
 /// <summary>
-/// Command to remove all chats owned by a user.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatsBackend_RemoveOwnChats(
-    [property: DataMember, Key(0)] UserId UserId
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ShardKey ShardKey => UserId.ShardKey;
-}
-
-/// <summary>
-/// Command to remove all chat entries created by a user.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatsBackend_RemoveOwnEntries(
-    [property: DataMember, Key(0)] UserId UserId
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ShardKey ShardKey => UserId.ShardKey;
-}
-
-/// <summary>
 /// Command to create the user's personal notes chat.
 /// </summary>
 [DataContract, MessagePackObject]
@@ -372,4 +341,3 @@ public sealed partial record ChatsBackend_UpdateReadPositionsStat(
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => ChatId.ShardKey;
 }
-

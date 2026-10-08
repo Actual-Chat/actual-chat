@@ -107,7 +107,9 @@ public class ChatImports(IServiceProvider services) : IChatImports
             OwnerId = importId.Value,
             StartedBy = import.StartedBy,
             StartedAt = import.StartedAt,
-            Targets = chatId is PlaceChatId { IsRoot: false } ? [chatId.ToMaintenanceTarget()!] : [],
+            TargetDiff = chatId is PlaceChatId { IsRoot: false }
+                ? new([chatId.ToMaintenanceTarget()!])
+                : default,
         };
         await Commander.Call(setMaintenanceCmd, cancellationToken).ConfigureAwait(false);
 

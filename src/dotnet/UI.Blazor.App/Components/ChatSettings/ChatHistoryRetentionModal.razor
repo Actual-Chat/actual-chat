@@ -1,0 +1,190 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@implements IModalView<ChatHistoryRetentionModal.Model>
+@implements IDisposable
+@inherits ComputedStateComponent<AppUIHub, ChatHistoryInfo>
+@{
+    var history = State.Value;
+    // The estimate describes a change, so the saved period shows none
+    var isTooShort = _form.Period < Constants.Chat.MinRetentionPeriod;
+    var isEdited = _form.Period != _savedPeriod;
+    var isChanged = isEdited && !isTooShort;
+    var lastEntry = _form.Period is null || !isChanged ? null : _lastEntry;
+    var mustConfirm = lastEntry is not null;
+}
+
+<Form Class="h-full" Model="@_form" OnSubmit="@OnSave">
+    <DialogFrame
+        Title="@L.HistoryRetention_Title"
+        Class="chat-history-retention-modal compact-header modal-sm"
+        HasCloseButton="true">
+        <Body>
+        <FormBlock>
+            <PeriodInput
+                Id="@_periodInputId"
+                Label="@L.HistoryRetention_PeriodLabel"
+                Placeholder="@L.HistoryRetention_ZeroIsAll"
+                IsInvalid="@isTooShort"
+                Value="@_form.Period"
+                ValueChanged="@OnPeriodChanged"/>
+            @if (isTooShort) {
+                <div class="c-error">@L.HistoryRetention_TooShort_Format(L.PeriodText(Constants.Chat.MinRetentionPeriod))</div>
+            }
+            <div class="c-hint">@L.HistoryRetention_Hint</div>
+        </FormBlock>
+        @if (isChanged && _form.Period is { } period && history.First is { } firstEntry) {
+            <FormBlock>
+                @if (lastEntry is null) {
+                    <div class="c-hint">@L.HistoryRetention_Nothing</div>
+                } else {
+                    var cutoff = DateTimeConverter.ToLocalTime(_cutoff);
+                    var cutoffText = L.Date_At_Format(
+                        cutoff.ToString("D", DateFormatter), cutoff.ToString("t", DateFormatter));
+                    var count = Math.Max(lastEntry.LocalId - firstEntry.LocalId + 1, 1);
+                    var length = L.LengthText(_cutoff - firstEntry.BeginsAt);
+                    var marker = BoldMarkedText.Marker;
+                    <div class="c-warning">
+                        <BoldMarkedText Text="@L.HistoryRetention_WillBeDeleted(count, count, cutoffText, length, marker)"/>
+                    </div>
+                    <ChatEntryLine Entry="@lastEntry"/>
+                }
+                <div class="c-warning">
+                    <BoldMarkedText Text="@L.HistoryRetention_RetainAfter_Format(L.PeriodText(period), BoldMarkedText.Marker)"/>
+                </div>
+                @if (mustConfirm) {
+                    <ConfirmationCheckbox @bind-IsChecked="@_isConfirmed"/>
+                }
+            </FormBlock>
+        }
+        @if (!isEdited) {
+            <FormBlock>
+                <div class="c-hint">
+                    @L.HistoryRetention_WipeLink_Prefix<a class="c-wipe-link" @onclick="@OnWipeClick"
+                    >@L.HistoryRetention_WipeLinkTarget</a>@L.HistoryRetention_WipeLink_Suffix
+                </div>
+            </FormBlock>
+        }
+        </Body>
+        <Buttons>
+            <Button Type="@ButtonType.Button" Class="btn-modal" Click="@OnCancel">@L.Common_Cancel</Button>
+            <Button
+                Type="@ButtonType.Submit"
+                Class="btn-modal btn-primary"
+                IsDisabled="@(isTooShort || mustConfirm && !_isConfirmed)">
+                @L.Common_OK
+            </Button>
+        </Buttons>
+    </DialogFrame>
+</Form>
+
+@code {
+    private const int MaxScannedEntryCount = 1000;
+
+    private readonly FormModel _form = new();
+    private CancellationTokenSource? _estimateCts;
+    private string _periodInputId = "";
+    private Moment _cutoff;
+    private ChatEntry? _lastEntry;
+    private TimeSpan? _savedPeriod;
+    private bool _isConfirmed;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public void Dispose()
+        => _estimateCts.CancelAndDisposeSilently();
+
+    protected override void OnInitialized() {
+        _periodInputId = ComponentIdGenerator.Next("history-retention-period");
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync() {
+        var chat = await Hub.Chats.Get(Session, ModalModel.ChatId, default);
+        _form.Period = _savedPeriod = chat?.RetentionPeriod;
+        await UpdateEstimate();
+    }
+
+    protected override ComputedState<ChatHistoryInfo>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ChatHistoryInfo>.Options() {
+                InitialValue = ChatHistoryInfo.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override Task<ChatHistoryInfo> ComputeState(CancellationToken cancellationToken)
+        => Hub.ChatUI.GetHistoryInfo(ModalModel.ChatId, cancellationToken);
+
+    private void OnCancel()
+        => Modal.Close();
+
+    private Task OnWipeClick() {
+        Modal.Close();
+        return Hub.ModalUI.Show(new WipeChatHistoryModal.Model(ModalModel.ChatId));
+    }
+
+    private Task OnPeriodChanged(TimeSpan? period) {
+        // Consent covers the deletion it was given for, not the one a new period brings
+        _form.Period = period;
+        _isConfirmed = false;
+        return UpdateEstimate();
+    }
+
+    // The newest message that retention set to this period would delete right away
+    private async Task UpdateEstimate() {
+        _estimateCts.CancelAndDisposeSilently();
+        _lastEntry = null;
+        if (_form.Period is not { } period)
+            return;
+
+        var cts = _estimateCts = new CancellationTokenSource();
+        var cutoff = Clocks.SystemClock.Now - period;
+        try {
+            var chats = Hub.Chats;
+            var reader = chats.NewEntryReader(Session, ModalModel.ChatId);
+            var idRange = await chats.GetIdRange(Session, ModalModel.ChatId, cts.Token);
+            var firstKept = await reader.FindByMinBeginsAt(cutoff, idRange, cts.Token);
+            var deletedRange = new Range<long>(idRange.Start, firstKept?.LocalId ?? idRange.End);
+            var lastEntry = deletedRange.IsEmptyOrNegative
+                ? null
+                : await reader.GetLast(deletedRange, e => !e.IsSystemEntry, MaxScannedEntryCount, cts.Token);
+            if (cts.IsCancellationRequested)
+                return;
+
+            _cutoff = cutoff;
+            _lastEntry = lastEntry;
+            StateHasChanged();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    private async Task OnSave() {
+        if (_form.Period < Constants.Chat.MinRetentionPeriod)
+            return;
+        if (_form.Period is not null && _lastEntry is not null && _form.Period != _savedPeriod && !_isConfirmed)
+            return;
+
+        var chat = await Hub.Chats.Get(Session, ModalModel.ChatId, default).Require();
+        if (chat.RetentionPeriod != _form.Period) {
+            var command = new Chats_Change {
+                Session = Session,
+                ChatId = chat.Id,
+                ExpectedVersion = chat.Version,
+                Change = new() {
+                    Update = new ChatDiff { RetentionPeriod = Option.Some(_form.Period) },
+                },
+            };
+            var (_, error) = await Hub.UICommander.Run(command);
+            if (error is not null)
+                return;
+        }
+        Modal.Close();
+    }
+
+    // Nested types
+
+    public sealed class FormModel {
+        public TimeSpan? Period { get; set; }
+    }
+
+    public sealed record Model(ChatId ChatId);
+}

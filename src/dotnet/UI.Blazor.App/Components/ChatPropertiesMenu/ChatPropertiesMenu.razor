@@ -7,11 +7,25 @@
 
     var chat = m.Chat;
     var rules = chat.Rules;
-    var shareChatTitle = chat.Id is PeerChatId
+    var isMuted = m.Info.ChatUserSettings.NotificationMode == ChatNotificationMode.Muted;
+    var retentionText = chat.RetentionPeriod is { } retention
+        ? L.HistoryRetention_Short_Format(L.PeriodText(retention))
+        : L.HistoryRetention_Title;
+    var isPeerChat = chat.Id is PeerChatId;
+    var shareChatTitle = isPeerChat
         ? L.Share_ContactOf_Format(chat.Title)
         : chat.IsPublic
             ? L.Share_Chat
             : L.Share_ChatJoinLink;
+    var copyLinkTitle = isPeerChat
+        ? L.ChatMenu_CopyContactLink_Format(chat.Title)
+        : chat.IsPublic
+            ? L.ChatMenu_CopyChatLink
+            : L.ChatMenu_CopyChatJoinLink;
+    // As in the right panel: either side of a peer chat, or an owner, sets it for everyone
+    var canSummarize = !chat.HasSingleAuthor && chat.IsMember() && (rules.IsOwner() || isPeerChat);
+    var isSummarized = chat.IsSummarized ?? false;
+    var canEdit = isPeerChat || (rules.CanEditProperties() && !chat.Id.IsThread());
 }
 
 <CascadingValue Value="m">
@@ -21,7 +35,18 @@
         Text="@L.Chat_OpenRightPanel"
         Click="@OnOpenRightPanelClick">
     </MenuEntry>
-    <CoachChatToggleEntry ChatId="@chat.Id"/>
+    <MenuEntry
+        Icon="@(isMuted ? "icon-bell" : "icon-bell-off")"
+        Text="@(isMuted ? L.ChatMenu_EnableNotifications : L.ChatMenu_DisableNotifications)"
+        Click="@(() => OnNotificationsClick(isMuted))">
+    </MenuEntry>
+    @if (canSummarize) {
+        <MenuEntry
+            Icon="icon-ai-stars"
+            Text="@(isSummarized ? L.ChatMenu_DisableSummaries : L.ChatMenu_EnableSummaries)"
+            Click="@(() => OnSummarizeClick(!isSummarized))">
+        </MenuEntry>
+    }
 @*
     <MenuEntry
         Icon="icon-phone-call"
@@ -45,6 +70,25 @@
         </TextContent>
     </MenuEntry>
 *@
+    @if (chat.CanManageHistory()) {
+        <MenuEntry
+            Icon="icon-history"
+            Text="@retentionText"
+            Click="@OnHistoryRetentionClick">
+        </MenuEntry>
+    }
+    @if (canEdit) {
+        <MenuEntry
+            Icon="icon-edit"
+            Text="@(isPeerChat ? L.ChatMenu_EditContact : L.ChatMenu_EditChat)"
+            Click="@(() => OnEditClick(m))">
+        </MenuEntry>
+    }
+    <MenuEntry
+        Icon="icon-copy"
+        Text="@copyLinkTitle"
+        Click="@OnCopyLinkClick">
+    </MenuEntry>
     <MenuEntry
         Icon="icon-share-2"
         Text="@shareChatTitle"
@@ -81,6 +125,43 @@
 
     private Task OnShareClick()
         => Hub.ShareUI.Share(_chatId);
+
+    // ImportantOnly counts as enabled here, so disabling it mutes the chat; the bell's menu still sets it
+    private Task OnNotificationsClick(bool isMuted) {
+        var mode = isMuted ? ChatNotificationMode.Default : ChatNotificationMode.Muted;
+        return UICommander.RunLocal(ct
+            => UserSettingsUI.ChatUserSettings(_chatId).Update(x => x with { NotificationMode = mode }, ct));
+    }
+
+    private async Task OnHistoryRetentionClick() {
+        await WhenClosed;
+        _ = ModalUI.Show(new ChatHistoryRetentionModal.Model(_chatId));
+    }
+
+    private Task OnSummarizeClick(bool isSummarized)
+        => UICommander.Run(new Chats_Change {
+            Session = Session,
+            ChatId = _chatId,
+            ExpectedVersion = null,
+            Change = Change.Update<ChatDiff>(new() { IsSummarized = isSummarized }),
+        });
+
+    private async Task OnEditClick(ChatState state) {
+        await WhenClosed;
+        _ = state.Chat.Id is PeerChatId
+            ? ModalUI.Show(new PeerContactEditorModal.Model(state.Contact.Id))
+            : ModalUI.Show(new ChatSettingsModal.Model(state.Chat.Id));
+    }
+
+    // The same link the share modal copies
+    private async Task OnCopyLinkClick() {
+        var shareModel = await Hub.ShareUI.GetModel(_chatId).ConfigureAwait(true);
+        if (shareModel is null)
+            return;
+
+        await Hub.ClipboardUI.WriteText(shareModel.Request.GetShareLink(Hub.UrlMapper)).ConfigureAwait(true);
+        Hub.ToastUI.Show(L.Share_LinkCopied, "icon-copy", ToastDismissDelay.Short);
+    }
 
     private void OnScreenShareClick()
     {

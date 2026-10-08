@@ -132,15 +132,18 @@ public class Accounts(IServiceProvider services) : IAccounts
         var ownAccount = await GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         ownAccount.Require(AccountFull.MustBeActive);
 
-        // Sign out to prevent unexpected UI invalidations
-        var signOutCommand = new AccountsBackend_SignOut(command.Session);
-        await Commander.Call(signOutCommand, true, cancellationToken).ConfigureAwait(false);
+        // Every device, not just this one: a message posted from another session after the purge
+        // flow finishes would re-create the author and then be hidden but never purged.
+        var sessions = await Backend.ListSessions(ownAccount.Id, cancellationToken).ConfigureAwait(false);
+        foreach (var session in sessions) {
+            var signOutCmd = new AccountsBackend_SignOut(session, true);
+            await Commander.Call(signOutCmd, cancellationToken).ConfigureAwait(false);
+        }
+        var signOutOwnCmd = new AccountsBackend_SignOut(command.Session, true);
+        await Commander.Call(signOutOwnCmd, cancellationToken).ConfigureAwait(false);
 
-        var deleteOwnChatsCommand = new ChatsBackend_RemoveOwnChats(ownAccount.Id);
-        await Commander.Call(deleteOwnChatsCommand, true, cancellationToken).ConfigureAwait(false);
-
-        var deleteOwnMessagesCommand = new ChatsBackend_RemoveOwnEntries(ownAccount.Id);
-        await Commander.Call(deleteOwnMessagesCommand, true, cancellationToken).ConfigureAwait(false);
+        var requestUserRemovalCmd = new ChatsBackend_RequestUserRemoval(ownAccount.Id);
+        await Commander.Call(requestUserRemovalCmd, cancellationToken).ConfigureAwait(false);
 
         var deleteNotificationsCommand = new NotificationsBackend_RemoveAccount(ownAccount.Id);
         await Commander.Call(deleteNotificationsCommand, true, cancellationToken).ConfigureAwait(false);

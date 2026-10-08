@@ -9,7 +9,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
     private ChatId TestChatId => Constants.Chat.DefaultChatId;
 
     [Fact]
-    public async Task RemoveOwnEntriesTest()
+    public async Task RequestUserRemovalShouldPurgeTheUsersEntries()
     {
         var appHost = AppHost;
         await using var tester = appHost.NewWebClientTester(Out);
@@ -31,27 +31,30 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         var entries = await CreateChatEntries(chats, session, TestChatId, 3);
 
-        var removeEntriesCommand = new ChatsBackend_RemoveOwnEntries(bob.Id);
+        var removeEntriesCommand = new ChatsBackend_RequestUserRemoval(bob.Id);
         await services.Commander().Call(removeEntriesCommand);
 
-        var ids = new HashSet<long>();
+        // Each chat's ChatPurgeFlow drains the entries in the background
         var entryIdTiles = Constants.Chat.EntryIdTiles;
         var newEntryRange = new Range<long>(entries.Min(e => e.LocalId), entries.Max(e => e.LocalId) + 1);
         var idTiles = entryIdTiles.GetCoveringTiles(newEntryRange);
-        foreach (var idTile in idTiles) {
-            var tile = await chats.GetTile(session,
-                TestChatId,
-                idTile.Range,
-                CancellationToken.None);
-            ids.AddRange(tile.Entries.Select(e => e.LocalId));
-        }
+        await TestWait.WhenPolled(async () => {
+            var ids = new HashSet<long>();
+            foreach (var idTile in idTiles) {
+                var tile = await chats.GetTile(session,
+                    TestChatId,
+                    idTile.Range,
+                    CancellationToken.None);
+                ids.AddRange(tile.Entries.Select(e => e.LocalId));
+            }
 
-        foreach (var entry in entries)
-            ids.Should().NotContain(entry.LocalId);
+            foreach (var entry in entries)
+                ids.Should().NotContain(entry.LocalId);
+        }, TimeSpan.FromSeconds(30));
     }
 
     [Fact]
-    public async Task RemoveOwnChatsTest()
+    public async Task RequestUserRemovalShouldRemoveSoleOwnedChats()
     {
         var appHost = AppHost;
         await using var tester = appHost.NewWebClientTester(Out);
@@ -78,7 +81,7 @@ public class RemoveAccountTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         chat.Should().NotBeNull();
 
         var entries = await CreateChatEntries(chats, session, chat.Id, 3);
-        var removeEntriesCommand = new ChatsBackend_RemoveOwnChats(bob.Id);
+        var removeEntriesCommand = new ChatsBackend_RequestUserRemoval(bob.Id);
         await services.Commander().Call(removeEntriesCommand);
 
         await TestWait.When(async ct => {

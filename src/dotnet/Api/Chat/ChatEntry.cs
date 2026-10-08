@@ -19,6 +19,7 @@ namespace ActualChat.Chat;
 // 100..199 is the SystemEntry range - see ChatEntry.IsSystemUnionTag
 [Union(100, typeof(UnsupportedSystemEntry))]
 [Union(101, typeof(CallEntry))]
+[Union(102, typeof(HistoryChangedEntry))]
 public abstract partial record ChatEntry(
     [property: DataMember(Order = 0), Key(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), Key(1)] long Version = 0
@@ -43,6 +44,7 @@ public abstract partial record ChatEntry(
             ChatEntryKind.MembersChanged => new MembersChangedEntry(id),
             ChatEntryKind.NotifyMembers => new NotifyMembersEntry(id),
             ChatEntryKind.Call => new CallEntry(id),
+            ChatEntryKind.HistoryChanged => new HistoryChangedEntry(id),
             _ => new TextEntry(id),
         };
 
@@ -202,6 +204,8 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember] public CallOutcome? Outcome { get; init; }
     [DataMember] public ApiArray<AuthorId>? InviteeIds { get; init; }
     [DataMember] public bool? HasVideo { get; init; }
+    [DataMember] public HistoryChangeKind? HistoryChange { get; init; }
+    [DataMember] public Option<TimeSpan?> HistoryPeriod { get; init; }
 
     public ChatEntryDiff(ChatEntry entry) : this()
     {
@@ -209,6 +213,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
             MembersChangedEntry => ChatEntryKind.MembersChanged,
             NotifyMembersEntry => ChatEntryKind.NotifyMembers,
             CallEntry => ChatEntryKind.Call,
+            HistoryChangedEntry => ChatEntryKind.HistoryChanged,
             _ => ChatEntryKind.Text,
         };
         AuthorId = entry.AuthorId;
@@ -247,6 +252,12 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
             InviteeIds = call.InviteeIds;
             HasVideo = call.HasVideo;
             break;
+        case HistoryChangedEntry hc:
+            TargetAuthorId = hc.TargetAuthorId;
+            TargetAuthorName = hc.TargetAuthorName;
+            HistoryChange = hc.HistoryChange;
+            HistoryPeriod = hc.HistoryPeriod;
+            break;
         }
     }
 }
@@ -256,4 +267,5 @@ public enum ChatEntryKind {
     MembersChanged = 1,
     NotifyMembers = 2,
     Call = 3,
+    HistoryChanged = 4,
 }

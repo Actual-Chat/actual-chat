@@ -27,6 +27,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Banner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.BannerButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.BarChart>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.BoldMarkedText>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.BubbleBase>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.BubbleContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.BubbleHost>();
@@ -44,6 +45,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.CompleteSignInStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.CompletedStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ConfirmModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ConfirmationCheckbox>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ContentSwap>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ContentSwapDisplay>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ContentSwapLayer>();
@@ -108,6 +110,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PanelBodySkeleton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PanelFooterSkeleton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PanelHeaderSkeleton>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PeriodInput>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PhoneVerifier>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Pic>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.PicUpload>();
@@ -399,6 +402,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Pages.NotificationsTestPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Pages.Test.TranscodingTestPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Pages.VoiceCallTestPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Services.ChatHistoryInfo, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Services.ChatState, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Services.DurationCountdown, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Services.PermissionsState, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -592,6 +596,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.Banner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.BannerButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.BarChart), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.BoldMarkedText), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.BubbleBase), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.BubbleContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.BubbleHost), AotTypeKind.Component),
@@ -609,6 +614,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.CompleteSignInStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.CompletedStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ConfirmModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.ConfirmationCheckbox), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ContentSwap), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ContentSwapDisplay), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ContentSwapLayer), AotTypeKind.Component),
@@ -673,6 +679,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.PanelBodySkeleton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.PanelFooterSkeleton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.PanelHeaderSkeleton), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.PeriodInput), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.PhoneVerifier), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.Pic), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.PicUpload), AotTypeKind.Component),

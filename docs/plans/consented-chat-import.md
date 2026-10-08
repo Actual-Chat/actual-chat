@@ -209,8 +209,8 @@ contains the chat's key. Because every import in a Place writes the same row, `O
 check is also what makes the first Start win (decision 1).
 
 Two consequences of keeping one row per Place:
-- Admin maintenance (`Chats_SetMaintenance`) on a chat in a Place edits the root row's target
-  set, so several chats can be under maintenance at once. It can't coexist with a whole-Place
+- Maintenance of a single chat in a Place edits the root row's target set (a `TargetDiff` applied
+  under the row lock), so several chats can be under maintenance at once. It can't coexist with a whole-Place
   maintenance or with an import anywhere in the Place - `OnSet`'s owner check refuses it.
 - `OnChangeEntry` still lets through, during an import, the change that ends an entry that was
   streaming when the import began (clearing `ContentStreamId`, or removing it). Without it, a

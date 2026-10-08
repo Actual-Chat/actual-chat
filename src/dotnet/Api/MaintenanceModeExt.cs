@@ -7,7 +7,11 @@ public static class MaintenanceModeExt
         if (mode == MaintenanceMode.None)
             return;
 
-        var modeName = mode == MaintenanceMode.Import ? "import" : "maintenance";
+        var modeName = mode switch {
+            MaintenanceMode.Import => "import",
+            MaintenanceMode.Removal => "removal",
+            _ => "maintenance",
+        };
         throw StandardError.Constraint($"The {resourceName} is in {modeName} mode.");
     }
 }

@@ -63,4 +63,34 @@ public sealed class TileLayer<T>(T zero, T tileSize)
             tiles.Release();
         }
     }
+
+    // Unlike the range overload, returns only the tiles the points fall into, ordered by Start
+    public Tile<T>[] GetCoveringTiles(IEnumerable<T> points)
+    {
+        // A linear scan finds a known tile faster than a set does until there are a few of them
+        const int maxLinearScanCount = 16;
+        var tiles = ArrayBuffer<Tile<T>>.Lease(true);
+        HashSet<Tile<T>>? tileSet = null;
+        try {
+            foreach (var point in points) {
+                var tile = GetTile(point);
+                if (tileSet is not null) {
+                    if (tileSet.Add(tile))
+                        tiles.Add(tile);
+                    continue;
+                }
+                if (tiles.Span.Contains(tile))
+                    continue;
+
+                tiles.Add(tile);
+                if (tiles.Count > maxLinearScanCount)
+                    tileSet = [with(tiles.Count * 2), ..tiles];
+            }
+            tiles.Span.Sort();
+            return tiles.ToArray();
+        }
+        finally {
+            tiles.Release();
+        }
+    }
 }

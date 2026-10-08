@@ -137,16 +137,19 @@ body.hoverable .chat-settings-container .tile-item:hover {
     @apply shrink-0; /* prevents shrinking tile item when list overflows */
 }
 
-/* Integrations row, page (chat) and tab (place) */
+/* Integrations row, page (chat) and tab (place); the history retention row reads the same way */
 
-.tile-item.item-integrations .ti-right {
+.tile-item.item-integrations .ti-right,
+.tile-item.item-history-retention .ti-right {
     @apply min-w-8 justify-end;
     @apply text-03;
 }
-.tile-item.item-integrations .ti-right .c-count {
+.tile-item.item-integrations .ti-right .c-count,
+.tile-item.item-history-retention .ti-right .c-count {
     @apply whitespace-nowrap;
 }
-.tile-item.item-integrations .ti-right i {
+.tile-item.item-integrations .ti-right i,
+.tile-item.item-history-retention .ti-right i {
     @apply -mr-2;
 }
 

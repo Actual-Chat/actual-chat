@@ -6,7 +6,7 @@
 }
 
 <div class="c-chat-info">
-    @if (m.ShowSummarizationToggle || m.ShowPttToggle) {
+    @if (m.ShowSummarizationToggle || m.ShowPttToggle || m.RetentionPeriod is not null) {
         <Card>
             @if (m.ShowSummarizationToggle) {
                 var iconCls = m.IsSummarized ? "text-primary" : "text-03";
@@ -28,6 +28,21 @@
                     <Caption>@GetStateCaption(m.IsPttEnabled, m.IsOwner)</Caption>
                 </TileItem>
             }
+            @if (m.RetentionPeriod is { } retention) {
+                <TileItem
+                    Class="item-retention"
+                    IsHoverable="@m.CanManageHistory"
+                    Click="@OnHistoryRetentionClick">
+                    <Icon><i class="text-xl icon-history text-primary"></i></Icon>
+                    <Content>@L.HistoryRetention_Title</Content>
+                    <Caption>@L.PeriodText(retention)</Caption>
+                    <Right>
+                        @if (m.CanManageHistory) {
+                            <i class="icon-chevron-right text-xl"></i>
+                        }
+                    </Right>
+                </TileItem>
+            }
         </Card>
     }
 </div>
@@ -41,7 +56,7 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         if (chat.HasSingleAuthor || !chat.IsMember())
-            return new();
+            return new() { RetentionPeriod = chat.RetentionPeriod };
 
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
         var isSummarized = chat.IsSummarized ?? false;
@@ -53,6 +68,8 @@
             IsSummarized = isSummarized,
             ShowPttToggle = !chat.Id.IsThread() && (isOwner || isPttEnabled),
             IsPttEnabled = isPttEnabled,
+            RetentionPeriod = chat.RetentionPeriod,
+            CanManageHistory = chat.CanManageHistory(),
         };
     }
 
@@ -114,6 +131,11 @@
             CancellationToken.None);
     }
 
+    private Task OnHistoryRetentionClick()
+        => State.Value.CanManageHistory
+            ? ModalUI.Show(new ChatHistoryRetentionModal.Model(Chat.Id))
+            : Task.CompletedTask;
+
     private string GetStateCaption(bool isOn, bool isOwner) {
         var state = isOn ? L.RightPanel_On : L.RightPanel_Off;
         return isOwner ? state : L.RightPanel_StateByChatOwner_Format(state);
@@ -127,5 +149,7 @@
         public bool ShowSummarizationToggle { get; init; }
         public bool IsPttEnabled { get; init; }
         public bool ShowPttToggle { get; init; }
+        public TimeSpan? RetentionPeriod { get; init; }
+        public bool CanManageHistory { get; init; }
     }
 }

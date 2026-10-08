@@ -44,6 +44,7 @@ public sealed partial record Chat(
     [DataMember, Key(18)] public Moment? PttEnabledAt { get; init; }
 
     [DataMember, Key(19)] public MaintenanceMode MaintenanceMode { get; init; }
+    [DataMember, Key(21)] public TimeSpan? RetentionPeriod { get; init; }
 
     // Populated only on front-end
     [DataMember, Key(11)] public AuthorRules Rules { get; init; } = null!;
@@ -91,4 +92,5 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember] public AliasId? AliasId { get; init; }
     [DataMember] public Option<bool?> IsSummarized { get; init; }
     [DataMember] public Option<Moment?> PttEnabledAt { get; init; }
+    [DataMember] public Option<TimeSpan?> RetentionPeriod { get; init; }
 }

@@ -32,4 +32,22 @@ public class TimeSpanFormatExtTest
         ts.Format("Short").Should().Be("49h 0m 30s");
         ts.Format("d\\d\\ hh\\:mm\\:ss").Should().Be("2d 01:00:30");
     }
+
+    [Theory]
+    [InlineData(0, 0, PeriodUnit.Minutes)]
+    [InlineData(5, 5, PeriodUnit.Minutes)]
+    [InlineData(90, 90, PeriodUnit.Minutes)]
+    [InlineData(120, 2, PeriodUnit.Hours)]
+    [InlineData(60 * 36, 36, PeriodUnit.Hours)]
+    [InlineData(60 * 48, 2, PeriodUnit.Days)]
+    public void ToPeriodUnitsShouldPickTheLargestUnitThatDivides(int minutes, int count, PeriodUnit unit)
+    {
+        // act
+        var result = TimeSpan.FromMinutes(minutes).ToPeriodUnits();
+
+        // assert
+        result.Should().Be((count, unit));
+        if (count != 0)
+            unit.ToTimeSpan(count).Should().Be(TimeSpan.FromMinutes(minutes));
+    }
 }

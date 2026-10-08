@@ -32,6 +32,7 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Start => l["Common_Start"].Value;
         public string Common_Stop => l["Common_Stop"].Value;
         public string Common_Optional => l["Common_Optional"].Value;
+        public string Common_IUnderstand => l["Common_IUnderstand"].Value;
         public string Common_Verified => l["Common_Verified"].Value;
         public string Common_Unverified => l["Common_Unverified"].Value;
 
@@ -398,6 +399,14 @@ public static class LocalizedStringsLocalizerExt
 
         public string ChatMenu_AddMembers => l["ChatMenu_AddMembers"].Value;
         public string ChatMenu_EditContact => l["ChatMenu_EditContact"].Value;
+        public string ChatMenu_DisableNotifications => l["ChatMenu_DisableNotifications"].Value;
+        public string ChatMenu_EnableNotifications => l["ChatMenu_EnableNotifications"].Value;
+        public string ChatMenu_EditChat => l["ChatMenu_EditChat"].Value;
+        public string ChatMenu_CopyContactLink_Format(object arg0) => l["ChatMenu_CopyContactLink_Format", arg0].Value;
+        public string ChatMenu_CopyChatLink => l["ChatMenu_CopyChatLink"].Value;
+        public string ChatMenu_CopyChatJoinLink => l["ChatMenu_CopyChatJoinLink"].Value;
+        public string ChatMenu_EnableSummaries => l["ChatMenu_EnableSummaries"].Value;
+        public string ChatMenu_DisableSummaries => l["ChatMenu_DisableSummaries"].Value;
         public string ChatMenu_LeaveChat => l["ChatMenu_LeaveChat"].Value;
         public string ChatMenu_BlockUser => l["ChatMenu_BlockUser"].Value;
         public string ChatMenu_UnblockUser => l["ChatMenu_UnblockUser"].Value;
@@ -450,6 +459,12 @@ public static class LocalizedStringsLocalizerExt
         public string SystemEntry_CallDeclined => l["SystemEntry_CallDeclined"].Value;
         public string SystemEntry_CallCanceled => l["SystemEntry_CallCanceled"].Value;
         public string SystemEntry_CallEnded => l["SystemEntry_CallEnded"].Value;
+        public string SystemEntry_HistoryWiped => l["SystemEntry_HistoryWiped"].Value;
+        public string SystemEntry_HistoryWipedPeriod_Format(object arg0)
+            => l["SystemEntry_HistoryWipedPeriod_Format", arg0].Value;
+        public string SystemEntry_RetentionChanged_Format(object arg0)
+            => l["SystemEntry_RetentionChanged_Format", arg0].Value;
+        public string SystemEntry_RetentionTurnedOff => l["SystemEntry_RetentionTurnedOff"].Value;
 
         public string ChatMaintenance_Mode => l["ChatMaintenance_Mode"].Value;
         public string ChatImport_Start => l["ChatImport_Start"].Value;
@@ -535,6 +550,7 @@ public static class LocalizedStringsLocalizerExt
         public string ThreadMenu_Mute => l["ThreadMenu_Mute"].Value;
         public string ThreadMenu_Unmute => l["ThreadMenu_Unmute"].Value;
         public string ThreadMenu_GoToStartMessage => l["ThreadMenu_GoToStartMessage"].Value;
+        public string ThreadMenu_StartMessageRemoved => l["ThreadMenu_StartMessageRemoved"].Value;
         public string ThreadMenu_CopyThreadLink => l["ThreadMenu_CopyThreadLink"].Value;
 
         public string LocationMessage_Live => l["LocationMessage_Live"].Value;
@@ -745,12 +761,16 @@ public static class LocalizedStringsLocalizerExt
         public string DeleteAccount_Question_Prefix => l["DeleteAccount_Question_Prefix"].Value;
         public string DeleteAccount_QuestionTarget => l["DeleteAccount_QuestionTarget"].Value;
         public string DeleteAccount_Question_Suffix => l["DeleteAccount_Question_Suffix"].Value;
-        public string DeleteAccount_Warning_Prefix => l["DeleteAccount_Warning_Prefix"].Value;
-        public string DeleteAccount_WarningTarget => l["DeleteAccount_WarningTarget"].Value;
-        public string DeleteAccount_Warning_Suffix => l["DeleteAccount_Warning_Suffix"].Value;
+        public string DeleteAccount_Irreversible => l["DeleteAccount_Irreversible"].Value;
         public string DeleteAccount_Scope_Prefix => l["DeleteAccount_Scope_Prefix"].Value;
         public string DeleteAccount_ScopeTarget => l["DeleteAccount_ScopeTarget"].Value;
+        public string DeleteAccount_Scope_Middle => l["DeleteAccount_Scope_Middle"].Value;
+        public string DeleteAccount_ScopeContentTarget => l["DeleteAccount_ScopeContentTarget"].Value;
         public string DeleteAccount_Scope_Suffix => l["DeleteAccount_Scope_Suffix"].Value;
+        public string DeleteAccount_SoleOwned_Prefix => l["DeleteAccount_SoleOwned_Prefix"].Value;
+        public string DeleteAccount_SoleOwnedTarget => l["DeleteAccount_SoleOwnedTarget"].Value;
+        public string DeleteAccount_SoleOwned_Suffix => l["DeleteAccount_SoleOwned_Suffix"].Value;
+        public string DeleteAccount_SoleOwnedHint => l["DeleteAccount_SoleOwnedHint"].Value;
         public string DeleteAccount_Proposal_Prefix => l["DeleteAccount_Proposal_Prefix"].Value;
         public string DeleteAccount_Proposal_Suffix => l["DeleteAccount_Proposal_Suffix"].Value;
 
@@ -1989,6 +2009,12 @@ public static class LocalizedStringsLocalizerExt
         public string Duration_Days_Format(object arg0) => l["Duration_Days_Format", arg0].Value;
         public string Duration_Hours_Format(object arg0) => l["Duration_Hours_Format", arg0].Value;
         public string Duration_Minutes_Format(object arg0) => l["Duration_Minutes_Format", arg0].Value;
+        public string Duration_MinuteUnit(long count) => l.Plural("Duration_MinuteUnit", count);
+        public string Duration_HourUnit(long count) => l.Plural("Duration_HourUnit", count);
+        public string Duration_DayUnit(long count) => l.Plural("Duration_DayUnit", count);
+        public string Duration_MinuteCount(long count, object arg0) => l.Plural("Duration_MinuteCount", count, arg0);
+        public string Duration_HourCount(long count, object arg0) => l.Plural("Duration_HourCount", count, arg0);
+        public string Duration_DayCount(long count, object arg0) => l.Plural("Duration_DayCount", count, arg0);
         public string Distance_Meters_Format(object arg0) => l["Distance_Meters_Format", arg0].Value;
         public string Distance_Kilometers_Format(object arg0) => l["Distance_Kilometers_Format", arg0].Value;
 
@@ -1996,6 +2022,29 @@ public static class LocalizedStringsLocalizerExt
         public string Invite_NewPrivateLink => l["Invite_NewPrivateLink"].Value;
         public string Invite_UnknownLink => l["Invite_UnknownLink"].Value;
 
+        public string HistoryRetention_Title => l["HistoryRetention_Title"].Value;
+        public string HistoryRetention_Full => l["HistoryRetention_Full"].Value;
+        public string HistoryRetention_Short_Format(object arg0) => l["HistoryRetention_Short_Format", arg0].Value;
+        public string HistoryRetention_PeriodLabel => l["HistoryRetention_PeriodLabel"].Value;
+        public string HistoryRetention_ZeroIsAll => l["HistoryRetention_ZeroIsAll"].Value;
+        public string HistoryRetention_TooShort_Format(object arg0) => l["HistoryRetention_TooShort_Format", arg0].Value;
+        public string HistoryRetention_Hint => l["HistoryRetention_Hint"].Value;
+        public string HistoryRetention_WillBeDeleted(long count, object arg0, object arg1, object arg2, object arg3)
+            => l.Plural("HistoryRetention_WillBeDeleted", count, arg0, arg1, arg2, arg3);
+        public string HistoryRetention_RetainAfter_Format(object arg0, object arg1)
+            => l["HistoryRetention_RetainAfter_Format", arg0, arg1].Value;
+        public string HistoryRetention_Nothing => l["HistoryRetention_Nothing"].Value;
+        public string HistoryRetention_WipeLink_Prefix => l["HistoryRetention_WipeLink_Prefix"].Value;
+        public string HistoryRetention_WipeLinkTarget => l["HistoryRetention_WipeLinkTarget"].Value;
+        public string HistoryRetention_WipeLink_Suffix => l["HistoryRetention_WipeLink_Suffix"].Value;
+        public string HistoryWipe_Title => l["HistoryWipe_Title"].Value;
+        public string HistoryWipe_Warning => l["HistoryWipe_Warning"].Value;
+        public string HistoryWipe_PeriodLabel => l["HistoryWipe_PeriodLabel"].Value;
+        public string HistoryWipe_Everything => l["HistoryWipe_Everything"].Value;
+        public string HistoryWipe_From_Format(object arg0) => l["HistoryWipe_From_Format", arg0].Value;
+        public string HistoryWipe_Count(long count, object arg0) => l.Plural("HistoryWipe_Count", count, arg0);
+        public string HistoryWipe_Nothing => l["HistoryWipe_Nothing"].Value;
+        public string HistoryWipe_Wipe => l["HistoryWipe_Wipe"].Value;
         public string ChatSettings_UsePlaceSettingsForMembers => l["ChatSettings_UsePlaceSettingsForMembers"].Value;
 
         // Speech coach

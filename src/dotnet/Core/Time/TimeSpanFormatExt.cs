@@ -1,17 +1,6 @@
 namespace ActualChat.Time;
 
 /// <summary>
-/// Specifies the format for displaying time span values.
-/// </summary>
-public enum TimeSpanFormat
-{
-    Default = 0,
-    Short,
-    // m:ss, switching to h:mm:ss past an hour — media-player style (e.g. 0:05, not 5s)
-    Clock,
-}
-
-/// <summary>
 /// Extension methods for formatting <see cref="TimeSpan"/> values.
 /// </summary>
 public static class TimeSpanFormatExt
@@ -31,6 +20,32 @@ public static class TimeSpanFormatExt
             TimeSpanFormat.Short => value.ToShortString(),
             TimeSpanFormat.Clock => FormatClock(value),
             _ => throw new ArgumentOutOfRangeException(nameof(format), format, null)
+        };
+
+    // The largest unit the period divides into, in whole minutes at worst
+    public static (int Count, PeriodUnit Unit) ToPeriodUnits(this TimeSpan value)
+    {
+        var minutes = (int)Math.Round(Math.Abs(value.TotalMinutes));
+        if (minutes == 0 || minutes % 60 != 0)
+            return (minutes, PeriodUnit.Minutes);
+
+        var hours = minutes / 60;
+        return hours % 24 == 0 ? (hours / 24, PeriodUnit.Days) : (hours, PeriodUnit.Hours);
+    }
+
+    // Rounded up to whole minutes, hours or days - whichever reads best for its length
+    public static TimeSpan CeilingToPeriodUnit(this TimeSpan value)
+        => value.TotalHours switch {
+            < 1 => TimeSpan.FromMinutes(Math.Max(1, Math.Ceiling(value.TotalMinutes))),
+            < 48 => TimeSpan.FromHours(Math.Ceiling(value.TotalHours)),
+            _ => TimeSpan.FromDays(Math.Ceiling(value.TotalDays)),
+        };
+
+    public static TimeSpan ToTimeSpan(this PeriodUnit unit, long count)
+        => unit switch {
+            PeriodUnit.Days => TimeSpan.FromDays(count),
+            PeriodUnit.Hours => TimeSpan.FromHours(count),
+            _ => TimeSpan.FromMinutes(count),
         };
 
     // Private methods

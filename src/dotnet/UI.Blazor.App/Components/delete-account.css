@@ -1,17 +1,37 @@
-﻿.delete-account-modal .c-question span {
-    @apply font-semibold;
+/* The header already spaces the title, so neither the frame gap nor the body padding is added on top */
+.delete-account-modal {
+    @apply gap-y-0;
 }
-.delete-account-modal .dialog-body > .form-block:first-child {
+/* .modal-frame sets font-medium for every modal; this dialog is prose, so it reads at body weight */
+.delete-account-modal .dialog-body {
+    @apply text-body;
     @apply pt-0;
 }
-.delete-account-modal .c-description {
+.delete-account-modal b {
+    @apply font-semibold;
+}
+.delete-account-modal .c-warning {
     @apply text-danger;
 }
-.delete-account-modal .c-description span {
-    @apply font-semibold;
+/* Centred on the whole row, as in the chat list: TileItem otherwise lines the icon up with the title only */
+.delete-account-modal .c-sole-owned .tile-item {
+    @apply items-center py-1;
+    @apply text-01;
 }
-.delete-account-modal .c-proposal span {
-    @apply font-semibold;
+.delete-account-modal .c-sole-owned .tile-item > .ti-left,
+.delete-account-modal .c-sole-owned .tile-item > .ti-right {
+    @apply self-center;
+}
+/* The navbar's place buttons round a square picture the same way */
+.delete-account-modal .c-sole-owned .pic-square {
+    @apply rounded-md overflow-hidden;
+}
+.delete-account-modal .c-hint {
+    @apply text-02;
+}
+.delete-account-modal .c-question,
+.delete-account-modal .c-proposal {
+    @apply text-02;
 }
 .delete-account-modal .c-proposal code {
     @apply font-mono font-semibold text-danger;

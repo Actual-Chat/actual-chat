@@ -86,4 +86,19 @@ public class TileLayerTest(ITestOutputHelper @out) : TestBase(@out)
             endGap.Should().BeLessThan(Tiles16.TileSize);
         }
     }
+
+    [Fact]
+    public void GetCoveringTilesForPointsTest()
+    {
+        Tiles16.GetCoveringTiles(Array.Empty<long>()).Should().BeEmpty();
+        var tiles = Tiles16.GetCoveringTiles([40L, 1L, 15L, 100L, 0L, 47L, -3L]);
+        tiles.Select(t => t.Range).Should().Equal(
+            new Range<long>(-16, 0), new Range<long>(0, 16), new Range<long>(32, 48), new Range<long>(96, 112));
+        tiles.Should().OnlyContain(t => ReferenceEquals(t.Layer, Tiles16));
+
+        // Past the linear-scan limit the dedup switches to a set
+        var points = Enumerable.Range(0, 40).SelectMany(i => new[] { i * 16L + 3, i * 16L + 9 }).Reverse();
+        var manyTiles = Tiles16.GetCoveringTiles(points);
+        manyTiles.Select(t => t.Start).Should().Equal(Enumerable.Range(0, 40).Select(i => i * 16L));
+    }
 }

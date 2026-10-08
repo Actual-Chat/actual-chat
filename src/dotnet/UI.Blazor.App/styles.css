@@ -23,6 +23,7 @@
 @import './Components/ChatMemberCounter/chat-member-counter.css';
 @import './Components/ChatSettings/chat-import-start-modal.css';
 @import './Components/ChatSettings/chat-settings-modal.css';
+@import './Components/ChatSettings/chat-history.css';
 @import './Components/ChatView/EmptyChatContent/empty-chat-content.css';
 @import './Components/ChatView/Items/Attachment/attachment.css';
 @import './Components/ChatView/Items/Call/call-message.css';

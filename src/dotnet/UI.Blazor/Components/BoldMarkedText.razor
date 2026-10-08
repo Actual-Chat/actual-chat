@@ -1,0 +1,19 @@
+@namespace ActualChat.UI.Blazor.Components
+@{
+    var parts = Text.Split(Marker);
+}
+
+@* Localized text whose emphasized spans are wrapped in Marker, so each language decides what's bold *@
+@for (var i = 0; i < parts.Length; i++) {
+    if (i % 2 == 0) {
+        @parts[i]
+    } else {
+        <b>@parts[i]</b>
+    }
+}
+
+@code {
+    public const string Marker = "\u0001";
+
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+}

@@ -31,6 +31,12 @@ public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryO
         init => Option ??= value;
     }
 
+    [DataMember]
+    public LegacyHistoryChangedOption? HistoryChanged {
+        get => Option as LegacyHistoryChangedOption;
+        init => Option ??= value;
+    }
+
     public static implicit operator LegacySystemEntry(LegacySystemEntryOption option)
         => new() { Option = option };
 
@@ -47,6 +53,10 @@ public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryO
         CallEntry c => new LegacySystemEntry {
             Option = new LegacyCallOption(
                 c.CallerId, c.CallerName, c.Outcome, c.InviteeIds.ToArray(), c.HasVideo),
+        },
+        HistoryChangedEntry hc => new LegacySystemEntry {
+            Option = new LegacyHistoryChangedOption(
+                hc.TargetAuthorId, hc.TargetAuthorName, hc.HistoryChange, hc.HistoryPeriod),
         },
         _ => null,
     };
@@ -102,5 +112,23 @@ public sealed partial record LegacyCallOption : LegacySystemEntryOption
         Outcome = outcome;
         InviteeIds = inviteeIds;
         HasVideo = hasVideo;
+    }
+}
+
+[DataContract]
+public sealed partial record LegacyHistoryChangedOption : LegacySystemEntryOption
+{
+    [DataMember] public AuthorId? AuthorId { get; init; }
+    [DataMember] public string AuthorName { get; init; } = "";
+    [DataMember] public HistoryChangeKind Change { get; init; }
+    [DataMember] public TimeSpan? Period { get; init; }
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    public LegacyHistoryChangedOption(AuthorId? authorId, string authorName, HistoryChangeKind change, TimeSpan? period)
+    {
+        AuthorId = authorId;
+        AuthorName = authorName;
+        Change = change;
+        Period = period;
     }
 }

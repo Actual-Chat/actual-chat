@@ -1,5 +1,6 @@
 using ActualChat.Chat.Db;
 using Microsoft.EntityFrameworkCore;
+using ActualLab.Fusion.EntityFramework;
 
 namespace ActualChat.Chat;
 
@@ -367,13 +368,18 @@ public partial class ChatsBackend
         var mentionUpdatesInsideContent = 0;
         var mentionUpdatesInSystemEntries = 0;
 
+        var sourceChat = await dbContext.Chats.ForShare()
+            .FirstOrDefaultAsync(c => c.Id == chatSid, cancellationToken).ConfigureAwait(false);
+        if (sourceChat is null)
+            return new CopyChatEntriesResult(0, null);
+
         var minLocalId = entryLidRange.Start;
         var maxLocalId = entryLidRange.End;
         var attachmentIds = new List<long>();
         var reactionIds = new List<long>();
 
         var entries = await dbContext.ChatEntries
-            .Where(c => c.ChatId == chatSid && c.Kind == 0)
+            .Where(c => c.ChatId == chatSid && c.Kind == 0 && !c.IsRemovedAndPurged)
             .Where(c => c.LocalId >= minLocalId && c.LocalId < maxLocalId)
             .OrderBy(c => c.LocalId)
             .Take(batchLimit)
@@ -395,7 +401,7 @@ public partial class ChatsBackend
                 chatSid,
                 newChatId,
                 correlationId,
-                new Range<long>(entryLidRange.Start, lastFetchedEntry.LocalId + 1),
+                new Range<long>(minLocalId, lastFetchedEntry.LocalId + 1),
                 migratedAuthors,
                 chatEntryWithMentionIds,
                 cancellationToken)

@@ -1,0 +1,93 @@
+@namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Time
+@{
+    var count = int.TryParse(_count, out var c) ? c : 0;
+}
+
+@* A period as a count of hours or days; an empty count is no period at all *@
+<div class="period-input @Class">
+    <section class="form-section c-count @(IsInvalid ? "invalid" : "")">
+        <div class="form-section-content label-inside-input">
+            <div class="c-left">
+                @if (!Label.IsNullOrEmpty()) {
+                    <div class="form-section-label">
+                        <Label InputId="@Id" Text="@Label" IsRequired="true" Class="internal-label"/>
+                    </div>
+                }
+                <input
+                    id="@Id"
+                    type="number"
+                    inputmode="numeric"
+                    min="0"
+                    max="@((int)(MaxPeriod / _unit.ToTimeSpan(1)))"
+                    placeholder="@Placeholder"
+                    disabled="@IsDisabled"
+                    value="@_count"
+                    @oninput="OnCountInput"/>
+            </div>
+        </div>
+    </section>
+    <section class="form-section c-unit">
+        <div class="form-section-content label-inside-input">
+            <div class="c-left">
+                <select value="@_unit" disabled="@IsDisabled" @onchange="OnUnitChange">
+                    <option value="@PeriodUnit.Minutes">@L.Duration_MinuteUnit(count)</option>
+                    <option value="@PeriodUnit.Hours">@L.Duration_HourUnit(count)</option>
+                    <option value="@PeriodUnit.Days">@L.Duration_DayUnit(count)</option>
+                </select>
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    private static readonly TimeSpan MaxPeriod = TimeSpan.FromDays(36500);
+
+    private string _count = "";
+    private PeriodUnit _unit = PeriodUnit.Days;
+    private TimeSpan? _value;
+
+    [Inject] private IStringLocalizer L { get; init; } = null!;
+
+    [Parameter] public string Id { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Placeholder { get; set; } = "";
+    [Parameter] public bool IsDisabled { get; set; }
+    [Parameter] public bool IsInvalid { get; set; }
+    [Parameter] public TimeSpan? Value { get; set; }
+    [Parameter] public EventCallback<TimeSpan?> ValueChanged { get; set; }
+
+    protected override void OnParametersSet() {
+        if (Value == _value)
+            return;
+
+        // Set from outside, so it's shown in the units it divides into
+        _value = Value;
+        if (Value is not { } value) {
+            _count = "";
+            return;
+        }
+
+        (var count, _unit) = value.ToPeriodUnits();
+        _count = count.ToString();
+    }
+
+    private Task OnCountInput(ChangeEventArgs e) {
+        _count = e.Value as string ?? "";
+        return Update();
+    }
+
+    private Task OnUnitChange(ChangeEventArgs e) {
+        _unit = Enum.TryParse<PeriodUnit>(e.Value as string, out var unit) ? unit : PeriodUnit.Days;
+        return Update();
+    }
+
+    private Task Update() {
+        // Clamped as a count, so a huge one can't overflow TimeSpan on the way
+        var maxCount = (long)(MaxPeriod / _unit.ToTimeSpan(1));
+        var count = long.TryParse(_count, out var c) ? Math.Min(c, maxCount) : 0;
+        _value = count > 0 ? _unit.ToTimeSpan(count) : null;
+        return ValueChanged.InvokeAsync(_value);
+    }
+}

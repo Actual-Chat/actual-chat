@@ -12,7 +12,7 @@ namespace ActualChat.Mathematics;
 [DataContract]
 [MessagePackObject(true, AllowPrivate = true)]
 [MessagePackFormatter(typeof(TileMessagePackFormatter<>))]
-public readonly partial struct Tile<T>
+public readonly partial struct Tile<T> : IEquatable<Tile<T>>, IComparable<Tile<T>>
     where T : struct, INumber<T>
 {
     [DataMember(Order = 0)]
@@ -69,4 +69,22 @@ public readonly partial struct Tile<T>
 
     public Tile<T> Prev(int index = 1)
         => Next(-index);
+
+    // Equality & comparison
+
+    public bool Equals(Tile<T> other)
+        => Range.Equals(other.Range) && ReferenceEquals(Layer, other.Layer);
+    public override bool Equals(object? obj)
+        => obj is Tile<T> other && Equals(other);
+    public override int GetHashCode()
+        => Range.GetHashCode();
+
+    public int CompareTo(Tile<T> other)
+    {
+        var result = Start.CompareTo(other.Start);
+        return result != 0 ? result : End.CompareTo(other.End);
+    }
+
+    public static bool operator ==(Tile<T> left, Tile<T> right) => left.Equals(right);
+    public static bool operator !=(Tile<T> left, Tile<T> right) => !left.Equals(right);
 }

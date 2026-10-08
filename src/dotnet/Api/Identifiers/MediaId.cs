@@ -25,11 +25,14 @@ public sealed partial class MediaId : ContentId, IStringIdentifier<MediaId>
     private static readonly RandomStringGenerator ScopeGenerator = new(16, Alphabet.AlphaNumeric);
 
     public const char Delimiter = ':';
+    public const string SystemIconsScope = "system-icons";
 
     [IgnoreDataMember]
     public string Scope { get; }
     [IgnoreDataMember]
     public string LocalId { get; }
+    [IgnoreDataMember]
+    public bool IsSystem => Scope == SystemIconsScope;
 
     // Factories and constructors
 

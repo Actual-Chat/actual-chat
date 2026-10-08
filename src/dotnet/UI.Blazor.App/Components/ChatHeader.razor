@@ -109,8 +109,7 @@
     private async Task OnOpenLeftPanelClick() {
         if (Chat is not null && Chat.Id.IsThread(out var threadChatId)) {
             // Not a step back: that restores the parent's old scroll position instead of the thread start
-            var threadStartLink = Links.Chat(threadChatId.ParentChatId, threadChatId.ThreadId);
-            await History.NavigateTo(threadStartLink, true);
+            await Hub.ChatUI.NavigateToThreadStart(threadChatId, true);
             return;
         }
 
