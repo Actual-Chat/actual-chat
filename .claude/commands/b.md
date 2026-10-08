@@ -103,7 +103,7 @@ iOS. `--prod` on macOS, `--no-web` and `-- <args>` work.
 |---|---|
 | `server run` | `-c` (default `Release`), `--published`, `--log [PATH]` (default `tmp/server.log`), `--urls <URLS>`, `--open [URL]` |
 | `server publish` | `-c` (default `Release`) |
-| `server loop` | `-c` (default `Release`) |
+| `server loop` | `-c` (default `Debug`) |
 
 ### Bullseye targets
 
