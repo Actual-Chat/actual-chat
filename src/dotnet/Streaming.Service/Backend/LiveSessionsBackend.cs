@@ -50,6 +50,9 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
     // How long CallTailFlow's first pass waits: the realtime transcriber's own post-audio deadline is
     // how long the last utterance's entry can take to appear at all (its text settles later still).
     private static readonly TimeSpan CallTailDelay = Constants.Transcription.CompletionTimeout;
+    // How long a call into an ongoing session waits for its parties' clients to stop their media before its
+    // entry is written anyway: past it, a client is offline or stuck, and the entry must not wait on it.
+    private static readonly TimeSpan CallStreamsEndTimeout = TimeSpan.FromSeconds(10);
 
     private readonly RedisScope<LiveSessionState> _redisScope;
     private readonly RedisScope<LiveCall> _calls;
@@ -1981,6 +1984,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         try {
             LiveCall? call;
             List<AuthorId> inviteeIds;
+            HashSet<AuthorId> partyIds;
             // Dropping the call's key is the atomic claim that picks one closer out of the several that can
             // decide a call is over at once. It shares _changeLocks with every write of the key - outside it
             // a straddling read-modify-write puts the key back and the call is recorded twice - and the call
@@ -1991,11 +1995,10 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 if (call is null || (callId is not null && call.Id != callId))
                     return;
 
-                if (mustRecheckParties && call.IsAnswered) {
-                    var partyIds = await GetCallPartyIds(chatId, call).ConfigureAwait(false);
-                    if (await CountFreshCallParties(chatId, partyIds).ConfigureAwait(false) >= MinCallParties(chatId))
-                        return;
-                }
+                partyIds = await GetCallPartyIds(chatId, call).ConfigureAwait(false);
+                if (mustRecheckParties && call.IsAnswered
+                    && await CountFreshCallParties(chatId, partyIds).ConfigureAwait(false) >= MinCallParties(chatId))
+                    return;
 
                 inviteeIds = (await SafeGetInvites(chatId).ConfigureAwait(false))
                     .Values.Where(i => i is not null).Select(i => i!.InviteeId).ToList();
@@ -2003,6 +2006,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                     return;
             }
 
+            var endedAt = Clocks.SystemClock.Now;
             // An answered call is Ended whichever button ended it - CancelCall is also how a caller hangs
             // up - so the outcome recorded during the ring only decides a call that was never answered.
             var outcome = call.IsAnswered ? CallOutcome.Ended : call.Outcome;
@@ -2015,8 +2019,17 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 await EndUserCalls(
                         chatId, call.Id, inviteeIds.Prepend(call.CallerId).Distinct(), outcome, CancellationToken.None)
                     .ConfigureAwait(false);
-                if (chatId.Kind == ChatKind.Peer)
-                    await WriteCallEntry(call, inviteeIds, outcome, CancellationToken.None).ConfigureAwait(false);
+                if (chatId.Kind == ChatKind.Peer) {
+                    // A call that rang into an ongoing session has no card of its own to gather its last words
+                    // in, so its entry, visible there, has to come after them - see WriteCallEntryAfterTail.
+                    var isInOngoingSession = call.IsAnswered
+                        && await SafeGet(chatId).ConfigureAwait(false) is { IsCall: false };
+                    if (isInOngoingSession)
+                        _ = WriteCallEntryAfterTail(call, inviteeIds, partyIds, outcome, endedAt);
+                    else
+                        await WriteCallEntry(call, inviteeIds, outcome, endedAt, CancellationToken.None)
+                            .ConfigureAwait(false);
+                }
             }
             finally {
                 // Having won the claim, this is the call's only closer: nothing retries it, so a failed ring
@@ -2169,10 +2182,35 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         }
     }
 
+    private Task WriteCallEntryAfterTail(
+        LiveCall call,
+        IReadOnlyList<AuthorId> invitees,
+        HashSet<AuthorId> partyIds,
+        CallOutcome outcome,
+        Moment endedAt)
+        // A transcript gets its entry on its first non-empty result, so the call's last words get theirs
+        // only once the parties' clients have stopped their media and the transcriber has caught up.
+        // In memory, like the ring timers: a restart in between leaves the call without its entry.
+        => BackgroundTask.Run(async () => {
+            var chatId = call.ChatId;
+            using (var cts = new CancellationTokenSource(CallStreamsEndTimeout)) {
+                var cStreams = await Computed
+                    .Capture(() => LiveAudioBackend.List(chatId, cts.Token), cts.Token)
+                    .ConfigureAwait(false);
+                await cStreams
+                    .When(streams => !streams.Any(s => partyIds.Contains(s.AuthorId) && s.BeginsAt < endedAt),
+                        cts.Token)
+                    .SilentAwait(false);
+            }
+            await Task.Delay(CallTailDelay).ConfigureAwait(false);
+            await WriteCallEntry(call, invitees, outcome, endedAt, CancellationToken.None).ConfigureAwait(false);
+        }, Log, $"Writing the entry of call #{call.Id} failed");
+
     private async Task WriteCallEntry(
         LiveCall call,
         IReadOnlyList<AuthorId> invitees,
         CallOutcome outcome,
+        Moment endedAt,
         CancellationToken cancellationToken)
     {
         if (outcome == CallOutcome.None)
@@ -2182,7 +2220,6 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         var caller = await AuthorsBackend
             .Get(chatId, call.CallerId, RequestedAuthorKind.Full, cancellationToken)
             .ConfigureAwait(false);
-        var now = Clocks.SystemClock.Now;
         var command = new ChatsBackend_ChangeEntry(
             ChatEntryId.New(chatId, 0),
             null,
@@ -2191,8 +2228,8 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 AuthorId = Constants.User.Walle.GetWalleAuthorId(chatId),
                 // An answered call's span is its talk time: it is the entry's own Duration, all a call
                 // placed into an ongoing session has to show it by - there is no call card around it.
-                BeginsAt = call.AnsweredAt ?? now,
-                EndsAt = call.IsAnswered ? now : null,
+                BeginsAt = call.AnsweredAt ?? endedAt,
+                EndsAt = call.IsAnswered ? endedAt : null,
                 CallerId = call.CallerId,
                 CallerName = caller?.Avatar.Name.NullIfEmpty() ?? MentionMarkup.NotAvailableName,
                 Outcome = outcome,

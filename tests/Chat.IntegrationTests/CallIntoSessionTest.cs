@@ -70,10 +70,15 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
         var after = await backend.GetState(chatId, default);
         after.Should().NotBeNull("Alice still records, so the session goes on");
         after!.ConversationId.Should().Be(before.ConversationId);
-        var entry = (await ReadCallEntries(tester, chatId)).Should().ContainSingle().Which;
-        entry.Outcome.Should().Be(CallOutcome.Ended);
-        entry.EndsAt.Should().NotBeNull("an answered call's entry spans its talk time");
-        entry.EndsAt!.Value.Should().BeGreaterThanOrEqualTo(entry.BeginsAt);
+        (await ReadCallEntries(tester, chatId)).Should().BeEmpty("the entry waits for the call's last words");
+        // Polled, as the chat's entries aren't read through anything the call invalidates. Nothing streams
+        // here, so only the transcriber's own post-audio deadline (5 s) stands between the end and the entry.
+        await TestWait.WhenPolled(async () => {
+            var entry = (await ReadCallEntries(tester, chatId)).Should().ContainSingle().Which;
+            entry.Outcome.Should().Be(CallOutcome.Ended);
+            entry.EndsAt.Should().NotBeNull("an answered call's entry spans its talk time");
+            entry.EndsAt!.Value.Should().BeGreaterThanOrEqualTo(entry.BeginsAt);
+        }, TimeSpan.FromSeconds(20));
     }
 
     [Fact]

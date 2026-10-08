@@ -110,6 +110,9 @@ the resurrected call would be ended — and recorded — a second time; and the 
 caller read before the lock can miss an outcome a racing hang-up just recorded, which
 dropped the entry entirely.
 
+The entry is written there and then - except for an answered call that rang into an ongoing
+session, which waits for its last words (see below).
+
 Whether a call counts as finished is decided by whether it was answered, not by the recorded
 outcome. `CancelCall` is also how a caller hangs up a call that *was* answered — there it is a
 party leaving — so an answered call writes `Ended` whichever button ended it.
@@ -142,6 +145,17 @@ chance — so the counting happens over text that is actually there.
 
 Hence the `CallEntry` is no longer the last row of a grown conversation. The invariant the render
 path needs is that the range **covers** it, not that it ends on it.
+
+A call that rang into an ongoing session has no card to pull its tail into: its entry is a card of
+its own, visible in the chat, and written at the end it would sit before the call's last phrases.
+So `EndCall` defers it there (`WriteCallEntryAfterTail`): first the end goes to the parties, whose
+clients stop their media on it; then it waits until no stream a party began before the end is live
+(at most `CallStreamsEndTimeout`, 10 s, past which a client is offline or stuck), and then
+`CompletionTimeout` (5 s) more for the transcriber's last result. The entry keeps the end's own time
+as its `EndsAt`. The wait runs in memory, like the ring timers.
+
+A call that started its own session can't wait like that: the session's close materializes its card,
+and for a call with no transcript the entry is the only thing in the card's range.
 
 ## Render path
 
@@ -201,6 +215,10 @@ since only this build writes one.
   materialize collapsed, but a participant's latched override may keep it expanded.
 - The window in `EndCall` between the claim and the teardown spans two database round trips.
   A call placed inside it keeps its invites.
+- A restart while a call into an ongoing session waits for its last words loses its entry, as the
+  wait lives in memory. The tail itself is caught only when it comes from the parties' own streams
+  ending within `CallStreamsEndTimeout`; a client that stops later leaves its last phrase after the
+  entry, as before.
 - An ambient session's close has a race of its own, and nothing catches it there.
   `LiveConversationSummaryFlow.Finalize` takes `entries[^1].LocalId` at the moment it runs, so a
   transcript that lands after it is outside the conversation for good. It bites far less often —
