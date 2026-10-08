@@ -5,7 +5,7 @@ namespace ActualChat.Chat;
 /// <summary>
 /// Backend service for managing chat authors (participants).
 /// </summary>
-public interface IAuthorsBackend : IComputeService, IBackendService
+public partial interface IAuthorsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<AuthorFull?> Get(ChatId chatId, AuthorId authorId, RequestedAuthorKind authorKind, CancellationToken cancellationToken);
@@ -15,10 +15,6 @@ public interface IAuthorsBackend : IComputeService, IBackendService
     Task<AuthorId[]> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserId[]> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
-    // Not a [ComputeMethod]!
-    Task<AuthorFull[]> ListChanged(
-        ChangedAuthorsQuery query,
-        CancellationToken cancellationToken);
 
     // Commands
 
