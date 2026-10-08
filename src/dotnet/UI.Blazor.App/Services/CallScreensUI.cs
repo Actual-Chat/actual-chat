@@ -194,10 +194,12 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
                 throw StandardError.Constraint("There's no ring left to accept in this chat.");
 
             await CallUI.AcceptCall(callId, CancellationToken.None).ConfigureAwait(true);
+            CallUI.EndAccept(callId);
         }
         catch (Exception e) {
             // Also where "there was no ring left" lands: the server decides that under its change
             // lock, and it's the only reading of it that can't race the call it came from.
+            CallUI.EndAccept(callId);
             Log.LogWarning(e, "AcceptCall failed for chat #{ChatId}", chatId);
             if (wasInCall)
                 return;

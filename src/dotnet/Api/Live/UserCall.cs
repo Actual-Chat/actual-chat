@@ -2,12 +2,13 @@ namespace ActualChat.Live;
 
 public enum CallRole { Caller, Callee }
 
-public enum CallPhase { Ringing, Dialing, Active }
+public enum CallPhase { Ringing, Dialing, Active, Ended }
 
 /// <summary>
 /// The one call a user is in, across every device they're signed in on: the server's claim on
 /// that user, and the answer <see cref="ActualChat.Streaming.ILiveSessions"/> gives the client
-/// that placed or answered it - or, while it rings, every client of theirs.
+/// that placed or answered it - or, while it rings, every client of theirs. An <see cref="CallPhase.Ended"/>
+/// one is how that client learns the call is over: it holds nobody busy, and lingers only to be read.
 /// </summary>
 [DataContract, MessagePackObject]
 public sealed partial record UserCall
@@ -32,4 +33,7 @@ public sealed partial record UserCall
     public string? ClientId { get; init; }
     [DataMember(Order = 9), Key(9)]
     public CallId CallId { get; init; } = null!;
+    // How the call ended, once it has: None when the server only knows it is gone.
+    [DataMember(Order = 10), Key(10)]
+    public CallOutcome Outcome { get; init; }
 }

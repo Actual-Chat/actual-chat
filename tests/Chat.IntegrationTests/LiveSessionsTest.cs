@@ -1431,8 +1431,8 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await backend.CancelCall(chatId, bobAuthor.Id, default);
 
         // assert
-        (await callsBackend.GetUserCall(bobAuthor.UserId, default)).Should()
-            .BeNull("a claim left behind is what puts the call back on the caller's screens");
+        (await callsBackend.GetUserCall(bobAuthor.UserId, default))!.Phase.Should()
+            .Be(CallPhase.Ended, "a live claim left behind is what puts the call back on the caller's screens");
         await TestWait.When(async ct => (await backend.ListParticipants(chatId, ct)).Should().Equal(aliceAuthor.Id));
 
         // act - EnforceCallLeaveGrace is internal so the test runs the check instead of waiting it out
@@ -2173,6 +2173,7 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await cts.CancelAsync();
         await aliceObserver.SilentAwait();
         aliceCall.Should().NotBeNull("the client hangs up a call its claim no longer shows");
+        aliceCall!.Phase.Should().Be(CallPhase.Active, "an ended claim stops the call's media on the client");
     }
 
     [Theory]

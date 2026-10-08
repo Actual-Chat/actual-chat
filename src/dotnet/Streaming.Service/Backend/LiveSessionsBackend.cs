@@ -266,7 +266,9 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
     // [ComputeMethod]
     public virtual async Task<LiveCall?> GetCall(ChatId chatId, CancellationToken cancellationToken)
     {
-        var call = await SafeGetCall(chatId).ConfigureAwait(false);
+        // Not SafeGetCall: a failed read is no answer, while "no call" ends every claim on it - and the call
+        // on the clients that run it.
+        var call = await _calls.Get(chatId.Value).ConfigureAwait(false);
         if (call is null)
             return null;
 
@@ -294,7 +296,8 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         if (call is null)
             return [];
 
-        var invites = await SafeGetInvites(chatId).ConfigureAwait(false);
+        // Not SafeGetInvites, as in GetCall: a callee's claim missing its invite is ended.
+        var invites = await _invites.GetHashMap(chatId.Value).ConfigureAwait(false);
         return invites.Values.SkipNullItems().OrderBy(i => i.RingingAt).ToApiArray();
     }
 
@@ -665,7 +668,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         // are RPCs to the users' own shards. The lock re-checks the decision.
         var joinedCallId = GetJoinableCallId(await SafeGetCall(chatId).ConfigureAwait(false), callerAuthorId);
         var callId = joinedCallId ?? NewCallId(chatId);
-        // A claim the call then fails to justify is dropped by the first CallsBackend.GetUserCall that
+        // A claim the call then fails to justify is ended by the first CallsBackend.GetUserCall that
         // reads it. A one-invitee call names its peer in the claim, so the caller's screens don't have to
         // read the invites to know who they're calling; a group call has no single peer to name.
         var callerPeerId = invitees.Count == 1 ? invitees[0] : null;
@@ -697,7 +700,8 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 await WriteCall(call, isJoining).ConfigureAwait(false);
         }
         if (isOvertaken) {
-            await ReleaseUserCalls(chatId, callId, ringing.Prepend(callerAuthorId), CancellationToken.None)
+            await EndUserCalls(
+                    chatId, callId, ringing.Prepend(callerAuthorId), CallOutcome.None, CancellationToken.None)
                 .ConfigureAwait(false);
             throw StandardError.Constraint(joinedCallId is not null
                 ? "The call has just ended. Please try again."
@@ -782,7 +786,8 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             accepted = await AcceptInvite(chatId, inviteeAuthorId, callId, cancellationToken).ConfigureAwait(false);
         }
         catch when (isReclaimed) {
-            await ReleaseUserCall(chatId, callId, inviteeAuthorId, CancellationToken.None)
+            // A late answer the call refused: to this callee it stays the ring they missed.
+            await EndUserCall(chatId, callId, inviteeAuthorId, CallOutcome.NoAnswer, CancellationToken.None)
                 .ConfigureAwait(false);
             throw;
         }
@@ -822,7 +827,8 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             await SetOutcome(chatId, call, CallOutcome.Declined).ConfigureAwait(false);
             InvalidateCall(chatId);
         }
-        await ReleaseUserCall(chatId, callId, inviteeAuthorId, cancellationToken).ConfigureAwait(false);
+        await EndUserCall(chatId, callId, inviteeAuthorId, CallOutcome.Declined, cancellationToken)
+            .ConfigureAwait(false);
         await DismissRing(callId, [inviteeAuthorId], cancellationToken).ConfigureAwait(false);
         if (abandoned)
             await EndCall(chatId, callId: callId).ConfigureAwait(false);
@@ -854,6 +860,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         // The caller hangs up. Unanswered, that cancels the call; answered, it is a party leaving it.
         var ringing = new List<AuthorId>();
         int? callPartiesLeft = null;
+        var outcome = CallOutcome.Canceled;
         using (Computed.BeginIsolation())
         using (await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false)) {
             var call = await SafeGetCall(chatId).ConfigureAwait(false);
@@ -871,6 +878,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             // The client cancels while its slot still reads Dialing, which can outlast the answer by a
             // round trip: the caller is then leaving a connected call, as a hang-up from it would (#4984).
             if (call.IsAnswered) {
+                outcome = CallOutcome.Ended;
                 await _participants.Remove(chatId.Value, callerAuthorId.Value).ConfigureAwait(false);
                 callPartiesLeft = await CountCallPartiesLeft(chatId, callerAuthorId, cancellationToken)
                     .ConfigureAwait(false);
@@ -894,7 +902,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             }
             InvalidateCall(chatId);
         }
-        await ReleaseUserCalls(chatId, callId, ringing.Prepend(callerAuthorId), cancellationToken)
+        await EndUserCalls(chatId, callId, ringing.Prepend(callerAuthorId), outcome, cancellationToken)
             .ConfigureAwait(false);
         if (ringing.Count > 0)
             await DismissRing(callId, ringing, cancellationToken).ConfigureAwait(false);
@@ -1402,28 +1410,32 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         return isMissed;
     }
 
-    private async Task ReleaseUserCall(
+    private async Task EndUserCall(
         ChatId chatId,
         CallId? callId,
         AuthorId authorId,
+        CallOutcome outcome,
         CancellationToken cancellationToken)
     {
+        // Frees the user, and tells the client running the call that it is over - the one signal that
+        // client stops the call's media on.
         // Only a call takes claims, and every call has an id: a session with none is an ambient one.
         if (callId is null)
             return;
 
         if (await GetUserId(chatId, authorId, cancellationToken).ConfigureAwait(false) is { } userId)
-            await CallsBackend.ReleaseCall(userId, callId, cancellationToken).ConfigureAwait(false);
+            await CallsBackend.EndCall(userId, callId, outcome, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task ReleaseUserCalls(
+    private async Task EndUserCalls(
         ChatId chatId,
         CallId? callId,
         IEnumerable<AuthorId> authorIds,
+        CallOutcome outcome,
         CancellationToken cancellationToken)
     {
         foreach (var authorId in authorIds)
-            await ReleaseUserCall(chatId, callId, authorId, cancellationToken).ConfigureAwait(false);
+            await EndUserCall(chatId, callId, authorId, outcome, cancellationToken).ConfigureAwait(false);
     }
 
     // A request is for the call it names only: by the time it arrives the chat may be in the next one,
@@ -1493,7 +1505,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             await SetOutcome(chatId, call, CallOutcome.Busy).ConfigureAwait(false);
         }
 
-        await ReleaseUserCall(chatId, callId, callerId, cancellationToken).ConfigureAwait(false);
+        await EndUserCall(chatId, callId, callerId, CallOutcome.Busy, cancellationToken).ConfigureAwait(false);
         await EndCall(chatId, callId: callId).ConfigureAwait(false);
     }
 
@@ -1747,7 +1759,8 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 if (expired.Count > 0)
                     InvalidateCall(chatId);
             }
-            await ReleaseUserCalls(chatId, call.Id, expired, CancellationToken.None).ConfigureAwait(false);
+            await EndUserCalls(chatId, call.Id, expired, CallOutcome.NoAnswer, CancellationToken.None)
+                .ConfigureAwait(false);
             if (expired.Count > 0)
                 await DismissRing(call.Id, expired, CancellationToken.None).ConfigureAwait(false);
             if (expired.Count > 0)
@@ -1990,17 +2003,20 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                     return;
             }
 
+            // An answered call is Ended whichever button ended it - CancelCall is also how a caller hangs
+            // up - so the outcome recorded during the ring only decides a call that was never answered.
+            var outcome = call.IsAnswered ? CallOutcome.Ended : call.Outcome;
             try {
                 // Everything below runs with CancellationToken.None for the same reason the teardown in the
                 // finally does: the claim above is once-or-never, so a token revoked mid-way would leave the
                 // call with no trace at all, and nothing retries it.
                 if (inviteeIds.Count > 0)
                     await DismissRing(call.Id, inviteeIds, CancellationToken.None).ConfigureAwait(false);
-                await ReleaseUserCalls(
-                        chatId, call.Id, inviteeIds.Prepend(call.CallerId).Distinct(), CancellationToken.None)
+                await EndUserCalls(
+                        chatId, call.Id, inviteeIds.Prepend(call.CallerId).Distinct(), outcome, CancellationToken.None)
                     .ConfigureAwait(false);
                 if (chatId.Kind == ChatKind.Peer)
-                    await WriteCallEntry(call, inviteeIds, CancellationToken.None).ConfigureAwait(false);
+                    await WriteCallEntry(call, inviteeIds, outcome, CancellationToken.None).ConfigureAwait(false);
             }
             finally {
                 // Having won the claim, this is the call's only closer: nothing retries it, so a failed ring
@@ -2154,11 +2170,11 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
     }
 
     private async Task WriteCallEntry(
-        LiveCall call, IReadOnlyList<AuthorId> invitees, CancellationToken cancellationToken)
+        LiveCall call,
+        IReadOnlyList<AuthorId> invitees,
+        CallOutcome outcome,
+        CancellationToken cancellationToken)
     {
-        // An answered call is Ended whichever button ended it - CancelCall is also how a caller hangs
-        // up - so the outcome recorded during the ring only decides a call that was never answered.
-        var outcome = call.IsAnswered ? CallOutcome.Ended : call.Outcome;
         if (outcome == CallOutcome.None)
             return;
 

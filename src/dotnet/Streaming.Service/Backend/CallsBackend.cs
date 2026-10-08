@@ -8,8 +8,8 @@ namespace ActualChat.Streaming;
 
 /// <summary>
 /// Owns the one call each user is in. The record is a claim - which call, in which role - and
-/// <see cref="GetUserCall"/> reads its phase off the chat's live session, answering only while that
-/// session still backs it.
+/// <see cref="GetUserCall"/> reads its phase off the chat's call while that call backs it. Once it doesn't,
+/// the claim stays a while as Ended: that is how the client running the call learns it is over.
 /// </summary>
 public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
 {
@@ -17,6 +17,9 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
     // it any more. Long enough to outlive a ring (RingTtl), short enough that a claim left by a crashed
     // host can't outlive the call by much.
     private static readonly TimeSpan ClaimTtl = TimeSpan.FromMinutes(2);
+    // An ended claim is read, not refreshed: it has to outlast a client that was offline when the call
+    // ended, or that client reconnects to no answer at all and keeps the call's media running.
+    private static readonly TimeSpan EndedTtl = TimeSpan.FromMinutes(10);
     // A claim is taken before the call it stands for exists - StartCall has to know who is free
     // before it writes the session and the invites. Until this lapses, the claim backs itself.
     private static readonly TimeSpan ClaimGrace = TimeSpan.FromSeconds(10);
@@ -41,9 +44,10 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
     // [ComputeMethod]
     public virtual async Task<UserCall?> GetUserCall(UserId userId, CancellationToken cancellationToken)
     {
-        var call = await SafeGet(userId).ConfigureAwait(false);
-        if (call is null)
-            return null;
+        // Not SafeGet: a failed read is no answer, and "no call" ends the call on the client that runs it.
+        var call = await _userCalls.Get(userId.Value).ConfigureAwait(false);
+        if (call is null || call.Phase == CallPhase.Ended)
+            return call;
 
         var computed = Computed.GetCurrent();
         var phase = await GetPhase(call, cancellationToken).ConfigureAwait(false);
@@ -54,13 +58,13 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
             return call with { Phase = p };
         }
 
-        // The session that justified this claim is gone (the client crashed mid-call, a host died
-        // before releasing it): drop it rather than keep the user busy until the TTL lapses.
-        Log.LogWarning("GetUserCall: dropping the {Role} claim of user #{UserId} in call #{CallId}, {Age} old",
+        // The call that justified this claim is gone without its end reaching the claim (a host died
+        // before ending it, the call's record lapsed): end it here rather than keep the user busy.
+        Log.LogWarning("GetUserCall: ending the {Role} claim of user #{UserId} in call #{CallId}, {Age} old",
             call.Role, userId, call.CallId?.Value ?? call.ChatId.Value,
             (Clocks.SystemClock.Now - call.SinceAt).ToShortString());
-        _ = ReleaseIfUnchanged(userId, call);
-        return null;
+        _ = EndIfUnchanged(userId, call);
+        return ToEnded(call, CallOutcome.None);
     }
 
     public virtual async Task<bool> TryClaim(UserId userId, UserCall call, CancellationToken cancellationToken)
@@ -69,6 +73,7 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
         using (await _claimLocks.Lock(userId, cancellationToken).ConfigureAwait(false)) {
             var existing = await SafeGet(userId).ConfigureAwait(false);
             if (existing is not null
+                && existing.Phase != CallPhase.Ended
                 && existing.CallId != call.CallId
                 && await GetPhase(existing, cancellationToken).ConfigureAwait(false) is not null)
                 return false;
@@ -81,7 +86,8 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
         }
     }
 
-    public virtual async Task ReleaseCall(UserId userId, CallId callId, CancellationToken cancellationToken)
+    public virtual async Task EndCall(
+        UserId userId, CallId callId, CallOutcome outcome, CancellationToken cancellationToken)
     {
         using (Computed.BeginIsolation())
         using (await _claimLocks.Lock(userId, cancellationToken).ConfigureAwait(false)) {
@@ -89,7 +95,12 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
             if (call is null || call.CallId != callId)
                 return;
 
-            await _userCalls.Remove(userId.Value).ConfigureAwait(false);
+            // Already ended - unless only by the self-heal, which can get there between the call's end and
+            // this, and knows nothing of how it went.
+            if (call.Phase == CallPhase.Ended && (call.Outcome != CallOutcome.None || outcome == CallOutcome.None))
+                return;
+
+            await _userCalls.Set(userId.Value, ToEnded(call, outcome), EndedTtl).ConfigureAwait(false);
             Invalidate(userId);
         }
     }
@@ -145,7 +156,7 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
 
     // The claim was judged from a read that a TryClaim may have overtaken since: whatever is there now
     // is another call's claim, not this stale one.
-    private async Task ReleaseIfUnchanged(UserId userId, UserCall call)
+    private async Task EndIfUnchanged(UserId userId, UserCall call)
     {
         try {
             using (Computed.BeginIsolation())
@@ -153,14 +164,17 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
                 if (await SafeGet(userId).ConfigureAwait(false) != call)
                     return;
 
-                await _userCalls.Remove(userId.Value).ConfigureAwait(false);
+                await _userCalls.Set(userId.Value, ToEnded(call, CallOutcome.None), EndedTtl).ConfigureAwait(false);
                 Invalidate(userId);
             }
         }
         catch (Exception e) when (e is not OperationCanceledException) {
-            Log.LogWarning(e, "Failed to drop the stale call claim of user #{UserId}", userId);
+            Log.LogWarning(e, "Failed to end the stale call claim of user #{UserId}", userId);
         }
     }
+
+    private UserCall ToEnded(UserCall call, CallOutcome outcome)
+        => call with { Phase = CallPhase.Ended, Outcome = outcome, SinceAt = Clocks.SystemClock.Now };
 
     private async Task<UserCall?> SafeGet(UserId userId)
     {

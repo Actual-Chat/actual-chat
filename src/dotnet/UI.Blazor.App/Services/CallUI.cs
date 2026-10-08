@@ -9,21 +9,22 @@ using ActualLab.Interception;
 namespace ActualChat.UI.Blazor.App.Services;
 
 /// <summary>
-/// The one call this client shows: a projection of the server's <see cref="ILiveSessions.GetMyCall"/>,
-/// plus the intent of a gesture this client just made and the server hasn't confirmed yet.
+/// The one call this client is in. A call enters the slot on a gesture made here or a ring the server
+/// names, and leaves it on a hang-up made here or the server's word that it is over - never on the
+/// server merely not naming it yet. <see cref="Reconcile"/> is that rule.
 /// </summary>
 public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized
 {
-    // How long a gesture's own view of the slot survives an answer that doesn't show it yet: the RPC
-    // round trip, and the reconnect after a short disconnect - where the answer is "no call" (#4532).
-    private static readonly TimeSpan IntentGrace = TimeSpan.FromSeconds(10);
-
     private readonly Lock _lock = new();
     private readonly MutableState<ActiveCall?> _activeCall;
-    // The call the server last named as mine. The slot blends this with a gesture it hasn't answered
-    // yet, so it can't tell the two apart - and a screen that must wait for the server needs to.
-    private readonly MutableState<ChatId?> _serverCallChatId;
-    private CallIntent? _intent;
+    // The calls this client left that the server may still name: it does until the leave reaches it, and
+    // for a group call it goes on without this client, for as long as it lasts.
+    private readonly List<CallId> _leftCallIds = [];
+    // A call cancelled before its StartCall named it: until that id arrives, it is known by chat alone.
+    private ChatId? _cancelledChatId;
+    // The ring answered here whose AcceptCall is still on its way: the server ends its ring claim on a late
+    // answer, and only takes it back once the answer lands.
+    private CallId? _acceptingCallId;
     // The StartCall still on its way, and the last CancelCall sent. The two go to the server in the
     // order they were made: a cancel needs the id its StartCall answers with, and a redial must not
     // get ahead of the cancel before it.
@@ -37,7 +38,6 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private AudioRecorder AudioRecorder => Hub.AudioRecorder;
     private IAuthors Authors => Hub.Authors;
-    private Moment Now => Clocks.CpuClock.Now;
     private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
     // Names this running client to the server, which shows a placed or answered call only to the client
@@ -50,9 +50,6 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _activeCall = StateFactory.NewMutable(
             (ActiveCall?)null,
             StateCategories.Get(GetType(), "ActiveCall"));
-        _serverCallChatId = StateFactory.NewMutable(
-            (ChatId?)null,
-            StateCategories.Get(GetType(), "ServerCallChatId"));
         _pickedOutputRouteId = StateFactory.NewMutable(
             (string?)null,
             StateCategories.Get(GetType(), "PickedOutputRouteId"));
@@ -88,12 +85,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         // The ringback follows this rather than the slot: the slot is claimed before the StartCall RPC,
         // and a refused call must not ring back first. The screens don't wait - they show on the click.
+        // A named call is one the server took: the id comes from its StartCall answer or its own claim.
         var call = await GetActiveCall(cancellationToken).ConfigureAwait(false);
-        if (call is not { Role: CallRole.Caller, Phase: CallPhase.Dialing })
-            return null;
-
-        var serverChatId = await _serverCallChatId.Use(cancellationToken).ConfigureAwait(false);
-        return serverChatId == call.ChatId ? call.ChatId : null;
+        return call is { Role: CallRole.Caller, Phase: CallPhase.Dialing, CallId: not null } ? call.ChatId : null;
     }
 
     public static AuthorId? GetPeerAuthorId(ChatId chatId, UserId ownUserId)
@@ -170,6 +164,8 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 _placedCall = null;
             if (_activeCall.Value?.ChatId == chatId)
                 ReleaseUnsafe(chatId);
+            if (callId is null && placedCall is not null)
+                _cancelledChatId = chatId;
             whenCancelled = _whenCancelled = Cancel(callId, placedCall?.WhenPlaced);
         }
         SystemCallUI.OnOutgoingCallCancelled(chatId);
@@ -177,8 +173,15 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
         async Task Cancel(CallId? callId, Task<CallId>? whenPlaced) {
             // The slot is free already; the server hears of it once it has said which call it placed.
-            if (callId is null && whenPlaced is not null)
+            if (callId is null && whenPlaced is not null) {
                 callId = (await whenPlaced.ResultAwait(false)).ValueOrDefault;
+                lock (_lock) {
+                    if (callId is not null)
+                        _leftCallIds.Add(callId);
+                    if (_cancelledChatId == chatId)
+                        _cancelledChatId = null;
+                }
+            }
             if (callId is null)
                 return; // StartCall failed
 
@@ -235,7 +238,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             if (_activeCall.Value is not null)
                 return false;
 
-            SetIntentUnsafe(new ActiveCall(chatId, CallRole.Caller, CallPhase.Dialing, peerId, hasVideo));
+            SetActiveCallUnsafe(new ActiveCall(chatId, CallRole.Caller, CallPhase.Dialing, peerId, hasVideo));
         }
 
         return true;
@@ -252,13 +255,27 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             // The slot holds another call to this chat than the one answered: nothing of it rides along.
             if (heldCall is not null && !heldCall.IsCall(chatId, callId))
                 heldCall = null;
+            callId ??= heldCall?.CallId;
+            // Answered again, a call this client left is wanted after all.
+            if (callId is not null)
+                _leftCallIds.Remove(callId);
+            _acceptingCallId = callId;
             // Caller and video ride along from the ring when the slot already holds it; answering
             // before the projection lands leaves them unknown until the server's own answer does.
-            SetIntentUnsafe(new ActiveCall(chatId, CallRole.Callee, CallPhase.Active,
-                heldCall?.PeerId, heldCall?.HasVideo ?? false, callId ?? heldCall?.CallId));
+            SetActiveCallUnsafe(new ActiveCall(chatId, CallRole.Callee, CallPhase.Active,
+                heldCall?.PeerId, heldCall?.HasVideo ?? false, callId));
         }
 
         return true;
+    }
+
+    // The answer's AcceptCall has returned, taken or refused: from here the server's word on the call stands.
+    public void EndAccept(CallId? callId)
+    {
+        lock (_lock) {
+            if (_acceptingCallId == callId)
+                _acceptingCallId = null;
+        }
     }
 
     public bool DropRing(ChatId chatId, CallId? callId = null)
@@ -323,45 +340,29 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         // The slot was claimed on the click, before the server had a call to name. Only that claim
         // takes the id: if GetMyCall got here first, the slot already has it.
-        var isRejoined = false;
         lock (_lock) {
             if (_activeCall.Value is not { Role: CallRole.Caller } call || call.ChatId != chatId)
                 return false;
             if (call.CallId is not null)
                 return call.CallId == callId;
 
-            call = call with { CallId = callId };
-            if (_intent is { Call: not null } intent && intent.ChatId == chatId) {
-                // Placed right after a hang-up, the call can be the very one just left - the server
-                // joins a call that is still connected. It is wanted again, so it is no longer "left".
-                isRejoined = intent.LeftCallId == callId;
-                _intent = intent with { Call = call, LeftCallId = isRejoined ? null : intent.LeftCallId };
-            }
-            SetActiveCallUnsafe(call);
+            // Placed right after a hang-up, the call can be the very one just left - the server joins a call
+            // that is still connected. It is wanted again, so it is no longer "left".
+            _leftCallIds.Remove(callId);
+            SetActiveCallUnsafe(call with { CallId = callId });
         }
-        // The answers naming it were kept off the slot as the left call's; nothing else re-reads them.
-        if (isRejoined)
-            Touch();
+        // The answers naming it may have been kept off the slot as the left call's; nothing else re-reads them.
+        Touch();
         return true;
-    }
-
-    // Caller must hold _lock.
-    private void SetIntentUnsafe(ActiveCall call)
-    {
-        // The call just left rides along: the server may go on naming it past this new gesture.
-        var leftCallId = CallIntentView.Of(_intent, Now, IntentGrace) is { IsFresh: true } last
-            ? last.LeftCallId
-            : null;
-        _intent = new CallIntent(call, call.ChatId, Now, leftCallId);
-        SetActiveCallUnsafe(call);
     }
 
     // Caller must hold _lock.
     private void ReleaseUnsafe(ChatId chatId)
     {
-        // Recorded as an intent of its own: the server keeps naming this call mine until my absence
-        // reaches it, and that answer must not put the screens back up.
-        _intent = new CallIntent(null, chatId, Now, _activeCall.Value?.CallId);
+        // The server goes on naming this call mine until my absence reaches it, and that answer must not put
+        // the screens back up.
+        if (_activeCall.Value is { CallId: { } callId } && callId.ChatId == chatId && !_leftCallIds.Contains(callId))
+            _leftCallIds.Add(callId);
         SetActiveCallUnsafe(null);
     }
 
@@ -376,10 +377,6 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     // Nested types
-
-    // What this client last did to the slot, and when. A null Call means "I just left this chat's call";
-    // LeftCallId names that call when the server had, so that it alone is kept off the slot.
-    internal sealed record CallIntent(ActiveCall? Call, ChatId ChatId, Moment At, CallId? LeftCallId = null);
 
     private sealed record PlacedCall(ChatId ChatId, Task<CallId> WhenPlaced);
 }

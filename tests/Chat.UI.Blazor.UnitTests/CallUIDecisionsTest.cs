@@ -10,22 +10,23 @@ public class CallUIDecisionsTest
     private static readonly AuthorId CallerA = AuthorId.New(ChatA, 1);
     private static readonly CallId Call1 = CallId.New(ChatA, "1");
     private static readonly CallId Call2 = CallId.New(ChatA, "2");
+    private static readonly CallUI.CallGestures NoGestures = new([]);
 
     [Fact]
-    public void NoCallAndNoIntentShouldLeaveTheSlotEmpty()
+    public void NoCallAndAnEmptySlotShouldStayEmpty()
     {
         // act
-        var call = CallUI.Reconcile(null, default);
+        var call = CallUI.Reconcile(null, null, NoGestures);
 
         // assert
         call.Should().BeNull();
     }
 
     [Fact]
-    public void ServerCallShouldFillTheSlot()
+    public void RingShouldFillTheSlot()
     {
         // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Ringing), default);
+        var call = CallUI.Reconcile(null, MyCall(ChatA, CallRole.Callee, CallPhase.Ringing), NoGestures);
 
         // assert
         call.Should().NotBeNull();
@@ -35,40 +36,94 @@ public class CallUIDecisionsTest
     }
 
     [Fact]
-    public void FreshIntentShouldSurviveAnEmptyAnswer()
+    public void NoCallShouldNotDropACallStillBeingPlaced()
     {
-        // arrange — the answer a disconnected client reads is "no call"
-        var intent = Intent(Call(CallRole.Caller, CallPhase.Dialing), ChatA, isFresh: true);
+        // arrange — a StartCall resent over a server restart took 14 s to land (#5115)
+        var placing = Call(CallRole.Caller, CallPhase.Dialing);
 
         // act
-        var call = CallUI.Reconcile(null, intent);
+        var call = CallUI.Reconcile(placing, null, NoGestures);
 
-        // assert — this is #4532's failure mode: an empty read must not drop a just-started call
-        call.Should().NotBeNull();
-        call!.ChatId.Should().Be(ChatA);
+        // assert
+        call.Should().Be(placing, "the server hasn't been told of this call yet, so it can't say it's over");
     }
 
     [Fact]
-    public void StaleIntentShouldNotSurviveAnEmptyAnswer()
+    public void NoCallShouldEndACallTheServerNamed()
     {
-        // arrange
-        var intent = Intent(Call(CallRole.Caller, CallPhase.Dialing), ChatA, isFresh: false);
+        // arrange — e.g. a ring answered on another device, or an end the client was offline too long to read
+        var held = Call(CallRole.Callee, CallPhase.Ringing) with { CallId = Call1 };
 
         // act
-        var call = CallUI.Reconcile(null, intent);
+        var call = CallUI.Reconcile(held, null, NoGestures);
 
         // assert
-        call.Should().BeNull("a call the server doesn't know about is over once the grace lapses");
+        call.Should().BeNull();
+    }
+
+    [Fact]
+    public void EndShouldEndTheCallItNames()
+    {
+        // arrange
+        var held = Call(CallRole.Callee, CallPhase.Active) with { CallId = Call1 };
+
+        // act
+        var call = CallUI.Reconcile(held, MyCall(ChatA, CallRole.Callee, CallPhase.Ended, Call1), NoGestures);
+
+        // assert
+        call.Should().BeNull();
+    }
+
+    [Fact]
+    public void EndOfTheLastCallShouldNotDropTheNextOneBeingPlaced()
+    {
+        // arrange — a redial whose StartCall hasn't answered yet, while the server still reports the last end
+        var redial = Call(CallRole.Caller, CallPhase.Dialing);
+
+        // act
+        var call = CallUI.Reconcile(redial, MyCall(ChatA, CallRole.Caller, CallPhase.Ended, Call1), NoGestures);
+
+        // assert
+        call.Should().Be(redial);
+    }
+
+    [Fact]
+    public void AnswerOnItsWayShouldOutliveTheEndOfItsRing()
+    {
+        // arrange — a late answer: the ring's claim ended, and the answer's AcceptCall takes it back
+        var accepted = Call(CallRole.Callee, CallPhase.Active) with { CallId = Call1 };
+        var gestures = new CallUI.CallGestures([], AcceptingCallId: Call1);
+
+        // act
+        var onEnd = CallUI.Reconcile(accepted, MyCall(ChatA, CallRole.Callee, CallPhase.Ended, Call1), gestures);
+        var onNothing = CallUI.Reconcile(accepted, null, gestures);
+
+        // assert
+        onEnd.Should().Be(accepted);
+        onNothing.Should().Be(accepted);
+    }
+
+    [Fact]
+    public void ServerShouldNameTheCallBeingPlaced()
+    {
+        // arrange
+        var placing = Call(CallRole.Caller, CallPhase.Dialing);
+
+        // act
+        var call = CallUI.Reconcile(placing, MyCall(ChatA, CallRole.Caller, CallPhase.Dialing, Call1), NoGestures);
+
+        // assert
+        call!.CallId.Should().Be(Call1);
     }
 
     [Fact]
     public void JustAcceptedRingShouldKeepItsPhaseUntilTheServerCatchesUp()
     {
         // arrange — Accept commits Active locally before its RPC lands
-        var intent = Intent(Call(CallRole.Callee, CallPhase.Active), ChatA, isFresh: true);
+        var accepted = Call(CallRole.Callee, CallPhase.Active) with { CallId = Call1 };
 
         // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Ringing), intent);
+        var call = CallUI.Reconcile(accepted, MyCall(ChatA, CallRole.Callee, CallPhase.Ringing, Call1), NoGestures);
 
         // assert — the screens must not blink back to ringing
         call!.Phase.Should().Be(CallPhase.Active);
@@ -78,39 +133,38 @@ public class CallUIDecisionsTest
     public void JustLeftCallShouldStayGoneWhileTheServerStillNamesIt()
     {
         // arrange — hanging up clears the slot before the server sees the presence go
-        var intent = Intent(null, ChatA, isFresh: true);
+        var gestures = new CallUI.CallGestures([Call1]);
 
         // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Active), intent);
+        var call = CallUI.Reconcile(null, MyCall(ChatA, CallRole.Callee, CallPhase.Active, Call1), gestures);
 
         // assert
         call.Should().BeNull();
     }
 
     [Fact]
-    public void JustLeftCallShouldStayGoneWhileTheServerStillNamesItById()
+    public void CallCancelledBeforeItWasNamedShouldStayGone()
     {
-        // arrange
-        var intent = Intent(null, ChatA, isFresh: true, leftCallId: Call1);
+        // arrange — its StartCall's answer, the id, is still on its way
+        var gestures = new CallUI.CallGestures([], CancelledChatId: ChatA);
 
         // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Active, Call1), intent);
+        var call = CallUI.Reconcile(null, MyCall(ChatA, CallRole.Caller, CallPhase.Dialing, Call1), gestures);
 
         // assert
         call.Should().BeNull();
     }
 
     [Fact]
-    public void NextCallToTheChatJustLeftShouldNotWaitTheGraceOut()
+    public void NextCallToTheChatJustLeftShouldShowAtOnce()
     {
         // arrange - the peer calls back right after the hang-up
-        var intent = Intent(null, ChatA, isFresh: true, leftCallId: Call1);
+        var gestures = new CallUI.CallGestures([Call1]);
 
         // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Ringing, Call2), intent);
+        var call = CallUI.Reconcile(null, MyCall(ChatA, CallRole.Callee, CallPhase.Ringing, Call2), gestures);
 
-        // assert - by chat alone this ring reads as the call just left, and stays hidden
-        call.Should().NotBeNull();
+        // assert
         call!.CallId.Should().Be(Call2);
         call.Phase.Should().Be(CallPhase.Ringing);
     }
@@ -120,40 +174,13 @@ public class CallUIDecisionsTest
     {
         // arrange - the server still names the call this client hung up on
         var redial = Call(CallRole.Caller, CallPhase.Dialing);
-        var intent = Intent(redial, ChatA, isFresh: true, leftCallId: Call1);
+        var gestures = new CallUI.CallGestures([Call1]);
 
         // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Caller, CallPhase.Active, Call1), intent);
+        var call = CallUI.Reconcile(redial, MyCall(ChatA, CallRole.Caller, CallPhase.Active, Call1), gestures);
 
         // assert
         call.Should().Be(redial);
-    }
-
-    [Fact]
-    public void RejoinedCallShouldFollowTheServerOnceItIsNoLongerTheLeftOne()
-    {
-        // arrange - the redial joined the call just left, and naming it cleared "left"
-        var redial = Call(CallRole.Caller, CallPhase.Dialing) with { CallId = Call1 };
-        var intent = Intent(redial, ChatA, isFresh: true);
-
-        // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Caller, CallPhase.Active, Call1), intent);
-
-        // assert - held as "left", it would sit at Dialing with no audio for the whole grace
-        call!.Phase.Should().Be(CallPhase.Active);
-    }
-
-    [Fact]
-    public void ServerShouldNameTheCallAnIntentHolds()
-    {
-        // arrange - a call placed here holds the slot before the server has named it
-        var intent = Intent(Call(CallRole.Caller, CallPhase.Dialing), ChatA, isFresh: true);
-
-        // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Caller, CallPhase.Dialing, Call1), intent);
-
-        // assert
-        call!.CallId.Should().Be(Call1);
     }
 
     [Fact]
@@ -161,10 +188,9 @@ public class CallUIDecisionsTest
     {
         // arrange - the ring answered is over, and the chat rings in the next call
         var accepted = Call(CallRole.Callee, CallPhase.Active) with { CallId = Call1 };
-        var intent = Intent(accepted, ChatA, isFresh: true);
 
         // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Ringing, Call2), intent);
+        var call = CallUI.Reconcile(accepted, MyCall(ChatA, CallRole.Callee, CallPhase.Ringing, Call2), NoGestures);
 
         // assert
         call!.CallId.Should().Be(Call2);
@@ -172,29 +198,16 @@ public class CallUIDecisionsTest
     }
 
     [Fact]
-    public void ServerShouldWinOverAnIntentForAnotherChat()
+    public void ServerShouldWinOverAGestureInAnotherChat()
     {
         // arrange — the local claim lost the arbitration; the server put me in another call
-        var intent = Intent(Call(CallRole.Caller, CallPhase.Dialing), ChatA, isFresh: true);
+        var placing = Call(CallRole.Caller, CallPhase.Dialing);
 
         // act
-        var call = CallUI.Reconcile(MyCall(ChatB, CallRole.Callee, CallPhase.Ringing), intent);
+        var call = CallUI.Reconcile(placing, MyCall(ChatB, CallRole.Callee, CallPhase.Ringing), NoGestures);
 
         // assert
         call!.ChatId.Should().Be(ChatB);
-    }
-
-    [Fact]
-    public void StaleIntentShouldNotHoldAPhaseTheServerMovedOn()
-    {
-        // arrange
-        var intent = Intent(Call(CallRole.Callee, CallPhase.Active), ChatA, isFresh: false);
-
-        // act
-        var call = CallUI.Reconcile(MyCall(ChatA, CallRole.Callee, CallPhase.Ringing), intent);
-
-        // assert
-        call!.Phase.Should().Be(CallPhase.Ringing);
     }
 
     [Fact]
@@ -283,13 +296,6 @@ public class CallUIDecisionsTest
             Phase = phase,
             PeerId = role == CallRole.Callee ? CallerA : null,
         };
-
-    private static CallUI.CallIntentView Intent(
-        ActiveCall? call,
-        ChatId chatId,
-        bool isFresh,
-        CallId? leftCallId = null)
-        => new(call, chatId, isFresh, leftCallId);
 
     private static ActiveCall Call(CallRole role, CallPhase phase)
         => new(ChatA, role, phase, role == CallRole.Callee ? CallerA : null, false);
