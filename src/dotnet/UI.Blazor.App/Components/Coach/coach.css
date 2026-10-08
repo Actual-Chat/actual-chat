@@ -107,6 +107,24 @@
     color: #e9e9ec;
 }
 .banner.coach-tip-bar .c-tip-close i { @apply text-base; color: #e9e9ec; }
+/* Mobile: pin the coach tip as a fixed banner above the audio panel, out of the subfooter's flow, so
+   the transcript scrolls under it. The anchor is absolute against the chat column (.c-container is the
+   positioned ancestor); the grown end anchor below keeps the newest message clear of the banner.
+   data-has-coach-tip is the presence flag the banner declares via data-child - see CoachTipBar.razor. */
+body.narrow .list-view-layout[data-has-coach-tip] .coach-tip-anchor {
+    @apply absolute inset-x-0 z-40 pointer-events-none bottom-28;
+}
+body.narrow .list-view-layout[data-has-coach-tip] .coach-tip-anchor > * {
+    @apply pointer-events-auto;
+}
+body.narrow .list-view-layout[data-has-coach-tip][data-has-listening-activity] .coach-tip-anchor,
+body.narrow .list-view-layout[data-has-coach-tip][data-has-audio-panel-header] .coach-tip-anchor {
+    @apply bottom-30;
+}
+/* Room at the transcript's end so the newest message rests above the pinned banner instead of behind it. */
+body.narrow .list-view-layout[data-has-coach-tip] .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
+    @apply h-36;
+}
 .coach-mark-menu {
     @apply flex-y gap-y-1;
     @apply max-w-80 p-3;
