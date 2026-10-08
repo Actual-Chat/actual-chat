@@ -11,8 +11,11 @@ else
     RID="iossimulator-x64"
 fi
 
-# Find a booted simulator, or boot one
-BOOTED_UDID=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
+# --build-only stops after the build, so it needs no simulator: that is what `b app build` passes.
+DEVICE_ARGS=()
+if [ "$1" != "--build-only" ]; then
+    # Find a booted simulator, or boot one
+    BOOTED_UDID=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 for runtime, devices in data.get('devices', {}).items():
@@ -22,9 +25,9 @@ for runtime, devices in data.get('devices', {}).items():
             sys.exit(0)
 " 2>/dev/null)
 
-if [ -z "$BOOTED_UDID" ]; then
-    echo "No booted simulator found. Searching for an available iPhone simulator..."
-    SIM_INFO=$(xcrun simctl list devices available -j 2>/dev/null | python3 -c "
+    if [ -z "$BOOTED_UDID" ]; then
+        echo "No booted simulator found. Searching for an available iPhone simulator..."
+        SIM_INFO=$(xcrun simctl list devices available -j 2>/dev/null | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 for runtime, devices in sorted(data.get('devices', {}).items(), reverse=True):
@@ -38,21 +41,21 @@ for runtime, devices in sorted(data.get('devices', {}).items(), reverse=True):
 print('')
 " 2>/dev/null)
 
-    if [ -z "$SIM_INFO" ]; then
-        echo "Error: No available iPhone simulator found." >&2
-        echo "" >&2
-        echo "Available simulators:" >&2
-        xcrun simctl list devices available >&2
-        exit 1
-    fi
+        if [ -z "$SIM_INFO" ]; then
+            echo "Error: No available iPhone simulator found." >&2
+            echo "" >&2
+            echo "Available simulators:" >&2
+            xcrun simctl list devices available >&2
+            exit 1
+        fi
 
-    BOOTED_UDID="${SIM_INFO%%|*}"
-    SIM_NAME="${SIM_INFO##*|}"
-    echo "Booting simulator: $SIM_NAME ($BOOTED_UDID)"
-    xcrun simctl boot "$BOOTED_UDID"
-    open -a Simulator
-else
-    SIM_NAME=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
+        BOOTED_UDID="${SIM_INFO%%|*}"
+        SIM_NAME="${SIM_INFO##*|}"
+        echo "Booting simulator: $SIM_NAME ($BOOTED_UDID)"
+        xcrun simctl boot "$BOOTED_UDID"
+        open -a Simulator
+    else
+        SIM_NAME=$(xcrun simctl list devices booted -j 2>/dev/null | python3 -c "
 import json, sys
 data = json.load(sys.stdin)
 for runtime, devices in data.get('devices', {}).items():
@@ -61,29 +64,32 @@ for runtime, devices in data.get('devices', {}).items():
             print(d.get('name', 'Unknown'))
             sys.exit(0)
 " 2>/dev/null)
-    echo "Using booted simulator: $SIM_NAME ($BOOTED_UDID)"
-fi
+        echo "Using booted simulator: $SIM_NAME ($BOOTED_UDID)"
+    fi
 
-# Install root CA certificate if not already done for this simulator
-CERT_PATH="$REPO_ROOT/.config/local.voxt.ai/ssl/rootCA.crt"
-CERT_MARKER="$HOME/.ios-simulator-certs/$BOOTED_UDID"
+    # Install root CA certificate if not already done for this simulator
+    CERT_PATH="$REPO_ROOT/.config/local.voxt.ai/ssl/rootCA.crt"
+    CERT_MARKER="$HOME/.ios-simulator-certs/$BOOTED_UDID"
 
-if [ -f "$CERT_PATH" ]; then
-    if [ ! -f "$CERT_MARKER" ] || [ "$CERT_PATH" -nt "$CERT_MARKER" ]; then
-        echo "Installing root CA certificate..."
-        xcrun simctl keychain "$BOOTED_UDID" add-root-cert "$CERT_PATH"
-        if [ $? -eq 0 ]; then
-            mkdir -p "$(dirname "$CERT_MARKER")"
-            touch "$CERT_MARKER"
+    if [ -f "$CERT_PATH" ]; then
+        if [ ! -f "$CERT_MARKER" ] || [ "$CERT_PATH" -nt "$CERT_MARKER" ]; then
+            echo "Installing root CA certificate..."
+            xcrun simctl keychain "$BOOTED_UDID" add-root-cert "$CERT_PATH"
+            if [ $? -eq 0 ]; then
+                mkdir -p "$(dirname "$CERT_MARKER")"
+                touch "$CERT_MARKER"
+            fi
         fi
     fi
+
+    DEVICE_ARGS=("-p:_DeviceName=:v2:udid=$BOOTED_UDID")
 fi
 
 # Clean stale native artifacts from physical device builds to avoid linker errors
 rm -rf "$REPO_ROOT/artifacts/out/nativelibraries"
 
 # Build first (without Run) to allow fixing corrupted native libraries
-dotnet build src/dotnet/App.Maui/ -f net11.0-ios -p:RuntimeIdentifier=$RID -p:_DeviceName=":v2:udid=$BOOTED_UDID"
+dotnet build src/dotnet/App.Maui/ -f net11.0-ios -p:RuntimeIdentifier=$RID "${DEVICE_ARGS[@]}"
 
 if [ $? -ne 0 ]; then
     echo "Build failed"
@@ -113,6 +119,11 @@ for dylib in "$APP_BUNDLE"/*.dylib; do
         fi
     fi
 done
+
+if [ "$1" = "--build-only" ]; then
+    echo "Built: $APP_BUNDLE"
+    exit 0
+fi
 
 # Install and launch the app directly (bypassing dotnet Run target which may re-corrupt libraries)
 echo "Installing app to simulator..."

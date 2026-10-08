@@ -120,8 +120,8 @@ public sealed class AppSettings : PlanSettings
             return ValidationResult.Error("--publish and --no-publish are mutually exclusive.");
         if (MustLaunch && MustNotLaunch)
             return ValidationResult.Error("--launch and --no-launch are mutually exclusive.");
-        if (MustLaunch && Platform is AppPlatform.Ios or AppPlatform.Mac && OperatingSystem.IsWindows())
-            return ValidationResult.Error($"Launching the {Platform} app needs macOS.");
+        if (Platform is AppPlatform.Ios or AppPlatform.Mac && OperatingSystem.IsWindows())
+            return ValidationResult.Error($"Building the {Platform} app needs macOS.");
         if (UseSimulator && Platform != AppPlatform.Ios)
             return ValidationResult.Error("--simulator is only supported for the ios platform.");
         if (UseCatalyst && Platform != AppPlatform.Mac)

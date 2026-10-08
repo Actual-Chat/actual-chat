@@ -30,6 +30,11 @@ if [ -z "$APP_PATH" ]; then
     echo "error: no .app bundle found in $OUT_DIR" >&2
     exit 1
 fi
+# --build-only stops after the build: that is what `b app build` passes.
+if [ "$1" = "--build-only" ]; then
+    echo "Built: $APP_PATH"
+    exit 0
+fi
 
 # Terminate a previous instance, then launch through LaunchServices: a binary started straight
 # from a shell has its TCC decisions (contacts, microphone, ...) attributed to the terminal, not
