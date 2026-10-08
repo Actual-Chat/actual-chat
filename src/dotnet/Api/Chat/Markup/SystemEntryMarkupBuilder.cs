@@ -1,3 +1,5 @@
+using ActualChat.Time;
+
 namespace ActualChat.Chat;
 
 // The English here is a deliberate second copy of the SystemEntry_* keys in Strings.en.json:
@@ -19,6 +21,7 @@ public class SystemEntryMarkupBuilder
             MembersChangedEntry e => BuildMembersChanged(e),
             NotifyMembersEntry e => BuildNotifyMembers(e),
             CallEntry e => BuildCall(e),
+            HistoryChangedEntry e => BuildHistoryChanged(e),
             // A system event of a kind this build has no member for renders as nothing: a system
             // event is low-value by construction, so "update your app" in its place is just a nag.
             UnsupportedSystemEntry => Markup.EmptyText,
@@ -60,5 +63,32 @@ public class SystemEntryMarkupBuilder
                 CallOutcome.Canceled => " called. Canceled.",
                 _ => " called.",
             }));
+    }
+
+    protected virtual Markup BuildHistoryChanged(HistoryChangedEntry entry)
+    {
+        var authorName = entry.TargetAuthorName.NullIfEmpty() ?? SomeoneName;
+        var text = (entry.HistoryChange, entry.HistoryPeriod) switch {
+            (HistoryChangeKind.Wiped, null) => " wiped the chat history.",
+            (HistoryChangeKind.Wiped, { } period) => $" wiped the last {FormatPeriod(period)} of chat history.",
+            (_, null) => " turned off history retention.",
+            (_, { } period) => $" set history retention to {FormatPeriod(period)}.",
+        };
+        return entry.TargetAuthorId is null
+            ? new PlainTextMarkup(authorName + text)
+            : new MarkupSeq(
+                new AuthorMention(MentionRef.NewAuthor(entry.TargetAuthorId), authorName),
+                new PlainTextMarkup(text));
+    }
+
+    protected virtual string FormatPeriod(TimeSpan period)
+    {
+        var (count, periodUnit) = period.ToPeriodUnits();
+        var unit = periodUnit switch {
+            PeriodUnit.Days => "day",
+            PeriodUnit.Hours => "hour",
+            _ => "minute",
+        };
+        return count == 1 ? $"1 {unit}" : $"{count} {unit}s";
     }
 }

@@ -34,6 +34,17 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
         return author;
     }
 
+    // [ComputeMethod] - consolidated
+    public virtual async Task<bool> Exists(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    {
+        // Full, not Default: in a public place chat the per-chat author row is an optimization
+        // (OnChangeEntry creates one), not the source of truth - the author is derived from the
+        // place-root one, and only Full resolves it that way. Consolidation keeps the extra
+        // dependencies Full pulls in - the chat, its picture - from reaching the tiles.
+        var author = await Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+        return author is not null;
+    }
+
     // [ComputeMethod]
     public virtual async Task<AuthorFull?> GetByUserId(
         ChatId chatId, UserId userId,
@@ -293,13 +304,14 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
     public virtual async Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken)
     {
         var (chatId, authorId, userId) = command;
+        var context = CommandContext.GetCurrent();
+
         chatId?.EnsureNonThread();
         var nonNullCount = (authorId is not null ? 1 : 0) + (chatId is not null ? 1 : 0) + (userId is not null ? 1 : 0);
         if (nonNullCount != 1)
             throw new ArgumentOutOfRangeException(nameof(command),
                 "Only one of the following properties must be non-null: AuthorId, UserId, or ChatId.");
 
-        var context = CommandContext.GetCurrent();
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
@@ -573,6 +585,11 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
             if (author == null)
                 return null;
         }
+
+        // A removed account takes its authors with it, which is what makes its messages disappear
+        // everywhere at once - see ChatsBackend.GetTile.
+        if (!await AccountsBackend.Exists(author.UserId, cancellationToken).ConfigureAwait(false))
+            return null;
 
         if (chatId is not PlaceChatId placeChatId || placeChatId.IsRoot)
             author = await AddAvatar(author, cancellationToken).ConfigureAwait(false);
@@ -856,8 +873,10 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
     private async Task<ImmutableList<AuthorId>> ListPlaceAuthorIdsByUserId(PlaceId placeId, UserId userId, CancellationToken cancellationToken)
     {
         var authorIdPrefix = PlaceChatId.Format(placeId, Symbol.Empty);
+
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
+
         var dbAuthorSids = await dbContext.Authors
             .Where(a => a.Id.StartsWith(authorIdPrefix))
             .Where(a => a.UserId == userId.Value)

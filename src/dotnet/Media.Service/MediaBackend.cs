@@ -73,6 +73,10 @@ public class MediaBackend(IServiceProvider services) : DbServiceBase<MediaDbCont
     {
         var (mediaId, expectedVersion, change) = command;
         change.RequireValid();
+        // Seeded system media is shared by every chat that shows it
+        if (change.IsRemove() && mediaId.IsSystem)
+            return null;
+
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 

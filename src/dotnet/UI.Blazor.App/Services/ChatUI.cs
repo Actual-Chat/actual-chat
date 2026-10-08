@@ -17,6 +17,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyInitialized, IAsyncDisposable
 {
+    private const int HistoryInfoScanLimit = 1000;
+
     private readonly SharedResourcePool<ChatId, SyncedState<ReadPosition>> _readPositionStates;
     private readonly SharedResourcePool<ChatId, MutableState<ReadPosition>> _viewPositionStates;
     private readonly IUpdateDelayer _readStateUpdateDelayer;
@@ -176,6 +178,18 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             Log.LogError(e, "Get({ChatId}) failed", chatId.Value);
             throw;
         }
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ChatHistoryInfo> GetHistoryInfo(
+        ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var idRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var reader = Chats.NewEntryReader(Session, chatId);
+        var first = await reader
+            .GetFirst(idRange, e => !e.IsSystemEntry, HistoryInfoScanLimit, cancellationToken)
+            .ConfigureAwait(false);
+        return new ChatHistoryInfo { First = first, IdRange = idRange };
     }
 
     [ComputeMethod(MinCacheDuration = 300)]
@@ -422,6 +436,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         await foreach (var entry in reader.Read(idRange, cancellationToken).ConfigureAwait(false))
             if (!entry.IsSystemEntry)
                 return false;
+
+        // An empty chat stops being empty with its next message, which only the range reports - e.g.
+        // right after its history was cleared. A non-empty one is cheap to keep as is.
+        _ = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -500,6 +518,17 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _ = ModalUI.Show(new LeaveChatConfirmationModal.Model(true,
             LeaveChatConfirmationModal.TargetKind.Thread,
             m => _ = DeleteOrLeaveChatInternal(chat, true, m)));
+    }
+
+    // A thread outlives its anchor message, so the start it points back to may be gone
+    public async Task NavigateToThreadStart(ThreadChatId threadChatId, bool mustReplace = false)
+    {
+        var parentChatId = threadChatId.ParentChatId;
+        var anchorId = ChatEntryId.New(parentChatId, threadChatId.ThreadId);
+        var anchor = await GetEntry(anchorId, CancellationToken.None).ConfigureAwait(true);
+        if (anchor is null or { IsRemoved: true })
+            Hub.ToastUI.Show(L.ThreadMenu_StartMessageRemoved, ToastDismissDelay.Short);
+        await History.NavigateTo(Links.Chat(parentChatId, threadChatId.ThreadId), mustReplace).ConfigureAwait(true);
     }
 
     // Place: join, leave, delete

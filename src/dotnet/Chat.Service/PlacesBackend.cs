@@ -134,10 +134,21 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             chatExpectedVersion = null;
             chatChange = Change.Create(ToChatDiff(place));
         }
+        else if (change.IsRemove()) {
+            // Account deletion drains the root chat before removing the Place here, so a retry of
+            // that removal can find the root chat already gone
+            if (rootChat is null) {
+                context.Operation.AddEvent(new PlaceChangedEvent(place, oldPlace, change.Kind));
+                return place;
+            }
+
+            chatExpectedVersion = rootChat.Version;
+            chatChange = Change.Remove<ChatDiff>();
+        }
         else {
             rootChat.Require();
             chatExpectedVersion = rootChat.Version;
-            chatChange = !change.Remove ? Change.Update(ToChatDiff(place)) : Change.Remove<ChatDiff>();
+            chatChange = Change.Update(ToChatDiff(place));
         }
 
         // Since place root chat is still used for getting place rules and place members we should synchronously update it.

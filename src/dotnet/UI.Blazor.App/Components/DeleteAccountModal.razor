@@ -1,5 +1,5 @@
 @implements IModalView<DeleteAccountModal.Model>
-@inherits ComponentBase<UIHub>
+@inherits ComponentBase<AppUIHub>
 @{
     var m = ModalModel;
 }
@@ -10,15 +10,35 @@
         <FormBlock>
             <DataAnnotationsValidator/>
 
-            <div class="c-question">
-                @L.DeleteAccount_Question_Prefix<span>@L.DeleteAccount_QuestionTarget</span>@L.DeleteAccount_Question_Suffix
+            <div class="c-warning">
+                <b>@L.DeleteAccount_Irreversible</b>
+                @L.DeleteAccount_Scope_Prefix<b>@L.DeleteAccount_ScopeTarget</b>@(
+                    L.DeleteAccount_Scope_Middle)<b>@L.DeleteAccount_ScopeContentTarget</b>@L.DeleteAccount_Scope_Suffix
+                @if (_soleOwnedItems.Count > 0) {
+                    @(" ")@L.DeleteAccount_SoleOwned_Prefix<b>@L.DeleteAccount_SoleOwnedTarget</b>@(
+                        L.DeleteAccount_SoleOwned_Suffix)
+                }
             </div>
-            <div class="c-description">
-                @L.DeleteAccount_Warning_Prefix<span>@L.DeleteAccount_WarningTarget</span>@L.DeleteAccount_Warning_Suffix
-                @L.DeleteAccount_Scope_Prefix<span>@L.DeleteAccount_ScopeTarget</span>@L.DeleteAccount_Scope_Suffix
-            </div>
+            @if (_soleOwnedItems.Count > 0) {
+                <Tile Class="c-sole-owned">
+                    @foreach (var item in _soleOwnedItems) {
+                        <TileItem
+                            IsIconCentered="true"
+                            Caption="@(item.IsPlace ? PlaceCaption : null)"
+                            Click="@(() => OnSoleOwnedItemClick(item))">
+                            <Icon><ChatIcon Chat="@item.Chat" Size="SquareSize.Size8" IsSquare="@item.IsPlace"/></Icon>
+                            <Content>@item.Title</Content>
+                            <Right><i class="icon-chevron-right text-xl"></i></Right>
+                        </TileItem>
+                    }
+                </Tile>
+                <div class="c-hint">@L.DeleteAccount_SoleOwnedHint</div>
+            }
         </FormBlock>
         <FormBlock>
+            <div class="c-question">
+                @L.DeleteAccount_Question_Prefix<b>@L.DeleteAccount_QuestionTarget</b>@L.DeleteAccount_Question_Suffix
+            </div>
             <div class="c-proposal">
                 @L.DeleteAccount_Proposal_Prefix<code>DELETE</code>@L.DeleteAccount_Proposal_Suffix
             </div>
@@ -42,15 +62,18 @@
 @code {
     private Form _formRef = null!;
     private FormModel _form = null!;
+    private IReadOnlyList<SoleOwnedItem> _soleOwnedItems = [];
+
+    private RenderFragment PlaceCaption => @<span>@L.Chat_TypePlace</span>;
 
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    protected override Task OnInitializedAsync() {
+    protected override async Task OnInitializedAsync() {
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         _form.CopyToBase();
 
-        return Task.CompletedTask;
+        _soleOwnedItems = await ListSoleOwnedItems(CancellationToken.None);
     }
 
     protected override void OnAfterRender(bool firstRender) {
@@ -64,6 +87,35 @@
 
     private void OnCancel()
         => Modal.Close();
+
+    private async Task OnSoleOwnedItemClick(SoleOwnedItem item) {
+        Modal.Close();
+        await History.NavigateTo(item.Url);
+    }
+
+    private async Task<IReadOnlyList<SoleOwnedItem>> ListSoleOwnedItems(CancellationToken cancellationToken) {
+        var chatIds = await Hub.Chats.ListOwnSoleOwnedChatIds(Session, cancellationToken);
+        var items = await chatIds
+            .Select(chatId => GetSoleOwnedItem(chatId, cancellationToken))
+            .Collect(cancellationToken);
+        return items
+            .SkipNullItems()
+            .OrderByDescending(x => x.IsPlace)
+            .ThenBy(x => x.Title, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    private async Task<SoleOwnedItem?> GetSoleOwnedItem(ChatId chatId, CancellationToken cancellationToken) {
+        if (chatId is PlaceChatId { IsRoot: true } placeRootChatId) {
+            var placeId = placeRootChatId.PlaceId;
+            var place = await Hub.Places.Get(Session, placeId, cancellationToken);
+            var rootChat = await Hub.Chats.Get(Session, placeRootChatId, cancellationToken);
+            return place is null ? null : new SoleOwnedItem(rootChat, place.Title, Links.PlaceInfo(placeId), true);
+        }
+
+        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken);
+        return chat is null ? null : new SoleOwnedItem(chat, chat.Title, Links.Chat(chatId), false);
+    }
 
     private async Task OnDelete() {
         Modal.Close();
@@ -83,4 +135,6 @@
     }
 
     public sealed record Model();
+
+    private sealed record SoleOwnedItem(Chat? Chat, string Title, LocalUrl Url, bool IsPlace);
 }

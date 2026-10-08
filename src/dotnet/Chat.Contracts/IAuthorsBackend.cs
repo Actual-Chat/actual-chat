@@ -9,13 +9,14 @@ public partial interface IAuthorsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
     Task<AuthorFull?> Get(ChatId chatId, AuthorId authorId, RequestedAuthorKind authorKind, CancellationToken cancellationToken);
+    [ComputeMethod(ConsolidationDelay = 0)]
+    Task<bool> Exists(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<AuthorFull?> GetByUserId(ChatId chatId, UserId userId, RequestedAuthorKind authorKind, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<AuthorId[]> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserId[]> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
-
     // Commands
 
     [CommandHandler]

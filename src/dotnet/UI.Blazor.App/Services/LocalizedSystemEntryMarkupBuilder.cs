@@ -48,4 +48,23 @@ public sealed class LocalizedSystemEntryMarkupBuilder(IServiceProvider services)
                 _ => L.SystemEntry_CallEnded,
             }));
     }
+
+    protected override Markup BuildHistoryChanged(HistoryChangedEntry entry)
+    {
+        var authorName = entry.TargetAuthorName.NullIfEmpty() ?? SomeoneName;
+        var text = (entry.HistoryChange, entry.HistoryPeriod) switch {
+            (HistoryChangeKind.Wiped, null) => L.SystemEntry_HistoryWiped,
+            (HistoryChangeKind.Wiped, { } period) => L.SystemEntry_HistoryWipedPeriod_Format(FormatPeriod(period)),
+            (_, null) => L.SystemEntry_RetentionTurnedOff,
+            (_, { } period) => L.SystemEntry_RetentionChanged_Format(FormatPeriod(period)),
+        };
+        return entry.TargetAuthorId is null
+            ? new PlainTextMarkup(authorName + text)
+            : new MarkupSeq(
+                new AuthorMention(MentionRef.NewAuthor(entry.TargetAuthorId), authorName),
+                new PlainTextMarkup(text));
+    }
+
+    protected override string FormatPeriod(TimeSpan period)
+        => L.PeriodText(period);
 }

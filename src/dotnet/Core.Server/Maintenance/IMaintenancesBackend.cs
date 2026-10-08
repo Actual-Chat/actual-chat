@@ -52,7 +52,9 @@ public sealed partial record MaintenancesBackend_Set(
     [DataMember, Key(3)] public UserId? StartedBy { get; init; }
     // Recorded only when the maintenance starts; the handler's clock is used when it's absent
     [DataMember, Key(4)] public Moment? StartedAt { get; init; }
-    [DataMember, Key(5)] public ApiArray<string> Targets { get; init; }
+    // A diff is applied to the stored targets, so concurrent changes of one key's targets don't overwrite each other;
+    // the stored mode stays, and removing the last target ends it.
+    [DataMember, Key(5)] public SetDiff<string> TargetDiff { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Key.ShardKey;

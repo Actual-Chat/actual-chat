@@ -9,6 +9,25 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
     private ChatId TestChatId { get; } = ChatId.Parse("the-actual-one");
 
     [Fact]
+    public async Task UpdateShouldNotReviveARemovedAccount()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var accountsBackend = tester.AppServices.GetRequiredService<IAccountsBackend>();
+        var readBeforeDelete = await accountsBackend.Get(account.Id, default).Require();
+        await tester.Commander.Call(new Accounts_DeleteOwn { Session = tester.Session });
+
+        // act - an update that read the account before it was deleted
+        var updateCmd = new AccountsBackend_Update(readBeforeDelete with { Name = "Revived" }, null);
+        var update = () => tester.Commander.Call(updateCmd);
+
+        // assert
+        await update.Should().ThrowAsync<Exception>();
+        (await accountsBackend.Get(account.Id, default)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task DeleteOwnAccountTest()
     {
         var appHost = AppHost;
@@ -53,13 +72,16 @@ public class RemoveOwnAccountTest(AppHostFixture fixture, ITestOutputHelper @out
             .Should()
             .ThrowAsync<NotFoundException>();
 
+        // Each chat's ChatPurgeFlow drains the account's entries in the background
         var lastActualEntryId = entriesActual[^1].LocalId;
         var idTileActual = idTiles.GetTile(lastActualEntryId);
-        var tile = await chats.GetTile(session,
+        await TestWait.WhenPolled(async () => {
+            var tile = await chats.GetTile(session,
                 TestChatId,
                 idTileActual.Range,
                 CancellationToken.None);
-        tile.Entries.Should().NotContain(e => e.LocalId == lastActualEntryId);
+            tile.Entries.Should().NotContain(e => e.LocalId == lastActualEntryId);
+        }, TimeSpan.FromSeconds(30));
     }
 
     private async Task<ChatEntry[]> CreateChatEntries(

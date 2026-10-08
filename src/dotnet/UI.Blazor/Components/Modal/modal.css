@@ -422,3 +422,12 @@ body.hoverable .dialog-body .c-chat-list .c-chat:hover {
     @apply bg-hover;
     @apply cursor-pointer;
 }
+
+/* A dialog of prose: its header already spaces the title, so the frame gap and the body's top padding
+   aren't added on top */
+.modal-frame.compact-header {
+    @apply gap-y-0;
+}
+.modal-frame.compact-header .dialog-body {
+    @apply pt-0;
+}

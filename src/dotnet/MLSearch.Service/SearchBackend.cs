@@ -21,9 +21,13 @@ namespace ActualChat.MLSearch;
 // ReSharper disable once ClassWithVirtualMembersNeverInherited.Global
 public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDbContext>(services), ISearchBackend
 {
+    // A page made of nothing but stale hits is rare; this bounds the refill when the index is far behind
+    private const int MaxFindEntriesPageCount = 4;
+
     private MLSearchSettings Settings { get; } = services.GetRequiredService<MLSearchSettings>();
     private OpenSearchNames OpenSearchNames { get; } = services.GetRequiredService<OpenSearchNames>();
     private IOpenSearchClient OpenSearchClient { get; } = services.GetRequiredService<IOpenSearchClient>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
     private OpenSearchConfigurator OpenSearchConfigurator { get; } = services.GetRequiredService<OpenSearchConfigurator>();
     private IndexedDocuments IndexedDocuments { get; } = services.GetRequiredService<IndexedDocuments>();
@@ -194,16 +198,25 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
         }
     }
 
+    public virtual Task OnChatEntriesPurgedEvent(
+        ChatEntriesPurgedEvent eventCommand, CancellationToken cancellationToken)
+        => !Settings.IsEnabled
+            ? Task.CompletedTask
+            : IndexedDocuments.SaveEntries([], eventCommand.LocalIds
+                .Select(id => ChatEntryId.New(eventCommand.ChatId, id)).ToArray(), cancellationToken);
+
     // [EventHandler]
     public virtual Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
         var entry = eventCommand.Entry;
         return UpdateIndexedEntries();
 
-        Task UpdateIndexedEntries()
-            => entry.IsSystemEntry
-                ? Task.CompletedTask
-                : ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, cancellationToken);
+        Task UpdateIndexedEntries() {
+            if (!Settings.IsEnabled || entry.IsSystemEntry)
+                return Task.CompletedTask;
+
+            return ResumeIndexingFlow<EntryIndexingFlow>(entry.ChatId.Value, cancellationToken);
+        }
     }
 
     // [EventHandler]
@@ -439,10 +452,39 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
 
         var hashtags = query.GetHashtags(MarkupParser);
 
-        var searchResponse =
-            await OpenSearchClient.SearchAsync<IndexedEntry>(searchDescriptor
+        // The index lags the chat: an entry that was removed, trimmed, or left behind by a removed
+        // account stays indexed until the purge event lands. Reading it back covers all three, and
+        // the hits it drops are made up for from the next page - callers read a short page as the end.
+        var visibleHits = new List<FoundChatEntry>(query.Limit);
+        var from = query.Skip;
+        for (var pageIndex = 0; pageIndex < MaxFindEntriesPageCount && visibleHits.Count < query.Limit; pageIndex++) {
+            var searchResponse = await SearchPage(from).ConfigureAwait(false);
+            if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
+                return SearchResult<FoundChatEntry>.Empty;
+
+            var hits = searchResponse.Hits.ToList();
+            var entries = await hits
+                .Select(hit => ChatsBackend.GetEntry(hit.Source.Id, cancellationToken).AsTask())
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            for (var i = 0; i < hits.Count && visibleHits.Count < query.Limit; i++)
+                if (entries[i] is { IsRemoved: false })
+                    visibleHits.Add(ToSearchResult(hits[i]));
+            if (hits.Count < query.Limit)
+                break;
+
+            from += hits.Count;
+        }
+
+        return new SearchResult<FoundChatEntry> {
+            Items = visibleHits.ToArray(),
+            Offset = query.Skip,
+        };
+
+        Task<ISearchResponse<IndexedEntry>> SearchPage(int pageFrom)
+            => OpenSearchClient.SearchAsync<IndexedEntry>(searchDescriptor
                         => searchDescriptor.Index(OpenSearchNames.EntryIndexName)
-                            .From(query.Skip)
+                            .From(pageFrom)
                             .Size(query.Limit)
                             .Query(q => q.Bool(ConfigureQuery))
                             .Sort(s => s.Descending(x => x.At))
@@ -452,15 +494,7 @@ public class SearchBackend(IServiceProvider services) : DbServiceBase<MLSearchDb
                                 .PostTags(HighlightsConverter.PostTag))
                             .Log(OpenSearchClient, OpenSearchDebugLog, "Entry", OpenSearchNames.EntryIndexName),
                     cancellationToken)
-                .Assert(Log)
-                .ConfigureAwait(false);
-        if (searchResponse.ApiCall.HttpStatusCode == StatusCodes.Status404NotFound)
-            return SearchResult<FoundChatEntry>.Empty;
-
-        return new SearchResult<FoundChatEntry> {
-            Items = searchResponse.Hits.Select(ToSearchResult).ToArray(),
-            Offset = query.Skip,
-        };
+                .Assert(Log);
 
         FoundChatEntry ToSearchResult(IHit<IndexedEntry> hit)
             => new(hit.Source!.Id, hit.GetSearchMatch()) {

@@ -71,45 +71,55 @@ public static class ChatsBackendExt
         return tile.Entries.SingleOrDefault(e => e.LocalId == entryId.LocalId);
     }
 
-    public static async ValueTask<IReadOnlyList<ChatEntry>> ListEntries(
+    public static async Task<ChatEntry?[]> ListEntries(
         this IChatsBackend chatsBackend,
         IEnumerable<ChatEntryId> entryIds,
         bool includeRemoved = false,
         CancellationToken cancellationToken = default)
     {
-        ChatId? chatId = null;
-        var (minId, maxId) = (long.MaxValue, long.MinValue);
-        var localIds = new HashSet<long>();
-        foreach (var entryId in entryIds) {
-            if (chatId is null) {
-                chatId = entryId.ChatId;
-            }
-            else {
-                if (chatId != entryId.ChatId) {
-                    throw new InvalidOperationException("All entries must belong to the same chat.");
-                }
-            }
-
-            var localId = entryId.LocalId;
-            localIds.Add(localId);
-
-            minId = Math.Min(minId, localId);
-            maxId = Math.Max(maxId, localId);
-        }
-        if (maxId < minId || chatId is null)
+        // Returns the entries in the order of entryIdSequence, null for the missing ones;
+        // each tile they fall into is fetched once
+        var entryIdList = entryIds as IReadOnlyList<ChatEntryId> ?? entryIds.ToList();
+        if (entryIdList.Count == 0)
             return [];
 
-        var idTiles = Constants.Chat.EntryIdTiles.GetCoveringTiles(new Range<long>(minId, maxId + 1));
-        var entries = new List<ChatEntry>(localIds.Count);
-        foreach (var idTile in idTiles) {
-            var tile = await chatsBackend.GetTile(chatId!,
-                    idTile.Range,
-                    includeRemoved,
-                    cancellationToken)
-                .ConfigureAwait(false);
-            entries.AddRange(tile.Entries.Where(e => localIds.Contains(e.LocalId)));
+        var chatId = entryIdList[0].ChatId;
+        foreach (var entryId in entryIdList)
+            if (entryId.ChatId != chatId)
+                throw new InvalidOperationException("All entries must belong to the same chat.");
+
+        var idTiles = Constants.Chat.EntryIdTiles.GetCoveringTiles(entryIdList.Select(x => x.LocalId));
+        var tiles = await idTiles
+            .Select(idTile => chatsBackend.GetTile(chatId, idTile.Range, includeRemoved, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Low, cancellationToken)
+            .ConfigureAwait(false);
+
+        var result = new ChatEntry?[entryIdList.Count];
+        for (var i = 0; i < entryIdList.Count; i++) {
+            var localId = entryIdList[i].LocalId;
+            var tile = tiles[IndexOfTile(Constants.Chat.EntryIdTiles.GetTile(localId).Start)];
+            foreach (var entry in tile.Entries) {
+                if (entry.LocalId != localId)
+                    continue;
+
+                result[i] = entry;
+                break;
+            }
         }
-        return entries;
+        return result;
+
+        // idTiles are ordered by Start
+        int IndexOfTile(long tileStart) {
+            var (min, max) = (0, idTiles.Length - 1);
+            while (min < max) {
+                var mid = (min + max) >> 1;
+                if (idTiles[mid].Start < tileStart)
+                    min = mid + 1;
+                else
+                    max = mid;
+            }
+            return min;
+        }
     }
 
     public static async Task<IReadOnlyList<ChatEntry>> ListEntries(
@@ -120,14 +130,10 @@ public static class ChatsBackendExt
         CancellationToken cancellationToken = default)
     {
         var idTiles = Constants.Chat.EntryIdTiles.GetCoveringTiles(lidRange);
-        var tiles = await idTiles.Select(t => chatsBackend.GetTile(
-                chatId,
-                t.Range,
-                includeRemoved,
-                cancellationToken))
-            .Collect(cancellationToken)
+        var tiles = await idTiles
+            .Select(idTile => chatsBackend.GetTile(chatId, idTile.Range, includeRemoved, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Low, cancellationToken)
             .ConfigureAwait(false);
-
         return tiles.SelectMany(t => t.Entries).ToList();
     }
 
@@ -158,24 +164,38 @@ public static class ChatsBackendExt
         // comfortably before `from`.
         var maxBeginsAtDisorder = TimeSpan.FromSeconds(15);
         var cutoff = minBeginsAt - maxBeginsAtDisorder;
+        // Tiles are fetched a batch at a time, so the walk overshoots by at most a batch minus one tile
+        const int tileBatchSize = 4;
         var entryIdTiles = Constants.Chat.EntryIdTiles;
         var result = new List<ChatEntry>();
-        for (var idTile = entryIdTiles.GetTile(idRange.End - 1); idTile.End > idRange.Start; idTile = idTile.Prev()) {
-            var tile = await chatsBackend
-                .GetTile(chatId, idTile.Range, true, cancellationToken)
+        var idTiles = new List<Tile<long>>(tileBatchSize);
+        var nextIdTile = entryIdTiles.GetTile(idRange.End - 1);
+        var isDone = false;
+        while (!isDone && nextIdTile.End > idRange.Start) {
+            idTiles.Clear();
+            for (; idTiles.Count < tileBatchSize && nextIdTile.End > idRange.Start; nextIdTile = nextIdTile.Prev())
+                idTiles.Add(nextIdTile);
+            var tiles = await idTiles
+                .Select(idTile => chatsBackend.GetTile(chatId, idTile.Range, true, cancellationToken))
+                .Collect(ApiConstants.Concurrency.Low, cancellationToken)
                 .ConfigureAwait(false);
-            var tileEntries = tile.Entries;
-            if (tileEntries.Length == 0)
-                continue;
 
-            for (var i = tileEntries.Length - 1; i >= 0; i--) {
-                var entry = tile.Entries[i];
-                if (entry.BeginsAt >= minBeginsAt)
-                    result.Add(entry);
+            foreach (var tile in tiles) {
+                var tileEntries = tile.Entries;
+                if (tileEntries.Length == 0)
+                    continue;
+
+                for (var i = tileEntries.Length - 1; i >= 0; i--) {
+                    var entry = tileEntries[i];
+                    if (entry.BeginsAt >= minBeginsAt)
+                        result.Add(entry);
+                }
+
+                if (tile.BeginsAtRange.End <= cutoff || result.Count >= maxCount) {
+                    isDone = true;
+                    break;
+                }
             }
-
-            if (tile.BeginsAtRange.End <= cutoff || result.Count >= maxCount)
-                break;
         }
 
         // We visit tiles high→low and walk each tile's entries high→low, so `result` is
@@ -193,16 +213,18 @@ public static class ChatsBackendExt
         bool includeRemoved = false,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        // The next tile is fetched while the caller consumes the current one
         var idTiles = Constants.Chat.EntryIdTiles.GetCoveringTiles(lidRange);
-        foreach (var idTile in idTiles) {
-            var tile = await chatsBackend.GetTile(
-                chatId,
-                idTile.Range,
-                includeRemoved,
-                cancellationToken).ConfigureAwait(false);
+        var nextTileTask = idTiles.Length == 0 ? null : GetTile(0);
+        for (var i = 0; nextTileTask is not null; i++) {
+            var tile = await nextTileTask.ConfigureAwait(false);
+            nextTileTask = i + 1 < idTiles.Length ? GetTile(i + 1) : null;
             foreach (var chatEntry in tile.Entries)
                 yield return chatEntry;
         }
+
+        Task<ChatTile> GetTile(int index)
+            => chatsBackend.GetTile(chatId, idTiles[index].Range, includeRemoved, cancellationToken);
     }
 
     public static async IAsyncEnumerable<Chat[]> Batch(

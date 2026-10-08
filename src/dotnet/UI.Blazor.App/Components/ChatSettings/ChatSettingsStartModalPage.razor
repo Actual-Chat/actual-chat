@@ -91,6 +91,10 @@
                 </TileItem>
             }
 
+            @if (m.Chat.CanManageHistory()) {
+                <ChatHistoryRetentionTileItem Chat="@m.Chat" Click="OnHistoryRetentionClick"/>
+            }
+
             @if (m.ShowIntegrations) {
                 <TileItem Class="item-integrations" Click="OnIntegrationsClick">
                     <Icon>
@@ -292,6 +296,9 @@
 
     private void OnIntegrationsClick()
         => Context.StepIn(DiveInDialogPage.New<ChatIntegrationsModalPage>(ChatId));
+
+    private Task OnHistoryRetentionClick()
+        => Hub.ModalUI.Show(new ChatHistoryRetentionModal.Model(ChatId));
 
     private void OnDeleteChatClick(Chat chat)
         => ChatUI.DeleteChat(chat);

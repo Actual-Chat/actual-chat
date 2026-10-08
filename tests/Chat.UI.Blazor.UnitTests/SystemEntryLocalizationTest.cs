@@ -139,6 +139,17 @@ public class SystemEntryLocalizationTest
                 CallerName = AuthorName,
                 Outcome = outcome,
             };
+        foreach (var change in new[] { HistoryChangeKind.RetentionChanged, HistoryChangeKind.Wiped })
+        foreach (var period in new TimeSpan?[] {
+                     null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromHours(1),
+                     TimeSpan.FromHours(5), TimeSpan.FromDays(1), TimeSpan.FromDays(21),
+                 })
+            yield return new HistoryChangedEntry {
+                TargetAuthorId = authorId,
+                TargetAuthorName = AuthorName,
+                HistoryChange = change,
+                HistoryPeriod = period,
+            };
     }
 
     private static SystemEntryMarkupBuilder NewBuilder(Language language)

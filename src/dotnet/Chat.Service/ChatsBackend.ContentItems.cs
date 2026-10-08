@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
@@ -44,9 +45,12 @@ public partial class ChatsBackend
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
+
         var dbItems = await QueryPeriodPage(
-                dbContext.ChatVisualMediaItems, chatId.Value, periodKey, pageIndex, cancellationToken)
+                dbContext.ChatVisualMediaItems,
+                chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
+        dbItems = await DropInvisible(dbItems, x => x.EntryId, cancellationToken).ConfigureAwait(false);
         if (dbItems.Count == 0)
             return [];
         return await dbItems
@@ -64,9 +68,12 @@ public partial class ChatsBackend
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
+
         var dbItems = await QueryPeriodPage(
-                dbContext.ChatFileItems, chatId.Value, periodKey, pageIndex, cancellationToken)
+                dbContext.ChatFileItems,
+                chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
+        dbItems = await DropInvisible(dbItems, x => x.EntryId, cancellationToken).ConfigureAwait(false);
         return dbItems.Select(x => x.ToModel()).ToArray();
     }
 
@@ -79,9 +86,12 @@ public partial class ChatsBackend
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
+
         var dbItems = await QueryPeriodPage(
-                dbContext.ChatLinkItems, chatId.Value, periodKey, pageIndex, cancellationToken)
+                dbContext.ChatLinkItems,
+                chatId.Value, periodKey, pageIndex, cancellationToken)
             .ConfigureAwait(false);
+        dbItems = await DropInvisible(dbItems, x => x.EntryId, cancellationToken).ConfigureAwait(false);
         if (dbItems.Count == 0)
             return [];
         return await dbItems
@@ -168,13 +178,16 @@ public partial class ChatsBackend
         var chatSid = chatId.Value;
         var months = kind switch {
             ChatContentKind.Media => await QueryPeriodCounts(
-                dbContext.ChatVisualMediaItems, chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
+                dbContext.ChatVisualMediaItems,
+                chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
                 .ConfigureAwait(false),
             ChatContentKind.File => await QueryPeriodCounts(
-                dbContext.ChatFileItems, chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
+                dbContext.ChatFileItems,
+                chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
                 .ConfigureAwait(false),
             ChatContentKind.Link => await QueryPeriodCounts(
-                dbContext.ChatLinkItems, chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
+                dbContext.ChatLinkItems,
+                chatSid, lowerBoundInclusive, upperBoundExclusive, cancellationToken)
                 .ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
@@ -198,16 +211,21 @@ public partial class ChatsBackend
         CancellationToken cancellationToken)
     {
         var boundary = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
+
         var chatSid = chatId.Value;
         return kind switch {
             ChatContentKind.Media => await QueryHasContentBefore(
-                dbContext.ChatVisualMediaItems, chatSid, boundary, cancellationToken).ConfigureAwait(false),
+                dbContext.ChatVisualMediaItems,
+                chatSid, boundary, cancellationToken).ConfigureAwait(false),
             ChatContentKind.File => await QueryHasContentBefore(
-                dbContext.ChatFileItems, chatSid, boundary, cancellationToken).ConfigureAwait(false),
+                dbContext.ChatFileItems,
+                chatSid, boundary, cancellationToken).ConfigureAwait(false),
             ChatContentKind.Link => await QueryHasContentBefore(
-                dbContext.ChatLinkItems, chatSid, boundary, cancellationToken).ConfigureAwait(false),
+                dbContext.ChatLinkItems,
+                chatSid, boundary, cancellationToken).ConfigureAwait(false),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
         };
     }
@@ -250,13 +268,13 @@ public partial class ChatsBackend
         if (entryIds.Length == 0)
             return;
 
-        var commandContext = CommandContext.GetCurrent();
         var entrySids = entryIds.Select(x => x.Value).Distinct().ToList();
         if (items.Length == 0) {
             // Nothing to insert: this is a no-op unless there are existing rows to remove.
             // Probe on a plain read context so a no-op never opens (and commits) an empty operation.
             var readDbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
             await using var _ = readDbContext.ConfigureAwait(false);
+
             var hasExisting = await getTable(readDbContext)
                 .AnyAsync(x => entrySids.Contains(x.EntryId), cancellationToken).ConfigureAwait(false);
             if (!hasExisting)
@@ -265,6 +283,17 @@ public partial class ChatsBackend
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
+
+        var dbChat = await dbContext.Chats.ForShare()
+            .FirstOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken).ConfigureAwait(false);
+        if (items.Length > 0) {
+            var isChatGone = dbChat is null
+                || await IsRemovalPending(chatId, cancellationToken).ConfigureAwait(false);
+            var visibleIds = await dbContext.ChatEntries
+                .Where(e => !isChatGone && entrySids.Contains(e.Id) && !e.IsRemoved)
+                .Select(e => e.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+            items = items.Where(i => visibleIds.Contains(i.EntryId.Value)).ToArray();
+        }
 
         var table = getTable(dbContext);
         var deletedAts = await table
@@ -408,5 +437,21 @@ public partial class ChatsBackend
         var month = int.Parse(periodKey.AsSpan(5, 2));
         var start = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
         return (start, start.AddMonths(1));
+    }
+
+    // The index rows outlive the entries they point at - an entry that was removed, trimmed, or left
+    // behind by a removed account is still listed here until cleanup rewrites the index.
+    private async ValueTask<List<TDbItem>> DropInvisible<TDbItem>(
+        List<TDbItem> dbItems, Func<TDbItem, string> entrySidGetter,
+        CancellationToken cancellationToken)
+    {
+        if (dbItems.Count == 0)
+            return dbItems;
+
+        var entryIds = dbItems.Select(x => ChatEntryId.Parse(entrySidGetter.Invoke(x)));
+        var entries = await this.ListEntries(entryIds, false, cancellationToken).ConfigureAwait(false);
+        return Array.IndexOf(entries, null) < 0
+            ? dbItems
+            : dbItems.Where((_, i) => entries[i] is not null).ToList();
     }
 }

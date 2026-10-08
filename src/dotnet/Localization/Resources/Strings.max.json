@@ -438,6 +438,14 @@
   // The context menu of a chat list item - long press on mobile, right click on desktop.
   "ChatMenu_AddMembers": "Добавить участников",
   "ChatMenu_EditContact": "Редактирайте контакта",
+  "ChatMenu_DisableNotifications": "Benachrichtigungen deaktivieren",
+  "ChatMenu_EnableNotifications": "Benachrichtigungen aktivieren",
+  "ChatMenu_EditChat": "Chỉnh sửa cuộc trò chuyện",
+  "ChatMenu_CopyContactLink_Format": "Копиране на връзката към контакта {0}",
+  "ChatMenu_CopyChatLink": "Sao chép liên kết cuộc trò chuyện",
+  "ChatMenu_CopyChatJoinLink": "Копиране на връзката за присъединяване към чата",
+  "ChatMenu_EnableSummaries": "Zusammenfassungen aktivieren",
+  "ChatMenu_DisableSummaries": "Zusammenfassungen deaktivieren",
   "ChatMenu_LeaveChat": "Rời khỏi cuộc trò chuyện",
   "ChatMenu_BlockUser": "Заблокировать пользователя",
   "ChatMenu_UnblockUser": "Разблокировать пользователя",
@@ -503,6 +511,10 @@
   "SystemEntry_CallDeclined": " さんが発信しました。拒否されました。",
   "SystemEntry_CallCanceled": " さんが発信しました。キャンセルされました。",
   "SystemEntry_CallEnded": "님이 전화를 걸었습니다.",
+  "SystemEntry_HistoryWiped": " さんがチャット履歴を消去しました。",
+  "SystemEntry_HistoryWipedPeriod_Format": " a effacé l’historique de la discussion des {0} derniers.",
+  "SystemEntry_RetentionChanged_Format": " ha impostato la conservazione della cronologia a {0}.",
+  "SystemEntry_RetentionTurnedOff": " a désactivé la durée de conservation de l’historique.",
 
   // The bar that replaces the message editor when you cannot post: a read-only chat, a block in
   // either direction, or a chat you have not joined yet. Most of these are fragments wrapped
@@ -596,6 +608,7 @@
   "ThreadMenu_Mute": "Отключить уведомления",
   "ThreadMenu_Unmute": "Stummschaltung aufheben",
   "ThreadMenu_GoToStartMessage": "Перейти до вихідного повідомлення",
+  "ThreadMenu_StartMessageRemoved": "このスレッドの元になったメッセージは削除されました。",
   "ThreadMenu_CopyThreadLink": "Копирайте линка към нишката",
 
   // A location posted into a chat. LocationMessage_Place is the plain geographic word for a pin
@@ -809,6 +822,7 @@
   "AccountEditor_Title": "Редагування облікового запису",
   "AccountEditor_DeleteAccount": "Видалити обліковий запис",
   "Common_Optional": " (необязательно)",
+  "Common_IUnderstand": "मैं यह समझता/समझती हूं",
   "Common_Verified": "Подтверждено",
   "Common_Unverified": "Не подтверждено",
 
@@ -840,19 +854,25 @@
   "Form_Phone": "Téléphone",
   "Form_CustomLink": "Користувацьке посилання",
 
-  // The delete-account confirmation. Every sentence is split so its middle renders emphasized.
+  // The delete-account confirmation. DeleteAccount_Irreversible renders bold as a whole; every
+  // other sentence is split so its middle renders bold. The SoleOwned sentence introduces the list
+  // of the chats and places the account is the only owner of.
   // DeleteAccount_Proposal_* wraps the word the user has to type back, and that word stays the
   // English "DELETE" in every language because it is compared against their input.
   "DeleteAccount_Title": "Видалення облікового запису",
   "DeleteAccount_Question_Prefix": "Tem certeza de que deseja ",
   "DeleteAccount_QuestionTarget": "видалити свій обліковий запис",
   "DeleteAccount_Question_Suffix": " istiyor musunuz?",
-  "DeleteAccount_Warning_Prefix": "Questa azione ",
-  "DeleteAccount_WarningTarget": "kann nicht rückgängig gemacht werden",
-  "DeleteAccount_Warning_Suffix": "。",
-  "DeleteAccount_Scope_Prefix": "Nous supprimerons vos discussions privées, tous les groupes et Lieux que vous possédez, ainsi que tous vos messages, enregistrements et pièces jointes dans les autres discussions — ",
-  "DeleteAccount_ScopeTarget": "всичко съдържание, което сте създали",
-  "DeleteAccount_Scope_Suffix": "を削除します。",
+  "DeleteAccount_Irreversible": "Dies kann nicht rückgängig gemacht werden.",
+  "DeleteAccount_Scope_Prefix": "Chúng tôi sẽ ",
+  "DeleteAccount_ScopeTarget": "xóa các cuộc trò chuyện riêng của bạn",
+  "DeleteAccount_Scope_Middle": "と、他のチャットに投稿したすべての",
+  "DeleteAccount_ScopeContentTarget": "messages, enregistrements et pièces jointes",
+  "DeleteAccount_Scope_Suffix": " que vous avez publiés dans d’autres discussions.",
+  "DeleteAccount_SoleOwned_Prefix": "Kami juga akan menghapus ",
+  "DeleteAccount_SoleOwnedTarget": "групповые чаты и Места, единственным владельцем которых вы являетесь",
+  "DeleteAccount_SoleOwned_Suffix": "も削除します：",
+  "DeleteAccount_SoleOwnedHint": "Untuk mempertahankan salah satunya, jadikan orang lain sebagai pemiliknya terlebih dahulu.",
   "DeleteAccount_Proposal_Prefix": "Wpisz poniżej ",
   "DeleteAccount_Proposal_Suffix": " unten ein, um zu bestätigen, dass Sie Ihr Konto und alles damit Verbundene dauerhaft löschen möchten.",
 
@@ -1844,13 +1864,13 @@
   "LeaveConfirm_LeaveChatTitle": "Quitter la discussion",
   "LeaveConfirm_LeaveChatQuestion": "Bu sohbetten ayrılmak istediğinize emin misiniz?",
   "LeaveConfirm_DeleteChatTitle": "Supprimer la discussion",
-  "LeaveConfirm_DeleteChatForAllQuestion": "Dieser Chat wird für alle seine Mitglieder gelöscht. Diese Aktion lässt sich nicht rückgängig machen.",
+  "LeaveConfirm_DeleteChatForAllQuestion": "Esta acción no se puede deshacer. Todos los mensajes, archivos multimedia y archivos de este chat se eliminarán para todos sus miembros.",
   "LeaveConfirm_DeleteThreadTitle": "Изтрийте нишката",
-  "LeaveConfirm_DeleteThreadQuestion": "Tem certeza de que deseja excluir este tópico?",
+  "LeaveConfirm_DeleteThreadQuestion": "Esta acción no se puede deshacer. Todos los mensajes, archivos multimedia y archivos de este hilo se eliminarán para todos sus miembros.",
   "LeaveConfirm_LeavePlaceTitle": "Напуснете Мястото",
   "LeaveConfirm_LeavePlaceQuestion": "Наистина ли искате да напуснете това Място?",
   "LeaveConfirm_DeletePlaceTitle": "Изтрийте Мястото",
-  "LeaveConfirm_DeletePlaceForAllQuestion": "Dieser Place und alle seine Chats werden für alle seine Mitglieder gelöscht. Diese Aktion lässt sich nicht rückgängig machen.",
+  "LeaveConfirm_DeletePlaceForAllQuestion": "Това действие е необратимо. Това място и всичките му чатове, със съобщенията, мултимедията и файловете им, ще бъдат изтрити за всички.",
 
   // The last Owner leaving is offered a way out first - hand the chat or place over, or add
   // someone to hand it to; refusing it confirms with the matching delete question above.
@@ -2243,6 +2263,12 @@
   "Duration_Days_Format": "{0} ngày",
   "Duration_Hours_Format": "{0} godz.",
   "Duration_Minutes_Format": "{0} phút",
+  "Duration_MinuteUnit": "хвилини",
+  "Duration_HourUnit": "Stunden",
+  "Duration_DayUnit": "giorno",
+  "Duration_MinuteCount": "{0} хвилини",
+  "Duration_HourCount": "{0} Stunden",
+  "Duration_DayCount": "{0} giorno",
   "Distance_Meters_Format": "{0} मी",
   "Distance_Kilometers_Format": "{0} किमी",
 
@@ -2251,6 +2277,29 @@
   "Invite_ManageLinks": "Управление на линковете",
   "Invite_NewPrivateLink": "Нове приватне посилання-запрошення",
   "Invite_UnknownLink": "Liên kết không xác định",
+
+  // History retention and wiping, from chat settings and a peer chat's contact editor.
+  "HistoryRetention_Title": "Conservazione della cronologia",
+  "HistoryRetention_Full": "Полностью",
+  "HistoryRetention_Short_Format": "Przechowywanie: {0}",
+  "HistoryRetention_PeriodLabel": "Aufbewahren",
+  "HistoryRetention_ZeroIsAll": "0 = wszystkie wiadomości",
+  "HistoryRetention_TooShort_Format": "{0}以上に設定してください。",
+  "HistoryRetention_Hint": "Les messages plus anciens sont supprimés définitivement pour tout le monde. Indiquez 0 pour conserver tout l’historique.",
+  "HistoryRetention_WillBeDeleted": "「OK」をクリックするとすぐに、{1} より前に送信された、{3}{2}分の履歴{3}にあたる{3}約 {0} 件のメッセージ{3}が、次のメッセージまで{3}全員から削除されます{3}:",
+  "HistoryRetention_RetainAfter_Format": "À partir de ce moment, cette discussion ne conservera {1}que {0} d’historique.{1}",
+  "HistoryRetention_Nothing": "まだこれほど古いメッセージはありません。",
+  "HistoryRetention_WipeLink_Prefix": "Sie können auch den ",
+  "HistoryRetention_WipeLinkTarget": "cancellare la cronologia recente",
+  "HistoryRetention_WipeLink_Suffix": "することもできます。",
+  "HistoryWipe_Title": "Effacer l’historique de la discussion",
+  "HistoryWipe_Warning": "Les messages effacés sont supprimés définitivement pour tous les membres de cette discussion. Cette action est irréversible.",
+  "HistoryWipe_PeriodLabel": "Xóa khoảng thời gian gần nhất",
+  "HistoryWipe_Everything": "Everything",
+  "HistoryWipe_From_Format": "Съобщенията, изпратени от {0} насам, ще бъдат изтрити, като се започне от:",
+  "HistoryWipe_Count": "Se eliminarán aproximadamente {0} mensajes.",
+  "HistoryWipe_Nothing": "Không có tin nhắn nào được gửi trong khoảng thời gian này.",
+  "HistoryWipe_Wipe": "Изтриване",
 
   // One more row in chat settings.
   "ChatSettings_UsePlaceSettingsForMembers": "सदस्यों को संपादित करने के लिए प्लेस सेटिंग्स का उपयोग करें",

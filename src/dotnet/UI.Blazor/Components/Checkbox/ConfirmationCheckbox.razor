@@ -1,0 +1,19 @@
+@namespace ActualChat.UI.Blazor.Components
+
+@* The explicit consent a destructive action waits for. Checkbox cancels its own click,
+   so the toggle belongs to the element around it. *@
+<div class="confirmation-checkbox @Class" @onclick="@OnClick">
+    <Checkbox Label="@(Label.NullIfEmpty() ?? L.Common_IUnderstand)" IsChecked="@IsChecked"/>
+</div>
+
+@code {
+    [Inject] private IStringLocalizer L { get; init; } = null!;
+
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public bool IsChecked { get; set; }
+    [Parameter] public EventCallback<bool> IsCheckedChanged { get; set; }
+
+    private Task OnClick()
+        => IsCheckedChanged.InvokeAsync(!IsChecked);
+}

@@ -56,8 +56,10 @@
         };
     }
 
-    private Task OnGoToStartMessage()
-        => NavigateTo(Links.Chat(_threadChatId.ParentChatId, _threadChatId.ThreadId));
+    private async Task OnGoToStartMessage() {
+        await WhenClosed;
+        await Hub.ChatUI.NavigateToThreadStart(_threadChatId);
+    }
 
     // Nested types
 

@@ -149,7 +149,14 @@ public interface IChats : IComputeService
         MentionRef mentionId,
         CancellationToken cancellationToken);
 
+    // Not a [ComputeMethod]: ownership changes don't invalidate it, so every call reads it afresh.
+    // The chats and places deleting the account would delete - see DeleteAccountModal.
+    Task<ApiArray<ChatId>> ListOwnSoleOwnedChatIds(Session session, CancellationToken cancellationToken);
+
     // Commands
+
+    [CommandHandler]
+    Task<Range<long>> OnWipeHistory(Chats_WipeHistory command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Chat> OnChange(Chats_Change command, CancellationToken cancellationToken);
@@ -255,9 +262,6 @@ public interface IChats : IComputeService
 
     [CommandHandler]
     Task OnSetPinned(Chats_SetPinned command, CancellationToken cancellationToken);
-
-    [CommandHandler]
-    Task OnSetMaintenance(Chats_SetMaintenance command, CancellationToken cancellationToken);
 }
 
 [DataContract, MessagePackObject]
@@ -381,8 +385,10 @@ public sealed partial record Chat_PublishCopiedChat : ApiCommand<Unit>
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Chats_SetMaintenance : ApiCommand<Unit>
+public sealed partial record Chats_WipeHistory : ApiCommand<Range<long>>
 {
     [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
-    [DataMember(Order = 3), Key(3)] public bool IsEnabled { get; init; }
+    // The first entry to wipe, 0 = the whole history. The last one is the chat's last entry
+    // when the server gets this command, so messages posted after it stay.
+    [DataMember(Order = 3), Key(3)] public long MinEntryLid { get; init; }
 }

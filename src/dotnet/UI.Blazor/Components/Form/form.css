@@ -348,3 +348,18 @@ form .form-section {
 .form-section-content.label-inside-input:not(:has(textarea)) > .c-left {
     @apply h-full justify-end;
 }
+
+.period-input {
+    @apply flex-x gap-x-2;
+}
+.period-input > .c-count {
+    @apply flex-1;
+}
+/* The count has no clear button or error icon, so it takes the pr-8 reserve .c-left keeps for them:
+   otherwise its spin buttons sit 2rem further in than the unit's chevron */
+.period-input > .c-count .form-section-content > .c-left {
+    @apply pr-0;
+}
+.period-input > .c-unit {
+    @apply w-32;
+}

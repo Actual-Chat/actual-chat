@@ -89,7 +89,10 @@ public sealed partial class ChatMediaIndexingFlow : BatchedIndexingFlow<ChatEntr
         var pendingLids = PendingEntryLids;
         var entryIds = pendingLids.Select(lid => ChatEntryId.New(ChatId, lid)).ToArray();
         // Pending entries are referenced by lid only; reload them (incl. BeginsAt + attachments) by id.
-        var pendingEntries = (await ChatsBackend.ListEntries(entryIds, false, cancellationToken).ConfigureAwait(false))
+        var pendingEntries = (await ChatsBackend
+            .ListEntries(entryIds, false, cancellationToken)
+            .ConfigureAwait(false)
+            ).SkipNullItems()
             .Where(e => e.Attachments.Length > 0)
             .ToList();
         var notReadyLids = await IndexEntries(entryIds, pendingEntries, cancellationToken).ConfigureAwait(false);

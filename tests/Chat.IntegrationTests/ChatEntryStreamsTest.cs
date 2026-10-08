@@ -229,7 +229,5 @@ public class ChatEntryStreamsTest(ChatCollection.AppHostFixture fixture, ITestOu
         => await Tester.Chats.AppendEntryStream(Tester.Session, streamInfo.Id, streamInfo.Offset, text, default);
 
     private static async Task SetMaintenance(IWebTester admin, ChatId chatId, bool isEnabled)
-        => await admin.Commander.Call(new Chats_SetMaintenance {
-            Session = admin.Session, ChatId = chatId, IsEnabled = isEnabled,
-        });
+        => await admin.SetChatMaintenance(chatId, isEnabled);
 }

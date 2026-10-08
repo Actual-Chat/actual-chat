@@ -23,6 +23,8 @@
 
     private async Task NavigateToChatsWhen(Task when) {
         await when;
-        _ = History.NavigateTo(Links.Chats, false, false, true);
+        // A link inside the settings that navigated elsewhere is what closed them
+        if (History.LocalUrl.IsSettings())
+            _ = History.NavigateTo(Links.Chats, false, false, true);
     }
 }

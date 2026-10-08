@@ -41,6 +41,14 @@ public class MentionsBackend(IServiceProvider services) : DbServiceBase<ChatDbCo
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
+        var dbChat = await dbContext.Chats.ForShare()
+            .FirstOrDefaultAsync(c => c.Id == entry.ChatId.Value, cancellationToken).ConfigureAwait(false);
+        var isVisible = dbChat is not null && await dbContext.ChatEntries
+            .AnyAsync(e => e.Id == entry.Id.Value && !e.IsRemoved, cancellationToken)
+            .ConfigureAwait(false);
+        if (!isVisible)
+            changeKind = ChangeKind.Remove;
+
         var existingMentions = await dbContext.Mentions
             .Where(x => x.ChatId == entry.ChatId.Value && x.EntryLid == entry.LocalId)
             .ToListAsync(cancellationToken)
