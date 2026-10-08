@@ -29,9 +29,11 @@ The app commands differ only in how far down the pipeline they go, and `--launch
 | `b app run` | yes | yes | yes |
 | `b app pack` | store package, no install/launch | | |
 
-iOS and macOS delegate to `scripts/run-ios*.sh` / `scripts/run-mac*.sh`
+iOS and macOS delegate to `scripts/run-ios.sh` / `scripts/run-mac*.sh`
 (AppKit by default, `--catalyst` for Mac Catalyst), which build, install and launch as one unit — so `b app install ios` is rejected
-rather than silently launching. `b app build` passes them `--build-only`, which stops after the build.
+rather than silently launching. `b` forwards what they understand (`scripts/__run-args.sh`): `--build-only`
+for `b app build`, `--simulator`, `--prod`, `--no-web` and everything after `--`. They build Debug only, so `--release`,
+`--aot` and `--publish` are rejected there, as is `--prod` on iOS - see `AppSettings.ValidateApple`.
 
 The server commands:
 
@@ -187,8 +189,8 @@ Parsing is case-insensitive.
   hatch.
 - Prefer *delegating* to an existing script over reimplementing it. `b server
   loop` shells out to `server-loop.ps1` because `/server-loop` and other tooling
-  reference that script directly; `b app run ios` calls the `scripts/run-ios*.sh`
-  files because they carry real Apple-toolchain logic. Scripts `b` delegates to
+  reference that script directly; `b app run ios` calls `scripts/run-ios.sh`
+  because it carries real Apple-toolchain logic. Scripts `b` delegates to
   live in `scripts/` and resolve their own paths via `REPO_ROOT`, so they work
   both from `b` and when a human runs them directly.
 - Prefer *calling a Bullseye target* over re-deriving publish flags. `b app pack`

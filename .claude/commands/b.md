@@ -91,6 +91,10 @@ currently broken**: it registers `<output>/AppX/AppxManifest.xml` and no `AppX`
 layout is produced, so the step fails with `Not found`. Use the default
 unpackaged run. See [`docs/build-tool.md` → Windows](../../docs/build-tool.md#windows).
 
+iOS and macOS build Debug only: `--release`, `--aot` and `--publish` are rejected there
+(a Release Apple build is the store package - use `app pack`), and so is `--prod` on
+iOS. `--prod` on macOS, `--no-web` and `-- <args>` work.
+
 `app pack` takes only `<PLATFORM>`, `--prod` and `--aot`.
 
 ### `server` options

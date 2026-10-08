@@ -2,6 +2,8 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT" || exit 1
+source "$SCRIPT_DIR/__run-args.sh"
+parse_run_args "$@"
 
 # Debug signing identity: the developer's own Apple Development cert issued under the team.
 # Passed as a SHA-1 hash so a keychain with several Apple Development certs stays unambiguous;
@@ -20,18 +22,19 @@ echo "Codesign: ${CODESIGN_ARGS[0]:-csproj default}"
 
 # Build the JS bundle (npm ci + build:Debug), then the AppKit (net11.0-macos) app - the default Mac app.
 # The TargetFrameworks override enables the opt-in macos TFM without pulling in android etc.
-./npm-build.cmd || exit 1
-dotnet build src/dotnet/App.Maui/ -f net11.0-macos '-p:TargetFrameworks="net11.0-macos;net11.0"' "${CODESIGN_ARGS[@]}" || exit 1
+if [ -z "$MUST_SKIP_WEB" ]; then
+    npm ci || exit 1
+    npm run build:Debug || exit 1
+fi
+dotnet build src/dotnet/App.Maui/ -f net11.0-macos '-p:TargetFrameworks="net11.0-macos;net11.0"' "${CODESIGN_ARGS[@]}" "${BUILD_ARGS[@]}" || exit 1
 
-# The produced bundle name depends on IsDevMaui ("Voxt (Dev).app" for dev, "Voxt.app" for prod).
-OUT_DIR="$REPO_ROOT/artifacts/bin/App.Maui/debug_net11.0-macos"
-APP_PATH="$(ls -d "$OUT_DIR"/*.app 2>/dev/null | head -1)"
-if [ -z "$APP_PATH" ]; then
-    echo "error: no .app bundle found in $OUT_DIR" >&2
+# Dev and prod bundles differ in name and may sit side by side, so the name is exact.
+APP_PATH="$REPO_ROOT/artifacts/bin/App.Maui/debug_net11.0-macos/$MAC_APP_NAME"
+if [ ! -d "$APP_PATH" ]; then
+    echo "error: not found: $APP_PATH" >&2
     exit 1
 fi
-# --build-only stops after the build: that is what `b app build` passes.
-if [ "$1" = "--build-only" ]; then
+if [ -n "$IS_BUILD_ONLY" ]; then
     echo "Built: $APP_PATH"
     exit 0
 fi

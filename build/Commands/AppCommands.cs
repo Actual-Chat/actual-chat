@@ -126,8 +126,6 @@ public sealed class AppSettings : PlanSettings
             return ValidationResult.Error("--simulator is only supported for the ios platform.");
         if (UseCatalyst && Platform != AppPlatform.Mac)
             return ValidationResult.Error("--catalyst is only supported for the macos platform.");
-        if (UseNativeAot && Platform is AppPlatform.Mac)
-            return ValidationResult.Error("--aot is not wired for the macos platform.");
         if (MustUseCiBuild && Platform != AppPlatform.Android)
             return ValidationResult.Error("--ci is only supported for the android platform.");
         if (MustUseCiBuild && (UseNativeAot || MustPublish || MustNotPublish
@@ -137,10 +135,32 @@ public sealed class AppSettings : PlanSettings
             && !OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Release"))
             return ValidationResult.Error($"Unknown configuration: {ResolvedConfiguration}.");
 
-        return ValidationResult.Success();
+        return Platform is AppPlatform.Ios or AppPlatform.Mac
+            ? ValidateApple()
+            : ValidationResult.Success();
     }
 
     // Private methods
+
+    private ValidationResult ValidateApple()
+    {
+        // Release is signed for store distribution and Native AOT applies to Release only, so neither
+        // can be installed from here; a Debug ios build has the dev provisioning profile only.
+        var packCommand = $"'b app pack {Platform.ToString().ToLowerInvariant()}'";
+        if (!OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Debug"))
+            return ValidationResult.Error(
+                $"A Release {Platform} build is the store package, signed for distribution - use {packCommand}.");
+        if (UseNativeAot)
+            return ValidationResult.Error(
+                $"Native AOT applies to the {Platform} store package only - use {packCommand}.");
+        if (MustPublish)
+            return ValidationResult.Error($"--publish is not supported for the {Platform} platform.");
+        if (IsProd && Platform is AppPlatform.Ios)
+            return ValidationResult.Error(
+                "A Debug Ios build is signed with the dev provisioning profile, so there is no --prod one.");
+
+        return ValidationResult.Success();
+    }
 
     private static bool OrdinalIgnoreCaseEquals(string a, string b)
         => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
