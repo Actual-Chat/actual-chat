@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Page } from 'playwright';
 import {
-    BASE_URL, connectBrowser, ensureSignedIn, skipOnboarding,
+    BASE_URL, connectBrowser, ensureSignedIn, setUILanguage, skipOnboarding,
     screenshot, type BrowserConnection,
 } from './helpers';
 
@@ -101,6 +101,9 @@ describe('global people search', () => {
         conn = await connectBrowser();
         page = await conn.context.newPage();
         await ensureSignedIn(page);
+        // The UI language lives on the shared account, and setLocationAnywhere finds the filter badge
+        // by its English text: a spec that failed to restore it would hide every Global result
+        await setUILanguage(page, 'en-US');
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
         await skipOnboarding(page);
         await page.locator('.left-chat-search-input input[type="text"]').first()
