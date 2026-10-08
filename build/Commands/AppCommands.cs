@@ -109,9 +109,10 @@ public sealed class AppSettings : PlanSettings
         => !MustNotLaunch && (MustLaunch || isLaunchedByDefault);
 
     public bool ResolveMustInstall(bool isInstalledByDefault, bool isLaunchedByDefault)
-        // Only an unpackaged Windows build can be launched without deploying it first
+        // Only an unpackaged Windows build can be launched without deploying it first.
+        // --no-launch takes away the launch alone, so 'app run --no-launch' is 'app install'.
         => isInstalledByDefault
-            || (ResolveMustLaunch(isLaunchedByDefault)
+            || ((MustLaunch || isLaunchedByDefault)
                 && (Platform != AppPlatform.Windows || (MustPackage && !UseNativeAot)));
 
     public override ValidationResult Validate()
