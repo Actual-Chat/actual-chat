@@ -18,10 +18,10 @@ public static class UploadProcessorHelper
     public static VideoConversion GetConversion(IMediaAnalysis mediaInfo)
     {
         var videoStream = mediaInfo.PrimaryVideoStream!;
-        if (ExceedsFullHd(GetEffectiveSize(videoStream)) || MustConvertVideo(videoStream))
+        if (ExceedsFullHd(GetEffectiveSize(videoStream)) || MustTranscode(videoStream))
             return VideoConversion.Transcode;
 
-        return MustConvertVideo(mediaInfo.Format) ? VideoConversion.Remux : VideoConversion.None;
+        return IsMp4Container(mediaInfo.Format) ? VideoConversion.None : VideoConversion.Remux;
     }
 
     public static async Task<(UploadedTempFile File, Size2D Size)> ConvertLocally(
@@ -44,11 +44,6 @@ public static class UploadProcessorHelper
         return await Transcode(createInput, fileName, mediaInfo, progress, cancellationToken).ConfigureAwait(false);
     }
 
-    public static Size2D GetEffectiveSize(VideoStream video)
-        => video.Rotation is 90 or 270 or -90 or -270
-            ? new Size2D(video.Height, video.Width)
-            : new Size2D(video.Width, video.Height);
-
     public static T EnsureMp4Extension<T>(T file) where T : UploadedFile
         => string.Equals(file.FileName.Extension, ".mp4", StringComparison.OrdinalIgnoreCase)
             ? file
@@ -58,26 +53,6 @@ public static class UploadProcessorHelper
     {
         var size = GetEffectiveSize(videoStream);
         return (size, videoStream.Duration, videoStream.AvgFrameRate);
-    }
-
-    public static bool MustConvertVideo(VideoStream videoStream)
-    {
-        // Skip transcoding for H.264 and HEVC (H.265) codecs — a simple rename to .mp4 is enough
-        var codecName = videoStream.CodecName;
-        return !string.Equals(codecName, "h264", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(codecName, "libx264", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(codecName, "hevc", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(codecName, "h265", StringComparison.OrdinalIgnoreCase);
-    }
-
-    public static bool MustConvertVideo(MediaFormat mediaFormat)
-        => !IsMp4Container(mediaFormat);
-
-    public static bool ExceedsFullHd(Size2D size)
-    {
-        var longSide = Math.Max(size.Width, size.Height);
-        var shortSide = Math.Min(size.Width, size.Height);
-        return longSide > FullHd.Width || shortSide > FullHd.Height;
     }
 
     public static Size2D ScaleToFullHd(Size2D size)
@@ -105,6 +80,41 @@ public static class UploadProcessorHelper
         => SnapshotInternal(
             at => FFMpegArguments.FromFileInput(source, true, options => options.Seek(at)),
             fileName, totalVideoDuration);
+
+    public static bool MustTranscode(VideoStream videoStream)
+    {
+        // H.264 and HEVC (H.265) frames are kept as they are: such a video needs at most a remux
+        var codecName = videoStream.CodecName;
+        return !string.Equals(codecName, "h264", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(codecName, "libx264", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(codecName, "hevc", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(codecName, "h265", StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool IsMp4Container(MediaFormat mediaFormat)
+    {
+        var tags = mediaFormat.Tags;
+        if (tags is null)
+            return false;
+
+        if (!tags.TryGetValue("major_brand", out var brand1))
+            return false;
+
+        var brand = brand1.Trim();
+        return brand is "isom" or "iso2" or "mp41" or "mp42";
+    }
+
+    public static bool ExceedsFullHd(Size2D size)
+    {
+        var longSide = Math.Max(size.Width, size.Height);
+        var shortSide = Math.Min(size.Width, size.Height);
+        return longSide > FullHd.Width || shortSide > FullHd.Height;
+    }
+
+    public static Size2D GetEffectiveSize(VideoStream video)
+        => video.Rotation is 90 or 270 or -90 or -270
+            ? new Size2D(video.Height, video.Width)
+            : new Size2D(video.Width, video.Height);
 
     // Private methods
 
@@ -213,18 +223,5 @@ public static class UploadProcessorHelper
     {
         var convertedFileName = FileExt.ShortenFileName(fileName.ChangeExtension(".mp4"));
         return FilePath.GetApplicationTempDirectory() | $"{RandomStringGenerator.Default.Next()}_{convertedFileName}";
-    }
-
-    private static bool IsMp4Container(MediaFormat mediaFormat)
-    {
-        var tags = mediaFormat.Tags;
-        if (tags is null)
-            return false;
-
-        if (!tags.TryGetValue("major_brand", out var brand1))
-            return false;
-
-        var brand = brand1.Trim();
-        return brand is "isom" or "iso2" or "mp41" or "mp42";
     }
 }
