@@ -1,6 +1,8 @@
 # Speech Coach: skill details, speaking-day history, and personal baselines
 
-Status: Approved scope; initial measurement/storage spike implemented on `feat/coach-skill-details`.
+Status: Approved scope; measurement/storage spike and disabled-by-default backend capture/persistence
+implemented on `feat/coach-skill-details`, including daily language histograms and period merges.
+Detail/history UI and baselines remain open.
 Tracking: [#5128](https://github.com/Actual-Chat/actual-chat/issues/5128).
 The fine-timing rollout gate remains open; see the [spike evidence](./speech-coach-measurement-storage-spike.md).
 
@@ -504,6 +506,12 @@ for placement under src/nodejs/src rather than hidden inside one Coach component
    Initial [results](./speech-coach-measurement-storage-spike.md) include actual binary/database/WAL costs
    and a Soniox boundary regression. Accurate provider-word timing and real replay validation remain
    prerequisites; legacy token-derived maps must not be promoted to fine measurements.
+   Follow-up backend foundation implemented: shared versioned measurement contract, actual-media bounds,
+   nullable binary columns in existing Chat/Users rows, revision-bound capture/invalidation, preserved
+   measurements during tagging, and reversible exclusion/tombstone behavior. Capture defaults off;
+   there is no historical backfill or replacement timing-quality marker. Daily language rows now carry
+   target-independent sparse histograms and coverage in a nullable binary column; period merges reuse
+   `CoachDayBuilder.Merge`. Exact target classification still requires the stored entry segments.
 2. Detail foundation: common navigation, explanations, calendar periods, speaking-day history, and
    existing filler/weak-word contexts. Add the shared chart only after confirming no existing fit.
 3. Pace detail: versioned segments, aggregation/backfill, distribution, coverage, and review playback.

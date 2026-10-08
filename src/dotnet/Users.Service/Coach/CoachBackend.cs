@@ -153,9 +153,13 @@ public class CoachBackend(IServiceProvider services)
                 dbEvent = new DbCoachEvent(record);
                 dbContext.Add(dbEvent);
             }
-            else if (dbEvent.IsRemoved)
+            else if (dbEvent.IsRemoved) {
+                dbEvent.Version = record.Version;
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 return;
+            }
 
+            dbEvent.Version = record.Version;
             dbEvent.MarkRemoved();
         }
         else if (dbEvent is null)

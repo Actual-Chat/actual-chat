@@ -21,6 +21,11 @@ public class SpeechPaceStorageBenchmarks
     private byte[] _messagePack = [];
     private byte[] _lz4 = [];
     private byte[] _packed = [];
+    private SpeechPaceMeasurement? _measurement;
+    private byte[] _measurementBytes = [];
+    private SpeechPaceSummary? _summary;
+    private byte[] _summaryBytes = [];
+    private SpeechPaceSummary[] _summaryItems = [];
 
     [Params(6, 60)]
     public int SegmentCount { get; set; }
@@ -34,6 +39,11 @@ public class SpeechPaceStorageBenchmarks
             MessagePackByteSerializer.DefaultOptions.WithCompression(MessagePackCompression.Lz4BlockArray));
         _compressedSerializer = new VersionedByteSerializer([MessagePackByteSerializer.Default, compressed]);
         _sample = CreateSample(SegmentCount);
+        _measurement = CreateMeasurement(_sample);
+        _measurementBytes = EncodeMeasurement();
+        _summary = _measurement is null ? null : SpeechPaceSummary.FromMeasurement(_measurement);
+        _summaryBytes = EncodeSummary();
+        _summaryItems = _summary is null ? [] : Enumerable.Repeat(_summary, 100).ToArray();
         _json = EncodeJson();
         _messagePack = EncodeMessagePack();
         _lz4 = EncodeLz4();
@@ -81,6 +91,26 @@ public class SpeechPaceStorageBenchmarks
     [Benchmark]
     public SpeechPaceStorageData DecodePacked()
         => DecodePackedData(_packed);
+
+    [Benchmark]
+    public byte[] EncodeMeasurement()
+        => _measurement?.ToBytes() ?? [];
+
+    [Benchmark]
+    public SpeechPaceMeasurement? DecodeMeasurement()
+        => _measurementBytes.Length == 0 ? null : SpeechPaceMeasurement.FromBytes(_measurementBytes);
+
+    [Benchmark]
+    public byte[] EncodeSummary()
+        => _summary?.ToBytes() ?? [];
+
+    [Benchmark]
+    public SpeechPaceSummary? DecodeSummary()
+        => _summaryBytes.Length == 0 ? null : SpeechPaceSummary.FromBytes(_summaryBytes);
+
+    [Benchmark]
+    public SpeechPaceSummary? MergeSummaries()
+        => SpeechPaceSummary.Merge(_summaryItems);
 
     public static SpeechPaceStorageData CreateSample(int segments)
     {
@@ -183,6 +213,8 @@ public class SpeechPaceStorageBenchmarks
                 Sample = sample,
                 Formats = formats,
                 Histogram = HistogramSizes(sample),
+                Measurement = MeasurementSize(sample),
+                DailySummary = SummarySize(sample),
             };
             Console.WriteLine(SystemJsonSerializer.Default.Write(report));
         }
@@ -304,6 +336,64 @@ public class SpeechPaceStorageBenchmarks
             DenseMessagePackBytes = denseBytes.WrittenCount,
             SparseJsonBytes = Encoding.UTF8.GetByteCount(SystemJsonSerializer.Default.Write(sparsePayload)),
             DenseJsonBytes = Encoding.UTF8.GetByteCount(SystemJsonSerializer.Default.Write(densePayload)),
+        };
+    }
+
+    private static SpeechPaceMeasurement? CreateMeasurement(SpeechPaceStorageData sample)
+    {
+        if (sample.RecordingMilliseconds <= 0)
+            return null;
+
+        var segments = sample.Segments.Select(x => new ActualChat.Audio.SpeechPaceSegment(
+            (x.TextStart, x.TextEnd), (x.StartMilliseconds, x.EndMilliseconds), x.Words)).ToArray();
+        var analysis = new ActualChat.Audio.SpeechPaceAnalysis(segments, segments.Sum(x => x.Words), 0, 0, 0, 0,
+            sample.RecordingMilliseconds - segments.Sum(x => x.DurationMilliseconds));
+        return new SpeechPaceMeasurement(1, sample.RecordingMilliseconds, analysis);
+    }
+
+    private static object? MeasurementSize(SpeechPaceStorageData sample)
+    {
+        var measurement = CreateMeasurement(sample);
+        if (measurement is null)
+            return null;
+
+        var binary = measurement.ToBytes();
+        if (!SpeechPaceMeasurement.FromBytes(binary).IsIdenticalTo(measurement))
+            throw new InvalidOperationException("Production pace measurement round trip failed.");
+
+        return new {
+            JsonBytes = Encoding.UTF8.GetByteCount(SystemJsonSerializer.Default.Write(measurement)),
+            MessagePackBytes = binary.Length,
+            Base64 = Convert.ToBase64String(binary),
+        };
+    }
+
+    private static object? SummarySize(SpeechPaceStorageData sample)
+    {
+        var measurement = CreateMeasurement(sample);
+        if (measurement is null)
+            return null;
+
+        var summary = SpeechPaceSummary.FromMeasurement(measurement);
+        var binary = summary.ToBytes();
+        var restored = SpeechPaceSummary.FromBytes(binary);
+        if (!restored.ToBytes().AsSpan().SequenceEqual(binary))
+            throw new InvalidOperationException("Daily pace summary round trip failed.");
+
+        var day = new CoachDay(Moment.EpochStart) {
+            Language = "en",
+            Entries = 1,
+            Words = checked((int)summary.ValidWords),
+            DurationSeconds = summary.AudioMilliseconds / 1_000d,
+            SpeechSeconds = summary.Durations.Values.Sum() / 1_000d,
+        };
+        var dayData = Encoding.UTF8.GetBytes(SystemJsonSerializer.Default.Write(day));
+        return new {
+            OccupiedBins = summary.Durations.Count,
+            DayBase64 = Convert.ToBase64String(dayData),
+            JsonBytes = Encoding.UTF8.GetByteCount(SystemJsonSerializer.Default.Write(summary)),
+            MessagePackBytes = binary.Length,
+            Base64 = Convert.ToBase64String(binary),
         };
     }
 

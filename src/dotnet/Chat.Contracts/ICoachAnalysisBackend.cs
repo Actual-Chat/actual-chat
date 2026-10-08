@@ -42,6 +42,10 @@ public sealed partial record CoachAnalysisBackend_AnalyzeEntry(
     [property: DataMember, Key(1)] bool IsRemoved
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey, IHasTimeout
 {
+    [DataMember, Key(2)] public bool UpdatePace { get; init; }
+    [DataMember, Key(3)] public long EntryVersion { get; init; }
+    [DataMember, Key(4)] public bool CapturePace { get; init; }
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Id.ChatId.ShardKey;
     // The immediate path calls the LLM from this command; the default queue budget is 15 s

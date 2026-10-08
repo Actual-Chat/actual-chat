@@ -145,10 +145,12 @@ offline) and Gemini 3 (offline), upgrades Google to Chirp 3 and OpenAI to
 — approved scope for explanatory skill views, activity-compressed history, user-selected baseline
 snapshots, and Soniox-based segment pace distributions; tracked by #5128. The initial
 [measurement/storage spike](./speech-coach-measurement-storage-spike.md) includes actual binary,
-PostgreSQL, and WAL evidence plus a legacy Soniox boundary regression. Accurate provider-word timing
-and replay validation remain rollout gates. [Existing dev audio validation](./speech-coach-dev-timing-validation.md)
-identifies interpolated starts and tests a separate detailed map; English recordings are not a blocker.
-Existing scores and weekly comparisons stay unchanged.
+PostgreSQL, and WAL evidence plus a legacy Soniox boundary regression. The backend now captures
+measurements into nullable binary columns in existing Coach rows, with per-language daily histograms
+and coverage merged across periods. Capture remains disabled by default with no historical backfill. Accurate provider-word timing and replay validation remain rollout gates.
+[Existing dev audio validation](./speech-coach-dev-timing-validation.md) identifies interpolated starts;
+new Soniox recordings improve the single existing map. English recordings are not a blocker.
+Existing score formulas and weekly comparisons stay unchanged.
 
 ### Localization
 

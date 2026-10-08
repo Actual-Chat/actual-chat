@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Hashing;
 using ActualChat.Queues;
@@ -387,6 +388,101 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
             .Where(d => d.UserId == userId.Value && d.Day == dbDay)
             .Select(d => d.Version)
             .SingleAsync();
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task PaceContributionShouldSurviveExclusionAndRejectStaleResurrection()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var analysis = Entry(account.Id, chatId, 1, 30, 12, T0) with {
+            Pace = new SpeechPaceMeasurement(1, 12_000, new SpeechPaceAnalysis(
+                [new SpeechPaceSegment((0, 10), (1_000, 11_000), 30)], 30, 0, 0, 0, 0, 2_000)),
+        };
+        var dbHub = AppHost.Services.GetRequiredService<DbHub<UsersDbContext>>();
+        var commander = AppHost.Services.Commander();
+
+        // act
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(analysis, false));
+        var initial = await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Pace?.MeasuredEntries == 1);
+        initial.Pace!.Durations[36].Should().Be(10_000);
+        await using (var db = await dbHub.CreateDbContext(false)) {
+            var daily = await db.CoachDays.SingleAsync(d => d.UserId == account.Id.Value);
+            daily.PaceData.Should().NotBeNull();
+            daily.Data.Should().NotContain("pace");
+        }
+        await commander.Call(new CoachBackend_SetConversationExcluded(account.Id, chatId, 1, "en", true));
+
+        // assert
+        await using (var db = await dbHub.CreateDbContext(false)) {
+            var row = await db.CoachEvents.SingleAsync(e => e.UserId == account.Id.Value);
+            row.IsExcluded.Should().BeTrue();
+            row.ToModel().Entry!.Pace.Should().BeEquivalentTo(analysis.Pace);
+            row.Payload.Should().NotContain("pace");
+        }
+        await TestWait.When(async ct => {
+            var day = UsageDay.DayOf(T0);
+            var days = await Backend.ListDays(account.Id, (day, day + TimeSpan.FromDays(1)), null, ct);
+            days.Should().BeEmpty();
+        });
+        await commander.Call(new CoachBackend_SetConversationExcluded(account.Id, chatId, 1, "en", false));
+        var restored = await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Pace?.MeasuredEntries == 1);
+        restored.Pace.Should().BeEquivalentTo(initial.Pace);
+        var edited = analysis with { Version = 2, Pace = null };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(edited), false));
+        var cleared = await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Pace is null);
+        cleared.Words.Should().Be(30);
+        var removed = analysis with { Version = 3 };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(removed), true));
+        await commander.Call(new CoachBackend_Record(account.Id,
+            CoachRecord.FromEntry(analysis with { Version = 2 }), false));
+        await using var finalDb = await dbHub.CreateDbContext(false);
+        var final = await finalDb.CoachEvents.SingleAsync(e => e.UserId == account.Id.Value);
+        final.IsRemoved.Should().BeTrue();
+        final.PaceData.Should().BeNull();
+        final.Version.Should().Be(3);
+        (await finalDb.CoachDays.CountAsync(d => d.UserId == account.Id.Value)).Should().Be(0);
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task DailyPaceShouldReplaceMeasurementsMoveLanguagesAndRebuild()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var commander = AppHost.Services.Commander();
+        var day = UsageDay.DayOf(T0);
+        var original = Entry(account.Id, chatId, 1, 30, 12, T0) with {
+            Pace = new SpeechPaceMeasurement(1, 12_000, new SpeechPaceAnalysis(
+                [new SpeechPaceSegment((0, 10), (1_000, 11_000), 30)], 30, 0, 0, 0, 0, 2_000)),
+        };
+        var updated = original with {
+            Version = 2,
+            Pace = new SpeechPaceMeasurement(1, 24_000, new SpeechPaceAnalysis(
+                [new SpeechPaceSegment((0, 10), (1_000, 21_000), 30)], 30, 0, 0, 0, 0, 4_000)),
+        };
+
+        // act
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(original), false));
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(updated), false));
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(original), false));
+        var result = await WhenDay(account.Id, day, d => d.Pace?.AudioMilliseconds == 24_000);
+
+        // assert
+        result.Words.Should().Be(30);
+        result.Pace!.MeasuredEntries.Should().Be(1);
+        result.Pace.Durations.Should().ContainSingle();
+        result.Pace.Durations[18].Should().Be(20_000);
+        var russian = updated with { Version = 3, Language = Languages.Russian };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(russian), false));
+        var moved = await WhenDay(account.Id, day, d => d.Language == "ru");
+        moved.Pace.Should().BeEquivalentTo(result.Pace);
+        await commander.Call(new CoachBackend_RebuildDays(account.Id));
+        var rebuilt = await WhenDay(account.Id, day, d => d.Language == "ru" && d.Pace?.MeasuredEntries == 1);
+        rebuilt.Pace.Should().BeEquivalentTo(result.Pace);
     }
 
     [Fact]

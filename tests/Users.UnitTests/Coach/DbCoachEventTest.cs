@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Users.Db;
 
@@ -14,15 +15,23 @@ public class DbCoachEventTest(ITestOutputHelper @out) : TestBase(@out)
         var record = new CoachRecord(CoachRecordKind.Entry, "src", UserId.New(), chatId, at) {
             Version = 7,
             Entry = new CoachEntryRecord(5, "ru-RU", 12, 10, 20, 3, 1, 0, 18, 1, 2.5, true, 1, 2, 1, 0,
-                ApiArray.New(new SpeechSpan(SpeechSpanKind.Filler, "ну", 0, 2, ApiArray<string>.Empty))),
+                ApiArray.New(new SpeechSpan(SpeechSpanKind.Filler, "ну", 0, 2, ApiArray<string>.Empty))) {
+                Pace = new SpeechPaceMeasurement(1, 12_000, new SpeechPaceAnalysis(
+                    [new SpeechPaceSegment((0, 5), (1_000, 5_000), 10)], 10, 2, 0, 0, 1_000, 7_000)),
+            },
         };
 
         // act
-        var restored = new DbCoachEvent(record).ToModel();
+        var row = new DbCoachEvent(record);
+        var restored = row.ToModel();
 
         // assert
         restored.Should().BeEquivalentTo(record);
-        new DbCoachEvent(record).Version.Should().Be(7);
+        row.Version.Should().Be(7);
+        row.PaceData.Should().NotBeNull();
+        row.Payload.Should().NotContain("pace");
+        row.MarkRemoved();
+        row.PaceData.Should().BeNull();
     }
 
     [Fact]

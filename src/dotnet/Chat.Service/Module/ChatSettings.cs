@@ -77,6 +77,7 @@ public class SummarizationSettings
 public class CoachSettings
 {
     public bool IsEnabled { get; set; }
+    public bool IsPaceEnabled { get; set; }
     public string OpenAIModel { get; set; } = "gpt-5.6-luna";
     public FilePath PromptFile { get; set; } = "coach-tag-speech.md";
     public int PromptVersion { get; set; } = 1;

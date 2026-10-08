@@ -3,7 +3,8 @@ param(
     [string] $SamplesPath,
     [string] $PostgresContainer = 'actual-chat-infra-postgres-1',
     [ValidateRange(1, 100000)]
-    [int] $Rows = 5000
+    [int] $Rows = 5000,
+    [switch] $WithDailyRow
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,7 +30,8 @@ try {
         }
         foreach ($format in $sample.formats) {
             $name = [string] $format.format
-            if ($name -notin @('json', 'messagePack', 'lz4', 'packed')) {
+            if ($name -notin @('json', 'messagePack', 'lz4', 'packed', 'none') -or
+                ($name -eq 'none' -and -not $WithDailyRow)) {
                 throw 'Unknown benchmark format.'
             }
             $base64 = [string] $format.base64
@@ -38,14 +40,34 @@ try {
             }
             $table = "pace_$($name.ToLowerInvariant())_$segments"
             $type = if ($name -eq 'json') { 'jsonb' } else { 'bytea' }
-            $payload = "decode('$base64', 'base64')"
+            $payload = if ($name -eq 'none') { 'NULL::bytea' } else { "decode('$base64', 'base64')" }
             if ($name -eq 'json') {
                 $payload = "convert_from($payload, 'UTF8')::jsonb"
             }
-            $null = Invoke-Sql $db "CREATE TABLE $table (id bigint PRIMARY KEY, payload $type NOT NULL)"
+            if ($WithDailyRow) {
+                if ($type -ne 'bytea') {
+                    throw 'Daily-row experiments require a binary payload.'
+                }
+                $dayBase64 = [string] $sample.dayBase64
+                if ($dayBase64 -notmatch '^[A-Za-z0-9+/]+={0,2}$') {
+                    throw 'Invalid daily JSON payload.'
+                }
+                $null = Invoke-Sql $db @"
+CREATE TABLE $table (user_id text NOT NULL, language text NOT NULL, day timestamp NOT NULL,
+    version bigint NOT NULL, data jsonb NOT NULL, payload bytea,
+    PRIMARY KEY (user_id, language, day))
+"@
+                $dayData = "convert_from(decode('$dayBase64', 'base64'), 'UTF8')::jsonb"
+                $insert = "INSERT INTO $table SELECT 'benchmark-' || id, 'en', timestamp '2026-10-08', 1, " +
+                    "$dayData, $payload FROM generate_series(1, $Rows) AS id"
+            }
+            else {
+                $null = Invoke-Sql $db "CREATE TABLE $table (id bigint PRIMARY KEY, payload $type NOT NULL)"
+                $insert = "INSERT INTO $table SELECT id, $payload FROM generate_series(1, $Rows) AS id"
+            }
             $explain = Invoke-Sql $db @"
 EXPLAIN (ANALYZE, WAL, BUFFERS, FORMAT JSON)
-INSERT INTO $table SELECT id, $payload FROM generate_series(1, $Rows) AS id
+$insert
 "@ | ConvertFrom-Json
             $stats = Invoke-Sql $db @"
 SELECT json_build_object(
@@ -62,6 +84,7 @@ UPDATE $table SET payload = $payload
             $afterUpdate = Invoke-Sql $db "SELECT pg_total_relation_size('$table')"
             $result = [ordered] @{
                 segments = $segments
+                dailyRow = [bool] $WithDailyRow
                 format = $name
                 rows = $Rows
                 columnBytes = $stats.columnBytes

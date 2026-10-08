@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Chat;
 using ActualLab.Versioning;
 
 namespace ActualChat.Users.Db;
@@ -19,14 +20,18 @@ public class DbCoachDay : IHasVersion<long>
     [ConcurrencyCheck] public long Version { get; set; }
     [Column(TypeName = "jsonb")]
     public string Data { get; set; } = "{}";
+    public byte[]? PaceData { get; set; }
 
     public CoachDay ToModel()
-        => SystemJsonSerializer.Default.Read<CoachDay>(Data);
+        => SystemJsonSerializer.Default.Read<CoachDay>(Data) with {
+            Pace = PaceData is null ? null : SpeechPaceSummary.FromBytes(PaceData),
+        };
 
     public void UpdateFrom(CoachDay day)
     {
         Day = day.Day.ToDateTimeClamped();
         Language = day.Language;
-        Data = SystemJsonSerializer.Default.Write(day);
+        PaceData = day.Pace?.ToBytes();
+        Data = SystemJsonSerializer.Default.Write(day with { Pace = null });
     }
 }

@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Chat.Db;
 using ActualChat.Hashing;
 
@@ -33,6 +34,8 @@ public class DbCoachEntryTest(ITestOutputHelper @out) : TestBase(@out)
             PromptVersion = 1,
             TaggedAt = new DateTime(2026, 9, 25, 10, 0, 5, DateTimeKind.Utc),
             ContentHash = ChatEntryHashExt.GetContentHashString("So, um, hello"),
+            Pace = new SpeechPaceMeasurement(1, 12_500, new SpeechPaceAnalysis(
+                [new SpeechPaceSegment((0, 5), (1_000, 5_000), 10)], 10, 2, 0, 0, 1_000, 7_500)),
         };
 
         // act

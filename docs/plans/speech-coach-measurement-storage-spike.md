@@ -6,8 +6,10 @@ This is the initial implementation gate for
 [skill details and personal baselines](./speech-coach-skill-details-and-baselines.md).
 **The fine-timing rollout gate is not cleared.** New Soniox timing is captured in the existing map,
 and timestamp corrections survive transport. Timing metadata, its binary codec/column, and the local
-migration were removed at the developer's request. No replacement marker or new schema was added.
-Nothing has been deployed. Historical conversion and UI precision claims remain out of scope.
+migration were removed at the developer's request. No replacement timing marker was added.
+The follow-up adds nullable binary pace-measurement columns to existing Coach rows, with capture
+**disabled by default**. Nothing has been deployed. Historical conversion and UI precision claims
+remain out of scope.
 
 ## Implemented prototype
 
@@ -35,6 +37,120 @@ Substantial primitive math is shared in Core rather than duplicated in Coach ser
 Markup adaptation remains beside the existing Api speech statistics. Storage candidates and the
 packed-integer experiment stay in `tests/Benchmarks`; a production reusable codec could belong in
 Core/Serialization, but these prototype readers are not production contracts or a new serializer framework.
+`SpeechPaceMeasurement` and `SpeechPaceSummary` belong in shared Api rather than the Users service:
+both transport/domain contracts are needed by services and the future UI. Dependency-free histogram
+math stays in Core; no feature-local duplicate aggregation service or serializer framework is added.
+
+## Disabled-by-default capture and persistence
+
+The backend follow-up now connects the existing measurement algorithm to finalized-entry analysis:
+
+- `SpeechPaceMeasurement` in Api carries the algorithm version, actual media duration, segments, and
+  coverage. It uses the existing versioned MessagePack serializer and rejects unsupported versions,
+  invalid ranges/counters, trailing payloads, and inconsistent word/time coverage.
+- Generated `AddCoachPace` migrations add nullable `pace_data bytea` columns to `coach_entries` and
+  `coach_events`. A generated `AddCoachDailyPace` migration adds the same nullable binary field on
+  `coach_days`. There are no new tables, raw timing maps, or timing-quality markers.
+- `ChatSettings.Coach.IsPaceEnabled` defaults to false. Newly finalized entries are the only automatic
+  capture path. Commands bind capture/invalidation to the entry revision; stale commands cannot
+  overwrite newer measurements. Ordinary entry/conversation tagging preserves current measurements.
+- Bounds come from `Media.DurationMs`, not shortened entry content duration. Text/audio edits and
+  remapping clear the measurement rather than treating remapped timing as accurate. Removing audio
+  drops the analysis. Exclusion retains the contribution for reversibility; tombstones erase it and
+  advance their revision so intermediate stale events cannot resurrect it.
+- Existing headline inputs and formulas, historical records, and historical maps are not backfilled.
+  Users contribution JSON excludes the measurement; its single binary column restores it for readers.
+
+Enabling capture is an operator assertion about the source pipeline, not evidence of timing accuracy.
+Exact structural boundaries cannot establish provider accuracy or identify legacy/DTW-remapped maps.
+The accuracy/replay gate remains open, and no user-facing pace-detail precision claim is authorized.
+Daily language histograms and period merges are implemented below. Detail/history UI and baselines
+remain unimplemented. Capture must stay off during mixed-version deployment until all contribution
+and daily-row writers support the binary fields; an older writer cannot keep the new aggregates current.
+
+### Actual measurement contract cost
+
+These figures use the new production measurement codec, not the earlier flattened candidate.
+The PostgreSQL experiment inserts 5,000 identical samples per size into disposable local tables with
+one primary-key index; replacement rewrites the same payload. All disposable databases were removed.
+
+| Segments | JSON B | MessagePack B | Stored column B | Allocated B/row | Insert WAL B/row | Replacement WAL B/row |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 281 | 26 | 27 | 101.58 | 156.00 | 239.30 |
+| 6 | 726 | 102 | 103 | 175.31 | 232.00 | 315.30 |
+| 60 | 5,739 | 1,186 | 1,190 | 1,399.19 | 1,319.00 | 1,402.30 |
+| 360 | 34,751 | 7,188 | 7,188 | 8,383.69 | 7,867.59 | 8,167.02 |
+
+Production-codec CPU/allocation (BenchmarkDotNet in-process ShortRun, three measured iterations):
+six-segment encode/decode averaged 284/325 ns with 168/248 allocated bytes; sixty-segment encode/decode
+averaged 2.25/2.46 microseconds with 1,256/1,544 allocated bytes. These are local microbenchmarks,
+not database or full-pipeline latency claims.
+
+Six segments in the Chat and Users copies together are 204 raw binary bytes or 206 column bytes.
+Standalone-table allocation is about 351 bytes and insert WAL about 464 bytes for the two copies;
+these are **not** incremental production-row or complete end-to-end operation-log measurements.
+The report includes the actual contract and verifies its semantic binary round trip. Denser `TimeMap`
+growth, event/log serialization, retries, replicas, backups, and daily distributions are still separate
+budget items. No historical JSON conversion is performed by these migrations.
+
+## Daily language aggregation
+
+`SpeechPaceSummary` is a shared Api contract using the existing histogram builder and versioned
+MessagePack serializer. It stores absolute 5-WPM sparse duration bins, measured-entry count, actual
+audio duration, valid/rejected/unclassified word counts, and unclassified/pause/unmapped milliseconds.
+Counters are 64-bit, merges are checked for overflow, and readers reject invalid or unsupported data.
+
+`CoachDayBuilder.BuildAll` keeps the existing ISO-language grouping; neutral run rows do not duplicate
+pace. `Build` aggregates eligible entry measurements and `Merge` combines daily/period summaries.
+Missing measurements remain null. A measured entry with no classifiable segments has empty bins but
+retains its coverage. Inactive days add nothing. Headline counts, weighted totals, and scoring are unchanged.
+Exact arbitrary-target classification remains a segment operation: bins are not used to invent an exact
+below/within/above percentage when a target cuts through a bin.
+
+`DbCoachDay.PaceData` is the only new daily field; JSON omits the aggregate to avoid duplicate storage.
+Existing contribution filtering and daily rebuilds handle exclusions, removals, replacement, language
+moves, and explicit rebuilds. No historical entry measurements are generated or backfilled.
+
+### Daily aggregate storage and write cost
+
+Synthetic production-contract samples, with semantic codec round trips and 5,000-row PostgreSQL probes:
+
+| Source segments | Occupied bins | JSON B | MessagePack B | Stored column B |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 1 | 231 | 21 | 22 |
+| 6 | 2 | 243 | 25 | 26 |
+| 60 | 23 | 473 | 115 | 116 |
+| 360 | 25 | 519 | 169 | 173 |
+
+A second probe uses daily-row-shaped tables: user/language/day composite primary key, revision,
+complete synthetic `CoachDay` JSON, and the nullable binary field. Comparing null and populated
+fields in the same schema isolates payload cost (not the migration's nullable-column/null-bitmap cost):
+
+| Occupied bins | Added allocated B/row before replacement | Added insert WAL B/row | Added replacement WAL B/row |
+| ---: | ---: | ---: | ---: |
+| 1 | 0 | 22 | 22 |
+| 2 | 0 | 26 | 26 |
+| 23 | 147.46 | 116 | 116 |
+| 25 | 147.46 | 175 | 175 |
+
+Zero allocation growth in the small samples reflects existing page capacity, not free storage.
+These are synthetic local row probes, not complete application operation-log/replica/backup costs.
+All disposable databases were removed. Reproduce with the report's `dailySummary.dayBase64` and
+`dailySummary.base64`, and `SpeechPaceStorage.ps1 -WithDailyRow` using null (`none`) and binary formats.
+
+Local ShortRun CPU/allocation: 2-bin encode/decode averaged 94/145 ns and 128/640 allocated bytes;
+23-bin encode/decode averaged 166/380 ns and 216/1,536 bytes. Merging 100 summaries averaged
+2.71 microseconds / 13,816 bytes for 2 bins and 20.82 microseconds / 15,936 bytes for 23 bins.
+ShortRun confidence intervals are broad; these figures are microbenchmark evidence, not latency promises.
+
+Validation for this slice: 124 Users Coach unit tests (including 8 new aggregate tests), 43 Users Coach
+integration tests, 114 Chat Coach unit tests, and migration parity passed. Tests cover language separation,
+legacy/null and unclassified coverage, period merge associativity, binary/JSON/MessagePack round trips,
+invalid/unsupported data, overflow, replacement with unchanged headline metrics, language moves,
+rebuilds, exclusion/restore, invalidation, and deletion/tombstones. The focused Chat capture/remapping/
+audio-removal integration case also passed. Mechanical style and whitespace checks are clean; EF reports
+no pending model changes. The full CI solution build remains blocked by the pre-existing filter entry
+for `tests/Core.Benchmarks/Core.Benchmarks.csproj`, which is absent from `ActualChat.sln` (MSB5028).
 
 ## Timing evidence
 
@@ -250,5 +366,11 @@ After removing metadata: 180 transcription, 106 Coach, 33 Core pace, and one mig
 pass. EF reports no pending model changes; style and whitespace checks pass. The earlier
 metadata-persistence suite was removed with the contract; map precision/transport/legacy JSON tests remain. App/Streaming compiled
 as dependencies of these tests. Storage candidates and actual existing models passed binary round trips.
-The local watch server is currently unavailable; browser replay validation has not been repeated. UI, baseline lifecycle, measurement contributions, replay accuracy, and native
-rollout remain later work.
+Follow-up persistence validation: 114 Chat Coach unit tests, 116 Users Coach unit tests, 42 Users
+Coach integration tests, four distinct focused Chat integration cases, and migration parity passed.
+Both migration projects report no pending model changes. Mechanical style and whitespace checks pass.
+The broad Chat Coach integration run exceeded its four-minute command limit without a reported failure;
+focused capture, default-off, edit, and redelivery cases passed separately.
+Browser replay validation has not been repeated. UI, baseline lifecycle, replay accuracy, daily
+native rollout remain later work. Daily aggregation validation above supersedes the earlier
+pre-aggregation counts.

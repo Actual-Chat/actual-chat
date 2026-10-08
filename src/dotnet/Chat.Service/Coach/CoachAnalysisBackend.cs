@@ -2,6 +2,7 @@ using ActualChat.Chat.Db;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Hashing;
+using ActualChat.Media;
 using ActualChat.Queues;
 using ActualChat.Users;
 using ActualLab.Fusion.EntityFramework;
@@ -35,6 +36,7 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
     private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private ISpeechTagger Tagger => field ??= Services.GetRequiredService<ISpeechTagger>();
     private IQueues Queues => field ??= Services.Queues();
+    private IMediaBackend MediaBackend => field ??= Services.GetRequiredService<IMediaBackend>();
     private IDbEntityResolver<string, DbCoachEntry> EntryResolver
         => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbCoachEntry>>();
 
@@ -99,8 +101,11 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             return;
         }
 
+        if (command.UpdatePace && command.EntryVersion != entry.Version)
+            return;
+
         var isUnchanged = existing is not null && existing.ContentHash == entry.ContentHash;
-        if (isUnchanged && existing!.TagState != CoachTagState.Pending)
+        if (isUnchanged && existing!.TagState != CoachTagState.Pending && !command.UpdatePace)
             return;
 
         var author = await AuthorsBackend
@@ -125,8 +130,15 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         }
 
         var analysis = Analyze(entry, author.UserId, language, existing);
+        if (command.UpdatePace)
+            analysis = analysis with {
+                Pace = Settings.Coach.IsPaceEnabled && command.CapturePace
+                    ? await GetPace(entry, language, cancellationToken).ConfigureAwait(false)
+                    : null,
+            };
+        var paceChanged = !SamePace(analysis.Pace, existing?.Pace);
         analysis = await ApplyTags(analysis, entry.Content, cancellationToken).ConfigureAwait(false);
-        if (isUnchanged && analysis.TagState == existing!.TagState)
+        if (isUnchanged && analysis.TagState == existing!.TagState && !paceChanged)
             return;
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -135,9 +147,12 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
         var current = await ChatsBackend.GetEntry(id, cancellationToken).ConfigureAwait(false);
-        if (current is null || !IsStillWorthWriting(dbEntry, analysis, current.ContentHash))
+        if (current is null || !IsAnalyzable(current) || (paceChanged && current.Version != entry.Version)
+            || !IsStillWorthWriting(dbEntry, analysis, current.ContentHash, paceChanged))
             return;
 
+        if (!command.UpdatePace && dbEntry?.ContentHash == analysis.ContentHash.Value)
+            analysis = analysis with { Pace = dbEntry.ToModel().Pace };
         analysis = analysis with { Version = VersionGenerator.NextVersion(dbEntry?.Version ?? 0) };
         if (dbEntry is null)
             dbContext.Add(new DbCoachEntry(analysis));
@@ -201,7 +216,10 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             if (dbEntry is null || !IsStillWorthWriting(dbEntry, analysis, runEntries[analysis.Id].ContentHash))
                 continue;
 
-            var stored = analysis with { Version = VersionGenerator.NextVersion(dbEntry.Version) };
+            var stored = analysis with {
+                Version = VersionGenerator.NextVersion(dbEntry.Version),
+                Pace = dbEntry.ToModel().Pace,
+            };
             dbEntry.UpdateFrom(stored);
             touchedEntries.Add(new CoachTaggedEntry(stored.Id, stored.AuthorId));
             context.Operation.AddEvent(new CoachEntryAnalyzedEvent(stored, false));
@@ -328,7 +346,10 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             && oldEntry is not null
             && oldEntry.ContentHash != entry.ContentHash
             && entry is { HasAudio: true, IsContentStreaming: false, EndsAt: not null };
-        if (!isFinalized && !isEdited)
+        var isAudioChanged = oldEntry is not null && !entry.IsContentStreaming
+            && (oldEntry.Audio?.MediaId != entry.Audio?.MediaId
+                || !(oldEntry.Audio?.TimeMap ?? LinearMap.Zero).IsIdenticalTo(entry.Audio?.TimeMap ?? LinearMap.Zero));
+        if (!isFinalized && !isEdited && !isAudioChanged)
             return;
 
         // Nothing is queued, read or scanned for an author who has not turned coaching on for this chat
@@ -336,8 +357,11 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         if (!await CoachScopeKvas.IsInScope(kvas, entry.ChatId, cancellationToken).ConfigureAwait(false))
             return;
 
-        await Queues.Enqueue(new CoachAnalysisBackend_AnalyzeEntry(entry.Id, false), cancellationToken)
-            .ConfigureAwait(false);
+        await Queues.Enqueue(new CoachAnalysisBackend_AnalyzeEntry(entry.Id, false) {
+            UpdatePace = true,
+            EntryVersion = entry.Version,
+            CapturePace = isFinalized,
+        }, cancellationToken).ConfigureAwait(false);
         // An edit after the run went quiet must also re-tag the row; its delay counts
         // from now so the run command finds the row already reset by the entry command
         var anchor = isFinalized ? entry.EndsAt ?? Clocks.SystemClock.Now : Clocks.SystemClock.Now;
@@ -362,7 +386,7 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             && !entry.Content.IsNullOrWhiteSpace();
 
     private static bool IsStillWorthWriting(
-        DbCoachEntry? dbEntry, CoachEntryAnalysis analysis, HashString currentContentHash)
+        DbCoachEntry? dbEntry, CoachEntryAnalysis analysis, HashString currentContentHash, bool paceChanged = false)
     {
         // The entry may have been edited while the LLM was running (then the analysis is stale), or a
         // concurrent command may already have stored the same tags
@@ -370,6 +394,8 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             return false;
         if (dbEntry is null || dbEntry.ContentHash != analysis.ContentHash.Value)
             return true;
+        if (paceChanged)
+            return dbEntry.Version == analysis.Version;
 
         // Same text: only newer tags are worth writing; a pending re-analysis of identical text
         // carries nothing and must not downgrade a row a concurrent command just tagged
@@ -432,8 +458,28 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             PromptVersion = isUnchanged ? existing!.PromptVersion : 0,
             TaggedAt = isUnchanged ? existing!.TaggedAt : null,
             ContentHash = entry.ContentHash,
+            Pace = isUnchanged ? existing!.Pace : null,
         };
     }
+
+    private async Task<SpeechPaceMeasurement?> GetPace(
+        ChatEntry entry, Language? language, CancellationToken cancellationToken)
+    {
+        if (entry.Audio?.MediaId is not { } mediaId)
+            return null;
+
+        var media = await MediaBackend.Get(mediaId, cancellationToken).ConfigureAwait(false);
+        if (media?.DurationMs is not (> 0 and <= int.MaxValue))
+            return null;
+
+        var duration = (int)media.DurationMs;
+        var markup = new PlayableTextMarkup(entry.Content, entry.Audio.TimeMap);
+        var analysis = SpeechPaceStats.Compute(markup, duration / 1_000d, language, hasDetailedTiming: true);
+        return analysis is { ValidWords: > 0 } ? new SpeechPaceMeasurement(1, duration, analysis).RequireValid() : null;
+    }
+
+    private static bool SamePace(SpeechPaceMeasurement? left, SpeechPaceMeasurement? right)
+        => left is null ? right is null : left.IsIdenticalTo(right);
 
     private async Task<CoachEntryAnalysis> ApplyTags(
         CoachEntryAnalysis analysis, string text, CancellationToken cancellationToken)
