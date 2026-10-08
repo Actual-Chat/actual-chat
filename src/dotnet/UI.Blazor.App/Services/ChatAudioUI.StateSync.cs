@@ -37,6 +37,8 @@ public partial class ChatAudioUI
             AsyncChain.From(ManageListeningFocusBursts),
             AsyncChain.From(StartStopReplayingPlayers),
             AsyncChain.From(StopReplayWhenRecordingStarts),
+            AsyncChain.From(SyncReplayProximitySensing),
+            AsyncChain.From(SyncPlaybackAtEar),
             AsyncChain.From(StopListeningWhenIdle),
             AsyncChain.From(StopListeningWhenIdleInBackground),
             AsyncChain.From(StopRecordingAndReplayOnDeviceAwake),

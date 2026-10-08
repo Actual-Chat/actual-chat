@@ -27,6 +27,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     private static long _ownerChangedAt;
     private static int _isCallVideo;
     private static int _isCallActive;
+    private static int _isPlaybackAtEar;
     private static int _isCallOverrideCleared;
     private static string? _selectedOutputId;
     private static string? _unsettledOutputId;
@@ -56,6 +57,11 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
     public static bool IsCallActive {
         get => Volatile.Read(ref _isCallActive) != 0;
         set => Volatile.Write(ref _isCallActive, value ? 1 : 0);
+    }
+
+    public static bool IsPlaybackAtEar {
+        get => Volatile.Read(ref _isPlaybackAtEar) != 0;
+        set => Volatile.Write(ref _isPlaybackAtEar, value ? 1 : 0);
     }
 
     public static void SetOwner(AudioSessionOwner owner)
@@ -674,6 +680,10 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             // headset plugged in while the speaker was forced.
             if (hasExternalDevice)
                 return AVAudioSessionPortOverride.None;
+            // Stated every time rather than through the call's one-shot latch below, which a
+            // replay must leave for the next call.
+            if (IsPlaybackAtEar)
+                return AVAudioSessionPortOverride.None;
 
             if (!mustPreferSpeaker) {
                 // CallKit and the user's speaker toggle own the route from here; a stale Speaker
@@ -877,7 +887,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         Log.LogInformation("Configure: mode={Mode}", mode);
         // A call on the line keeps the call's category whatever the focus mode: Playback and
         // Ambient only ever reach the loudspeaker, so a muted call would lose the earpiece.
-        if (mode is AudioFocusMode.Recording || IsCallActive)
+        // A replay held to the ear needs that category for the same reason.
+        if (mode is AudioFocusMode.Recording || IsCallActive || IsPlaybackAtEar)
             ConfigureRecordingUnsafe(session, Owner, IsCallVideo);
         else if (mode is AudioFocusMode.Playback or AudioFocusMode.Listening)
             session.SetCategory(AVAudioSessionCategory.Playback).Assert($"{mode}: failed to set category");
@@ -905,7 +916,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // VideoChat always takes the loudspeaker - an override can't pull it back - so the
         // earpiece needs VoiceChat, the telephony profile, whoever owns the session. A live call
         // stays in it throughout, so a switch never swaps the mode on top of the output change.
-        if (IsCallActive || Volatile.Read(ref _selectedOutputId) == AudioOutputRoute.PhoneId)
+        if (IsCallActive || IsPlaybackAtEar || Volatile.Read(ref _selectedOutputId) == AudioOutputRoute.PhoneId)
             return AVAudioSessionMode.VoiceChat;
 
         // VoiceChat carries the PTT call's AEC under a PTT owner. VideoChat, not Default, for
@@ -956,8 +967,9 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
 
     private static bool MustPreferSpeaker(AudioSessionOwner owner, bool isCallVideo)
         // A call starts on the built-in output CallUI's rule names, whoever owns the session.
-        // Anything else - a voice message, PTT - keeps the speaker.
-        => Volatile.Read(ref _selectedOutputId) != PhoneRoute.Id
+        // Anything else - a voice message away from the ear, PTT - keeps the speaker.
+        => !IsPlaybackAtEar
+            && Volatile.Read(ref _selectedOutputId) != PhoneRoute.Id
             && (!(IsCallActive || owner == AudioSessionOwner.CallKit)
                 || AudioOutputRoute.GetDefaultBuiltinId(isCallVideo) == SpeakerRoute.Id);
 }
