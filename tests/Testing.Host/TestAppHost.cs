@@ -81,7 +81,8 @@ public class TestAppHost : AppHost
             var machineStat = ReadMachineStat();
             var interval = now - _lastHeartbeatAt;
             var cpuCoreCount = (cpuTime - _lastCpuTime).TotalSeconds / interval.TotalSeconds;
-            var info = $"tick {interval.ToShortString()}, "
+            // Test output reaches the CI log in bulk, so only "at" tells when the tick happened
+            var info = $"at {DateTime.UtcNow:HH:mm:ss.fff}, tick {interval.ToShortString()}, "
                 + $"cpu {cpuCoreCount:F1} of {Environment.ProcessorCount} cores, "
                 + $"pool {ThreadPool.ThreadCount} threads {ThreadPool.PendingWorkItemCount} queued, "
                 + $"gc pause +{(gcPauseDuration - _lastGCPauseDuration).ToShortString()}"
