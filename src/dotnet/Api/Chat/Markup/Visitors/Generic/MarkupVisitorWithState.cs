@@ -7,6 +7,7 @@ public abstract record MarkupVisitorWithState<TState, TResult>
             MarkupSeq markupSeq => VisitSeq(markupSeq, ref state),
             ParagraphMarkup paragraphMarkup => VisitParagraph(paragraphMarkup, ref state),
             HeaderMarkup headerMarkup => VisitHeader(headerMarkup, ref state),
+            DividerMarkup dividerMarkup => VisitDivider(dividerMarkup, ref state),
             BlockQuoteMarkup blockQuoteMarkup => VisitBlockQuote(blockQuoteMarkup, ref state),
             CodeBlockMarkup codeBlockMarkup => VisitCodeBlock(codeBlockMarkup, ref state),
             MentionMarkup mention => VisitMention(mention, ref state),
@@ -39,6 +40,8 @@ public abstract record MarkupVisitorWithState<TState, TResult>
     protected abstract TResult VisitTableCell(TableCellMarkup markup, ref TState state);
     protected abstract TResult VisitParagraph(ParagraphMarkup markup, ref TState state);
     protected abstract TResult VisitHeader(HeaderMarkup markup, ref TState state);
+    protected virtual TResult VisitDivider(DividerMarkup markup, ref TState state)
+        => VisitUnknown(markup, ref state);
     protected virtual TResult VisitBlockQuote(BlockQuoteMarkup markup, ref TState state)
         => Visit(markup.Content, ref state);
 
@@ -70,6 +73,9 @@ public abstract record MarkupVisitorWithState<TState>
             break;
         case ParagraphMarkup paragraphMarkup:
             VisitParagraph(paragraphMarkup, ref state);
+            break;
+        case DividerMarkup dividerMarkup:
+            VisitDivider(dividerMarkup, ref state);
             break;
         case HeaderMarkup headerMarkup:
             VisitHeader(headerMarkup, ref state);
@@ -169,6 +175,7 @@ public abstract record MarkupVisitorWithState<TState>
     protected abstract void VisitListItem(ListItemMarkup markup, ref TState state);
     protected abstract void VisitParagraph(ParagraphMarkup markup, ref TState state);
     protected abstract void VisitHeader(HeaderMarkup markup, ref TState state);
+    protected virtual void VisitDivider(DividerMarkup markup, ref TState state) { }
     protected virtual void VisitBlockQuote(BlockQuoteMarkup markup, ref TState state)
         => Visit(markup.Content, ref state);
     protected abstract void VisitStylized(StylizedMarkup markup, ref TState state);

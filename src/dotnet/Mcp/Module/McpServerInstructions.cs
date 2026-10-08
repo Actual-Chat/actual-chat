@@ -27,6 +27,8 @@ public static class McpServerInstructions
           roughly 15 characters a second for English, 17 for Russian, 6 for Japanese, 4 for
           Mandarin - but the backlog is the real answer, because how fast a voice speaks
           depends on the language, the voice and the provider.
+          To start over, append a line holding only `<!--reset-->`: it and everything above it
+          is dropped from what readers see, and the text after it is the message.
         - start_voice_stream with audio only - you supply the sound. Nothing transcribes it, so
           the message carries no text.
         - start_voice_stream with audio and text - you supply both, and neither speech

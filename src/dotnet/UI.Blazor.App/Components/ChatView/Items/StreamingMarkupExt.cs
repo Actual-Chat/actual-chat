@@ -13,7 +13,14 @@ public static class StreamingMarkupExt
         if (streamedText.IsNullOrEmpty())
             return null;
 
+        // Plain text keeps the raw view only if the parse left it as it came. A reset, a half-arrived
+        // marker or a half-arrived link hides part of it, and the raw view would show that part.
+        // Blank lines around the text don't count: the parse drops the leading ones.
         var markup = Parser.Parse(streamedText);
-        return markup.IsPlainText() ? null : markup;
+        if (!markup.IsPlainText())
+            return markup;
+
+        var normalizedText = streamedText.NormalizeNewLines(NewLineMarkup.Instance.Text);
+        return markup.Format().Trim() == normalizedText.Trim() ? null : markup;
     }
 }

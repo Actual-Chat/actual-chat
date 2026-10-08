@@ -444,6 +444,13 @@ ul.list-markup li::before {
     @apply font-medium;
 }
 
+/* Divider: a thin rule across the message, in the color of the link preview frame. */
+.divider-markup {
+    @apply my-2;
+    border: 0;
+    border-top: 1px solid var(--separator);
+}
+
 /* Block quote: a colored left rule (distinct from the blue used by replies/forwards). */
 :root, .theme-light {
     --quote-markup-border: var(--purple-45);

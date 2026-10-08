@@ -27,7 +27,7 @@
     if (oldIsStreaming && !m.IsStreaming && oldStreaming is not null) {
         // The full text shown while streaming, not just RetainedText: otherwise the fade-out overlay
         // is shorter than the final markup and the streaming→non-streaming transition visibly jumps.
-        _temporaryText = oldStreaming.Text;
+        _temporaryText = ActualChat.Chat.MarkupParser.DropResets(oldStreaming.Text);
     }
     // AnimatedText is entirely newly arrived characters, so its fade restarts on every update; the
     // spans persist across updates, so alternating the animation name is what restarts it.

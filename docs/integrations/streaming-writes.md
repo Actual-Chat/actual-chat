@@ -111,6 +111,34 @@ Markup that spans the whole message still needs the whole message: a list or a
 code block only looks right once its lines have arrived. Text is the common
 case and it behaves.
 
+### Starting over
+
+A line that holds only `<!--reset-->` throws away the message so far. When the
+text is parsed, the marker and everything above it are dropped, so a producer
+that changes its mind, or restarts a generation, appends the marker and then
+writes the new text. The last marker wins, so it can be used more than once.
+
+```
+First attempt, which turns out to be wrong...
+<!--reset-->
+The answer I meant to give.
+```
+
+Rules worth knowing:
+
+- The line breaks after the marker go with it, up to the first line that has anything on it.
+- The marker must be alone on its line. Inline, or with other text on the line,
+  it is ordinary text.
+- It is not honored inside a code block (``` fence) or inside a block quote. Only fences
+  count: a multi-line inline code span does not protect a marker.
+- It resets what is displayed, not what is stored: the message content keeps
+  everything that was sent, and every reader drops the same part when parsing.
+  Speech and live translation read the text as sent, so they do not apply it, and
+  an app version that predates the marker shows it as text.
+- A marker split across two appends is hidden while it is incomplete (`<!--re`),
+  so readers never see the syntax flash by.
+- A finished message that ends in a half-written marker shows it as text.
+
 ## Example: stream an LLM response into a chat
 
 Needs `pip install mcp openai`, an OpenAI key, and a Voxt API key from
