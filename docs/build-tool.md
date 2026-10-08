@@ -102,6 +102,10 @@ Common flags:
 | `--publish` / `--no-publish` | force `dotnet publish` / `dotnet build` |
 | `--ci` / `--ci-branch <BRANCH>` | Android only — install the APK CI built instead of building one; see [CI builds](#ci-builds-android) |
 
+The web asset build is the same on every platform: `npm run build:<configuration>`,
+preceded by `npm ci` only when the packages aren't installed yet (no
+`node_modules/.package-lock.json`), as in a fresh worktree.
+
 Examples:
 
 ```bash
