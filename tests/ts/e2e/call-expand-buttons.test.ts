@@ -290,6 +290,41 @@ describe('expand button during a call with video, wide screen', () => {
         await callee.screenshot({ path: shot('wide-4-callee-video-full-screen') });
     }, 240_000);
 
+    it('collapses the call screen on Escape right after it is expanded', async () => {
+        // arrange - the caller's camera is on, shown inline
+        const { caller, callee } = users;
+        await startPeerCall(caller, callee);
+        const videoToggle = caller.locator('.chat-audio-panel .video-wrapper button').first();
+        await caller.locator('.chat-audio-panel .recorder-wrapper.record-on:not(.applying-changes)').first()
+            .waitFor({ state: 'attached', timeout: 30_000 });
+        await videoToggle.click();
+        await caller.locator(`.call-screen.expanded ${OWN_TILE}`).first()
+            .waitFor({ state: 'visible', timeout: 30_000 });
+        await collapseVideoPanel(caller);
+        await waitForInlineVideo(caller, OWN_TILE);
+        await expandVideoPanel(caller);
+        await expect.poll(() => isVideoCoveringScreen(caller), { timeout: 20_000 }).toBe(true);
+        // The screen's own chat editor takes the focus, and Escape with it
+        const editor = caller.locator(`${CALL_SCREEN} .editor-content[contenteditable="true"]`).first();
+        await editor.focus();
+        await caller.keyboard.type('draft', { delay: 20 });
+
+        // act - with a draft in the editor
+        await caller.keyboard.press('Escape');
+
+        // assert - Escape cancels the draft, and the screen stays
+        await expect.poll(() => editor.innerText(), { timeout: 10_000 }).not.toContain('draft');
+        await caller.waitForTimeout(1_000);
+        expect(await isShown(caller, CALL_SCREEN), 'the first Escape is the draft\'s').toBe(true);
+
+        // act - with nothing left to cancel
+        await caller.keyboard.press('Escape');
+
+        // assert - the screen gives way to the chat, with the video back inline
+        await expect.poll(() => isShown(caller, CALL_SCREEN), { timeout: 10_000 }).toBe(false);
+        await waitForInlineVideo(caller, OWN_TILE);
+    }, 240_000);
+
     it('floats the video in another chat and puts it back inline on the return', async () => {
         // arrange - the caller's camera is on, shown inline
         const { caller, callee } = users;
