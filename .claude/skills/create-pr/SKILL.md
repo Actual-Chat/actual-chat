@@ -32,7 +32,8 @@ gh pr list --head "$(git branch --show-current)" --json number,url,isDraft
 gh pr ready <n>
 ```
 
-Then run step 4 — this is the PR's one and only post. If the PR is not a draft, it was
+Then open it in the browser if the machine asks for it (see step 3), and run step 4 — this
+is the PR's one and only post. If the PR is not a draft, it was
 announced when it was created; say so and do not post again.
 
 ## Invoking this skill is the permission to push
@@ -122,6 +123,34 @@ gh pr create --base dev --title "type(scope): summary" --body-file tmp/pr-body.m
   Only ToDo (or Backlog) moves; In Progress and Done are left alone.
 - Say plainly what was *not* verified. "Android device-verified; iOS compiles, device
   test still owed" is the useful sentence.
+
+### Open it in the browser — a per-machine preference
+
+Run this right after the PR is created, and after `gh pr ready <n>` when marking a draft
+ready. Skip it entirely when `AC_OS` is `Linux in Docker` — there is no browser to open.
+
+```bash
+open_pr="${AC_PR_OPEN_IN_BROWSER:-$(jq -r '.env.AC_PR_OPEN_IN_BROWSER // empty' ~/.claude/settings.json 2>/dev/null)}"
+```
+
+| `$open_pr` | Do |
+|---|---|
+| `1` | `gh pr view <n> --web` |
+| `0` | Nothing. |
+| empty | The developer has never been asked on this machine. Ask once, via `AskUserQuestion`: open PRs in the browser after creating them — always, or never? Act on the answer for this PR, then save it so the question never comes back. |
+
+Saving the answer (`"1"` or `"0"`) — it goes into the user's own Claude settings, never
+into the repo's:
+
+```bash
+f=~/.claude/settings.json; [ -f "$f" ] || echo '{}' > "$f"
+jq '.env = ((.env // {}) + {AC_PR_OPEN_IN_BROWSER: "1"})' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+```
+
+The harness reads `env` at session start, which is why the check above falls back to the
+file: a second PR in the same session must not ask again. If the file cannot be written,
+say so in one line and move on. A failure anywhere in this step is not a reason to stop:
+carry on to step 4.
 
 ## 4. Announce in Review Requests — every non-draft PR
 
