@@ -1,6 +1,6 @@
 import { beforeEach } from 'vitest';
-import { getFn, setFn } from 'vitest/suite';
-import type { Test } from '@vitest/runner';
+// Not vitest/suite (deprecated in 4.1), nor TestRunner.setTestFn, which 4.1.1 binds to getFn by mistake
+import { getFn, setFn, type Test } from '@vitest/runner';
 import { screenshotOpenPages } from './helpers';
 
 const wrappedTests = new WeakSet<Test>();
