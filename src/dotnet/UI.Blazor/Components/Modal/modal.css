@@ -290,16 +290,10 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 
-/* The last region - the footer, or the body when there is none - owns the modal's bottom inset
-   (incl. safe area); the frame yields it.
+/* The footer owns the modal's bottom inset (incl. safe area); the frame yields it.
    See docs/ui/spacing.md — the region at an edge owns that edge's inset. */
-.modal-frame:has(.dialog-footer),
-.modal-frame:has(.dialog-body) {
+.modal-frame:has(.dialog-footer) {
     padding-bottom: 0;
-}
-/* The keyboard covers the home indicator, and the overlay ends at the keyboard's top edge. */
-body.keyboard-open .modal-overlay {
-    --safe-area-bottom: 0px;
 }
 .dialog-footer {
     @apply flex-y items-stretch gap-y-2;
