@@ -141,6 +141,8 @@ const MAX_PLAUSIBLE_LAG_MS = 30_000;
 // The rVFC lag exceeds the pre-present tap lag only by the MSTG→<video> buffer —
 // tens of ms in the field. Beyond this the two disagree about the timeline itself.
 const MAX_DISPLAY_TAP_GAP_MS = 2_000;
+const CLEAN_END_STABLE_MS = 10_000;
+const CLEAN_END_MAX_DELAY_MS = 30_000;
 // rVFC stops firing whenever the tile stops presenting, and its samples are dropped
 // once the lag passes the bound above — both freeze displayLatencyMs at its last value.
 const DISPLAY_LAG_STALE_AFTER_MS = 1_500;
@@ -190,6 +192,8 @@ export class VideoPlayer {
     private codecCategory = '';
 
     private isPlaying = false;
+    private isStopped = false;
+    private cleanEndCount = 0;
     private tileEndingApplied = false;
     private visibilitySubscription: Subscription | null = null;
 
@@ -665,6 +669,9 @@ export class VideoPlayer {
 
             const dims = (width && height) ? { width, height } : undefined;
             const selection = await selectDecoderCodec(candidates, description, dims);
+            if (this.isStopped)
+                return;
+
             if (!selection) {
                 warnLog?.log(`No HW-supported codec found among candidates: [${candidates.join(', ')}]`);
                 if (this.restartAttempts === 0)
@@ -1076,12 +1083,19 @@ export class VideoPlayer {
         this.restartAttempts = 0;
         while (this.isPlaying && !this.codecExclusionRequested) {
             try {
+                const attemptStartedAtMs = performance.now();
                 await this.runOneAttempt(streamId);
                 this.markTileEnding('graceful-completion');
                 void this.reportEnded(undefined);
                 // The server list is the authority on whether the stream is over: the tile
                 // is unmounted when it drops the stream, and until then we keep pulling.
-                await this.waitBeforeRestart();
+                // Replay of a finished stream's tail produces frames, so the delay is
+                // tracked apart from restartAttempts, which frames reset.
+                if (performance.now() - attemptStartedAtMs > CLEAN_END_STABLE_MS)
+                    this.cleanEndCount = 0;
+                this.cleanEndCount++;
+                const delayMs = Math.min(CLEAN_END_MAX_DELAY_MS, 500 * Math.pow(2, this.cleanEndCount - 1));
+                await delayAsync(delayMs);
             } catch (err) {
                 const e = err instanceof Error ? err : new Error(String(err));
 
@@ -1137,6 +1151,8 @@ export class VideoPlayer {
 
     private async runOneAttempt(streamId: string): Promise<void> {
         await this.ensurePlayerWorker();
+        if (!this.shouldRunPlaybackLoop())
+            throw new Error('VideoPlayer.stop');
         if (!this.playerWorker || !this.selectedCodec)
             throw new Error('runOneAttempt: worker or codec missing');
 
@@ -1574,7 +1590,8 @@ export class VideoPlayer {
             this.audioCaTimer = null;
         }
         this.clearLivenessTimer();
-        if (!this.isPlaying) return;
+        if (this.isStopped) return;
+        this.isStopped = true;
 
         infoLog?.log(`VideoPlayer stop() called for stream ${this.streamId}, rendered=${this.renderFrameCount} frames, received=${this.receivedFrameCount}`);
 

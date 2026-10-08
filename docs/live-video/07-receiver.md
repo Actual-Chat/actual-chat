@@ -55,6 +55,24 @@ between two streams with the same codec is essentially free.
   `VideoQualityUI` whenever the player tile is resized, driving the
   allocator's per-stream `RenderVideoSize` ([08](./08-quality-control.md)).
 
+## Recovery: init retry and the playback loop
+
+Neither layer gives up on a stream; only unmounting the tile ends them. The server's
+stream list is the authority on whether a stream is alive.
+
+- **Init retry.** `VideoTrackPlayer` retries its setup (viewer registration, time sync,
+  `VideoPlayer.create`/`start`) with `RetryDelaySeq.Exp(0.5, 30)` until disposed.
+  `VideoPlayer.ensurePlayerWorker` re-runs `initPlayerWorker` at the start of every
+  attempt while the worker or codec is missing, so a failed first setup or a failed
+  `recreatePlayerWorker` recovers through the loop below.
+- **Playback loop.** `VideoPlayer.runPlaybackLoop` retries every failure with
+  150 ms → 3 s backoff. A clean end (`OnEnded(null)`) is not terminal either: the tile
+  fades out (`is-ending`), `VideoStage` gets its ending-grace signal, and the loop pulls
+  again after a separate delay of 0.5 s doubling to 30 s. That delay is tracked apart from
+  the failure backoff because replaying a finished stream's retained tail produces frames,
+  and frames reset the failure backoff. The `is-ending` class is cleared when frames
+  resume.
+
 ## Worker pipeline
 
 File chain (operators in `Services/Video/operators/`):

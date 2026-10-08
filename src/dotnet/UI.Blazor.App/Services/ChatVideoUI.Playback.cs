@@ -55,8 +55,8 @@ public partial class ChatVideoUI
     }
 
     public void NotifyRemoteStreamEndedSuccessfully()
-        => Interlocked.Exchange(ref _remoteStreamEndedSuccessfully, 1);
+        => Interlocked.Exchange(ref _isRemoteStreamEndedSuccessfully, 1);
 
     public bool ConsumeRemoteStreamEndedSuccessfully()
-        => Interlocked.Exchange(ref _remoteStreamEndedSuccessfully, 0) != 0;
+        => Interlocked.Exchange(ref _isRemoteStreamEndedSuccessfully, 0) != 0;
 }

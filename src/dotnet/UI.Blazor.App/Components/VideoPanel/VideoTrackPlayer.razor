@@ -296,11 +296,12 @@
                 .OnPlaybackEnded(StreamInfo.StreamId, CancellationToken.None)
                 .SuppressExceptions();
 
-            if (_viewerHeartbeatTimer != null)
-                await _viewerHeartbeatTimer.DisposeAsync().ConfigureAwait(false);
-
             if (_playTask != null)
                 await _playTask.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+
+            // After _playTask: Initialize may create the timer while it is still running
+            if (_viewerHeartbeatTimer != null)
+                await _viewerHeartbeatTimer.DisposeAsync().ConfigureAwait(false);
 
             // Don't unregister viewer on dispose — the server has 90s stale member cleanup.
             // Unregistering here causes codec oscillation when ComputeState re-renders
@@ -341,6 +342,7 @@
         // This ensures the server knows our capabilities ASAP, triggering
         // the sender to switch codecs if the current stream is unsupported.
         await RegisterViewer();
+        cancellationToken.ThrowIfCancellationRequested();
         _viewerHeartbeatTimer ??= new Timer(
             _ => _ = RegisterViewerHeartbeat(),
             null,
