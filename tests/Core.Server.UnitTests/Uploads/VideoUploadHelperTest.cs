@@ -48,6 +48,33 @@ public sealed class VideoUploadHelperTest
     }
 
     [Theory]
+    [InlineData(18.3, 18.4, 18.3)]
+    [InlineData(0, 4, 4)]
+    [InlineData(0, 0, 0)]
+    public void AnalyzeVideoShouldFallBackToContainerDuration(
+        double streamSeconds,
+        double formatSeconds,
+        double expectedSeconds)
+    {
+        // arrange
+        var videoStream = new VideoStream {
+            Width = 1280,
+            Height = 720,
+            Duration = TimeSpan.FromSeconds(streamSeconds),
+        };
+        var format = new FFMpegCore.MediaFormat { Duration = TimeSpan.FromSeconds(formatSeconds) };
+        var mediaInfo = new Mock<IMediaAnalysis>(MockBehavior.Strict);
+        mediaInfo.SetupGet(x => x.PrimaryVideoStream).Returns(videoStream);
+        mediaInfo.SetupGet(x => x.Format).Returns(format);
+
+        // act
+        var (_, duration, _) = UploadProcessorHelper.AnalyzeVideo(mediaInfo.Object);
+
+        // assert
+        duration.Should().Be(TimeSpan.FromSeconds(expectedSeconds));
+    }
+
+    [Theory]
     [InlineData("h264", "isom", 1280, 720, VideoConversion.None)]
     [InlineData("hevc", "mp42", 1920, 1080, VideoConversion.None)]
     [InlineData("h264", "iso5", 1280, 720, VideoConversion.Remux)]

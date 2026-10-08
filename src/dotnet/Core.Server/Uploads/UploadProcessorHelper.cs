@@ -49,10 +49,13 @@ public static class UploadProcessorHelper
             ? file
             : file with { FileName = file.FileName.ChangeExtension(".mp4"), ContentType = "video/mp4" };
 
-    public static (Size2D Size, TimeSpan Duration, double FrameRate) AnalyzeVideo(VideoStream videoStream)
+    public static (Size2D Size, TimeSpan Duration, double FrameRate) AnalyzeVideo(IMediaAnalysis mediaInfo)
     {
+        var videoStream = mediaInfo.PrimaryVideoStream!;
         var size = GetEffectiveSize(videoStream);
-        return (size, videoStream.Duration, videoStream.AvgFrameRate);
+        // A stream without its own duration (e.g. a MediaRecorder WebM) still has the container's one
+        var duration = videoStream.Duration > TimeSpan.Zero ? videoStream.Duration : mediaInfo.Format.Duration;
+        return (size, duration, videoStream.AvgFrameRate);
     }
 
     public static Size2D ScaleToFullHd(Size2D size)
@@ -153,7 +156,7 @@ public static class UploadProcessorHelper
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
-        var (size, duration, _) = AnalyzeVideo(mediaInfo.PrimaryVideoStream!);
+        var (size, duration, _) = AnalyzeVideo(mediaInfo);
         var mustScale = ExceedsFullHd(size);
         if (mustScale)
             size = ScaleToFullHd(size);
