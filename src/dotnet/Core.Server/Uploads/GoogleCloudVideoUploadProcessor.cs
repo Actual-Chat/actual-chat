@@ -18,6 +18,9 @@ public sealed class GoogleCloudVideoUploadProcessor(
     : IUploadProcessor
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan FastPollInterval = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan FastPollPeriod = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan JobStartupDuration = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan JobTimeout = TimeSpan.FromMinutes(14);
     private static readonly TimeSpan SignedUrlExpiry = TimeSpan.FromHours(1);
     private static readonly TimeSpan MaxLocalTranscodeDuration = TimeSpan.FromMinutes(10);
@@ -154,7 +157,8 @@ public sealed class GoogleCloudVideoUploadProcessor(
 
             // 4. Poll for completion
             stepSw.Restart();
-            var job = await PollJobUntilComplete(jobName, progress, cancellationToken).ConfigureAwait(false);
+            var job = await PollJobUntilComplete(jobName, duration, progress, cancellationToken)
+                .ConfigureAwait(false);
             Log.LogDebug("Transcoding completed in {Elapsed:N0}ms, state: {State}, job: '{JobName}'",
                 stepSw.ElapsedMilliseconds, job.State, job.Name);
 
@@ -312,28 +316,32 @@ public sealed class GoogleCloudVideoUploadProcessor(
 
     private static async Task<Job> PollJobUntilComplete(
         string jobName,
+        TimeSpan videoDuration,
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
         var client = await TranscoderServiceClient.CreateAsync(cancellationToken).ConfigureAwait(false);
         var deadline = DateTime.UtcNow + JobTimeout;
-        var pollCount = 0;
+        // Measured on prod: a job runs ~2s plus ~0.2x the video's duration; 0.3x leaves headroom
+        var expectedJobDuration = (JobStartupDuration + (videoDuration * 0.3)).Clamp(JobStartupDuration, JobTimeout);
+        var stopwatch = Stopwatch.StartNew();
 
         while (DateTime.UtcNow < deadline) {
-            await Task.Delay(PollInterval, cancellationToken).ConfigureAwait(false);
+            // Most jobs finish within seconds, so the first polls are frequent
+            var pollInterval = stopwatch.Elapsed < FastPollPeriod ? FastPollInterval : PollInterval;
+            await Task.Delay(pollInterval, cancellationToken).ConfigureAwait(false);
             var job = await client.GetJobAsync(jobName, cancellationToken).ConfigureAwait(false);
-            pollCount++;
 
             switch (job.State) {
             case Job.Types.ProcessingState.Succeeded:
             case Job.Types.ProcessingState.Failed:
                 return job;
             case Job.Types.ProcessingState.Running:
-                // Estimate progress between 20% and 95% based on elapsed polls
-                // The job timeout is 30min with 5s polls = ~360 max polls
+                // Transcoder reports no progress, so it's estimated from the elapsed time:
+                // 20% → ~84% when the expected time is up → ~92% at twice that, never above 94%
                 if (progress is not null) {
-                    var estimatedProgress = Math.Min(20 + (0.75 * pollCount / 3.6), 94);
-                    progress.Report(estimatedProgress);
+                    var elapsedFraction = stopwatch.Elapsed / expectedJobDuration;
+                    progress.Report(20 + (74 * (1 - Math.Exp(-2 * elapsedFraction))));
                 }
                 break;
             }
