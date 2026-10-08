@@ -188,12 +188,19 @@ an MSIX.
 
 ### iOS and macOS
 
-These delegate to `scripts/run-ios.sh`, `scripts/run-ios-simulator.sh`,
+These delegate to `scripts/run-ios.sh` (a device, or a simulator with `--simulator`),
 `scripts/run-mac.sh` (the default AppKit app) and `scripts/run-maccatalyst.sh`
 (`--catalyst`), which handle device detection, certificate install and
 the codesigning workarounds. They build, install and launch as one unit, so
 `b app install ios` is rejected rather than silently launching the app — use
 `b app run ios` or `b app build ios`.
+
+They build the Debug app only. A Release build of an Apple app is the store package,
+signed for distribution, and Native AOT applies to Release alone, so `--release`,
+`--aot` and `--publish` are rejected with a pointer to `b app pack`. `--prod` works
+on macOS; on iOS it is rejected, because a Debug iOS build is signed with the dev
+provisioning profile and there is no prod one. `--no-web` and anything after `--`
+are forwarded to the script.
 
 ## Server
 
