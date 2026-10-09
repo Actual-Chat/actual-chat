@@ -30,6 +30,12 @@ $script:FlakeLabel = 'ci-flaky'
 # not that the tests themselves are at fault.
 $script:CollapseThreshold = 5
 
+# One error line is kept per failed test; the names are what the record is for.
+$script:MaxErrorLength = 500
+
+# GitHub rejects a comment over 65536 characters, and a collapsed run fails thousands of tests.
+$script:JournalTestLimit = 30
+
 function Get-CiFailureCategory {
     <#
     .SYNOPSIS
@@ -227,6 +233,17 @@ function Format-CiMilliseconds {
     return "$([Math]::Round($Milliseconds / 1000)) s"
 }
 
+function Limit-CiText {
+    param(
+        [AllowEmptyString()][AllowNull()][string]$Text,
+        [Parameter(Mandatory)][int]$MaxLength)
+
+    if ($null -eq $Text -or $Text.Length -le $MaxLength) {
+        return $Text
+    }
+    return $Text.Substring(0, $MaxLength) + '…'
+}
+
 function Get-CiFailedTests {
     <#
     .SYNOPSIS
@@ -324,7 +341,7 @@ function Get-CiFailedTests {
         [PSCustomObject]@{
             Name = $_
             Duration = $durations[$_]
-            Error = $errors[$_]
+            Error = Limit-CiText $errors[$_] $script:MaxErrorLength
             KnownFlake = $flake.Known
             FlakeIssue = $flake.Issue
         }
@@ -574,6 +591,21 @@ function Get-CiRecordPath {
     return "records/$month/$($Record.RunId)-$($Record.RunAttempt).json"
 }
 
+function ConvertTo-CiRecordRequest {
+    <#
+    .SYNOPSIS
+        The body of the contents-API request that stores one record.
+    #>
+    param([Parameter(Mandatory)][object]$Record)
+
+    $json = $Record | ConvertTo-Json -Depth 8 -Compress
+    return [ordered]@{
+        message = "ci-watchdog: $($Record.Verdict) in run $($Record.RunId)"
+        content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
+        branch = $script:DataBranch
+    } | ConvertTo-Json -Compress
+}
+
 function Save-CiRunRecord {
     <#
     .SYNOPSIS
@@ -591,13 +623,17 @@ function Save-CiRunRecord {
         return $true
     }
 
-    $json = $Record | ConvertTo-Json -Depth 8 -Compress
-    $content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
-    & gh api -X PUT "repos/$script:Repo/contents/$path" `
-        -f message="ci-watchdog: $($Record.Verdict) in run $($Record.RunId)" `
-        -f content="$content" `
-        -f branch="$script:DataBranch" 2>&1 | Out-Null
-    return $LASTEXITCODE -eq 0
+    # The body goes through a file: a record of a collapsed run is far past the
+    # 128 KB that Linux allows for one command-line argument.
+    $file = Join-Path ([IO.Path]::GetTempPath()) "ci-watchdog-record-$($Record.RunId)-$($Record.RunAttempt).json"
+    try {
+        Set-Content -Path $file -Value (ConvertTo-CiRecordRequest $Record) -Encoding utf8NoBOM
+        & gh api -X PUT "repos/$script:Repo/contents/$path" --input $file 2>&1 | Out-Null
+        return $LASTEXITCODE -eq 0
+    }
+    finally {
+        Remove-Item $file -ErrorAction SilentlyContinue
+    }
 }
 
 function Get-CiJournalIssue {
@@ -626,7 +662,7 @@ function Format-CiJournalNote {
     $lines.Add('')
     foreach ($job in $Record.Jobs) {
         $lines.Add("- **$($job.Name)** — $($job.Category), failed at ``$($job.FailedStep)``")
-        foreach ($test in $job.Tests) {
+        foreach ($test in @($job.Tests | Select-Object -First $script:JournalTestLimit)) {
             $flag = if ($test.KnownFlake) {
                 "known flake #$($test.FlakeIssue)"
             }
@@ -640,6 +676,10 @@ function Format-CiJournalNote {
             if ($test.Error) {
                 $lines.Add("    - $($test.Error)")
             }
+        }
+        $hidden = @($job.Tests).Count - $script:JournalTestLimit
+        if ($hidden -gt 0) {
+            $lines.Add("  - … and $hidden more, all of them in the stored record")
         }
     }
     if ($Record.Rerun) {
