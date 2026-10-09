@@ -13,8 +13,13 @@
         Click="@(() => OnAlert(chatEntryId, authorId))">
     </MenuEntry>
     <MenuEntry
-        Icon="icon-info"
-        Text="@L.Alert_ShowInfo"
+        Icon="icon-megaphone"
+        Text="@L.Alert_AlertAll"
+        Click="@(() => OnAlertAll(chatEntryId))">
+    </MenuEntry>
+    <MenuEntry
+        Icon="icon-person"
+        Text="@L.Alert_Profile"
         Click="@(() => OnShowInfo(authorId))">
     </MenuEntry>
 </div>
@@ -30,6 +35,28 @@
             AuthorIds = ApiArray.New(aid),
         };
         return UICommander.Run(command);
+    }
+
+    private async Task OnAlertAll(ChatEntryId? chatEntryId) {
+        if (chatEntryId is not { } entryId)
+            return;
+
+        var alerts = await Hub.Notifications
+            .ListMentionedMemberAlerts(Hub.Session, entryId, CancellationToken.None)
+            .ConfigureAwait(true);
+        var alertable = alerts
+            .Where(a => a is { IsNotified: false, IsRead: false })
+            .Select(a => a.AuthorId)
+            .ToApiArray();
+        if (alertable.Count == 0)
+            return;
+
+        var command = new Notifications_NotifyMentionedMembers {
+            Session = Hub.Session,
+            ChatEntryId = entryId,
+            AuthorIds = alertable,
+        };
+        await UICommander.Run(command).ConfigureAwait(true);
     }
 
     private Task OnShowInfo(AuthorId? authorId) {

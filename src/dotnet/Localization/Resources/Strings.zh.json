@@ -548,7 +548,7 @@
   "Alert_TargetCompanion": "对方",
   "Alert_Confirm": "发送通知",
   "Alert_Alert": "Alert",
-  "Alert_ShowInfo": "Show info",
+  "Alert_Profile": "Profile",
   "Alert_AlertAll": "Alert all",
   "Alert_AlertAllCount_Format": "Alert all {0}",
   "Alert_EveryoneAlerted": "Everyone alerted",
