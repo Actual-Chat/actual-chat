@@ -139,7 +139,6 @@
 
     [JSInvokable]
     public Task OnMarkupClick(Range<int> textRange) {
-        // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
         var entry = Entry;
         var startAt = GetReplayStartAt(Markup, entry, textRange.Start);
         return Hub.ChatAudioUI.StartReplay(entry.ChatId, startAt);
