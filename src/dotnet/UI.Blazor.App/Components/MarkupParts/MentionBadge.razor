@@ -2,10 +2,10 @@
 
 @{
     RenderFragment inner = @<text>
-        <div class="truncate">@Label</div>
         @if (IsInOwnMessage) {
             <i class="@StateIconCls"></i>
         }
+        <div class="truncate">@Label</div>
     </text>;
 }
 

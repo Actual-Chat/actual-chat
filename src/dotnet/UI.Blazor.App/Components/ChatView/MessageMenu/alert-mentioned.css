@@ -16,7 +16,7 @@
 .btn-alert-mentioned .c-done {
     @apply absolute -top-1 -right-1;
     @apply flex items-center justify-center;
-    @apply min-w-4 h-4 px-1;
+    @apply w-4 h-4;
     @apply rounded-full bg-primary text-primary-title;
 }
 .btn-alert-mentioned .c-done i {

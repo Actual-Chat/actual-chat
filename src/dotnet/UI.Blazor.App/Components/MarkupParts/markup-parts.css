@@ -21,7 +21,7 @@
     /* Vertical margin so wrapped mention chips don't touch the row above/below: for an atomic
        inline box the line box fits its margin box, so this adds the inter-line gap. */
     @apply my-0.5;
-    @apply rounded-full bg-mention-other;
+    @apply rounded-lg bg-mention-other;
     @apply text-mention-other-text font-normal;
     @apply select-none;
 }
@@ -35,10 +35,11 @@
 .mention-markup > i {
     font-size: 1.25rem;
 }
-/* Own-message mention: squarer corners + a trailing alert-state icon (bell / filled bell / checkmark). */
+/* Leading alert-state icon (bell / filled bell / checkmark): trim the left padding so its gap to
+   the edge matches the text's gap on the right. */
 .mention-markup.mention-markup-alertable {
-    @apply gap-x-1;
-    border-radius: 0.5rem;
+    @apply gap-x-0.5;
+    @apply pl-0.5;
 }
 .mention-markup .c-mention-state {
     @apply flex-none;

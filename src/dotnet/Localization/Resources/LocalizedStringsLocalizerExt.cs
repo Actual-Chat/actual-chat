@@ -607,7 +607,7 @@ public static class LocalizedStringsLocalizerExt
         public string Alert_AlertMentioned => l["Alert_AlertMentioned"].Value;
         public string Alert_AlertMentionedMembers => l["Alert_AlertMentionedMembers"].Value;
         public string Alert_Alert => l["Alert_Alert"].Value;
-        public string Alert_ShowInfo => l["Alert_ShowInfo"].Value;
+        public string Alert_Profile => l["Alert_Profile"].Value;
         public string Alert_AlertAll => l["Alert_AlertAll"].Value;
         public string Alert_AlertAllCount_Format(object arg0) => l["Alert_AlertAllCount_Format", arg0].Value;
         public string Alert_EveryoneAlerted => l["Alert_EveryoneAlerted"].Value;
