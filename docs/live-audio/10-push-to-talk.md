@@ -76,6 +76,11 @@ headless listening and queues it in the live scope after restoring listening.
 This also covers a hot reply whose microphone remains in the headless scope
 until the reply closes; the live scope cannot infer that recording itself.
 
+**Wake preserves native audio.** A suspended WebView can report a sleep interval
+when the app opens even while the native microphone and playback kept running.
+`StopRecordingAndReplayOnDeviceAwake` therefore resets audio only in browser
+hosts; MAUI keeps recording intent and replay intact.
+
 **Muting** is a timed pause of an armed chat that keeps the consent:
 `ChatListPttToggle`, the Active Chats badge, opens `PttMuteMenu` (15 min / 1 h /
 8 h from `Constants.Audio.PttMuteDurations`, or "turn off" = `WithoutPttChat`),

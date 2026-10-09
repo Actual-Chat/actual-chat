@@ -57,6 +57,21 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
     }
 
+    // Protected/internal methods
+
+    internal async Task StopRecordingAndReplayOnDeviceAwake(CancellationToken cancellationToken)
+    {
+        // A suspended WebView does not suspend the native audio engine or cancel its recording intent.
+        if (HostInfo.AppKind.IsMaui())
+            return;
+
+        await DeviceAwakeUI.WhenSleepDetected(cancellationToken).ConfigureAwait(false);
+        await SetRecordingChatId(null).ConfigureAwait(false);
+        if (ReplayState.Value is not null)
+            StopReplay();
+        AudioRecorder.MicrophonePermission.ForgetCached();
+    }
+
     // Private methods
 
     private async Task InitializeListening(CancellationToken cancellationToken)
@@ -904,16 +919,6 @@ public partial class ChatAudioUI
             await ClearListeningChats().ConfigureAwait(false);
             (idleSince, lastActiveAt) = (null, null);
         }
-    }
-
-    private async Task StopRecordingAndReplayOnDeviceAwake(CancellationToken cancellationToken)
-    {
-        await DeviceAwakeUI.WhenSleepDetected(cancellationToken).ConfigureAwait(false);
-        await SetRecordingChatId(null).ConfigureAwait(false);
-        if (ReplayState.Value is not null)
-            StopReplay();
-        if (!HostInfo.AppKind.IsMaui())
-            AudioRecorder.MicrophonePermission.ForgetCached();
     }
 
     private async Task UpdateNextBeepAt(CancellationToken cancellationToken)
