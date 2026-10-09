@@ -18,6 +18,9 @@
     @apply inline-flex items-center;
     @apply max-w-48 h-5;
     @apply px-1.5;
+    /* Without this the inline-flex pill aligns on its synthetic baseline (its bottom edge) and
+       rides high, poking above the text line; middle centers it on the line instead. */
+    @apply align-middle;
     /* Vertical margin so wrapped mention chips don't touch the row above/below: for an atomic
        inline box the line box fits its margin box, so this adds the inter-line gap. */
     @apply my-0.5;
