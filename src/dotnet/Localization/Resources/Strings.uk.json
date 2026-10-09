@@ -2054,6 +2054,7 @@
   "Coach_MarkFillerBody_Format": "«{0}» тут нічого не означає — наступного разу обійдіться без нього.",
   "Coach_MarkRepetitionTitle": "Ви повторили слово двічі поспіль",
   "Coach_MarkRepetitionBody_Format": "«{0}» пролунало двічі — досить одного разу.",
+  "Coach_MarkPlayFromHere": "Відтворити звідси",
   "Coach_TipWeakWordBody_Format": "Слово «{0}» часто звучить надмірно. Доберіть точніший синонім, щоб мовлення стало виразнішим.",
   "Coach_OnlyYou": "Тільки ви",
   "Coach_TabRecent": "Нещодавнє",

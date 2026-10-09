@@ -2417,6 +2417,7 @@
   "Coach_MarkFillerBody_Format": "“{0}” carries no meaning here; drop it next time.",
   "Coach_MarkRepetitionTitle": "You said it twice in a row",
   "Coach_MarkRepetitionBody_Format": "“{0}” came twice; once is enough.",
+  "Coach_MarkPlayFromHere": "Play from here",
   "Coach_TipWeakWordBody_Format": "The word “{0}” is often overused. Consider a more specific synonym to sharpen your speech.",
 
   // Speech coach redesign: Recent / Progress / Skills tabs, conversation cards, per-language skills,

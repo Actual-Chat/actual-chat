@@ -2054,6 +2054,7 @@
   "Coach_MarkFillerBody_Format": "“{0}”는 여기서 의미가 없습니다. 다음에는 빼 보세요.",
   "Coach_MarkRepetitionTitle": "같은 단어를 연달아 두 번 말했습니다",
   "Coach_MarkRepetitionBody_Format": "“{0}”가 두 번 나왔습니다. 한 번이면 충분합니다.",
+  "Coach_MarkPlayFromHere": "여기서부터 재생",
   "Coach_TipWeakWordBody_Format": "“{0}”는 자주 남용되는 단어입니다. 더 구체적인 동의어로 바꾸면 말이 더 선명해집니다.",
   "Coach_OnlyYou": "나만",
   "Coach_TabRecent": "최근",

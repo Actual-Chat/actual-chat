@@ -2055,6 +2055,7 @@
   "Coach_MarkFillerBody_Format": "„{0}“ trägt hier nichts bei; lass es nächstes Mal weg.",
   "Coach_MarkRepetitionTitle": "Du hast das Wort zweimal hintereinander gesagt",
   "Coach_MarkRepetitionBody_Format": "„{0}“ kam zweimal; einmal reicht.",
+  "Coach_MarkPlayFromHere": "Ab hier abspielen",
   "Coach_TipWeakWordBody_Format": "Das Wort „{0}“ wird oft überstrapaziert. Ein genaueres Synonym macht deine Rede schärfer.",
   "Coach_OnlyYou": "Nur du",
   "Coach_TabRecent": "Zuletzt",

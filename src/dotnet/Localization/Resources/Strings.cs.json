@@ -2054,6 +2054,7 @@
   "Coach_MarkFillerBody_Format": "„{0}“ tu nic neznamená; příště ho vynechte.",
   "Coach_MarkRepetitionTitle": "Řekli jste slovo dvakrát za sebou",
   "Coach_MarkRepetitionBody_Format": "„{0}“ zaznělo dvakrát; jednou stačí.",
+  "Coach_MarkPlayFromHere": "Přehrát odtud",
   "Coach_TipWeakWordBody_Format": "Slovo „{0}“ se často nadužívá. Zvolte přesnější synonymum, aby byla vaše řeč výstižnější.",
   "Coach_OnlyYou": "Jen vy",
   "Coach_TabRecent": "Nedávné",

@@ -2054,6 +2054,7 @@
   "Coach_MarkFillerBody_Format": "“{0}” qui non aggiunge nulla; la prossima volta lascialo fuori.",
   "Coach_MarkRepetitionTitle": "Hai detto la parola due volte di seguito",
   "Coach_MarkRepetitionBody_Format": "“{0}” è uscito due volte; una basta.",
+  "Coach_MarkPlayFromHere": "Riproduci da qui",
   "Coach_TipWeakWordBody_Format": "La parola “{0}” è spesso abusata. Prova un sinonimo più preciso per rendere il tuo discorso più incisivo.",
   "Coach_OnlyYou": "Solo tu",
   "Coach_TabRecent": "Recenti",

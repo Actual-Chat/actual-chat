@@ -2054,6 +2054,7 @@
   "Coach_MarkFillerBody_Format": "„{0}“ овде ништа не значи; следећи пут га изоставите.",
   "Coach_MarkRepetitionTitle": "Рекли сте реч двапут заредом",
   "Coach_MarkRepetitionBody_Format": "„{0}“ се чуло двапут; једном је довољно.",
+  "Coach_MarkPlayFromHere": "Пусти одавде",
   "Coach_TipWeakWordBody_Format": "Реч „{0}“ се често пречесто користи. Размислите о прецизнијем синониму да ваш говор буде оштрији.",
   "Coach_OnlyYou": "Само ви",
   "Coach_TabRecent": "Недавно",

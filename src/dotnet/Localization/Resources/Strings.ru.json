@@ -2054,6 +2054,7 @@
   "Coach_MarkFillerBody_Format": "«{0}» здесь ничего не значит — в следующий раз обойдитесь без него.",
   "Coach_MarkRepetitionTitle": "Вы повторили слово дважды подряд",
   "Coach_MarkRepetitionBody_Format": "«{0}» прозвучало дважды — достаточно одного раза.",
+  "Coach_MarkPlayFromHere": "Воспроизвести отсюда",
   "Coach_TipWeakWordBody_Format": "Слово «{0}» часто звучит избыточно. Подберите более точный синоним, чтобы речь стала выразительнее.",
   "Coach_OnlyYou": "Только вы",
   "Coach_TabRecent": "Недавнее",

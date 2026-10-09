@@ -2061,6 +2061,7 @@
   "Coach_MarkFillerBody_Format": "“{0}” burada bir anlam katmıyor; bir dahaki sefere atlayın.",
   "Coach_MarkRepetitionTitle": "Aynı kelimeyi art arda iki kez söylediniz",
   "Coach_MarkRepetitionBody_Format": "“{0}” iki kez geçti; bir kez yeter.",
+  "Coach_MarkPlayFromHere": "Buradan oynat",
   "Coach_TipWeakWordBody_Format": "“{0}” kelimesi sık sık gereğinden fazla kullanılır. Konuşmanızı keskinleştirmek için daha belirgin bir eş anlamlı seçin.",
   "Coach_OnlyYou": "Yalnızca siz",
   "Coach_TabRecent": "Son",
