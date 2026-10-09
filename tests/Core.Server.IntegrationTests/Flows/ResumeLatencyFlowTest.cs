@@ -35,18 +35,6 @@ public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITes
 
     [Fact]
     [Trait("Category", "Slow")]
-    public async Task ResumesShouldNotStall()
-    {
-        // act
-        var delays = await RunFlow();
-
-        // assert
-        delays.Max().Should().BeLessThan(StallDelay, "no resume may stall");
-    }
-
-    // Build agents lose up to ~2s per resume (#4647), so the budget is checked nightly, not on every PR
-    [Fact]
-    [Trait("Category", "Nightly")]
     public async Task ResumeDelaysShouldStayWithinBudget()
     {
         // act
