@@ -19,23 +19,24 @@ already says; that section explains exactly when a comment is justified and
 when it isn't. Re-read it any time you're tempted to add a `//`, `///`, or
 JSDoc block.
 
-Two checks run on every `.cs`/`.ts`/`.razor`/`.css` edit, both against
-[docs/CODING_STYLE.md](docs/CODING_STYLE.md).
+Two checks guard [docs/CODING_STYLE.md](docs/CODING_STYLE.md), and neither
+looks past the lines you changed.
 
-A script checks the mechanical rules — line length, control-flow placement,
-brace placement, `volatile`, namespace and `using` placement. It counts
-characters exactly and looks only at the lines you changed plus three around
-them, so its verdict on those rules is the final one and everything it reports
-is yours to fix.
+A script runs after every `.cs`/`.ts`/`.razor`/`.css` edit and checks the
+mechanical rules — line length, control-flow placement, brace placement,
+`volatile`, namespace and `using` placement — on those lines plus three around
+them. It counts characters exactly, so its verdict on those rules is final.
 
-An LLM hook checks the rest of the guide, and it still reads the whole file, so
-it will report violations you did not write. **Fix the ones your own change
-introduced; leave the rest as they are** — a drive-by cleanup is not part of
-your task, and it makes the diff harder to review. When a pre-existing
-violation keeps coming back on every edit to that file, or when the user
-decides to keep offending code as-is, record it in
+The rest of the guide is reviewed by an LLM once per turn instead of once per
+edit: before a build or a test run, and at the end of every turn, over
+everything the turn changed — including what a subagent changed, which is yours
+to fix as well.
+
+Fix what they report. **Neither of them looks at the rest of the file, so a
+drive-by cleanup is not part of your task** — it only makes the diff harder to
+review. When the user decides to keep offending code as-is, record it in
 [.claude/style-bypasses.md](.claude/style-bypasses.md), in the format described
-there — that file is the only thing the hooks skip.
+there — that file is the only thing the checks skip.
 
 # Type Catalog — Reuse Existing Abstractions (CRITICAL)
 
