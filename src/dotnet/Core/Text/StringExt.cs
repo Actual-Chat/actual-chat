@@ -306,6 +306,7 @@ public static partial class StringExt
 
     public static string NormalizeNewLines(this string source, string newLine)
     {
+        // U+2028 and U+2029 count as line endings too: that's what Apple Notes copies for line breaks
         if (source.Length == 0 || IsNewLineNormalized(source, newLine))
             return source;
 
@@ -317,7 +318,7 @@ public static partial class StringExt
                     i++;
                 sb.Append(newLine);
             }
-            else if (c == '\n')
+            else if (c is '\n' or '\u2028' or '\u2029')
                 sb.Append(newLine);
             else
                 sb.Append(c);
@@ -328,6 +329,8 @@ public static partial class StringExt
         static bool IsNewLineNormalized(string source, string newLine) {
             for (var i = 0; i < source.Length; i++) {
                 var c = source[i];
+                if (c is '\u2028' or '\u2029')
+                    return false;
                 if (c != '\r' && c != '\n')
                     continue;
                 if (i + newLine.Length > source.Length || !source.AsSpan(i, newLine.Length).SequenceEqual(newLine))

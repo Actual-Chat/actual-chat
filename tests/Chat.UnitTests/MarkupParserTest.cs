@@ -1659,6 +1659,29 @@ code
         fromCr.Should().Be(fromLf);
     }
 
+    [Theory]
+    [InlineData("a\nb")]
+    [InlineData("a\nb\nc")]
+    [InlineData("a\n\nb")]
+    [InlineData("# H\n\nbody")]
+    [InlineData("- x\n- y")]
+    [InlineData("> q\n> r")]
+    [InlineData("**a**\n`b`")]
+    public void UnicodeLineSeparatorsShouldParseAsNewLines(string lfText)
+    {
+        // act
+        var fromLf = Format(lfText);
+        var fromLineSeparator = Format(lfText.Replace('\n', '\u2028'));
+        var fromParagraphSeparator = Format(lfText.Replace('\n', '\u2029'));
+
+        // assert
+        fromLineSeparator.Should().Be(fromLf, "Apple Notes separates lines with U+2028");
+        fromParagraphSeparator.Should().Be(fromLf);
+        return;
+
+        static string Format(string text) => MarkupFormatter.Default.Format(new MarkupParser().Parse(text));
+    }
+
     // Tables
 
     [Fact]
