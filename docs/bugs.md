@@ -33,7 +33,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | B26775 | High | Confirmed | Echo cancellation stops working in the browser and the Windows app | Frol | — | [B26775](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26775) |
 | B27095 | High | Confirmed | Sessions expire while the user is active or signing in | Andrey | — | [B27095](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27095) |
 | B26575 | High | Confirmed | Tapping a notification opens the Notifications section instead of the chat | Alexey | — | [B26575](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26575) |
-| B26865 | High | Confirmed | Listening resumes after restart or after stopping, for about a minute | Alex | [#5204](https://github.com/Actual-Chat/actual-chat/issues/5204) open | [B26865](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26865) |
+| B26865 | High | Confirmed | Listening resumes after restart or after stopping, for about a minute | Alex | [#5204](https://github.com/Actual-Chat/actual-chat/issues/5204) open, [#5205](https://github.com/Actual-Chat/actual-chat/issues/5205) (draft PR) | [B26865](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26865) |
 | B26303 | High | Confirmed | Call title keeps the wrong language after toggling translation | Andrey | — | [B26303](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26303) |
 | B26936 | High* | Confirmed (investigate) | Live block freezes, no new transcripts or messages | Frol | [#4927](https://github.com/Actual-Chat/actual-chat/issues/4927) (related, open) | [B26936](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26936) |
 | B26538 | High* | Confirmed (investigate) | Prod web page reloads itself every 1–5 minutes | Andrey | — | [B26538](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26538) |
@@ -41,14 +41,14 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | B26587 | Medium* | Confirmed | Notification with the last message arrives after the call ended | Dmitrii | [#4594](https://github.com/Actual-Chat/actual-chat/issues/4594) (related, closed) | [B26587](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26587) |
 | N1 | Medium* | Confirmed | Notifications panel: replace the '…' menu with a Clear button | Alex | — | — |
 | B26811 | Medium* | Confirmed | HEIC image in the crop modal looks wrong | Andrey | — | [B26811](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26811) |
-| B27005 | Medium* | Confirmed | Clicking a word starts the wrong playback ('trainer vs DJ') | Andrey | — | [B27005](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27005) |
+| B27005 | Medium* | Confirmed | Clicking a word starts the wrong playback ('trainer vs DJ') | Andrey | [#5211](https://github.com/Actual-Chat/actual-chat/issues/5211) issue, [#5212](https://github.com/Actual-Chat/actual-chat/issues/5212) (draft PR) | [B27005](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27005) |
 | B27081 | Medium* | Confirmed | Video message shows as a broken file when transcoding fails | Alex | [#5162](https://github.com/Actual-Chat/actual-chat/issues/5162) open, [#5176](https://github.com/Actual-Chat/actual-chat/issues/5176) open | [B27081](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27081) |
 | B26297 | Medium* | Confirmed | Share button is too wide, gaps are uneven | Alex | — | [B26297](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26297) |
 | B26887 | Medium* | Confirmed | macOS link missing in the download-app modal | Alex | — | [B26887](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26887) |
 | M9739 | Medium* | Confirmed (investigate) | Android ANR rate went up again | Alex | [#4957](https://github.com/Actual-Chat/actual-chat/issues/4957) open, [#4622](https://github.com/Actual-Chat/actual-chat/issues/4622) closed | [M9739](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9739) |
 | B26487 | Medium* | Confirmed (investigate) | Right panel on iPhone shows no skeletons, only an empty screen | Frol | — | [B26487](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26487) |
-| B27040 | Medium* | Needs check | Android microphone takes over a second to start recording | Alex | [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open | [B27040](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27040) |
-| B26964 | Medium* | Needs check | Klipy GIFs load very slowly | Andrey | — | [B26964](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26964) |
+| B27040 | Medium* | Needs check | Android microphone takes over a second to start recording | Alex | [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open, [#5210](https://github.com/Actual-Chat/actual-chat/issues/5210) (draft PR, step 1) | [B27040](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27040) |
+| B26964 | Medium* | Needs check | Klipy GIFs load very slowly | Andrey | [#5206](https://github.com/Actual-Chat/actual-chat/issues/5206) issue, [#5207](https://github.com/Actual-Chat/actual-chat/issues/5207) (draft PR) | [B26964](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26964) |
 | B27078 | Medium* | Needs check | Voice and transcription settings open slowly after a refresh | Andrey | — | [B27078](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27078) |
 | M9665 | Medium* | Needs check | iPhone: listening panel covers the Back arrow in the chat header | Alex | [#5104](https://github.com/Actual-Chat/actual-chat/issues/5104) (related, open) | [M9665](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9665) |
 | M9674 | Medium* | Needs check | Live session with the keyboard open leaves a big empty gap | Alex | — | [M9674](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9674) |
@@ -59,9 +59,9 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | B26584 | Medium* | Kept in the list | Video call: phone overheats and audio latency keeps growing on Android | Alex | [#5137](https://github.com/Actual-Chat/actual-chat/issues/5137) (open), [#4811](https://github.com/Actual-Chat/actual-chat/issues/4811) (related, open), [#4559](https://github.com/Actual-Chat/actual-chat/issues/4559) (closed) | [B26584](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26584) |
 | B27100 | Low* | Confirmed | Show the 'new messages' marker before a collapsed conversation that has new messages | Dmitrii | — | [B27100](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27100) |
 | M9807 | Low* | Confirmed | Bottom strip turns white while the left panel is open (Chrome) | Alex | — | [M9807](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9807) |
-| B27028 | Low* | Needs check | 'Real-time listening will be disabled' dialog on word click | Andrey | — | [B27028](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27028) |
+| B27028 | Low* | Needs check | 'Real-time listening will be disabled' dialog on word click | Andrey | [#5208](https://github.com/Actual-Chat/actual-chat/issues/5208) issue, [#5209](https://github.com/Actual-Chat/actual-chat/issues/5209) (draft PR) | [B27028](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27028) |
 | B26510 | Low* | Needs check | Historic playback cut off abruptly | Frol | [#4663](https://github.com/Actual-Chat/actual-chat/issues/4663) (possibly related, open) | [B26510](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26510) |
-| B27108 | Low* | Needs check | Live session collapses into an odd intermediate state | Frol | [#4425](https://github.com/Actual-Chat/actual-chat/issues/4425) (related, open) | [B27108](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27108) |
+| B27108 | Low* | Needs check | Live session collapses into an odd intermediate state | Frol | [#4425](https://github.com/Actual-Chat/actual-chat/issues/4425) (related, open), [#5213](https://github.com/Actual-Chat/actual-chat/issues/5213) issue, [#5214](https://github.com/Actual-Chat/actual-chat/issues/5214) (draft PR) | [B27108](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27108) |
 | B26344 | Low* | Needs check | Stray bracket after a link in a message | Frol | [#5154](https://github.com/Actual-Chat/actual-chat/issues/5154) (candidate, closed) | [B26344](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26344) |
 | B26247 | Low | Needs review | Stale notifications after logout and login | Alex | [#4546](https://github.com/Actual-Chat/actual-chat/issues/4546) (related, closed) | [B26247](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26247) |
 | M9778 | Low | Needs review | Push notification arrives seconds after opening the chat | Frol | — | [M9778](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9778) |
@@ -115,7 +115,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** High / Confirmed
 - **Reported by:** Alex
 - **Messages:** [B26865](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26865), [B26966](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26966)
-- **GitHub:** [#5204](https://github.com/Actual-Chat/actual-chat/issues/5204) open
+- **GitHub:** [#5204](https://github.com/Actual-Chat/actual-chat/issues/5204) open, [#5205](https://github.com/Actual-Chat/actual-chat/issues/5205) (draft PR)
 - **What it is:** Chats you were listening to are saved and restored on restart, and they keep playing real-time audio for about a minute, ignoring the settings. The same happens after a live conversation, when real-time listening is switched off.
 - **Notes:** Alex (2026-10-09): we must not resume at all. Also find where the 1 minute comes from: the limit is 0 by default and can be set to 15–30 s in settings. Code check (2026-10-09): two causes, both traced. (1) After a restart, ActiveChatsUI.FixStoredActiveChats keeps a stored IsListening chat if its last activity was within Constants.Audio.ListeningDuration (60 s), and StartStopListeningPlayers starts the player. Fix: set IsListening=false there (armed PTT chats are re-added by RestoreKeepListeningChats). (2) The 60 s: StopListeningWhenIdle uses the 'keep listening' setting only if the user recorded in that chat; otherwise a fixed 60 s ListeningDuration applies (deliberate, 754074ecf2, so joining muted stays usable). A restored chat, or one restored after a replay or attachment (StartReplay snapshot and restore), is always a pure listener, so the setting is ignored. Alex (2026-10-09), decided: there is no 'pure listener' concept; remove Constants.Audio.ListeningDuration and apply the user's listening-linger setting to every session. Do not resume listening on reload, i.e. do not store the active chats at all. Tracked in #5204.
 
@@ -189,7 +189,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Confirmed
 - **Reported by:** Andrey
 - **Messages:** [B27005](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27005)
-- **GitHub:** —
+- **GitHub:** [#5211](https://github.com/Actual-Chat/actual-chat/issues/5211) issue, [#5212](https://github.com/Actual-Chat/actual-chat/issues/5212) (draft PR)
 - **What it is:** Historic playback started by clicking a word overlaps with something else; Andrey described it as the trainer and the DJ fighting. The screenshot is the only description.
 - **Notes:** Alex (2026-10-09): needs a fix; it comes from the speech coach markup. Code check (2026-10-09): partly traced (~55%). In PlayableTextMarkupView (razor and ts), words marked by the speech coach get data-menu (CoachMarkMenu, primary trigger) and onClick returns early for them, so clicking a marked word opens the hint menu and never starts replay; this is by design. Before ae830548fc (6 Oct) an unscoped closest('[data-menu]') matched the message's own menu and word clicks did nothing, which may be what Andrey saw on 5 Oct. Alex (2026-10-09): keep this logic (a coach-marked word opens the hint menu) and add a menu for such words that offers both options: the coach hint and play from here. To implement: add a 'Play from here' item to CoachMarkMenu that calls the same StartReplay path.
 
@@ -243,7 +243,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Needs check
 - **Reported by:** Alex (also: Dmitrii)
 - **Messages:** [B27040](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27040)
-- **GitHub:** [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open
+- **GitHub:** [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open, [#5210](https://github.com/Actual-Chat/actual-chat/issues/5210) (draft PR, step 1)
 - **What it is:** Pressing the record button on Android can take around a second before recording starts, which is too slow.
 - **Notes:** Alex (2026-10-09): check whether it is still unfixed and look at PRs; Dmitrii was removing synchronous calls on this path. Code check (2026-10-09): open, clear trace, no fix on dev. Release to mic takes 1.2–1.4 s in four sequential steps: a MutePeer round trip on every press (RecorderToggle.razor, ~230 ms), the begin tune awaited before StartRecording (~260–330 ms), audio focus and communication-device switch in AudioRecorder / AndroidAudioFocusHelper (~520–650 ms, polls up to 1 s), AudioRecord creation (~100 ms). Fix order: call MutePeer only when the own member is muted; request focus concurrently with the tune; try RequestCommunicationDevice without waiting (unproven). The same trace is in #5140.
 
@@ -252,7 +252,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Needs check
 - **Reported by:** Andrey (also: Alexey, Alex)
 - **Messages:** [B26964](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26964), [B27001](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27001), [B27094](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27094), [B27099](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27099)
-- **GitHub:** —
+- **GitHub:** [#5206](https://github.com/Actual-Chat/actual-chat/issues/5206) issue, [#5207](https://github.com/Actual-Chat/actual-chat/issues/5207) (draft PR)
 - **What it is:** GIFs from the Klipy picker take a long time to load. Root cause: they go through imagor, which downloads the whole GIF before returning it.
 - **Notes:** Alex (2026-10-09): we agreed not to use imagor in the Klipy GIF selector (except for GIFs used in the past). Check whether that is done. Code check (2026-10-09): open. GifPicker.razor GifButton builds the image src with UrlMapper.GifProxyUrl (imagor, '0/' path) for the trending/search grid and for the Recent row. Fix: use gif.PreviewUrl directly in the picker (the CSP already allows static.klipy.com) and keep imagor for GIFs inside sent messages (UrlMarkupView.razor). Open question: whether the Recent row keeps imagor. Trade-off: viewers' IPs reach Klipy's CDN while the picker is open.
 
@@ -350,7 +350,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Low* / Needs check
 - **Reported by:** Andrey (also: Alexey, Dmitrii, Alex)
 - **Messages:** [B27028](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27028), [B27039](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27039)
-- **GitHub:** —
+- **GitHub:** [#5208](https://github.com/Actual-Chat/actual-chat/issues/5208) issue, [#5209](https://github.com/Actual-Chat/actual-chat/issues/5209) (draft PR)
 - **What it is:** After a refresh, clicking a message shows a dialog that real-time listening will be turned off for replay, although listening was never enabled. Alex explains the dialog appears when real-time listening is off and is a surprise for people who just click on text.
 - **Notes:** Alex (2026-10-09): probably a false positive; check whether PTT triggered it (no real-time listening indicator was visible). Code check (2026-10-09): the dialog tests the wrong thing. ChatAudioUI.Players.cs StartReplay shows the confirm whenever GetListeningChatIds() is non-empty, and that returns the stored IsListening flag (ActiveChatsUI), not player state. The flag can come from the post-restart restore (see B26865, 60 s window) or from PTT arming (armed PTT chats get no idle watcher). Fix: show the dialog only when IsAnyPlaying(listening chats) is true, and still snapshot and clear the flags. Fixing B26865 removes the restore case.
 
@@ -368,7 +368,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Low* / Needs check
 - **Reported by:** Frol (also: Dmitrii)
 - **Messages:** [B27108](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27108), [B27116](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27116), [B27118](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27118), [B27120](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27120)
-- **GitHub:** [#4425](https://github.com/Actual-Chat/actual-chat/issues/4425) (related, open)
+- **GitHub:** [#4425](https://github.com/Actual-Chat/actual-chat/issues/4425) (related, open), [#5213](https://github.com/Actual-Chat/actual-chat/issues/5213) issue, [#5214](https://github.com/Actual-Chat/actual-chat/issues/5214) (draft PR)
 - **What it is:** Frol collapsed a session right after the 'Thanks' message and the chat view re-rendered into a muddled state; after a couple of chat switches it collapsed properly. Frol clarified that the collapse button says 'collapsed' while only part of the messages are collapsed, and the conversation footer comes after the messages that stayed open.
 - **Notes:** Alex (2026-10-09): needs a quick look. Related: #4425 (live conversation on collapse shows just the title). Code check (2026-10-09): bug, clear trace. In ChatUI.Tiles.cs (~lines 594–605) a collapsed open block hides its tail only while the live conversation exists; when the session closes, the materialized closed block has an empty HiddenTailRange, so the last 10 or more rows (LiveFoldMath.MinTailEntryCount) render inside the block under a 'collapsed' toggle, followed by the footer. Switching chats or toggling again drops the retained block, which is why it self-heals. Fix: extend the condition to a collapsed, non-dissolving closed block (hidden range from the fold end to the block's end). Test: LiveConversationDisplayTest, collapse while latched, finalize, assert no leaf rows past the fold end. #4425 is probably a different path.
 
