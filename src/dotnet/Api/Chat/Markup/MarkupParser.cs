@@ -542,30 +542,42 @@ public sealed partial class MarkupParser : IMarkupParser
 
     private static int GetUrlLength(ReadOnlySpan<char> run)
     {
-        // A closer is trimmed only while the run has more closers of its kind than openers, so the
-        // ")" of "Sampling_(signal_processing)" stays and the one of "(see https://x.com/a)" goes.
-        var roundBalance = run.Count('(') - run.Count(')');
-        var squareBalance = run.Count('[') - run.Count(']');
-        var curlyBalance = run.Count('{') - run.Count('}');
-        var length = run.Length;
-        while (length > 0) {
-            var c = run[length - 1];
-            if (c is '.' or ',' or ';' or '!' or '?')
-                length--;
-            else if (c == ')' && roundBalance < 0) {
-                roundBalance++;
-                length--;
-            }
-            else if (c == ']' && squareBalance < 0) {
-                squareBalance++;
-                length--;
-            }
-            else if (c == '}' && curlyBalance < 0) {
-                curlyBalance++;
-                length--;
-            }
-            else
+        // Trailing '.', ',' and '!' and every trailing closer without an opener to the left of it are
+        // cut: the ")" of "Sampling_(signal_processing)" stays, the one of "(see https://x.com/a)" goes.
+        var round = 0;
+        var square = 0;
+        var curly = 0;
+        var length = 0;
+        for (var i = 0; i < run.Length; i++) {
+            var isTrimmable = false;
+            switch (run[i]) {
+            case '.' or ',' or '!':
+                isTrimmable = true;
                 break;
+            case '(':
+                round++;
+                break;
+            case '[':
+                square++;
+                break;
+            case '{':
+                curly++;
+                break;
+            case ')':
+                isTrimmable = round == 0;
+                round = Math.Max(0, round - 1);
+                break;
+            case ']':
+                isTrimmable = square == 0;
+                square = Math.Max(0, square - 1);
+                break;
+            case '}':
+                isTrimmable = curly == 0;
+                curly = Math.Max(0, curly - 1);
+                break;
+            }
+            if (!isTrimmable)
+                length = i + 1;
         }
 
         return IsUrl(run[..length]) ? length : 0;

@@ -96,12 +96,19 @@ internal sealed class CharRunPrefixParser(
         [MaybeNullWhen(false)] out string result)
     {
         result = null;
-        var span = state.LookAhead(CharRun.ChunkSize);
-        if (span.Length < 2 || !IsFirst(span[0]))
-            return false;
+        // The prefix is cut from the whole run, so the window grows until the run ends inside it
+        var window = CharRun.ChunkSize;
+        ReadOnlySpan<char> span;
+        int count;
+        while (true) {
+            span = state.LookAhead(window);
+            count = CharRun.CountMatching(span, Predicate);
+            if (count < span.Length || span.Length < window || window > int.MaxValue / 2)
+                break;
 
-        var count = CharRun.CountMatching(span, Predicate);
-        if (count < 2)
+            window *= 2;
+        }
+        if (count < 2 || !IsFirst(span[0]))
             return false;
 
         var length = GetPrefixLength(span[..count]);
