@@ -1,0 +1,19 @@
+@namespace ActualChat.Mui
+
+<div style="display: flex; align-items: center; gap: 0.5rem">
+    <div style="flex: 1; background: var(--mud-palette-lines-default, #ddd); height: 0.6rem; border-radius: 3px">
+        <div style="@($"width: {GetPercent():0.#}%; height: 100%; border-radius: 3px; "
+            + "background: var(--mud-palette-primary)")"></div>
+    </div>
+    <span style="min-width: 2.5rem; text-align: right">@Value</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public long Value { get; set; }
+    [Parameter, EditorRequired]
+    public long Max { get; set; }
+
+    private double GetPercent()
+        => Max <= 0 ? 0 : 100.0 * Value / Max;
+}

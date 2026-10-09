@@ -24,6 +24,11 @@ These hold everywhere and need no per-file entry.
   (`[Description("…")] string chatId`) stay on the parameter's line whatever
   their length — the MCP tool classes established that convention.
 
+- **Everything under `src/dotnet/Mui/` is English only.** The Voxt Management UI
+  is a staff tool, and its strings never go through the localization catalog (see
+  "Developer surfaces" in CODING_STYLE.md). Hardcoded English in its `.razor` and
+  `.cs` files is not a violation — Alex Yakunin's decision.
+
 One `##` subheader per file, one bullet per bypassed violation:
 
 ```

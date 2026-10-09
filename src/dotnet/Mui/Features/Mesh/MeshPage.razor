@@ -1,0 +1,55 @@
+@namespace ActualChat.Mui
+@page "/m/system/mesh"
+@inherits MuiComputedComponent<MeshDiagInfo?>
+@using ActualLab.Generators
+
+<MudText Typo="Typo.h5" Class="mb-4">Mesh</MudText>
+
+<MudStack Row="true" Spacing="2" Class="mb-4">
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Refresh">Refresh</MudButton>
+    <MudButton Variant="Variant.Outlined" Disabled="@(State.Value is null)" OnClick="@CopyReport">
+        Copy report
+    </MudButton>
+</MudStack>
+
+@if (State.Value is not { } info) {
+    <MudProgressLinear Indeterminate="true"/>
+}
+else {
+    <MeshNodeView Info="@info"/>
+    @foreach (var other in info.Others) {
+        <MeshNodeView Info="@other"/>
+    }
+}
+
+@code {
+    private string _tag = RandomStringGenerator.Default.Next();
+
+    private IDiagnostics Diagnostics => field ??= Services.GetRequiredService<IDiagnostics>();
+
+    protected override ComputedState<MeshDiagInfo?>.Options GetStateOptions()
+        => new() { InitialValue = null };
+
+    protected override async Task<MeshDiagInfo?> ComputeState(CancellationToken cancellationToken)
+        => await Diagnostics.GetMeshDiagInfo(Session, _tag, cancellationToken).ConfigureAwait(false);
+
+    private void Refresh()
+    {
+        _tag = RandomStringGenerator.Default.Next();
+        _ = State.Recompute();
+    }
+
+    private async Task CopyReport()
+    {
+        if (State.Value is not { } info)
+            return;
+
+        try {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", MeshReport.Format(info));
+            Actions.ReportSuccess("Report copied");
+        }
+        catch (Exception e) {
+            Actions.ReportError(e);
+        }
+    }
+}

@@ -1,0 +1,28 @@
+@namespace ActualChat.Mui
+@page "/m/dashboards/users"
+
+<MudText Typo="Typo.h5" Class="mb-4">Users</MudText>
+
+<MuiMetricsView Database="users" CacheName="users" Metrics="@Metrics"/>
+
+@code {
+    private static readonly IReadOnlyList<MuiMetric> Metrics = [
+        new("active_users", "Active users",
+            "select count(distinct user_id) from _sessions where last_seen_at >= {from} and last_seen_at < {to}"
+            + " and coalesce(user_id, '') <> ''",
+            Description: "Distinct users among the signed-in sessions seen in the window (_sessions rows whose "
+                + "last_seen_at falls in it and whose user_id is set): one user with several devices counts once. "
+                + "A user who has signed out since is not counted, even in an older window."),
+        new("sign_ups", "New accounts (sign-ups)",
+            "select count(*) from usage_events where kind = 5 and occurred_at >= {from} and occurred_at < {to}",
+            Description: "Usage events of kind 5 (SignUp) in the window: one is written when an account is created."),
+        new("users_messaged", "Users who sent messages",
+            "select count(distinct user_id) from usage_days where messages > 0 and day >= {from} and day < {to}",
+            Description: "Distinct users with at least one message on a day in the window (usage_days.messages). "
+                + "Based on days, so the window edges are rounded to whole days."),
+        new("users_spoke", "Users who spoke",
+            "select count(distinct user_id) from usage_days where speech_ms > 0 and day >= {from} and day < {to}",
+            Description: "Distinct users with recorded speech on a day in the window (usage_days.speech_ms). "
+                + "Based on days, so the window edges are rounded to whole days."),
+    ];
+}

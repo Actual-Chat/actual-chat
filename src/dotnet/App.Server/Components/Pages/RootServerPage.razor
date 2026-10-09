@@ -11,6 +11,11 @@
 @using ActualLab.Fusion.Server.Endpoints
 @using Microsoft.AspNetCore.Http.Extensions
 @{
+    if (IsMuiRequest) {
+        <MuiRootPage/>
+        return;
+    }
+
     // Log.LogWarning("RootServerPage rendering, Hash={Hash}", GetHashCode());
     var renderModeKey = _renderMode.Key;
     var blazorMaxReconnectRetries = 0; // 100_000_000;
@@ -383,6 +388,8 @@
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = null!;
 
+    private bool IsMuiRequest => HttpContext.Request.Path.StartsWithSegments("/m");
+
     private HostInfo HostInfo => AuthHelper.HostInfo;
     private IAccounts Accounts => AuthHelper.Accounts;
 
@@ -393,7 +400,8 @@
         if (!_isInitialized) {
             _isInitialized = true;
             parameters.SetParameterProperties(this); // This call must be executed ASAP
-            await Initialize();
+            if (!IsMuiRequest)
+                await Initialize();
         }
         await base.SetParametersAsync(parameters);
     }

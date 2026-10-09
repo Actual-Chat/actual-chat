@@ -216,7 +216,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.RenderSlotTestPage.TestTimer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.SkeletonsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.SvgCatsTestPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.SystemTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.TotpTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.UnavailablePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Pages.WebSplashTestPage>();
@@ -396,7 +395,6 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.WebHookDetailPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.WebHookList+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Pages.ChatPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
-        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Pages.FlowsTestPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Pages.Landing.CookieSettings+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Pages.Landing.LandingLeftMenuContent+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Pages.NotificationsTestPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -785,7 +783,6 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Pages.RenderSlotTestPage.TestTimer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.SkeletonsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.SvgCatsTestPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.Pages.SystemTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.TotpTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.UnavailablePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Pages.WebSplashTestPage), AotTypeKind.Component),

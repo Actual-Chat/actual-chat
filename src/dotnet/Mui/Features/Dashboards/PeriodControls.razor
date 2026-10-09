@@ -1,0 +1,44 @@
+@namespace ActualChat.Mui
+@implements IDisposable
+@inject MuiPeriodState Periods
+
+<MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+    <MudSelect T="MuiInterval" Value="@Periods.Settings.Interval" ValueChanged="@OnIntervalChanged"
+               Label="Interval" Dense="true" Style="width: 8rem">
+        <MudSelectItem Value="@MuiInterval.Day">Day</MudSelectItem>
+        <MudSelectItem Value="@MuiInterval.Week">Week</MudSelectItem>
+    </MudSelect>
+    <MudSelect T="MuiStep" Value="@Periods.Settings.Step" ValueChanged="@OnStepChanged"
+               Label="Compare to" Dense="true" Style="width: 12rem">
+        <MudSelectItem Value="@MuiStep.Week">A week earlier</MudSelectItem>
+        <MudSelectItem Value="@MuiStep.Month">A month earlier</MudSelectItem>
+        <MudSelectItem Value="@MuiStep.Quarter">A quarter earlier</MudSelectItem>
+        <MudSelectItem Value="@MuiStep.Interval">The previous interval</MudSelectItem>
+    </MudSelect>
+    <MudSelect T="int" Value="@Periods.Settings.Count" ValueChanged="@OnCountChanged"
+               Label="Periods back" Dense="true" Style="width: 8rem">
+        @foreach (var count in Enumerable.Range(1, MuiPeriodSettings.MaxCount)) {
+            <MudSelectItem Value="@count">@count</MudSelectItem>
+        }
+    </MudSelect>
+</MudStack>
+
+@code {
+    protected override void OnInitialized()
+        => Periods.Changed += OnChanged;
+
+    public void Dispose()
+        => Periods.Changed -= OnChanged;
+
+    private void OnChanged()
+        => _ = InvokeAsync(StateHasChanged);
+
+    private Task OnIntervalChanged(MuiInterval value)
+        => Periods.Update(Periods.Settings with { Interval = value });
+
+    private Task OnStepChanged(MuiStep value)
+        => Periods.Update(Periods.Settings with { Step = value });
+
+    private Task OnCountChanged(int value)
+        => Periods.Update(Periods.Settings with { Count = value });
+}

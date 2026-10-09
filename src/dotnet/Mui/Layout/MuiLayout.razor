@@ -1,0 +1,41 @@
+@namespace ActualChat.Mui
+@inherits LayoutComponentBase
+
+<MudLayout>
+    <MudAppBar Color="Color.Primary" Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       OnClick="@(() => _isDrawerOpen = !_isDrawerOpen)"/>
+        <MudText Typo="Typo.h6">Voxt Management UI</MudText>
+    </MudAppBar>
+    <MudDrawer @bind-Open="_isDrawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
+        <div class="d-flex flex-column" style="height: 100%">
+            <MuiGate ShowMessage="false">
+                <NavMenu/>
+            </MuiGate>
+            <MudSpacer/>
+            <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Class="pa-4">
+                <a href="/" title="Voxt">
+                    <img src="/favicon_voxt.svg" alt="Voxt" height="24" style="filter: grayscale(1)"/>
+                </a>
+                <MudLink Href="@GitHubUrl" Target="_blank" Color="Color.Default" aria-label="Voxt on GitHub">
+                    <MudIcon Icon="@Icons.Custom.Brands.GitHub"/>
+                </MudLink>
+            </MudStack>
+        </div>
+    </MudDrawer>
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+            <MuiGate>
+                @Body
+            </MuiGate>
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+<MudThemeProvider Theme="@MuiTheme.Instance"/>
+
+@code {
+    private const string GitHubUrl = "https://github.com/Actual-Chat/actual-chat";
+
+    private bool _isDrawerOpen = true;
+}

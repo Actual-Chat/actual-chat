@@ -1,0 +1,175 @@
+@namespace ActualChat.Mui
+@inject IDialogService Dialogs
+@inject MuiTime Time
+
+<MudPaper Class="pa-4" Style="min-width: 0">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.subtitle1" Style="flex: 1">@Metric.Title</MudText>
+        <MudIconButton Icon="@Icons.Material.Outlined.HelpOutline" Size="Size.Small" Title="What is this?"
+                       OnClick="@ShowHelp"/>
+    </MudStack>
+    <div>
+        <MudText Inline="true" Typo="Typo.h5">@FormatValue(Latest)</MudText>
+        @if (Change is { } percent) {
+            <MudText Inline="true" Color="@(percent >= 0 ? Color.Success : Color.Error)">
+                @FormatPercent(percent)
+            </MudText>
+            <MudText Inline="true" Typo="Typo.caption" Color="Color.Secondary">
+                vs @Windows[1].Label.ToLowerInvariant()
+            </MudText>
+        }
+    </div>
+    @if (_points.Length == 0 || Latest is null) {
+        <MudText Color="Color.Secondary" Class="my-8">No data.</MudText>
+    }
+    else {
+        // One plot, no legend: a single color needs none
+        <div style="position: relative; height: @(PlotHeight)px; margin-top: 1.5rem">
+            @if (Kind == MuiChartKind.Line) {
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none"
+                     style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible">
+                    <polyline fill="none" stroke="@BarColor" stroke-width="2" vector-effect="non-scaling-stroke"
+                              points="@_linePoints"/>
+                </svg>
+            }
+            @foreach (var point in _points) {
+                @if (Kind == MuiChartKind.Line) {
+                    <div style="@GetDotStyle(point)"></div>
+                }
+                else {
+                    <div style="@GetBarStyle(point)"></div>
+                }
+                <div style="@GetLabelStyle(point)" @onclick="@(() => ShowPoint(point.Window))">@point.Text</div>
+            }
+        </div>
+        @if (_showAxis) {
+            <div style="display: flex">
+                @foreach (var point in _points) {
+                    <div style="flex: 1; text-align: center; font-size: 0.75rem; opacity: 0.6">
+                        @point.ShortLabel
+                    </div>
+                }
+            </div>
+        }
+    }
+</MudPaper>
+
+@code {
+    private const int PlotHeight = 180;
+    private const string BarColor = "#3395FF";
+    private const string UpColor = "#00A828";
+    private const string DownColor = "#E0245E";
+    private const string FlatColor = "#6B7280";
+
+    private Point[] _points = [];
+    private string _linePoints = "";
+    private bool _showAxis;
+
+    [Parameter, EditorRequired]
+    public MuiMetric Metric { get; set; } = null!;
+    // Newest first, as the windows are; null where the metric has no data
+    [Parameter, EditorRequired]
+    public double?[] Values { get; set; } = [];
+    [Parameter, EditorRequired]
+    public MuiWindow[] Windows { get; set; } = [];
+    [Parameter]
+    public MuiChartKind Kind { get; set; }
+    [Parameter]
+    public string Database { get; set; } = "";
+
+    private double? Latest => Values.Length > 0 ? Values[0] : null;
+
+    private double? Change
+        => Values is [{ } latest, { } previous, ..] ? MuiMetricSql.GetChangePercent(latest, previous) : null;
+
+    protected override void OnParametersSet()
+    {
+        // The chart reads left to right, from the oldest window to the newest one
+        var windowIndexes = Enumerable.Range(0, Values.Length).Where(i => Values[i].HasValue).Reverse().ToArray();
+        var count = windowIndexes.Length;
+        _showAxis = count > 4;
+        var max = windowIndexes.Select(w => Values[w]!.Value).DefaultIfEmpty(0).Max();
+        max = max > 0 ? max * 1.35 : 1; // The headroom is for the labels
+        _points = windowIndexes
+            .Select((w, n) => {
+                var value = Values[w]!.Value;
+                var previous = n > 0 ? Values[windowIndexes[n - 1]] : null;
+                var (text, color) = GetText(w, value, previous, count <= 4);
+                return new Point(
+                    w, Windows[w].ShortLabel, text, color, (n + 0.5) / count * 100, value / max * 100, count);
+            })
+            .ToArray();
+        _linePoints = string.Join(" ", _points.Select(p => {
+            return $"{Num(p.X)},{Num(100 - p.Y)}";
+        }));
+    }
+
+    // The label of a point: its value and how it changed against the older point, colored by the direction
+    // What the chart shows, and the query template with {from} and {to} as the window bounds
+    private Task ShowHelp()
+        => ShowDialog(Metric.Title, new DialogParameters<MuiQueryDialog> {
+            { x => x.Description, Metric.Description.IsNullOrEmpty() ? "No description yet." : Metric.Description },
+            { x => x.Hint, "Each point is one window of time: {from} and {to} in the query are its bounds. "
+                + "Click a label on the chart to see the query of that point." },
+            { x => x.SqlTitle, "Query template" },
+            { x => x.Sql, Metric.Sql },
+            { x => x.Database, Database },
+        });
+
+    // The same query with the bounds of one window filled in
+    private Task ShowPoint(int window)
+    {
+        var w = Windows[window];
+        return ShowDialog($"{Metric.Title}: {w.Label}", new DialogParameters<MuiQueryDialog> {
+            { x => x.Description, Metric.Description },
+            { x => x.Hint, $"Window {Time.Format(w.From)} to {Time.Format(w.To)} ({Time.TimeZoneName}); "
+                + "the query has them as UTC timestamps. The dashboard runs the queries of all metrics of a "
+                + "window as one." },
+            { x => x.SqlTitle, "Query" },
+            { x => x.Sql, MuiMetricSql.BuildOne(Metric, w) },
+            { x => x.Database, Database },
+        });
+    }
+
+    private async Task ShowDialog(string title, DialogParameters<MuiQueryDialog> parameters)
+        => await Dialogs.ShowAsync<MuiQueryDialog>(title, parameters,
+            new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+
+    private (string Text, string Color) GetText(int window, double value, double? previous, bool withPeriod)
+    {
+        var prefix = withPeriod ? $"{Windows[window].ShortLabel}: " : "";
+        var change = previous is { } older ? MuiMetricSql.GetChangePercent(value, older) : null;
+        var color = previous is not { } o || value == o ? FlatColor : value > o ? UpColor : DownColor;
+        return (prefix + FormatValue(value) + (change is { } c ? $" ({FormatPercent(c)})" : ""), color);
+    }
+
+    private string GetBarStyle(Point point)
+    {
+        var width = 100.0 / point.Count * 0.6;
+        return $"position: absolute; bottom: 0; left: {Num(point.X - width / 2)}%; width: {Num(width)}%; "
+            + $"height: {Num(point.Y)}%; border-radius: 4px 4px 0 0; background: {BarColor}";
+    }
+
+    private static string GetDotStyle(Point point)
+        => $"position: absolute; left: {Num(point.X)}%; bottom: {Num(point.Y)}%; width: 10px; height: 10px; "
+            + $"margin: 0 0 -5px -5px; border-radius: 50%; background: {BarColor}";
+
+    private static string GetLabelStyle(Point point)
+        => $"position: absolute; left: {Num(point.X)}%; bottom: calc({Num(point.Y)}% + 8px); "
+            + $"transform: translateX(-50%); white-space: nowrap; font-size: {(point.Count > 6 ? "0.65" : "0.75")}rem; "
+            + $"font-weight: 500; cursor: pointer; color: {point.Color}";
+
+    private static string FormatPercent(double percent)
+        => $"{(percent >= 0 ? "+" : "")}{percent:0.#}%";
+
+    private static string FormatValue(double? value)
+        => value is { } v ? v.ToString("N0") : "-";
+
+    private static string Num(double value)
+        => value.ToString("0.###");
+
+    // Nested types
+
+    private sealed record Point(
+        int Window, string ShortLabel, string Text, string Color, double X, double Y, int Count);
+}

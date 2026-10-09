@@ -1,0 +1,38 @@
+@namespace ActualChat.Mui
+@page "/m/dashboards/messages"
+
+<MudText Typo="Typo.h5" Class="mb-4">Messages</MudText>
+
+<MuiMetricsView Database="chat" CacheName="messages" Metrics="@Metrics"/>
+
+<MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
+    Built from the chat_entries table only. System entries and imported entries are not counted. Removed
+    messages are still counted: the activity happened, and only the removal time is known.
+</MudText>
+
+@code {
+    private const string UserEntries =
+        "from chat_entries where kind = 0 and not is_system_entry and not is_imported"
+        + " and begins_at >= {from} and begins_at < {to}";
+
+    private static readonly IReadOnlyList<MuiMetric> Metrics = [
+        new("text_messages", "Text messages",
+            "select count(*) " + UserEntries + " and coalesce(audio_id, '') = ''",
+            Description: "Messages typed by users: chat_entries rows of kind 0 (text) that are neither system nor "
+                + "imported and have no audio_id, with begins_at in the window."),
+        new("voice_messages", "Voice messages",
+            "select count(*) " + UserEntries + " and coalesce(audio_id, '') <> ''",
+            Description: "Transcribed speech: the same entries as text messages, but with an audio_id. "
+                + "Speech is split into entries by pauses, so this is the number of spoken phrases, "
+                + "not of recordings."),
+        new("voice_minutes", "Voice minutes",
+            "select round((coalesce(sum(duration), 0) / 60)::numeric, 1) " + UserEntries
+            + " and coalesce(audio_id, '') <> ''",
+            Description: "Total speech time of voice messages, in minutes: the sum of chat_entries.duration "
+                + "(seconds, the length of the entry's audio) over the voice messages of the window."),
+        new("active_authors", "Active authors",
+            "select count(distinct author_id) " + UserEntries,
+            Description: "Distinct author_id among text and voice messages of the window. An author is a "
+                + "person's identity in one chat, so someone who wrote in two chats counts twice."),
+    ];
+}

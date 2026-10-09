@@ -18,6 +18,7 @@ using ActualChat.Resilience;
 using ActualChat.Resilience.Internal;
 using ActualChat.Rpc;
 using ActualChat.Streaming.Diagnostics;
+using ActualChat.Mui;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
@@ -159,7 +160,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
                 .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(UIHub).Assembly) // UI.Blazor
-                .AddAdditionalAssemblies(typeof(AppUIHub).Assembly); // UI.Blazor.App
+                .AddAdditionalAssemblies(typeof(AppUIHub).Assembly) // UI.Blazor.App
+                .AddAdditionalAssemblies(typeof(MuiApp).Assembly); // Mui
         }
         app.MapRpcWebSocketServer();
         app.MapRpcHttpServer();

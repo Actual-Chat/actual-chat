@@ -1,0 +1,103 @@
+@namespace ActualChat.Mui
+@page "/m/system/host"
+@inject HostId HostId
+@inject HostInfo HostInfo
+@inject Session Session
+@inject MuiActions Actions
+@inject IDialogService Dialogs
+
+<MudText Typo="Typo.h5" Class="mb-4">Host</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Host</MudText>
+            <MudText>Host ID: <b>@HostId</b></MudText>
+            <MudText>Host kind: <b>@HostInfo.HostKind</b></MudText>
+            <MudText>Roles: <b>@HostInfo.Roles.ToDelimitedString()</b></MudText>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Invalidate everything</MudText>
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Outlined" OnClick="@(() => InvalidateEverything(false))">
+                    On this front-end
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                           OnClick="@(() => InvalidateEverything(true))">
+                    Everywhere
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Prune Computed&lt;T&gt; graph</MudText>
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Outlined" OnClick="@PruneLocally">Locally</MudButton>
+                <MudButton Variant="Variant.Outlined" OnClick="@(() => Prune(false))">On this front-end</MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="@(() => Prune(true))">
+                    Everywhere
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-2">Garbage collection</MudText>
+            <MudButton Variant="Variant.Outlined" OnClick="@CollectGarbage">GC.Collect() x 3</MudButton>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@code {
+    private async Task InvalidateEverything(bool everywhere)
+    {
+        var target = everywhere ? "on all hosts" : "on this front-end";
+        if (!await Confirm($"Invalidate every computed value {target}?"))
+            return;
+
+        var command = new SystemProperties_InvalidateEverything(Session, everywhere);
+        await Actions.Run(command, "Invalidated");
+    }
+
+    private async Task Prune(bool everywhere)
+    {
+        var target = everywhere ? "on all hosts" : "on this front-end";
+        if (!await Confirm($"Prune the computed graph {target}?"))
+            return;
+
+        var command = new SystemProperties_PruneComputedGraph(Session, everywhere);
+        await Actions.Run(command, "Pruned");
+    }
+
+    private async Task PruneLocally()
+    {
+        if (ComputedRegistry.GraphPruner is not { } pruner) {
+            Actions.ReportError("Computed graph pruner is not initialized");
+            return;
+        }
+
+        try {
+            await pruner.PruneOnce(CancellationToken.None);
+            Actions.ReportSuccess("Pruned");
+        }
+        catch (Exception e) {
+            Actions.ReportError(e);
+        }
+    }
+
+    private async Task CollectGarbage()
+    {
+        for (var i = 0; i < 3; i++) {
+            if (i != 0)
+                await Task.Delay(500);
+            GC.Collect();
+        }
+        Actions.ReportSuccess("Collected");
+    }
+
+    private async Task<bool> Confirm(string message)
+        => await Dialogs.ShowMessageBoxAsync("Confirm", message, yesText: "Run", cancelText: "Cancel") == true;
+}

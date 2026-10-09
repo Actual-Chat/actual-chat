@@ -23,6 +23,7 @@
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.ML'))">Service</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.EndsWith('.Migration'))">Migration</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.Contains('.Blazor'))">Blazor</ProjectKind>
+    <ProjectKind Condition="'$(MSBuildProjectName)' == 'Mui'">Blazor</ProjectKind>
     <ProjectKind Condition="$(MSBuildProjectName.Contains('Tests'))">Tests</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.AspireHost'">App.AspireHost</ProjectKind>
     <ProjectKind Condition="'$(MSBuildProjectName)' == 'App.ConsoleClient'">App.ConsoleClient</ProjectKind>

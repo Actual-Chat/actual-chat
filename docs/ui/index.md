@@ -34,6 +34,11 @@ the three UI surfaces complex enough to need a document of their own.
   quirks that shaped them. Pairs with the `/virtual-list-debug` skill, which is
   how to *measure* what this document specifies.
 
+## Admin
+
+- [Management UI](./mui.md) — the separate MudBlazor front-end under `/m/`: hosting, the
+  reference and access rules, the English-only exception, and how to add a section.
+
 ## Layout and startup
 
 - [Safe areas](./safe-areas.md) — `viewport-fit=cover`, the four

@@ -1,0 +1,123 @@
+@namespace ActualChat.Mui
+@page "/m/system/digest"
+@inherits MuiComponent
+@inject MuiTime Time
+
+<MudText Typo="Typo.h5" Class="mb-4">Digest preview</MudText>
+
+<MudPaper Class="pa-4 mb-4" Style="max-width: 40rem">
+    <MudSelect T="DigestMode" @bind-Value="_mode" Label="Mode" Class="mb-2">
+        <MudSelectItem Value="@DigestMode.UnreadChats">Unread chats (real data)</MudSelectItem>
+        <MudSelectItem Value="@DigestMode.SelectedChats">Selected chats</MudSelectItem>
+    </MudSelect>
+    @if (_mode == DigestMode.SelectedChats) {
+        <MudTextField T="string" @bind-Value="_chatIds" Label="Chat IDs" Immediate="true" Class="mb-2"
+                      Placeholder="chatId1, chatId2, ..."/>
+        <MudTextField T="DateTime?" @bind-Value="_asOf" Label="@($"As of ({Time.TimeZoneName})")" InputType="InputType.DateTimeLocal"
+                      Class="mb-2"/>
+    }
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Generate"
+               Disabled="@(_isGenerating || (_mode == DigestMode.SelectedChats && _chatIds.IsNullOrEmpty()))">
+        @(_isGenerating ? "Generating…" : "Generate preview")
+    </MudButton>
+</MudPaper>
+
+@if (_isGenerating) {
+    <MudProgressLinear Indeterminate="true"/>
+}
+@if (_error is not null) {
+    <MudAlert Severity="Severity.Error">@_error</MudAlert>
+}
+@if (_result is { } result) {
+    <MudText Class="mb-2">
+        <MudLink Href="@result.UnsubscribeLink" Target="_blank">Open the unsubscribe page</MudLink>
+        <MudText Inline="true" Color="Color.Secondary">
+            (the link from the email footer; open it in a window signed in as another account
+            to see the “signed in as” note)
+        </MudText>
+    </MudText>
+    <MudTabs Elevation="1" Rounded="true" TabPanelsClass="pa-4">
+        <MudTabPanel Text="Email preview">
+            @if (result.RenderedHtml.IsNullOrEmpty()) {
+                <MudText Color="Color.Secondary">No email content to preview.</MudText>
+            }
+            else {
+                <iframe sandbox="" srcdoc="@result.RenderedHtml"
+                        style="width: 100%; height: 800px; border: 1px solid #ccc; background: white"></iframe>
+            }
+        </MudTabPanel>
+        <MudTabPanel Text="Diagnostics">
+            @if (result.Chats.Length == 0) {
+                <MudText Color="Color.Secondary">No chats found for digest.</MudText>
+            }
+            else {
+                <MudSimpleTable Dense="true">
+                    <thead>
+                        <tr><th>Chat</th><th>Unread</th><th>Bullet points</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var chat in result.Chats) {
+                            <tr>
+                                <td><MudLink Href="@chat.Link" Target="_blank">@chat.Name</MudLink></td>
+                                <td>@chat.UnreadCount</td>
+                                <td>
+                                    <ul>
+                                        @foreach (var point in chat.BulletPoints) {
+                                            <li>@point</li>
+                                        }
+                                    </ul>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+                @if (result.OtherUnreadCount > 0) {
+                    <MudText Color="Color.Secondary" Class="mt-2">
+                        + @result.OtherUnreadCount other unread chats not shown
+                    </MudText>
+                }
+            }
+        </MudTabPanel>
+    </MudTabs>
+}
+
+@code {
+    private DigestMode _mode = DigestMode.UnreadChats;
+    private string _chatIds = "";
+    private DateTime? _asOf;
+    private bool _isGenerating;
+    private string? _error;
+    private DigestPreview? _result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Time.EnsureInitialized();
+        _asOf = Time.ToLocal(DateTime.UtcNow);
+    }
+
+    private async Task Generate()
+    {
+        _isGenerating = true;
+        _error = null;
+        _result = null;
+        try {
+            var isCustom = _mode == DigestMode.SelectedChats;
+            var chatIds = isCustom ? DigestInput.ParseChatIds(_chatIds) : [];
+            DateTime? asOf = isCustom && _asOf is { } value ? Time.ToUtc(value) : null;
+            var emails = Services.GetRequiredService<IEmails>();
+            _result = await emails.GetDigestPreview(Session, chatIds, asOf, default);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            _error = e.Message;
+        }
+        finally {
+            _isGenerating = false;
+        }
+    }
+
+    private enum DigestMode
+    {
+        UnreadChats,
+        SelectedChats,
+    }
+}

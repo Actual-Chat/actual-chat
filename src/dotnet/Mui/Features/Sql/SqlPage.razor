@@ -1,0 +1,185 @@
+@namespace ActualChat.Mui
+@page "/m/system/sql"
+@inherits MuiComponent
+@inject IMuiDb Db
+
+<MudText Typo="Typo.h5" Class="mb-4">SQL</MudText>
+<MudText Color="Color.Secondary" Class="mb-4">
+    Read-only queries: each one runs in a read-only transaction that is always rolled back.
+    Double-click a table or column name to put it into the query.
+</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="4">
+        <MudPaper Class="pa-4">
+            <MudSelect T="string" Value="@_database" ValueChanged="@OnDatabaseChanged" Label="Database" Class="mb-2">
+                @foreach (var database in _databases ?? []) {
+                    <MudSelectItem Value="@database.Name">@database.Name</MudSelectItem>
+                }
+            </MudSelect>
+            @if (_databases is null) {
+                <MudProgressLinear Indeterminate="true"/>
+            }
+            @if (CurrentDatabase is { } current) {
+                <MudAutocomplete T="string" Value="@_tableName" ValueChanged="@OnTableChanged"
+                                 SearchFunc="@SearchTables" Label="@($"Table ({current.Tables.Length})")"
+                                 Clearable="true" ResetValueOnEmptyText="true" Class="mb-3"/>
+            }
+            @if (CurrentTable is { } table) {
+                <div @ondblclick="@(() => Insert(table.Name))" style="@NameStyle">
+                    <MudText Typo="Typo.subtitle1">Table <b>@table.Name</b></MudText>
+                </div>
+                @foreach (var column in table.GetOrderedColumns()) {
+                    <div @ondblclick="@(() => Insert(column.Name))" style="@NameStyle">
+                        <MudText Typo="Typo.body2">
+                            @(column.IsKey ? "🔑 " : "")@column.Name
+                            <MudText Inline="true" Color="Color.Secondary">
+                                @column.Type@(column.IsNullable ? "?" : "")
+                            </MudText>
+                        </MudText>
+                    </div>
+                }
+            }
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" md="8">
+        <MudPaper Class="pa-4 mb-4">
+            <div id="mui-sql">
+                <MudTextField T="string" @bind-Value="_sql" Immediate="true" Label="SQL" Lines="8"
+                              Variant="Variant.Outlined" Style="font-family: monospace"/>
+            </div>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="mt-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Run"
+                           Disabled="@(_isRunning || _database.IsNullOrEmpty() || _sql.IsNullOrEmpty())">
+                    Run
+                </MudButton>
+                @if (_result is { } result) {
+                    <MudText Color="Color.Secondary">
+                        @result.Rows.Length row(s)@(result.IsTruncated ? $" - truncated, there are more than {MuiSqlQuery.MaxRowsLimit}" : "")
+                        in @result.ElapsedMs ms on @result.HostId
+                    </MudText>
+                }
+            </MudStack>
+            @if (_isRunning) {
+                <MudProgressLinear Indeterminate="true" Class="mt-2"/>
+            }
+            @if (_error is not null) {
+                <MudAlert Severity="Severity.Error" Class="mt-2" Style="white-space: pre-wrap">@_error</MudAlert>
+            }
+        </MudPaper>
+        @if (_result is { } shown) {
+            <MudPaper Class="pa-2" Style="overflow-x: auto">
+                <MudSimpleTable Dense="true" Hover="true">
+                    <thead>
+                        <tr>
+                            @foreach (var column in shown.Columns) {
+                                <th>
+                                    @column.Name
+                                    <MudText Inline="true" Color="Color.Secondary">@column.Type</MudText>
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in shown.Rows) {
+                            <tr>
+                                @foreach (var cell in row) {
+                                    <td>@(cell ?? "NULL")</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    private const string NameStyle = "cursor: pointer; user-select: none; padding: 2px 4px; border-radius: 4px";
+
+    private MuiDatabaseInfo[]? _databases;
+    private string _database = "";
+    private string? _tableName;
+    private string _sql = "select 1 as one";
+    private bool _isRunning;
+    private string? _error;
+    private MuiSqlResult? _result;
+
+    [SupplyParameterFromQuery(Name = "db")]
+    public string? DatabaseName { get; set; }
+    [SupplyParameterFromQuery(Name = "sql")]
+    public string? SqlText { get; set; }
+
+    private MuiDatabaseInfo? CurrentDatabase => _databases?.FirstOrDefault(x => x.Name == _database);
+
+    private MuiTableInfo? CurrentTable
+        => CurrentDatabase?.Tables.FirstOrDefault(x => x.Name == _tableName);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try {
+            _databases = await Db.GetDatabases(Session, default);
+            _database = _databases.FirstOrDefault(x => x.Name == DatabaseName)?.Name
+                ?? _databases.FirstOrDefault()?.Name ?? "";
+            if (!SqlText.IsNullOrEmpty())
+                _sql = SqlText;
+        }
+        catch (Exception e) {
+            _error = e.Message;
+            _databases = [];
+        }
+    }
+
+    private void OnDatabaseChanged(string database)
+    {
+        _database = database;
+        _tableName = null;
+    }
+
+    private void OnTableChanged(string? tableName)
+        => _tableName = tableName;
+
+    private Task<IEnumerable<string>> SearchTables(string? text, CancellationToken cancellationToken)
+    {
+        var names = CurrentDatabase?.Tables.Select(x => x.Name) ?? [];
+        var result = text.IsNullOrEmpty()
+            ? names
+            : names.Where(x => x.Contains(text, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(result);
+    }
+
+    private async Task Insert(string name)
+    {
+        try {
+            await JS.InvokeVoidAsync("muiInsertText", "mui-sql", Quote(name));
+        }
+        catch (Exception e) {
+            Actions.ReportError(e);
+        }
+    }
+
+    // Names that aren't plain lowercase identifiers need quotes
+    private static string Quote(string name)
+        => name.Length > 0 && (name[0] == '_' || char.IsAsciiLetterLower(name[0]))
+            && name.All(c => c == '_' || char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c))
+            ? name
+            : "\"" + name.Replace("\"", "\"\"") + "\"";
+
+    private async Task Run()
+    {
+        _isRunning = true;
+        _error = null;
+        try {
+            var query = new MuiSqlQuery(_database, _sql, MuiSqlQuery.MaxRowsLimit);
+            _result = await Db.Query(Session, query, TimeSpan.Zero, default);
+        }
+        catch (Exception e) {
+            _result = null;
+            _error = e.Message;
+        }
+        finally {
+            _isRunning = false;
+        }
+    }
+}

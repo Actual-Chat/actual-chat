@@ -1,0 +1,213 @@
+@namespace ActualChat.Mui
+@inherits MuiComponent
+@implements IDisposable
+@inject MuiPeriodState Periods
+@inject MuiTime Time
+@inject IMuiDb Db
+
+<MudPaper Class="pa-4 mb-4">
+    <MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+        <PeriodControls/>
+        <div class="mui-seg">
+            <button type="button" class="@GetKindClass(MuiChartKind.Bar)"
+                    @onclick="@(() => OnChartKindChanged(MuiChartKind.Bar))">
+                <MudIcon Icon="@Icons.Material.Filled.BarChart" Size="Size.Small"/> Bars
+            </button>
+            <button type="button" class="@GetKindClass(MuiChartKind.Line)"
+                    @onclick="@(() => OnChartKindChanged(MuiChartKind.Line))">
+                <MudIcon Icon="@Icons.Material.Filled.ShowChart" Size="Size.Small"/> Lines
+            </button>
+        </div>
+        <MudSpacer/>
+        <MudSwitch T="bool" Value="@_isAutoUpdate" ValueChanged="@OnAutoUpdateChanged" Color="Color.Primary"
+                   Label="Auto update"/>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@Reload" Disabled="@_isLoading">Refresh</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="@ResetCache" Disabled="@_isLoading">
+            Reset cache
+        </MudButton>
+    </MudStack>
+    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-2">
+        Results are cached for 10 minutes.@(" ")
+        @if (_updatedAt is { } updatedAt) {
+            <text>Updated @Time.Format(updatedAt, "HH:mm:ss") (<MuiAgo Utc="@updatedAt"/>).@(" ")</text>
+        }
+        @if (_isAutoUpdate) {
+            <text>Updates 10 minutes after the last refresh.@(" ")</text>
+        }
+        @if (_windows is { Length: > 0 } windows) {
+            <text>Time zone: @Time.TimeZoneName. Latest window: @GetRange(windows[0]).@(" ")</text>
+        }
+    </MudText>
+</MudPaper>
+
+@if (_isLoading) {
+    <MudProgressLinear Indeterminate="true" Class="mb-2"/>
+}
+@if (_error is not null) {
+    <MudAlert Severity="Severity.Error" Class="mb-2" Style="white-space: pre-wrap">@_error</MudAlert>
+}
+@if (_windows is not null && _values is not null) {
+    // At most three charts in a row, at least one; the charts of a row share the whole width
+    <div style="display: grid; gap: 1rem;
+                grid-template-columns: repeat(auto-fit, minmax(max(22rem, calc((100% - 2rem) / 3)), 1fr))">
+        @for (var m = 0; m < Metrics.Count; m++) {
+            <MuiMetricChart Metric="@Metrics[m]" Values="@_values[m]" Windows="@_windows"
+                            Kind="@Periods.Settings.Chart" Database="@Database"/>
+        }
+    </div>
+}
+
+@code {
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan AutoUpdateInterval = CacheDuration + TimeSpan.FromSeconds(5);
+
+    private readonly CancellationTokenSource _disposeCts = new();
+    private CancellationTokenSource? _autoCts;
+    private MuiWindow[]? _windows;
+    private double?[][]? _values;
+    private bool _isLoading;
+    private bool _isAutoUpdate;
+    private string? _error;
+    private DateTime? _updatedAt;
+    private MuiPeriodSettings? _loadedSettings;
+    private int _loadGeneration;
+
+    [Parameter, EditorRequired]
+    public string Database { get; set; } = "";
+    [Parameter, EditorRequired]
+    public string CacheName { get; set; } = "";
+    [Parameter, EditorRequired]
+    public IReadOnlyList<MuiMetric> Metrics { get; set; } = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Time.EnsureInitialized();
+        await Periods.EnsureLoaded();
+        Periods.Changed += OnPeriodsChanged;
+        await Load();
+    }
+
+    public void Dispose()
+    {
+        Periods.Changed -= OnPeriodsChanged;
+        _autoCts?.Cancel();
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
+    }
+
+    private string GetRange(MuiWindow window)
+        => $"{Time.Format(window.From)} - {Time.Format(window.To, "HH:mm")}";
+
+    // A change of the interval, step or count loads new windows at once; the chart kind only redraws
+    private void OnPeriodsChanged()
+        => _ = InvokeAsync(() => {
+            var settings = Periods.Settings;
+            if (_loadedSettings is { } loaded
+                && (settings.Interval, settings.Step, settings.Count) != (loaded.Interval, loaded.Step, loaded.Count))
+                return Load();
+
+            StateHasChanged();
+            return Task.CompletedTask;
+        });
+
+    private string GetKindClass(MuiChartKind kind)
+        => Periods.Settings.Chart == kind ? "selected" : "";
+
+    private Task OnChartKindChanged(MuiChartKind kind)
+        => Periods.Update(Periods.Settings with { Chart = kind });
+
+    private Task Reload()
+        => Load();
+
+    private async Task ResetCache()
+    {
+        try {
+            await Db.ClearCache(Session, _disposeCts.Token);
+        }
+        catch (Exception e) {
+            Actions.ReportError(e);
+            return;
+        }
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        var settings = Periods.Settings;
+        _loadedSettings = settings;
+        var generation = ++_loadGeneration;
+        var now = DateTime.UtcNow;
+        var windows = settings.GetWindows(now);
+        _isLoading = true;
+        _error = null;
+        StateHasChanged();
+        try {
+            var tasks = windows.Select(w => {
+                var sql = MuiMetricSql.Build(Metrics, w);
+                var cacheKey = $"{CacheName}|{settings.Interval}|{settings.Step}|{settings.Count}|{w.Index}";
+                var query = new MuiSqlQuery(Database, sql, 10, 30_000, cacheKey);
+                return Db.Query(Session, query, CacheDuration, _disposeCts.Token);
+            });
+            var results = await Task.WhenAll(tasks);
+            if (generation != _loadGeneration)
+                return; // A newer load has been started
+            var values = new double?[Metrics.Count][];
+            for (var m = 0; m < Metrics.Count; m++) {
+                values[m] = new double?[windows.Length];
+                for (var w = 0; w < windows.Length; w++) {
+                    var rows = results[w].Rows;
+                    values[m][w] = Metrics[m].IsAvailable(windows[w], now)
+                        && rows.Length > 0
+                        && rows[0][m] is { } text
+                        && double.TryParse(text, out var value)
+                        ? value : null;
+                }
+            }
+            _windows = windows;
+            _values = values;
+            _updatedAt = now;
+        }
+        catch (OperationCanceledException) {
+            return; // The page is gone
+        }
+        catch (Exception e) {
+            _error = e.Message;
+        }
+        finally {
+            _isLoading = false;
+        }
+
+        StateHasChanged();
+        ScheduleAutoUpdate();
+    }
+
+    private Task OnAutoUpdateChanged(bool value)
+    {
+        _isAutoUpdate = value;
+        ScheduleAutoUpdate();
+        return Task.CompletedTask;
+    }
+
+    // One update is scheduled at a time, AutoUpdateInterval after the last refresh (whatever caused it),
+    // i.e. when the cached results are about to expire
+    private void ScheduleAutoUpdate()
+    {
+        _autoCts?.Cancel();
+        if (!_isAutoUpdate)
+            return;
+
+        var cts = _autoCts = CancellationTokenSource.CreateLinkedTokenSource(_disposeCts.Token);
+        _ = RunAutoUpdate(cts.Token);
+    }
+
+    private async Task RunAutoUpdate(CancellationToken cancellationToken)
+    {
+        try {
+            await Task.Delay(AutoUpdateInterval, cancellationToken);
+            await InvokeAsync(Load);
+        }
+        catch (OperationCanceledException) {
+            // Auto update was switched off, or another refresh moved the schedule
+        }
+    }
+}

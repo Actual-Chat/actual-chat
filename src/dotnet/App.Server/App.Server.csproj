@@ -67,6 +67,7 @@
     <ProjectReference Include="..\Mcp\Mcp.csproj" />
     <!-- But don't reference their clients! -->
     <ProjectReference Include="..\UI.Blazor.App\UI.Blazor.App.csproj" />
+    <ProjectReference Include="..\Mui\Mui.csproj" />
     <ProjectReference Include="..\App.Wasm\App.Wasm.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

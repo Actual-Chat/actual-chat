@@ -1,0 +1,185 @@
+@namespace ActualChat.Mui
+@page "/m/system/flows"
+@inherits MuiComponent
+@inject MuiTime Time
+@using ActualChat.Flows
+
+<MudText Typo="Typo.h5" Class="mb-4">Flows</MudText>
+
+<MudStack Row="true" Spacing="2" Class="mb-4" AlignItems="AlignItems.Center">
+    <MudText Typo="Typo.h6">Summary by flow type</MudText>
+    <MudSpacer/>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@Refresh">Refresh</MudButton>
+</MudStack>
+
+@if (_stats is null) {
+    <MudProgressLinear Indeterminate="true"/>
+}
+else {
+    <MudText Color="Color.Secondary" Class="mb-2">
+        Counts per registered flow type. Click a row to filter the instances below.
+    </MudText>
+    <MudDataGrid T="FlowTypeStat" Items="@_stats" Dense="true" Hover="true" Elevation="1"
+                 FixedHeader="true" Height="22rem"
+                 RowClick="@(args => SelectType(args.Item.Name))"
+                 RowClassFunc="@((item, _) => item.Name == _filter.TypeName ? "mud-theme-primary" : "")"
+                 Class="mb-6">
+        <Columns>
+            <PropertyColumn Property="x => x.Name" Title="Type"/>
+            <PropertyColumn Property="x => x.Total" Title="Total"/>
+            <PropertyColumn Property="x => x.Completed" Title="Completed"/>
+            <PropertyColumn Property="x => x.Scheduled" Title="Scheduled"/>
+            <TemplateColumn Title="Idle / Stuck" SortBy="@(x => x.Idle + x.Stuck)">
+                <CellTemplate>
+                    <MudText Color="@(context.Item.Stuck > 0 ? Color.Warning : Color.Default)">
+                        @(context.Item.Idle + context.Item.Stuck)
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Failed" SortBy="@(x => x.Failed)">
+                <CellTemplate>
+                    <MudText Color="@(context.Item.Failed > 0 ? Color.Error : Color.Default)">
+                        @context.Item.Failed
+                    </MudText>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+}
+
+<MudText Typo="Typo.h6" Class="mb-2">
+    Flow instances@(_filter.TypeName.IsNullOrEmpty() ? "" : $" — {_filter.TypeName}")
+</MudText>
+<MudStack Row="true" Spacing="4" Class="mb-2" AlignItems="AlignItems.Center">
+    <MudSwitch T="bool" Value="@_filter.ProblematicOnly" ValueChanged="@OnProblematicChanged"
+               Label="Problematic only" Color="Color.Primary"/>
+    <MudSwitch T="bool" Value="@_filter.HideCompleted" ValueChanged="@OnHideCompletedChanged"
+               Label="Hide completed" Color="Color.Primary"/>
+    @if (_rows is not null && _filter.ShowRows) {
+        <MudText Color="Color.Secondary">
+            @_rows.Length row(s)@(_rows.Length >= FlowsFilter.RowLimit ? $" (limit {FlowsFilter.RowLimit})" : "")
+        </MudText>
+    }
+</MudStack>
+
+@if (!_filter.ShowRows) {
+    <MudText Color="Color.Secondary">
+        Select a flow type above, or turn on “Problematic only” to list instances.
+    </MudText>
+}
+else {
+    <MudText Color="Color.Secondary" Class="mb-2">Expand a row to view its console log and error.</MudText>
+    <MudDataGrid T="FlowSummary" Items="@(_rows ?? [])" Dense="true" Hover="true" Elevation="1"
+                 Loading="@(_rows is null)">
+        <Columns>
+            <HierarchyColumn T="FlowSummary"/>
+            <TemplateColumn Title="Id" SortBy="@(x => x.FlowId)">
+                <CellTemplate>
+                    <MudText Style="font-family: monospace; word-break: break-all">@context.Item.FlowId</MudText>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Status" SortBy="@(x => x.Status)">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="@FlowsFilter.GetStatusColor(context.Item.Status)">
+                        @context.Item.Status
+                    </MudChip>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Title="Updated" SortBy="@(x => x.UpdatedAt)">
+                <CellTemplate>
+                    @{ var updatedAt = context.Item.UpdatedAt.ToDateTime(); }
+                    @Time.Format(updatedAt, "yyyy-MM-dd HH:mm:ss")
+                    <MudText Inline="true" Color="Color.Secondary">(<MuiAgo Utc="@updatedAt"/>)</MudText>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+        <ChildRowContent>
+            <MudCard Elevation="0">
+                <MudCardContent>
+                    <FlowDetailsPanel FlowId="@context.Item.FlowId"/>
+                </MudCardContent>
+            </MudCard>
+        </ChildRowContent>
+    </MudDataGrid>
+}
+
+@code {
+    private FlowsFilter _filter = new();
+    private FlowTypeStat[]? _stats;
+    private FlowSummary[]? _rows;
+    private int _rowsGeneration;
+
+    [SupplyParameterFromQuery(Name = "type")] public string? TypeName { get; set; }
+    [SupplyParameterFromQuery(Name = "problematic")] public bool ProblematicOnly { get; set; }
+    [SupplyParameterFromQuery(Name = "completed")] public bool? ShowCompleted { get; set; }
+
+    private IDiagnostics Diagnostics => field ??= Services.GetRequiredService<IDiagnostics>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _filter = FilterFromQuery();
+        await Time.EnsureInitialized();
+        await Task.WhenAll(LoadStats(), LoadRows());
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var filter = FilterFromQuery();
+        if (filter == _filter)
+            return;
+
+        _filter = filter;
+        await LoadRows();
+    }
+
+    private FlowsFilter FilterFromQuery()
+        => new(TypeName.NullIfEmpty(), ProblematicOnly, ShowCompleted != true);
+
+    private async Task LoadStats()
+    {
+        try {
+            _stats = await Diagnostics.GetFlowStats(Session, default);
+        }
+        catch (Exception e) {
+            Actions.ReportError(e);
+        }
+    }
+
+    private async Task LoadRows()
+    {
+        var generation = ++_rowsGeneration;
+        _rows = null;
+        try {
+            var rows = await Diagnostics.GetFlows(Session, _filter.ToQuery(), default);
+            if (generation == _rowsGeneration)
+                _rows = rows;
+        }
+        catch (Exception e) {
+            Actions.ReportError(e);
+        }
+    }
+
+    private async Task Refresh()
+        => await Task.WhenAll(LoadStats(), LoadRows());
+
+    private Task SelectType(string name)
+        => SetFilter(_filter with { TypeName = name == _filter.TypeName ? null : name });
+
+    private Task OnProblematicChanged(bool value)
+        => SetFilter(_filter with { ProblematicOnly = value });
+
+    private Task OnHideCompletedChanged(bool value)
+        => SetFilter(_filter with { HideCompleted = value });
+
+    private async Task SetFilter(FlowsFilter filter)
+    {
+        _filter = filter;
+        var uri = Nav.GetUriWithQueryParameters(new Dictionary<string, object?> {
+            ["type"] = filter.TypeName,
+            ["problematic"] = filter.ProblematicOnly ? true : null,
+            ["completed"] = filter.HideCompleted ? null : true,
+        });
+        Nav.NavigateTo(uri, new NavigationOptions { ReplaceHistoryEntry = true });
+        await LoadRows();
+    }
+}

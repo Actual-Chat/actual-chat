@@ -1,0 +1,28 @@
+@namespace ActualChat.Mui
+@using ActualChat.Flows
+@inherits MuiComputedComponent<FlowDetails?>
+
+@if (State.Value is not { } details) {
+    <MudText Color="Color.Secondary">@(State.Computed.IsConsistent() ? "No data." : "Loading…")</MudText>
+}
+else {
+    @if (!details.Error.IsNullOrEmpty()) {
+        <MudAlert Severity="Severity.Error" Class="mb-2" Style="white-space: pre-wrap; font-family: monospace">
+            @details.Error
+        </MudAlert>
+    }
+    <pre style="white-space: pre-wrap; font-size: 0.8rem">@details.Console</pre>
+}
+
+@code {
+    [Parameter, EditorRequired] public string FlowId { get; set; } = "";
+
+    protected override ComputedState<FlowDetails?>.Options GetStateOptions()
+        => new() { InitialValue = null };
+
+    protected override async Task<FlowDetails?> ComputeState(CancellationToken cancellationToken)
+    {
+        var diagnostics = Services.GetRequiredService<IDiagnostics>();
+        return await diagnostics.GetFlowDetails(Session, FlowId, cancellationToken).ConfigureAwait(false);
+    }
+}

@@ -1,0 +1,43 @@
+@namespace ActualChat.Mui
+@page "/m/dashboards/sessions"
+
+<MudText Typo="Typo.h5" Class="mb-4">Sessions</MudText>
+
+<MuiMetricsView Database="users" CacheName="sessions" Metrics="@Metrics"/>
+
+<MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
+    Built from the session table only. A login is always a new session, so logins are new sessions
+    (guest sessions included). A sign-out deactivates the session, which moves its expiry to just before
+    the sign-out, so sign-outs are sessions that expired long before the usual 90 days after last seen.
+    A sign-out that doesn't deactivate the session can't be told from a guest. Expired sessions are deleted
+    4 months after they expire, so sign-outs are known for the last 4 months (older windows show "-"), and
+    active-session counts for older windows miss the sessions that have signed out and been deleted since.
+</MudText>
+
+@code {
+    private static readonly IReadOnlyList<MuiMetric> Metrics = [
+        new("active_sessions", "Active sessions",
+            "select count(*) from _sessions where last_seen_at >= {from} and last_seen_at < {to}",
+            Description: "Sessions (browsers and apps, guests included) that were seen in the window: rows of "
+                + "_sessions whose last_seen_at falls in it. last_seen_at is refreshed periodically, not on "
+                + "every request, so this is slightly below the real number."),
+        new("active_signed_in", "Active signed-in sessions",
+            "select count(*) from _sessions where last_seen_at >= {from} and last_seen_at < {to}"
+            + " and coalesce(user_id, '') <> ''",
+            Description: "Like active sessions, but only sessions that are signed in now (user_id is set). "
+                + "A session that signed out later is not counted, even in an older window."),
+        new("new_sessions", "New sessions (logins)",
+            "select count(*) from _sessions where created_at >= {from} and created_at < {to}",
+            Description: "Sessions created in the window (created_at). A login after a sign-out always starts a "
+                + "new session, so this is the number of logins; first visits of guests are included."),
+        new("sign_outs", "Sign-outs",
+            "select count(*) from _sessions where expires_at + interval '10 seconds' >= {from}"
+            + " and expires_at + interval '10 seconds' < {to}"
+            + " and expires_at - last_seen_at < interval '30 days'",
+            TimeSpan.FromDays(120),
+            "Sessions that were deactivated in the window. A sign-out sets expires_at to 10 seconds before "
+            + "itself, while a session expires normally 90 days after it was last seen, so a session whose "
+            + "expiry is within 30 days of its last visit was signed out at expires_at + 10 s. Sessions are "
+            + "deleted 4 months after they expire, hence no data for older windows."),
+    ];
+}

@@ -1,0 +1,42 @@
+@namespace ActualChat.Mui
+@inject IJSRuntime Js
+
+<div class="mui-sqlbox">
+    <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="flex: 1">@Title</MudText>
+        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.ContentCopy"
+                   OnClick="@Copy">Copy</MudButton>
+        @if (!Database.IsNullOrEmpty()) {
+            <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.OpenInNew"
+                       Href="@GetSqlPageUrl()" Target="_blank">Open in SQL</MudButton>
+        }
+    </MudStack>
+    <pre style="margin: 0.25rem 0 0; white-space: pre-wrap; word-break: break-word; font-size: 0.75rem;
+                user-select: text">@Sql</pre>
+</div>
+
+@code {
+    [Inject]
+    private MuiActions Actions { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public string Sql { get; set; } = "";
+    [Parameter]
+    public string Title { get; set; } = "Query";
+    [Parameter]
+    public string Database { get; set; } = "";
+
+    private string GetSqlPageUrl()
+        => $"/m/system/sql?db={Uri.EscapeDataString(Database)}&sql={Uri.EscapeDataString(Sql)}";
+
+    private async Task Copy()
+    {
+        try {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", Sql);
+            Actions.ReportSuccess("Copied");
+        }
+        catch (Exception e) {
+            Actions.ReportError(e);
+        }
+    }
+}

@@ -1,0 +1,23 @@
+@namespace ActualChat.Mui
+@page "/m/dashboards/notifications"
+
+<MudText Typo="Typo.h5" Class="mb-4">Notifications</MudText>
+
+<MuiMetricsView Database="notification" CacheName="notifications" Metrics="@Metrics"/>
+
+@code {
+    private static readonly IReadOnlyList<MuiMetric> Metrics = [
+        new("notifications_sent", "Notifications sent",
+            "select count(*) from notification_history where sent_at >= {from} and sent_at < {to}",
+            Description: "Rows of notification_history whose sent_at falls in the window: notifications handed to "
+                + "the push service, of every kind. Notifications that were not sent leave no row."),
+        new("new_devices", "New devices",
+            "select count(*) from devices where created_at >= {from} and created_at < {to}",
+            Description: "Devices registered for notifications in the window (devices.created_at): browsers and "
+                + "apps."),
+        new("active_devices", "Active devices",
+            "select count(*) from devices where accessed_at >= {from} and accessed_at < {to}",
+            Description: "Devices whose accessed_at falls in the window. Only the latest access is stored, so a "
+                + "device that was used again later is not counted in an older window."),
+    ];
+}

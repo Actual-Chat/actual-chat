@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\Backend\Backend.csproj" />
+    <ProjectReference Include="..\Core.Server\Core.Server.csproj" />
+  </ItemGroup>
+
+</Project>

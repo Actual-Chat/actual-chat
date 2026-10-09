@@ -12,3 +12,10 @@ public class DbInfo<TDbContext>
     public bool ShouldRepairDb { get; set; }
     public bool ShouldVerifyDb { get; set; }
 }
+
+public sealed record DbContextEntry(
+    string Name,
+    Type ContextType,
+    DbKind DbKind,
+    string ConnectionString,
+    Func<IServiceProvider, CancellationToken, Task<DbContext>> CreateContext);

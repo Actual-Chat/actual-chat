@@ -1,0 +1,19 @@
+@namespace ActualChat.Mui
+@using ActualLab.Fusion.Extensions
+@inherits MuiComputedComponent<string>
+
+@State.Value
+
+@code {
+    [Parameter, EditorRequired]
+    public DateTime Utc { get; set; }
+
+    protected override ComputedState<string>.Options GetStateOptions()
+        => new() { InitialValue = "" };
+
+    protected override async Task<string> ComputeState(CancellationToken cancellationToken)
+    {
+        var fusionTime = Services.GetRequiredService<IFusionTime>();
+        return await fusionTime.GetMomentsAgo(Utc.ToMoment()).ConfigureAwait(false);
+    }
+}

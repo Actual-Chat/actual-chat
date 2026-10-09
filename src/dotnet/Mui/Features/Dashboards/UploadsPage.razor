@@ -1,0 +1,31 @@
+@namespace ActualChat.Mui
+@page "/m/dashboards/uploads"
+
+<MudText Typo="Typo.h5" Class="mb-4">Uploads</MudText>
+
+<MuiMetricsView Database="chat" CacheName="uploads" Metrics="@Metrics"/>
+
+<MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
+    Built from the item tables of the chat database. Each row is one item of a message, and its "at" column
+    is the begin time of that message, i.e. when the item was posted.
+</MudText>
+
+@code {
+    private static readonly IReadOnlyList<MuiMetric> Metrics = [
+        new("pictures", "Pictures uploaded",
+            "select count(*) from chat_visual_media_items where content_type like 'image/%'"
+            + " and at >= {from} and at < {to}",
+            Description: "Rows of chat_visual_media_items with an image/* content_type and at in the window."),
+        new("videos", "Videos uploaded",
+            "select count(*) from chat_visual_media_items where content_type like 'video/%'"
+            + " and at >= {from} and at < {to}",
+            Description: "Rows of chat_visual_media_items with a video/* content_type and at in the window."),
+        new("files", "Files uploaded",
+            "select count(*) from chat_file_items where at >= {from} and at < {to}",
+            Description: "Rows of chat_file_items (file attachments) "
+                + "with at in the window."),
+        new("links", "Links shared",
+            "select count(*) from chat_link_items where at >= {from} and at < {to}",
+            Description: "Rows of chat_link_items (links found in messages) with at in the window."),
+    ];
+}

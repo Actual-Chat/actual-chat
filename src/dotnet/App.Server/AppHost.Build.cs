@@ -8,6 +8,7 @@ using ActualChat.Invite.Module;
 using ActualChat.Kubernetes.Module;
 using ActualChat.Logging;
 using ActualChat.Mcp.Module;
+using ActualChat.Mui.Module;
 using ActualChat.Media.Module;
 using ActualChat.MLSearch.Module;
 using ActualChat.Module;
@@ -189,6 +190,7 @@ public partial class AppHost
                 new NotificationServiceModule(moduleServices),
                 new MLSearchServiceModule(moduleServices),
                 new McpModule(moduleServices),
+                new MuiModule(moduleServices),
                 // UI modules
                 new UICoreModule(moduleServices),
                 new BlazorUICoreModule(moduleServices),
@@ -255,10 +257,13 @@ public partial class AppHost
             .Select(x => AsDisposable(x.ImplementationType))
             .SkipNullItems()
             .Where(x => x.Namespace?.StartsWith("Microsoft", StringComparison.OrdinalIgnoreCase) != true)
+            .Where(x => x.Namespace?.StartsWith("MudBlazor") != true) // Mui
             .ToList();
         if (transientDisposables.Count != 0) {
-            var transientDisposablesString = string.Join("", transientDisposables.Select(x => $"{Environment.NewLine}- {x}"));
-            throw StandardError.Internal($"Disposable transient services are not allowed: {transientDisposablesString}");
+            var transientDisposablesString = string.Join("",
+                transientDisposables.Select(x => $"{Environment.NewLine}- {x}"));
+            throw StandardError.Internal(
+                $"Disposable transient services are not allowed: {transientDisposablesString}");
         }
 
         Type? AsDisposable(Type? type) => type?.IsAssignableTo(typeof(IDisposable)) == true
