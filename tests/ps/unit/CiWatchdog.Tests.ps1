@@ -557,6 +557,78 @@ Describe "CiWatchdog.ps1" {
         }
     }
 
+    Context "Large records" {
+        BeforeAll {
+            function New-BigRecord {
+                param([int]$Tests = 6000)
+                $names = 1..$Tests | ForEach-Object { "ActualChat.Chat.IntegrationTests.Collapsed.FixtureTest$_.ShouldWorkWhenTheNameIsLong(argument: $('x' * 250))" }
+                $job = [PSCustomObject]@{
+                    Name = 'Run Integration tests (core)'; FailedStep = 'Run Integration tests'; Category = 'Test'; Url = 'u'
+                    Totals = @()
+                    Tests = @($names | ForEach-Object {
+                        [PSCustomObject]@{ Name = $_; Duration = '1 s'; Error = 'boom'; KnownFlake = $false; FlakeIssue = 0 }
+                    })
+                }
+                return [PSCustomObject]@{
+                    RunId = '37851453091'; RunAttempt = 1; Workflow = 'CI'; Branch = 'dev'; HeadSha = 'a' * 40
+                    Event = 'push'; Title = 't'; CreatedAt = '2026-10-08T22:00:00Z'; Url = 'u'
+                    Jobs = @($job); Verdict = 'Collapse'; Rerun = $false
+                }
+            }
+        }
+
+        It "stores a record of over 2 MB without passing it as an argument" {
+            $record = New-BigRecord
+            $script:putBody = $null
+            $script:putArgs = $null
+            Mock gh {
+                $global:LASTEXITCODE = if ($args -contains 'PUT') { 0 } else { 1 }
+                if ($args -contains '--input') {
+                    $script:putArgs = @($args)
+                    $script:putBody = Get-Content -Raw $args[($args.IndexOf('--input') + 1)]
+                }
+            }
+
+            Save-CiRunRecord $record | Should -BeTrue
+
+            $script:putBody.Length | Should -BeGreaterThan 2MB
+            ($script:putArgs | Measure-Object -Property Length -Maximum).Maximum | Should -BeLessThan 1000
+            $request = $script:putBody | ConvertFrom-Json
+            $request.branch | Should -Be 'ci-watchdog-data'
+            $stored = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($request.content)) | ConvertFrom-Json
+            @($stored.Jobs[0].Tests).Count | Should -Be 6000
+        }
+
+        It "removes the request file once the record is stored" {
+            $record = New-BigRecord 3
+            Mock gh { $global:LASTEXITCODE = if ($args -contains 'PUT') { 0 } else { 1 } }
+            Save-CiRunRecord $record | Should -BeTrue
+            Test-Path (Join-Path ([IO.Path]::GetTempPath()) 'ci-watchdog-record-37851453091-1.json') | Should -BeFalse
+        }
+
+        It "reports a failed write" {
+            $record = New-BigRecord 3
+            Mock gh { $global:LASTEXITCODE = 1 }
+            Save-CiRunRecord $record | Should -BeFalse
+        }
+
+        It "cuts an endless error line but keeps the test name" {
+            $log = New-JobLog @(
+                '[xUnit.net 00:00:37.78]     Some.Tests.LongErrorTest.Fails [FAIL]'
+                "##[error]$('e' * 5000)"
+            )
+            $tests = @(Get-CiFailedTests $log @())
+            $tests[0].Name | Should -Be 'Some.Tests.LongErrorTest.Fails'
+            $tests[0].Error.Length | Should -BeLessOrEqual 501
+        }
+
+        It "keeps the journal note under the comment size limit" {
+            $note = Format-CiJournalNote (New-BigRecord)
+            $note.Length | Should -BeLessThan 65536
+            $note | Should -Match 'and 5970 more'
+        }
+    }
+
     Context "Get-CiRecordPath" {
         It "separates year and month with a slash in any culture" {
             $record = [PSCustomObject]@{ CreatedAt = '2026-09-20T12:36:13Z'; RunId = '35511089998'; RunAttempt = 1 }
