@@ -47,6 +47,15 @@ Chats) through ordinary invalidation. Armed chats also always appear in the
 **Active Chats** list with a PTT badge, and removing one there also revokes
 consent.
 
+**Desktop while running.** Windows and macOS expose the same device opt-in and
+chat participation settings. `SyncListeningWithPttArming` enables the audio
+workers when a native desktop app has an armed chat, including at startup;
+opening a chat first is not required. Device opt-out, mute and chat-wide pause
+still remove automatic listening without revoking consent. The existing chat
+recording and mute controls remain available. Desktop settings explain that
+PTT stops when the app quits, and omit mobile gesture and lock-screen controls.
+No desktop cold-start wake mechanism is installed.
+
 **Local web settings preview.** On local domains (including worktree subdomains)
 in the Development environment, the web settings expose all PTT controls for
 any account, including mobile gestures, headset buttons, lock-screen transmit

@@ -1398,6 +1398,7 @@
   "Ptt_PauseConfirmText": "暂停期间，此聊天中没有人会收到按住说话音频。成员的参与状态和收听偏好将保留。",
   "Ptt_UseOnThisDevice": "在此设备上使用按住说话",
   "Ptt_UseOnThisDeviceCaption": "关闭后，此设备不会因按住说话语音而唤醒、播放或发送。",
+  "Ptt_UseOnDesktopCaption": "即按即说在应用运行时可用。退出应用后，它将停止工作。",
   "Ptt_ChatsTopic": "按住说话的聊天",
   "Ptt_NoPttChats": "还没有聊天使用按住说话——由聊天的所有者在聊天中开启。",
   "Ptt_AvailableTopic": "已为按住说话准备好的聊天",

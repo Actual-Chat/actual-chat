@@ -1398,6 +1398,7 @@
   "Ptt_PauseConfirmText": "Під час паузи ніхто в цьому чаті не отримуватиме аудіо «Натисни і говори». Участь і налаштування прослуховування збережуться.",
   "Ptt_UseOnThisDevice": "Використовувати Push-to-Talk на цьому пристрої",
   "Ptt_UseOnThisDeviceCaption": "Коли вимкнено, цей пристрій не прокидатиметься, не відтворюватиме й не передаватиме голос Push-to-Talk.",
+  "Ptt_UseOnDesktopCaption": "Push-to-talk працює, поки застосунок запущений. Після виходу із застосунку він вимикається.",
   "Ptt_ChatsTopic": "Чати Push-to-Talk",
   "Ptt_NoPttChats": "Push-to-Talk поки не ввімкнено в жодному чаті — його вмикає власник чату.",
   "Ptt_AvailableTopic": "Чати, готові до Push-to-Talk",

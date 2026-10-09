@@ -1398,6 +1398,7 @@
   "Ptt_PauseConfirmText": "Niko u ovom chatu neće primati zvuk Pritisni i govori tokom pauze. Učešće članova i postavke slušanja bit će sačuvani.",
   "Ptt_UseOnThisDevice": "Koristite Pritisni i govori na ovom uređaju",
   "Ptt_UseOnThisDeviceCaption": "Kada je isključeno, ovaj uređaj se neće buditi, reproducirati ni slati glas putem Pritisni i govori.",
+  "Ptt_UseOnDesktopCaption": "Push-to-talk radi dok je aplikacija pokrenuta. Prestaje raditi kada izađete iz aplikacije.",
   "Ptt_ChatsTopic": "Chatovi s Pritisni i govori",
   "Ptt_NoPttChats": "Nijedan chat još ne koristi Pritisni i govori — vlasnik ga uključuje u samom chatu.",
   "Ptt_AvailableTopic": "Chatovi spremni za Pritisni i govori",
