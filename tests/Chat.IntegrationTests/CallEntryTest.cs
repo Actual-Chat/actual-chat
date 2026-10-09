@@ -430,6 +430,41 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     }
 
     [Fact]
+    public async Task TheTailFlowShouldPullTheCallEntryIntoACardThatRacedIt()
+    {
+        // The close can materialize the card before the call's end has written its entry, leaving the
+        // entry one past the range - and the chat then shows it a second time as a system line.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        await tester.CreateTextEntry(chatId, "hi");
+        await HangUp(backend, chatId, alice.Id);
+        var conversationId = connected!.ToMaterializedConversation().Id;
+        var callEntry = (await ReadCallEntries(tester, chatId)).Single();
+        var materialized = await conversations.Get(conversationId, default).Require();
+        var raced = await tester.AppServices.Commander()
+            .Call(new ConversationBackend_Materialize(materialized with { EndEntryLid = callEntry.LocalId - 1 }));
+        raced.EntryLidRange.Contains(callEntry.LocalId).Should().BeFalse("the race is in place");
+
+        // act
+        await RunCallTailFlow(tester, conversationId);
+
+        // assert
+        await TestWait.When(async ct => {
+            var healed = await conversations.Get(conversationId, ct);
+            healed.Should().NotBeNull();
+            healed!.EntryLidRange.Contains(callEntry.LocalId).Should()
+                .BeTrue("the card must cover the entry it stands in for");
+        }, WaitTimeout);
+    }
+
+    [Fact]
     public async Task AMessageWrittenAfterTheCallShouldStayOutsideIt()
     {
         // The test of belonging is when the speech started, and a message written after the hang-up

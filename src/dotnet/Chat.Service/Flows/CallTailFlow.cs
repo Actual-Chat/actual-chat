@@ -76,7 +76,9 @@ public sealed partial class CallTailFlow : Flow<Unit>
                 continue;
             if (++scannedCount > MaxTailEntries)
                 break;
-            if (entry.IsSystemEntry || entry.BeginsAt > conversation.EndsAt)
+            // The call's own entry is written as it ends, so a close that raced it materialized the card
+            // one short of it, and the card must cover the entry it stands in for.
+            if (entry.BeginsAt > conversation.EndsAt || entry.IsSystemEntry && !IsOwnCallEntry(entry, conversation))
                 continue;
 
             endEntryLid = entry.LocalId;
@@ -84,4 +86,7 @@ public sealed partial class CallTailFlow : Flow<Unit>
 
         return endEntryLid;
     }
+
+    private static bool IsOwnCallEntry(ChatEntry entry, Conversation conversation)
+        => entry is CallEntry { Outcome: CallOutcome.Ended } call && call.CallerId == conversation.CallerId;
 }
