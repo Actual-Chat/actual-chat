@@ -163,9 +163,7 @@
         }
     }
 
-    private RenderFragment GifButton(
-        GifItem gif, string cls, bool lazy, bool mustUseProxy
-    ) => __builder => {
+    private RenderFragment GifButton(GifItem gif, string cls, bool lazy, bool mustUseProxy) => __builder => {
         var src = mustUseProxy ? UrlMapper.GifProxyUrl(gif.PreviewUrl) : "";
         if (src.IsNullOrEmpty())
             src = gif.PreviewUrl;
