@@ -172,9 +172,12 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
         // assert - it closes, and its block is kept as the call's card
         (await backend.GetState(chatId, default)).Should().BeNull();
         var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
-        var conversation = await conversations.Get(session.ConversationId, default);
-        conversation.Should().NotBeNull();
-        conversation!.IsCall.Should().BeTrue();
+        // Polled: the card is written by the close, and a Get that ran before it may still be cached as null
+        await TestWait.WhenPolled(async () => {
+            var conversation = await conversations.Get(session.ConversationId, default);
+            conversation.Should().NotBeNull();
+            conversation!.IsCall.Should().BeTrue();
+        });
     }
 
     [Fact]
