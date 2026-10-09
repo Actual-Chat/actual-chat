@@ -211,7 +211,7 @@ whole build, and with it every scroll request until the peer reconnects.
 | `IReactions.ListSummaries`, `IReactions.Get` | cached | Entries with reactions | T (reacted entries of the tail) |
 | `IChats.IsEntryReadByMentionedUser` per mention; `IAuthors.GetByUserId`, `IAccounts.GetOwn`, `IContacts.Get` for `@u:` mentions | cached | Mention chips | — |
 | `IChats.GetReadPositionsStat`, `IAuthors.ListAuthorIds` | cached | Read ticks on own messages | — / T |
-| `INotifications.HasNotifiedMentionedMembers` | cached | Own messages with mentions | — |
+| `INotifications.ListMentionedMemberAlerts` | cached | Own messages with mentions | — |
 | `IChats.Get(threadChatId)`, `IChatThreads.GetThreadCreator`, `IChatThreads.GetThreadStat`, thread `GetIdRange` + `GetTile` | cached | Thread cards | — |
 | `IUserSettings.Get(ChatUserSettings)`, `ITranslations.GetLanguageTile`, `ITranslations.Get` | cached | Translation on; one `ITranslations.Get(translateIfMissing: true)` per missing translation is a server-side write bounded by a 60 s timeout | S / — |
 | `ISharedLocations.Get` | cached | Location messages | — |

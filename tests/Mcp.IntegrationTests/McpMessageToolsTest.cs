@@ -283,10 +283,10 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
 
         // assert
         var notifications = Tester.AppServices.GetRequiredService<INotifications>();
-        var isNotified = await WaitFor(
-            () => notifications.HasNotifiedMentionedMembers(Tester.Session, entry.Id, CancellationToken.None),
-            x => x);
-        isNotified.Should().BeTrue();
+        var alerts = await WaitFor(
+            () => notifications.ListMentionedMemberAlerts(Tester.Session, entry.Id, CancellationToken.None),
+            x => x.Any(s => s.UserId == bob.Id && s.IsNotified));
+        alerts.Should().Contain(s => s.UserId == bob.Id && s.IsNotified);
     }
 
     [Fact]
