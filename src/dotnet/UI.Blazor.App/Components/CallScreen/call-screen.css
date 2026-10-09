@@ -909,6 +909,11 @@ body.show-fps-overlay .video-fps:empty {
     @apply flex items-center gap-1;
     @apply pointer-events-none;
 }
+/* On a phone the focused tile runs under the insets and into the display's rounded corners */
+.call-screen.expanded:not(.layout-equal) .video-track-player.item-focused .video-tile-caption {
+    bottom: calc(var(--vp-safe-bottom) + 0.25rem);
+    left: calc(var(--vp-safe-left) + 0.25rem);
+}
 .call-screen .video-track-player .video-participant-label {
     @apply flex items-center gap-1;
     @apply px-1.5 py-0.5 rounded-lg;
@@ -1104,6 +1109,13 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
    safe-area + 0.5rem), so keep tiles off the screen edge here. */
 body.narrow .call-screen.expanded.layout-equal .c-grid {
     @apply p-0.5;
+}
+body.device-mobile.narrow .call-screen.expanded.layout-equal .c-grid {
+    padding:
+        calc(var(--vp-safe-top) + 0.125rem)
+        calc(var(--vp-safe-right) + 0.125rem)
+        calc(var(--vp-safe-bottom) + 0.125rem)
+        calc(var(--vp-safe-left) + 0.125rem);
 }
 .call-screen.expanded.layout-equal .c-grid .video-track-player.pip-overlay {
     @apply hidden;
