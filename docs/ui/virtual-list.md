@@ -1102,6 +1102,25 @@ the edge, the way they do everywhere else on a desktop; a wheel notch during an 
 the boundary. `isTouchMotion` carries a finger's flag through its fling and clears after `MotionGapMs`
 (200ms) without scroll events, so a mouse does not inherit the band from a finger.
 
+A fling does not stop being a finger's across a stall. Scroll events come from the main thread and the
+fling from the compositor, so a main thread busy for 200ms - rendering the pages the fling has just loaded
+- delivers none while the fling carries on, and the next event arrives after a gap that reads as a
+release. `isFlingContinuation` keeps the flag when the pre-gap speed was at least 0.5px/ms and the
+position has moved the way it was heading by no more than 4 times speed * gap (the speed is smoothed, so it
+lags a fling still gaining speed; measured travel was 28% to 85% of speed * gap for a slowing fling and up to
+3.4 times for one that was not). Without it the arrival took the snap path, and the snap alone does not stop
+a fling the compositor is running: the fling kept pushing the scroll past the limit on every display frame
+and the page wrote it back once per its own frame. Where the two clocks differ - a 120Hz screen with the
+page stepping at 60Hz, which is what Chrome on a 120Hz Android phone does - the content alternated between
+the two positions on every display frame for as long as the fling lasted (126, 87 and 119 snaps over 2.1,
+1.4 and 2.0s in three runs on a phone; the screen showed `-77 +77 -74 +76 ...` shrinking over 220 frames).
+After the change the same gesture on the same phone logged no snap at all, kept the flag 13 times, and
+bounced normally on 14 arrivals; no flip in 4,737 frames at 120 fps.
+
+A snapped crossing also ends the fling (`cancelMomentum`, the same two-frame overflow lock the return path
+uses), as a fallback for whatever still reaches the snap path without a finger. Where the engine cannot lock
+overflow (WebKit) this is a no-op.
+
 #### Precise pointing devices: the gesture is driven, not corrected
 
 A trackpad — an Apple Magic Trackpad or any Windows precision touchpad — is not a wheel with smaller
