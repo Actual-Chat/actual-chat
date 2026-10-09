@@ -121,6 +121,37 @@ public class ReportPlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         heard.EntryLid.Should().Be(entry2.Id.LocalId);
     }
 
+    [Fact]
+    public async Task PausedPttShouldNotAdvanceHeardUntilResumed()
+    {
+        // arrange
+        var services = AppHost.Services;
+        var session = Session.New();
+        var account = await AppHost.SignIn(session, new AccountFull("Paused listener"));
+        var (chat, entry, _) = await CreateChatWithStreamingAudioEntry(session, "PausedPttPlayback");
+        await Arm(account.Id, chat.Id);
+        var pauseCmd = new ChatsBackend_Change(chat.Id, null, Change.Update(new ChatDiff { IsPttPaused = true }));
+        await services.Commander().Call(pauseCmd);
+        var streams = services.GetRequiredService<ILiveAudioStreams>();
+        var positions = services.GetRequiredService<IChatPositionsBackend>();
+
+        // act
+        await streams.ReportPlayback(session, chat.Id, "", entry.Id, CancellationToken.None);
+
+        // assert
+        var heard = await positions.Get(account.Id, chat.Id, ChatPositionKind.Heard, CancellationToken.None);
+        heard.EntryLid.Should().Be(ChatPosition.None.EntryLid);
+
+        // act
+        var resumeCmd = new ChatsBackend_Change(chat.Id, null, Change.Update(new ChatDiff { IsPttPaused = false }));
+        await services.Commander().Call(resumeCmd);
+        await streams.ReportPlayback(session, chat.Id, "", entry.Id, CancellationToken.None);
+
+        // assert
+        heard = await positions.Get(account.Id, chat.Id, ChatPositionKind.Heard, CancellationToken.None);
+        heard.EntryLid.Should().Be(entry.Id.LocalId);
+    }
+
     private async Task Arm(UserId userId, ChatId chatId)
     {
         // Chat-level PTT is a precondition for arming; the value below is just a "turn it on"

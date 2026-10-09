@@ -390,6 +390,40 @@ public class PttPushTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     // Private methods
 
+    [Fact]
+    public async Task PausedPttShouldSuppressWakesAndResumeWithExistingConsent()
+    {
+        // arrange
+        var (chatId, alice, _, bobAuthor) = await CreateChatWithAliceAndBob("PTT chat pause");
+        var deviceId = await RegisterDevice(alice.Id, DeviceType.AndroidApp);
+        var pttDeviceId = await RegisterDevice(alice.Id, DeviceType.iOSPttApp);
+        await ArmByPtt(alice.Id, chatId);
+        var priorSettings = await ServerKvasBackend.ForUser(alice.Id).UserPttSettings().Get();
+        var pauseCmd = new ChatsBackend_Change(chatId, null, Change.Update(new ChatDiff { IsPttPaused = true }));
+        await Commander.Call(pauseCmd);
+        Sink.Clear();
+        ApnsSink.Clear();
+
+        // act
+        var speechEvent = new SpeechStartedEvent(chatId, bobAuthor.Id, AppHost.Services.Clocks().SystemClock.Now);
+        await Commander.Call(speechEvent);
+
+        // assert
+        Sink.Wakes.Should().NotContain(w => w.ChatId == chatId);
+        ApnsSink.Wakes.Should().NotContain(w => w.ChatId == chatId);
+
+        // act
+        var resumeCmd = new ChatsBackend_Change(chatId, null, Change.Update(new ChatDiff { IsPttPaused = false }));
+        await Commander.Call(resumeCmd);
+        await Commander.Call(speechEvent);
+
+        // assert
+        Sink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(deviceId));
+        ApnsSink.Wakes.Should().Contain(w => w.ChatId == chatId && w.DeviceIds.Contains(pttDeviceId));
+        var settings = await ServerKvasBackend.ForUser(alice.Id).UserPttSettings().Get();
+        settings.PttChats.Should().Equal(priorSettings.PttChats);
+    }
+
     private static async Task WaitFor(Func<bool> condition, TimeSpan timeout)
     {
         var deadline = CpuTimestamp.Now + timeout;

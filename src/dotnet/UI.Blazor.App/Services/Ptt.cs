@@ -14,6 +14,11 @@ public static class Ptt
         return box?.Value ?? false;
     }
 
+    public static bool IsLocalSettingsPreview(HostInfo hostInfo)
+        => !hostInfo.HostKind.IsMauiApp()
+            && hostInfo.IsDevelopmentInstance
+            && hostInfo.BaseUrlKind == BaseUrlKind.Local;
+
     public static bool IsStaleWake(Moment startedAt, Moment now)
         => now - startedAt > Constants.Audio.PttStaleWakeAge;
 
@@ -54,7 +59,7 @@ public static class Ptt
         if (dismissedAt >= enabledAt)
             return PttJoinBannerKind.None;
         if (!isArmedInChat)
-            return PttJoinBannerKind.AllowChat;
+            return isDeviceEnabled ? PttJoinBannerKind.AllowChat : PttJoinBannerKind.AllowChatAndDevice;
 
         return isDeviceEnabled ? PttJoinBannerKind.None : PttJoinBannerKind.EnableDevice;
     }
@@ -65,6 +70,7 @@ public enum PttJoinBannerKind
     None,
     AllowChat,
     EnableDevice,
+    AllowChatAndDevice,
 }
 
 // Platform-independent view of the phone's alert mode; hosts that can't tell report Normal.

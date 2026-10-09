@@ -14,11 +14,17 @@
         <i class="icon-push-to-talk text-2xl"></i>
     </Icon>
     <Body>
-        @(kind == PttJoinBannerKind.EnableDevice ? L.Banner_PttUseDevice : L.Banner_PttAllow)
+        @(kind switch {
+            PttJoinBannerKind.EnableDevice => L.Banner_PttUseDevice,
+            PttJoinBannerKind.AllowChatAndDevice => L.Banner_PttAllowOnDevice,
+            _ => L.Banner_PttAllow,
+        })
     </Body>
     <Buttons>
         <BannerButton
-            Click="@OnJoinClick">@L.Common_Allow</BannerButton>
+            Click="@OnJoinClick">@(kind == PttJoinBannerKind.EnableDevice
+                ? L.Banner_PttTurnOn
+                : L.Common_Allow)</BannerButton>
     </Buttons>
 </Banner>
 
@@ -55,7 +61,7 @@
         var chat = Chat;
         if (chat.HasSingleAuthor || !chat.IsMember() || chat.Id.IsThread())
             return PttJoinBannerKind.None;
-        if (chat.PttEnabledAt is not { } enabledAt)
+        if (chat.ActivePttEnabledAt is not { } enabledAt)
             return PttJoinBannerKind.None;
 
         if (!_settings.WhenRead.IsCompleted)
@@ -65,8 +71,7 @@
         if (kind == PttJoinBannerKind.None || State.Value != PttJoinBannerKind.None)
             return kind;
 
-        // The owner's own toggle lands as two writes: the chat's new epoch first, the auto-consent a
-        // round trip later - so a fresh ask waits out that gap instead of flashing through it.
+        // Let pending participation writes settle before showing a new consent prompt.
         await Clocks.CpuClock.Delay(ShowDelay, cancellationToken).ConfigureAwait(false);
         return await GetKind(enabledAt).ConfigureAwait(false);
     }
@@ -90,14 +95,12 @@
 
     private async Task OnJoinClick() {
         var chat = Chat;
-        if (chat.PttEnabledAt is not { } enabledAt)
+        if (chat.ActivePttEnabledAt is not { } enabledAt)
             return;
 
         if (!await ChatAudioUI.ConsentPtt(chat.Id, enabledAt, CancellationToken.None).ConfigureAwait(true))
             return;
 
-        // The banner is the confirmation: whichever wording it showed, Allow enrols this device, and
-        // the settings page is where a user who only meant their other devices turns it back off.
         ChatAudioUI.SetIsPttEnabledOnDevice(true);
     }
 
