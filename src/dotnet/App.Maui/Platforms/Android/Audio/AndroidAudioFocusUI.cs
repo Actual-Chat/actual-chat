@@ -16,11 +16,13 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     private CarAudioRoute _carAudioRoute = CarAudioRoute.Default;
     private int _isTrackingCarAudioRoute;
     private int _isCallVideo;
+    private int _isCallActive;
     // Non-null while a call is on: all its audio then takes the communication route, and the route
     // only picks the device. A call's playback is one long track, so its usage can't follow a focus
     // change mid-call.
     private CallAudioRoute? _callAudioRoute;
     public override bool IsCommunicationFocus => _focusHelper.IsCommunicationFocus;
+    public override bool IsCallActive => Volatile.Read(ref _isCallActive) != 0;
     // Nothing to pick from without an earpiece - a tablet - so the call screen shows no button there.
     public override IState<AudioOutputRoutes>? OutputRoutes => _focusHelper.HasEarpiece ? _outputRoutes : null;
 
@@ -191,6 +193,7 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 
             Log.LogInformation("SetCallAudioRoute: {Route}", route);
             _callAudioRoute = route;
+            Volatile.Write(ref _isCallActive, route is not null ? 1 : 0);
             await _focusHelper.SetCallAudioRoute(route ?? default).ConfigureAwait(false);
             // Only a call starting or ending changes the focus kind; a pick within a call just moves the device.
             var carAudioRoute = Volatile.Read(ref _carAudioRoute);
