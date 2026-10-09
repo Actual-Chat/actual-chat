@@ -31,15 +31,15 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | ID | Priority | Review | Title | Reported by | GitHub | Messages |
 |---|---|---|---|---|---|---|
 | B26775 | High | Confirmed | Echo cancellation stops working in the browser and the Windows app | Frol | — | [B26775](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26775) |
-| B27095 | High | Confirmed | Sessions expire while the user is active or signing in | Andrey | — | [B27095](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27095) |
-| B26575 | High | Confirmed | Tapping a notification opens the Notifications section instead of the chat | Alexey | — | [B26575](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26575) |
+| B27095 | High | Confirmed | Sessions expire while the user is active or signing in | Andrey | [#5220](https://github.com/Actual-Chat/actual-chat/issues/5220) issue, [#5225](https://github.com/Actual-Chat/actual-chat/issues/5225) (draft PR) | [B27095](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27095) |
+| B26575 | High | Confirmed | Tapping a notification opens the Notifications section instead of the chat | Alexey | [#5216](https://github.com/Actual-Chat/actual-chat/issues/5216) issue, [#5221](https://github.com/Actual-Chat/actual-chat/issues/5221) (draft PR) | [B26575](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26575) |
 | B26865 | High | Confirmed | Listening resumes after restart or after stopping, for about a minute | Alex | [#5204](https://github.com/Actual-Chat/actual-chat/issues/5204) open, [#5205](https://github.com/Actual-Chat/actual-chat/issues/5205) (draft PR) | [B26865](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26865) |
 | B26303 | High | Confirmed | Call title keeps the wrong language after toggling translation | Andrey | — | [B26303](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26303) |
 | B26936 | High* | Confirmed (investigate) | Live block freezes, no new transcripts or messages | Frol | [#4927](https://github.com/Actual-Chat/actual-chat/issues/4927) (related, open) | [B26936](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26936) |
 | B26538 | High* | Confirmed (investigate) | Prod web page reloads itself every 1–5 minutes | Andrey | — | [B26538](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26538) |
 | B26633 | Medium* | Confirmed | Chat view shows a blank screen instead of skeletons | Frol | — | [B26633](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26633) |
 | B26587 | Medium* | Confirmed | Notification with the last message arrives after the call ended | Dmitrii | [#4594](https://github.com/Actual-Chat/actual-chat/issues/4594) (related, closed) | [B26587](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26587) |
-| N1 | Medium* | Confirmed | Notifications panel: replace the '…' menu with a Clear button | Alex | — | — |
+| N1 | Medium* | Confirmed | Notifications panel: replace the '…' menu with a Clear button | Alex | [#5219](https://github.com/Actual-Chat/actual-chat/issues/5219) issue, [#5223](https://github.com/Actual-Chat/actual-chat/issues/5223) (draft PR) | — |
 | B26811 | Medium* | Confirmed | HEIC image in the crop modal looks wrong | Andrey | — | [B26811](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26811) |
 | B27005 | Medium* | Confirmed | Clicking a word starts the wrong playback ('trainer vs DJ') | Andrey | [#5211](https://github.com/Actual-Chat/actual-chat/issues/5211) issue, [#5212](https://github.com/Actual-Chat/actual-chat/issues/5212) (draft PR) | [B27005](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27005) |
 | B27081 | Medium* | Confirmed | Video message shows as a broken file when transcoding fails | Alex | [#5162](https://github.com/Actual-Chat/actual-chat/issues/5162) open, [#5176](https://github.com/Actual-Chat/actual-chat/issues/5176) open | [B27081](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27081) |
@@ -50,7 +50,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | B27040 | Medium* | Needs check | Android microphone takes over a second to start recording | Alex | [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open, [#5210](https://github.com/Actual-Chat/actual-chat/issues/5210) (draft PR, step 1) | [B27040](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27040) |
 | B26964 | Medium* | Needs check | Klipy GIFs load very slowly | Andrey | [#5206](https://github.com/Actual-Chat/actual-chat/issues/5206) issue, [#5207](https://github.com/Actual-Chat/actual-chat/issues/5207) (draft PR) | [B26964](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26964) |
 | B27078 | Medium* | Needs check | Voice and transcription settings open slowly after a refresh | Andrey | — | [B27078](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27078) |
-| M9665 | Medium* | Needs check | iPhone: listening panel covers the Back arrow in the chat header | Alex | [#5104](https://github.com/Actual-Chat/actual-chat/issues/5104) (related, open) | [M9665](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9665) |
+| M9665 | Medium* | Needs check | iPhone: listening panel covers the Back arrow in the chat header | Alex | [#5104](https://github.com/Actual-Chat/actual-chat/issues/5104) open, [#5218](https://github.com/Actual-Chat/actual-chat/issues/5218) (draft PR) | [M9665](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9665) |
 | M9674 | Medium* | Needs check | Live session with the keyboard open leaves a big empty gap | Alex | — | [M9674](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9674) |
 | B26842 | Medium* | Needs review | Push-to-talk: unclear enabling UI, wrong Russian string, missing in browsers | Alex | [#5173](https://github.com/Actual-Chat/actual-chat/issues/5173) open | [B26842](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26842) |
 | B26849 | Medium* | Needs review | Unread-reaction badge stays in the chat list after reading | Frol | — | [B26849](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26849) |
@@ -61,8 +61,8 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | M9807 | Low* | Confirmed | Bottom strip turns white while the left panel is open (Chrome) | Alex | — | [M9807](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9807) |
 | B27028 | Low* | Needs check | 'Real-time listening will be disabled' dialog on word click | Andrey | [#5208](https://github.com/Actual-Chat/actual-chat/issues/5208) issue, [#5209](https://github.com/Actual-Chat/actual-chat/issues/5209) (draft PR) | [B27028](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27028) |
 | B26510 | Low* | Needs check | Historic playback cut off abruptly | Frol | [#4663](https://github.com/Actual-Chat/actual-chat/issues/4663) (possibly related, open) | [B26510](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26510) |
-| B27108 | Low* | Needs check | Live session collapses into an odd intermediate state | Frol | [#4425](https://github.com/Actual-Chat/actual-chat/issues/4425) (related, open), [#5213](https://github.com/Actual-Chat/actual-chat/issues/5213) issue, [#5214](https://github.com/Actual-Chat/actual-chat/issues/5214) (draft PR) | [B27108](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27108) |
-| B26344 | Low* | Needs check | Stray bracket after a link in a message | Frol | [#5154](https://github.com/Actual-Chat/actual-chat/issues/5154) (candidate, closed) | [B26344](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26344) |
+| B27108 | Low* | Needs check | Live session collapses into an odd intermediate state | Frol | [#4425](https://github.com/Actual-Chat/actual-chat/issues/4425) (related, open), [#5213](https://github.com/Actual-Chat/actual-chat/issues/5213) issue, [#5214](https://github.com/Actual-Chat/actual-chat/issues/5214) (draft PR), [#5215](https://github.com/Actual-Chat/actual-chat/issues/5215) (follow-up: first expand click) | [B27108](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27108) |
+| B26344 | Low* | Needs check | Stray bracket after a link in a message | Frol | [#5154](https://github.com/Actual-Chat/actual-chat/issues/5154) (candidate, closed), [#5217](https://github.com/Actual-Chat/actual-chat/issues/5217) issue, [#5224](https://github.com/Actual-Chat/actual-chat/issues/5224) (draft PR) | [B26344](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26344) |
 | B26247 | Low | Needs review | Stale notifications after logout and login | Alex | [#4546](https://github.com/Actual-Chat/actual-chat/issues/4546) (related, closed) | [B26247](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26247) |
 | M9778 | Low | Needs review | Push notification arrives seconds after opening the chat | Frol | — | [M9778](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9778) |
 | M9767 | Low* | Needs review | Image viewer glitch after a fast swipe down | Andrey | — | [M9767](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9767) |
@@ -97,7 +97,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** High / Confirmed
 - **Reported by:** Andrey (also: Alex)
 - **Messages:** [B27095](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27095)
-- **GitHub:** —
+- **GitHub:** [#5220](https://github.com/Actual-Chat/actual-chat/issues/5220) issue, [#5225](https://github.com/Actual-Chat/actual-chat/issues/5225) (draft PR)
 - **What it is:** Andrey was logged out on prod in the middle of typing a message. Alex says the same happens right after logging in, i.e. a session expires even though the app is in use.
 - **Notes:** Alex (2026-10-09): this must not happen; find why a session expires while it is used.
 
@@ -106,7 +106,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** High / Confirmed
 - **Reported by:** Alexey (also: Dmitrii, Alex)
 - **Messages:** [B26575](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26575), [B26577](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26577)
-- **GitHub:** —
+- **GitHub:** [#5216](https://github.com/Actual-Chat/actual-chat/issues/5216) issue, [#5221](https://github.com/Actual-Chat/actual-chat/issues/5221) (draft PR)
 - **What it is:** Opening a notification lands in the Notifications section rather than in the chat the notification is about. Alex also hits it; the only way to get to the chat is to click the notification inside the Notifications section.
 - **Notes:** Alex (2026-10-09): you must jump to the chat. Hypothesis: it happens when the Notifications section is already open, because the notification target isn't implemented as a URL prefix. Related: N1. Code check (2026-10-09): hypothesis confirmed in part. The Notifications section is not a URL: it is NavbarUI.SelectedGroupId == 'unread', persisted in local settings, and ChatUI.SelectNavbarGroup (~lines 881–882, since 21ab965fd9) deliberately keeps it when a chat opens ('Back returns to the unread panel'). On phones, a tap on a notification for the chat that is already open (bare /chat/X link, e.g. attention pings) is a same-URL navigation that History.NavigateTo skips, so the left panel stays on Notifications. Fix in AutoNavigationUI.NavigateTo for notification-like reasons: select the Chats group when Unread is selected, and hide the panels explicitly on a same-URL navigation. The cause for ordinary message pushes is not proven and may need a device trace.
 
@@ -171,7 +171,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Confirmed
 - **Reported by:** Alex
 - **Messages:** — (review comment)
-- **GitHub:** —
+- **GitHub:** [#5219](https://github.com/Actual-Chat/actual-chat/issues/5219) issue, [#5223](https://github.com/Actual-Chat/actual-chat/issues/5223) (draft PR)
 - **What it is:** The '…' menu in the Notifications section has one item, Clear, which is hard to find. Replace it with a visible Clear button that asks for confirmation in a modal.
 - **Notes:** Alex (2026-10-09), while reviewing the notification-tap bug; no chat message.
 
@@ -270,7 +270,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Needs check
 - **Reported by:** Alex (also: Dmitrii, Andrey, Frol)
 - **Messages:** [M9665](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9665), [M9771](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9771), [M9776](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9776)
-- **GitHub:** [#5104](https://github.com/Actual-Chat/actual-chat/issues/5104) (related, open)
+- **GitHub:** [#5104](https://github.com/Actual-Chat/actual-chat/issues/5104) open, [#5218](https://github.com/Actual-Chat/actual-chat/issues/5218) (draft PR)
 - **What it is:** The live-session activity panel (speaker heads) is drawn over the Back arrow in the chat header, and after recording stops while listening continues, the chat icon and arrow disappear. Tapping the left part of the header still goes back.
 - **Notes:** Alex (2026-10-09): a UI issue, check whether it is fixed. Related: #5104 (Android, speaker avatar replaces the Back button). Code check (2026-10-09): not fixed; same cause as #5104. Intentional design from 571cc36589: when the header collapses, the Back arrow gets opacity 0 (main.css, .layout-header.collapsed:has(.header-activity-panel-wrapper) .btn-header-back) and the pointer-events:none activity panel with the author heads is drawn over it; taps still reach the hidden arrow. Nothing expands the header when recording stops (chat-activity-panel.ts). Fix: keep the arrow visible and pad the panel to its right when collapsed (also fixes #5104); optionally expand the header when recording stops.
 
@@ -368,7 +368,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Low* / Needs check
 - **Reported by:** Frol (also: Dmitrii)
 - **Messages:** [B27108](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27108), [B27116](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27116), [B27118](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27118), [B27120](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27120)
-- **GitHub:** [#4425](https://github.com/Actual-Chat/actual-chat/issues/4425) (related, open), [#5213](https://github.com/Actual-Chat/actual-chat/issues/5213) issue, [#5214](https://github.com/Actual-Chat/actual-chat/issues/5214) (draft PR)
+- **GitHub:** [#4425](https://github.com/Actual-Chat/actual-chat/issues/4425) (related, open), [#5213](https://github.com/Actual-Chat/actual-chat/issues/5213) issue, [#5214](https://github.com/Actual-Chat/actual-chat/issues/5214) (draft PR), [#5215](https://github.com/Actual-Chat/actual-chat/issues/5215) (follow-up: first expand click)
 - **What it is:** Frol collapsed a session right after the 'Thanks' message and the chat view re-rendered into a muddled state; after a couple of chat switches it collapsed properly. Frol clarified that the collapse button says 'collapsed' while only part of the messages are collapsed, and the conversation footer comes after the messages that stayed open.
 - **Notes:** Alex (2026-10-09): needs a quick look. Related: #4425 (live conversation on collapse shows just the title). Code check (2026-10-09): bug, clear trace. In ChatUI.Tiles.cs (~lines 594–605) a collapsed open block hides its tail only while the live conversation exists; when the session closes, the materialized closed block has an empty HiddenTailRange, so the last 10 or more rows (LiveFoldMath.MinTailEntryCount) render inside the block under a 'collapsed' toggle, followed by the footer. Switching chats or toggling again drops the retained block, which is why it self-heals. Fix: extend the condition to a collapsed, non-dissolving closed block (hidden range from the fold end to the block's end). Test: LiveConversationDisplayTest, collapse while latched, finalize, assert no leaf rows past the fold end. #4425 is probably a different path.
 
@@ -377,7 +377,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Low* / Needs check
 - **Reported by:** Frol (also: Andrey, Alexey)
 - **Messages:** [B26344](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26344)
-- **GitHub:** [#5154](https://github.com/Actual-Chat/actual-chat/issues/5154) (candidate, closed)
+- **GitHub:** [#5154](https://github.com/Actual-Chat/actual-chat/issues/5154) (candidate, closed), [#5217](https://github.com/Actual-Chat/actual-chat/issues/5217) issue, [#5224](https://github.com/Actual-Chat/actual-chat/issues/5224) (draft PR)
 - **What it is:** A closing bracket appears right after a link; Andrey recalls seeing it before with a doubled link. Alexey says such links need special user info.
 - **Notes:** Alex (2026-10-09): check whether anything related changed. Candidate: #5154 (markup: links, dividers and stream reset, closed). Code check (2026-10-09): no clear trace (screenshot unavailable). Plausible cause (~40%): a bare URL with a path swallows a trailing ')' or ']' (MarkupParser.cs WwwUrl / IsUrlChar / UrlPathRe), so '(see https://x.com/a)' links the bracket; nothing trims trailing punctuation. #5154 did not touch this; it only added titled and enclosed links. No test covers a bare URL in parentheses. Fix: trim unbalanced trailing ) ] } and sentence punctuation from the URL and emit it as text. Frol's original message text is needed to confirm.
 
