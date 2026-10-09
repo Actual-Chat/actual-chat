@@ -601,8 +601,15 @@ public partial class ChatUI
                             ? liveConvTail.Id.StartEntryLid
                             : Math.Min(liveConvTail.EndEntryLid + 1, liveBlockFoldRange.End),
                         long.MaxValue);
-            else if (liveBlockId is { } closedBlockId && expandedConversations.Contains(closedBlockId))
-                hiddenLiveTailRange = default;
+            else if (liveBlockId is { } closedBlockId) {
+                // A block collapsed at close keeps hiding its spoken tail; one expanded at close absorbs it.
+                if (expandedConversations.Contains(closedBlockId))
+                    hiddenLiveTailRange = default;
+                else if (closedBlock is { IsDissolving: false })
+                    hiddenLiveTailRange = new Range<long>(
+                        liveBlockFoldRange.IsEmpty ? closedBlockId.StartEntryLid : liveBlockFoldRange.End,
+                        long.MaxValue);
+            }
         }
 
         if (chatRangeTiles.Count == 0)
