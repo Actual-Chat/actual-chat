@@ -17,7 +17,8 @@ const { debugLog, errorLog } = getLogs('MarkupEditor');
 const MentionListId = '@';
 const ZeroWidthSpace = '\u200b';
 const ZeroWidthSpaceRe = new RegExp(ZeroWidthSpace, 'g');
-const CrlfRe = /\r\n/g;
+// U+2028 / U+2029 are what Apple Notes puts on the clipboard for line breaks
+const LineBreakRe = /\r\n|[\r\u2028\u2029]/g;
 const RegexEscapeRe = /[.*+?^${}()|[\]\\]/g;
 const IdCharRe = /[\p{L}\p{N}_:.%~\-]/u;
 const emptyHtmlVariants = new Set<string>(['', '\n', '\r\n', '<br>', '<br >', '<br/>', '<br />']);
@@ -1077,7 +1078,7 @@ function extractVoxtMarkup(html: string | null): string | null {
 
 function cleanupPastedText(text: string): string {
     // Strip zero-width spaces (they smuggle in via formatted HTML paste) and
-    // normalize \r\n → \n so the markup parser sees a single line-ending style.
+    // normalize every line break to \n, so both the editor and the markup parser see a single style.
     // The previous "collapse \n\n → \n when no single \n is present" heuristic
     // was buggy (its single-LF probe used a regex whose `^`/`$` were treated as
     // literal characters, so it mis-fired and collapsed real paragraph breaks).
@@ -1085,7 +1086,7 @@ function cleanupPastedText(text: string): string {
 }
 
 function normalize(text: string): string {
-    return text.normalize().replace(CrlfRe, '\n');
+    return text.normalize().replace(LineBreakRe, '\n');
 }
 
 function listParents(start: Node, endExclusive: Node): HTMLElement[] {

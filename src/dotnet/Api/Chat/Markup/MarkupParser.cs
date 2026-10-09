@@ -48,7 +48,7 @@ public sealed partial class MarkupParser : IMarkupParser
             return EmptyResult;
 
         // The grammar sees a single line ending style, so any input produces the same markup.
-        // Without this a lone '\r' ends the parse early and silently truncates the message.
+        // Without this a lone '\r', U+2028 or U+2029 ends the parse early and silently truncates the message.
         text = text.NormalizeNewLines(NewLineMarkup.Instance.Text);
         text = DropResets(text, allowIncompleteMarkup);
         if (text.Length == 0)
@@ -124,7 +124,8 @@ public sealed partial class MarkupParser : IMarkupParser
     // Character classes
 
     // Everything that can start markup, plus every line separator the grammar knows - see IsPlainText
-    private static readonly SearchValues<char> MarkupStartChars = SearchValues.Create("*`@|#[<\r\n\u2028");
+    private static readonly SearchValues<char> MarkupStartChars =
+        SearchValues.Create("*`@|#[<\r\n\u2028\u2029");
 
     // The predicates are separate from the parsers because CharRun builds its scanners straight
     // from them - see CharRunParser for why a character run doesn't go through a combinator.
