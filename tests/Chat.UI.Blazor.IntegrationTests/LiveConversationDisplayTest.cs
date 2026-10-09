@@ -577,6 +577,66 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task CloseShouldKeepSpokenTailHiddenInCollapsedBlock()
+    {
+        // The hidden tail applied only while the session was live; once it closed, the collapsed block
+        // showed the spoken rows past its fold end under the "collapsed" toggle.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("close-collapsed-tail-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_180);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.EffectiveVisibleStartLid;
+        for (var i = 0; i < 3; i++)
+            await CreateSpokenEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+        for (var i = 0; i < 4; i++)
+            await CreateSpokenEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.ToConversation());
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        var foldEndLid = v + 3;
+        await TestWait.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+            LeafEntryLids(items).Should().NotContain(lid => lid >= foldEndLid, Dump(items));
+        }, TimeSpan.FromSeconds(10));
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+
+        // act
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+
+        // assert
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await TestWait.When(async ct => {
+            (await liveBackend.GetState(chat.Id, ct)).Should().BeNull();
+            (await liveBlockUI.GetBlock(chat.Id, ct)).Should().BeOfType<ClosedLiveBlock>();
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            items.Items.OfType<ExpandedConversationMessage>().Should().ContainSingle();
+            LeafEntryLids(items).Should().NotContain(lid => lid >= foldEndLid, Dump(items));
+        }, TimeSpan.FromSeconds(15));
+        await Task.Delay(500);
+        var finalItems = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+        LeafEntryLids(finalItems).Should().NotContain(lid => lid >= foldEndLid, Dump(finalItems));
+    }
+
+    [Fact]
     public async Task CloseWithPreLatchContextKeepsFrozenTailVisible()
     {
         // When the summary's context reaches back before V, the persisted (materialized) conversation
