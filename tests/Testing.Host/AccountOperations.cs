@@ -74,11 +74,12 @@ public static class AccountOperations
         AccountFull account,
         CancellationToken cancellationToken = default)
     {
-        await using var __ = await tester.BackupAuth();
-        await tester.SignIn(account, cancellationToken);
-        var cmd = new Accounts_DeleteOwn { Session = tester.Session };
+        // Deleting an account deactivates its sessions, so it must not use the tester's own one
+        var session = Session.New();
+        await tester.AppHost.SignIn(session, account, cancellationToken);
+        var cmd = new Accounts_DeleteOwn { Session = session };
         await tester.Commander.Call(cmd, cancellationToken);
-        return await tester.Accounts.GetOwn(tester.Session, cancellationToken);
+        return await tester.Accounts.GetOwn(session, cancellationToken);
     }
 
     public static async Task<AsyncDisposable<AccountFull?>> BackupAuth(this IWebTester tester)
