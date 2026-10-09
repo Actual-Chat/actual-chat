@@ -152,7 +152,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             // A summary can finish after a purge took the messages it was made of and removed their
             // conversation: the chat lock is shared with the purge, so a source that is gone by now
             // stays gone, and the conversation isn't recreated from it
-            if (change.IsCreate(out var createDiff)) {
+            // A call's live card is exempt: a call nobody spoke in has no text entries, and the card is all it has
+            if (change.IsCreate(out var createDiff)
+                && !(command.IsLiveMaterialization && createDiff.CallerId is not null)) {
                 var startEntryLid = conversationId.StartEntryLid;
                 var endEntryLid = createDiff.EndEntryLid ?? startEntryLid;
                 var hasSource = await dbContext.ChatEntries
