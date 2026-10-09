@@ -170,8 +170,7 @@ public sealed partial class MarkupParser : IMarkupParser
     // Regex: Url
 
     private static readonly UInt128 FirstUrlCharBits;
-    private static readonly Parser<char, char> FirstUrlChar =
-        Token(c => FirstUrlCharBits.IsBitSet(c));
+    private static readonly Func<char, bool> IsFirstUrlChar = c => FirstUrlCharBits.IsBitSet(c);
     private static readonly Func<char, bool> IsUrlChar =
         c => char.IsLetterOrDigit(c) || @":;/\?&#+=%$@*[](){}_.,\-~'!|".Contains(c);
 
@@ -316,9 +315,7 @@ public sealed partial class MarkupParser : IMarkupParser
     // nothing but the scan: every alphanumeric word starts an e-mail attempt, and materializing
     // it as a string just to fail the regex was the single most expensive thing per word.
     private static readonly Parser<char, Markup> WwwUrl =
-        FirstUrlChar.Then(CharRun.Skip(IsUrlChar, 1))
-            .Slice((span, _) => IsUrl(span) ? new string(span) : "")
-            .Guard(s => s.Length != 0)
+        CharRun.Prefix(IsFirstUrlChar, IsUrlChar, GetUrlLength)
             .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Www));
     private static readonly Parser<char, Markup> Email =
         FirstEmailChar.Then(CharRun.Skip(IsEmailChar, 1))
@@ -541,6 +538,37 @@ public sealed partial class MarkupParser : IMarkupParser
     {
         line = line.TrimStart();
         return line.StartsWith("```") && (line.Length == 3 || char.IsWhiteSpace(line[3]));
+    }
+
+    private static int GetUrlLength(ReadOnlySpan<char> run)
+    {
+        // A closer is trimmed only while the run has more closers of its kind than openers, so the
+        // ")" of "Sampling_(signal_processing)" stays and the one of "(see https://x.com/a)" goes.
+        var roundBalance = run.Count('(') - run.Count(')');
+        var squareBalance = run.Count('[') - run.Count(']');
+        var curlyBalance = run.Count('{') - run.Count('}');
+        var length = run.Length;
+        while (length > 0) {
+            var c = run[length - 1];
+            if (c is '.' or ',' or ';' or '!' or '?')
+                length--;
+            else if (c == ')' && roundBalance < 0) {
+                roundBalance++;
+                length--;
+            }
+            else if (c == ']' && squareBalance < 0) {
+                squareBalance++;
+                length--;
+            }
+            else if (c == '}' && curlyBalance < 0) {
+                curlyBalance++;
+                length--;
+            }
+            else
+                break;
+        }
+
+        return IsUrl(run[..length]) ? length : 0;
     }
 
     private static bool IsUrl(ReadOnlySpan<char> span)
