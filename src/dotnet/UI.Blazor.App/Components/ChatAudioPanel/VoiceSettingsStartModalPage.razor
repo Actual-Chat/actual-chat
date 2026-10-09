@@ -7,7 +7,9 @@
         : m.MustStreamVoice
             ? L.VoiceSettings_On
             : L.VoiceSettings_Off;
-    var pttCaption = m.PttEnabledAt is null
+    var pttCaption = m.IsPttPaused
+        ? L.Ptt_ChatPaused
+        : m.PttEnabledAt is null
         ? L.VoiceSettings_PttNotEnabled
         : m.IsPtt
             ? L.VoiceSettings_PttOn
@@ -57,7 +59,7 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = new(false, false, false, false, null),
+                InitialValue = new(false, false, false, false, null, false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
@@ -77,7 +79,8 @@
             settings.CanChange,
             isPtt,
             !isPtt && pttChatIds.Count >= UserPttSettings.MaxChatCount,
-            pttEnabledAt);
+            pttEnabledAt,
+            chat?.IsPttPaused ?? false);
     }
 
     private Task OnVoiceStreamingClick()
@@ -120,5 +123,6 @@
         bool CanChangeMustStreamVoice,
         bool IsPtt,
         bool IsAtPttCapacity,
-        Moment? PttEnabledAt);
+        Moment? PttEnabledAt,
+        bool IsPttPaused);
 }
