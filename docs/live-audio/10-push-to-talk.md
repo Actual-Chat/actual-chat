@@ -64,6 +64,18 @@ browser capabilities; actual sensor availability remains unchanged and its
 warning stays visible. The preview gate does not apply to native apps or
 non-local/non-development web hosts. Chat-management permissions are unchanged.
 
+**Foreground navigation.** `ChatAudioUI.NavigateOnForeground` reacts only to
+background-to-foreground transitions, not incoming playback while the app is
+already visible. Recording wins; otherwise `GetForegroundChatId` chooses the
+most recently active audible PTT chat from the listening set. Armed-but-idle,
+muted, paused and locally paused listening chats do not redirect the user.
+Navigation uses `AutoNavigationUI` and hides side panels on narrow screens.
+
+A cold-start headless-to-WebView handoff samples that target before clearing
+headless listening and queues it in the live scope after restoring listening.
+This also covers a hot reply whose microphone remains in the headless scope
+until the reply closes; the live scope cannot infer that recording itself.
+
 **Muting** is a timed pause of an armed chat that keeps the consent:
 `ChatListPttToggle`, the Active Chats badge, opens `PttMuteMenu` (15 min / 1 h /
 8 h from `Constants.Audio.PttMuteDurations`, or "turn off" = `WithoutPttChat`),
