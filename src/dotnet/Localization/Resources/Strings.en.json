@@ -1611,6 +1611,7 @@
   "Ptt_PauseConfirmText": "No one in this chat will receive push-to-talk audio while paused. Members’ participation and listening preferences will be kept.",
   "Ptt_UseOnThisDevice": "Use Push-to-talk on this device",
   "Ptt_UseOnThisDeviceCaption": "When off, this device won't wake, play, or transmit Push-to-talk voice.",
+  "Ptt_UseOnDesktopCaption": "Push-to-talk works while the app is running. It stops when you quit the app.",
   "Ptt_ChatsTopic": "Push-to-talk chats",
   "Ptt_NoPttChats": "No chat uses Push-to-talk yet - its owner turns it on in the chat itself.",
   "Ptt_AvailableTopic": "Push-to-talk ready chats",

@@ -1398,6 +1398,7 @@
   "Ptt_PauseConfirmText": "Tidak ada orang di chat ini yang akan menerima audio Tekan untuk bicara saat dijeda. Partisipasi dan preferensi mendengarkan anggota akan dipertahankan.",
   "Ptt_UseOnThisDevice": "Gunakan Tekan untuk bicara di perangkat ini",
   "Ptt_UseOnThisDeviceCaption": "Saat mati, perangkat ini tidak akan bangun, memutar, atau mengirim suara Tekan untuk bicara.",
+  "Ptt_UseOnDesktopCaption": "Push-to-talk berfungsi selama aplikasi berjalan. Fitur ini berhenti saat Anda keluar dari aplikasi.",
   "Ptt_ChatsTopic": "Obrolan Tekan untuk bicara",
   "Ptt_NoPttChats": "Belum ada obrolan yang memakai Tekan untuk bicara — pemiliknya yang mengaktifkannya di obrolan itu.",
   "Ptt_AvailableTopic": "Obrolan siap untuk Tekan untuk bicara",

@@ -1398,6 +1398,7 @@
   "Ptt_PauseConfirmText": "Ninguém neste chat receberá áudio de pressionar para falar durante a pausa. A participação e as preferências de escuta serão mantidas.",
   "Ptt_UseOnThisDevice": "Usar Pressione para falar neste dispositivo",
   "Ptt_UseOnThisDeviceCaption": "Quando desligado, este dispositivo não desperta, não reproduz nem transmite voz de Pressione para falar.",
+  "Ptt_UseOnDesktopCaption": "O push-to-talk funciona enquanto o aplicativo está em execução. Ele para quando você sai do aplicativo.",
   "Ptt_ChatsTopic": "Chats de Pressione para falar",
   "Ptt_NoPttChats": "Nenhum chat usa Pressione para falar ainda — o dono ativa no próprio chat.",
   "Ptt_AvailableTopic": "Chats prontos para Pressione para falar",

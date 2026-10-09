@@ -1398,6 +1398,7 @@
   "Ptt_PauseConfirmText": "Podczas wstrzymania nikt w tym czacie nie będzie odbierać dźwięku Naciśnij i mów. Uczestnictwo i preferencje słuchania zostaną zachowane.",
   "Ptt_UseOnThisDevice": "Używaj Naciśnij i mów na tym urządzeniu",
   "Ptt_UseOnThisDeviceCaption": "Gdy wyłączone, to urządzenie nie będzie się budzić, odtwarzać ani nadawać głosu Naciśnij i mów.",
+  "Ptt_UseOnDesktopCaption": "Push-to-talk działa, gdy aplikacja jest uruchomiona. Przestaje działać po zamknięciu aplikacji.",
   "Ptt_ChatsTopic": "Czaty w trybie Naciśnij i mów",
   "Ptt_NoPttChats": "Żaden czat nie używa jeszcze trybu Naciśnij i mów — włącza go właściciel w samym czacie.",
   "Ptt_AvailableTopic": "Czaty gotowe do Naciśnij i mów",

@@ -19,6 +19,9 @@ public static class Ptt
             && hostInfo.IsDevelopmentInstance
             && hostInfo.BaseUrlKind == BaseUrlKind.Local;
 
+    public static bool IsDesktopApp(HostInfo hostInfo)
+        => hostInfo.AppKind is AppKind.Windows or AppKind.MacOS;
+
     public static bool IsStaleWake(Moment startedAt, Moment now)
         => now - startedAt > Constants.Audio.PttStaleWakeAge;
 

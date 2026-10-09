@@ -1398,6 +1398,7 @@
   "Ptt_PauseConfirmText": "Během pozastavení nebude nikdo v tomto chatu přijímat zvuk Stiskni a mluv. Účast členů a nastavení poslechu zůstanou zachovány.",
   "Ptt_UseOnThisDevice": "Používat Stiskni a mluv na tomto zařízení",
   "Ptt_UseOnThisDeviceCaption": "Když je vypnuto, toto zařízení se nebude budit, přehrávat ani vysílat hlas přes Stiskni a mluv.",
+  "Ptt_UseOnDesktopCaption": "Push-to-talk funguje, dokud je aplikace spuštěná. Po ukončení aplikace přestane fungovat.",
   "Ptt_ChatsTopic": "Chaty v režimu Stiskni a mluv",
   "Ptt_NoPttChats": "Zatím žádný chat režim Stiskni a mluv nepoužívá — zapíná ho jeho vlastník přímo v chatu.",
   "Ptt_AvailableTopic": "Chaty připravené pro Stiskni a mluv",

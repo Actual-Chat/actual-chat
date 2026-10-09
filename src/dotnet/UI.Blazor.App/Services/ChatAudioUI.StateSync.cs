@@ -74,6 +74,12 @@ public partial class ChatAudioUI
         var oldChatIds = (HashSet<ChatId>?)null;
         await foreach (var c in cKeepListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
             var chatIds = c.Value.ToHashSet();
+            if (Ptt.IsDesktopApp(HostInfo) && chatIds.Count != 0) {
+                // Desktop has no cold wake: an opted-in running app listens without first opening a chat.
+                await ActiveChatsUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+                Enable();
+                oldChatIds ??= [];
+            }
             if (oldChatIds is not null) {
                 // Arming is the only thing that keeps such a chat listening, and StopListeningWhenIdle
                 // deliberately runs no watcher for it - so leaving PTT is what must end that listening,

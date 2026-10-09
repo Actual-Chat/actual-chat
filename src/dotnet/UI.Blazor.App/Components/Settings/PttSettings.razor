@@ -4,6 +4,7 @@
 @inherits ComputedStateComponent<AppUIHub, PttSettings.Model>
 @{
     var m = State.Value;
+    var isDesktop = Ptt.IsDesktopApp(HostInfo);
     var isPreview = Ptt.IsLocalSettingsPreview(HostInfo);
     var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
     var showSensorSettings = hasSensors || isPreview;
@@ -15,7 +16,7 @@
     <TileItem Click="@OnToggleDevice">
         <Icon><i class="icon-phone text-2xl"></i></Icon>
         <Content>@L.Ptt_UseOnThisDevice</Content>
-        <Caption>@L.Ptt_UseOnThisDeviceCaption</Caption>
+        <Caption>@(isDesktop ? L.Ptt_UseOnDesktopCaption : L.Ptt_UseOnThisDeviceCaption)</Caption>
         <Right><Toggle IsChecked="@m.IsDeviceEnabled" IsCheckedChanged="@(_ => OnToggleDevice())"/></Right>
     </TileItem>
 </Tile>
@@ -58,7 +59,7 @@
     </Tile>
 }
 
-@if (HostInfo.HostKind.IsMauiApp() || isPreview) {
+@if ((HostInfo.HostKind.IsMauiApp() && !isDesktop) || isPreview) {
     <TileTopic Topic="@L.Ptt_GesturesTopic"/>
     <Tile>
         @if (showSensorSettings) {
