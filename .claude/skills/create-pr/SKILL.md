@@ -158,8 +158,10 @@ carry on to step 4.
 that it gets announced when it is marked ready. When that happens — `gh pr ready <n>`,
 in this session or a later one — run this step then, as the PR's one and only post.
 
-Otherwise post once, via `mcp__voxt-robokitty__post_message`, to the **Review Requests** chat of
-the Voxt place: `s-pmMsV1UVKG-gz3ymbh6n3`. If the RoboKitty MCP is not wired up in your
+Otherwise post once, via `mcp__voxt-robokitty__post_message`, to the **Review Requests** chat
+(https://voxt.ai/chat/s-pmMsV1UVKG-gz3ymbh6n3). Pass `s-pmMsV1UVKG-gz3ymbh6n3` straight
+as `chatId`: it is the chat's own id, so there is no place to look it up in
+(`list_place_chats` on it fails). If the RoboKitty MCP is not wired up in your
 setup, stop and tell the user the PR is open but unannounced — do not treat the PR as
 done.
 
