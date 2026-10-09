@@ -12,7 +12,7 @@
  *   npx vitest run tests/ts/e2e/map-link-preview.test.ts --config vitest.config.e2e.ts
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { Locator, Page } from 'playwright';
 import {
     clearBrowserCache, connectBrowser, ensureSignedIn, openChat, screenshot, watchMapPaint,
@@ -49,6 +49,7 @@ const MAP_SETTLE_MS = 6_000;
 describe('map link preview', () => {
     let conn: BrowserConnection;
     let page: Page;
+    let viewportToRestore: ReturnType<Page['viewportSize']> = null;
 
     beforeAll(async () => {
         conn = await connectBrowser();
@@ -56,6 +57,13 @@ describe('map link preview', () => {
         await clearBrowserCache(page);
         await ensureSignedIn(page);
     }, 120_000);
+
+    // Not in the test's finally: the failure screenshot is taken before afterEach and must still see the narrow window
+    afterEach(async () => {
+        if (viewportToRestore)
+            await page.setViewportSize(viewportToRestore);
+        viewportToRestore = null;
+    });
 
     afterAll(async () => {
         await page.close();
@@ -151,26 +159,26 @@ describe('map link preview', () => {
 
     it('fits the map card into a narrow screen', async () => {
         // arrange
-        const viewport = page.viewportSize();
+        viewportToRestore = page.viewportSize();
         await page.setViewportSize({ width: 390, height: 844 });
+        const mapPainted = watchMapPaint(page);
 
-        try {
-            // act
-            await openChat(page);
+        // act
+        await openChat(page);
 
-            // assert
-            const card = page.locator('.map-link-preview').last();
-            await card.waitFor({ state: 'visible', timeout: 30_000 });
-            const box = await card.boundingBox();
-            expect(box).not.toBeNull();
-            expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+        // assert
+        const card = page.locator('.map-link-preview').last();
+        await card.waitFor({ state: 'visible', timeout: 30_000 });
+        // The list re-lays out after the resize, so the card can drop out between the wait and the read
+        await expect.poll(
+            async () => (await card.boundingBox())?.width ?? 0,
+            { timeout: 15_000 },
+        ).toBeGreaterThan(0);
+        const box = (await card.boundingBox())!;
+        expect(box.x + box.width).toBeLessThanOrEqual(390);
 
-            await page.waitForTimeout(MAP_SETTLE_MS);
-            await page.screenshot({ path: shot('map-link-narrow') });
-        } finally {
-            if (viewport)
-                await page.setViewportSize(viewport);
-        }
+        await mapPainted();
+        await page.screenshot({ path: shot('map-link-narrow') });
     }, 120_000);
 });
 

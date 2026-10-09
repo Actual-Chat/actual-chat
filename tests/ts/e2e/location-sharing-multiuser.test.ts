@@ -228,7 +228,12 @@ describe('multi-user location sharing', () => {
         // assert — Alice, now a pure viewer of Bob's share, keeps the panel but gets the
         // viewer CTA instead of Stop
         await alicePanel.locator('.btn-share-location').first().waitFor({ state: 'visible', timeout: 20_000 });
-        expect(await alicePanel.locator('.btn-stop-sharing').count()).toBe(0);
+        // The device's share stops before the server's live entry does, and in between the panel shows
+        // Stop next to "Share from this device" — the same .btn-share-location, so its visibility isn't enough.
+        await expect.poll(
+            async () => alicePanel.locator('.btn-stop-sharing').count(),
+            { timeout: 20_000 },
+        ).toBe(0);
 
         // act — Bob stops too
         await bobPanel.locator('.btn-stop-sharing').first().click();
