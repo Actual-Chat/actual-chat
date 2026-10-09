@@ -38,6 +38,7 @@ export async function newUserPage(
     conn: BrowserConnection,
     email: string,
     viewport: { width: number; height: number },
+    prepare?: (page: Page) => Promise<void>,
 ): Promise<{ context: BrowserContext; page: Page }> {
     const isNarrow = viewport.width < 768;
     // No touch: the ring buttons attach a swipe-to-answer controller on touch devices.
@@ -53,15 +54,20 @@ export async function newUserPage(
     await context.grantPermissions(['microphone', 'camera'], { origin: BASE_URL });
     const page = await context.newPage();
     page.on('pageerror', e => console.log(`PAGEERROR[${email}]:`, e.message));
+    await prepare?.(page);
     await ensureSignedIn(page, email);
     return { context, page };
 }
 
-export async function signInBoth(viewport: { width: number; height: number }): Promise<Users> {
+/** `prepareCaller` runs on the caller's page before its first navigation, e.g. to emulate a device. */
+export async function signInBoth(
+    viewport: { width: number; height: number },
+    prepareCaller?: (page: Page) => Promise<void>,
+): Promise<Users> {
     // Real speech, not the fake mic's beep: a silent recording idles out, and the call with it.
     const conn = await connectBrowser({ fakeAudioFile: SPEECH_WAV });
     // Sequential sign-ins: parallel ones race on the shared server flow (see vitest.config.e2e.ts).
-    const caller = await newUserPage(conn, TEST_EMAIL, viewport);
+    const caller = await newUserPage(conn, TEST_EMAIL, viewport, prepareCaller);
     const callee = await newUserPage(conn, TEST_EMAIL_2, viewport);
     for (const page of [caller.page, callee.page]) {
         await skipOnboarding(page);
