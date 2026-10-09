@@ -2030,6 +2030,7 @@
   "Coach_MarkFillerBody_Format": "„{0}“ не носи смисъл тук; следващия път го пропуснете.",
   "Coach_MarkRepetitionTitle": "Казахте думата два пъти подред",
   "Coach_MarkRepetitionBody_Format": "„{0}“ прозвуча два пъти; веднъж е достатъчно.",
+  "Coach_MarkPlayFromHere": "Пусни оттук",
   "Coach_TipWeakWordBody_Format": "Думата „{0}“ често се използва прекалено. Изберете по-точен синоним, за да изостри речта ви.",
   "Coach_OnlyYou": "Само вие",
   "Coach_TabRecent": "Скорошни",

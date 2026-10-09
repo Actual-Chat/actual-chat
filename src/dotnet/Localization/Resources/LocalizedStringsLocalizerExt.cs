@@ -2133,6 +2133,7 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_MarkFillerBody_Format(object arg0) => l["Coach_MarkFillerBody_Format", arg0].Value;
         public string Coach_MarkRepetitionTitle => l["Coach_MarkRepetitionTitle"].Value;
         public string Coach_MarkRepetitionBody_Format(object arg0) => l["Coach_MarkRepetitionBody_Format", arg0].Value;
+        public string Coach_MarkPlayFromHere => l["Coach_MarkPlayFromHere"].Value;
         public string Coach_TipWeakWordBody_Format(object arg0) => l["Coach_TipWeakWordBody_Format", arg0].Value;
         public string Coach_OnlyYou => l["Coach_OnlyYou"].Value;
         public string Coach_TabRecent => l["Coach_TabRecent"].Value;

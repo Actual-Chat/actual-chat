@@ -2030,6 +2030,7 @@
   "Coach_MarkFillerBody_Format": "« {0} » n'apporte rien ici ; laissez-le de côté la prochaine fois.",
   "Coach_MarkRepetitionTitle": "Vous avez dit le mot deux fois de suite",
   "Coach_MarkRepetitionBody_Format": "« {0} » est sorti deux fois ; une seule suffit.",
+  "Coach_MarkPlayFromHere": "Lire à partir d'ici",
   "Coach_TipWeakWordBody_Format": "Le mot « {0} » est souvent galvaudé. Un synonyme plus précis rendra votre discours plus net.",
   "Coach_OnlyYou": "Vous seul",
   "Coach_TabRecent": "Récents",

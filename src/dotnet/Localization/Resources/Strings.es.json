@@ -2030,6 +2030,7 @@
   "Coach_MarkFillerBody_Format": "«{0}» no aporta nada aquí; la próxima vez omítelo.",
   "Coach_MarkRepetitionTitle": "Dijiste la palabra dos veces seguidas",
   "Coach_MarkRepetitionBody_Format": "«{0}» salió dos veces; con una basta.",
+  "Coach_MarkPlayFromHere": "Reproducir desde aquí",
   "Coach_TipWeakWordBody_Format": "La palabra «{0}» se usa demasiado. Prueba un sinónimo más preciso para afinar tu discurso.",
   "Coach_OnlyYou": "Solo tú",
   "Coach_TabRecent": "Recientes",

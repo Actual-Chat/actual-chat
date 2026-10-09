@@ -2030,6 +2030,7 @@
   "Coach_MarkFillerBody_Format": "“{0}” không mang nghĩa ở đây; lần sau hãy bỏ đi.",
   "Coach_MarkRepetitionTitle": "Bạn đã nói một từ hai lần liên tiếp",
   "Coach_MarkRepetitionBody_Format": "“{0}” xuất hiện hai lần; một lần là đủ.",
+  "Coach_MarkPlayFromHere": "Phát từ đây",
   "Coach_TipWeakWordBody_Format": "Từ “{0}” thường bị lạm dụng. Hãy chọn một từ đồng nghĩa cụ thể hơn để lời nói sắc nét hơn.",
   "Coach_OnlyYou": "Chỉ mình bạn",
   "Coach_TabRecent": "Gần đây",

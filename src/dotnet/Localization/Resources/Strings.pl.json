@@ -2030,6 +2030,7 @@
   "Coach_MarkFillerBody_Format": "„{0}” nic tu nie wnosi; następnym razem je pomiń.",
   "Coach_MarkRepetitionTitle": "Powiedziałeś słowo dwa razy z rzędu",
   "Coach_MarkRepetitionBody_Format": "„{0}” padło dwa razy; raz wystarczy.",
+  "Coach_MarkPlayFromHere": "Odtwórz stąd",
   "Coach_TipWeakWordBody_Format": "Słowo „{0}” jest często nadużywane. Wybierz precyzyjniejszy synonim, aby wyostrzyć swoją mowę.",
   "Coach_OnlyYou": "Tylko Ty",
   "Coach_TabRecent": "Ostatnie",

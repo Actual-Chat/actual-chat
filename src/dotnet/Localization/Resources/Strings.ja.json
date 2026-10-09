@@ -2030,6 +2030,7 @@
   "Coach_MarkFillerBody_Format": "「{0}」はここでは意味を持ちません。次は省きましょう。",
   "Coach_MarkRepetitionTitle": "同じ言葉を続けて2回言いました",
   "Coach_MarkRepetitionBody_Format": "「{0}」が2回続きました。1回で十分です。",
+  "Coach_MarkPlayFromHere": "ここから再生",
   "Coach_TipWeakWordBody_Format": "「{0}」は使われすぎる言葉です。より具体的な言葉に置き換えると話が引き締まります。",
   "Coach_OnlyYou": "あなただけ",
   "Coach_TabRecent": "最近",

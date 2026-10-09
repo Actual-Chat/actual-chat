@@ -2030,6 +2030,7 @@
   "Coach_MarkFillerBody_Format": "“{0}” tidak menambah makna di sini; lain kali hilangkan.",
   "Coach_MarkRepetitionTitle": "Anda mengucapkan kata itu dua kali berturut-turut",
   "Coach_MarkRepetitionBody_Format": "“{0}” muncul dua kali; sekali sudah cukup.",
+  "Coach_MarkPlayFromHere": "Putar dari sini",
   "Coach_TipWeakWordBody_Format": "Kata “{0}” sering dipakai berlebihan. Gunakan sinonim yang lebih spesifik agar ucapan Anda lebih tajam.",
   "Coach_OnlyYou": "Hanya Anda",
   "Coach_TabRecent": "Terbaru",

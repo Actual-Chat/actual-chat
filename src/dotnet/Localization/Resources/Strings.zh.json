@@ -2030,6 +2030,7 @@
   "Coach_MarkFillerBody_Format": "“{0}”在这里没有意义，下次可以省掉。",
   "Coach_MarkRepetitionTitle": "你连续说了两遍同一个词",
   "Coach_MarkRepetitionBody_Format": "“{0}”出现了两次，一次就够了。",
+  "Coach_MarkPlayFromHere": "从这里播放",
   "Coach_TipWeakWordBody_Format": "“{0}”这个词常被过度使用。换一个更具体的同义词能让表达更精准。",
   "Coach_OnlyYou": "仅你可见",
   "Coach_TabRecent": "最近",
