@@ -1,0 +1,28 @@
+@namespace ActualChat.Mui
+@inject IServiceProvider Services
+
+<MudPopoverProvider/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+
+<Router AppAssembly="@typeof(MuiApp).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MuiLayout)"/>
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(MuiLayout)">
+            <MudText Typo="Typo.h5">Page not found</MudText>
+        </LayoutView>
+    </NotFound>
+</Router>
+
+@code {
+    [Parameter] public string SessionToken { get; set; } = "";
+
+    protected override void OnInitialized()
+    {
+        var secureTokensBackend = Services.GetRequiredService<ISecureTokensBackend>();
+        var sessionResolver = Services.GetRequiredService<ISessionResolver>();
+        sessionResolver.Session = secureTokensBackend.DecryptSessionToken(SessionToken);
+    }
+}

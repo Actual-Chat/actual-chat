@@ -1,0 +1,27 @@
+@namespace ActualChat.Mui
+@inject IEnumerable<MuiNavEntry> Entries
+@inject IEnumerable<MuiNavGroup> Groups
+
+<MudNavMenu>
+    @foreach (var entry in Entries.Where(e => e.Group is null).OrderBy(e => e.Order).ThenBy(e => e.Title)) {
+        @RenderLink(entry)
+    }
+    @foreach (var group in Groups.OrderBy(g => g.Order)) {
+        var groupEntries = Entries.Where(e => e.Group == group.Title).OrderBy(e => e.Order).ThenBy(e => e.Title);
+        <MudNavGroup Title="@group.Title" Icon="@group.Icon" Expanded="true">
+            @foreach (var entry in groupEntries) {
+                @RenderLink(entry)
+            }
+        </MudNavGroup>
+    }
+</MudNavMenu>
+
+@code {
+    public const string Home = "/m";
+
+    private RenderFragment RenderLink(MuiNavEntry entry)
+        => @<MudNavLink Href="@entry.Href" Icon="@entry.Icon"
+                        Match="@(entry.Href == Home ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+            @entry.Title
+        </MudNavLink>;
+}

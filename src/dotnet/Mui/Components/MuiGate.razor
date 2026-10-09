@@ -1,0 +1,32 @@
+@namespace ActualChat.Mui
+@inherits MuiComputedComponent<MuiAccess?>
+
+@switch (State.Value) {
+    case MuiAccess.Granted:
+        @ChildContent
+        break;
+    case MuiAccess.SignedOut when ShowMessage:
+        <MudAlert Severity="Severity.Info">
+            Sign in to Voxt first, then open this page again.
+            <MudLink Href="/">Go to Voxt</MudLink>
+        </MudAlert>
+        break;
+    case MuiAccess.Denied when ShowMessage:
+        <MudAlert Severity="Severity.Error">This account has no access to the Voxt Management UI.</MudAlert>
+        break;
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public bool ShowMessage { get; set; } = true;
+
+    protected override ComputedState<MuiAccess?>.Options GetStateOptions()
+        => new() { InitialValue = null };
+
+    protected override async Task<MuiAccess?> ComputeState(CancellationToken cancellationToken)
+    {
+        var accounts = Services.GetRequiredService<IAccounts>();
+        var account = await accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
+        return account.GetMuiAccess();
+    }
+}

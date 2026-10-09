@@ -545,15 +545,12 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WipeChatHistoryModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.CallTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.DigestTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.EmojisTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ExternalContactsTestPage>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.FlowsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.HomePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.Checkmark>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.CookieSettings>();
@@ -597,7 +594,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.LandingVideoModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModalCard>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MeshTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.NotificationsTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.OAuthConsentPage>();
@@ -1429,15 +1425,12 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WipeChatHistoryModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.AdminCopyChatToPlacePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.CallTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.DigestTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.EmojisTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ExternalContactsTestPage), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.FlowsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.HomePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.Checkmark), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.CookieSettings), AotTypeKind.Component),
@@ -1481,7 +1474,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.LandingVideoModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.Landing.PremiumFeaturesModalCard), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Pages.MeshTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.MicPermissionTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.NotificationsTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.OAuthConsentPage), AotTypeKind.Component),

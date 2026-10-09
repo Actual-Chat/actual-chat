@@ -1,0 +1,35 @@
+@namespace ActualChat.Mui
+
+<MudDialog>
+    <DialogContent>
+        @if (!Description.IsNullOrEmpty()) {
+            <MudText Typo="Typo.body2" Class="mb-3">@Description</MudText>
+        }
+        @if (!Hint.IsNullOrEmpty()) {
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-3">@Hint</MudText>
+        }
+        <MuiSqlBox Title="@SqlTitle" Sql="@Sql" Database="@Database"/>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string Description { get; set; } = "";
+    [Parameter]
+    public string Hint { get; set; } = "";
+    [Parameter]
+    public string SqlTitle { get; set; } = "Query";
+    [Parameter, EditorRequired]
+    public string Sql { get; set; } = "";
+    [Parameter]
+    public string Database { get; set; } = "";
+
+    private void Close()
+        => MudDialog.Close();
+}

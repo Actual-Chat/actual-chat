@@ -1,0 +1,73 @@
+@namespace ActualChat.Mui
+
+<MudPaper Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" Class="mb-2">Node @Info.ThisNodeId</MudText>
+
+    <MudText Typo="Typo.subtitle1">Mesh state (@Info.Nodes.Length node(s))</MudText>
+    <MudSimpleTable Dense="true" Class="mb-4">
+        <thead>
+            <tr><th>#</th><th>Id</th><th>Endpoint</th><th>State</th><th>Roles</th></tr>
+        </thead>
+        <tbody>
+            @for (var i = 0; i < Info.Nodes.Length; i++) {
+                var node = Info.Nodes[i];
+                <tr>
+                    <td>@i</td>
+                    <td>
+                        @node.Id
+                        @if (node.IsThis) {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">this</MudChip>
+                        }
+                    </td>
+                    <td>@node.Endpoint</td>
+                    <td>@node.State</td>
+                    <td>@node.Roles</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <MudText Typo="Typo.subtitle1">Mesh RPC peer refs</MudText>
+    <MudSimpleTable Dense="true" Class="mb-4">
+        <thead>
+            <tr><th>Mesh ref</th><th>Route</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var rpcRef in Info.MeshRpcRefs) {
+                <tr><td>@rpcRef.MeshRef</td><td>@rpcRef.Route</td></tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+
+    <MudText Typo="Typo.subtitle1">RPC peers</MudText>
+    <MudExpansionPanels MultiExpansion="true">
+        @foreach (var peer in Info.RpcPeers) {
+            <MudExpansionPanel Expanded="@MeshReport.IsProblem(peer)">
+                <TitleContent>
+                    <MudText>
+                        @peer.Id
+                        <MudChip T="string" Size="Size.Small" Color="@GetColor(peer)">
+                            @(MeshReport.IsLocal(peer) ? "local" : peer.ConnectionStateKind.ToString())
+                        </MudChip>
+                    </MudText>
+                </TitleContent>
+                <ChildContent>
+                    <MudText>@peer.Peer</MudText>
+                    <MudText>Connection kind: <b>@peer.ConnectionKind</b></MudText>
+                    @if (!MeshReport.IsLocal(peer)) {
+                        <pre style="white-space: pre-wrap">@peer.ConnectionInfo</pre>
+                    }
+                </ChildContent>
+            </MudExpansionPanel>
+        }
+    </MudExpansionPanels>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public MeshDiagInfo Info { get; set; } = null!;
+
+    private static Color GetColor(RpcPeerDiagInfo peer)
+        => MeshReport.IsLocal(peer) ? Color.Default
+            : MeshReport.IsProblem(peer) ? Color.Error
+            : Color.Success;
+}

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <ItemGroup>
+    <PackageReference Include="ActualLab.Fusion.Blazor" />
+    <PackageReference Include="MudBlazor" />
+    <PackageReference Include="TimeZoneConverter" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Api.Contracts\Api.Contracts.csproj" />
+    <ProjectReference Include="..\Db\Db.csproj" />
+    <ProjectReference Include="..\Mui.Contracts\Mui.Contracts.csproj" />
+  </ItemGroup>
+
+  <!-- Mui runs on the server only, so it may use server infrastructure (Core.Server, Db) and backend contracts.
+       Implementations of other services still come through DI, and app-UI code stays out. -->
+  <Target Name="CheckMuiProjectReferences" BeforeTargets="ResolveProjectReferences">
+    <ItemGroup>
+      <ForbiddenReference Include="@(ProjectReference)"
+                          Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(Filename)', '^(.+\.Service|.+\.Migration|App\..+|UI\.Blazor.*)$'))" />
+    </ItemGroup>
+    <Error Condition="'@(ForbiddenReference)' != ''"
+           Text="Mui must not reference @(ForbiddenReference->'%(Filename)'): see docs/ui/mui.md" />
+  </Target>
+
+</Project>

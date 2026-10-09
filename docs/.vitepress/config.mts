@@ -175,6 +175,7 @@ export default withMermaid(defineConfig({
               { text: "The Virtual List", link: "/ui/virtual-list" },
               { text: "Safe Areas", link: "/ui/safe-areas" },
               { text: "Splash Screens", link: "/ui/splash-screen" },
+              { text: "Management UI (Mui)", link: "/ui/mui" },
             ],
           },
           {

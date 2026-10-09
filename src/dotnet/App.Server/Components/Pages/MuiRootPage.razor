@@ -1,0 +1,72 @@
+@using ActualChat.App.Server.Module
+@using ActualChat.AspNetCore
+@using ActualChat.Security
+@using ActualChat.Mui
+@using Microsoft.AspNetCore.Components.Server
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <base href="/" />
+    <HeadOutlet @rendermode="@MuiRenderMode" />
+    <PageTitle>Voxt Management UI</PageTitle>
+    <link href="/@Assets["_content/MudBlazor/MudBlazor.min.css"]" rel="stylesheet" />
+    <link href="/@Assets["_content/ActualChat.Mui/mui.css"]" rel="stylesheet" />
+</head>
+<body>
+@if (_authState is { IsUnavailable: true }) {
+    <p>Service is unavailable. Try again in a minute.</p>
+}
+else {
+    <MuiApp @rendermode="@MuiRenderMode" SessionToken="@(_sessionToken?.Token ?? "")" />
+    <div id="blazor-error-ui"></div>
+    <script src="/@Assets["_content/MudBlazor/MudBlazor.min.js"]"></script>
+    <script src="/@Assets["_content/ActualChat.Mui/mui.js"]"></script>
+    <script src="/@Assets["_framework/blazor.web.js"]" autostart="false"></script>
+    <script nonce="@Nonce">
+        // Retry every 5 seconds, practically forever; a restarted server has lost the circuit, so reload then
+        Blazor.start({
+            circuit: { reconnectionOptions: { maxRetries: 100000000, retryIntervalMilliseconds: 5000 } },
+        });
+        document.addEventListener('components-reconnect-state-changed', e => {
+            if (e.detail && e.detail.state === 'rejected')
+                location.reload();
+        });
+    </script>
+}
+</body>
+</html>
+
+@code {
+    private static readonly InteractiveServerRenderMode MuiRenderMode = new(prerender: false);
+
+    private string Nonce => ContentSecurityPolicy.GetNonce(HttpContext);
+
+    private AuthHelper.AuthState? _authState;
+    private SecureToken? _sessionToken;
+
+    [Inject]
+    private ISecureTokens SecureTokens { get; init; } = null!;
+    [Inject]
+    private AuthHelper AuthHelper { get; init; } = null!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = null!;
+
+    protected override Task OnInitializedAsync()
+        => Initialize();
+
+    private async Task Initialize()
+    {
+        var cancellationToken = HttpContext.RequestAborted;
+        HttpContext.DisableResponseCaching();
+        _authState = await AuthHelper.UpdateAuthState(HttpContext, cancellationToken);
+        if (_authState.IsUnavailable) {
+            HttpContext.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return;
+        }
+
+        _sessionToken = await SecureTokens.CreateForSession(_authState.Session, cancellationToken);
+    }
+}

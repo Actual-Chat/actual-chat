@@ -385,7 +385,7 @@ themselves **not localized** &mdash; only the component they host is.
 | `/test/error-barrier` | the error boundary |
 | `/test/reconnect-overlay` | the reconnect overlay |
 | `/test/svg-cats`, `/test/ui-colors` | illustrations, palette |
-| `/test/email-templates`, `/test/digest` | email bodies |
+| `/test/email-templates` | email bodies |
 
 ## Never localized
 

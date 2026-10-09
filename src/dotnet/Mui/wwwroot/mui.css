@@ -1,0 +1,66 @@
+@font-face {
+  font-family: "TT Commons Pro";
+  src: url("/dist/assets/woff2/TT-Commons-Pro-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: "TT Commons Pro";
+  src: url("/dist/assets/woff2/TT-Commons-Pro-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: "TT Commons Pro";
+  src: url("/dist/assets/woff2/TT-Commons-Pro-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: "TT Commons Pro";
+  src: url("/dist/assets/woff2/TT-Commons-Pro-DemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* Only buttons get the large radius; everything else uses the theme's smaller one */
+.mud-button-root:not(.mud-icon-button):not(.mud-fab) {
+  border-radius: 16px;
+}
+
+/* A two-state segmented control: a thin primary outline, the selected side filled */
+.mui-seg {
+  display: inline-flex;
+  border: 1px solid var(--mud-palette-primary);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.mui-seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 4px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--mud-palette-primary);
+  font: inherit;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  outline: none;
+}
+.mui-seg button.selected {
+  background: var(--mud-palette-primary);
+  color: #fff;
+}
+.mui-seg button:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7);
+}
+
+.mui-sqlbox {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--mud-palette-background);
+  border: 1px solid var(--mud-palette-lines-default);
+}

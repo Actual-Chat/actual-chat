@@ -73,6 +73,10 @@ public sealed class DbModule(IServiceProvider moduleServices)
         }
 
         services.AddSingleton(dbInfo);
+        services.AddSingleton(new DbContextEntry(contextName, typeof(TDbContext), dbKind,
+            dbInfo.ConnectionString,
+            async (c, cancellationToken) => await c.GetRequiredService<IDbContextFactory<TDbContext>>()
+                .CreateDbContextAsync(cancellationToken).ConfigureAwait(false)));
         services.AddPooledDbContextFactory<TDbContext>((c, db) => {
             var hostInfo = c.HostInfo();
             var commandTimeout = hostInfo.IsTested ? TestCommandTimeout : CommandTimeout;

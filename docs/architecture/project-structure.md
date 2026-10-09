@@ -126,6 +126,7 @@ Located in `src/dotnet/{Domain}.Contracts/`:
 | `UI.App` | App shell components |
 | `UI.Blazor` | Core Blazor infrastructure |
 | `UI.Blazor.App` | Application components |
+| `Mui` | Management UI under `/m/` (MudBlazor, Blazor Server); see [Management UI](../ui/mui.md) |
 
 ### UI Organization
 

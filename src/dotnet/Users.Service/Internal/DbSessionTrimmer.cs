@@ -11,6 +11,8 @@ public sealed class DbSessionTrimmer(DbSessionTrimmer.Options settings, IService
     public sealed record Options
     {
         public int BatchSize { get; init; } = 4096;
+        // How long a session is kept after it expires (4 months): Mui compares session metrics over that span
+        public TimeSpan ExpiredSessionAge { get; init; } = TimeSpan.FromDays(122);
         public RandomTimeSpan CheckPeriod { get; init; } = TimeSpan.FromMinutes(15).ToRandom(0.25);
         public RetryDelaySeq RetryDelays { get; init; } = RetryDelaySeq.Exp(TimeSpan.FromSeconds(15), TimeSpan.FromMinutes(10));
         public LogLevel LogLevel { get; init; } = LogLevel.Information;
@@ -31,7 +33,7 @@ public sealed class DbSessionTrimmer(DbSessionTrimmer.Options settings, IService
     private async Task Trim(string shard, CancellationToken cancellationToken)
     {
         var batchSize = Settings.BatchSize;
-        var threshold = SystemClock.Now - TimeSpan.FromDays(1);
+        var threshold = SystemClock.Now - Settings.ExpiredSessionAge;
 
         while (true) {
             try {

@@ -1,0 +1,75 @@
+@namespace ActualChat.Mui
+@implements IDisposable
+@inject MuiTime Time
+
+<MudStack Row="true" Spacing="3" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap" Class="mb-2">
+    <MudSwitch T="bool" Value="@_isAutoRefresh" ValueChanged="@OnAutoRefreshChanged" Color="Color.Primary"
+               Label="@($"Auto refresh ({MuiLive.RefreshSeconds} s)")"/>
+    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@Refresh" Disabled="@_isBusy">
+        Refresh
+    </MudButton>
+    @if (_updatedAt is { } updatedAt) {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Updated @Time.Format(updatedAt, "HH:mm:ss") (<MuiAgo Utc="@updatedAt"/>). Time zone: @Time.TimeZoneName.
+        </MudText>
+    }
+</MudStack>
+@if (_isBusy && _updatedAt is null) {
+    <MudProgressLinear Indeterminate="true" Class="mb-2"/>
+}
+
+@code {
+    private readonly CancellationTokenSource _disposeCts = new();
+    private bool _isAutoRefresh = true;
+    private bool _isBusy;
+    private DateTime? _updatedAt;
+
+    [Parameter, EditorRequired]
+    public EventCallback OnRefresh { get; set; }
+
+    public void Dispose() {
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
+    }
+
+    // Protected/internal methods
+
+    protected override void OnInitialized()
+        => _ = RunLoop(_disposeCts.Token);
+
+    // Private methods
+
+    private async Task RunLoop(CancellationToken cancellationToken) {
+        try {
+            await Time.EnsureInitialized();
+            while (true) {
+                if (_isAutoRefresh || _updatedAt is null)
+                    await InvokeAsync(Refresh);
+                await Task.Delay(TimeSpan.FromSeconds(MuiLive.RefreshSeconds), cancellationToken);
+            }
+        }
+        catch (OperationCanceledException) {
+            // The page is gone
+        }
+    }
+
+    private async Task Refresh() {
+        if (_isBusy)
+            return;
+
+        _isBusy = true;
+        try {
+            await OnRefresh.InvokeAsync();
+            _updatedAt = DateTime.UtcNow;
+        }
+        finally {
+            _isBusy = false;
+        }
+        StateHasChanged();
+    }
+
+    private Task OnAutoRefreshChanged(bool value) {
+        _isAutoRefresh = value;
+        return Task.CompletedTask;
+    }
+}

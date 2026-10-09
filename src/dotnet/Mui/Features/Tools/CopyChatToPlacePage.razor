@@ -1,0 +1,135 @@
+@namespace ActualChat.Mui
+@using System.Diagnostics.CodeAnalysis
+@page "/m/system/tools"
+@inherits MuiComponent
+@inject IDialogService Dialogs
+
+<MudText Typo="Typo.h5" Class="mb-4">Tools</MudText>
+
+<MudPaper Class="pa-4" Style="max-width: 40rem">
+    <MudText Typo="Typo.h6" Class="mb-2">Copy chat to place</MudText>
+    <MudTextField T="string" @bind-Value="_chatId" Label="Chat ID" Immediate="true" Class="mb-2"
+                  Placeholder="Id of a chat to copy to the place"/>
+    <MudTextField T="string" @bind-Value="_placeId" Label="Place ID" Immediate="true" Class="mb-4"
+                  Placeholder="Id of a place to copy the chat in"/>
+    <MudStack Row="true" Spacing="2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_isBusy" OnClick="@CopyChat">
+            Copy chat to place
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Disabled="@_isBusy" OnClick="@PublishCopiedChat">
+            Publish copied chat
+        </MudButton>
+    </MudStack>
+    @if (_isBusy) {
+        <MudProgressLinear Indeterminate="true" Class="mt-4"/>
+    }
+    @if (_result is { } result) {
+        <MudAlert Severity="@result.Severity" Class="mt-4" Style="white-space: pre-wrap">@result.Text</MudAlert>
+    }
+</MudPaper>
+
+@code {
+    private string _chatId = "";
+    private string _placeId = "";
+    private bool _isBusy;
+    private ResultInfo? _result;
+
+    private IChats Chats => field ??= Services.GetRequiredService<IChats>();
+    private IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
+
+    private async Task CopyChat()
+    {
+        if (!TryParseIds(out var chatId, out var placeId))
+            return;
+
+        var chat = await Chats.Get(Session, chatId, default);
+        var place = await Places.Get(Session, placeId, default);
+        if (chat is null || place is null) {
+            _result = new(Severity.Error, chat is null ? "Chat not found." : "Place not found.");
+            return;
+        }
+        if (!await Confirm($"Copy chat “{chat.Title}” to place “{place.Title}”?"))
+            return;
+
+        var correlationId = Guid.NewGuid().ToString();
+        var command = new Chat_CopyChat {
+            Session = Session,
+            SourceChatId = chatId,
+            PlaceId = placeId,
+            CorrelationId = correlationId,
+        };
+        await Run(async () => {
+            var result = await Actions.Call(command);
+            if (result.HasError)
+                _result = new(Severity.Error, result.Error?.Message ?? "Failed");
+            else if (result.Value.HasErrors)
+                _result = new(Severity.Error,
+                    $"Copy failed{(result.Value.HasChanges ? " after some changes were applied" : "")}. "
+                    + $"Search the server logs for correlation ID {correlationId}.");
+            else
+                _result = new(Severity.Success, result.Value.HasChanges ? "Copied." : "No changes.");
+        });
+    }
+
+    private async Task PublishCopiedChat()
+    {
+        if (!TryParseIds(out var chatId, out var placeId))
+            return;
+
+        var newChatId = CopyChatToPlaceIds.GetCopiedChatId(chatId, placeId);
+        var newChat = await Chats.Get(Session, newChatId, default);
+        if (newChat is null) {
+            _result = new(Severity.Error, $"Copied chat {newChatId.Value} not found.");
+            return;
+        }
+        if (!await Confirm($"Publish copied chat “{newChat.Title}”?"))
+            return;
+
+        var command = new Chat_PublishCopiedChat {
+            Session = Session,
+            NewChatId = newChatId,
+            SourceChatId = chatId,
+        };
+        await Run(async () => {
+            var result = await Actions.Call(command);
+            _result = result.HasError
+                ? new(Severity.Error, result.Error?.Message ?? "Failed")
+                : new(Severity.Success, "Published.");
+        });
+    }
+
+    private bool TryParseIds([NotNullWhen(true)] out ChatId? chatId, [NotNullWhen(true)] out PlaceId? placeId)
+    {
+        chatId = null;
+        placeId = null;
+        if (!ChatId.TryParse(_chatId.Trim(), out var parsedChatId)) {
+            _result = new(Severity.Error, "Chat ID is not valid.");
+            return false;
+        }
+        if (!PlaceId.TryParse(_placeId.Trim(), out var parsedPlaceId)) {
+            _result = new(Severity.Error, "Place ID is not valid.");
+            return false;
+        }
+
+        chatId = parsedChatId;
+        placeId = parsedPlaceId;
+        _result = null;
+        return true;
+    }
+
+    private async Task Run(Func<Task> action)
+    {
+        _isBusy = true;
+        try {
+            await action();
+        }
+        finally {
+            _isBusy = false;
+        }
+    }
+
+    private async Task<bool> Confirm(string message)
+        => await Dialogs.ShowMessageBoxAsync("Confirm", message, yesText: "Run", cancelText: "Cancel") == true;
+
+    private sealed record ResultInfo(Severity Severity, string Text);
+}

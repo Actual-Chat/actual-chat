@@ -1,0 +1,96 @@
+@namespace ActualChat.Mui
+@page "/m/system/operations"
+@inherits MuiComponent
+@implements IDisposable
+@inject IMuiDb Db
+
+<MudText Typo="Typo.h5" Class="mb-2">Operations</MudText>
+<MudText Color="Color.Secondary" Class="mb-2">
+    The Fusion operation log (<code>_operations</code>) of every database that has it: the commands that changed
+    the database, which the hosts replay to invalidate their caches.
+</MudText>
+
+<MuiLiveBar OnRefresh="@Load"/>
+
+@if (_error is not null) {
+    <MudAlert Severity="Severity.Error" Class="mb-2" Style="white-space: pre-wrap">@_error</MudAlert>
+}
+@if (_rows is not null) {
+    <MudPaper Class="pa-2 mb-4" Style="overflow-x: auto">
+        <MudSimpleTable Dense="true" Hover="true">
+            <thead>
+                <tr>
+                    <th>Database</th>
+                    <th>Rows</th>
+                    <th>Logged, last 60 s</th>
+                    <th>Logged, last 5 min</th>
+                    <th>Oldest row</th>
+                    <th>Newest row</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in _rows) {
+                    <tr>
+                        <td>@row.Database</td>
+                        @if (row.Values is not { } v) {
+                            <td colspan="5" style="color: var(--mui-error, #d32f2f)">@(row.Error ?? "No data")</td>
+                        }
+                        else {
+                            <td>@MuiLive.ToLong(v[0])</td>
+                            <td>@MuiLive.FormatRate(MuiLive.ToLong(v[1]), 60)</td>
+                            <td>@MuiLive.FormatRate(MuiLive.ToLong(v[2]), 300)</td>
+                            <td>@MuiLive.FormatDuration(MuiLive.ToSeconds(v[3]))</td>
+                            <td>@MuiLive.FormatDuration(MuiLive.ToSeconds(v[4]))</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </MudSimpleTable>
+    </MudPaper>
+}
+
+<MudExpansionPanels Class="mt-4">
+    <MudExpansionPanel Text="Columns, query and trimming">
+        <MudText Typo="Typo.body2" Class="mb-2">
+            <b>Rows</b>: all rows in <code>_operations</code>. <b>Logged</b>: rows whose <code>logged_at</code> falls
+            into the window, with the rate per second. <b>Oldest row</b> and <b>Newest row</b>: how long ago the
+            oldest and the newest row were logged ("-" when the table is empty). Times come from the database clock.
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Trimming: the operation log trimmer deletes rows older than 30 minutes (checked about every 15
+            minutes), so the oldest row is normally 30 to 45 minutes old on a busy database and Rows is about the
+            number of operations of that period. The 60 s and 5 min windows are always complete.
+        </MudText>
+        <MuiSqlBox Title="Per database" Sql="@OperationsSql.Summary"
+                   Database="@(_databases?.FirstOrDefault() ?? "")"/>
+    </MudExpansionPanel>
+</MudExpansionPanels>
+
+@code {
+    private readonly CancellationTokenSource _disposeCts = new();
+    private string[]? _databases;
+    private MuiLiveRow[]? _rows;
+    private string? _error;
+
+    public void Dispose() {
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
+    }
+
+    private async Task Load() {
+        try {
+            if (_databases is null) {
+                var databases = await Db.GetDatabases(Session, _disposeCts.Token);
+                _databases = MuiLive.GetDatabaseNames(databases, "_operations");
+            }
+            _rows = await MuiLive.Query(Db, Session, _databases, OperationsSql.Summary, _disposeCts.Token);
+            _error = null;
+        }
+        catch (OperationCanceledException) {
+            // The page is gone
+        }
+        catch (Exception e) {
+            _error = e.Message;
+        }
+    }
+}

@@ -26,6 +26,7 @@ public class McpToolSchemaTest(McpCollection.AppHostFixture fixture, ITestOutput
         "list_conversations", "get_conversation",
         "search_messages", "search_contacts",
         "list_notifications",
+        "get_database_schema", "run_sql_query",
     ];
 
     [Fact]

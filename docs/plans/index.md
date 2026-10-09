@@ -32,6 +32,13 @@ transcripts with optional audio. Split into implementation plans for
 [consented import](./consented-chat-import.md), and
 [external transcript streaming](./external-transcript-streaming.md).
 
+### Voxt Management UI (Mui)
+
+[Management UI](./mui.md) — a separate web-only admin front-end under `/m/`, built on
+Blazor Server and MudBlazor with its own shell and bundle. Phase 1 moves the flow, mesh,
+system, chat-copy and digest pages out of the app's test pages; metrics, a query console and flow
+resume come later.
+
 ### AI image suggestions
 
 [AI image suggestions](./ai-image-suggestions.md) — a chat created without a

@@ -1,0 +1,45 @@
+@namespace ActualChat.Mui
+@page "/m/dashboards/chats"
+
+<MudText Typo="Typo.h5" Class="mb-4">Chats</MudText>
+
+<MuiMetricsView Database="chat" CacheName="chats" Metrics="@Metrics"/>
+
+<MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4">
+    Built from the chats, places and authors tables. Chats are counted by created_at and never by deletion,
+    so a chat removed since is not counted; template chats are excluded.
+</MudText>
+
+@code {
+    private const string Window = "created_at >= {from} and created_at < {to}";
+
+    private static readonly IReadOnlyList<MuiMetric> Metrics = [
+        new("new_group_chats", "New group chats",
+            "select count(*) from chats where kind = 0 and not is_template and " + Window,
+            Description: "Chats of kind Group (0) created in the window (chats.created_at), templates excluded."),
+        new("new_direct_chats", "New direct chats",
+            "select count(*) from chats where kind = 1 and not is_template and " + Window,
+            Description: "Chats of kind Peer (1) created in the window: one per pair of users who started "
+                + "a conversation."),
+        new("new_threads", "New threads",
+            "select count(*) from chats where kind = 3 and not is_template and " + Window,
+            Description: "Chats of kind Thread (3) created in the window."),
+        new("new_place_chats", "New place chats",
+            "select count(*) from chats where kind = 2 and not is_template and not is_place_root_chat and "
+            + Window,
+            Description: "Chats of kind Place (2) created in the window, except the root chats "
+                + "(is_place_root_chat), which are created together with their place and are not chats "
+                + "that users made."),
+        new("new_places", "New places",
+            "select count(*) from places where " + Window,
+            Description: "Places created in the window (places.created_at)."),
+        new("chat_joins", "Chat joins",
+            "select count(*) from authors a join chats c on c.id = a.chat_id"
+            + " where c.kind in (0, 2) and not c.is_template and not a.is_place_author"
+            + " and a.created_at >= {from} and a.created_at < {to}",
+            Description: "Authors created in the window (authors.created_at) in group and place chats: one is "
+                + "created when a user first joins a chat, and also for the creator of a chat. Place-level "
+                + "authors are excluded, and so are direct chats, where both authors are created with the "
+                + "chat. Someone who leaves and rejoins keeps their author, so is not counted again."),
+    ];
+}
