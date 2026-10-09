@@ -2075,8 +2075,13 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             EndsAt = Clocks.SystemClock.Now,
         };
         var materialize = new ConversationBackend_Materialize(conversation);
-        await Commander.Call(materialize, true, CancellationToken.None).ConfigureAwait(false);
-        await WakeCallTailFlow(conversation.Id).ConfigureAwait(false);
+        // Null when the card was declined because its chat is being removed:
+        // there is no card for the tail flow to grow, but the session still has to close.
+        var card = await Commander.Call(materialize, true, CancellationToken.None).ConfigureAwait(false);
+        if (card is null)
+            Log.LogWarning("Call card {ConversationId} in chat #{ChatId} was declined", conversation.Id, state.ChatId);
+        else
+            await WakeCallTailFlow(conversation.Id).ConfigureAwait(false);
         await EnqueueSessionEnded(state).ConfigureAwait(false);
     }
 
