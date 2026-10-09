@@ -40,15 +40,22 @@
 # All loop log files (tmp/server-loop.log + tmp/server-loop-<step>.log + the
 # DevLog) are wiped at the start of every iteration.
 #
-# Multihost mode (-multihost argument, or the 'm' key to toggle it): Step 3
-# starts two processes instead of one - an API server on the base port
-# (-role:2:OneApiServer) and a backend (-role:2:OneBackendServer) on base port +
-# 1 - the same layout -multihost-role:2:OneApiServer produces, except that the
-# loop owns every process. 'b' starts one more backend, 'B' (shift-b) stops a
-# random one. Each host writes its own
-# tmp/server-loop-server-run-<name>.{out,err,log} (api, backend01, backend02, ...).
-# Every restart stops all hosts, wipes their logs and starts the API plus as
-# many backends as were running.
+# Scaling: keys 0-5 set the number of extra hosts, in both modes. The main host
+# is always on the base port; extra host N is on base port + N and writes its own
+# tmp/server-loop-server-run-<name>.{out,err,log}. Scaling down stops random
+# extras gracefully. Every restart stops all hosts, wipes their logs and starts
+# the main host plus as many extras as were running.
+#
+# Regular mode: the main host is the single OneServer (logs as usual); extras are
+# more OneServer copies (server01, server02, ...), default 0. A main host started
+# with no extras isn't distributed, so the first scale-up restarts the loop's
+# server with -distributed.
+#
+# Multihost mode (-multihost argument, or the 'm' key to toggle it): the main host
+# is an API server (-role:2:OneApiServer, log name 'api'), extras are backends
+# (-role:2:OneBackendServer: backend01, backend02, ...), default 1; 0 leaves the
+# API alone. It is the layout -multihost-role:2:OneApiServer produces, except
+# that the loop owns every process.
 
 [CmdletBinding()]
 param(
@@ -66,6 +73,7 @@ param(
 $ErrorActionPreference = "Continue"
 $multiHost = $ServerArgs -contains '-multihost'
 $ServerArgs = @($ServerArgs | Where-Object { $_ -ne '-multihost' })
+$maxExtraHosts = 5
 $ScriptDir = $PSScriptRoot
 Set-Location $ScriptDir
 
@@ -539,13 +547,19 @@ function Send-StopSignal {
     }
 }
 
-# Multihost mode. Hosts are hashtables: Name, Role, Port, Process, OutLog,
-# ErrLog, DevLog, StopDeadline. The loop's main wait (stop deadline, watchdog,
-# exit handling) follows the API host; backends are pruned from the list as
-# they exit.
+# Hosts are hashtables: Name, Role, Port, Process, OutLog, ErrLog, DevLog,
+# StopDeadline. The loop's main wait (stop deadline, watchdog, exit handling)
+# follows the main host (the API in multihost mode, the single server in
+# regular mode); extras are pruned from the list as they exit.
 $hosts = [System.Collections.Generic.List[hashtable]]::new()
-$apiHost = $null
-$backendCount = 1
+$mainHost = $null
+# Kept while the loop runs, across server restarts; entering multihost mode starts with one backend
+$extraCount = if ($multiHost) { 1 } else { 0 }
+$mainDistributed = $false
+$extraPrefix = 'backend'
+$extraRole = 'OneBackendServer'
+$extraRoleGroup = '2'
+$extraLabel = 'backends'
 $meshLockSubspace = $null
 $basePort = 7080
 $runMultiHost = $false
@@ -570,7 +584,8 @@ function Start-MultiHost {
     param(
         [Parameter(Mandatory)] [string] $Name,
         [Parameter(Mandatory)] [string] $Role,
-        [Parameter(Mandatory)] [int]    $Port
+        [Parameter(Mandatory)] [int]    $Port,
+        [Parameter(Mandatory)] [string] $RoleGroup
     )
     $base = Join-Path $tmpDir "server-loop-server-run-$Name"
     $h = @{
@@ -587,7 +602,7 @@ function Start-MultiHost {
             -Configuration    $Configuration `
             -ProjectCsproj    $projectCsproj `
             -BuildProperties  $buildProperties `
-            -ServerArgs       (@("-role:2:$Role", "-url:http://localhost:$Port", '-distributed') + $ServerArgs) `
+            -ServerArgs       (@("-role:$($RoleGroup):$Role", "-url:http://localhost:$Port", '-distributed') + $ServerArgs) `
             -StdoutPath       $h.OutLog `
             -StderrPath       $h.ErrLog `
             -NoBuild
@@ -598,13 +613,13 @@ function Start-MultiHost {
     return $h
 }
 
-# Backends are named backend<XX>, XX = two-digit hex id: the first one with no
-# running host and no log left from this iteration (logs are wiped at its
-# start, so a stopped backend's id isn't reused until the next restart).
-# The port is base + id.
-function New-BackendId {
+# Extras are named <prefix><XX> (backend01, server01, ...), XX = two-digit hex
+# id: the first one with no running host and no log left from this iteration
+# (logs are wiped at its start, so a stopped extra's id isn't reused until the
+# next restart). The port is base + id.
+function New-ExtraId {
     for ($id = 1; $id -le 255; $id++) {
-        $name = 'backend{0:x2}' -f $id
+        $name = '{0}{1:x2}' -f $extraPrefix, $id
         if ($hosts | Where-Object { $_.Name -eq $name }) { continue }
         if (Test-Path (Join-Path $tmpDir "server-loop-server-run-$name.log")) { continue }
         return $id
@@ -612,18 +627,44 @@ function New-BackendId {
     return $null
 }
 
-function Start-Backend([int]$Id) {
-    $hosts.Add((Start-MultiHost ('backend{0:x2}' -f $Id) 'OneBackendServer' ($basePort + $Id)))
+function Start-Extra([int]$Id) {
+    $hosts.Add((Start-MultiHost ('{0}{1:x2}' -f $extraPrefix, $Id) $extraRole ($basePort + $Id) $extraRoleGroup))
+}
+
+function Get-ActiveExtras {
+    return @($hosts | Where-Object { $_ -ne $mainHost -and -not $_.Process.HasExited -and -not $_.StopDeadline })
+}
+
+# Starts or gracefully stops random extras until $Target of them are running.
+function Set-ExtraCount([int]$Target) {
+    $active = @(Get-ActiveExtras)
+    while ($active.Count -lt $Target) {
+        $id = New-ExtraId
+        if ($null -eq $id) {
+            Write-LoopLog "No free host id left."
+            break
+        }
+        Start-Extra $id
+        $active = @(Get-ActiveExtras)
+    }
+    if ($active.Count -gt $Target) {
+        foreach ($victim in ($active | Get-Random -Count ($active.Count - $Target))) {
+            Write-LoopLog "Stopping $($victim.Name) (PID $($victim.Process.Id))."
+            Send-HostStop $victim
+        }
+    }
+    $script:extraCount = $Target
+    Write-HostList
 }
 
 function Write-HostList {
-    $backends = @($hosts | Where-Object { $_ -ne $apiHost -and -not $_.Process.HasExited })
-    $items = @($backends | ForEach-Object {
+    $extras = @($hosts | Where-Object { $_ -ne $mainHost -and -not $_.Process.HasExited })
+    $items = @($extras | ForEach-Object {
         $state = if ($_.StopDeadline) { ' (stopping)' } else { '' }
         "$($_.Name) :$($_.Port) PID $($_.Process.Id)$state"
     })
     $list = if ($items.Count -gt 0) { $items -join '; ' } else { 'none' }
-    Write-LoopLog "Hosts: api :$($apiHost.Port); backends ($($backends.Count)): $list."
+    Write-LoopLog "Hosts: $($mainHost.Name) :$($mainHost.Port); $extraLabel ($($extras.Count)): $list."
 }
 
 function Send-HostStop($H) {
@@ -641,14 +682,12 @@ function Stop-HostNow($H, [string]$Reason) {
     catch { Write-LoopLog "$($H.Name): kill failed: $_" }
 }
 
-# One stop request for whatever is running: every host in multihost mode, the
-# single server otherwise.
+# One stop request for whatever is running: the main host (through its own
+# stop signal in regular mode) and every extra.
 function Request-ServerStop([bool]$Multi) {
-    if (-not $Multi) {
-        Send-StopSignal
-        return
-    }
+    if (-not $Multi) { Send-StopSignal }
     foreach ($h in $hosts) {
+        if ($h -eq $mainHost -and -not $Multi) { continue }
         if (-not $h.Process.HasExited) { Send-HostStop $h }
     }
 }
@@ -681,8 +720,8 @@ Write-Host "  dotnet-build  $dotnetBuildLog"
 Write-Host "  server-run    $serverRunOutLog (stdout)"
 Write-Host "                $serverRunErrLog (stderr)"
 Write-Host "                $devLog (DevLog)"
-Write-Host "multihost mode (-multihost argument, 'm' key): one API + backend hosts, one log set per host:"
-Write-Host "  $tmpDir/server-loop-server-run-<api|backendXX>.{out,err,log}"
+Write-Host "extra hosts (keys 0-5 scale them; -multihost argument or 'm' key: API + backends instead of one server), one log set per extra host:"
+Write-Host "  $tmpDir/server-loop-server-run-<api|backendXX|serverXX>.{out,err,log}"
 Write-Host "Press 'j' here, or create $rebundleFlag, while the server runs to rebuild the bundle without restarting it."
 Write-Host "Press 'h' here, or create $hardRestartFlag, to stop, purge the WASM build outputs and rebuild from scratch."
 Write-Host ""
@@ -772,22 +811,34 @@ while ($true) {
         # Captured per iteration: the 'm' key flips $multiHost for the next one.
         $runMultiHost = $multiHost
         $hosts.Clear()
+        # Keys pressed while the steps above were running are still buffered:
+        # digits set the extra-host count for this start, other keys are dropped
+        # (they'd stop the server the moment it is up).
+        try {
+            while ([System.Console]::KeyAvailable) {
+                $buffered = [System.Console]::ReadKey($true).KeyChar
+                if ($buffered -match '^[0-5]$') {
+                    $extraCount = [int]::Parse([string]$buffered)
+                    Write-LoopLog "Key '$buffered' pressed during the build: starting with $extraCount extra host(s)."
+                }
+            }
+        } catch { }
+        $extraPrefix = if ($runMultiHost) { 'backend' } else { 'server' }
+        $extraRole = if ($runMultiHost) { 'OneBackendServer' } else { 'OneServer' }
+        $extraRoleGroup = if ($runMultiHost) { '2' } else { '1' }
+        $extraLabel = if ($runMultiHost) { 'backends' } else { 'servers' }
+        $basePort = Get-BasePort
+        # Fresh subspace per iteration, so mesh locks of hosts that were
+        # force-killed can't hold up the next set.
+        $meshLockSubspace = -join (((48..57) + (97..122)) | Get-Random -Count 8 | ForEach-Object { [char]$_ })
         if ($runMultiHost) {
-            # Fresh subspace per iteration, so mesh locks of hosts that were
-            # force-killed can't hold up the next set.
-            $meshLockSubspace = -join (((48..57) + (97..122)) | Get-Random -Count 8 | ForEach-Object { [char]$_ })
-            $basePort = Get-BasePort
             $devLog = Join-Path $tmpDir "server-loop-server-run-api.log"
             Write-LoopLog "Multihost mode: API on port $basePort, mesh lock subspace '$meshLockSubspace'."
-            $apiHost = Start-MultiHost 'api' 'OneApiServer' $basePort
-            $hosts.Add($apiHost)
-            for ($i = 1; $i -le [Math]::Max(1, $backendCount); $i++) {
-                Start-Backend (New-BackendId)
-            }
-            $backendCount = $hosts.Count - 1
-            Write-HostList
-            $proc = $apiHost.Process
-            Write-Host "Keyboard: 'b' = start one more backend; 'B' = stop a random backend; 'm' = switch to regular mode (restart); 'j' = rebundle in place; 'h' = hard restart; 'k' = kill all hosts right now; any other key = stop all hosts (force-kill after ${stopDeadlineSeconds}s)." -ForegroundColor Cyan
+            $mainHost = Start-MultiHost 'api' 'OneApiServer' $basePort '2'
+            $hosts.Add($mainHost)
+            $proc = $mainHost.Process
+            Set-ExtraCount $extraCount
+            Write-Host "Keyboard: 0-5 = number of backends to run (now $extraCount); 'm' = switch to regular mode (restart); 'j' = rebundle in place; 'h' = hard restart; 'k' = kill all hosts right now; any other key = stop all hosts (force-kill after ${stopDeadlineSeconds}s)." -ForegroundColor Cyan
         } else {
             $devLog = $regularDevLog
             $env:ActualChat_DevLog = $devLog
@@ -806,14 +857,32 @@ while ($true) {
             # would have nothing to read - its stdin is captured by the
             # redirect anyway. We don't pass `-kb`. `$ServerArgs` appends
             # whatever the operator passed to server-loop.ps1.
-            $proc = Start-ServerProcess `
-                -Configuration    $Configuration `
-                -ProjectCsproj    $projectCsproj `
-                -BuildProperties  $buildProperties `
-                -ServerArgs       $ServerArgs `
-                -StdoutPath       $serverRunOutLog `
-                -StderrPath       $serverRunErrLog
-            Write-Host "Keyboard: 'j' = rebundle in place (npm only, server keeps running); 'h' = hard restart (stop, purge the WASM build outputs, full rebuild); 'k' = kill the server process right now (no /health/stop, no wait); 'm' = switch to multihost mode (restart); any other key = stop the server (forwarded to /health/stop; force-kill after ${stopDeadlineSeconds}s)." -ForegroundColor Cyan
+            # Extras are more OneServer copies in the same mesh, so with any
+            # planned the main one has to be distributed too.
+            $mainDistributed = $extraCount -gt 0
+            $mainArgs = @(if ($mainDistributed) { "-distributed" }) + @($ServerArgs)
+            if ($mainDistributed) {
+                $env:HostSettings__MeshLockSubspace = $meshLockSubspace
+                $env:HostSettings__MeshLockOptionsPreset = 'Default'
+            }
+            try {
+                $proc = Start-ServerProcess `
+                    -Configuration    $Configuration `
+                    -ProjectCsproj    $projectCsproj `
+                    -BuildProperties  $buildProperties `
+                    -ServerArgs       $mainArgs `
+                    -StdoutPath       $serverRunOutLog `
+                    -StderrPath       $serverRunErrLog
+            } finally {
+                Remove-Item Env:HostSettings__MeshLockSubspace, Env:HostSettings__MeshLockOptionsPreset -ErrorAction SilentlyContinue
+            }
+            $mainHost = @{
+                Name = 'main'; Role = 'OneServer'; Port = $basePort; Process = $proc
+                OutLog = $serverRunOutLog; ErrLog = $serverRunErrLog; DevLog = $devLog; StopDeadline = $null
+            }
+            $hosts.Add($mainHost)
+            if ($mainDistributed) { Set-ExtraCount $extraCount }
+            Write-Host "Keyboard: 0-5 = number of extra servers to run (now $extraCount); 'j' = rebundle in place (npm only, server keeps running); 'h' = hard restart (stop, purge the WASM build outputs, full rebuild); 'k' = kill all hosts right now; 'm' = switch to multihost mode (restart); any other key = stop the server (forwarded to /health/stop; force-kill after ${stopDeadlineSeconds}s)." -ForegroundColor Cyan
         }
 
         # Watchdog state: probe /healthz/live once we've learned the port
@@ -848,40 +917,25 @@ while ($true) {
                     $key = [System.Console]::ReadKey($true)
                     $rawChar = $key.KeyChar
                     $keyChar = [char]::ToLowerInvariant($rawChar)
-                    if ($rawChar -ceq 'b') {
-                        if (-not $runMultiHost) {
-                            Write-LoopLog "'b' only works in multihost mode - press 'm' to switch."
-                        } elseif ($stopRequested) {
-                            Write-LoopLog "'b' ignored - a stop is already in flight."
+                    if ($rawChar -match '^[0-5]$') {
+                        $target = [int]::Parse([string]$rawChar)
+                        if ($stopRequested) {
+                            $extraCount = $target
+                            Write-LoopLog "'$rawChar': a stop is in flight, the next start will have $target extra host(s)."
+                        } elseif (-not $runMultiHost -and -not $mainDistributed -and $target -gt 0) {
+                            Write-LoopLog "Scaling to $target extra server(s): restarting, since the main server isn't distributed."
+                            $extraCount = $target
+                            Request-ServerStop $runMultiHost
+                            $stopRequested = $true
+                            $keyStopForceKillAt = (Get-Date).AddSeconds($stopDeadlineSeconds)
                         } else {
-                            $id = New-BackendId
-                            if ($null -eq $id) {
-                                Write-LoopLog "'b': no free backend id left."
-                            } else {
-                                Start-Backend $id
-                                $backendCount = $hosts.Count - 1
-                                Write-HostList
-                            }
-                        }
-                    }
-                    elseif ($rawChar -ceq 'B') {
-                        $victims = @($hosts | Where-Object {
-                            $_ -ne $apiHost -and -not $_.Process.HasExited -and -not $_.StopDeadline })
-                        if (-not $runMultiHost) {
-                            Write-LoopLog "'B' only works in multihost mode - press 'm' to switch."
-                        } elseif ($victims.Count -eq 0) {
-                            Write-LoopLog "'B': no running backend to stop."
-                        } else {
-                            $victim = $victims | Get-Random
-                            Write-LoopLog "Stopping $($victim.Name) (PID $($victim.Process.Id))."
-                            Send-HostStop $victim
-                            $backendCount = [Math]::Max(0, $backendCount - 1)
-                            Write-HostList
+                            Set-ExtraCount $target
                         }
                     }
                     elseif ($keyChar -eq 'm') {
                         $multiHost = -not $multiHost
                         $nextMode = if ($multiHost) { 'multihost' } else { 'regular' }
+                        $extraCount = if ($multiHost) { 1 } else { 0 }
                         if ($stopRequested) {
                             Write-LoopLog "Mode switch: the next iteration runs in $nextMode mode."
                         } else {
@@ -910,11 +964,9 @@ while ($true) {
                         # next iteration rebuilds. So 'k' alone recycles the loop
                         # normally, and 'h' then 'k' still purges below.
                         Stop-ServerProcessNow -Process $proc -Label 'Kill' -Reason 'requested from the loop terminal;'
-                        if ($runMultiHost) {
-                            foreach ($h in $hosts) {
-                                if ($h -ne $apiHost -and -not $h.Process.HasExited) {
-                                    Stop-HostNow $h 'requested from the loop terminal;'
-                                }
+                        foreach ($h in $hosts) {
+                            if ($h -ne $mainHost -and -not $h.Process.HasExited) {
+                                Stop-HostNow $h 'requested from the loop terminal;'
                             }
                         }
                         $stopRequested = $true
@@ -974,9 +1026,9 @@ while ($true) {
                     -WatchdogNextProbeAt  ([ref]$watchdogNextProbeAt)
             }
 
-            # Backends only: the API's own deadline is $keyStopForceKillAt below.
+            # Extras only: the main host's own deadline is $keyStopForceKillAt below.
             foreach ($h in @($hosts)) {
-                if ($h -eq $apiHost) { continue }
+                if ($h -eq $mainHost) { continue }
                 if ($h.Process.HasExited) {
                     Write-LoopLog "$($h.Name) exited (code $($h.Process.ExitCode))."
                     [void]$hosts.Remove($h)
@@ -1029,7 +1081,7 @@ while ($true) {
 
             Start-Sleep -Milliseconds 200
         }
-        if ($runMultiHost) { Stop-AllHosts }
+        Stop-AllHosts
         $exitCode = $proc.ExitCode
         # Did the server reach "I bound a port" before exiting? If so any
         # exit is a post-start termination (stop signal in any of its
