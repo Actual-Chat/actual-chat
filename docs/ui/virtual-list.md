@@ -1709,6 +1709,11 @@ edge: on the timeout path the content has not finished settling, and re-deriving
 the pin the initial placement just established, leaving a freshly opened chat at the bottom but not
 following it.
 
+While the list has no items, the markup sets `data-is-empty` and CSS keeps the two spacers (and the
+skeletons in them) `visibility: visible` inside the hidden wrapper, so a chat that is still loading
+shows skeletons instead of a blank area. Rendering the first items clears the attribute and the
+wrapper's own rule takes over again.
+
 ### 3.12 Rules that came from painful debugging
 
 *Five things that look like they should work and do not: freezing `style.height` does not freeze
