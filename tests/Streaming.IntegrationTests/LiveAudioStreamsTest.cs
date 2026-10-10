@@ -320,7 +320,7 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
             live.Should().NotBeNull("Alice's stream ending must not tear down the session before Bob joins it");
             live!.AuthorIds.Should().Contain(author1!.Id);
             live.AuthorIds.Should().Contain(author2!.Id);
-            live.SessionStartedAt.Should().NotBeNull("two distinct authors must latch the session");
+            live.StartedAt.Should().NotBeNull("two distinct authors must latch the session");
         });
         var liveSession = await liveSessionsBackend.Get(chat.Id, default);
         liveSession.Should().NotBeNull();

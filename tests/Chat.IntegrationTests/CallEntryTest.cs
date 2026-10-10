@@ -205,7 +205,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task AnsweredCallInterruptedByAMessageShouldMaterializeARangeAroundItsEntry()
     {
-        // A message written between the ring and the answer pushes VisibleStartLid (set at the latch)
+        // A message written between the ring and the answer pushes StartLid (set at the latch)
         // past EndEntryLid, which only a summary ever advances and a transcription-off call never gets.
         // The resulting range runs backwards, and a degenerate one drops both the card and the Ended
         // entry it anchors - the call disappears from the chat entirely.

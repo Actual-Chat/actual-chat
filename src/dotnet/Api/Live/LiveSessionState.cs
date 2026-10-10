@@ -12,11 +12,11 @@ public sealed partial record LiveSessionState
     [DataMember(Order = 0), Key(0)]
     public ChatId ChatId { get; init; } = null!;
     [DataMember(Order = 1), Key(1)]
-    public long StartEntryLid { get; init; }
+    public long FirstSpeechLid { get; init; }
     [DataMember(Order = 2), Key(2)]
     public long EndEntryLid { get; init; }
     [DataMember(Order = 3), Key(3)]
-    public Moment StartedAt { get; init; }
+    public Moment FirstSpeechAt { get; init; }
     [DataMember(Order = 4), Key(4)]
     public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
     [DataMember(Order = 5), Key(5)]
@@ -28,9 +28,9 @@ public sealed partial record LiveSessionState
     [DataMember(Order = 8), Key(8)]
     public bool TranscriptionOn { get; init; }
     [DataMember(Order = 9), Key(9)]
-    public int MessageCount { get; init; }
+    public int SummarizedEntryCount { get; init; }
     [DataMember(Order = 10), Key(10)]
-    public Moment LastSummaryAt { get; init; }
+    public Moment SummarizedAt { get; init; }
     [DataMember(Order = 11), Key(11)]
     public bool StartNotificationSent { get; init; }
     [DataMember(Order = 12), Key(12)]
@@ -44,13 +44,13 @@ public sealed partial record LiveSessionState
     [DataMember(Order = 16), Key(16)]
     public SessionRules Rules { get; init; } = SessionRules.Default;
     [DataMember(Order = 17), Key(17)]
-    public Moment? SessionStartedAt { get; init; }
+    public Moment? StartedAt { get; init; }
     // What started the session, never changed after: a call placed into an ambient session leaves it
     // Ambient. Whether a call is in the session now is the chat's LiveCall, not this.
     [DataMember(Order = 18), Key(18)]
     public LiveSessionKind Kind { get; init; } = LiveSessionKind.Ambient;
     [DataMember(Order = 19), Key(19)]
-    public long VisibleStartLid { get; init; }
+    public long StartLid { get; init; }
     [DataMember(Order = 20), Key(20)]
     public long ContextStartLid { get; init; }
     [DataMember(Order = 21), Key(21)]
@@ -66,12 +66,12 @@ public sealed partial record LiveSessionState
     public bool HasTranscript { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public long EffectiveVisibleStartLid => VisibleStartLid > 0 ? VisibleStartLid : StartEntryLid;
+    public long EffectiveStartLid => StartLid > 0 ? StartLid : FirstSpeechLid;
     [IgnoreDataMember, IgnoreMember]
     public Range<long> VisibleEntryLidRange
-        => new(EffectiveVisibleStartLid, Math.Max(EndEntryLid, EffectiveVisibleStartLid) + 1);
+        => new(EffectiveStartLid, Math.Max(EndEntryLid, EffectiveStartLid) + 1);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ConversationId ConversationId => ConversationId.New(ChatId, EffectiveVisibleStartLid);
+    public ConversationId ConversationId => ConversationId.New(ChatId, EffectiveStartLid);
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsCall => Kind == LiveSessionKind.Call;
 
@@ -80,24 +80,24 @@ public sealed partial record LiveSessionState
             Title = Title,
             Description = Description,
             Summary = Summary,
-            EndEntryLid = Math.Max(EndEntryLid, EffectiveVisibleStartLid),
-            StartsAt = StartedAt,
-            EndsAt = LastSummaryAt == default ? StartedAt : LastSummaryAt,
-            MessageCount = MessageCount,
+            EndEntryLid = Math.Max(EndEntryLid, EffectiveStartLid),
+            StartsAt = FirstSpeechAt,
+            EndsAt = SummarizedAt == default ? FirstSpeechAt : SummarizedAt,
+            MessageCount = SummarizedEntryCount,
             AuthorIds = AuthorIds,
             IsExpandedByDefault = IsExpandedByDefault,
             CallerId = IsCall ? CallerId : null,
         };
 
     public Conversation ToMaterializedConversation()
-        => new(ConversationId.New(ChatId, ContextStartLid > 0 ? ContextStartLid : EffectiveVisibleStartLid), Version) {
+        => new(ConversationId.New(ChatId, ContextStartLid > 0 ? ContextStartLid : EffectiveStartLid), Version) {
             Title = Title,
             Description = Description,
             Summary = Summary,
             EndEntryLid = EndEntryLid,
-            StartsAt = StartedAt,
-            EndsAt = LastSummaryAt == default ? StartedAt : LastSummaryAt,
-            MessageCount = MessageCount,
+            StartsAt = FirstSpeechAt,
+            EndsAt = SummarizedAt == default ? FirstSpeechAt : SummarizedAt,
+            MessageCount = SummarizedEntryCount,
             AuthorIds = AuthorIds,
             IsExpandedByDefault = IsExpandedByDefault,
             CallerId = IsCall ? CallerId : null,

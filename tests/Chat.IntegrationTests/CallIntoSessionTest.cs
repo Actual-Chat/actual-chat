@@ -207,7 +207,7 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
         await backend.OnStreamRegistered(chatId, bobId, null, false, true, default);
         await backend.OnStreamRegistered(chatId, aliceId, null, false, true, default);
         var state = await backend.GetState(chatId, default);
-        state!.SessionStartedAt.Should().NotBeNull("two speakers latch the session");
+        state!.StartedAt.Should().NotBeNull("two speakers latch the session");
         state.Kind.Should().Be(LiveSessionKind.Ambient);
         return state;
     }

@@ -688,8 +688,8 @@ public class NotificationsBackend(IServiceProvider services)
         // latched live session — the call's own transcript. Solo (pre-latch) transcription and
         // non-participants' messages typed during the call still notify normally.
         var live = await LiveSessionsBackend.GetState(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (live is { SessionStartedAt: not null } lc
-            && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
+        if (live is { StartedAt: not null } lc
+            && entry.LocalId >= lc.FirstSpeechLid && lc.AuthorIds.Contains(entry.AuthorId))
             return;
 
         var isLateCallTranscript = await IsLateCallTranscript(entry, author, changeKind, cancellationToken)
@@ -1011,7 +1011,7 @@ public class NotificationsBackend(IServiceProvider services)
                 .ConfigureAwait(false);
         }
         // Don't interrupt users who are actively in this chat's live call — they're present.
-        if (live is { SessionStartedAt: not null }) {
+        if (live is { StartedAt: not null }) {
             var active = await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false);
             if (active.Count != 0) {
                 userIds = userIds.Where(x => !active.Contains(x)).ToList();

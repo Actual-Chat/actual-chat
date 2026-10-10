@@ -98,7 +98,7 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
         var conversation = await conversations.Get(conversationId, CancellationToken.None);
         conversation.Should().NotBeNull();
         // Not exact equality: the storage round-trip quantizes Moment to microseconds.
-        (conversation!.StartsAt - connected.SessionStartedAt!.Value).Duration()
+        (conversation!.StartsAt - connected.StartedAt!.Value).Duration()
             .Should().BeLessThan(TimeSpan.FromMilliseconds(1),
                 "the span must be talk time from connect, not ring time from StartedAt");
         (conversation.EndsAt >= beforeHangup).Should().BeTrue(

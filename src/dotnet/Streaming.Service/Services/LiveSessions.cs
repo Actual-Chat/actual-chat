@@ -320,7 +320,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         var state = await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
         // A session that never latched to 2+ authors isn't a conversation - one person streaming
         // into an empty chat is exactly what the reminder this feeds exists for.
-        if (state?.SessionStartedAt is not { } startedAt)
+        if (state?.StartedAt is not { } startedAt)
             return null;
 
         var now = Clocks.ServerClock.Now;

@@ -71,8 +71,8 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
         // Never (re)summarize a range a latched live session owns — the live flow materializes it.
         var live = await LiveSessionsBackend.GetState(ChatId, cancellationToken).ConfigureAwait(false);
-        var liveSessionRange = live is { SessionStartedAt: not null } lc
-            ? new Range<long>(lc.ContextStartLid > 0 ? lc.ContextStartLid : lc.StartEntryLid, long.MaxValue)
+        var liveSessionRange = live is { StartedAt: not null } lc
+            ? new Range<long>(lc.ContextStartLid > 0 ? lc.ContextStartLid : lc.FirstSpeechLid, long.MaxValue)
             : (Range<long>?)null;
         bool OverlapsLiveSession(IReadOnlyList<Range<long>> ranges)
             => liveSessionRange is { } lsr && ranges.Any(r => !r.IntersectWith(lsr).IsEmpty);
@@ -233,10 +233,10 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         var chatId = ChatId;
         var immatureMoment = now - Settings.Summarization.ChatEntrySummarizationDelay;
 
-        // A latched live session owns its tail [StartEntryLid, ...); pre-latch (solo) the split flow summarizes normally.
+        // A latched live session owns its tail [FirstSpeechLid, ...); pre-latch (solo) the split flow summarizes normally.
         var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        var liveStartLid = live is { SessionStartedAt: not null } lc
-            ? (lc.ContextStartLid > 0 ? lc.ContextStartLid : lc.StartEntryLid)
+        var liveStartLid = live is { StartedAt: not null } lc
+            ? (lc.ContextStartLid > 0 ? lc.ContextStartLid : lc.FirstSpeechLid)
             : long.MaxValue;
 
         // Fetch up to (BatchSize + 1) items
