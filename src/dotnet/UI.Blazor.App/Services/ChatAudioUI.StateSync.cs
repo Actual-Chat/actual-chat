@@ -74,13 +74,8 @@ public partial class ChatAudioUI
 
     // Private methods
 
-    private async Task InitializeListening(CancellationToken cancellationToken)
-    {
-        // A SetListeningState landing before the stored active chats are read would make
-        // StoredState discard them.
-        await ActiveChatsUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-        await RestoreKeepListeningChats(cancellationToken).ConfigureAwait(false);
-    }
+    private Task InitializeListening(CancellationToken cancellationToken)
+        => RestoreKeepListeningChats(cancellationToken);
 
     private async Task SyncListeningWithPttArming(CancellationToken cancellationToken)
     {
@@ -92,7 +87,6 @@ public partial class ChatAudioUI
             var chatIds = c.Value.ToHashSet();
             if (Ptt.IsDesktopApp(HostInfo) && chatIds.Count != 0) {
                 // Desktop has no cold wake: an opted-in running app listens without first opening a chat.
-                await ActiveChatsUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
                 Enable();
                 oldChatIds ??= [];
             }
@@ -651,7 +645,6 @@ public partial class ChatAudioUI
         // Don't start till the moment ChatAudioUI gets enabled
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-        var listenerTimeout = Constants.Audio.ListeningDuration;
         var cListeningChatIds = await Computed
             .Capture(GetListeningChatIds, cancellationToken)
             .ConfigureAwait(false);
@@ -677,25 +670,18 @@ public partial class ChatAudioUI
                     continue; // armed PTT chats keep listening — no idle watcher
 
                 var watcher = FuncWorker.Start(
-                    ct => StopListeningWhenIdle(chatId, listenerTimeout, ct),
+                    ct => StopListeningWhenIdle(chatId, ct),
                     cancellationToken);
                 monitors.Add(chatId, watcher);
             }
         }
     }
 
-    private async Task StopListeningWhenIdle(
-        ChatId chatId,
-        TimeSpan listenerTimeout,
-        CancellationToken cancellationToken)
+    private async Task StopListeningWhenIdle(ChatId chatId, CancellationToken cancellationToken)
     {
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
         var mustStop = false;
-        // Speaker session = the user recorded during this listening session, so their
-        // listening-linger setting applies once the chat goes quiet; a pure listener
-        // session always holds for listenerTimeout - see ComputeStopListeningAt.
-        var hasRecorded = await GetRecordingChatId().ConfigureAwait(false) == chatId;
         var lastActivityAt = serverClock.Now;
         var retryDelays = RetryDelaySeq.Exp(0.5, 8);
         var retryAttempt = 0;
@@ -717,7 +703,6 @@ public partial class ChatAudioUI
                             break;
                         }
 
-                        hasRecorded = true;
                         retryAttempt = 0;
                     }
                     finally {
@@ -780,6 +765,25 @@ public partial class ChatAudioUI
                 .Capture(() => IsInCall(chatId, ct), ct)
                 .ConfigureAwait(false);
 
+            // Remote values read as "idle" and the setting as Off until the first server answer,
+            // and with no linger the very first decision below would stop a live chat.
+            await Task.WhenAll(
+                cHasActivity.WhenSynchronized(ct),
+                cHasRecorder.WhenSynchronized(ct),
+                cIsWatching.WhenSynchronized(ct),
+                cHasRemoteStreams.WhenSynchronized(ct),
+                cOwnSourceKind.WhenSynchronized(ct),
+                cSetting.WhenSynchronized(ct),
+                cIsInCall.WhenSynchronized(ct)
+                ).ConfigureAwait(false);
+            cHasActivity = await cHasActivity.Update(ct).ConfigureAwait(false);
+            cHasRecorder = await cHasRecorder.Update(ct).ConfigureAwait(false);
+            cIsWatching = await cIsWatching.Update(ct).ConfigureAwait(false);
+            cHasRemoteStreams = await cHasRemoteStreams.Update(ct).ConfigureAwait(false);
+            cOwnSourceKind = await cOwnSourceKind.Update(ct).ConfigureAwait(false);
+            cSetting = await cSetting.Update(ct).ConfigureAwait(false);
+            cIsInCall = await cIsInCall.Update(ct).ConfigureAwait(false);
+
             while (!ct.IsCancellationRequested) {
                 // The conversation holds: anyone's speech, anyone's open mic (a hot mic is a
                 // conversation even mid-pause), peers' video/screencast, own video/screencast,
@@ -818,8 +822,7 @@ public partial class ChatAudioUI
                 }
 
                 // Idle — compute stop time
-                var speakerTimeout = cSetting.Value.ToTimeSpan();
-                var stopAt = ComputeStopListeningAt(lastActivityAt, hasRecorded, listenerTimeout, speakerTimeout);
+                var stopAt = lastActivityAt + cSetting.Value.ToTimeSpan();
                 var remaining = (stopAt - serverClock.Now).Positive();
                 if (remaining <= Epsilon)
                     return; // Must stop listening
