@@ -4,13 +4,11 @@
 #pragma warning disable IL2091
     if (State.IsInitial(out var m))
         return;
-    if (!m.IsSupported)
-        return;
 
     _formModel.FromModel(m.Settings);
 }
 
-<TileTopic Topic="@L.CarAudio_Mode"/>
+<TileTopic Topic="@L.CarAudio_SectionTitle"/>
 <Tile Class="car-audio-tile">
     <Form Model="@_formModel">
         <DataAnnotationsValidator/>
@@ -48,7 +46,8 @@
 
     private FormModel _formModel = null!;
 
-    private ICarConnection CarConnection => field ??= Hub.Services.GetRequiredService<ICarConnection>();
+
+    private ICarConnection? CarConnection => field ??= Hub.Services.GetService<ICarConnection>();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
     protected override void OnInitialized() {
@@ -60,18 +59,14 @@
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var isSupported = Hub.Services.GetService<ICarConnection>() != null;
-        if (!isSupported)
-            return Model.None;
-
         var settings = await UserSettingsUI.UserCarAudioSettings().Get(cancellationToken).ConfigureAwait(false);
-        return new(true, settings);
+        return new(settings);
     }
 
     private async Task OnModeChanged(CarAudioMode mode) {
         Log.LogInformation("CarAudioSettings: Mode -> {Mode}", mode);
-        if (mode == CarAudioMode.CarAssistant) {
-            var isGranted = await CarConnection.RequestAssistantLinkPermission(CancellationToken.None);
+        if (mode == CarAudioMode.CarAssistant && CarConnection is { } carConnection) {
+            var isGranted = await carConnection.RequestAssistantLinkPermission(CancellationToken.None);
             if (!isGranted) {
                 ToastUI.Show(L.CarAudio_AssistantPermissionDenied, "icon-alert-circle", ToastDismissDelay.Long);
                 await State.Recompute(); // Puts the radio back on the stored mode
@@ -109,8 +104,8 @@
 
     // Nested types
 
-    public sealed record Model(bool IsSupported, UserCarAudioSettings Settings) {
-        public static readonly Model None = new(false, new UserCarAudioSettings());
+    public sealed record Model(UserCarAudioSettings Settings) {
+        public static readonly Model None = new(new UserCarAudioSettings());
     }
 
     public sealed class FormModel {
