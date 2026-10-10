@@ -408,7 +408,8 @@ resources**. Nothing in the loop or in the MCPs arbitrates access — there
 is no lease, no owner field, no per-caller isolation. So when more than
 one agent may need them, access is arbitrated by a **coordinator agent**
 (queue, lease, polling the current owner): see `/shared-resources` for the
-protocol and for who starts the coordinator. The rules below say what
+protocol and for who starts the coordinator. The coordinator leases the **loop**
+only; Chrome is not leased, each agent works in its own tabs. The rules below say what
 collides and what a grant has to contain; the coordinator (or, in a small
 job, the main agent acting as one) is the one who issues it.
 

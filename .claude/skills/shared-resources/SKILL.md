@@ -3,8 +3,7 @@ name: shared-resources
 description: |
   Use when more than one agent may need the same single-instance resource at
   the same time — most of all the local server loop, which holds the one URL
-  (https://local.voxt.ai, port 7080) the app can run on, and the Chrome
-  instances that go with it. Also when you are about to dispatch several agents
+  (https://local.voxt.ai, port 7080) the app can run on. Also when you are about to dispatch several agents
   that will test the UI, when you find another agent already using the loop, or
   when the user says "coordinate", "shared resource", "queue for the server".
 ---
@@ -13,8 +12,10 @@ description: |
 
 A shared resource is something only one agent can use at a time and that has no
 arbitration of its own. Today that is the **server loop** (it owns one URL, so
-one running copy of the app, built from one worktree) and, with it, the Chrome
-instances used for UI checks. More may come; the protocol is the same.
+one running copy of the app, built from one worktree). More may come; the
+protocol is the same. **Chrome is not leased:** agents use their own tabs in the
+shared browsers (a new page of their own, never someone else's tab), as they
+normally do.
 
 Agents do not share such a resource by sharing a setup or by trial and error.
 **One agent — the coordinator — owns the resource. Everyone else asks it for the
@@ -60,7 +61,7 @@ All through `SendMessage`, to the coordinator by name or id.
 
 | From the coordinator | Meaning |
 |---|---|
-| `GRANTED <resource> <how to reach it>` | It is yours now, ready to use (for the loop: URL, worktree it runs from, which Chrome and which test user you may use). |
+| `GRANTED <resource> <how to reach it>` | It is yours now, ready to use (for the loop: URL, worktree it runs from, which test user you may use). |
 | `QUEUED <resource> position N` | Wait. Do not touch the resource. |
 | `STILL USING?` | Poll. Answer with `EXTEND` or `RELEASE`. |
 | `REVOKED <resource> <why>` | You no longer own it. Stop at once. |
@@ -119,8 +120,8 @@ restarted; verify and grant.
 
 While an agent owns the loop it may use the restart/rebundle rights described in
 `/server-loop` → **Coordinating subagents** (rebundle, `/health/stop`,
-hard restart), because nobody else is using it. The Chrome instance and test
-user it may use are part of the grant; one agent per Chrome.
+hard restart), because nobody else is using it. The test user it may use is part
+of the grant.
 
 The coordinator never grants the loop to an agent that runs in Docker as if that
 agent could start it itself: agents in Docker use the loop that runs on the host
@@ -137,8 +138,7 @@ coordinator's job (or the user's).
 3. Answer `STILL USING?` promptly.
 4. Obey `REVOKED` immediately; save your evidence (logs, screenshots) first if
    it takes seconds, not minutes.
-5. If you need a different resource than the one you hold (for example the
-   second Chrome), ask for it; do not take it.
+5. If you need a different shared resource than the one you hold, ask for it; do not take it.
 
 ## Common mistakes
 
