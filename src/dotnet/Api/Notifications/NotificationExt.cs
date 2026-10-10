@@ -76,10 +76,42 @@ public static class NotificationExt
             ChatEntryRelatedNotification n when n.EntryLid > 0 => (ChatEntryId?)n.StartEntryId,
             _ => notification.GetAnchorEntryId(),
         };
-        if (entryId is { } e)
-            return Links.Chat(e);
+        var link = entryId is { } e ? Links.Chat(e)
+            : notification.GetChatId() is { } chatId ? Links.Chat(chatId)
+            : (LocalUrl?)null;
+        return link is { } l ? Links.WithNotification(l, notification.Id) : Links.Chats;
+    }
 
-        return notification.GetChatId() is { } chatId ? Links.Chat(chatId) : Links.Chats;
+    public static bool TryGetChatTarget(
+        this NotificationId notificationId, [NotNullWhen(true)] out ChatId? chatId, out long entryLid)
+    {
+        // Every kind but the explicit ones keys its id by what it is about, so the chat and the entry
+        // it leads to come out of the id alone - a notification link needs no lookup to be read as a chat link.
+        chatId = null;
+        entryLid = 0;
+        var key = notificationId.SimilarityKey;
+        switch (notificationId.Kind) {
+        case NotificationKind.Message or NotificationKind.Reply or NotificationKind.Invitation:
+            chatId = ChatId.TryParse(key);
+            break;
+        case NotificationKind.Mention or NotificationKind.Reaction
+            or NotificationKind.Attention or NotificationKind.Thread:
+            if (ChatEntryId.TryParse(key) is { } entryId) {
+                chatId = entryId.ChatId;
+                entryLid = entryId.LocalId;
+            }
+            break;
+        case NotificationKind.Conversation:
+            if (ConversationId.TryParse(key) is { } conversationId) {
+                chatId = conversationId.ChatId;
+                entryLid = conversationId.StartEntryLid;
+            }
+            break;
+        case NotificationKind.IncomingCall:
+            chatId = CallId.TryParse(key)?.ChatId;
+            break;
+        }
+        return chatId is not null;
     }
 
     public static string GetSenderName(this ChatNotification notification)

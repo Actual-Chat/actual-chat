@@ -53,6 +53,11 @@
         if (!State.IsInitial(out var chat) && chat is null)
             return;
 
+        if (Group.Newest.NotificationId is { } notificationId) {
+            _ = Hub.NotificationsUI.Open(notificationId, Group.Newest.EntryId);
+            return;
+        }
+
         var url = Group.Newest.EntryId is { } entryId ? Links.Chat(entryId) : Links.Chat(Group.ChatId);
         _ = History.NavigateTo(url);
     }

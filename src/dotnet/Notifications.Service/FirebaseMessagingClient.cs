@@ -46,6 +46,7 @@ public class FirebaseMessagingClient(
         switch (notification) {
         case AttentionNotification attention:
             lastEntryLocalId = attention.EntryLid;
+            linkEntryId = attention.EntryId;
             break;
         case ChatEntryRelatedNotification related when related.EntryLid != 0:
             entryId = related.EntryId;
@@ -72,9 +73,11 @@ public class FirebaseMessagingClient(
         // iOS stacks same-thread banners under one group; mentions keep their own banner (tag)
         // but still stack with the rest of their chat.
         var threadTag = notification.GetChatTag() ?? tag;
-        var link = isEntryRelated ? UrlMapper.ToAbsolute(Links.Chat(linkEntryId))
-            : isChatRelated ? UrlMapper.ToAbsolute(Links.Chat(chatId!))
-            : "";
+        // The link says which notification it is, so a tap finds it without a lookup
+        var chatLink = isEntryRelated ? Links.Chat(linkEntryId)
+            : isChatRelated ? Links.Chat(chatId!)
+            : (LocalUrl?)null;
+        var link = chatLink is { } l ? UrlMapper.ToAbsolute(Links.WithNotification(l, notificationId)) : "";
 
         // Common data: every platform gets these, and on APNs they ride alongside aps in the same
         // 4KB budget - so the renderer-only keys below stay out of it. iOS renders from aps.alert

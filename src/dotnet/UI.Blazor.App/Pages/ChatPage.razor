@@ -3,6 +3,7 @@
 @layout ListViewLayout
 @using ActualChat.Hosting
 @using ActualChat.Contacts
+@using ActualChat.Notifications
 @using RightPanel = ActualChat.UI.Blazor.App.Components.RightPanel
 @using ActualChat.UI.Blazor.Diagnostics
 @inherits ComputedStateComponent<AppUIHub, ChatPage.Model?>
@@ -112,6 +113,7 @@
     private static int _isVeryFirstLoad = 1;
 
     private MutableState<RouteState> _routeState = null!;
+    private (string? Route, string? NotificationShortId, string? NotificationUI)? _lastRouteKey;
     protected Model? Rendered;
 
     protected IChats Chats => Hub.Chats;
@@ -129,14 +131,25 @@
     protected ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string? Route { get; set; }
+    [SupplyParameterFromQuery(Name = Links.NotificationIdQueryParameterName)]
+    public string? NotificationShortId { get; set; }
+    [SupplyParameterFromQuery(Name = Links.NotificationUIQueryParameterName)]
+    public string? NotificationUIValue { get; set; }
 
     protected override void OnInitialized() {
         ChatAudioUI.Enable();
         _routeState = StateFactory.NewMutable(RouteState.None);
     }
 
-    protected override Task OnParametersSetAsync()
-        => SetRoute(Route);
+    protected override Task OnParametersSetAsync() {
+        // A query change that leaves these alone (the ?n= drop after an entry jump) is not a new route
+        var key = (Route, NotificationShortId, NotificationUIValue);
+        if (key == _lastRouteKey)
+            return Task.CompletedTask;
+
+        _lastRouteKey = key;
+        return SetRoute(Route);
+    }
 
     protected override bool ShouldRender()
         => (ReferenceEquals(Rendered, null)
@@ -342,8 +355,22 @@
         var fixedRoute = chatId is null ? parsedRoute : new RouteResult(chatId);
         _routeState.Value = new RouteState(parsedRoute, fixedRoute);
         ChatSwitchTracer.Mark("ChatPage.SetRoute: route state set", chatId);
-        ChatUI.SelectChatOnNavigation(chatId);
+        var notificationUI = NotificationUIModeExt.Parse(NotificationUIValue);
+        await SelectNotification(notificationUI);
+        ChatUI.SelectChatOnNavigation(chatId, notificationUI);
         ChatSwitchTracer.Mark("ChatPage.SetRoute: SelectChatOnNavigation done");
+    }
+
+    protected async Task SelectNotification(NotificationUIMode notificationUI) {
+        // The notification the URL names is the one the panel shows - when the panel is what's open
+        NotificationId? notificationId = null;
+        var showsNotifications = notificationUI == NotificationUIMode.Notifications
+            || (notificationUI == NotificationUIMode.Auto && Hub.NavbarUI.IsGroupSelected(NavbarGroupIds.Unread));
+        if (showsNotifications && !NotificationShortId.IsNullOrEmpty()) {
+            var ownAccount = await AccountUI.OwnAccount.Use();
+            notificationId = Links.TryParseNotification(ownAccount.Id, NotificationShortId);
+        }
+        Hub.NotificationsPanelUI.SelectNotification(notificationId);
     }
 
     protected async ValueTask<RouteResult> ResolveAliasRoute(string? route) {

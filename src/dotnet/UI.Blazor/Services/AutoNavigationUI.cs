@@ -54,6 +54,9 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
             return url;
         });
 
+    // Raised instead of a navigation when the URL an attention-holding tap leads to is already open
+    public event Action<LocalUrl>? NavigatedToCurrentUrl;
+
     public Task DispatchNavigateTo(string url, AutoNavigationReason reason)
     {
         Log.LogInformation("DispatchNavigateTo, Url: '{Url}', Reason: '{Reason}'", url, reason);
@@ -64,7 +67,7 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
             return Task.CompletedTask;
         }
 
-        if (reason == AutoNavigationReason.Notification && !localUrl.IsChat()) {
+        if (reason == AutoNavigationReason.Notification && !localUrl.IsChat() && !localUrl.IsNotification()) {
             Log.LogWarning("NavigateTo LocalUrl: '{LocalUrl}' for notification reason is restricted", localUrl);
             return Task.CompletedTask;
         }
@@ -93,7 +96,13 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
             Log.LogInformation("* NavigateTo({Url}, {Reason})", url, reason);
             if (HoldsAttention(reason))
                 HoldAttentionAt(url, reason);
-            return History.NavigateTo(url, mustReplace);
+            if (!HoldsAttention(reason) || History.LocalUrl != url)
+                return History.NavigateTo(url, mustReplace);
+
+            // The URL is already open, so there is no navigation to hide the panels or to carry a jump
+            Hub.PanelsUI.HidePanels();
+            NavigatedToCurrentUrl?.Invoke(url);
+            return Task.CompletedTask;
         }
 
         // Initial navigation hasn't happened yet

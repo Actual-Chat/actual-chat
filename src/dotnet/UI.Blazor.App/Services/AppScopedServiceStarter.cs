@@ -100,7 +100,8 @@ public sealed class AppScopedServiceStarter
                     Log,
                     $"{nameof(PrefetchUI)}.{nameof(PrefetchUI.Initialize)} failed")
                 .SuppressExceptions();
-            if (url.IsChat() && browserInfo.ScreenSize.Value.IsNarrow()) {
+            if ((url.IsChat() || url.IsNotificationRoot() || url.IsNotification())
+                && browserInfo.ScreenSize.Value.IsNarrow()) {
                 // We have to open chat root first - to make sure "Back" leads to it
                 await History.Initialize(Links.Chats).ConfigureAwait(false);
                 await AutoNavigationUI

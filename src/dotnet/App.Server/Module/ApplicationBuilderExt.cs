@@ -12,7 +12,8 @@ public static partial class ApplicationBuilderExt
         => app.Use((context, next) => {
             var path = context.Request.Path.Value ?? string.Empty;
             var localUrl = new LocalUrl(path);
-            if (!localUrl.IsChat() && !localUrl.IsUser() && !localUrl.IsSettings() && !localUrl.IsHome())
+            if (!localUrl.IsChat() && !localUrl.IsNotificationRoot() && !localUrl.IsNotification()
+                && !localUrl.IsUser() && !localUrl.IsSettings() && !localUrl.IsHome())
                 return next();
 
             context.Response.OnStarting(() => {

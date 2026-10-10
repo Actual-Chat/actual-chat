@@ -3,7 +3,10 @@
 @{
     var isInitial = State.IsInitial(out var chat);
     var newest = Group.Newest;
-    var link = newest.EntryId is { } entryId ? Links.Chat(entryId) : Links.Chat(Group.ChatId);
+    var link = newest.NotificationId is { } notificationId
+        ? Links.Notification(notificationId, newest.EntryId?.LocalId ?? 0)
+        : newest.EntryId is { } entryId ? Links.Chat(entryId)
+        : Links.Chat(Group.ChatId);
     // An empty Url makes NavbarItem render plain content: a chat the reader can no longer open
     // keeps its stored title but stops navigating, while a still-loading row stays clickable.
     var url = isInitial || chat is not null ? link.Value : "";
