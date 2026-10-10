@@ -1491,7 +1491,7 @@
   "SearchTabs_Contacts": "Kontakte",
   "SearchTabs_Date": "Datum",
   "Notifications_AllCaughtUp": "Sie sind auf dem neuesten Stand",
-  "Notifications_DismissAll": "Alle ausblenden",
+  "Notifications_ClearConfirm": "Alle Benachrichtigungen löschen?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "Sprachchat gestartet",

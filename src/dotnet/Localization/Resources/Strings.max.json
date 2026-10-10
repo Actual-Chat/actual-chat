@@ -1727,7 +1727,7 @@
 
   // The notification list in the left panel.
   "Notifications_AllCaughtUp": "Sie sind auf dem neuesten Stand",
-  "Notifications_DismissAll": "Odrzuć wszystkie",
+  "Notifications_ClearConfirm": "Да се изчистят ли всички известия?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "音声チャットが開始されました",

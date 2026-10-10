@@ -1490,7 +1490,7 @@
   "SearchTabs_Contacts": "Kontak",
   "SearchTabs_Date": "Tanggal",
   "Notifications_AllCaughtUp": "Semua sudah terbaca",
-  "Notifications_DismissAll": "Tutup semua",
+  "Notifications_ClearConfirm": "Hapus semua notifikasi?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "Obrolan suara dimulai",

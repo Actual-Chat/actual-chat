@@ -1552,7 +1552,7 @@ public static class LocalizedStringsLocalizerExt
         public string SearchTabs_Contacts => l["SearchTabs_Contacts"].Value;
         public string SearchTabs_Date => l["SearchTabs_Date"].Value;
         public string Notifications_AllCaughtUp => l["Notifications_AllCaughtUp"].Value;
-        public string Notifications_DismissAll => l["Notifications_DismissAll"].Value;
+        public string Notifications_ClearConfirm => l["Notifications_ClearConfirm"].Value;
         public string Notification_VoiceChatStarted => l["Notification_VoiceChatStarted"].Value;
         public string Notification_VoiceChatStartedBy(long count, object arg0)
             => l.Plural("Notification_VoiceChatStartedBy", count, arg0);

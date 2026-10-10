@@ -160,7 +160,7 @@ The tab and sort settings (`ChatListSettings`) are local. The "Threads" tab adds
 | `INotifications.ListActive(session)` | cached | Every list and badge in the tab; three permanent `ChatListUI.ListUnordered` subscriptions in `NotificationsPanelUI` | S |
 | `IChats.Get(session, chatId)` per reaction notification | cached | `ReactionNotificationItem` | V |
 | `IAuthors.Get` / `IAuthors.GetOwn` per reacting author (up to 3) | cached | Avatars in `ReactionNotificationItem` | V |
-| `Notifications_Dismiss`, `Notifications_DismissAll` | command | Seen-reaction dismissal (background, logged), "Dismiss all" (toast on failure) | n/a |
+| `Notifications_Dismiss`, `Notifications_DismissAll` | command | Seen-reaction dismissal (background, logged), the "Clear" button, after a confirmation (toast on failure) | n/a |
 
 ### Chat view: opening a chat
 
