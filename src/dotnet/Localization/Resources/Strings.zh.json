@@ -1642,7 +1642,7 @@
   "Common_Unknown": "未知",
   "Download_AndroidApp": "Android 应用",
   "Download_MobileTablet": "手机、平板",
-  "Download_IosApp": "iOS 应用",
+  "Download_IosApp": "iOS / macOS 应用",
   "Download_WindowsApp": "Windows 应用",
   "Download_Desktop": "桌面",
   "Download_WebApp": "网页版",

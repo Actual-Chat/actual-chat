@@ -1928,7 +1928,7 @@
   // that already has the app. The platform names are proper nouns.
   "Download_AndroidApp": "Android App",
   "Download_MobileTablet": "Mobile, Tablet",
-  "Download_IosApp": "iOS App",
+  "Download_IosApp": "iOS / macOS App",
   "Download_WindowsApp": "Windows App",
   "Download_Desktop": "Desktop",
   "Download_WebApp": "Web App",

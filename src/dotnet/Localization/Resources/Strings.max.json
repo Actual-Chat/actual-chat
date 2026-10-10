@@ -1928,7 +1928,7 @@
   // that already has the app. The platform names are proper nouns.
   "Download_AndroidApp": "Приложение для Android",
   "Download_MobileTablet": "Điện thoại, máy tính bảng",
-  "Download_IosApp": "Приложение для iOS",
+  "Download_IosApp": "Приложение для iOS / macOS",
   "Download_WindowsApp": "Приложение для Windows",
   "Download_Desktop": "デスクトップ",
   "Download_WebApp": "Веб-приложение",
