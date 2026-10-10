@@ -87,10 +87,11 @@ body.narrow .modal-frame.modal-sm {
     max-height: 80vh;
     bottom: calc(4vh + var(--safe-area-bottom));
 }
-/* modal-sm already floats above the home indicator via the bottom offset above,
-   so its inner padding-bottom must drop the safe-area term to avoid a double gap. */
-body.narrow .modal-frame.modal-sm:not(.full-bleed) {
-    @apply pb-4;
+/* modal-sm already floats above the home indicator via the bottom offset above, so the last region's
+   bottom inset drops the safe-area term to avoid a double gap. The footer already does (above); a body that is
+   the last region does it here. */
+body.narrow .modal-frame.modal-sm:not(.full-bleed):not(:has(.dialog-footer)) .dialog-body {
+    padding-bottom: 1rem;
 }
 
 .narrow .narrow-view__modal__position-bottom {
@@ -292,7 +293,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 /* The footer owns the modal's bottom inset (incl. safe area); the frame yields it.
    See docs/ui/spacing.md — the region at an edge owns that edge's inset. */
-.modal-frame:has(.dialog-footer) {
+/* A frame with a body owns no bottom inset either: the body is the last region without a footer. */
+.modal-frame:has(.dialog-footer),
+.modal-frame:has(.dialog-body) {
     padding-bottom: 0;
 }
 .dialog-footer {
