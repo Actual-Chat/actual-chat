@@ -107,7 +107,7 @@ as a choice, not the default, for that reason.
 
 ## The settings
 
-The Android Auto tab offers **one choice with four values**, stored as the
+The Android Auto section offers **one choice with four values**, stored as the
 axes of `UserCarAudioSettings` (`Microphone`, `Output`, and `Link` added later
 at key 3, whose zero value is the call link) so nothing had to migrate:
 
@@ -152,20 +152,20 @@ The values are stored **per user**, not per device, so they follow the account
 to another phone. The trade-off is deliberate but worth knowing: someone who
 drives two cars with different head units gets one setting for both.
 
-## Where the tab is
+## Where the section is
 
-Settings has an **Android Auto** tab, placed directly after Application.
+Settings has an **Android** tab, placed directly after Push-to-talk. Its **Android Auto** section sits
+below the microphone-start options.
 
-The tab is shown **only where car projection can be detected at all** — in
-practice, on the Android app. On iOS, on the desktop apps and on the web the
-tab does not exist, because nothing there can answer the question these
+The tab, with this section, is shown on **every Android app**, and in the local preview for layout work.
+On iOS, on the desktop apps and on the web it does not exist, because nothing there can answer the question these
 settings depend on. There is no "unsupported" placeholder and no greyed-out
 section: the entry is simply absent.
 
-Note that this is availability, not activity — the tab is reachable whenever
+Note that this is availability, not activity — the section is reachable whenever
 the app runs on a supported platform, whether or not a car is connected right
 now. That is intentional: the settings are most useful when configured *before*
-driving, and a tab that appeared only while plugged into a car would have to be
+driving, and a section that appeared only while plugged into a car would have to be
 found and changed at the exact moment the driver should not be looking at the
 phone. What depends on an actual connection is the *effect* of the settings,
 described above, not their visibility.

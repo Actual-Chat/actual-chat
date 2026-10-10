@@ -1,6 +1,7 @@
 using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 using Android.Media;
 
 namespace ActualChat.App.Maui.Audio;
@@ -10,10 +11,13 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     // Android tells a headset from the rest by kind, never by device, so one route stands for it.
     private const string ExternalRouteId = "external";
 
+    private static readonly TimeSpan DeferredRouteDelay = TimeSpan.FromSeconds(1);
+
     private readonly AndroidAudioFocusHelper _focusHelper;
     private readonly MutableState<AudioOutputRoutes> _outputRoutes;
     private MauiAudioFocusHandle? _handle;
     private CarAudioRoute _carAudioRoute = CarAudioRoute.Default;
+    private int _recordingStart;
     private int _isTrackingCarAudioRoute;
     private int _isCallVideo;
     private int _isCallActive;
@@ -65,6 +69,11 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
         // on a cold cache, on an RPC - and an incoming ring waits on that same lock to pull the
         // ringtone out of the earpiece via YieldCommunicationMode.
         await UpdateCarAudioRoute().ConfigureAwait(false);
+        if (requester.Kind is AudioFocusMode.Recording) {
+            var settings = await Hub.UserSettingsUI.UserAndroidSettings().Get(CancellationToken.None)
+                .ConfigureAwait(false);
+            Volatile.Write(ref _recordingStart, (int)settings.RecordingStart);
+        }
         return await base.TryAcquire(requester).ConfigureAwait(false);
     }
 
@@ -140,8 +149,9 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
             "-> RequestAudioFocus, requested mode: '{Mode}', active handle: '{Handle}', "
             + "car route: {CarAudioRoute}, request: {Kind}",
             mode, _handle, carAudioRoute, kind);
+        var isRouteDeferred = false;
         var success = await Task.Run(() => kind switch {
-                FocusRequestKind.Call => _focusHelper.RequestFocusForCall(true),
+                FocusRequestKind.Call => RequestFocusForCall(),
                 FocusRequestKind.AssistantLink => _focusHelper.RequestFocusForAssistantLink(),
                 FocusRequestKind.ProjectedMedia => _focusHelper.RequestFocusForProjectedMedia(),
                 FocusRequestKind.Playback => _focusHelper.RequestFocusForPlayback(),
@@ -159,8 +169,19 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
 
         var handle = new MauiAudioFocusHandle(OnRelease);
         _handle = handle;
+        if (isRouteDeferred)
+            _ = BackgroundTask.Run(async () => {
+                await Task.Delay(DeferredRouteDelay, Hub.StopToken).ConfigureAwait(false);
+                await EnsureOutputRoute(Hub.StopToken).ConfigureAwait(false);
+            }, Log, "Failed to select the deferred communication device", Hub.StopToken);
         Log.LogInformation("-- RequestAudioFocus: Success. Active handle: {Handle}, mode: {Mode}", handle, mode);
         return handle;
+
+        Task<bool> RequestFocusForCall() {
+            // Reads the device list, which blocks on AudioService, so it runs off this thread
+            isRouteDeferred = !MustAwaitRoute(mode, carAudioRoute);
+            return _focusHelper.RequestFocusForCall(true, !isRouteDeferred);
+        }
 
         void OnRelease(MauiAudioFocusHandle self) {
             Log.LogInformation("AudioFocusHandle {Handle} releasing", self);
@@ -173,6 +194,16 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     }
 
     // Private methods
+
+    private bool MustAwaitRoute(AudioFocusMode mode, CarAudioRoute carAudioRoute)
+        // Under projection the car microphone is reached through the route this wait lets settle
+        => mode is not AudioFocusMode.Recording
+            || carAudioRoute != CarAudioRoute.Default
+            || (RecordingStartMode)Volatile.Read(ref _recordingStart) switch {
+                RecordingStartMode.WaitForRoute => true,
+                RecordingStartMode.DontWait => false,
+                _ => !_focusHelper.IsCommunicationTargetBuiltin(),
+            };
 
     private CallAudioRoute GetDefaultCallAudioRoute()
     {

@@ -3,6 +3,7 @@
 @inherits Menu<AppUIHub>
 @{
     var hint = new CoachMarkHint(L).For(CoachMarkHint.FromArguments(Arguments));
+    var replayPoint = CoachMarkHint.GetReplayPoint(Arguments);
 }
 
 <div class="coach-mark-menu">
@@ -16,3 +17,11 @@
         </div>
     }
 </div>
+
+@if (replayPoint is { } point) {
+    <MenuEntry
+        Icon="icon-play-fill"
+        Text="@L.Coach_MarkPlayFromHere"
+        Click="@(() => Hub.ChatAudioUI.StartReplay(point.ChatId, point.StartAt))">
+    </MenuEntry>
+}

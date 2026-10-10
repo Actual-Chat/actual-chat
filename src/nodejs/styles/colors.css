@@ -1169,6 +1169,11 @@
     --sheen: 0.2;
     --sheen-scale: 1;
     --sheen-fill: 0;
+    /* The strength of one element's sheen, from the low default to the medium (1.5, gloss 0.18) and the
+       high (2.25, gloss 0.22) one. --sheen-gloss is the top highlight a dark fill takes: the low value is
+       too faint to see on it, and a light fill keeps the same highlight at every level. */
+    --sheen-level: 1;
+    --sheen-gloss: 0.08;
 }
 /* Every fill in a light theme is a light one, so all of them take both halves of the wash. */
 :root, .theme-light, .theme-ash {

@@ -100,6 +100,7 @@ public static class LocalizedStringsLocalizerExt
         public string YourAccount_EditOrDeleteCaption => l["YourAccount_EditOrDeleteCaption"].Value;
         public string YourAccount_Share => l["YourAccount_Share"].Value;
         public string YourAccount_ShareYourContact => l["YourAccount_ShareYourContact"].Value;
+        public string YourAccount_LinkCopied => l["YourAccount_LinkCopied"].Value;
         public string YourAccount_MyAvatars => l["YourAccount_MyAvatars"].Value;
 
         public string AppSettings_Connection => l["AppSettings_Connection"].Value;
@@ -116,7 +117,16 @@ public static class LocalizedStringsLocalizerExt
         public string ThemeSettings_Dark => l["ThemeSettings_Dark"].Value;
         public string ThemeSettings_MatchSystem => l["ThemeSettings_MatchSystem"].Value;
 
+        public string AndroidSettings_RecordingStart => l["AndroidSettings_RecordingStart"].Value;
+        public string AndroidSettings_Auto => l["AndroidSettings_Auto"].Value;
+        public string AndroidSettings_AutoCaption => l["AndroidSettings_AutoCaption"].Value;
+        public string AndroidSettings_WaitForRoute => l["AndroidSettings_WaitForRoute"].Value;
+        public string AndroidSettings_WaitForRouteCaption => l["AndroidSettings_WaitForRouteCaption"].Value;
+        public string AndroidSettings_DontWait => l["AndroidSettings_DontWait"].Value;
+        public string AndroidSettings_DontWaitCaption => l["AndroidSettings_DontWaitCaption"].Value;
+
         public string CarAudio_Mode => l["CarAudio_Mode"].Value;
+        public string CarAudio_SectionTitle => l["CarAudio_SectionTitle"].Value;
         public string CarAudio_Car => l["CarAudio_Car"].Value;
         public string CarAudio_CarCaption => l["CarAudio_CarCaption"].Value;
         public string CarAudio_CarAssistant => l["CarAudio_CarAssistant"].Value;
@@ -1542,7 +1552,7 @@ public static class LocalizedStringsLocalizerExt
         public string SearchTabs_Contacts => l["SearchTabs_Contacts"].Value;
         public string SearchTabs_Date => l["SearchTabs_Date"].Value;
         public string Notifications_AllCaughtUp => l["Notifications_AllCaughtUp"].Value;
-        public string Notifications_DismissAll => l["Notifications_DismissAll"].Value;
+        public string Notifications_ClearConfirm => l["Notifications_ClearConfirm"].Value;
         public string Notification_VoiceChatStarted => l["Notification_VoiceChatStarted"].Value;
         public string Notification_VoiceChatStartedBy(long count, object arg0)
             => l.Plural("Notification_VoiceChatStartedBy", count, arg0);
@@ -1964,6 +1974,7 @@ public static class LocalizedStringsLocalizerExt
         public string Account_Register => l["Account_Register"].Value;
         public string Settings_NothingToCopy => l["Settings_NothingToCopy"].Value;
         public string Settings_LogEntriesCopied => l["Settings_LogEntriesCopied"].Value;
+        public string Settings_VersionCopied => l["Settings_VersionCopied"].Value;
         public string Report_Sent => l["Report_Sent"].Value;
         public string Editor_ButtonNotImplemented => l["Editor_ButtonNotImplemented"].Value;
         public string Editor_Placeholder => l["Editor_Placeholder"].Value;
@@ -2148,6 +2159,7 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_MarkFillerBody_Format(object arg0) => l["Coach_MarkFillerBody_Format", arg0].Value;
         public string Coach_MarkRepetitionTitle => l["Coach_MarkRepetitionTitle"].Value;
         public string Coach_MarkRepetitionBody_Format(object arg0) => l["Coach_MarkRepetitionBody_Format", arg0].Value;
+        public string Coach_MarkPlayFromHere => l["Coach_MarkPlayFromHere"].Value;
         public string Coach_TipWeakWordBody_Format(object arg0) => l["Coach_TipWeakWordBody_Format", arg0].Value;
         public string Coach_OnlyYou => l["Coach_OnlyYou"].Value;
         public string Coach_TabRecent => l["Coach_TabRecent"].Value;

@@ -42,6 +42,7 @@
 
     <div class="c-separator">@L.SignIn_Or</div>
     <Form
+        @ref="_formRef"
         Class="c-phone-form"
         Model="@_formModel"
         OnSubmit="@OnSubmit">
@@ -79,7 +80,12 @@
             <div class="c-account-error">@_signInError</div>
         }
         <FormButtons IsEndAligned="false" Class="dialog-buttons">
-            <Button Type="@ButtonType.Submit"  Class="btn-primary btn-modal sign-in" IsDisabled="@(_validationState is ValidationState.Invalid || _formModel.PhoneOrEmail.IsNullOrEmpty())">
+            <Button
+                Type="@ButtonType.Submit"
+                Class="btn-primary btn-modal sign-in"
+                IsDisabled="@(_validationState is ValidationState.Invalid
+                    || _formRef?.IsValid == false
+                    || _formModel.PhoneOrEmail.IsNullOrEmpty())">
                 @switch (_validationState) {
                     case ValidationState.Validating:
                         <i class="icon-refresh"></i><span>@L.SignIn_Validating</span>
@@ -107,6 +113,7 @@
     private static readonly string JSKeyboardCreateMethod = $"{BlazorUICoreModule.ImportName}.PhoneOrEmailKeyboard.create";
 
     private ValidationState _validationState = ValidationState.None;
+    private Form? _formRef;
     private StepModel _formModel = null!;
     private List<AuthProviderModel>? _authProviders;
     private AsyncDataAnnotationsValidator _formValidator = null!;

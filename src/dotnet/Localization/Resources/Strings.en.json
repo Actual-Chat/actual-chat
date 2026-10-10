@@ -117,6 +117,7 @@
   "YourAccount_EditOrDeleteCaption": "Edit name, email, phone, or delete account",
   "YourAccount_Share": "Share",
   "YourAccount_ShareYourContact": "Share your contact",
+  "YourAccount_LinkCopied": "Your account link is copied",
   "YourAccount_MyAvatars": "My avatars",
 
   // Settings > Application - the server connection row and the telemetry consent toggle with
@@ -135,16 +136,28 @@
   "ThemeSettings_Dark": "Dark",
   "ThemeSettings_MatchSystem": "Match system theme",
 
+  // Settings > Android. How long the microphone takes to start when the user taps record or
+  // starts a push-to-talk. Android first switches the phone to its call audio mode, which takes
+  // about half a second; a Bluetooth headset is only picked up once that switch is done.
+  "AndroidSettings_RecordingStart": "Starting a recording",
+  "AndroidSettings_Auto": "Automatic",
+  "AndroidSettings_AutoCaption": "Start recording at once, unless a headset or another external audio device is connected. Then wait for it, so the recording begins on the right microphone.",
+  "AndroidSettings_WaitForRoute": "Wait for the audio switch",
+  "AndroidSettings_WaitForRouteCaption": "Always wait for the audio switch before the recording starts. Starting takes a little longer, but the recording always begins on the right microphone.",
+  "AndroidSettings_DontWait": "Start recording at once",
+  "AndroidSettings_DontWaitCaption": "Never wait for the audio switch. The recording starts as fast as possible, but with a Bluetooth headset the first words may be captured by the phone's microphone.",
+
   "CarAudio_Mode": "Sound and microphone",
+  "CarAudio_SectionTitle": "Android Auto - sound and microphone",
   "CarAudio_Car": "Car",
-  "CarAudio_CarCaption": "The car's microphone and speakers, like a phone call. Music pauses while you talk.",
+  "CarAudio_CarCaption": "Use the car's microphone and speakers, like a phone call. Music pauses while you talk.",
   "CarAudio_CarAssistant": "Car, assistant channel",
-  "CarAudio_CarAssistantCaption": "Same as Car, but over the car's voice-assistant channel instead of a call. Try this if your car shows its phone screen while you talk.",
+  "CarAudio_CarAssistantCaption": "Use the car's microphone and speakers over its voice-assistant channel instead of a call. Try this if your car shows its phone screen while you talk.",
   "CarAudio_AssistantPermissionDenied": "The car's assistant channel needs the Nearby devices permission.",
   "CarAudio_CarSpeakers": "Car speakers, phone microphone",
-  "CarAudio_CarSpeakersCaption": "Music pauses while someone is talking.",
+  "CarAudio_CarSpeakersCaption": "Play sound on the car's speakers and record with the phone's microphone. Music pauses while someone is talking.",
   "CarAudio_Phone": "Phone only",
-  "CarAudio_PhoneCaption": "Sound and microphone stay on the phone.",
+  "CarAudio_PhoneCaption": "Keep sound and microphone on the phone.",
 
   // Settings > Voice & Transcription. These are the *spoken* languages a user's speech is
   // transcribed from - unrelated to the UI language above. ListeningLinger_* fills the
@@ -1190,7 +1203,7 @@
   "Permissions_RevokeHint_Windows_Format": "Permissions can be granted here, but not revoked. To revoke one, open Windows settings for the {0} app.",
   "Permissions_RevokeHint_MacOS_Format": "Permissions can be granted here, but not revoked. To revoke one, open macOS settings for the {0} app.",
   "Permissions_RevokeHint_Web": "Permissions can be granted here, but not revoked. To revoke one, open your browser's settings for this site.",
-  "PermissionGuide_Web_Format": "Open your browser's Settings/Preferences → Privacy/Permissions → Site settings → {0} and choose \"Allow\", then reload the page.",
+  "PermissionGuide_Web_Format": "Open your browser's <b>Settings/Preferences → Privacy/Permissions → Site settings → {0}</b> and choose <b>\"Allow\"</b>, then <b>reload</b> the page.",
   "PermissionGuide_WebAddressBarHint": "A site's permissions may also be found to the left of the address in the address bar.",
   "PermissionGuide_App": "To turn it on, tap \"Settings\" below and allow it in your device settings.",
 
@@ -1714,7 +1727,7 @@
 
   // The notification list in the left panel.
   "Notifications_AllCaughtUp": "You're all caught up",
-  "Notifications_DismissAll": "Dismiss all",
+  "Notifications_ClearConfirm": "Clear all notifications?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "Voice chat started",
@@ -1916,7 +1929,7 @@
   // that already has the app. The platform names are proper nouns.
   "Download_AndroidApp": "Android App",
   "Download_MobileTablet": "Mobile, Tablet",
-  "Download_IosApp": "iOS App",
+  "Download_IosApp": "iOS / macOS App",
   "Download_WindowsApp": "Windows App",
   "Download_Desktop": "Desktop",
   "Download_WebApp": "Web App",
@@ -2213,6 +2226,7 @@
   // Toasts from the log viewer and the report modal.
   "Settings_NothingToCopy": "Nothing to copy",
   "Settings_LogEntriesCopied": "Visible log entries copied",
+  "Settings_VersionCopied": "Version is copied",
   "Report_Sent": "Report sent — thanks!",
 
   // The message editor's placeholder text, and the stub tooltip on an unfinished button.
@@ -2247,11 +2261,11 @@
   "Date_ShortMonthNames": "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec",
   "Date_DayNames": "Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday",
   "Date_ShortDayNames": "Sun|Mon|Tue|Wed|Thu|Fri|Sat",
-  "Date_TimePattern": "HH:mm",
+  "Date_TimePattern": "h:mm tt",
   "Date_DayMonthPattern": "MMM d",
   "Date_DayMonthYearPattern": "MMM d, yyyy",
-  "Date_DayMonthTimePattern": "d MMM, HH:mm",
-  "Date_DayMonthYearTimePattern": "d MMM yyyy, HH:mm",
+  "Date_DayMonthTimePattern": "d MMM, h:mm tt",
+  "Date_DayMonthYearTimePattern": "d MMM yyyy, h:mm tt",
   "Date_FullDatePattern": "MMMM d, yyyy",
   "Date_MonthYearPattern": "MMMM yyyy",
   "Date_Parts_Format": "{0}, {1}",
@@ -2405,6 +2419,7 @@
   "Coach_MarkFillerBody_Format": "“{0}” carries no meaning here; drop it next time.",
   "Coach_MarkRepetitionTitle": "You said it twice in a row",
   "Coach_MarkRepetitionBody_Format": "“{0}” came twice; once is enough.",
+  "Coach_MarkPlayFromHere": "Play from here",
   "Coach_TipWeakWordBody_Format": "The word “{0}” is often overused. Consider a more specific synonym to sharpen your speech.",
 
   // Speech coach redesign: Recent / Progress / Skills tabs, conversation cards, per-language skills,

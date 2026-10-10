@@ -6,16 +6,21 @@ namespace ActualChat.UI.Blazor.App.Services;
 public class AppPresenceReporter : UIWorkerBase<AppUIHub>, IComputeService
 {
     private readonly MutableState<Moment> _lastCheckInAt;
+    private Moment _sessionExtendedAt;
 
     private UserActivityUI UserActivityUI => Hub.UserActivityUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private RpcHub RpcHub => Hub.RpcHub;
     private Moment CpuNow => Clocks.CpuClock.Now;
+    private Moment SystemNow => Clocks.SystemClock.Now;
 
     public AppPresenceReporter(AppUIHub hub) : base(hub)
-        => _lastCheckInAt = StateFactory.NewMutable(
+    {
+        _sessionExtendedAt = SystemNow; // The app start has just extended the session
+        _lastCheckInAt = StateFactory.NewMutable(
             CpuNow - Constants.Presence.OfflineTimeout,
             StateCategories.Get(GetType(), nameof(_lastCheckInAt)));
+    }
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -95,10 +100,16 @@ public class AppPresenceReporter : UIWorkerBase<AppUIHub>, IComputeService
                 _lastCheckInAt.Value += Constants.Presence.CheckInRetryDelay;
                 return;
             }
-            await Commander.Call(new UserPresences_CheckIn {
+            var systemNow = SystemNow;
+            var mustExtendSession = systemNow - _sessionExtendedAt >= Constants.Session.ExtensionPeriod;
+            if (mustExtendSession)
+                _sessionExtendedAt = systemNow; // On send, so a failed check-in is retried without the flag
+            var checkInCmd = new UserPresences_CheckIn {
                 Session = Session,
                 IsActive = isActive,
-            }, cancellationToken).ConfigureAwait(false);
+                MustExtendSession = mustExtendSession,
+            };
+            await Commander.Call(checkInCmd, cancellationToken).ConfigureAwait(false);
             _lastCheckInAt.Value = CpuNow;
         }
         catch (Exception e) when (e is not OperationCanceledException) {

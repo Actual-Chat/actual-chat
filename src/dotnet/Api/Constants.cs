@@ -50,6 +50,7 @@ public static partial class Constants
         public static readonly string HeaderName = "Session";
         public static readonly string QueryParameterName = "session";
         public static readonly TimeSpan LastSeenAtUpdatePeriod = TimeSpan.FromMinutes(30);
+        public static readonly TimeSpan ExtensionPeriod = TimeSpan.FromDays(1);
     }
 
     public static class Place
