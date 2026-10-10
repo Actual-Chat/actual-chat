@@ -71,15 +71,17 @@ public class DateFormatsLocalizerExtTest
         var rendered = Specifiers.ToDictionary(x => x, x => SampleDate.ToString(x, formats));
 
         // assert
-        rendered["t"].Should().Be("21:05");
+        // English uses the 12-hour clock, every other catalog the 24-hour one
+        var time = subtag is "en" or "max" ? "9:05 PM" : "21:05";
+        rendered["t"].Should().Be(time);
         foreach (var (specifier, value) in rendered) {
             value.Should().NotBeNullOrWhiteSpace($"'{subtag}' must render \"{specifier}\"");
             value.Should().NotContain("$", $"'{subtag}' must not leak a format token into \"{specifier}\"");
         }
         var dayMonthTime = SampleDate.ToString(l.Date_DayMonthTimePattern, formats);
         var dayMonthYearTime = SampleDate.ToString(l.Date_DayMonthYearTimePattern, formats);
-        dayMonthTime.Should().Contain("14").And.Contain("21:05").And.NotContain("2026");
-        dayMonthYearTime.Should().Contain("14").And.Contain("21:05").And.Contain("2026");
+        dayMonthTime.Should().Contain("14").And.Contain(time).And.NotContain("2026");
+        dayMonthYearTime.Should().Contain("14").And.Contain(time).And.Contain("2026");
         rendered["m"].Should().Contain("14", $"'{subtag}' month-day must show the day");
         rendered["d"].Should().Contain("2026", $"'{subtag}' short date must show the year");
         rendered["D"].Should().Contain("14").And.Contain("2026");
@@ -110,8 +112,8 @@ public class DateFormatsLocalizerExtTest
 
         // assert
         rendered.Should().Equal(
-            "21:05", "Aug 14", "Aug 14, 2026", "August 14, 2026", "August 2026", "Friday", "Fri",
-            "14 Aug, 21:05", "14 Aug 2026, 21:05");
+            "9:05 PM", "Aug 14", "Aug 14, 2026", "August 14, 2026", "August 2026", "Friday", "Fri",
+            "14 Aug, 9:05 PM", "14 Aug 2026, 9:05 PM");
     }
 
     [Fact]

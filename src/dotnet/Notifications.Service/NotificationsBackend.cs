@@ -670,6 +670,17 @@ public class NotificationsBackend(IServiceProvider services)
         if (eventCommand.MustSkipNotification || entry.IsImported
             || await IsChatUnderMaintenance(entry.ChatId, cancellationToken).ConfigureAwait(false))
             return;
+
+        if (entry.IsRemoved && oldEntry is not { IsRemoved: true }) {
+            // A removed entry can't come on screen, and a reaction clears only once its entry has been seen.
+            if (!author.UserId.IsGuest) {
+                var reactionId = ReactionNotification.New(author.UserId, entry.Id).Id;
+                await Queues
+                    .Enqueue(new NotificationsBackend_Dismiss(reactionId), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            return;
+        }
         if (!ShouldNotify(entry, oldEntry, changeKind))
             return;
 

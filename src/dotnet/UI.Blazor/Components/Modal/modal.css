@@ -66,7 +66,17 @@ body.device-android .modal-overlay.hide {
     @apply h-full w-full;
 }
 body.wide .modal .modal-content {
-    height: calc(90vh - var(--safe-area-top) - var(--safe-area-bottom));
+    height: calc(100vh - 2rem - var(--safe-area-top) - var(--safe-area-bottom));
+}
+/* A wide-mode dialog never touches the screen edges: 1rem is left above and below it. Below md the frame is
+   full-height by default, so it gets that height explicitly; from md up it hugs its content up to the cap. */
+body.wide .modal-frame {
+    max-height: min(48rem, calc(100vh - 2rem - var(--safe-area-top) - var(--safe-area-bottom)));
+}
+@media (max-width: 767px) {
+    body.wide .modal-frame:not(.modal-sm) {
+        height: calc(100vh - 2rem - var(--safe-area-top) - var(--safe-area-bottom));
+    }
 }
 
 body.narrow .modal-frame.modal-md {
@@ -87,10 +97,11 @@ body.narrow .modal-frame.modal-sm {
     max-height: 80vh;
     bottom: calc(4vh + var(--safe-area-bottom));
 }
-/* modal-sm already floats above the home indicator via the bottom offset above,
-   so its inner padding-bottom must drop the safe-area term to avoid a double gap. */
-body.narrow .modal-frame.modal-sm:not(.full-bleed) {
-    @apply pb-4;
+/* modal-sm already floats above the home indicator via the bottom offset above, so the last region's
+   bottom inset drops the safe-area term to avoid a double gap. The footer already does (above); a body that is
+   the last region does it here. */
+body.narrow .modal-frame.modal-sm:not(.full-bleed):not(:has(.dialog-footer)) .dialog-body {
+    padding-bottom: 1rem;
 }
 
 .narrow .narrow-view__modal__position-bottom {
@@ -166,6 +177,10 @@ body.wide .modal-overlay-fullscreen .modal .modal-content {
 }
 .modal-frame.modal-sm {
     @apply md:w-88 xl:w-104 2xl:w-120 md:h-auto md:max-h-192;
+}
+/* A wide window can be narrower than md; the sheet still has to hug its content there */
+body.wide .modal-frame.modal-sm {
+    @apply w-88 h-auto;
 }
 /* Full-bleed body (map, image) reaches the bottom edge: drop the 1rem breathing room.
    Floating sheets (modal-sm) already sit above the home indicator via their bottom offset,
@@ -292,7 +307,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 
 /* The footer owns the modal's bottom inset (incl. safe area); the frame yields it.
    See docs/ui/spacing.md — the region at an edge owns that edge's inset. */
-.modal-frame:has(.dialog-footer) {
+/* A frame with a body owns no bottom inset either: the body is the last region without a footer. */
+.modal-frame:has(.dialog-footer),
+.modal-frame:has(.dialog-body) {
     padding-bottom: 0;
 }
 .dialog-footer {
@@ -300,6 +317,11 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply px-4;
     @apply overflow-hidden;
     padding-bottom: calc(1rem + var(--safe-area-bottom));
+}
+/* A centered wide dialog never reaches the screen edge, so its bottom inset has no safe-area term */
+body.wide .modal-overlay:not(.modal-overlay-fullscreen) .modal-frame:not(:has(.dialog-footer)) .dialog-body,
+body.wide .modal-overlay:not(.modal-overlay-fullscreen) .dialog-footer {
+    padding-bottom: 1rem;
 }
 /* Floating sheet already sits above the home indicator via its bottom offset. */
 body.narrow .modal-frame.modal-sm .dialog-footer {

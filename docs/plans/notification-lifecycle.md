@@ -338,8 +338,9 @@ surface, and `UpdateOnActiveChanges` is its only driver.
 ### 8 — "Dismiss all" menu (done)
 
 `Notifications_DismissAll` had no caller. The Notifications navbar panel header
-now carries a three-dots menu (`NotificationsMenu`, same shape as the Place one)
-with a single "Dismiss all" entry.
+now carries a "Clear" button (`NotificationsClearButton`) that asks for
+confirmation in a `ConfirmModal` and then dismisses all. It first shipped as a
+three-dots menu with a single "Dismiss all" entry.
 
 ### 9 — dismissal that satisfies the mode (done)
 
