@@ -48,13 +48,13 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
         if (live.IsClosing) {
             // A latched transcription session hands its close to this flow; other shapes are the backend's.
-            if (live is { TranscriptionOn: true, SessionStartedAt: not null, Kind: LiveSessionKind.Ambient })
+            if (live is { TranscriptionOn: true, StartedAt: not null, Kind: LiveSessionKind.Ambient })
                 await Finalize(live, cancellationToken).ConfigureAwait(false);
             return;
         }
 
         // Pre-latch (solo): the normal ConversationSplitFlow owns summarization, so don't double-summarize.
-        if (live.SessionStartedAt is null) {
+        if (live.StartedAt is null) {
             Runtime.StageResumeIn(Throttle);
             return;
         }
@@ -71,7 +71,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         var enoughData = entries.Count >= Settings.Summarization.MinLiveConversationEntries
             && entries.Sum(WordCount) >= Settings.Summarization.MinLiveConversationWords;
         var hasNew = entries.Count > 0 && entries[^1].LocalId > LastSummaryEndLid;
-        var dueForResummary = ResumedAt - live.LastSummaryAt >= Settings.Summarization.LiveResummarizationDelay;
+        var dueForResummary = ResumedAt - live.SummarizedAt >= Settings.Summarization.LiveResummarizationDelay;
         if (enoughData && hasNew && (neverSummarized || dueForResummary)) {
             var result = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
             if (result.Summary is { } summary) {
@@ -120,9 +120,9 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         if (live.ContextStartLid > 0)
             return live.ContextStartLid;
         if (!live.TranscriptionOn)
-            return live.StartEntryLid;
+            return live.FirstSpeechLid;
 
-        var anchorLid = live.StartEntryLid;
+        var anchorLid = live.FirstSpeechLid;
         var minLid = (await ChatsBackend.GetLidRange(ChatId, false, cancellationToken).ConfigureAwait(false)).Start;
         var (anchor, preceding) = await GetContextScanEntries(anchorLid, minLid, cancellationToken)
             .ConfigureAwait(false);
@@ -207,7 +207,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
             Description = summary.Description,
             Summary = summary.Summary,
             EndEntryLid = entries[^1].LocalId,
-            MessageCount = entries.Count,
+            SummarizedEntryCount = entries.Count,
             AuthorIds = entries
                 .GroupBy(e => e.AuthorId)
                 .OrderByDescending(g => g.Count())

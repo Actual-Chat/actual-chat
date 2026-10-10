@@ -15,7 +15,7 @@ public sealed partial record LiveSessionSummary
     [DataMember(Order = 3), Key(3)]
     public long EndEntryLid { get; init; }
     [DataMember(Order = 4), Key(4)]
-    public int MessageCount { get; init; }
+    public int SummarizedEntryCount { get; init; }
     [DataMember(Order = 5), Key(5)]
     public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
     [DataMember(Order = 6), Key(6)]

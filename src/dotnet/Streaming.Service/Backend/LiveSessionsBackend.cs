@@ -147,7 +147,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         // and placed into a session it overlays that session's own view until it ends.
         var state = await GetState(chatId, cancellationToken).ConfigureAwait(false);
         var call = await GetCall(chatId, cancellationToken).ConfigureAwait(false);
-        if (state is { SessionStartedAt: null })
+        if (state is { StartedAt: null })
             state = null;
         if (state is null && call is null)
             return null;
@@ -160,7 +160,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         // Stands in as JoinedAt for stream-only members - they have no participation record to date the
         // join with. Never Clocks.Now: that makes every recompute a different LiveSession, so no
         // consumer can consolidate a no-op invalidation away.
-        var startedAt = state?.SessionStartedAt ?? call!.StartedAt;
+        var startedAt = state?.StartedAt ?? call!.StartedAt;
 
         var byAuthor = new Dictionary<AuthorId, LiveSessionMember>();
         LiveSessionMember For(AuthorId a)
@@ -336,9 +336,9 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 ?? (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
             state = new LiveSessionState {
                 ChatId = chatId,
-                StartEntryLid = startEntryLid,
+                FirstSpeechLid = startEntryLid,
                 EndEntryLid = startEntryLid,
-                StartedAt = now,
+                FirstSpeechAt = now,
                 AuthorIds = [authorId],
                 Host = authorId,
                 TranscriptionOn = chat?.IsSummarized ?? false,
@@ -368,13 +368,13 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             };
         }
 
-        if (state.SessionStartedAt is null && state.AuthorIds.Count >= 2) {
+        if (state.StartedAt is null && state.AuthorIds.Count >= 2) {
             var visibleStartLid = (await ChatsBackend
                 .GetLidRange(chatId, false, cancellationToken)
                 .ConfigureAwait(false)).End;
             state = state with {
-                SessionStartedAt = now,
-                VisibleStartLid = visibleStartLid,
+                StartedAt = now,
+                StartLid = visibleStartLid,
                 Version = VersionGenerator.NextVersion(state.Version),
             };
             // Calls announce themselves by ringing, not a conversation banner; only ambient sessions banner.
@@ -554,7 +554,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         if (isRaised) {
             // A hand is a LiveSession member's state, so it exists only where Get returns a session
             var state = await SafeGet(chatId).ConfigureAwait(false);
-            if (state is not { SessionStartedAt: not null })
+            if (state is not { StartedAt: not null })
                 return;
         }
 
@@ -593,13 +593,13 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             return;
 
         // The summary flow re-runs on a fixed schedule, so most calls carry an unchanged summary. Bailing
-        // out here keeps LastSummaryAt/Version from making every run look like a change and invalidating
+        // out here keeps SummarizedAt/Version from making every run look like a change and invalidating
         // the whole live view for nothing.
         var isUnchanged = state.Title == summary.Title
             && state.Description == summary.Description
             && state.Summary == summary.Summary
             && state.EndEntryLid == summary.EndEntryLid
-            && state.MessageCount == summary.MessageCount
+            && state.SummarizedEntryCount == summary.SummarizedEntryCount
             && state.IsExpandedByDefault == summary.IsExpandedByDefault
             && (summary.AuthorIds.Count == 0 || state.AuthorIds.SequenceEqual(summary.AuthorIds));
         if (isUnchanged)
@@ -612,10 +612,10 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             Description = summary.Description,
             Summary = summary.Summary,
             EndEntryLid = summary.EndEntryLid,
-            MessageCount = summary.MessageCount,
+            SummarizedEntryCount = summary.SummarizedEntryCount,
             AuthorIds = summary.AuthorIds.Count > 0 ? summary.AuthorIds : state.AuthorIds,
             IsExpandedByDefault = summary.IsExpandedByDefault,
-            LastSummaryAt = Clocks.SystemClock.Now,
+            SummarizedAt = Clocks.SystemClock.Now,
             Version = VersionGenerator.NextVersion(state.Version),
         };
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
@@ -935,7 +935,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         // Protected on purpose: ConsolidationDelay applies only to methods computed locally, and an
         // RPC-visible one is served from a RemoteComputed on the caller's side instead.
         var state = await GetState(chatId, cancellationToken).ConfigureAwait(false);
-        return state is { SessionStartedAt: not null } ? state.EffectiveVisibleStartLid : null;
+        return state is { StartedAt: not null } ? state.EffectiveStartLid : null;
     }
 
     [ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ConversationContentComparer))]
@@ -945,7 +945,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
     {
         // The comparer is required: ToConversation() rebuilds the card, and Conversation compares by reference.
         var state = await GetState(chatId, cancellationToken).ConfigureAwait(false);
-        return state is { SessionStartedAt: not null } ? state.ToConversation() : null;
+        return state is { StartedAt: not null } ? state.ToConversation() : null;
     }
 
     [ComputeMethod(ConsolidationDelay = 0.2, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
@@ -1361,12 +1361,12 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 .ConfigureAwait(false)).End;
             var state = new LiveSessionState {
                 ChatId = chatId,
-                StartEntryLid = lidRangeEnd,
+                FirstSpeechLid = lidRangeEnd,
                 EndEntryLid = lidRangeEnd,
-                // The ring, not the answer: the call card's span is set from SessionStartedAt at its close.
-                StartedAt = call.StartedAt,
-                SessionStartedAt = call.AnsweredAt,
-                VisibleStartLid = lidRangeEnd,
+                // The ring, not the answer: the call card's span is set from StartedAt at its close.
+                FirstSpeechAt = call.StartedAt,
+                StartedAt = call.AnsweredAt,
+                StartLid = lidRangeEnd,
                 AuthorIds = [call.CallerId, inviteeAuthorId],
                 Host = call.CallerId,
                 CallerId = call.CallerId,
@@ -1960,7 +1960,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 return;
             if (await IsSessionLive(chatId).ConfigureAwait(false))
                 return; // someone is (still) streaming - not empty after all
-            if (state is { TranscriptionOn: true, SessionStartedAt: not null, Kind: LiveSessionKind.Ambient }) {
+            if (state is { TranscriptionOn: true, StartedAt: not null, Kind: LiveSessionKind.Ambient }) {
                 // Hand the close to LiveConversationSummaryFlow: it runs the final summary pass, decides the
                 // tier, materializes, then calls FinalizeSession. StartClosingGrace marks IsClosing; the 90s
                 // SelfClose stays the backstop if the flow never finalizes.
@@ -2067,11 +2067,11 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         var lastLid = (await ChatsBackend
             .GetLidRange(state.ChatId, false, CancellationToken.None)
             .ConfigureAwait(false)).End - 1;
-        // StartsAt/EndsAt default to StartedAt (the ring, not the answer) and to LastSummaryAt, which may
+        // StartsAt/EndsAt default to FirstSpeechAt (the ring, not the answer) and to SummarizedAt, which may
         // predate the end by a resummarization delay - so both need the session's real span.
         var conversation = state.ToMaterializedConversation() with {
             EndEntryLid = Math.Max(state.EndEntryLid, lastLid),
-            StartsAt = state.SessionStartedAt ?? state.StartedAt,
+            StartsAt = state.StartedAt ?? state.FirstSpeechAt,
             EndsAt = Clocks.SystemClock.Now,
         };
         var materialize = new ConversationBackend_Materialize(conversation);
@@ -2146,7 +2146,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             return;
 
         state = freshState;
-        if (state.SessionStartedAt is not null && !state.Title.IsNullOrEmpty())
+        if (state.StartedAt is not null && !state.Title.IsNullOrEmpty())
             await Commander
                 .Call(new ConversationBackend_Materialize(state.ToMaterializedConversation()), true, cancellationToken)
                 .ConfigureAwait(false);
@@ -2158,7 +2158,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
     {
         // Best-effort, like SpeechStartedEvent: a lost event costs the participants one counted
         // session, never the close. Runs before Close, which drops the participant map it reads.
-        if (state.SessionStartedAt is not { } startedAt)
+        if (state.StartedAt is not { } startedAt)
             return;
 
         try {

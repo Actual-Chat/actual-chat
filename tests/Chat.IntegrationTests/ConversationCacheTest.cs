@@ -62,7 +62,7 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
             Description = "d",
             Summary = "s",
             EndEntryLid = 1,
-            MessageCount = 1,
+            SummarizedEntryCount = 1,
         };
         await live.UpdateSummary(chatId, summary, default);
 
@@ -91,7 +91,7 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         var (chatId, _, live, _) = await StartLiveSession();
         await live.UpdateSummary(
             chatId,
-            new LiveSessionSummary { Title = "before", EndEntryLid = 1, MessageCount = 1 },
+            new LiveSessionSummary { Title = "before", EndEntryLid = 1, SummarizedEntryCount = 1 },
             default);
         var cLiveConversation = await Computed.Capture(() => live.GetLiveConversation(chatId, default));
         cLiveConversation.Value!.Title.Should().Be("before");
@@ -99,7 +99,7 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         // act
         await live.UpdateSummary(
             chatId,
-            new LiveSessionSummary { Title = "after", EndEntryLid = 2, MessageCount = 2 },
+            new LiveSessionSummary { Title = "after", EndEntryLid = 2, SummarizedEntryCount = 2 },
             default);
 
         // assert
@@ -125,8 +125,8 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         await live.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
         await live.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_071), null, true, true, default);
         var state = await live.GetState(chatId, default);
-        state!.SessionStartedAt.Should().NotBeNull("the session must latch or these tests don't bite");
+        state!.StartedAt.Should().NotBeNull("the session must latch or these tests don't bite");
 
-        return (chatId, ConversationIdTiles.GetTile(state.EffectiveVisibleStartLid).Start, live, conversations);
+        return (chatId, ConversationIdTiles.GetTile(state.EffectiveStartLid).Start, live, conversations);
     }
 }

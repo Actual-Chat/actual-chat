@@ -44,7 +44,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         // GetState churns far more often than the card it projects, and ToConversation() rebuilds it
         // every time, so the comparer is what lets this absorb the churn.
         var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return _lastConversations[chatId] = state is { SessionStartedAt: not null } ? state.ToConversation() : null;
+        return _lastConversations[chatId] = state is { StartedAt: not null } ? state.ToConversation() : null;
     }
 
     [ComputeMethod(ConsolidationDelay = 0)]
@@ -56,12 +56,12 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         return _lastBlockStates[chatId] = state is null
             ? null
             : new LiveBlockState(
-                state.SessionStartedAt is not null,
-                state.EffectiveVisibleStartLid,
+                state.StartedAt is not null,
+                state.EffectiveStartLid,
                 state.ContextStartLid,
                 state.EndEntryLid,
                 state.IsExpandedByDefault,
-                state.LastSummaryAt.EpochOffsetTicks > 0,
+                state.SummarizedAt.EpochOffsetTicks > 0,
                 state.IsClosing);
     }
 

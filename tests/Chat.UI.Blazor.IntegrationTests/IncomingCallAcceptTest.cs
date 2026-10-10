@@ -99,7 +99,7 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
         await again.Should().NotThrowAsync();
         (await backend.ListInvites(chatId, default)).Single(x => x.InviteeId == aliceAuthor.Id)
             .Status.Should().BeOneOf(CallInviteStatus.Accepted, CallInviteStatus.Active);
-        (await backend.GetState(chatId, default))!.SessionStartedAt.Should().NotBeNull();
+        (await backend.GetState(chatId, default))!.StartedAt.Should().NotBeNull();
     }
 
     [Fact]

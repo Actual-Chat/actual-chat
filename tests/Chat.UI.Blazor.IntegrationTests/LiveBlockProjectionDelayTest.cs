@@ -34,7 +34,7 @@ public sealed class LiveBlockProjectionDelayTest(ITestOutputHelper @out)
             null, true, true, CancellationToken.None);
         var entry = await tester.CreateTextEntry(chat.Id, "live tail");
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = entry.LocalId, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = entry.LocalId, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         var liveSessionUI = (DelayedLiveSessionUI)tester.ScopedAppServices.GetRequiredService<LiveSessionUI>();
         var liveBlockUI = tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();

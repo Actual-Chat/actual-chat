@@ -133,8 +133,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // assert
         live.Should().NotBeNull();
-        live!.SessionStartedAt.Should().NotBeNull();
-        (live.VisibleStartLid % tileSize).Should()
+        live!.StartedAt.Should().NotBeNull();
+        (live.StartLid % tileSize).Should()
             .Be(0L, "the live block must start a fresh view tile or this test doesn't bite");
         // The unjoined live block now renders through the unified sticky-header shell, so its card is a
         // leaf inside the block rather than a top-level ConversationMessage.
@@ -201,7 +201,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        live!.SessionStartedAt.Should().NotBeNull();
+        live!.StartedAt.Should().NotBeNull();
 
         var tileSize = (int)ChatUI.EntryIdTiles.TileSize;
         ChatEntry lastEntry = null!;
@@ -212,7 +212,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             Description = "d",
             Summary = "s",
             EndEntryLid = lastEntry.LocalId,
-            MessageCount = tileSize * 3,
+            SummarizedEntryCount = tileSize * 3,
             IsExpandedByDefault = true,
         };
         await liveBackend.UpdateSummary(chat.Id, summary, CancellationToken.None);
@@ -254,11 +254,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Latch", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3,
             }, CancellationToken.None);
         // The block needs the 3 summarised rows plus a full MinTailEntryCount tail below them, or the
         // tail floor caps the latched boundary before it can be observed.
@@ -290,13 +290,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3,
             }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -356,13 +356,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3,
             }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -400,13 +400,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3,
             }, CancellationToken.None);
 
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
@@ -449,13 +449,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3,
             }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -523,13 +523,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3, IsExpandedByDefault = false,
             }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -595,13 +595,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < foldedCount; i++)
             await CreateSpokenEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + foldedCount - 1, MessageCount = foldedCount, IsExpandedByDefault = false,
+                EndEntryLid = v + foldedCount - 1, SummarizedEntryCount = foldedCount, IsExpandedByDefault = false,
             }, CancellationToken.None);
         for (var i = 0; i < tailCount; i++)
             await CreateSpokenEntry(chat.Id, $"tail-{i}");
@@ -630,7 +630,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + foldedCount + tailCount - 1, MessageCount = foldedCount + tailCount,
+                EndEntryLid = v + foldedCount + tailCount - 1, SummarizedEntryCount = foldedCount + tailCount,
                 IsExpandedByDefault = false,
             }, CancellationToken.None);
 
@@ -683,13 +683,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3, IsExpandedByDefault = false,
             }, CancellationToken.None);
 
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
@@ -723,7 +723,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d2", Summary = "s2",
-                EndEntryLid = v + 5, MessageCount = 6, IsExpandedByDefault = false,
+                EndEntryLid = v + 5, SummarizedEntryCount = 6, IsExpandedByDefault = false,
             }, CancellationToken.None);
 
         // The context reaches back to the first pre-latch entry - before FinalizeSession so it lands
@@ -762,13 +762,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3, IsExpandedByDefault = false,
             }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -827,13 +827,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3, IsExpandedByDefault = false,
             }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -898,13 +898,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Latch", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3,
             }, CancellationToken.None);
         await Tester.CreateTextEntry(chat.Id, "extra-1");
         await Tester.CreateTextEntry(chat.Id, "extra-2");
@@ -940,7 +940,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Latch", Description = "d2", Summary = "s2",
-                EndEntryLid = v + 4, MessageCount = 5,
+                EndEntryLid = v + 4, SummarizedEntryCount = 5,
             }, CancellationToken.None);
         await Task.Delay(700);
         LeafEntryLids(await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None)).Should().Equal(beforeLids);
@@ -979,13 +979,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3,
             }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -1044,13 +1044,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3, IsExpandedByDefault = false,
             }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -1112,13 +1112,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3, IsExpandedByDefault = false,
             }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -1193,7 +1193,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         var tileSize = (int)ChatUI.EntryIdTiles.TileSize;
         ChatEntry lastFolded = null!;
         for (var i = 0; i < tileSize * 3; i++)
@@ -1201,7 +1201,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = lastFolded.LocalId, MessageCount = tileSize * 3, IsExpandedByDefault = true,
+                EndEntryLid = lastFolded.LocalId, SummarizedEntryCount = tileSize * 3, IsExpandedByDefault = true,
             }, CancellationToken.None);
         for (var i = 0; i < tileSize; i++)
             await Tester.CreateTextEntry(chat.Id, $"tail-{i}");
@@ -1266,13 +1266,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3, IsExpandedByDefault = false,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3, IsExpandedByDefault = false,
             }, CancellationToken.None);
 
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
@@ -1307,7 +1307,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d2", Summary = "s2",
-                EndEntryLid = lastEntry.LocalId, MessageCount = 6, IsExpandedByDefault = false,
+                EndEntryLid = lastEntry.LocalId, SummarizedEntryCount = 6, IsExpandedByDefault = false,
             }, CancellationToken.None);
         await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
@@ -1506,9 +1506,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "a description", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "a description", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"m-{i}");
@@ -1597,9 +1597,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // 2+ => SessionStartedAt latches
         await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
 
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
@@ -1633,7 +1633,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peer2Id, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         var spokenLids = new List<long>();
         for (var i = 0; i < 3; i++)
             spokenLids.Add((await CreateSpokenEntry(chat.Id, $"a-{i}")).LocalId);
@@ -1641,7 +1641,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         // spoke it, so nothing hides it - reads to the assertions below exactly like a leak.
         spokenLids.Should().Equal([v, v + 1, v + 2], "the live entries must be the ones V points at");
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v + 2, MessageCount = 3,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v + 2, SummarizedEntryCount = 3,
         }, CancellationToken.None);
 
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
@@ -1661,7 +1661,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         for (var i = 0; i < 2; i++)
             await CreateSpokenEntry(chat.Id, $"b-{i}");   // v+3, v+4
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d2", Summary = "s2", EndEntryLid = v + 4, MessageCount = 5,
+            Title = "Recap", Description = "d2", Summary = "s2", EndEntryLid = v + 4, SummarizedEntryCount = 5,
         }, CancellationToken.None);
 
         // assert (sustained) - the newly-summarized entries beyond the parked boundary must never surface
@@ -1688,9 +1688,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         var lids = new List<long>();
         for (var i = 0; i < 5 + LiveFoldMath.MinTailEntryCount; i++)
@@ -1757,11 +1757,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         // A title so the block has a card, but the summary covers only V (EndEntryLid = v) - the entries
         // below are UN-summarised. Viewport tracking must still fold them once they scroll above the top.
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         var lids = new List<long>();
         // 5 rows above the viewport top, then a full MinTailEntryCount tail from it down - anything
@@ -1937,9 +1937,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"before-{i}");
@@ -2005,9 +2005,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"before-{i}");
@@ -2096,9 +2096,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         for (var i = 0; i < 20; i++)
             await Tester.CreateTextEntry(chat.Id, $"m-{i}");
@@ -2166,9 +2166,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         for (var i = 0; i < 20; i++)
             await Tester.CreateTextEntry(chat.Id, $"m-{i}");
@@ -2237,9 +2237,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         // Enough that one reveal batch leaves rows still folded: revealing the whole backlog would
         // empty FoldRange, leaving no folded boundary to compare after leaving.
@@ -2310,9 +2310,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         var lids = new List<long>();
         for (var i = 0; i < 3; i++)
@@ -2422,13 +2422,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         for (var i = 0; i < 3; i++)
             await CreateSpokenEntry(chat.Id, $"first-{i}");
         await liveBackend.UpdateSummary(chat.Id,
             new LiveSessionSummary {
                 Title = "Recap", Description = "d", Summary = "s",
-                EndEntryLid = v + 2, MessageCount = 3,
+                EndEntryLid = v + 2, SummarizedEntryCount = 3,
             }, CancellationToken.None);
 
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
@@ -2461,7 +2461,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         Out.WriteLine($"after stop: block={Describe(afterStop)}");
         Out.WriteLine(stateAfterStop == null
             ? "after stop: session=<null>"
-            : $"after stop: session=v={stateAfterStop.EffectiveVisibleStartLid}, isClosing={stateAfterStop.IsClosing}, "
+            : $"after stop: session=v={stateAfterStop.EffectiveStartLid}, isClosing={stateAfterStop.IsClosing}, "
                 + $"authors={stateAfterStop.AuthorIds.Count}, end={stateAfterStop.EndEntryLid}");
 
         if (closesBeforeRestart) {
@@ -2475,7 +2475,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var restarted = await liveBackend.GetState(chat.Id, CancellationToken.None);
         Out.WriteLine(restarted == null
             ? "after restart: session=<null>"
-            : $"after restart: session=v={restarted.EffectiveVisibleStartLid}, isClosing={restarted.IsClosing}, "
+            : $"after restart: session=v={restarted.EffectiveStartLid}, isClosing={restarted.IsClosing}, "
                 + $"authors={restarted.AuthorIds.Count}, end={restarted.EndEntryLid}");
         var spoken = new List<ChatEntry>();
         for (var i = 0; i < 3; i++)
@@ -2530,7 +2530,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             chat.Id, author.Id, liveStart.LocalId, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         var inside = new List<ChatEntry>();
         // The overlap has to cover whole aligned id tiles: a tile is only dropped when an excluded
         // range contains all of it, so a conversation narrower than a tile never exercises the load
@@ -2539,7 +2539,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         for (var i = 0; i < 4 * tileSize; i++)
             inside.Add(await Tester.CreateTextEntry(chat.Id, $"inside-{i}"));
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         // The overlap: a persisted conversation sitting inside the live block's range - which is what id
         // churn leaves behind when V latches inside an older record.
@@ -2593,7 +2593,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             true, true, CancellationToken.None);
         var live = (await liveBackend.GetState(chat.Id, CancellationToken.None))!;
         var backend = AppHost.Services.GetRequiredService<IConversationsBackend>();
-        var tileRange = Constants.Chat.ConversationIdTiles.GetTile(live.EffectiveVisibleStartLid).Range;
+        var tileRange = Constants.Chat.ConversationIdTiles.GetTile(live.EffectiveStartLid).Range;
         var cached = await Computed.Capture(() => backend.GetConversationRangeTile(chat.Id, tileRange.Start, default));
         ChatEntry last = null!;
         for (var i = 0; i < 10; i++)
@@ -2601,11 +2601,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Growing", Description = "d", Summary = "s", EndEntryLid = last.LocalId, MessageCount = 10,
+            Title = "Growing", Description = "d", Summary = "s", EndEntryLid = last.LocalId, SummarizedEntryCount = 10,
         }, CancellationToken.None);
 
         // assert
-        cached.Value.ConversationRanges.Single(r => r.Start == live.EffectiveVisibleStartLid)
+        cached.Value.ConversationRanges.Single(r => r.Start == live.EffectiveStartLid)
             .IsOpenEnded.Should().BeTrue();
         cached.IsConsistent().Should().BeTrue("growing the summary does not move the open-ended boundary");
         await TestWait.When(async ct => {
@@ -2613,7 +2613,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             tile.Single(c => c.Id == live.ConversationId).EndEntryLid.Should().Be(last.LocalId);
             var metadata = await Tester.Chats.GetChatRangeTile(Tester.Session, chat.Id, tileRange.Start, ct);
             metadata.ConversationRanges.Any(r => r.IsOpenEnded).Should().BeFalse();
-            metadata.ConversationRanges.Single(r => r.Start == live.EffectiveVisibleStartLid)
+            metadata.ConversationRanges.Single(r => r.Start == live.EffectiveStartLid)
                 .End.Should().Be(last.LocalId + 1);
         }, TimeSpan.FromSeconds(20));
     }
@@ -2642,7 +2642,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, AuthorId.New(chat.Id, 777_441), null,
             true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         var expectedLiveStart = entries[^1].LocalId + 1;
         for (var i = 0; i < 10; i++)
             entries.Add(await Tester.CreateTextEntry(chat.Id, $"after-live-{i}"));
@@ -2683,9 +2683,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, MessageCount = 1,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = v, SummarizedEntryCount = 1,
         }, CancellationToken.None);
         var spokenPlain = await CreateSpokenEntry(chat.Id, "spoken plain");
         var spokenThreadStart = await CreateSpokenEntry(chat.Id, "spoken thread start");
@@ -2739,11 +2739,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         var threadStart = await Tester.CreateTextEntry(chat.Id, "typed thread start");
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
             Title = "Recap", Description = "d", Summary = "s",
-            EndEntryLid = threadStart.LocalId, MessageCount = 2,
+            EndEntryLid = threadStart.LocalId, SummarizedEntryCount = 2,
         }, CancellationToken.None);
         await StartThread(chat.Id, threadStart.Id, "Typed thread");
 
@@ -2799,12 +2799,12 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        var v = live!.EffectiveVisibleStartLid;
+        var v = live!.EffectiveStartLid;
         var spoken = new List<long>();
         for (var i = 0; i < 3; i++)
             spoken.Add((await CreateSpokenEntry(chat.Id, $"spoken-{i}")).LocalId);
         await liveBackend.UpdateSummary(chat.Id, new LiveSessionSummary {
-            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = spoken[^1], MessageCount = 3,
+            Title = "Recap", Description = "d", Summary = "s", EndEntryLid = spoken[^1], SummarizedEntryCount = 3,
         }, CancellationToken.None);
         // Enough spoken rows past the summary for a full MinTailEntryCount tail below the viewport top,
         // or the tail floor - not the viewport - would be what holds the fold back.
