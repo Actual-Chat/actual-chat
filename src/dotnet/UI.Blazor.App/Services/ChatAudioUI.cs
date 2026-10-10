@@ -74,7 +74,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         Hub.RegisterDisposable(ReplaySettings);
 
         _stopRecordingAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(StopRecordingAt)));
-        // Seeded with "now" so an active chat restored as recording still gets its grace period
         _recordingIntentChangedAt = stateFactory.NewMutable(
             CpuNow,
             StateCategories.Get(type, nameof(GetRecordingStatus)));
@@ -554,13 +553,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             ? new(idleAt, TimeSpanExt.Min(idleDelay, options.CheckPeriod), false)
             : new(null, countdownDelay, false);
     }
-
-    public static Moment ComputeStopListeningAt(
-        Moment lastActivityAt, bool hasRecorded, TimeSpan listenerTimeout, TimeSpan speakerTimeout)
-        // A speaker session (the user recorded during it) ends per their listening-linger
-        // setting; a pure listener session always holds for the fixed listener timeout, so
-        // joining muted stays usable even with the setting off.
-        => lastActivityAt + (hasRecorded ? speakerTimeout : listenerTimeout);
 
     // Static so tests can exercise the thresholds without a host
     public static bool IsActuallyConversing(

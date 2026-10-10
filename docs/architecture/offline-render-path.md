@@ -105,7 +105,6 @@ Everything here is needed before the first screen is usable, on every launch.
 | `IUserPresences.Get(ownUserId)` | cached | Own avatar in the account dropdown | S |
 | `IContacts.ListPlaceIds(session)` | cached | Navbar place buttons, `ChatListUI.ListAllUnordered` | S |
 | `IPlaces.Get(session, placeId)` per place | cached | Navbar, place headers, `ChatUI.SelectNavbarGroup` | S |
-| `IChats.GetRules(session, chatId)` per active chat | cached | `ActiveChatsUI` corrector on first read of the stored active-chat list | S |
 | `IAccounts.GetOwn` | cached | `ChatUI.FixChatId`, the corrector of the stored `SelectedChatId` | S |
 
 Startup workers that are **not** on the render path but talk to the server: `ServerTimeSync`
