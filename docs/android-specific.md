@@ -432,6 +432,11 @@ Tapping record puts the phone into `Mode.InCommunication` and selects a communic
 route lands, so the microphone opens 1.43 s after the tap on the Samsung S25 Ultra (measured with
 `adb logcat` markers, median of 5 presses).
 
+The begin-recording tune (a 0.21 s sound and a vibration) plays while the recorder starts instead of
+before it: `ChatAudioUI` awaits it only where `TuneUI.MustWaitForBeginRecording` says so (iOS Safari
+feeds a tune played into a live mic back); that decision is per platform: `true` for the Windows, iOS and macOS apps and for WebKit browsers (a tune played
+into a live mic is recorded on Windows and fed back on Apple), `false` on Android and in the other browsers.
+
 Settings > Android > "Starting a recording" (`UserAndroidSettings.RecordingStart`) chooses what a
 recording focus waits for:
 

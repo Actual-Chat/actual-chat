@@ -327,7 +327,11 @@ public partial class ChatAudioUI
             // A restart is the recorder recovering, not the user starting: chiming on each one
             // turns a run of capture failures into a burst of tones.
             var mustPlayBeginTune = !isRestart && !Volatile.Read(ref _isBeginTuneSuppressed);
-            await TuneUI.PlayAndWait(Tune.BeginRecording, mustPlay: mustPlayBeginTune).ConfigureAwait(false);
+            // Where the tune doesn't have to finish first it plays while the recorder starts.
+            if (TuneUI.MustWaitForBeginRecording)
+                await TuneUI.PlayAndWait(Tune.BeginRecording, mustPlay: mustPlayBeginTune).ConfigureAwait(false);
+            else
+                _ = TuneUI.Play(Tune.BeginRecording, mustPlay: mustPlayBeginTune);
             // Install before StartRecording so we don't miss a fast false→true→false
             // transition (e.g., pipeline dies during JS init).
             whenRecorderStopped = ForegroundTask.Run(async () => {
