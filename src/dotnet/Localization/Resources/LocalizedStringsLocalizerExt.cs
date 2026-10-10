@@ -116,7 +116,16 @@ public static class LocalizedStringsLocalizerExt
         public string ThemeSettings_Dark => l["ThemeSettings_Dark"].Value;
         public string ThemeSettings_MatchSystem => l["ThemeSettings_MatchSystem"].Value;
 
+        public string AndroidSettings_RecordingStart => l["AndroidSettings_RecordingStart"].Value;
+        public string AndroidSettings_Auto => l["AndroidSettings_Auto"].Value;
+        public string AndroidSettings_AutoCaption => l["AndroidSettings_AutoCaption"].Value;
+        public string AndroidSettings_WaitForRoute => l["AndroidSettings_WaitForRoute"].Value;
+        public string AndroidSettings_WaitForRouteCaption => l["AndroidSettings_WaitForRouteCaption"].Value;
+        public string AndroidSettings_DontWait => l["AndroidSettings_DontWait"].Value;
+        public string AndroidSettings_DontWaitCaption => l["AndroidSettings_DontWaitCaption"].Value;
+
         public string CarAudio_Mode => l["CarAudio_Mode"].Value;
+        public string CarAudio_SectionTitle => l["CarAudio_SectionTitle"].Value;
         public string CarAudio_Car => l["CarAudio_Car"].Value;
         public string CarAudio_CarCaption => l["CarAudio_CarCaption"].Value;
         public string CarAudio_CarAssistant => l["CarAudio_CarAssistant"].Value;

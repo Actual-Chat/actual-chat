@@ -124,7 +124,6 @@ body.device-ios * {
 .btn:disabled {
     @apply !bg-03;
     @apply !text-04;
-    @apply no-sheen;
 }
 .btn.pseudo-disabled::after,
 .btn:disabled::after {
@@ -148,6 +147,42 @@ body.device-ios * {
     @apply bg-cancel;
     @apply text-cancel-title;
     @apply sheen;
+}
+/* Sheen strength: low by default, in three steps, each overriding the one before. The theme sits in :where() on
+   the first so the later steps win on order, not on specificity.
+   1. A primary button takes the medium level in the dark theme and the high one in the light ones; a danger
+      button takes the high one in all of them.
+   2. Where the intent color is not the fill (square, round, outline, tinted, modal danger), back to low.
+   3. A dark fill needs the medium level to show at all, so the dark theme's square, round and outline buttons
+      take it.
+   A disabled button is always low. */
+:where(.theme-dark) .btn.btn-primary {
+    --sheen-level: 1.5;
+    --sheen-gloss: 0.18;
+}
+:where(.theme-dark) .btn.btn-danger,
+:where(.theme-light, .theme-ash) .btn:is(.btn-primary, .btn-danger) {
+    --sheen-level: 2.25;
+    --sheen-gloss: 0.22;
+}
+.btn:is(.btn-square, .btn-round, .btn-outline, .btn-tinted),
+.btn.btn-modal.btn-danger {
+    --sheen-level: 1;
+    --sheen-gloss: 0.08;
+}
+.theme-dark .btn:is(.btn-square, .btn-round, .btn-outline) {
+    --sheen-level: 1.5;
+    --sheen-gloss: 0.18;
+}
+.btn.btn:is(:disabled, .pseudo-disabled) {
+    --sheen-level: 1;
+    --sheen-gloss: 0.08;
+}
+.btn.btn-square.btn-primary,
+.btn.btn-square.btn-danger,
+.btn.btn-round.btn-primary,
+.btn.btn-round.btn-danger {
+    --sheen-fill: var(--sheen-surface);
 }
 
 /* Hover, Active — one unified overlay for every variant: hover shifts the surface one step, press two.
@@ -199,7 +234,6 @@ body.hoverable .btn.btn-outline.btn-cancel:hover:not(:active)::after {
     @apply border border-primary;
     @apply bg-outline-bg-primary;
     @apply text-primary;
-    @apply no-sheen;
 }
 .btn.btn-outline.btn-danger {
     @apply border-danger;
@@ -216,10 +250,20 @@ body.hoverable .btn.btn-outline.btn-cancel:hover:not(:active)::after {
     @apply bg-outline-bg-cancel;
     @apply text-cancel-text;
 }
+/* The tinted fill of an outline button takes the low sheen, whatever its intent */
+.btn.btn-outline,
+.btn.btn-outline.btn-primary,
+.btn.btn-outline.btn-danger,
+.btn.btn-outline.btn-danger-light,
+.btn.btn-outline.btn-cancel {
+    @apply sheen;
+    --sheen-fill: var(--sheen-surface);
+}
 
 /* Outline Disabled */
 .btn.btn-outline.pseudo-disabled,
 .btn.btn-outline:disabled {
+    @apply no-sheen;
     @apply !bg-transparent;
     @apply !text-cancel-text;
     @apply !border-cancel-text;
