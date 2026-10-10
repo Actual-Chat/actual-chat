@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "Le autorizzazioni possono essere concesse qui, ma non revocate. Per revocarne una, apri le impostazioni di Windows per l'app {0}.",
   "Permissions_RevokeHint_MacOS_Format": "Le autorizzazioni possono essere concesse qui, ma non revocate. Per revocarne una, apri le impostazioni di macOS per l'app {0}.",
   "Permissions_RevokeHint_Web": "Le autorizzazioni possono essere concesse qui, ma non revocate. Per revocarne una, apri le impostazioni del browser per questo sito.",
-  "PermissionGuide_Web_Format": "Apri nel browser Impostazioni/Preferenze → Privacy/Autorizzazioni → Impostazioni sito → {0} e scegli \"Consenti\", poi ricarica la pagina.",
+  "PermissionGuide_Web_Format": "Apri nel browser <b>Impostazioni/Preferenze → Privacy/Autorizzazioni → Impostazioni sito → {0}</b> e scegli <b>\"Consenti\"</b>, poi <b>ricarica la pagina</b>.",
   "PermissionGuide_WebAddressBarHint": "Le autorizzazioni di un sito possono trovarsi anche a sinistra dell'indirizzo nella barra degli indirizzi.",
   "PermissionGuide_App": "Per attivarlo, tocca \"Impostazioni\" qui sotto e consentilo nelle impostazioni del dispositivo.",
 

@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "Bạn có thể cấp quyền tại đây, nhưng không thể thu hồi. Để thu hồi một quyền, hãy mở cài đặt Windows cho ứng dụng {0}.",
   "Permissions_RevokeHint_MacOS_Format": "Bạn có thể cấp quyền tại đây, nhưng không thể thu hồi. Để thu hồi một quyền, hãy mở cài đặt macOS cho ứng dụng {0}.",
   "Permissions_RevokeHint_Web": "Bạn có thể cấp quyền tại đây, nhưng không thể thu hồi. Để thu hồi một quyền, hãy mở cài đặt trình duyệt cho trang web này.",
-  "PermissionGuide_Web_Format": "Mở Cài đặt/Tùy chọn của trình duyệt → Quyền riêng tư/Quyền → Cài đặt trang web → {0} và chọn \"Cho phép\", sau đó tải lại trang.",
+  "PermissionGuide_Web_Format": "Mở <b>Cài đặt/Tùy chọn của trình duyệt → Quyền riêng tư/Quyền → Cài đặt trang web → {0}</b> và chọn <b>\"Cho phép\"</b>, sau đó <b>tải lại trang</b>.",
   "PermissionGuide_WebAddressBarHint": "Quyền của trang web cũng có thể nằm ở bên trái địa chỉ trên thanh địa chỉ.",
   "PermissionGuide_App": "Để bật, hãy nhấn \"Cài đặt\" bên dưới và cho phép trong cài đặt thiết bị.",
 

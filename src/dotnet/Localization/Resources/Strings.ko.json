@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "권한은 여기서 부여만 할 수 있고, 취소는 할 수 없어요. 권한을 취소하려면 Windows 설정에서 {0} 앱을 여세요.",
   "Permissions_RevokeHint_MacOS_Format": "권한은 여기서 부여만 할 수 있고, 취소는 할 수 없어요. 권한을 취소하려면 macOS 설정에서 {0} 앱을 여세요.",
   "Permissions_RevokeHint_Web": "권한은 여기서 부여만 할 수 있고, 취소는 할 수 없어요. 권한을 취소하려면 브라우저 설정에서 이 사이트의 설정을 여세요.",
-  "PermissionGuide_Web_Format": "브라우저의 설정/환경설정 → 개인정보/권한 → 사이트 설정 → {0}을(를) 열고 \"허용\"을 선택한 다음 페이지를 새로고침하세요.",
+  "PermissionGuide_Web_Format": "브라우저의 <b>설정/환경설정 → 개인정보/권한 → 사이트 설정 → {0}</b>을(를) 열고 <b>\"허용\"</b>을 선택한 다음 <b>페이지를 새로고침</b>하세요.",
   "PermissionGuide_WebAddressBarHint": "사이트 권한은 주소 표시줄에서 주소 왼쪽에 있을 수도 있습니다.",
   "PermissionGuide_App": "켜려면 아래 \"설정\"을 누른 뒤 기기 설정에서 허용하세요.",
 

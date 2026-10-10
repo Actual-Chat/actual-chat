@@ -22,6 +22,17 @@
 .share-incoming-modal .dialog-buttons > * {
     @apply flex-1 max-w-none;
 }
+/* Nothing chosen yet: the footer holds only the hidden Share button, so it is dropped and the body becomes
+   the last region, owning the bottom inset (safe area included) like a frame without a footer */
+.share-incoming-modal:not(:has(.embedded-message-editor)):not(:has(.btn-share-action:not(.hidden))) .dialog-footer {
+    display: none;
+}
+.share-incoming-modal:not(:has(.embedded-message-editor)):not(:has(.btn-share-action:not(.hidden))) .dialog-body {
+    padding-bottom: calc(1rem + var(--safe-area-bottom));
+}
+body.wide .share-incoming-modal:not(:has(.embedded-message-editor)):not(:has(.btn-share-action:not(.hidden))) .dialog-body {
+    padding-bottom: 1rem;
+}
 .btn-share-action.hidden {
     display: none;
 }

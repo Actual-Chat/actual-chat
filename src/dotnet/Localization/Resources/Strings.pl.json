@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "Uprawnienia można tu przyznać, ale nie cofnąć. Aby cofnąć uprawnienie, otwórz ustawienia systemu Windows dla aplikacji {0}.",
   "Permissions_RevokeHint_MacOS_Format": "Uprawnienia można tu przyznać, ale nie cofnąć. Aby cofnąć uprawnienie, otwórz ustawienia macOS dla aplikacji {0}.",
   "Permissions_RevokeHint_Web": "Uprawnienia można tu przyznać, ale nie cofnąć. Aby cofnąć uprawnienie, otwórz ustawienia przeglądarki dla tej witryny.",
-  "PermissionGuide_Web_Format": "Otwórz w przeglądarce Ustawienia/Preferencje → Prywatność/Uprawnienia → Ustawienia witryn → {0} i wybierz „Zezwól”, a następnie odśwież stronę.",
+  "PermissionGuide_Web_Format": "Otwórz w przeglądarce <b>Ustawienia/Preferencje → Prywatność/Uprawnienia → Ustawienia witryn → {0}</b> i wybierz <b>„Zezwól”</b>, a następnie <b>odśwież stronę</b>.",
   "PermissionGuide_WebAddressBarHint": "Uprawnienia witryny mogą też znajdować się po lewej stronie adresu na pasku adresu.",
   "PermissionGuide_App": "Aby włączyć, dotknij „Ustawienia” poniżej i zezwól na dostęp w ustawieniach urządzenia.",
 

@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "Dozvole se ovdje mogu odobriti, ali ne i opozvati. Da biste opozvali dozvolu, otvorite postavke Windowsa za aplikaciju {0}.",
   "Permissions_RevokeHint_MacOS_Format": "Dozvole se ovdje mogu odobriti, ali ne i opozvati. Da biste opozvali dozvolu, otvorite postavke macOS-a za aplikaciju {0}.",
   "Permissions_RevokeHint_Web": "Dozvole se ovdje mogu odobriti, ali ne i opozvati. Da biste opozvali dozvolu, otvorite postavke preglednika za ovu stranicu.",
-  "PermissionGuide_Web_Format": "Otvorite u pregledniku Postavke → Privatnost/Dozvole → Postavke web-lokacija → {0} i odaberite „Dozvoli”, zatim ponovo učitajte stranicu.",
+  "PermissionGuide_Web_Format": "Otvorite u pregledniku <b>Postavke → Privatnost/Dozvole → Postavke web-lokacija → {0}</b> i odaberite <b>„Dozvoli”</b>, zatim <b>ponovo učitajte stranicu</b>.",
   "PermissionGuide_WebAddressBarHint": "Dozvole web-lokacije mogu se nalaziti i lijevo od adrese u adresnoj traci.",
   "PermissionGuide_App": "Da biste uključili, dodirnite „Postavke” ispod i dozvolite pristup u postavkama uređaja.",
 

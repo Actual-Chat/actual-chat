@@ -1203,7 +1203,7 @@
   "Permissions_RevokeHint_Windows_Format": "Разрешенията могат да се дадат тук, но не и да се отнемат. За да отнемете разрешение, отворете настройките на Windows за приложението {0}.",
   "Permissions_RevokeHint_MacOS_Format": "Разрешенията могат да се дадат тук, но не и да се отнемат. За да отнемете разрешение, отворете настройките на macOS за приложението {0}.",
   "Permissions_RevokeHint_Web": "Berechtigungen können hier erteilt, aber nicht widerrufen werden. Um eine zu widerrufen, öffnen Sie die Einstellungen Ihres Browsers für diese Website.",
-  "PermissionGuide_Web_Format": "Отворете в браузъра Настройки/Предпочитания → Поверителност/Разрешения → Настройки на сайтовете → {0} и изберете „Разреши“, след което презаредете страницата.",
+  "PermissionGuide_Web_Format": "Отворете в браузъра <b>Настройки/Предпочитания → Поверителност/Разрешения → Настройки на сайтовете → {0}</b> и изберете <b>„Разреши“</b>, след което <b>презаредете страницата</b>.",
   "PermissionGuide_WebAddressBarHint": "Die Berechtigungen einer Website können sich auch links neben der Adresse in der Adressleiste befinden.",
   "PermissionGuide_App": "За да включите, докоснете „Настройки“ по-долу и разрешете достъпа в настройките на устройството.",
 

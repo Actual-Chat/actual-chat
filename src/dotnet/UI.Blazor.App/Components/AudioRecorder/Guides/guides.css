@@ -1,7 +1,3 @@
-.guide-modal .form-block {
-    @apply gap-y-6;
-}
-
 .guide-modal .dialog-body {
     @apply gap-y-4;
     @apply overflow-y-auto;
