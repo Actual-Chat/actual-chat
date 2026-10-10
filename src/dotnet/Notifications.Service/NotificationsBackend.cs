@@ -37,6 +37,7 @@ public class NotificationsBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
     private Streaming.ILiveSessionsBackend LiveSessionsBackend { get; }
         = services.GetRequiredService<Streaming.ILiveSessionsBackend>();
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
@@ -691,6 +692,11 @@ public class NotificationsBackend(IServiceProvider services)
             && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
             return;
 
+        var isLateCallTranscript = await IsLateCallTranscript(entry, author, changeKind, cancellationToken)
+            .ConfigureAwait(false);
+        if (isLateCallTranscript)
+            return;
+
         // ShouldNotify lets a Create through only when it is not streaming (typed text) and an
         // Update only on the streaming -> finalized transition, which is exactly what an utterance
         // looks like. That transition is the only "spoken" signal that survives JustText (it never
@@ -939,6 +945,35 @@ public class NotificationsBackend(IServiceProvider services)
 
         var maintenanceMode = await MaintenancesBackend.GetMode(chatId, cancellationToken).ConfigureAwait(false);
         return maintenanceMode != MaintenanceMode.None;
+    }
+
+    private async Task<bool> IsLateCallTranscript(
+        ChatEntry entry, AuthorFull author, ChangeKind changeKind, CancellationToken cancellationToken)
+    {
+        if (changeKind != ChangeKind.Update)
+            return false;
+
+        // A call's last utterance is finalized after the call and its live session are gone, so the
+        // session guard in OnChatEntryChangedEvent can't see it. The call's conversation survives, and
+        // its EndsAt is the test CallTailFlow uses to decide that an utterance belongs to the call.
+        var chatId = entry.ChatId;
+        var tile = Constants.Chat.ConversationIdTiles.GetTile(entry.LocalId);
+        var rangeTile = await ConversationsBackend
+            .GetConversationRangeTile(chatId, tile.Start, cancellationToken)
+            .ConfigureAwait(false);
+        var ranges = rangeTile.PreviousConversationRange is { } previous
+            ? rangeTile.ConversationRanges.Append(previous)
+            : rangeTile.ConversationRanges;
+        var startLid = ranges.Where(r => r.Start <= entry.LocalId).Select(r => r.Start).DefaultIfEmpty().Max();
+        if (startLid <= 0)
+            return false;
+
+        var conversation = await ConversationsBackend
+            .Get(ConversationId.New(chatId, startLid), cancellationToken)
+            .ConfigureAwait(false);
+        return conversation is { IsCall: true }
+            && entry.BeginsAt <= conversation.EndsAt
+            && conversation.AuthorIds.Contains(author.Id);
     }
 
     private async Task SendChatMessageNotification(
