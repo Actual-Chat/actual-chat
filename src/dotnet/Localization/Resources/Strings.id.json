@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "Izin dapat diberikan di sini, tetapi tidak dapat dicabut. Untuk mencabut izin, buka pengaturan Windows untuk aplikasi {0}.",
   "Permissions_RevokeHint_MacOS_Format": "Izin dapat diberikan di sini, tetapi tidak dapat dicabut. Untuk mencabut izin, buka pengaturan macOS untuk aplikasi {0}.",
   "Permissions_RevokeHint_Web": "Izin dapat diberikan di sini, tetapi tidak dapat dicabut. Untuk mencabut izin, buka pengaturan browser untuk situs ini.",
-  "PermissionGuide_Web_Format": "Buka Setelan/Preferensi browser → Privasi/Izin → Setelan situs → {0} dan pilih \"Izinkan\", lalu muat ulang halaman.",
+  "PermissionGuide_Web_Format": "Buka <b>Setelan/Preferensi browser → Privasi/Izin → Setelan situs → {0}</b> dan pilih <b>\"Izinkan\"</b>, lalu <b>muat ulang halaman</b>.",
   "PermissionGuide_WebAddressBarHint": "Izin situs juga bisa berada di sebelah kiri alamat di bilah alamat.",
   "PermissionGuide_App": "Untuk mengaktifkan, ketuk \"Pengaturan\" di bawah dan izinkan di pengaturan perangkat.",
 

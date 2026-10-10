@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "権限はここで付与できますが、取り消すことはできません。取り消すには、Windows の設定で {0} アプリを開いてください。",
   "Permissions_RevokeHint_MacOS_Format": "権限はここで付与できますが、取り消すことはできません。取り消すには、macOS の設定で {0} アプリを開いてください。",
   "Permissions_RevokeHint_Web": "権限はここで付与できますが、取り消すことはできません。取り消すには、ブラウザの設定でこのサイトの設定を開いてください。",
-  "PermissionGuide_Web_Format": "ブラウザの 設定/環境設定 → プライバシー/権限 → サイトの設定 → {0} を開き、「許可」を選択してから、ページを再読み込みしてください。",
+  "PermissionGuide_Web_Format": "ブラウザの <b>設定/環境設定 → プライバシー/権限 → サイトの設定 → {0}</b> を開き、<b>「許可」</b>を選択してから、<b>ページを再読み込み</b>してください。",
   "PermissionGuide_WebAddressBarHint": "サイトの権限は、アドレスバーのアドレスの左側にある場合もあります。",
   "PermissionGuide_App": "オンにするには、下の「設定」をタップし、デバイスの設定で許可してください。",
 

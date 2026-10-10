@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "Los permisos se pueden conceder aquí, pero no revocar. Para revocar uno, abre los ajustes de Windows de la aplicación {0}.",
   "Permissions_RevokeHint_MacOS_Format": "Los permisos se pueden conceder aquí, pero no revocar. Para revocar uno, abre los ajustes de macOS de la aplicación {0}.",
   "Permissions_RevokeHint_Web": "Los permisos se pueden conceder aquí, pero no revocar. Para revocar uno, abre los ajustes de tu navegador para este sitio.",
-  "PermissionGuide_Web_Format": "Abre en el navegador Configuración/Preferencias → Privacidad/Permisos → Configuración del sitio → {0} y elige \"Permitir\", luego recarga la página.",
+  "PermissionGuide_Web_Format": "Abre en el navegador <b>Configuración/Preferencias → Privacidad/Permisos → Configuración del sitio → {0}</b> y elige <b>\"Permitir\"</b>, luego <b>recarga la página</b>.",
   "PermissionGuide_WebAddressBarHint": "Los permisos de un sitio también pueden estar a la izquierda de la dirección en la barra de direcciones.",
   "PermissionGuide_App": "Para activarlo, toca \"Ajustes\" abajo y permítelo en los ajustes del dispositivo.",
 

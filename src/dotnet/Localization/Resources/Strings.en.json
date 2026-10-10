@@ -1203,7 +1203,7 @@
   "Permissions_RevokeHint_Windows_Format": "Permissions can be granted here, but not revoked. To revoke one, open Windows settings for the {0} app.",
   "Permissions_RevokeHint_MacOS_Format": "Permissions can be granted here, but not revoked. To revoke one, open macOS settings for the {0} app.",
   "Permissions_RevokeHint_Web": "Permissions can be granted here, but not revoked. To revoke one, open your browser's settings for this site.",
-  "PermissionGuide_Web_Format": "Open your browser's Settings/Preferences → Privacy/Permissions → Site settings → {0} and choose \"Allow\", then reload the page.",
+  "PermissionGuide_Web_Format": "Open your browser's <b>Settings/Preferences → Privacy/Permissions → Site settings → {0}</b> and choose <b>\"Allow\"</b>, then <b>reload</b> the page.",
   "PermissionGuide_WebAddressBarHint": "A site's permissions may also be found to the left of the address in the address bar.",
   "PermissionGuide_App": "To turn it on, tap \"Settings\" below and allow it in your device settings.",
 

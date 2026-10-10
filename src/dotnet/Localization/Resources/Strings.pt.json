@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "As permissões podem ser concedidas aqui, mas não revogadas. Para revogar uma permissão, abra as configurações do Windows para o app {0}.",
   "Permissions_RevokeHint_MacOS_Format": "As permissões podem ser concedidas aqui, mas não revogadas. Para revogar uma permissão, abra as configurações do macOS para o app {0}.",
   "Permissions_RevokeHint_Web": "As permissões podem ser concedidas aqui, mas não revogadas. Para revogar uma permissão, abra as configurações do navegador para este site.",
-  "PermissionGuide_Web_Format": "Abra no navegador Configurações/Preferências → Privacidade/Permissões → Configurações do site → {0} e escolha \"Permitir\", depois recarregue a página.",
+  "PermissionGuide_Web_Format": "Abra no navegador <b>Configurações/Preferências → Privacidade/Permissões → Configurações do site → {0}</b> e escolha <b>\"Permitir\"</b>, depois <b>recarregue a página</b>.",
   "PermissionGuide_WebAddressBarHint": "As permissões de um site também podem ficar à esquerda do endereço na barra de endereço.",
   "PermissionGuide_App": "Para ativar, toque em \"Configurações\" abaixo e permita nas configurações do dispositivo.",
 

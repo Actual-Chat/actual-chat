@@ -1027,7 +1027,7 @@
   "Permissions_RevokeHint_Windows_Format": "İzinler buradan verilebilir, ancak geri alınamaz. Bir izni geri almak için {0} uygulamasının Windows ayarlarını açın.",
   "Permissions_RevokeHint_MacOS_Format": "İzinler buradan verilebilir, ancak geri alınamaz. Bir izni geri almak için {0} uygulamasının macOS ayarlarını açın.",
   "Permissions_RevokeHint_Web": "İzinler buradan verilebilir, ancak geri alınamaz. Bir izni geri almak için tarayıcınızın bu siteye ait ayarlarını açın.",
-  "PermissionGuide_Web_Format": "Tarayıcınızda Ayarlar/Tercihler → Gizlilik/İzinler → Site ayarları → {0} yolunu açın ve \"İzin ver\"i seçin, ardından sayfayı yeniden yükleyin.",
+  "PermissionGuide_Web_Format": "Tarayıcınızda <b>Ayarlar/Tercihler → Gizlilik/İzinler → Site ayarları → {0}</b> yolunu açın ve <b>\"İzin ver\"</b>i seçin, ardından <b>sayfayı yeniden yükleyin</b>.",
   "PermissionGuide_WebAddressBarHint": "Bir sitenin izinleri, adres çubuğunda adresin solunda da bulunabilir.",
   "PermissionGuide_App": "Açmak için aşağıdaki \"Ayarlar\"a dokunun ve cihaz ayarlarından izin verin.",
 

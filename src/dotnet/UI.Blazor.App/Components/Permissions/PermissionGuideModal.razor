@@ -1,3 +1,4 @@
+@using System.Net
 @using ActualChat.Hosting
 @using ActualChat.UI.Blazor.App.Services
 @namespace ActualChat.UI.Blazor.App.Components
@@ -10,26 +11,22 @@
 }
 
 <DialogFrame
-    Class="permission-guide-modal guide-modal"
+    Class="permission-guide-modal guide-modal compact-header modal-sm"
     BodyClass="no-scrollbar"
     Title="@(permission?.Title ?? "")"
-    HasCloseButton="true"
-    NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
+    HasCloseButton="true">
     <Body>
     <FormBlock>
         @if (permission is { } p) {
-            <div class="c-hero"><i class="@p.Icon"></i></div>
-            <div class="c-title">@p.Title</div>
             <div class="c-intro">@p.Rationale</div>
         }
         @if (isMaui) {
             <div class="c-intro">@L.PermissionGuide_App</div>
         } else {
-            <div class="c-intro">@L.PermissionGuide_Web_Format(permission?.Title ?? "")</div>
-            <div class="c-hint">@L.PermissionGuide_WebAddressBarHint</div>
+            <div class="c-intro">@((MarkupString)L.PermissionGuide_Web_Format(WebUtility.HtmlEncode(permission?.Title ?? "")))</div>
+            <div class="c-intro opacity-70">@L.PermissionGuide_WebAddressBarHint</div>
         }
     </FormBlock>
-    <div class="safe-area-bottom safe-area-bottom-overlay"></div>
     </Body>
     <Buttons>
         @if (isMaui) {
