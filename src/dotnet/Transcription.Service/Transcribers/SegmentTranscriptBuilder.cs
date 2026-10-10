@@ -3,14 +3,17 @@ using System.Text;
 
 namespace ActualChat.Transcription;
 
-// Scribe realtime sends whole transcripts rather than deltas: partial_transcript carries the
-// current guess for the open segment, and a committed one replaces it for good. So committed
-// segments accumulate here and the partial is appended on top of them.
+// For providers that send whole segments rather than deltas (ElevenLabs Scribe realtime, xAI):
+// a partial carries the current guess for the open segment, and a committed one replaces it for
+// good. So committed segments accumulate here and the partial is appended on top of them.
+// Recommit replaces every segment committed with a start at or after its own: xAI finalizes an
+// utterance chunk by chunk, then re-sends the whole of it once the speaker stops.
 
-public sealed class ElevenLabsTranscriptBuilder
+public sealed class SegmentTranscriptBuilder
 {
     private readonly StringBuilder _committedText = new();
     private readonly List<Language> _languages = [];
+    private readonly List<Segment> _segments = [];
     private LinearMap _committedMap = LinearMap.Zero;
     private float _committedEndTime;
     private string _partialText = "";
@@ -21,16 +24,23 @@ public sealed class ElevenLabsTranscriptBuilder
         return NewTranscript(_committedText + _partialText, _committedMap, _committedEndTime, false);
     }
 
-    public Transcript Commit(ElevenLabsMessage message)
+    public Transcript Commit(
+        string text,
+        IEnumerable<(string? Text, double Start, double End)> words,
+        string? languageCode = null,
+        double? start = null)
     {
+        if (start is { } segmentStart)
+            _segments.Add(new Segment(segmentStart, _committedText.Length, _committedMap, _committedEndTime));
+
         var startOffset = _committedText.Length;
-        var text = Separate(message.Text ?? "");
+        text = Separate(text);
         _committedText.Append(text);
         _partialText = "";
-        AddLanguage(message.LanguageCode);
+        AddLanguage(languageCode);
         var offset = 0;
-        foreach (var word in message.Words ?? []) {
-            if (word.Type != "word" || word.Text.IsNullOrEmpty())
+        foreach (var word in words) {
+            if (word.Text.IsNullOrEmpty())
                 continue;
 
             var wordStart = text.IndexOf(word.Text, offset);
@@ -46,8 +56,27 @@ public sealed class ElevenLabsTranscriptBuilder
         return NewTranscript(_committedText.ToString(), _committedMap, _committedEndTime, false);
     }
 
-    public Transcript Complete()
+    public Transcript Recommit(
+        double start,
+        string text,
+        IEnumerable<(string? Text, double Start, double End)> words,
+        string? languageCode = null)
     {
+        var index = _segments.FindIndex(x => x.Start >= start);
+        if (index >= 0) {
+            var first = _segments[index];
+            _segments.RemoveRange(index, _segments.Count - index);
+            _committedText.Length = first.TextLength;
+            _committedMap = first.Map;
+            _committedEndTime = first.EndTime;
+        }
+
+        return Commit(text, words, languageCode, start);
+    }
+
+    public Transcript Complete(string? languageCode = null)
+    {
+        AddLanguage(languageCode);
         if (_partialText.Length != 0) {
             _committedText.Append(_partialText);
             _partialText = "";
@@ -95,4 +124,9 @@ public sealed class ElevenLabsTranscriptBuilder
 
         return map.Append(new Vector2(x, y));
     }
+
+    // Nested types
+
+    // The committed state as it was right before the segment was appended.
+    private readonly record struct Segment(double Start, int TextLength, LinearMap Map, float EndTime);
 }

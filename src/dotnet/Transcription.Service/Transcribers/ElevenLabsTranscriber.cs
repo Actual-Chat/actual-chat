@@ -169,7 +169,7 @@ public sealed class ElevenLabsTranscriber : ITranscriber
         string audioStreamId,
         CancellationToken cancellationToken)
     {
-        var builder = new ElevenLabsTranscriptBuilder();
+        var builder = new SegmentTranscriptBuilder();
         var buffer = new ArraySegment<byte>(new byte[16 * 1024]);
         var message = new StringBuilder();
         var hasMessages = false;
@@ -206,8 +206,13 @@ public sealed class ElevenLabsTranscriber : ITranscriber
                 // Every segment is also announced as a plain committed_transcript with the same
                 // text; committing both would append it twice. include_timestamps is always on,
                 // so the timestamped one is guaranteed to arrive and is the richer of the two.
-                if (!response.Text.IsNullOrEmpty())
-                    await output.WriteAsync(builder.Commit(response), cancellationToken).ConfigureAwait(false);
+                if (!response.Text.IsNullOrEmpty()) {
+                    var words = (response.Words ?? [])
+                        .Where(x => x.Type == "word")
+                        .Select(x => (x.Text, x.Start, x.End));
+                    var transcript = builder.Commit(response.Text, words, response.LanguageCode);
+                    await output.WriteAsync(transcript, cancellationToken).ConfigureAwait(false);
+                }
                 break;
             case "final_transcript":
             case "committed_transcript":
