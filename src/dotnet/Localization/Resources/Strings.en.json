@@ -1727,7 +1727,7 @@
 
   // The notification list in the left panel.
   "Notifications_AllCaughtUp": "You're all caught up",
-  "Notifications_DismissAll": "Dismiss all",
+  "Notifications_ClearConfirm": "Clear all notifications?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "Voice chat started",

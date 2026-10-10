@@ -1490,7 +1490,7 @@
   "SearchTabs_Contacts": "संपर्क",
   "SearchTabs_Date": "तारीख",
   "Notifications_AllCaughtUp": "आप सब कुछ देख चुके हैं",
-  "Notifications_DismissAll": "सभी खारिज करें",
+  "Notifications_ClearConfirm": "सभी सूचनाएं साफ़ करें?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "वॉइस चैट शुरू हुई",

@@ -1490,7 +1490,7 @@
   "SearchTabs_Contacts": "Danh bạ",
   "SearchTabs_Date": "Ngày",
   "Notifications_AllCaughtUp": "Bạn đã xem hết",
-  "Notifications_DismissAll": "Bỏ qua tất cả",
+  "Notifications_ClearConfirm": "Xóa tất cả thông báo?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "Trò chuyện thoại đã bắt đầu",

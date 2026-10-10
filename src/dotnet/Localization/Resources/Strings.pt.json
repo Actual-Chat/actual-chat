@@ -1490,7 +1490,7 @@
   "SearchTabs_Contacts": "Contatos",
   "SearchTabs_Date": "Data",
   "Notifications_AllCaughtUp": "Você está em dia",
-  "Notifications_DismissAll": "Dispensar tudo",
+  "Notifications_ClearConfirm": "Limpar todas as notificações?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "Chat de voz iniciado",

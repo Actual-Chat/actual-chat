@@ -1497,7 +1497,7 @@
   "SearchTabs_Contacts": "Kişiler",
   "SearchTabs_Date": "Tarih",
   "Notifications_AllCaughtUp": "Her şeyi gördünüz",
-  "Notifications_DismissAll": "Tümünü kapatın",
+  "Notifications_ClearConfirm": "Tüm bildirimler temizlensin mi?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "Sesli sohbet başladı",

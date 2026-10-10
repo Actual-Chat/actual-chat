@@ -1490,7 +1490,7 @@
   "SearchTabs_Contacts": "연락처",
   "SearchTabs_Date": "날짜",
   "Notifications_AllCaughtUp": "모두 확인했습니다",
-  "Notifications_DismissAll": "모두 닫기",
+  "Notifications_ClearConfirm": "모든 알림을 지울까요?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "음성 채팅이 시작되었습니다",

@@ -1490,7 +1490,7 @@
   "SearchTabs_Contacts": "連絡先",
   "SearchTabs_Date": "日付",
   "Notifications_AllCaughtUp": "すべて確認済みです",
-  "Notifications_DismissAll": "すべて閉じる",
+  "Notifications_ClearConfirm": "すべての通知を消去しますか?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "音声チャットが開始されました",

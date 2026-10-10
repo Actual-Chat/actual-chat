@@ -1490,7 +1490,7 @@
   "SearchTabs_Contacts": "Kontakty",
   "SearchTabs_Date": "Datum",
   "Notifications_AllCaughtUp": "Máte vše přečtené",
-  "Notifications_DismissAll": "Zavřít vše",
+  "Notifications_ClearConfirm": "Vymazat všechna oznámení?",
   // Notification text composed on the server. The names, message text and chat titles
   // spliced into these stay untranslated - they are user content.
   "Notification_VoiceChatStarted": "Hlasový chat byl zahájen",
