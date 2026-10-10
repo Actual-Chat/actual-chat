@@ -135,16 +135,28 @@
   "ThemeSettings_Dark": "Sombre",
   "ThemeSettings_MatchSystem": "Zgodny z motywem systemu",
 
+  // Settings > Android. How long the microphone takes to start when the user taps record or
+  // starts a push-to-talk. Android first switches the phone to its call audio mode, which takes
+  // about half a second; a Bluetooth headset is only picked up once that switch is done.
+  "AndroidSettings_RecordingStart": "Démarrage d'un enregistrement",
+  "AndroidSettings_Auto": "Автоматически",
+  "AndroidSettings_AutoCaption": "Empieza a grabar al instante, salvo que haya unos auriculares u otro dispositivo de audio externo conectado. En ese caso, espera a que esté listo para que la grabación empiece en el micrófono correcto.",
+  "AndroidSettings_WaitForRoute": "Изчакване на превключването на звука",
+  "AndroidSettings_WaitForRouteCaption": "Attendez toujours le basculement audio avant que l'enregistrement ne démarre. Le démarrage est un peu plus long, mais l'enregistrement commence toujours sur le bon microphone.",
+  "AndroidSettings_DontWait": "Démarrer l'enregistrement immédiatement",
+  "AndroidSettings_DontWaitCaption": "Warte nie auf die Audio-Umschaltung. Die Aufnahme startet so schnell wie möglich, aber bei einem Bluetooth-Headset können die ersten Wörter vom Mikrofon des Telefons aufgenommen werden.",
+
   "CarAudio_Mode": "Sound and microphone",
+  "CarAudio_SectionTitle": "Android Auto - sound and microphone",
   "CarAudio_Car": "Samochód",
-  "CarAudio_CarCaption": "Le microphone et les haut-parleurs de la voiture, comme pour un appel. La musique se met en pause pendant que vous parlez.",
+  "CarAudio_CarCaption": "Utilisez le microphone et les haut-parleurs de la voiture, comme pour un appel. La musique se met en pause pendant que vous parlez.",
   "CarAudio_CarAssistant": "車、アシスタントチャンネル",
-  "CarAudio_CarAssistantCaption": "Comme « Voiture », mais via le canal de l'assistant vocal de la voiture au lieu d'un appel. Essayez ceci si votre voiture affiche l'écran du téléphone pendant que vous parlez.",
+  "CarAudio_CarAssistantCaption": "Utilisez le microphone et les haut-parleurs de la voiture via le canal de son assistant vocal au lieu d'un appel. Essayez ceci si votre voiture affiche l'écran du téléphone pendant que vous parlez.",
   "CarAudio_AssistantPermissionDenied": "Il canale dell'assistente dell'auto richiede l'autorizzazione Dispositivi nelle vicinanze.",
   "CarAudio_CarSpeakers": "Haut-parleurs de la voiture, microphone du téléphone",
-  "CarAudio_CarSpeakersCaption": "La musique se met en pause pendant que quelqu'un parle.",
+  "CarAudio_CarSpeakersCaption": "Jouez le son sur les haut-parleurs de la voiture et enregistrez avec le microphone du téléphone. La musique se met en pause pendant que quelqu'un parle.",
   "CarAudio_Phone": "Téléphone uniquement",
-  "CarAudio_PhoneCaption": "El sonido y el micrófono se quedan en el teléfono.",
+  "CarAudio_PhoneCaption": "サウンドとマイクはスマホのままにしてください。",
 
   // Settings > Voice & Transcription. These are the *spoken* languages a user's speech is
   // transcribed from - unrelated to the UI language above. ListeningLinger_* fills the
@@ -2247,11 +2259,11 @@
   "Date_ShortMonthNames": "Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec",
   "Date_DayNames": "Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday",
   "Date_ShortDayNames": "Sun|Mon|Tue|Wed|Thu|Fri|Sat",
-  "Date_TimePattern": "HH:mm",
+  "Date_TimePattern": "h:mm tt",
   "Date_DayMonthPattern": "MMM d",
   "Date_DayMonthYearPattern": "MMM d, yyyy",
-  "Date_DayMonthTimePattern": "d MMM, HH:mm",
-  "Date_DayMonthYearTimePattern": "d MMM yyyy, HH:mm",
+  "Date_DayMonthTimePattern": "d MMM, h:mm tt",
+  "Date_DayMonthYearTimePattern": "d MMM yyyy, h:mm tt",
   "Date_FullDatePattern": "MMMM d, yyyy",
   "Date_MonthYearPattern": "MMMM yyyy",
   "Date_Parts_Format": "{0}, {1}",

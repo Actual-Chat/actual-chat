@@ -18,6 +18,12 @@ body.narrow .close-settings-btn {
     @apply hidden;
 }
 
+/* A tab that outgrows the window gets a scrollbar, which would shift its centered column left of the
+   other tabs'. Reserving the gutter keeps every tab's column in the same place. */
+.settings-tab {
+    scrollbar-gutter: stable both-edges;
+}
+
 /* ── Tile-item blocks (theme, render mode, listening linger, ...) ── */
 
 /* This modal lines tile rows, input rows, and icons up to one left edge - the .settings-tab-content
