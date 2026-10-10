@@ -678,6 +678,23 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
     @apply max-w-72 px-4;
     @apply text-center text-sm text-03;
 }
+.invite-friends-banner .share-actions {
+    @apply w-auto justify-center;
+}
+/* The panel is narrow: the buttons are as wide as their content, with the same side inset as the QR
+   button has around its icon: (w-10 - text-xl) / 2 = 10px */
+.invite-friends-banner .share-actions .share-externally-button,
+.invite-friends-banner .share-actions .c-copy-link {
+    @apply flex-none w-auto p-0;
+}
+.invite-friends-banner .share-actions .btn,
+.invite-friends-banner .share-actions .share-externally-button .btn,
+.invite-friends-banner .share-actions .c-copy-link .btn {
+    @apply flex-none w-auto px-2.5;
+}
+.invite-friends-banner .share-actions .btn-square:has(.icon-QR) {
+    @apply w-10;
+}
 .invite-friends-banner .c-find-contacts {
     @apply flex items-center gap-x-1;
 }

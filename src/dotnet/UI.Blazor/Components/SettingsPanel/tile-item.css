@@ -124,6 +124,18 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply flex-auto;
     @apply min-w-24;
 }
+/* The name and the account link under it are one block, centered in the tile with the avatar and the buttons
+   (the shared caption layout above pins everything to the top). */
+.tile-item.tile-item-my-account-link:has(.ti-caption) {
+    @apply items-center;
+}
+.tile-item.tile-item-my-account-link:has(.ti-caption) > .ti-left,
+.tile-item.tile-item-my-account-link:has(.ti-caption) > .ti-right {
+    @apply self-center;
+}
+.tile-item-my-account-link .ti-center {
+    @apply content-center;
+}
 .tile-item-my-account-link .ti-title {
     @apply text-01 text-body;
 }

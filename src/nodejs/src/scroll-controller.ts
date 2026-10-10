@@ -65,8 +65,16 @@ const TouchStaleMs = 3000;
 // dragging finger reports touchmove every frame, so silence while the content flies is a release whose
 // touchend went to an item recycled out of the document - detached, so nothing on document saw it.
 const TouchSilenceMs = 400;
-// A gap this long between scroll events ends the motion; the next one says for itself what it is.
+// A gap this long between scroll events ends the motion; the next one says for itself what it is - unless
+// the position says the fling never stopped, see isFlingContinuation.
 const MotionGapMs = 200;
+// A fling is still the same fling across a gap if it was moving at least this fast and the position has
+// travelled the way it was heading by no more than it could have, within this slack. recentSpeed is
+// smoothed, so it is behind a fling still gaining speed: measured travel is 28% to 85% of speed * gap
+// for a fling that is slowing and up to 3.4 times it for one that is not.
+const FlingContinuationMinSpeedPxMs = 0.5;
+const FlingContinuationSlack = 4;
+const FlingContinuationMaxGapMs = 1500;
 // Backstop, not mechanism: if a phase ever stops advancing, this hands the element back. Nothing else
 // can, because everything else runs on the frame loop that failed.
 const LockWatchdogMs = 1500;
@@ -404,6 +412,8 @@ export class ScrollController {
         const now = performance.now();
         const scrollTop = this.element.scrollTop;
         const dt = now - this.lastScrollTime;
+        // Read before the estimate below: inside a suppression window it is zeroed.
+        const speedBeforeEvent = this.recentSpeed;
         if (this.phase !== 'engaged' && now >= this.suppressUntil && dt > 0 && dt < MotionGapMs) {
             const speed = (scrollTop - this.lastScrollTop) / dt;
             // Smoothed within a direction, replaced across one: blending through a reversal reads a
@@ -417,7 +427,7 @@ export class ScrollController {
         }
 
         // Without this the flag outlives its gesture, and a mouse inherits the band from a finger.
-        if (dt >= MotionGapMs && !this.isTouching)
+        if (dt >= MotionGapMs && !this.isTouching && !this.isFlingContinuation(speedBeforeEvent, scrollTop, dt))
             this.isTouchMotion = false;
         if (this.isTouchMotion && this.momentumPhase === 'none' && now >= this.suppressUntil)
             this.addMomentumSample(scrollTop, now);
@@ -461,6 +471,10 @@ export class ScrollController {
             this.lastScrollTop = this.element.scrollTop;
             this.lastScrollTime = performance.now();
             this.lastWrittenTop = this.element.scrollTop;
+            // The write does not end a fling the compositor is running, and a fling that is left alone
+            // keeps crossing: on a display faster than the page's frames the snap lands every other
+            // frame and the list shakes at the speed of the fling.
+            this.cancelMomentum();
             return;
         }
 
@@ -490,6 +504,18 @@ export class ScrollController {
         else {
             this.engage(this.recentSpeed);
         }
+    }
+
+    // Scroll events come from the main thread, the fling from the compositor: a main thread busy for
+    // 200ms - rendering the pages the fling just loaded - delivers none while the fling carries on. The
+    // gap then looks like a release, the fling stops being a finger's, and it is snapped at the edge every
+    // frame instead of bouncing. The speed is the one from before the gap.
+    private isFlingContinuation(speed: number, scrollTop: number, dt: number): boolean {
+        const delta = scrollTop - this.lastScrollTop;
+        return dt <= FlingContinuationMaxGapMs
+            && Math.abs(speed) >= FlingContinuationMinSpeedPxMs
+            && Math.sign(delta) === Math.sign(speed)
+            && Math.abs(delta) <= Math.abs(speed) * dt * FlingContinuationSlack + MinExcursionPx;
     }
 
     // One frame of the scroll's motion through the resistance: the share the curve eats goes into the

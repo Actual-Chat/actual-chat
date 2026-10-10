@@ -92,6 +92,23 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     public Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken)
         => LiveSessions.MutePeer(Session, chatId, targetAuthorId, muted, cancellationToken);
 
+    // A replica that has not loaded yet reads as null, so only a loaded, unmuted member may skip the call
+    public static bool MustUnmuteOwn(LiveSessionMember? me)
+        => me is not { MicMuted: false };
+
+    public async Task UnmuteOwn(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
+        if (!MustUnmuteOwn(me))
+            return;
+
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return;
+
+        await MutePeer(chatId, ownAuthor.Id, false, cancellationToken).ConfigureAwait(false);
+    }
+
     public Task MuteAll(ChatId chatId, bool muted, CancellationToken cancellationToken)
         => LiveSessions.MuteAll(Session, chatId, muted, cancellationToken);
 

@@ -132,6 +132,13 @@ body.app-ready .virtual-list > .c-wrapper > ul.c-virtual-container {
     visibility: hidden;
 }
 
+/* A list with no items yet has nothing to place, and its skeletons are the only thing worth showing:
+   without this the chat stays blank until the data arrives or the reveal timeout fires. */
+.virtual-list[data-is-empty] > .c-wrapper.c-initially-hidden > ul.c-virtual-container > .c-spacer-start,
+.virtual-list[data-is-empty] > .c-wrapper.c-initially-hidden > ul.c-virtual-container > .c-spacer-end {
+    visibility: visible;
+}
+
 .virtual-list > .c-wrapper > ul.c-virtual-container > li {
     @apply flex flex-y;
     @apply min-h-6;

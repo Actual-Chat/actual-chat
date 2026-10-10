@@ -1,0 +1,166 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, HowOthersHearYouSettings.Model>
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are untrimmed.")]
+@{
+    if (State.IsInitial(out var m))
+        return;
+}
+
+<Tile>
+    @if (m.OwnVoice is { } ownVoice) {
+        <TileItem ToggleValue="@m.IsOwnVoiceEnabled"
+                  ToggleValueChanged="@(_ => OnToggleOwnVoice())">
+            <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
+            <Content>@L.Transcription_OwnVoice</Content>
+            <Caption>
+                @L.Transcription_OwnVoiceCaption
+                <div class="own-voice-status">@FormatOwnVoiceStatus(m, ownVoice)</div>
+            </Caption>
+        </TileItem>
+        @if (m.IsOwnVoiceEnabled) {
+            @if (m.NotesChatId is { } notesChatId) {
+                <TileItem Click="@(() => OnRecordSampleClick(notesChatId))">
+                    <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
+                    <Content>
+                        @(ownVoice.HasExplicitSample
+                            ? L.Transcription_OwnVoiceRerecord
+                            : L.Transcription_OwnVoiceRecord)
+                    </Content>
+                    <Right>
+                        <i class="icon-chevron-right text-xl text-03"></i>
+                    </Right>
+                </TileItem>
+            }
+            @if (ownVoice.HasExplicitSample) {
+                <TileItem Click="@OnRemoveSampleClick">
+                    <Icon><i class="icon-trash03 text-2xl"></i></Icon>
+                    <Content>@L.Transcription_OwnVoiceRemoveSample</Content>
+                </TileItem>
+            }
+        }
+    }
+    <TileItem Click="@OnDubVoiceClick">
+        <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
+        <Content>@L.Transcription_DubVoice</Content>
+        <Caption>
+            @(m.IsOwnVoiceEnabled
+                ? L.Transcription_DubVoiceFallbackCaption
+                : L.Transcription_DubVoiceCaption)
+        </Caption>
+        <Right>
+            <span class="text-03">@FormatDubVoice(m)</span>
+            <i class="icon-chevron-right text-xl text-03"></i>
+        </Right>
+    </TileItem>
+</Tile>
+
+@code {
+    private LanguageUI LanguageUI => Hub.LanguageUI;
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    [CascadingParameter] public Modal? Modal { get; set; }
+
+    // Protected/internal methods
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var languages = await LanguageUI.Settings.Use(LanguageUI.WhenReady, cancellationToken).ConfigureAwait(false);
+        var defaultDubVoiceIdTask = GetDefaultDubVoiceId(cancellationToken);
+        var ownVoiceTask = GetOwnVoice(cancellationToken);
+        var defaultDubVoiceId = await defaultDubVoiceIdTask.ConfigureAwait(false);
+        var ownVoice = await ownVoiceTask.ConfigureAwait(false);
+        // The sample is recorded in Notes; without that chat there's nowhere to record it, so no row
+        ChatId? notesChatId = null;
+        if (ownVoice != null && languages.IsOwnVoiceEnabled) {
+            var notesChat = await ChatListUI.NotesChat.Use(cancellationToken).ConfigureAwait(false);
+            notesChatId = notesChat?.Id;
+        }
+        return new(languages, defaultDubVoiceId, ownVoice, notesChatId);
+    }
+
+    // Private methods
+
+    private async Task<OwnVoiceStatus?> GetOwnVoice(CancellationToken cancellationToken) {
+        // Own-voice cloning stays admin-only for now: Soniox allows 20 voices per organization
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        if (!account.IsAdmin)
+            return null;
+
+        return await Hub.OwnVoices.GetOwnVoiceStatus(Session, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<string?> GetDefaultDubVoiceId(CancellationToken cancellationToken) {
+        // Guests can't list voices; the tile then reads "Default" and the modal explains
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        if (!account.IsActive())
+            return null;
+
+        var suggested = await Hub.Translations.ListSuggestedDubVoices(Session, cancellationToken)
+            .ConfigureAwait(false);
+        return suggested.Count > 0 ? suggested[0].Id : null;
+    }
+
+    private string FormatDubVoice(Model m) {
+        if (!m.Languages.DubVoice.IsNullOrEmpty())
+            return m.Languages.DubVoice;
+
+        return m.DefaultDubVoiceId ?? L.Transcription_DubVoiceDefault;
+    }
+
+    private string FormatOwnVoiceStatus(Model m, OwnVoiceStatus ownVoice) {
+        // The toggle follows the local setting; the status is a server-side recompute that lags it by
+        // a second or more (Inspect scans the recordings), so the interim reads as "preparing"
+        if (!m.IsOwnVoiceEnabled)
+            return L.Transcription_OwnVoiceStatus_Off;
+        if (!ownVoice.IsEnabled)
+            return L.Transcription_OwnVoiceStatus_Preparing;
+        if (ownVoice.Status == UserVoiceStatus.Ready)
+            return L.Transcription_OwnVoiceStatus_Ready;
+        if (ownVoice.Failure == VoiceSampleFailure.SampleMissing)
+            return L.Transcription_OwnVoiceStatus_SampleMissing;
+        if (ownVoice.MissingDuration is { } missing && missing > TimeSpan.Zero) {
+            // Rounded up to 5 s: the catalog's "seconds" is written for that, see Strings.en.json
+            var seconds = (int)Math.Ceiling(missing.TotalSeconds / 5) * 5;
+            return L.Transcription_OwnVoiceStatus_NeedsMore_Format(seconds);
+        }
+        if (ownVoice.Status == UserVoiceStatus.Failed || ownVoice.Failure != VoiceSampleFailure.None)
+            return L.Transcription_OwnVoiceStatus_Fallback;
+        if (ownVoice.Status == UserVoiceStatus.Creating)
+            return L.Transcription_OwnVoiceStatus_Preparing;
+
+        return L.Transcription_OwnVoiceStatus_ReadyToUse;
+    }
+
+    private Task OnToggleOwnVoice()
+        => LanguageUI.UpdateSettings(x => x with { IsOwnVoiceEnabled = !x.IsOwnVoiceEnabled });
+
+    private Task OnRemoveSampleClick() {
+        LanguageUI.DismissOwnVoiceSamplePrompt();
+        return LanguageUI.UpdateSettings(x => x with { OwnVoiceSampleEntryId = null });
+    }
+
+    private void OnRecordSampleClick(ChatId notesChatId) {
+        // The sample is an ordinary voice message in Notes, prompted by a banner there
+        LanguageUI.ShowOwnVoiceSamplePrompt(notesChatId);
+        Modal?.Close();
+        _ = History.NavigateTo(Links.Chat(notesChatId));
+    }
+
+    private void OnDubVoiceClick()
+        => ModalUI.Show(new DubVoiceModal.Model());
+
+    // Nested types
+
+    public sealed record Model(
+        UserLanguageSettings Languages,
+        string? DefaultDubVoiceId,
+        OwnVoiceStatus? OwnVoice,
+        ChatId? NotesChatId)
+    {
+        public static readonly Model None = new(new UserLanguageSettings(), null, null, null);
+
+        public bool IsOwnVoiceEnabled => OwnVoice != null && Languages.IsOwnVoiceEnabled;
+    }
+}

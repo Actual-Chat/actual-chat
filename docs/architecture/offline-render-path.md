@@ -105,7 +105,6 @@ Everything here is needed before the first screen is usable, on every launch.
 | `IUserPresences.Get(ownUserId)` | cached | Own avatar in the account dropdown | S |
 | `IContacts.ListPlaceIds(session)` | cached | Navbar place buttons, `ChatListUI.ListAllUnordered` | S |
 | `IPlaces.Get(session, placeId)` per place | cached | Navbar, place headers, `ChatUI.SelectNavbarGroup` | S |
-| `IChats.GetRules(session, chatId)` per active chat | cached | `ActiveChatsUI` corrector on first read of the stored active-chat list | S |
 | `IAccounts.GetOwn` | cached | `ChatUI.FixChatId`, the corrector of the stored `SelectedChatId` | S |
 
 Startup workers that are **not** on the render path but talk to the server: `ServerTimeSync`
@@ -161,7 +160,7 @@ The tab and sort settings (`ChatListSettings`) are local. The "Threads" tab adds
 | `INotifications.ListActive(session)` | cached | Every list and badge in the tab; three permanent `ChatListUI.ListUnordered` subscriptions in `NotificationsPanelUI` | S |
 | `IChats.Get(session, chatId)` per reaction notification | cached | `ReactionNotificationItem` | V |
 | `IAuthors.Get` / `IAuthors.GetOwn` per reacting author (up to 3) | cached | Avatars in `ReactionNotificationItem` | V |
-| `Notifications_Dismiss`, `Notifications_DismissAll` | command | Seen-reaction dismissal (background, logged), "Dismiss all" (toast on failure) | n/a |
+| `Notifications_Dismiss`, `Notifications_DismissAll` | command | Seen-reaction dismissal (background, logged), the "Clear" button, after a confirmation (toast on failure) | n/a |
 
 ### Chat view: opening a chat
 

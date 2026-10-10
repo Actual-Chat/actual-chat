@@ -170,8 +170,7 @@ public sealed partial class MarkupParser : IMarkupParser
     // Regex: Url
 
     private static readonly UInt128 FirstUrlCharBits;
-    private static readonly Parser<char, char> FirstUrlChar =
-        Token(c => FirstUrlCharBits.IsBitSet(c));
+    private static readonly Func<char, bool> IsFirstUrlChar = c => FirstUrlCharBits.IsBitSet(c);
     private static readonly Func<char, bool> IsUrlChar =
         c => char.IsLetterOrDigit(c) || @":;/\?&#+=%$@*[](){}_.,\-~'!|".Contains(c);
 
@@ -316,9 +315,7 @@ public sealed partial class MarkupParser : IMarkupParser
     // nothing but the scan: every alphanumeric word starts an e-mail attempt, and materializing
     // it as a string just to fail the regex was the single most expensive thing per word.
     private static readonly Parser<char, Markup> WwwUrl =
-        FirstUrlChar.Then(CharRun.Skip(IsUrlChar, 1))
-            .Slice((span, _) => IsUrl(span) ? new string(span) : "")
-            .Guard(s => s.Length != 0)
+        CharRun.Prefix(IsFirstUrlChar, IsUrlChar, GetUrlLength)
             .Select(s => (Markup)new UrlMarkup(s, UrlMarkupKind.Www));
     private static readonly Parser<char, Markup> Email =
         FirstEmailChar.Then(CharRun.Skip(IsEmailChar, 1))
@@ -541,6 +538,49 @@ public sealed partial class MarkupParser : IMarkupParser
     {
         line = line.TrimStart();
         return line.StartsWith("```") && (line.Length == 3 || char.IsWhiteSpace(line[3]));
+    }
+
+    private static int GetUrlLength(ReadOnlySpan<char> run)
+    {
+        // Trailing '.', ',' and '!' and every trailing closer without an opener to the left of it are
+        // cut: the ")" of "Sampling_(signal_processing)" stays, the one of "(see https://x.com/a)" goes.
+        var round = 0;
+        var square = 0;
+        var curly = 0;
+        var length = 0;
+        for (var i = 0; i < run.Length; i++) {
+            var isTrimmable = false;
+            switch (run[i]) {
+            case '.' or ',' or '!':
+                isTrimmable = true;
+                break;
+            case '(':
+                round++;
+                break;
+            case '[':
+                square++;
+                break;
+            case '{':
+                curly++;
+                break;
+            case ')':
+                isTrimmable = round == 0;
+                round = Math.Max(0, round - 1);
+                break;
+            case ']':
+                isTrimmable = square == 0;
+                square = Math.Max(0, square - 1);
+                break;
+            case '}':
+                isTrimmable = curly == 0;
+                curly = Math.Max(0, curly - 1);
+                break;
+            }
+            if (!isTrimmable)
+                length = i + 1;
+        }
+
+        return IsUrl(run[..length]) ? length : 0;
     }
 
     private static bool IsUrl(ReadOnlySpan<char> span)
