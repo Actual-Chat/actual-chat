@@ -22,7 +22,6 @@ public sealed class PttReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
     private VoiceActivityUI VoiceActivityUI => Hub.VoiceActivityUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private ChatUI ChatUI => Hub.ChatUI;
-    private IChats Chats => Hub.Chats;
     private BackgroundStateTracker BackgroundStateTracker
         => field ??= Services.GetRequiredService<BackgroundStateTracker>();
 
@@ -66,9 +65,7 @@ public sealed class PttReplyUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
 
         cancellationToken.ThrowIfCancellationRequested();
         // Opening the mic lifts a soft "mute all" applied by the host, exactly like RecorderToggle.
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat?.Rules.Author?.Id is { } ownAuthorId)
-            await LiveSessionUI.MutePeer(chatId, ownAuthorId, false, cancellationToken).ConfigureAwait(false);
+        await LiveSessionUI.UnmuteOwn(chatId, cancellationToken).ConfigureAwait(false);
 
         var reply = new PttReply(chatId, Clocks.SystemClock.Now);
         // The hold precedes the publish: a competitor can only displace this reply after seeing it
