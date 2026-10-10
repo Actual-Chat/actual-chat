@@ -107,10 +107,7 @@ public class SessionsBackend(IServiceProvider services)
             Description = description,
             IPAddress = ipAddress,
         };
-        if (session.Kind is SessionKind.Session) // Rolling expiration for regular sessions
-            upsertSessionCmd = upsertSessionCmd with {
-                ExpiresAt = Clocks.SystemClock.Now + CoreConstants.Session.SessionExpirationTime,
-            };
+        upsertSessionCmd = upsertSessionCmd.WithRollingExpiration(Clocks.SystemClock.Now);
         await Commander.Call(upsertSessionCmd, cancellationToken).ConfigureAwait(false);
     }
 
