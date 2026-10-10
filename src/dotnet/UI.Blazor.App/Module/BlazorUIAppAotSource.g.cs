@@ -138,6 +138,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPinnedBar>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPinnedBarMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPttSettingsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatQuickNavModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSearchTab>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSettingsModal>();
@@ -1017,6 +1018,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPinnedBar), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPinnedBarMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPttSettingsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatQuickNavModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSearchTab), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSettingsModal), AotTypeKind.Component),

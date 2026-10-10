@@ -172,8 +172,6 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     [ComputeMethod]
     public virtual async Task<IReadOnlyList<ChatInfo>> ListActive(CancellationToken cancellationToken = default)
     {
-        await ActiveChatsUI.WhenReady.ConfigureAwait(true); // No need for .ConfigureAwait(false) here
-
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
         var chats = (await activeChats
             .Select(c => ChatUI.Get(c.ChatId, cancellationToken))

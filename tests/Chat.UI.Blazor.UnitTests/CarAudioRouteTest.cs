@@ -1,4 +1,5 @@
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.Chat.UI.Blazor.UnitTests;
@@ -41,6 +42,53 @@ public class CarAudioRouteTest
 
         // assert
         route.Should().Be(new CarAudioRoute(input, output, link));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OrdinaryPlaybackShouldUseCommunicationOnlyForACall(bool isCallActive)
+    {
+        // act
+        var mustUseCommunication = CarAudioRoute.Default.UseCommunicationPlayback(isCallActive);
+
+        // assert
+        mustUseCommunication.Should().Be(isCallActive,
+            "PTT playback must not move to the earpiece when a concurrent reply releases its recording focus");
+    }
+
+    [Theory]
+    [InlineData(CarAudioMode.Car, true)]
+    [InlineData(CarAudioMode.CarAssistant, true)]
+    [InlineData(CarAudioMode.CarSpeakers, false)]
+    [InlineData(CarAudioMode.Phone, true)]
+    public void ProjectionPlaybackShouldKeepItsExplicitRoute(CarAudioMode mode, bool mustUseCommunication)
+    {
+        // arrange
+        var route = CarAudioRoute.For(true, new UserCarAudioSettings().WithCarAudioMode(mode));
+
+        // act
+        var mustUseCommunicationWithoutCall = route.UseCommunicationPlayback(false);
+        var mustUseCommunicationWithCall = route.UseCommunicationPlayback(true);
+
+        // assert
+        mustUseCommunicationWithoutCall.Should().Be(mustUseCommunication);
+        mustUseCommunicationWithCall.Should().Be(mustUseCommunication);
+    }
+
+    [Fact]
+    public void RecordingCommunicationFocusShouldNotBindPttPlaybackToTheCallRoute()
+    {
+        // arrange
+        var focus = new RecordingAudioFocusUI();
+
+        // act
+        var mustUseCommunication = CarAudioRoute.Default.UseCommunicationPlayback(focus.IsCallActive);
+
+        // assert
+        focus.IsCommunicationFocus.Should().BeTrue();
+        focus.ActiveMode.Should().Be(AudioFocusMode.Recording);
+        mustUseCommunication.Should().BeFalse();
     }
 
     [Fact]
@@ -117,5 +165,13 @@ public class CarAudioRouteTest
 
         // assert
         route.UseCallLink.Should().BeFalse();
+    }
+
+    // Nested types
+
+    private sealed class RecordingAudioFocusUI : AudioFocusUI
+    {
+        public override AudioFocusMode ActiveMode => AudioFocusMode.Recording;
+        public override bool IsCommunicationFocus => true;
     }
 }

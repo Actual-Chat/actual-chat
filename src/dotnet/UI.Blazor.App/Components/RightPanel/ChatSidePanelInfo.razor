@@ -6,7 +6,7 @@
 }
 
 <div class="c-chat-info">
-    @if (m.ShowSummarizationToggle || m.ShowPttToggle || m.RetentionPeriod is not null) {
+    @if (m.ShowSummarizationToggle || m.ShowPttSettings || m.RetentionPeriod is not null) {
         <Card>
             @if (m.ShowSummarizationToggle) {
                 var iconCls = m.IsSummarized ? "text-primary" : "text-03";
@@ -18,14 +18,13 @@
                     <Caption>@GetStateCaption(m.IsSummarized, m.IsOwner)</Caption>
                 </TileItem>
             }
-            @if (m.ShowPttToggle) {
-                var pttIconCls = m.IsPttEnabled ? "text-primary" : "text-03";
-                <TileItem ToggleValue="@m.IsPttEnabled"
-                          ToggleValueChanged="@OnPttToggleChanged"
-                          ToggleDisabled="@(!m.IsOwner)">
+            @if (m.ShowPttSettings) {
+                var pttIconCls = m.IsPttEnabled && !m.IsPttPaused ? "text-primary" : "text-03";
+                <TileItem Click="@OnPttSettingsClick">
                     <Icon><i class="text-xl icon-push-to-talk @pttIconCls"></i></Icon>
                     <Content>@L.VoiceSettings_Ptt</Content>
-                    <Caption>@GetStateCaption(m.IsPttEnabled, m.IsOwner)</Caption>
+                    <Caption>@GetPttCaption(m)</Caption>
+                    <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
                 </TileItem>
             }
             @if (m.RetentionPeriod is { } retention) {
@@ -61,15 +60,28 @@
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
         var isSummarized = chat.IsSummarized ?? false;
         var isPttEnabled = chat.PttEnabledAt != null;
-        // Non-owners see turned-on settings as read-only facts; turned-off ones are hidden entirely.
-        return new() {
+        var model = new Model {
             IsOwner = isOwner,
             ShowSummarizationToggle = isOwner || isSummarized,
             IsSummarized = isSummarized,
-            ShowPttToggle = !chat.Id.IsThread() && (isOwner || isPttEnabled),
+            ShowPttSettings = !chat.Id.IsThread(),
             IsPttEnabled = isPttEnabled,
+            IsPttPaused = chat.IsPttPaused,
             RetentionPeriod = chat.RetentionPeriod,
             CanManageHistory = chat.CanManageHistory(),
+        };
+        if (!model.ShowPttSettings || chat.ActivePttEnabledAt is null)
+            return model;
+
+        var audio = Hub.ChatAudioUI;
+        var isAllowed = (await audio.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false)).Contains(chat.Id);
+        var isDeviceEnabled = await audio.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
+        var isMuted = isAllowed
+            && await audio.GetPttMuteCountdown(chat.Id, cancellationToken).ConfigureAwait(false) is not null;
+        return model with {
+            IsPttAllowed = isAllowed,
+            IsPttEnabledOnDevice = isDeviceEnabled,
+            IsPttMuted = isMuted,
         };
     }
 
@@ -86,50 +98,8 @@
         });
     }
 
-    private async Task OnPttToggleChanged(bool isPttEnabled) {
-        var chat = Chat;
-        if (chat is null || !State.Value.IsOwner || State.Value.IsPttEnabled == isPttEnabled)
-            return;
-
-        // A non-null value is just a "turn it on" sentinel - the server stamps the real epoch.
-        var pttEnabledAt = isPttEnabled ? (Moment?)Clocks.SystemClock.Now : null;
-        var update = Change.Update<ChatDiff>(new() { PttEnabledAt = pttEnabledAt });
-        var (newChat, error) = await UICommander.Run(new Chats_Change {
-            Session = Session,
-            ChatId = chat.Id,
-            ExpectedVersion = null,
-            Change = update,
-        });
-        if (error != null)
-            return;
-
-        if (!isPttEnabled) {
-            await UserSettingsUI.UserPttSettings()
-                .Update(x => x.WithoutPttChat(chat.Id), CancellationToken.None);
-            return;
-        }
-
-        if (newChat?.PttEnabledAt is not { } enabledAt)
-            return;
-
-        // Flipping the toggle is itself consent: auto-arm the owner with the server-stamped epoch.
-        // At capacity that consent can't be honoured, and dropping another chat to make room would
-        // silently cost the owner its wake-ups - so the chat stays on and only the arming waits.
-        // The consented set, not the armed one: WithOnlyPttChats drops whatever it doesn't get, and
-        // the armed set leaves out muted chats (and everything, on a device with PTT off).
-        var pttChatIds = await Hub.ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None).ConfigureAwait(true);
-        if (pttChatIds.Count >= UserPttSettings.MaxChatCount && !pttChatIds.Contains(chat.Id)) {
-            ToastUI.Show(
-                L.Ptt_ChatAtCapacity_Format(UserPttSettings.MaxChatCount),
-                "icon-alert-circle",
-                ToastDismissDelay.Long);
-            return;
-        }
-
-        await UserSettingsUI.UserPttSettings().Update(
-            x => x.WithOnlyPttChats(pttChatIds.ToHashSet()).WithPttChat(chat.Id, enabledAt),
-            CancellationToken.None);
-    }
+    private Task OnPttSettingsClick()
+        => ModalUI.Show(new ChatPttSettingsModal.Model(Chat.Id));
 
     private Task OnHistoryRetentionClick()
         => State.Value.CanManageHistory
@@ -141,6 +111,21 @@
         return isOwner ? state : L.RightPanel_StateByChatOwner_Format(state);
     }
 
+    private string GetPttCaption(Model m) {
+        if (!m.IsPttEnabled)
+            return L.VoiceSettings_PttNotEnabled;
+        if (m.IsPttPaused)
+            return L.Ptt_ChatPaused;
+        if (!m.IsPttAllowed)
+            return L.Ptt_AvailableNotAllowed;
+        if (!m.IsPttEnabledOnDevice)
+            return L.Ptt_AvailableDeviceOff;
+        if (m.IsPttMuted)
+            return L.Ptt_AvailableMuted;
+
+        return L.Ptt_AvailableAllowed;
+    }
+
     // Nested types
 
     public sealed record Model {
@@ -148,7 +133,11 @@
         public bool IsSummarized { get; init; }
         public bool ShowSummarizationToggle { get; init; }
         public bool IsPttEnabled { get; init; }
-        public bool ShowPttToggle { get; init; }
+        public bool IsPttPaused { get; init; }
+        public bool ShowPttSettings { get; init; }
+        public bool IsPttAllowed { get; init; }
+        public bool IsPttEnabledOnDevice { get; init; }
+        public bool IsPttMuted { get; init; }
         public TimeSpan? RetentionPeriod { get; init; }
         public bool CanManageHistory { get; init; }
     }

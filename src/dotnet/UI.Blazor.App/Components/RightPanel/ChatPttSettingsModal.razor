@@ -1,0 +1,84 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, ChatPttSettingsModal.ViewState?>
+@implements IModalView<ChatPttSettingsModal.Model>
+@{
+    if (State.Value is not { } m)
+        return;
+
+    var chat = m.Chat;
+    var status = chat.IsPttPaused
+        ? L.Ptt_ChatPaused
+        : chat.PttEnabledAt is null ? L.VoiceSettings_PttNotEnabled : L.Ptt_ChatActive;
+}
+
+<DialogFrame Class="chat-ptt-settings-modal modal-sm" Title="@L.VoiceSettings_Ptt">
+    <Body>
+        <FormBlock>
+            <TileItem IsHoverable="@m.CanManage"
+                      ToggleValue="@(m.CanManage ? chat.ActivePttEnabledAt is not null : (bool?)null)"
+                      ToggleValueChanged="@OnAvailabilityChanged"
+                      ToggleDisabled="@_isChanging">
+                <Icon><i class="icon-push-to-talk text-xl"></i></Icon>
+                <Content>@(m.CanManage ? L.Ptt_ChatAvailability : status)</Content>
+                <Caption>@(m.CanManage ? L.Ptt_ChatScopeCaption : L.Ptt_ChatReadOnlyCaption)</Caption>
+            </TileItem>
+        </FormBlock>
+    </Body>
+</DialogFrame>
+
+@code {
+    private bool _isChanging;
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    protected override async Task<ViewState?> ComputeState(CancellationToken cancellationToken) {
+        var chat = await Hub.Chats.Get(Session, ModalModel.ChatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null || !chat.IsMember() || chat.HasSingleAuthor || chat.Id.IsThread())
+            return null;
+
+        return new(chat, chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer);
+    }
+
+    private async Task OnAvailabilityChanged(bool isEnabled) {
+        if (_isChanging || State.Value is not { CanManage: true } m)
+            return;
+        if (isEnabled == (m.Chat.ActivePttEnabledAt is not null))
+            return;
+
+        _isChanging = true;
+        try {
+            var chat = m.Chat;
+            if (!isEnabled) {
+                var isConfirmed = false;
+                var confirmation = new ConfirmModal.Model(false, L.Ptt_PauseConfirmText, () => isConfirmed = true) {
+                    Title = L.Ptt_PauseConfirmTitle,
+                    ConfirmButtonText = L.Ptt_PauseForEveryone,
+                };
+                var modalRef = await ModalUI.Show(confirmation).ConfigureAwait(true);
+                await modalRef.WhenClosed.ConfigureAwait(true);
+                if (!isConfirmed)
+                    return;
+            }
+
+            var diff = chat.PttEnabledAt is null
+                ? new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart }
+                : new ChatDiff { IsPttPaused = !isEnabled };
+            var changeCmd = new Chats_Change {
+                Session = Session,
+                ChatId = chat.Id,
+                ExpectedVersion = chat.Version,
+                Change = Change.Update(diff),
+            };
+            await UICommander.Run(changeCmd).ConfigureAwait(true);
+        }
+        finally {
+            _isChanging = false;
+        }
+    }
+
+    // Nested types
+
+    public sealed record Model(ChatId ChatId);
+
+    public sealed record ViewState(Chat Chat, bool CanManage);
+}

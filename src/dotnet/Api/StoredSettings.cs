@@ -62,6 +62,7 @@ namespace ActualChat;
 [Union(55, typeof(UserCoachSettings))]
 [Union(56, typeof(UserCoachTip))]
 [Union(57, typeof(UserCoachWeeklyNote))]
+[Union(58, typeof(UserAndroidSettings))]
 // Local settings
 [Union(100, typeof(LocalAppSettings))]
 [Union(101, typeof(LocalOnboardingSettings))]
