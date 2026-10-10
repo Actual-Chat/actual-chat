@@ -45,9 +45,10 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | B27081 | Medium* | Confirmed | Video message shows as a broken file when transcoding fails | Alex | [#5162](https://github.com/Actual-Chat/actual-chat/issues/5162) open, [#5176](https://github.com/Actual-Chat/actual-chat/issues/5176) open | [B27081](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27081) |
 | B26297 | Medium* | Confirmed | Share button is too wide, gaps are uneven | Alex | — | [B26297](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26297) |
 | B26887 | Medium* | Confirmed | macOS link missing in the download-app modal | Alex | — | [B26887](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26887) |
+| N3 | Medium* | Confirmed | The reconnecting overlay lets clicks through while a modal is open | Alex | `feat/android-fast-recording-start` (fix on this branch) | — |
 | M9739 | Medium* | Confirmed (investigate) | Android ANR rate went up again | Alex | [#4957](https://github.com/Actual-Chat/actual-chat/issues/4957) open, [#4622](https://github.com/Actual-Chat/actual-chat/issues/4622) closed | [M9739](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9739) |
 | B26487 | Medium* | Confirmed (investigate) | Right panel on iPhone shows no skeletons, only an empty screen | Frol | — | [B26487](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26487) |
-| B27040 | Medium* | Needs check | Android microphone takes over a second to start recording | Alex | [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open, [#5210](https://github.com/Actual-Chat/actual-chat/issues/5210) (draft PR, step 1) | [B27040](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27040) |
+| B27040 | Medium* | Needs check | Android microphone takes over a second to start recording | Alex | [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open, [#5210](https://github.com/Actual-Chat/actual-chat/issues/5210) (draft PR, step 1), `feat/android-fast-recording-start` (branch pushed, step 2, no PR yet) | [B27040](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27040) |
 | B26964 | Medium* | Needs check | Klipy GIFs load very slowly | Andrey | [#5206](https://github.com/Actual-Chat/actual-chat/issues/5206) issue, [#5207](https://github.com/Actual-Chat/actual-chat/issues/5207) (draft PR) | [B26964](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26964) |
 | B27078 | Medium* | Needs check | Voice and transcription settings open slowly after a refresh | Andrey | — | [B27078](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27078) |
 | M9665 | Medium* | Needs check | iPhone: listening panel covers the Back arrow in the chat header | Alex | [#5104](https://github.com/Actual-Chat/actual-chat/issues/5104) open, [#5218](https://github.com/Actual-Chat/actual-chat/issues/5218) (draft PR) | [M9665](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9665) |
@@ -59,6 +60,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | B26584 | Medium* | Kept in the list | Video call: phone overheats and audio latency keeps growing on Android | Alex | [#5137](https://github.com/Actual-Chat/actual-chat/issues/5137) (open), [#4811](https://github.com/Actual-Chat/actual-chat/issues/4811) (related, open), [#4559](https://github.com/Actual-Chat/actual-chat/issues/4559) (closed) | [B26584](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26584) |
 | B27100 | Low* | Confirmed | Show the 'new messages' marker before a collapsed conversation that has new messages | Dmitrii | — | [B27100](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27100) |
 | M9807 | Low* | Confirmed | Bottom strip turns white while the left panel is open (Chrome) | Alex | — | [M9807](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9807) |
+| N4 | Low* | Confirmed | Settings tabs that scroll sit a few pixels left of the others | Alex | `feat/android-fast-recording-start` (fix on this branch) | — |
 | B27028 | Low* | Needs check | 'Real-time listening will be disabled' dialog on word click | Andrey | [#5208](https://github.com/Actual-Chat/actual-chat/issues/5208) issue, [#5209](https://github.com/Actual-Chat/actual-chat/issues/5209) (draft PR) | [B27028](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27028) |
 | B26510 | Low* | Needs check | Historic playback cut off abruptly | Frol | [#4663](https://github.com/Actual-Chat/actual-chat/issues/4663) (possibly related, open) | [B26510](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26510) |
 | B27108 | Low* | Needs check | Live session collapses into an odd intermediate state | Frol | [#4425](https://github.com/Actual-Chat/actual-chat/issues/4425) (related, open), [#5213](https://github.com/Actual-Chat/actual-chat/issues/5213) issue, [#5214](https://github.com/Actual-Chat/actual-chat/issues/5214) (draft PR), [#5215](https://github.com/Actual-Chat/actual-chat/issues/5215) (follow-up: first expand click) | [B27108](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27108) |
@@ -100,7 +102,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Messages:** [B27095](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27095)
 - **GitHub:** [#5220](https://github.com/Actual-Chat/actual-chat/issues/5220) issue, [#5225](https://github.com/Actual-Chat/actual-chat/issues/5225) (draft PR)
 - **What it is:** Andrey was logged out on prod in the middle of typing a message. Alex says the same happens right after logging in, i.e. a session expires even though the app is in use.
-- **Notes:** Alex (2026-10-09): this must not happen; find why a session expires while it is used. Verified live, cookie part only (2026-10-09): the FusionAuth.SessionId expiry moves forward after each page load (+52 s between two loads). The presence-driven session extension is not tested live. PR #5225.
+- **Notes:** Alex (2026-10-09): this must not happen; find why a session expires while it is used. Verified live (2026-10-09): the FusionAuth.SessionId expiry moves forward after each page load (+52 s between two loads). Presence-driven extension tested against the dev database with the period temporarily cut to 1 minute: the session row moved from +5 days to +90 days in about 3 s; with a 1-hour period it stayed unchanged for 3.5 minutes (negative control). After review the check-in extends a session only when its LastSeenAt is older than the 30-minute throttle, and the client sends the extension flag at most once a day. Not checked: the prod database, and a session in a second tab. PR #5225.
 
 ### B26575 — Tapping a notification opens the Notifications section instead of the chat
 
@@ -221,6 +223,15 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **What it is:** The modal that opens on 'Download app' lists QR codes for the app URLs, and the macOS link is not there. The Mac app has not passed App Store review yet, so there is nothing to link to.
 - **Notes:** Alex (2026-10-09): needs a fix plus the macOS app link. Related to B26297.
 
+### N3 — The reconnecting overlay lets clicks through while a modal is open
+
+- **Priority / review:** Medium* / Confirmed
+- **Reported by:** Alex
+- **Messages:** — (review comment)
+- **GitHub:** `feat/android-fast-recording-start` (fix on this branch)
+- **What it is:** While the app is reconnecting, the overlay does not block clicks when a modal such as Settings is open: they reach the modal. Cause: an open modal marks every element outside itself inert (modal-host.ts updateInert), including the overlay element #app-connection-state, which has no data-no-inert.
+- **Notes:** Alex (2026-10-09), found while testing; no chat message. Reproduced in Chrome: with Settings open and the overlay shown, all 49 sampled points hit the modal; after adding data-no-inert all of them hit the overlay. Fixed in commit cc1f8fe475 on branch feat/android-fast-recording-start (web page and the MAUI index.htm); closes when the branch merges.
+
 ### M9739 — Android ANR rate went up again
 
 - **Priority / review:** Medium* / Confirmed (investigate)
@@ -244,9 +255,9 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Needs check
 - **Reported by:** Alex (also: Dmitrii)
 - **Messages:** [B27040](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27040)
-- **GitHub:** [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open, [#5210](https://github.com/Actual-Chat/actual-chat/issues/5210) (draft PR, step 1)
+- **GitHub:** [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open, [#5210](https://github.com/Actual-Chat/actual-chat/issues/5210) (draft PR, step 1), `feat/android-fast-recording-start` (branch pushed, step 2, no PR yet)
 - **What it is:** Pressing the record button on Android can take around a second before recording starts, which is too slow.
-- **Notes:** Alex (2026-10-09): check whether it is still unfixed and look at PRs; Dmitrii was removing synchronous calls on this path. Code check (2026-10-09): open, clear trace, no fix on dev. Release to mic takes 1.2–1.4 s in four sequential steps: a MutePeer round trip on every press (RecorderToggle.razor, ~230 ms), the begin tune awaited before StartRecording (~260–330 ms), audio focus and communication-device switch in AudioRecorder / AndroidAudioFocusHelper (~520–650 ms, polls up to 1 s), AudioRecord creation (~100 ms). Fix order: call MutePeer only when the own member is muted; request focus concurrently with the tune; try RequestCommunicationDevice without waiting (unproven). The same trace is in #5140. Not verified: needs an Android device. PR #5210.
+- **Notes:** Alex (2026-10-09): check whether it is still unfixed and look at PRs; Dmitrii was removing synchronous calls on this path. Code check (2026-10-09): open, clear trace, no fix on dev. Release to mic takes 1.2–1.4 s in four sequential steps: a MutePeer round trip on every press (RecorderToggle.razor, ~230 ms), the begin tune awaited before StartRecording (~260–330 ms), audio focus and communication-device switch in AudioRecorder / AndroidAudioFocusHelper (~520–650 ms, polls up to 1 s), AudioRecord creation (~100 ms). Fix order: call MutePeer only when the own member is muted; request focus concurrently with the tune; try RequestCommunicationDevice without waiting (unproven). The same trace is in #5140. Verified on a Samsung S25 Ultra (2026-10-09, adb logcat markers, median of 5 presses after a warm-up). Step 1, PR #5210 (concurrent unmute): tap to recording intent 0.206 s -> 0.071 s, tap to capture 1.43 s -> 1.32 s. Step 2, branch feat/android-fast-recording-start (opens the mic first and selects the communication device 1 s later): tap to capture 0.90 s; Android blocks AudioRecord until the communication route lands, which was the 0.87 s focus wait. With a Bluetooth headset the fast path starts on the phone microphone and then switches to the headset (confirmed by Alex), so the new setting Settings > Android > Starting a recording has Automatic (fast only when no non-built-in output is connected; always waits while Android Auto is projecting), Wait for the audio switch, and Start recording at once. The setting is stored per account on the server (UserAndroidSettings), so it persists only once the server runs the branch; the dev server does not yet. Issue #5140.
 
 ### B26964 — Klipy GIFs load very slowly
 
@@ -345,6 +356,15 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **GitHub:** —
 - **What it is:** On a phone in Chrome (screenshot) the strip at the bottom of the page is the normal colour with the left panel closed and turns white once the panel is slid out. The logic that sets the strip colour evidently picks the wrong colour.
 - **Notes:** Alex (2026-10-09): will try to fix it himself.
+
+### N4 — Settings tabs that scroll sit a few pixels left of the others
+
+- **Priority / review:** Low* / Confirmed
+- **Reported by:** Alex
+- **Messages:** — (review comment)
+- **GitHub:** `feat/android-fast-recording-start` (fix on this branch)
+- **What it is:** In Settings, Voice and Transcription and Push-to-talk look narrower than the other tabs when shown on the right. Their column is the same width (400 px), but these tabs outgrow the window, get a 10 px scrollbar, and the centered column moves 5 px left.
+- **Notes:** Alex (2026-10-09), found while testing; no chat message. Fix: scrollbar-gutter: stable both-edges on .settings-tab, verified live in Chrome; commit dccb8a3dfc on branch feat/android-fast-recording-start; closes when the branch merges.
 
 ### B27028 — 'Real-time listening will be disabled' dialog on word click
 
