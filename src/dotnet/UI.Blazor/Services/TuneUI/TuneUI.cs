@@ -19,7 +19,7 @@ public abstract class TuneUI : ProcessorBase
         [Tune.ChangeToggle] = new ([20] /*, "change-toggle"*/),
         [Tune.ClickButton] = new ([20] /*, "click-button"*/),
         // Recording
-        [Tune.BeginRecording] = new ([100, 50, 50], "begin-recording"),
+        [Tune.BeginRecording] = new ([50, 25, 25], "begin-recording"),
         [Tune.ConfirmRecording] = new ([50, 50, 100] /*, "confirm-recording"*/),
         [Tune.EndRecording] = new ([100], "end-recording"),
         [Tune.RemindOfRecording] = new ([15], "remind-of-recording", TunePlayMode.VibrateOrSound),
