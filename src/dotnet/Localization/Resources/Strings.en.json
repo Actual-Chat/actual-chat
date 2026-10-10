@@ -135,16 +135,28 @@
   "ThemeSettings_Dark": "Dark",
   "ThemeSettings_MatchSystem": "Match system theme",
 
+  // Settings > Android. How long the microphone takes to start when the user taps record or
+  // starts a push-to-talk. Android first switches the phone to its call audio mode, which takes
+  // about half a second; a Bluetooth headset is only picked up once that switch is done.
+  "AndroidSettings_RecordingStart": "Starting a recording",
+  "AndroidSettings_Auto": "Automatic",
+  "AndroidSettings_AutoCaption": "Start recording at once, unless a headset or another external audio device is connected. Then wait for it, so the recording begins on the right microphone.",
+  "AndroidSettings_WaitForRoute": "Wait for the audio switch",
+  "AndroidSettings_WaitForRouteCaption": "Always wait for the audio switch before the recording starts. Starting takes a little longer, but the recording always begins on the right microphone.",
+  "AndroidSettings_DontWait": "Start recording at once",
+  "AndroidSettings_DontWaitCaption": "Never wait for the audio switch. The recording starts as fast as possible, but with a Bluetooth headset the first words may be captured by the phone's microphone.",
+
   "CarAudio_Mode": "Sound and microphone",
+  "CarAudio_SectionTitle": "Android Auto - sound and microphone",
   "CarAudio_Car": "Car",
-  "CarAudio_CarCaption": "The car's microphone and speakers, like a phone call. Music pauses while you talk.",
+  "CarAudio_CarCaption": "Use the car's microphone and speakers, like a phone call. Music pauses while you talk.",
   "CarAudio_CarAssistant": "Car, assistant channel",
-  "CarAudio_CarAssistantCaption": "Same as Car, but over the car's voice-assistant channel instead of a call. Try this if your car shows its phone screen while you talk.",
+  "CarAudio_CarAssistantCaption": "Use the car's microphone and speakers over its voice-assistant channel instead of a call. Try this if your car shows its phone screen while you talk.",
   "CarAudio_AssistantPermissionDenied": "The car's assistant channel needs the Nearby devices permission.",
   "CarAudio_CarSpeakers": "Car speakers, phone microphone",
-  "CarAudio_CarSpeakersCaption": "Music pauses while someone is talking.",
+  "CarAudio_CarSpeakersCaption": "Play sound on the car's speakers and record with the phone's microphone. Music pauses while someone is talking.",
   "CarAudio_Phone": "Phone only",
-  "CarAudio_PhoneCaption": "Sound and microphone stay on the phone.",
+  "CarAudio_PhoneCaption": "Keep sound and microphone on the phone.",
 
   // Settings > Voice & Transcription. These are the *spoken* languages a user's speech is
   // transcribed from - unrelated to the UI language above. ListeningLinger_* fills the

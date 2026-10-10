@@ -425,6 +425,31 @@ cheapest way to find out what an app generates at runtime.
 If startup is revisited, generic instantiation and cctor init are the ~20% worth attacking,
 not codegen.
 
+## Microphone start
+
+Tapping record puts the phone into `Mode.InCommunication` and selects a communication device
+(`AndroidAudioFocusHelper.RequestFocus`). Android blocks `AudioRecord` creation and `start()` until that
+route lands, so the microphone opens 1.43 s after the tap on the Samsung S25 Ultra (measured with
+`adb logcat` markers, median of 5 presses).
+
+Settings > Android > "Starting a recording" (`UserAndroidSettings.RecordingStart`) chooses what a
+recording focus waits for:
+
+| Mode | Behavior | Tap to capture |
+|---|---|---|
+| Wait for the audio switch | Waits for the communication device before opening the microphone. | 1.43 s |
+| Start at once | Opens the microphone first and selects the communication device 1 s later. | 0.90 s |
+| Automatic (default) | Start at once when the communication target is the phone's own speaker or earpiece, otherwise wait. | as above |
+
+Starting at once records the first moments on the phone's microphone. With a headset connected the
+route then moves to the headset's microphone, so words said before the switch come from the phone.
+Automatic therefore waits whenever an output other than the built-in ones is connected
+(`IsCommunicationTargetBuiltin`), unless the user forced the phone or the speaker for a call.
+Only the recording focus defers: playback and listening still wait, since a track created before the
+route lands can stay on the earpiece.
+While Android Auto is projecting the recording focus always waits, whatever the setting says: the car's
+microphone is reached through that route.
+
 ## Building in a fresh worktree
 
 A new git worktree isn't ready to produce an APK. Three things bite, in order:
