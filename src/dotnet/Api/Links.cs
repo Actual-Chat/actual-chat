@@ -1,3 +1,5 @@
+using ActualChat.Notifications;
+
 namespace ActualChat;
 
 /// <summary>
@@ -6,6 +8,8 @@ namespace ActualChat;
 public static class Links
 {
     public const string ChatEntryLidQueryParameterName = "n";
+    public const string NotificationIdQueryParameterName = "nid";
+    public const string NotificationUIQueryParameterName = "nui";
     public const string Separator = "/";
     public const string AliasPrefix = "@";
     public const string ChatAliasPrefix = "/chat/@";
@@ -16,8 +20,36 @@ public static class Links
     public static readonly LocalUrl Privacy = "/docs/privacy";
     public static readonly LocalUrl NotFound = "/404";
     public static readonly LocalUrl Chats = "/chat";
+    public static readonly LocalUrl Notifications = "/n";
     public static readonly LocalUrl TestPageHome = "/test/blazor";
 
+    public static LocalUrl Notification(
+        NotificationId notificationId,
+        long chatEntryId = 0,
+        NotificationUIMode ui = NotificationUIMode.Notifications)
+    {
+        // A notification about a chat is a link to that chat - to its entry, the one the id names or
+        // else chatEntryId - that also says which notification it is and where to show it
+        if (!notificationId.TryGetChatTarget(out var chatId, out var idEntryLid))
+            return $"/n/{notificationId.ToShort().UrlEncode()}";
+
+        return WithNotification(Chat(chatId, idEntryLid > 0 ? idEntryLid : chatEntryId), notificationId, ui);
+    }
+
+    public static LocalUrl WithNotification(
+        LocalUrl url, NotificationId notificationId, NotificationUIMode ui = NotificationUIMode.Auto)
+    {
+        var separator = url.Value.Contains('?') ? '&' : '?';
+        var result = $"{url.Value}{separator}{NotificationIdQueryParameterName}={notificationId.ToShort().UrlEncode()}";
+        return ui == NotificationUIMode.Auto
+            ? result
+            : $"{result}&{NotificationUIQueryParameterName}={ui.ToQueryValue()}";
+    }
+
+    public static NotificationId? TryParseNotification(UserId userId, string? shortId)
+        // The ':' of a short id is escaped in a URL, unless the router has decoded it already
+        => NotificationId.TryParseShort(userId, shortId)
+            ?? (shortId.IsNullOrEmpty() ? null : NotificationId.TryParseShort(userId, shortId.UrlDecode()));
 
     public static LocalUrl Chat(ChatEntryId? chatEntryId)
         => chatEntryId == null

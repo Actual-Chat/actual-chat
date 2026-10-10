@@ -150,7 +150,8 @@ public class NotificationSerializationTests(ITestOutputHelper @out) : TestBase(@
 
         // The tag groups under the chat banner — NOT the raw "chatId:lid" similarity key.
         notification.GetChatTag().Should().Be(TestChatId.Value);
-        notification.GetChatLink().Should().Be(Links.Chat(ChatEntryId.New(TestChatId, 2067)));
+        var chatLink = Links.Chat(ChatEntryId.New(TestChatId, 2067));
+        notification.GetChatLink().Should().Be(Links.WithNotification(chatLink, notification.Id));
     }
 
     [Fact]

@@ -56,6 +56,6 @@
         // Dismissed here rather than left to SeenNotificationDismisser: it clears the notification
         // only once the reacted-to entry is actually on screen, which a tap doesn't guarantee.
         _ = Hub.UICommander.Run(new Notifications_Dismiss { Session = Session, NotificationId = Notification.Id });
-        _ = History.NavigateTo(Notification.GetChatLink());
+        _ = Hub.NotificationsUI.Open(Notification.Id, Notification.EntryId);
     }
 }

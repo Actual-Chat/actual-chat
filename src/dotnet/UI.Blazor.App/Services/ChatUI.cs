@@ -617,11 +617,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return chatId;
     }
 
-    public bool SelectChatOnNavigation(ChatId? chatId)
+    public bool SelectChatOnNavigation(ChatId? chatId, NotificationUIMode ui = NotificationUIMode.Auto)
     {
         var hasChanged = SelectChatInternal(chatId);
         if (chatId is not null || hasChanged)
-            _ = SelectNavbarGroup(chatId).SuppressExceptions();
+            _ = SelectNavbarGroup(chatId, ui).SuppressExceptions();
         return hasChanged;
     }
 
@@ -868,17 +868,22 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         }
     }
 
-    private async Task SelectNavbarGroup(ChatId? chatId)
+    private async Task SelectNavbarGroup(ChatId? chatId, NotificationUIMode ui)
     {
         if (chatId is null) {
             NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
             return;
         }
 
+        if (ui == NotificationUIMode.Notifications) {
+            NavbarUI.SelectGroup(NavbarGroupIds.Unread, false);
+            return;
+        }
+
         if (NavbarUI.IsPinnedChatSelected(out var pinnedChatId) && chatId.Equals(pinnedChatId))
             return;
 
-        if (NavbarUI.IsGroupSelected(NavbarGroupIds.Unread))
+        if (ui != NotificationUIMode.Chats && NavbarUI.IsGroupSelected(NavbarGroupIds.Unread))
             return; // Keep the Unread group so "Back" returns to the unread panel
 
         var isChatsSelected = NavbarUI.IsGroupSelected(NavbarGroupIds.Chats);

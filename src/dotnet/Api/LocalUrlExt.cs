@@ -35,6 +35,11 @@ public static partial class LocalUrlExt
     public static bool IsChat(this LocalUrl url)
         => url.Value.StartsWith("/chat/");
 
+    public static bool IsNotificationRoot(this LocalUrl url)
+        => url.Value == "/n";
+    public static bool IsNotification(this LocalUrl url)
+        => url.Value.StartsWith("/n/");
+
     public static bool IsChat(this LocalUrl url, [NotNullWhen(true)] out ChatId? chatId)
         => url.IsChat(out chatId, out _, out _);
 
