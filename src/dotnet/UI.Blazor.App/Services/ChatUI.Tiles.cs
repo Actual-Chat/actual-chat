@@ -604,12 +604,16 @@ public partial class ChatUI
             else if (liveBlockId is { } closedBlockId && expandedConversations.Contains(closedBlockId))
                 hiddenLiveTailRange = default;
             // A block collapsed at close keeps hiding its spoken tail; one expanded at close absorbs it. The
-            // range is not bounded by the block's own end, so audio landing after the close but before the
-            // next conversation stays hidden while the closed block is retained.
-            else if (liveBlockId is { } collapsedBlockId && closedBlock is { IsDissolving: false })
-                hiddenLiveTailRange = new Range<long>(
-                    liveBlockFoldRange.IsEmpty ? collapsedBlockId.StartEntryLid : liveBlockFoldRange.End,
-                    long.MaxValue);
+            // range ends at the block's own end: what is spoken after the close is not part of the block.
+            // The summary end alone is not enough: a call's record reaches past it.
+            else if (liveBlockId is { } collapsedBlockId && closedBlock is { IsDissolving: false }) {
+                var blockEnd = closedBlock.EndLid;
+                var record = conversationTiles.SelectMany(t => t).FirstOrDefault(c => c.Id == closedBlock.MaterializedId);
+                if (record != null)
+                    blockEnd = Math.Max(blockEnd, record.EntryLidRange.End);
+                var tailStart = liveBlockFoldRange.IsEmpty ? collapsedBlockId.StartEntryLid : liveBlockFoldRange.End;
+                hiddenLiveTailRange = new Range<long>(Math.Min(tailStart, blockEnd), blockEnd);
+            }
         }
 
         if (chatRangeTiles.Count == 0)

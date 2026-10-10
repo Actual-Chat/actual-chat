@@ -626,6 +626,14 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
 
+        // The close-time summary covers every entry of the conversation, as LiveConversationSummaryFlow does.
+        await liveBackend.UpdateSummary(chat.Id,
+            new LiveSessionSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                EndEntryLid = v + foldedCount + tailCount - 1, MessageCount = foldedCount + tailCount,
+                IsExpandedByDefault = false,
+            }, CancellationToken.None);
+
         // act
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
 
@@ -640,6 +648,17 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await Task.Delay(500);
         var finalItems = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
         LeafEntryLids(finalItems).Should().NotContain(lid => lid >= foldEndLid, Dump(finalItems));
+
+        // Speech after the close belongs to no block, so the closed block must not hide it.
+        var lateEntry = await CreateSpokenEntry(chat.Id, "late");
+        var lateIdRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var lateQuery = new ChatDataQuery(lateIdRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await TestWait.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, lateQuery, 0, ct);
+            var lids = LeafEntryLids(items);
+            lids.Should().Contain(lateEntry.LocalId, Dump(items));
+            lids.Where(lid => lid != lateEntry.LocalId).Should().NotContain(lid => lid >= foldEndLid, Dump(items));
+        }, TimeSpan.FromSeconds(10));
     }
 
     [Fact]
