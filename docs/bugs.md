@@ -34,31 +34,31 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | B27095 | High | Confirmed | Sessions expire while the user is active or signing in | Andrey | [#5220](https://github.com/Actual-Chat/actual-chat/issues/5220) issue, [#5225](https://github.com/Actual-Chat/actual-chat/issues/5225) (PR ready for review) | [B27095](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27095) |
 | B26575 | High | Confirmed | Tapping a notification opens the Notifications section instead of the chat | Alexey | [#5216](https://github.com/Actual-Chat/actual-chat/issues/5216) issue, [#5221](https://github.com/Actual-Chat/actual-chat/issues/5221) (PR ready for review) | [B26575](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26575) |
 | B26865 | High | Confirmed | Listening resumes after restart or after stopping, for about a minute | Alex | [#5204](https://github.com/Actual-Chat/actual-chat/issues/5204) open, [#5205](https://github.com/Actual-Chat/actual-chat/issues/5205) (PR ready for review) | [B26865](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26865) |
-| B26303 | High | Confirmed | Call title keeps the wrong language after toggling translation | Andrey | — | [B26303](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26303) |
+| B26303 | High | Confirmed | Call title keeps the wrong language after toggling translation | Andrey | [#5228](https://github.com/Actual-Chat/actual-chat/issues/5228) issue, [#5236](https://github.com/Actual-Chat/actual-chat/issues/5236) (draft PR) | [B26303](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26303) |
 | B26936 | High* | Confirmed (investigate) | Live block freezes, no new transcripts or messages | Frol | [#4927](https://github.com/Actual-Chat/actual-chat/issues/4927) (related, open) | [B26936](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26936) |
 | B26538 | High* | Confirmed (investigate) | Prod web page reloads itself every 1–5 minutes | Andrey | — | [B26538](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26538) |
-| B26633 | Medium* | Confirmed | Chat view shows a blank screen instead of skeletons | Frol | — | [B26633](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26633) |
-| B26587 | Medium* | Confirmed | Notification with the last message arrives after the call ended | Dmitrii | [#4594](https://github.com/Actual-Chat/actual-chat/issues/4594) (related, closed) | [B26587](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26587) |
+| B26633 | Medium* | Confirmed | Chat view shows a blank screen instead of skeletons | Frol | [#5229](https://github.com/Actual-Chat/actual-chat/issues/5229) issue, [#5237](https://github.com/Actual-Chat/actual-chat/issues/5237) (draft PR) | [B26633](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26633) |
+| B26587 | Medium* | Confirmed | Notification with the last message arrives after the call ended | Dmitrii | [#4594](https://github.com/Actual-Chat/actual-chat/issues/4594) (related, closed), [#5232](https://github.com/Actual-Chat/actual-chat/issues/5232) issue, [#5240](https://github.com/Actual-Chat/actual-chat/issues/5240) (draft PR) | [B26587](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26587) |
 | N1 | Medium* | Confirmed | Notifications panel: replace the '…' menu with a Clear button | Alex | [#5219](https://github.com/Actual-Chat/actual-chat/issues/5219) issue, [#5223](https://github.com/Actual-Chat/actual-chat/issues/5223) (PR ready for review) | — |
 | B26811 | Medium* | Confirmed | HEIC image in the crop modal looks wrong | Andrey | — | [B26811](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26811) |
 | B27005 | Medium* | Confirmed | Clicking a word starts the wrong playback ('trainer vs DJ') | Andrey | [#5211](https://github.com/Actual-Chat/actual-chat/issues/5211) issue, [#5212](https://github.com/Actual-Chat/actual-chat/issues/5212) (PR ready for review) | [B27005](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27005) |
 | B27081 | Medium* | Confirmed | Video message shows as a broken file when transcoding fails | Alex | [#5162](https://github.com/Actual-Chat/actual-chat/issues/5162) open, [#5176](https://github.com/Actual-Chat/actual-chat/issues/5176) open | [B27081](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27081) |
-| B26297 | Medium* | Confirmed | Share button is too wide, gaps are uneven | Alex | — | [B26297](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26297) |
-| B26887 | Medium* | Confirmed | macOS link missing in the download-app modal | Alex | — | [B26887](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26887) |
+| B26297 | Medium* | Confirmed | Share button is too wide, gaps are uneven | Alex | [#5231](https://github.com/Actual-Chat/actual-chat/issues/5231) issue, [#5239](https://github.com/Actual-Chat/actual-chat/issues/5239) (draft PR) | [B26297](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26297) |
+| B26887 | Medium* | Confirmed | macOS link missing in the download-app modal | Alex | [#5230](https://github.com/Actual-Chat/actual-chat/issues/5230) issue, [#5238](https://github.com/Actual-Chat/actual-chat/issues/5238) (draft PR) | [B26887](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26887) |
 | N3 | Medium* | Confirmed | The reconnecting overlay lets clicks through while a modal is open | Alex | `feat/android-fast-recording-start` (fix on this branch) | — |
 | M9739 | Medium* | Confirmed (investigate) | Android ANR rate went up again | Alex | [#4957](https://github.com/Actual-Chat/actual-chat/issues/4957) open, [#4622](https://github.com/Actual-Chat/actual-chat/issues/4622) closed | [M9739](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9739) |
 | B26487 | Medium* | Confirmed (investigate) | Right panel on iPhone shows no skeletons, only an empty screen | Frol | — | [B26487](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26487) |
 | B27040 | Medium* | Needs check | Android microphone takes over a second to start recording | Alex | [#5140](https://github.com/Actual-Chat/actual-chat/issues/5140) open, [#5210](https://github.com/Actual-Chat/actual-chat/issues/5210) (PR ready for review, step 1), `feat/android-fast-recording-start` (branch pushed, step 2, no PR yet) | [B27040](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27040) |
 | B26964 | Medium* | Needs check | Klipy GIFs load very slowly | Andrey | [#5206](https://github.com/Actual-Chat/actual-chat/issues/5206) issue, [#5207](https://github.com/Actual-Chat/actual-chat/issues/5207) (PR ready for review) | [B26964](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26964) |
-| B27078 | Medium* | Needs check | Voice and transcription settings open slowly after a refresh | Andrey | — | [B27078](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27078) |
+| B27078 | Medium* | Needs check | Voice and transcription settings open slowly after a refresh | Andrey | [#5234](https://github.com/Actual-Chat/actual-chat/issues/5234) issue, [#5242](https://github.com/Actual-Chat/actual-chat/issues/5242) (draft PR) | [B27078](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27078) |
 | M9665 | Medium* | Needs check | iPhone: listening panel covers the Back arrow in the chat header | Alex | [#5104](https://github.com/Actual-Chat/actual-chat/issues/5104) open, [#5218](https://github.com/Actual-Chat/actual-chat/issues/5218) (PR ready for review) | [M9665](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9665) |
 | M9674 | Medium* | Needs check | Live session with the keyboard open leaves a big empty gap | Alex | — | [M9674](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9674) |
 | B26842 | Medium* | Needs review | Push-to-talk: unclear enabling UI, wrong Russian string, missing in browsers | Alex | [#5173](https://github.com/Actual-Chat/actual-chat/issues/5173) open | [B26842](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26842) |
-| B26849 | Medium* | Needs review | Unread-reaction badge stays in the chat list after reading | Frol | — | [B26849](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26849) |
+| B26849 | Medium* | Needs review | Unread-reaction badge stays in the chat list after reading | Frol | [#5233](https://github.com/Actual-Chat/actual-chat/issues/5233) issue, [#5241](https://github.com/Actual-Chat/actual-chat/issues/5241) (draft PR) | [B26849](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26849) |
 | B26404 | Medium* | Needs review | Intrusive notifications play no sound | Alexey | — | [B26404](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26404) |
 | M9761 | Medium* | Needs review | Scrolling down blurs the text and the 'down' button stops working | Alex | — | [M9761](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9761) |
 | B26584 | Medium* | Kept in the list | Video call: phone overheats and audio latency keeps growing on Android | Alex | [#5137](https://github.com/Actual-Chat/actual-chat/issues/5137) (open), [#4811](https://github.com/Actual-Chat/actual-chat/issues/4811) (related, open), [#4559](https://github.com/Actual-Chat/actual-chat/issues/4559) (closed) | [B26584](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26584) |
-| B27100 | Low* | Confirmed | Show the 'new messages' marker before a collapsed conversation that has new messages | Dmitrii | — | [B27100](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27100) |
+| B27100 | Low* | Confirmed | Show the 'new messages' marker before a collapsed conversation that has new messages | Dmitrii | [#5235](https://github.com/Actual-Chat/actual-chat/issues/5235) issue, [#5243](https://github.com/Actual-Chat/actual-chat/issues/5243) (draft PR) | [B27100](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27100) |
 | M9807 | Low* | Confirmed | Bottom strip turns white while the left panel is open (Chrome) | Alex | — | [M9807](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9807) |
 | N4 | Low* | Confirmed | Settings tabs that scroll sit a few pixels left of the others | Alex | `feat/android-fast-recording-start` (fix on this branch) | — |
 | B27028 | Low* | Needs check | 'Real-time listening will be disabled' dialog on word click | Andrey | [#5208](https://github.com/Actual-Chat/actual-chat/issues/5208) issue, [#5209](https://github.com/Actual-Chat/actual-chat/issues/5209) (PR ready for review) | [B27028](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27028) |
@@ -127,9 +127,9 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** High / Confirmed
 - **Reported by:** Andrey (also: Frol)
 - **Messages:** [B26303](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26303), [B26324](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26324), [B26327](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26327)
-- **GitHub:** —
+- **GitHub:** [#5228](https://github.com/Actual-Chat/actual-chat/issues/5228) issue, [#5236](https://github.com/Actual-Chat/actual-chat/issues/5236) (draft PR)
 - **What it is:** After turning translation to English on and off, the live conversation title stays in the wrong language. Frol tried switching to both English and Russian and nothing helped.
-- **Notes:** Alex (2026-10-09): must be fixed. Code check (2026-10-09): medium-low confidence. The live title is generated once for all viewers by ConversationSummarizer (language = most common detected language of the entries, else 'same', which leaves the choice to the model), and live titles can't be translated at all: TranslationsBackend reads the conversation from the database, where a live session isn't until it closes. So the translation toggle can't change it. How the title became English is unproven (language detection pending or wrong, or the English prompt). Fix: detect the language of the entries' text instead of falling back to 'same'; optionally make live titles translatable. Needs a repro with the entries' detected languages.
+- **Notes:** Alex (2026-10-09): must be fixed. Code check (2026-10-09): medium-low confidence. The live title is generated once for all viewers by ConversationSummarizer (language = most common detected language of the entries, else 'same', which leaves the choice to the model), and live titles can't be translated at all: TranslationsBackend reads the conversation from the database, where a live session isn't until it closes. So the translation toggle can't change it. How the title became English is unproven (language detection pending or wrong, or the English prompt). Fix: detect the language of the entries' text instead of falling back to 'same'; optionally make live titles translatable. Needs a repro with the entries' detected languages. Fix (2026-10-09, not verified live): detect the language of entries that have none stored. Unit-tested only. PR #5236.
 
 ### B26936 — Live block freezes, no new transcripts or messages
 
@@ -156,18 +156,18 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Confirmed
 - **Reported by:** Frol (also: Alexey)
 - **Messages:** [B26633](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26633), [B26645](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26645)
-- **GitHub:** —
+- **GitHub:** [#5229](https://github.com/Actual-Chat/actual-chat/issues/5229) issue, [#5237](https://github.com/Actual-Chat/actual-chat/issues/5237) (draft PR)
 - **What it is:** In chats that aren't cached, or on a weak connection, the chat view stays blank grey for seconds. Alexey sees skeletons on Windows and in the browser with throttled 3G, Frol sees none on Mac and web.
-- **Notes:** Alex (2026-10-09): needs a fix, there must be skeletons; the code apparently never reaches them.
+- **Notes:** Alex (2026-10-09): needs a fix, there must be skeletons; the code apparently never reaches them. Verified live (2026-10-09, Chrome with 6x CPU throttle, a chat opened for the first time): while the list is empty the skeletons are visible; once items arrive they are replaced by the list. Not checked: Safari/Mac. PR #5237.
 
 ### B26587 — Notification with the last message arrives after the call ended
 
 - **Priority / review:** Medium* / Confirmed
 - **Reported by:** Dmitrii
 - **Messages:** [B26587](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26587)
-- **GitHub:** [#4594](https://github.com/Actual-Chat/actual-chat/issues/4594) (related, closed)
+- **GitHub:** [#4594](https://github.com/Actual-Chat/actual-chat/issues/4594) (related, closed), [#5232](https://github.com/Actual-Chat/actual-chat/issues/5232) issue, [#5240](https://github.com/Actual-Chat/actual-chat/issues/5240) (draft PR)
 - **What it is:** Right after finishing a call with Frol, Dmitrii got a web notification containing Frol's last message, which he had already heard. This looks like a notification that wasn't suppressed for a heard message.
-- **Notes:** Alex (2026-10-09): let's try to fix this. Related: #4594 (heard PTT utterances, closed).
+- **Notes:** Alex (2026-10-09): let's try to fix this. Related: #4594 (heard PTT utterances, closed). Fix (2026-10-09, not verified): a late call transcript no longer notifies. The race is inferred from code; no test was run. PR #5240.
 
 ### N1 — Notifications panel: replace the '…' menu with a Clear button
 
@@ -185,7 +185,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Messages:** [B26811](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26811), [B26812](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26812), [B26815](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26815)
 - **GitHub:** —
 - **What it is:** Some HEIC pictures show up incorrectly in the avatar crop modal (screenshot). Andrey is looking at it together with the crop modal and notes the sizes can be roughly calculated.
-- **Notes:** Alex (2026-10-09): needs a fix.
+- **Notes:** Alex (2026-10-09): needs a fix. Code check (2026-10-09): no fix made. PicCropModal loads the HEIC in a plain <img> (no HEIC conversion) and trusts naturalWidth/naturalHeight; the layout maths is consistent, and the project's HEIC pipeline (HeifDecoder, with EXIF orientation) is not used there. The cause cannot be told without the screenshot or the file. Routing HEIC through HeifDecoder before the crop would be a design change.
 
 ### B27005 — Clicking a word starts the wrong playback ('trainer vs DJ')
 
@@ -210,18 +210,18 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Confirmed
 - **Reported by:** Alex
 - **Messages:** [B26297](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26297)
-- **GitHub:** —
+- **GitHub:** [#5231](https://github.com/Actual-Chat/actual-chat/issues/5231) issue, [#5239](https://github.com/Actual-Chat/actual-chat/issues/5239) (draft PR)
 - **What it is:** The Share button reaches almost to the edges, which makes the gaps around it differ in size. Alex suggested narrowing it so the gaps are at least the width of the small button.
-- **Notes:** Alex (2026-10-09): needs a fix. Interpretation to confirm: it belongs to the download-app modal described in B26887.
+- **Notes:** Alex (2026-10-09): needs a fix. Interpretation to confirm: it belongs to the download-app modal described in B26887. Fix (2026-10-09, partly verified): the report names no screen; the fix evens the gaps in the share actions row (Share modal, Add member, Invite friends banner), 55% confidence it is the right one. Computed gap checked live, the row not seen on screen. PR #5239.
 
 ### B26887 — macOS link missing in the download-app modal
 
 - **Priority / review:** Medium* / Confirmed
 - **Reported by:** Alex (also: Alexey, Andrey)
 - **Messages:** [B26887](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26887), [B26890](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26890)
-- **GitHub:** —
+- **GitHub:** [#5230](https://github.com/Actual-Chat/actual-chat/issues/5230) issue, [#5238](https://github.com/Actual-Chat/actual-chat/issues/5238) (draft PR)
 - **What it is:** The modal that opens on 'Download app' lists QR codes for the app URLs, and the macOS link is not there. The Mac app has not passed App Store review yet, so there is nothing to link to.
-- **Notes:** Alex (2026-10-09): needs a fix plus the macOS app link. Related to B26297.
+- **Notes:** Alex (2026-10-09): needs a fix plus the macOS app link. Related to B26297. Verified live (2026-10-09): the modal shows a macOS tile with a QR of the same style. The link is the iOS listing plus ?platform=mac until the Mac app has its own page. PR #5238.
 
 ### N3 — The reconnecting overlay lets clicks through while a modal is open
 
@@ -273,9 +273,9 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Needs check
 - **Reported by:** Andrey
 - **Messages:** [B27078](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27078)
-- **GitHub:** —
+- **GitHub:** [#5234](https://github.com/Actual-Chat/actual-chat/issues/5234) issue, [#5242](https://github.com/Actual-Chat/actual-chat/issues/5242) (draft PR)
 - **What it is:** After a page refresh or the first launch, the Voice and Transcription settings take a very long time to open.
-- **Notes:** Alex (2026-10-09): needs a check. Code check (2026-10-09): no proven culprit. TranscriptionSettings.razor renders nothing until ComputeState finishes, and ComputeState awaits in sequence: language settings, user app settings, the ListSuggestedDubVoices RPC (calls the speech-synthesis provider on a cold cache; most plausible, ~55%), and for admins GetOwnVoiceStatus (a code comment says it lags a second or more). Confirm by timing each await after a hard refresh. Fix: give the state an initial value and move the voices lookups to a secondary state. 'Voice' has no separate settings page; if Andrey meant the per-chat VoiceSettingsModal, that needs another look.
+- **Notes:** Alex (2026-10-09): needs a check. Code check (2026-10-09): no proven culprit. TranscriptionSettings.razor renders nothing until ComputeState finishes, and ComputeState awaits in sequence: language settings, user app settings, the ListSuggestedDubVoices RPC (calls the speech-synthesis provider on a cold cache; most plausible, ~55%), and for admins GetOwnVoiceStatus (a code comment says it lags a second or more). Confirm by timing each await after a hard refresh. Fix: give the state an initial value and move the voices lookups to a secondary state. 'Voice' has no separate settings page; if Andrey meant the per-chat VoiceSettingsModal, that needs another look. Fix (2026-10-09): the voices part loads in its own state, so the tab opens at once. Verified live that it renders in 64 ms and the voice modal works; the RPCs are fast locally, so the speed-up was not seen. PR #5242.
 
 ### M9665 — iPhone: listening panel covers the Back arrow in the chat header
 
@@ -309,8 +309,9 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Medium* / Needs review
 - **Reported by:** Frol (also: Alex)
 - **Messages:** [B26849](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26849)
-- **GitHub:** —
+- **GitHub:** [#5233](https://github.com/Actual-Chat/actual-chat/issues/5233) issue, [#5241](https://github.com/Actual-Chat/actual-chat/issues/5241) (draft PR)
 - **What it is:** The chat list shows an unread-reaction badge although Frol had already read everything. Alex agreed this sometimes happens.
+- **Notes:** Fix (2026-10-09, not verified live): dismiss the reaction notification when its message is removed. Only one cause of a stale badge; old unseen reactions on existing messages still keep it (by design). PR #5241.
 
 ### B26404 — Intrusive notifications play no sound
 
@@ -319,6 +320,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Messages:** [B26404](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26404), [B26416](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26416)
 - **GitHub:** —
 - **What it is:** The notification arrives and the regular notification is shown, but the intrusive (annoying) alert does not play. Alex asked for a sample to see how it works.
+- **Notes:** Code check (2026-10-09): probably already fixed on dev. 'Intrusive' is NotificationKind.Attention; on Android the channel sound was a numeric resource URI that a rebuild could orphan (sound silent, vibration fine). 31b023bbac (2026-09-03) switched to a name-based URI and 61b9e22334 (2026-09-13) versioned the channel id. Confirm on a device with a current build; the web push cannot play a custom sound at all.
 
 ### M9761 — Scrolling down blurs the text and the 'down' button stops working
 
@@ -344,9 +346,9 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Low* / Confirmed
 - **Reported by:** Dmitrii
 - **Messages:** [B27100](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27100), [B27117](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27117)
-- **GitHub:** —
+- **GitHub:** [#5235](https://github.com/Actual-Chat/actual-chat/issues/5235) issue, [#5243](https://github.com/Actual-Chat/actual-chat/issues/5243) (draft PR)
 - **What it is:** The 'new messages' divider sits after a conversation the reader hasn't read. Dmitrii proposes putting the badge before a collapsed conversation with unread messages and inside it when it is expanded.
-- **Notes:** Alex (2026-10-09): agrees with Dmitrii; ideally the marker is shown before collapsed conversations that have new messages. Alex confirmed again in the chat (B27117). Owner: Dmitrii (proposal).
+- **Notes:** Alex (2026-10-09): agrees with Dmitrii; ideally the marker is shown before collapsed conversations that have new messages. Alex confirmed again in the chat (B27117). Owner: Dmitrii (proposal). Fix (2026-10-09, not verified live): the line is emitted before a collapsed unread card; unit tests cover only the unread predicate. PR #5243.
 
 ### M9807 — Bottom strip turns white while the left panel is open (Chrome)
 
