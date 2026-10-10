@@ -1886,6 +1886,7 @@
   "Account_Register": "등록",
   "Settings_NothingToCopy": "복사할 항목이 없습니다",
   "Settings_LogEntriesCopied": "표시된 로그 항목을 복사했습니다",
+  "Settings_VersionCopied": "버전을 복사했습니다",
   "Report_Sent": "보고서를 보냈습니다. 감사합니다!",
   "Editor_ButtonNotImplemented": "이 버튼은 아직 아무 동작도 하지 않습니다",
   "Editor_PlaceholderShort": "메시지...",
