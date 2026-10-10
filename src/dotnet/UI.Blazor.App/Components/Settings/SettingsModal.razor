@@ -9,8 +9,7 @@
     var showMyAccount = !isGuest;
     var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
-    // Push-to-talk is a device feature; on the web it's an admin-only preview, local hosts only.
-    var isPttPreview = account.IsAdmin && HostInfo.BaseUrlKind == BaseUrlKind.Local;
+    var isPttPreview = Ptt.IsLocalSettingsPreview(HostInfo);
     var showPtt = HostInfo.HostKind.IsMauiApp() || isPttPreview;
     // The tab only exists where a car connection is detectable at all, i.e. Android alone.
     var showCarAudio = Hub.Services.GetService<ICarConnection>() != null;

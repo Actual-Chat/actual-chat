@@ -189,8 +189,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<PttChat>> GetConsentedPttChats(CancellationToken cancellationToken)
     {
-        // Armed = consent within the chat's current enable-epoch; the Chats.Get dependency
-        // re-arms/disarms everything downstream when an owner flips the chat's PTT toggle.
+        // Include paused chats: pruning them here would lose consent when another chat is added.
         await Hub.ChatUI.WhenReady.ConfigureAwait(false);
         var pttChats = await UserSettingsUI.UserPttSettings()
             .Get(x => x.PttChats, cancellationToken)
@@ -687,6 +686,10 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var result = new List<ChatId>(pttChats.Count);
         Moment? nextMuteEnd = null;
         foreach (var pttChat in pttChats) {
+            var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
+            if (chat?.ActivePttEnabledAt is null)
+                continue;
+
             var isChatMuted = pttChat.IsMutedAt(now);
             if (isChatMuted && !isMuted)
                 Log.LogInformation("FilterConsentedPttChatIds: {ChatId} is muted until {MutedUntil}",

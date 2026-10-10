@@ -38,6 +38,8 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool? IsSummarized { get; set; }
     public TimeSpan? RetentionPeriod { get; set; }
 
+    public bool IsPttPaused { get; set; }
+
     public DateTime? PttEnabledAt {
         get => field?.DefaultKind(DateTimeKind.Utc);
         set => field = value?.DefaultKind(DateTimeKind.Utc);
@@ -72,6 +74,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             IsSummarized = IsSummarized,
             RetentionPeriod = RetentionPeriod,
             PttEnabledAt = PttEnabledAt is { } pttEnabledAt ? new Moment(pttEnabledAt) : null,
+            IsPttPaused = IsPttPaused,
         };
 
     public void UpdateFrom(Chat model)
@@ -102,5 +105,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         IsSummarized = model.IsSummarized;
         RetentionPeriod = model.RetentionPeriod;
         PttEnabledAt = model.PttEnabledAt?.ToDateTime();
+        IsPttPaused = model.IsPttPaused;
     }
 }

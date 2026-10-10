@@ -27,6 +27,7 @@ public partial class ChatAudioUI
         cancellationToken.ThrowIfCancellationRequested();
         var baseChains = new[] {
             AsyncChain.From(InitializeListening),
+            AsyncChain.From(NavigateOnForeground),
             AsyncChain.From(StopChatsInMaintenance),
             AsyncChain.From(SyncListeningWithPttArming),
             AsyncChain.From(NotifyOnExpiredPttConsents),
@@ -56,6 +57,21 @@ public partial class ChatAudioUI
             .ConfigureAwait(false);
     }
 
+    // Protected/internal methods
+
+    internal async Task StopRecordingAndReplayOnDeviceAwake(CancellationToken cancellationToken)
+    {
+        // A suspended WebView does not suspend the native audio engine or cancel its recording intent.
+        if (HostInfo.AppKind.IsMaui())
+            return;
+
+        await DeviceAwakeUI.WhenSleepDetected(cancellationToken).ConfigureAwait(false);
+        await SetRecordingChatId(null).ConfigureAwait(false);
+        if (ReplayState.Value is not null)
+            StopReplay();
+        AudioRecorder.MicrophonePermission.ForgetCached();
+    }
+
     // Private methods
 
     private async Task InitializeListening(CancellationToken cancellationToken)
@@ -74,6 +90,12 @@ public partial class ChatAudioUI
         var oldChatIds = (HashSet<ChatId>?)null;
         await foreach (var c in cKeepListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
             var chatIds = c.Value.ToHashSet();
+            if (Ptt.IsDesktopApp(HostInfo) && chatIds.Count != 0) {
+                // Desktop has no cold wake: an opted-in running app listens without first opening a chat.
+                await ActiveChatsUI.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+                Enable();
+                oldChatIds ??= [];
+            }
             if (oldChatIds is not null) {
                 // Arming is the only thing that keeps such a chat listening, and StopListeningWhenIdle
                 // deliberately runs no watcher for it - so leaving PTT is what must end that listening,
@@ -897,16 +919,6 @@ public partial class ChatAudioUI
             await ClearListeningChats().ConfigureAwait(false);
             (idleSince, lastActiveAt) = (null, null);
         }
-    }
-
-    private async Task StopRecordingAndReplayOnDeviceAwake(CancellationToken cancellationToken)
-    {
-        await DeviceAwakeUI.WhenSleepDetected(cancellationToken).ConfigureAwait(false);
-        await SetRecordingChatId(null).ConfigureAwait(false);
-        if (ReplayState.Value is not null)
-            StopReplay();
-        if (!HostInfo.AppKind.IsMaui())
-            AudioRecorder.MicrophonePermission.ForgetCached();
     }
 
     private async Task UpdateNextBeepAt(CancellationToken cancellationToken)

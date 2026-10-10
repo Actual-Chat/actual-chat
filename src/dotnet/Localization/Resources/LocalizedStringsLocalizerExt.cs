@@ -921,6 +921,8 @@ public static class LocalizedStringsLocalizerExt
         public string Banner_ChatCopiedToPlace => l["Banner_ChatCopiedToPlace"].Value;
         public string Banner_PttAllow => l["Banner_PttAllow"].Value;
         public string Banner_PttUseDevice => l["Banner_PttUseDevice"].Value;
+        public string Banner_PttAllowOnDevice => l["Banner_PttAllowOnDevice"].Value;
+        public string Banner_PttTurnOn => l["Banner_PttTurnOn"].Value;
         public string Banner_PttMuted => l["Banner_PttMuted"].Value;
         public string Banner_PttUnmute => l["Banner_PttUnmute"].Value;
         public string Banner_Connected => l["Banner_Connected"].Value;
@@ -1446,8 +1448,21 @@ public static class LocalizedStringsLocalizerExt
         public string Activity_Chats(long count, object arg0) => l.Plural("Activity_Chats", count, arg0);
         public string Activity_ExtraChats(long count, object arg0) => l.Plural("Activity_ExtraChats", count, arg0);
 
+        public string Ptt_ChatActive => l["Ptt_ChatActive"].Value;
+        public string Ptt_AvailableNotAllowed => l["Ptt_AvailableNotAllowed"].Value;
+        public string Ptt_AvailableAllowed => l["Ptt_AvailableAllowed"].Value;
+        public string Ptt_AvailableDeviceOff => l["Ptt_AvailableDeviceOff"].Value;
+        public string Ptt_AvailableMuted => l["Ptt_AvailableMuted"].Value;
+        public string Ptt_ChatPaused => l["Ptt_ChatPaused"].Value;
+        public string Ptt_ChatScopeCaption => l["Ptt_ChatScopeCaption"].Value;
+        public string Ptt_ChatReadOnlyCaption => l["Ptt_ChatReadOnlyCaption"].Value;
+        public string Ptt_ChatAvailability => l["Ptt_ChatAvailability"].Value;
+        public string Ptt_PauseForEveryone => l["Ptt_PauseForEveryone"].Value;
+        public string Ptt_PauseConfirmTitle => l["Ptt_PauseConfirmTitle"].Value;
+        public string Ptt_PauseConfirmText => l["Ptt_PauseConfirmText"].Value;
         public string Ptt_UseOnThisDevice => l["Ptt_UseOnThisDevice"].Value;
         public string Ptt_UseOnThisDeviceCaption => l["Ptt_UseOnThisDeviceCaption"].Value;
+        public string Ptt_UseOnDesktopCaption => l["Ptt_UseOnDesktopCaption"].Value;
         public string Ptt_ChatsTopic => l["Ptt_ChatsTopic"].Value;
         public string Ptt_NoPttChats => l["Ptt_NoPttChats"].Value;
         public string Ptt_AvailableTopic => l["Ptt_AvailableTopic"].Value;

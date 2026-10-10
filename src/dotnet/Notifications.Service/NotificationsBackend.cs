@@ -1457,7 +1457,7 @@ public class NotificationsBackend(IServiceProvider services)
         var pttSettings = await ServerKvasBackend.ForUser(userId).UserPttSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        if (!pttSettings.IsArmedIn(chatId, chat?.PttEnabledAt)) {
+        if (!pttSettings.IsArmedIn(chatId, chat?.ActivePttEnabledAt)) {
             Log.LogInformation("PTT wake for user '{UserId}' in chat '{ChatId}': not armed", userId, chatId);
             return;
         }

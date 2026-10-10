@@ -1082,6 +1082,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 && (retention < Constants.Chat.MinRetentionPeriod || retention > Constants.Chat.MaxRetentionPeriod))
                 throw StandardError.Constraint("Retention must be between ten minutes and a hundred years.");
 
+            if (newChat.IsPttPaused && newChat.PttEnabledAt is null)
+                throw StandardError.Constraint("Push-to-talk must be enabled before it can be paused.");
+
             // Validation
             switch (newChat.Kind) {
             case ChatKind.Group:

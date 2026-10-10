@@ -38,6 +38,13 @@ public sealed record CarAudioRoute(AudioEndpoint Input, AudioEndpoint Output, Ca
             _ => new CarAudioRoute(AudioEndpoint.Builtin, AudioEndpoint.External),
         };
     }
+
+    public bool UseCommunicationPlayback(bool isCallActive)
+        => UseHandsFreeLink || Output switch {
+            AudioEndpoint.Builtin => true,
+            AudioEndpoint.External => false,
+            _ => isCallActive,
+        };
 }
 
 /// <summary>

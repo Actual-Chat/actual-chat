@@ -43,6 +43,7 @@ public abstract class AudioFocusScope : IDisposable
 public class AudioFocusUI : ProcessorBase
 {
     public virtual AudioFocusMode ActiveMode => AudioFocusMode.Tune;
+    public virtual bool IsCallActive => false;
     public virtual bool IsSuspended
         // True while the held focus is lost to another app and awaiting its recover callback.
         // Requesting focus in that state is harmful: a denied renew wipes the pending restores.
