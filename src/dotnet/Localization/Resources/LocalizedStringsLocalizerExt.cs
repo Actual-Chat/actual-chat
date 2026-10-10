@@ -100,6 +100,7 @@ public static class LocalizedStringsLocalizerExt
         public string YourAccount_EditOrDeleteCaption => l["YourAccount_EditOrDeleteCaption"].Value;
         public string YourAccount_Share => l["YourAccount_Share"].Value;
         public string YourAccount_ShareYourContact => l["YourAccount_ShareYourContact"].Value;
+        public string YourAccount_LinkCopied => l["YourAccount_LinkCopied"].Value;
         public string YourAccount_MyAvatars => l["YourAccount_MyAvatars"].Value;
 
         public string AppSettings_Connection => l["AppSettings_Connection"].Value;

@@ -117,6 +117,7 @@
   "YourAccount_EditOrDeleteCaption": "Edit name, email, phone, or delete account",
   "YourAccount_Share": "Share",
   "YourAccount_ShareYourContact": "Share your contact",
+  "YourAccount_LinkCopied": "Your account link is copied",
   "YourAccount_MyAvatars": "My avatars",
 
   // Settings > Application - the server connection row and the telemetry consent toggle with
