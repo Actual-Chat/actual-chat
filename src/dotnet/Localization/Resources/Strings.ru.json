@@ -1886,6 +1886,7 @@
   "Account_Register": "Зарегистрировать",
   "Settings_NothingToCopy": "Копировать нечего",
   "Settings_LogEntriesCopied": "Видимые записи журнала скопированы",
+  "Settings_VersionCopied": "Версия скопирована",
   "Report_Sent": "Отчёт отправлен — спасибо!",
   "Editor_ButtonNotImplemented": "Эта кнопка пока ничего не делает",
   "Editor_PlaceholderShort": "Сообщение...",

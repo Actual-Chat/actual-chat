@@ -1886,6 +1886,7 @@
   "Account_Register": "登録",
   "Settings_NothingToCopy": "コピーする項目がありません",
   "Settings_LogEntriesCopied": "表示中のログをコピーしました",
+  "Settings_VersionCopied": "バージョンをコピーしました",
   "Report_Sent": "レポートを送信しました。ありがとうございます!",
   "Editor_ButtonNotImplemented": "このボタンはまだ機能しません",
   "Editor_PlaceholderShort": "メッセージ…",

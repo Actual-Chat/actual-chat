@@ -2226,6 +2226,7 @@
   // Toasts from the log viewer and the report modal.
   "Settings_NothingToCopy": "Nothing to copy",
   "Settings_LogEntriesCopied": "Visible log entries copied",
+  "Settings_VersionCopied": "Version is copied",
   "Report_Sent": "Report sent — thanks!",
 
   // The message editor's placeholder text, and the stub tooltip on an unfinished button.

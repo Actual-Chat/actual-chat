@@ -2226,6 +2226,7 @@
   // Toasts from the log viewer and the report modal.
   "Settings_NothingToCopy": "コピーする項目がありません",
   "Settings_LogEntriesCopied": "Se copiaron las entradas de registro visibles",
+  "Settings_VersionCopied": "バージョンをコピーしました",
   "Report_Sent": "レポートを送信しました。ありがとうございます!",
 
   // The message editor's placeholder text, and the stub tooltip on an unfinished button.

@@ -1974,6 +1974,7 @@ public static class LocalizedStringsLocalizerExt
         public string Account_Register => l["Account_Register"].Value;
         public string Settings_NothingToCopy => l["Settings_NothingToCopy"].Value;
         public string Settings_LogEntriesCopied => l["Settings_LogEntriesCopied"].Value;
+        public string Settings_VersionCopied => l["Settings_VersionCopied"].Value;
         public string Report_Sent => l["Report_Sent"].Value;
         public string Editor_ButtonNotImplemented => l["Editor_ButtonNotImplemented"].Value;
         public string Editor_Placeholder => l["Editor_Placeholder"].Value;

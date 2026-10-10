@@ -1886,6 +1886,7 @@
   "Account_Register": "注册",
   "Settings_NothingToCopy": "没有可复制的内容",
   "Settings_LogEntriesCopied": "已复制可见的日志条目",
+  "Settings_VersionCopied": "版本已复制",
   "Report_Sent": "报告已发送——谢谢！",
   "Editor_ButtonNotImplemented": "此按钮暂时还没有功能",
   "Editor_PlaceholderShort": "消息…",
