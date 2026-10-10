@@ -1,4 +1,3 @@
-using ActualChat.Kvas;
 using ActualLab.Locking;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -8,21 +7,15 @@ public class ActiveChatsUI : UIServiceBase<AppUIHub>
     public const int MaxActiveChatCount = 3;
 
     private readonly AsyncLock _updateLock = new(LockReentryMode.CheckedFail);
-    private readonly StoredState<ActiveChat[]> _activeChats;
 
     private IChats Chats => Hub.Chats;
-    private Moment CpuNow => Clocks.CpuClock.Now;
 
-    public MutableState<ActiveChat[]> ActiveChats => _activeChats;
-    public Task WhenReady => _activeChats.WhenRead;
+    public MutableState<ActiveChat[]> ActiveChats { get; }
 
     public ActiveChatsUI(AppUIHub hub) : base(hub)
-        => _activeChats = StateFactory.NewKvasStored<ActiveChat[]>(
-            new (LocalSettings, nameof(ActiveChats)) {
-                InitialValue = [],
-                Corrector = FixStoredActiveChats,
-                Category = StateCategories.Get(GetType(), nameof(ActiveChats)),
-            });
+        => ActiveChats = StateFactory.NewMutable<ActiveChat[]>(
+            [],
+            StateCategories.Get(GetType(), nameof(ActiveChats)));
 
     public async ValueTask UpdateActiveChats(
         Func<ActiveChat[], ActiveChat[]> updater,
@@ -44,26 +37,6 @@ public class ActiveChatsUI : UIServiceBase<AppUIHub>
 
     public ValueTask RemoveActiveChat(ChatId chatId)
         => UpdateActiveChats(c => c.Without(chatId).ToArray());
-
-    private async ValueTask<ActiveChat[]> FixStoredActiveChats(
-        ActiveChat[] activeChats,
-        CancellationToken cancellationToken = default)
-    {
-        // Turn off stored recording on restoring state during app start
-        activeChats = activeChats
-            .Select(chat => {
-                if (chat.IsRecording)
-                    chat = chat with { IsRecording = false };
-
-                var listeningRecency = Moment.Max(chat.Recency, chat.ListeningRecency);
-                if (chat.IsListening && CpuNow - listeningRecency > Constants.Audio.ListeningDuration)
-                    chat = chat with { IsListening = false };
-
-                return chat;
-            })
-            .ToArray();
-        return await FixActiveChats(activeChats, cancellationToken).ConfigureAwait(false);
-    }
 
     private async ValueTask<ActiveChat[]> FixActiveChats(
         ActiveChat[] activeChats,

@@ -13,6 +13,7 @@ public sealed class CoachMarkHint(IStringLocalizer l)
 
     public sealed record Hint(string Title, string Body, ApiArray<string> Synonyms);
     public sealed record Context(string Before, string Word, string After);
+    public readonly record struct ReplayPoint(ChatId ChatId, Moment StartAt);
 
     public static Context? GetContext(string text, SpeechSpan span)
     {
@@ -60,6 +61,16 @@ public sealed class CoachMarkHint(IStringLocalizer l)
 
     public static string[] ToArguments(SpeechSpan span)
         => [((int)span.Kind).ToString(), span.Word, string.Join(SynonymSeparator, span.Synonyms)];
+
+    public static string[] ToArguments(SpeechSpan span, ChatId chatId, Moment startAt)
+        => [..ToArguments(span), chatId.Value, startAt.EpochOffsetTicks.ToString()];
+
+    public static ReplayPoint? GetReplayPoint(string[] arguments)
+        => arguments.Length >= 5
+            && ChatId.TryParse(arguments[3]) is { } chatId
+            && long.TryParse(arguments[4], out var ticks)
+                ? new ReplayPoint(chatId, new Moment(ticks))
+                : null;
 
     public static SpeechSpan FromArguments(string[] arguments)
     {

@@ -1,0 +1,79 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, UserAndroidSettings>
+@{
+    if (State.IsInitial(out var settings))
+        return;
+
+    _mode = settings.RecordingStart;
+}
+
+<TileTopic Topic="@L.AndroidSettings_RecordingStart"/>
+<Tile>
+    <Form Model="@settings">
+        <FormBlock>
+            <InputRadioGroup
+                TValue="@RecordingStartMode"
+                Name="android-recording-start"
+                DisplayName="@L.AndroidSettings_RecordingStart"
+                Value="@settings.RecordingStart"
+                ValueExpression="@(() => settings.RecordingStart)"
+                ValueChanged="@OnModeChanged">
+
+                @foreach (var mode in Modes) {
+                    var formId = $"android-recording-start-{mode}";
+                    <TileItem
+                        Class="@(settings.RecordingStart == mode ? "selected transparent" : "transparent")"
+                        Caption="@GetCaption(mode)"
+                        Click="@(_ => OnModeChanged(mode))">
+                        <Icon>
+                            <FormRadio TValue="@RecordingStartMode" Id="@formId" Value="@mode"/>
+                        </Icon>
+                        <Content>
+                            <Label InputId="@formId" Text="@GetTitle(mode)" IsRequired="true"></Label>
+                        </Content>
+                    </TileItem>
+                }
+
+            </InputRadioGroup>
+        </FormBlock>
+    </Form>
+</Tile>
+
+<CarAudioSettings/>
+
+@code {
+    private static readonly RecordingStartMode[] Modes =
+        [RecordingStartMode.Auto, RecordingStartMode.WaitForRoute, RecordingStartMode.DontWait];
+
+    private RecordingStartMode _mode;
+
+    protected override ComputedState<UserAndroidSettings>.Options GetStateOptions()
+        => new() { InitialValue = new UserAndroidSettings(), Category = GetStateCategory(GetType()) };
+
+    protected override Task<UserAndroidSettings> ComputeState(CancellationToken cancellationToken)
+        => UserSettingsUI.UserAndroidSettings().Get(cancellationToken);
+
+    private async Task OnModeChanged(RecordingStartMode mode) {
+        if (mode == _mode)
+            return;
+
+        _mode = mode;
+        await UserSettingsUI.UserAndroidSettings()
+            .Update(x => x with { RecordingStart = mode }, CancellationToken.None);
+        await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
+    }
+
+    private RenderFragment GetCaption(RecordingStartMode mode)
+        => b => b.AddContent(0, mode switch {
+            RecordingStartMode.WaitForRoute => L.AndroidSettings_WaitForRouteCaption,
+            RecordingStartMode.DontWait => L.AndroidSettings_DontWaitCaption,
+            _ => L.AndroidSettings_AutoCaption,
+        });
+
+    private string GetTitle(RecordingStartMode mode)
+        => mode switch {
+            RecordingStartMode.WaitForRoute => L.AndroidSettings_WaitForRoute,
+            RecordingStartMode.DontWait => L.AndroidSettings_DontWait,
+            _ => L.AndroidSettings_Auto,
+        };
+}

@@ -139,17 +139,16 @@
 
     [JSInvokable]
     public Task OnMarkupClick(Range<int> textRange) {
-        // Let's store everything locally to make sure we can safely "leave" Blazor dispatcher's "thread"
-        var markup = Markup;
         var entry = Entry;
-        var chatId = entry.ChatId;
+        var startAt = GetReplayStartAt(Markup, entry, textRange.Start);
+        return Hub.ChatAudioUI.StartReplay(entry.ChatId, startAt);
+    }
 
-        var startIndex = textRange.Start;
-        var mappedTime = markup.TimeMap.TryMap(startIndex);
+    private static Moment GetReplayStartAt(PlayableTextMarkup markup, ChatEntry entry, int textStart) {
+        var mappedTime = markup.TimeMap.TryMap(textStart);
         // A word outside the time map must still start the replay — from the nearest known point rather
         // than silently doing nothing, matching the message-menu Play button (which uses entry.BeginsAt).
-        var startAt = entry.BeginsAt + TimeSpan.FromSeconds(Math.Max(0f, (mappedTime ?? 0f) - 0.25f));
-        return Hub.ChatAudioUI.StartReplay(chatId, startAt);
+        return entry.BeginsAt + TimeSpan.FromSeconds(Math.Max(0f, (mappedTime ?? 0f) - 0.25f));
     }
 
     private static WordPlayback[] EnrichMapWithPlayedStatus(WordPlayback[]? map, WordPlayback[] lastMap)
@@ -202,8 +201,8 @@
     private string MarkClass(int index)
         => _rendered?.MarkSpans?[index] is { } span ? CoachStreamingMarks.ClassOf(span.Kind) : "";
 
-    // A marked word opens its hint on tap instead of starting the replay; the click handler in JS
-    // skips words that carry a menu
+    // A marked word opens its menu on tap instead of starting the replay; the click handler in JS
+    // skips words that carry a menu, and the menu offers the replay itself
     private bool HasMenu(int index)
         => _rendered?.MarkSpans?[index] is not null;
 
@@ -213,9 +212,11 @@
             return null;
 
         var span = _rendered!.MarkSpans![index]!;
+        var startAt = GetReplayStartAt(Markup, Entry, Markup.Words[index].TextRange.Start);
+        var arguments = CoachMarkHint.ToArguments(span, Entry.ChatId, startAt);
 
         return new Dictionary<string, object> {
-            ["data-menu"] = MenuRef.New<CoachMarkMenu>(CoachMarkHint.ToArguments(span)).ToString(),
+            ["data-menu"] = MenuRef.New<CoachMarkMenu>(arguments).ToString(),
             ["data-menu-trigger"] = MenuTrigger.Primary.ToString(),
             ["data-menu-placement"] = FloatingPosition.Top.ToPositionString(),
         };

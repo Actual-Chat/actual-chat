@@ -67,7 +67,6 @@ public static partial class Constants
 
         // Streaming / channel sizing
         public const int StreamingChannelCapacity = 1024;
-        public static readonly TimeSpan ListeningDuration = TimeSpan.FromSeconds(60);
         // PTT mode.
         // Invariant: must stay > the server's NotificationsSettings.PttWakeTtl (30s).
         public static readonly TimeSpan PttIdleTimeout = TimeSpan.FromMinutes(5);

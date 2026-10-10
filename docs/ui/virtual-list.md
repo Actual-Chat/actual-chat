@@ -55,9 +55,9 @@ in a later section looks loaded — most of them are.*
   size is a stub that means nothing exact; in `FiniteList` it covers the unloaded range precisely. It
   also holds the skeletons and is what the load-trigger observer watches.
 - **end anchor** — *`endAnchorRef`, `.c-end-anchor`.* A blank `<li>` right after the last item, before
-  the end spacer, that keeps the newest message clear of the message editor overlapping the list. The
-  bottom limit honours as much of it as fits (`honouredEndAnchorSize`); the rest is its **slack**
-  (`endAnchorSlack`). Nothing to do with `reanchor` or with scroll anchoring, despite the name.
+  the end spacer, that keeps the newest message clear of the message editor and, while recording, the
+  recording panel overlapping the list. The bottom limit honours all of it. Nothing to do with
+  `reanchor` or with scroll anchoring, despite the name.
 
 ### The two position terms
 
@@ -174,10 +174,6 @@ in a later section looks loaded — most of them are.*
 - **reappearance** — *`recentlyRemoved`, `ReappearanceMs`.* A key that leaves a render and comes back
   inside 1.5s. It looks exactly like an insertion to the diff, because the render it is diffed against
   does not contain it, but the user was reading it a moment ago — so it does not animate.
-- **honoured anchor** — *`honouredEndAnchorSize`, `endAnchorSlack`.* How much of the end anchor the
-  bottom limit adds: the whole of it once the content overflows the viewport by the anchor's height,
-  less around one viewport, so a conversation that fits is never scrolled past its first message
-  (§3.8). There is no "fits on screen" flag; the rule is continuous.
 - **near-skeleton** — *`isNearSkeleton`.* A spacer is on screen or within 200px of it — i.e. the user
   is looking at a hole, which relaxes the heuristics that otherwise avoid a data query.
 - **reveal** — *`reveal`, `startRevealWatch`, `c-initially-hidden`.* The wrapper stays
@@ -1106,6 +1102,25 @@ the edge, the way they do everywhere else on a desktop; a wheel notch during an 
 the boundary. `isTouchMotion` carries a finger's flag through its fling and clears after `MotionGapMs`
 (200ms) without scroll events, so a mouse does not inherit the band from a finger.
 
+A fling does not stop being a finger's across a stall. Scroll events come from the main thread and the
+fling from the compositor, so a main thread busy for 200ms - rendering the pages the fling has just loaded
+- delivers none while the fling carries on, and the next event arrives after a gap that reads as a
+release. `isFlingContinuation` keeps the flag when the pre-gap speed was at least 0.5px/ms and the
+position has moved the way it was heading by no more than 4 times speed * gap (the speed is smoothed, so it
+lags a fling still gaining speed; measured travel was 28% to 85% of speed * gap for a slowing fling and up to
+3.4 times for one that was not). Without it the arrival took the snap path, and the snap alone does not stop
+a fling the compositor is running: the fling kept pushing the scroll past the limit on every display frame
+and the page wrote it back once per its own frame. Where the two clocks differ - a 120Hz screen with the
+page stepping at 60Hz, which is what Chrome on a 120Hz Android phone does - the content alternated between
+the two positions on every display frame for as long as the fling lasted (126, 87 and 119 snaps over 2.1,
+1.4 and 2.0s in three runs on a phone; the screen showed `-77 +77 -74 +76 ...` shrinking over 220 frames).
+After the change the same gesture on the same phone logged no snap at all, kept the flag 13 times, and
+bounced normally on 14 arrivals; no flip in 4,737 frames at 120 fps.
+
+A snapped crossing also ends the fling (`cancelMomentum`, the same two-frame overflow lock the return path
+uses), as a fallback for whatever still reaches the snap path without a finger. Where the engine cannot lock
+overflow (WebKit) this is a no-op.
+
 #### Precise pointing devices: the gesture is driven, not corrected
 
 A trackpad — an Apple Magic Trackpad or any Windows precision touchpad — is not a wheel with smaller
@@ -1305,9 +1320,9 @@ carrying an inset of `base - 66.26px` — and after it, with every inline inset 
 ### 3.8 Spacers, the end anchor, and the conversation that fits on screen
 
 *The spacers reserve scroll space, hold the skeletons, and trigger loading. The end anchor is blank
-space under the newest message that the bottom limit adds explicitly — as much of it as fits, so a
-conversation around one viewport is never scrolled past its first message for the sake of blank space
-under its last.*
+space under the newest message that the bottom limit adds explicitly and in full, so the newest message
+always clears whatever covers the bottom of the list — the editor, and the recording panel while
+recording.*
 
 **The spacers** do three jobs at once, and it is worth seeing all three:
 
@@ -1340,14 +1355,15 @@ message. It is rendered only when the list opts in *and* the very first item is 
 `position: absolute`, so it contributes nothing to any measurement.
 
 **The end anchor** is a blank `<li class="c-end-anchor">` right after the last item, whose job is to keep
-the newest message clear of the message editor that overlaps the bottom of the list. Its height is CSS —
+the newest message clear of the message editor and the recording panel that overlap the bottom of the
+list. Its height is CSS —
 4px normally, 48px on a narrow screen, 80px when a listening-activity or audio-panel header is up —
 and JS *measures* it through a `ResizeObserver` rather than being told, so a layout change that alters
 it needs no code change. It sits *after* the items and *before* the end spacer, so `chainEnd` does not
-include it and the bottom limit adds it explicitly — as much of it as is honoured:
+include it and the bottom limit adds it explicitly:
 
 ```ts
-max = chainEnd + honouredEndAnchorSize - clientHeight
+max = chainEnd + endAnchorSize - clientHeight
 ```
 
 — "scroll far enough that the bottom of content-plus-anchor meets the bottom of the viewport".
@@ -1359,51 +1375,37 @@ the top of the viewport and skeletons filling the rest, which is exactly what a 
 conversation used to see. Ahead of the spacer it stays with the content, and the skeletons stay below
 the fold where scrolling past the loaded content is supposed to find them.
 
-#### Why a conversation around one viewport honours less of the anchor
+#### Why the whole anchor is honoured, even when the conversation is about one viewport
 
-Take a fully loaded chat whose content is 200px, in a 578px viewport, with a 48px anchor:
+Take a fully loaded chat whose content is 560px, in a 578px viewport, with a 48px anchor:
 
 - `min = chainStart` — there is nothing above the first message to scroll to
-- `max = chainStart + 200 + 48 − 578 = chainStart − 330`
+- `max = chainStart + 560 + 48 − 578 = chainStart + 30`
 
-`max` is 330px *below* `min`: an inverted band, which the End default resolves to `min = max`, so the
-conversation rests bottom-aligned with its anchor honoured and its first message well below the top.
-That is fine. Now let the content be 560px: `max = chainStart + 30`, which read literally puts the first
-message 30px above the viewport top with `min` forbidding any scroll back to it — the only messages in
-the chat pushed off the top of a list that cannot scroll back, for the sake of blank space under them.
+The band is 30px wide. The End pin rests at `max`, so the first message sits 30px above the viewport top
+and one short scroll back reaches it; in exchange the newest message is flush above the anchor, clear of
+the editor. With the 80px anchor of a recording the same arithmetic gives up to 80px of that trade, and it
+is the right one: the anchor is not decoration, it is the height of what covers the list.
 
-It is not hypothetical, because the list is pinned to End and `repinEdge` measures exactly this: the
-end anchor's bottom against the viewport's bottom, scrolling to make them flush.
+When the content plus the anchor is shorter than the viewport the band inverts, which the End default
+resolves to `min = max`: the conversation rests bottom-aligned with its anchor honoured and its first
+message well below the top. The band grows from zero as the content plus the anchor passes one viewport,
+so the limit is continuous through the crossing and a transcript growing and shrinking by a line there
+follows rather than jumps.
 
-So the anchor is honoured only as far as it fits, and the limit is built from that part of it:
+The rule used to honour only as much of the anchor as fit — `min(endAnchorSize, |clientHeight −
+chainSize|)`, once both ends were loaded — so that a chat around one viewport was never scrolled past its
+first message. It hid the rest of the anchor under whatever covers the list: in a new chat, while
+recording, the newest messages sat under the record button with a scroll range of zero until enough
+messages piled up (#5203). The band measured on a phone there was 0px, and 171px once the chat had grown.
+Measured after the change, posting into a short chat with the 80px anchor forced: the last message ends
+exactly 80px above the viewport bottom after every post, and the first message becomes reachable by a band
+that grows from 0 (59px at the first post past one viewport).
 
-```ts
-honouredEndAnchorSize = min(endAnchorSize, |clientHeight − chainSize|)   // both ends loaded
-max = chainEnd + honouredEndAnchorSize − clientHeight
-```
-
-Below one viewport that honours as much of the anchor as the slack above the chain allows, which caps
-`max` at `chainStart` — the first message at the top. Above it the honoured part grows with the
-overflow, so the limit runs continuously through the crossing: from `chainStart` at exactly one
-viewport to the full `chainEnd + endAnchorSize − clientHeight` once the content overflows by the
-anchor's height. A live transcript sitting at one viewport and growing and shrinking by a line follows
-two pixels per pixel there and never jumps by the anchor's height — and no content is ever beyond the
-reachable limit. The rule this replaced was a "fits on screen" flag with 64px of hysteresis that capped
-`max` at `chainStart` while set: it did jump at the exit, it hid up to 64px plus the anchor of the
-newest messages while the chain sat inside the band — a short chat that grew past the viewport by a
-message or two could not be scrolled to its end — and it was never re-evaluated on a viewport resize.
-
-`measureEdgeTarget` applies the same cap to the End target, and only while something is capped, so a
-model a pixel short cannot stop the re-pin from landing flush on the DOM measure. The rule requires
-**both** ends loaded (`hasVeryFirstItem && hasVeryLastItem`) — "fits on screen" means nothing about a
-partially loaded window that happens to be short — and honours the whole anchor otherwise.
-
-What the anchor is short of at the limit is its **slack** (`endAnchorSlack`), and three places read
-the end through it, all deliberate: the list counts as at the End edge for pinning when the anchor's
-bottom is within the slack of the viewport bottom; the same test says "the newest message is visible"
-for read tracking; and the initial reveal accepts the End edge with the anchor its slack below the
-fold. Without the first two an End-pinned list would settle on Start and stop following new messages
-until the conversation outgrew the viewport.
+`measureEdgeTarget` takes the DOM measure of the anchor's bottom as the End target and clamps it into the
+scroll range, so a model a pixel short cannot stop the re-pin from landing flush. The list is at the End
+edge for pinning, for read tracking and for the initial reveal when the anchor's bottom is within
+`EdgeEpsilon` (`RevealEpsilon` for the reveal) of the viewport bottom.
 
 ### 3.9 Re-anchoring
 
