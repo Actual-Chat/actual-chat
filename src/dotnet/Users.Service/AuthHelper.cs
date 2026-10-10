@@ -91,8 +91,8 @@ public sealed class AuthHelper
             }
         }
 
-        // Handle new session: set cookie, delete render mode cookie
-        if (session != cookieSession) {
+        // Set the cookie of a new session and renew the one of an existing session: its expiration is absolute
+        if (!httpContext.Response.HasStarted) {
             httpContext.AddSessionCookie(session);
             // httpContext.Response.Cookies.Delete(RenderModeEndpoint.Cookie.Name!);
         }
@@ -156,6 +156,7 @@ public sealed class AuthHelper
                 IPAddress = ipAddress,
                 Description = description,
             };
+            upsertSessionCmd = upsertSessionCmd.WithRollingExpiration(Clocks.SystemClock.Now);
             await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
         }
 
