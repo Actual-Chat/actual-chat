@@ -69,6 +69,16 @@ public abstract class TuneUI : ProcessorBase
 
     protected UIHub Hub { get; }
 
+    // Whether the recorder start has to wait for the begin-recording tune to finish before it opens the
+    // microphone. A tune played into a live mic is recorded by the Windows app and fed back on Apple devices
+    // (WebKit's echo cancellation misses the playback path), so those wait: the Windows, iOS and macOS apps
+    // and WebKit browsers (Safari, and every browser on iOS). Android and the other browsers play it alongside.
+    public bool MustWaitForBeginRecording => Hub.HostInfo.AppKind switch {
+        AppKind.Android => false,
+        AppKind.Wasm => Hub.BrowserInfo.IsWebKit,
+        _ => true,
+    };
+
     protected ILogger Log => field ??= Hub.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.Tunes);
     // False without vibration hardware: desktop browsers, Windows, Mac Catalyst, iPads
