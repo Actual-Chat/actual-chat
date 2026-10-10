@@ -60,7 +60,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 | B26586 | Low* | Needs review | Chat view flickers | Dmitrii | — | [B26586](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26586) |
 | B26840 | Low* | Needs review | Passkeys are shown separately and inside Account | Dmitrii | [#4574](https://github.com/Actual-Chat/actual-chat/issues/4574) open | [B26840](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26840) |
 | B26853 | Low* | Needs review | Mentions look wrong, empty markup string | Andrey | — | [B26853](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26853) |
-| N2 | Low* | Needs review | Replay after confirming the dialog needs an extra action to resume in Chrome | Alex | [#5209](https://github.com/Actual-Chat/actual-chat/issues/5209) (related, PR ready for review) | — |
+| N2 | Low* | Needs review | Replay after confirming the dialog needs an extra action to resume in Chrome | Alex | [#5209](https://github.com/Actual-Chat/actual-chat/issues/5209) (related, merged) | — |
 | M9662 | Low* | Needs review | Samsung: screen glitch that fixed itself after a drag | Alex | — | [M9662](https://voxt.ai/chat/s-pmMsV1UVKG-fPHVtB5Zz0?n=9662) |
 | B26780 | Low | Postponed | Call screen: 'Outgoing call' header drawn over the first message | Frol | [#4791](https://github.com/Actual-Chat/actual-chat/issues/4791) open, [#5018](https://github.com/Actual-Chat/actual-chat/issues/5018) (maybe fixed, closed) | [B26780](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26780) |
 | B27101 | Low | Postponed | Call screen has two hang-up icons, switch-camera icon on the wrong side | Alexey | [#5118](https://github.com/Actual-Chat/actual-chat/issues/5118) (loosely related, open) | [B27101](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27101) |
@@ -340,7 +340,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Priority / review:** Low* / Needs review
 - **Reported by:** Alex
 - **Messages:** — (review comment)
-- **GitHub:** [#5209](https://github.com/Actual-Chat/actual-chat/issues/5209) (related, PR ready for review)
+- **GitHub:** [#5209](https://github.com/Actual-Chat/actual-chat/issues/5209) (related, merged)
 - **What it is:** After confirming the replay dialog in Chrome, playback needs another action to resume. On mobile the dialog does not appear at all.
 - **Notes:** Alex (2026-10-09), reported while testing #5209. Not reproduced in an automated Chrome run: after 'Yes' the Replaying banner appeared and the word highlight moved without an extra action, but scripted clicks count as user activation, so a real-browser autoplay-policy case is not excluded. Related: #5209.
 
