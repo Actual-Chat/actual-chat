@@ -247,13 +247,17 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // Non-computed: GestureUI's loop polls this on its own cadence instead of depending on
         // per-chat player states.
         foreach (var chatId in chatIds) {
-            if (GetListeningPlayerNonComputed(chatId)?.Playback.IsPlaying.Value == true)
+            if (IsListeningPlaying(chatId))
                 return true;
         }
         return ReplayState.Value is { } replay
             && chatIds.Contains(replay.ChatId)
             && GetReplayPlayerNonComputed(replay.ChatId)?.Playback.IsPlaying.Value == true;
     }
+
+    // Static so tests can exercise the decision without a host
+    public static bool MustConfirmReplay(IEnumerable<ChatId> listeningChatIds, Func<ChatId, bool> isListeningPlaying)
+        => listeningChatIds.Any(isListeningPlaying);
 
     public async Task<List<PttChat>> HushPtt(CancellationToken cancellationToken)
     {
@@ -642,6 +646,15 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     // Private methods
+
+    private bool IsListeningPlaying(ChatId chatId)
+        => GetListeningPlayerNonComputed(chatId)?.Playback.IsPlaying.Value == true;
+
+    private bool IsListeningAudible(ChatId chatId)
+        // A paused player (e.g. after losing audio focus) keeps IsPlaying set, but nothing is audible
+        => GetListeningPlayerNonComputed(chatId)?.Playback is { } playback
+            && playback.IsPlaying.Value
+            && !playback.IsPaused.Value;
 
     private async Task NotifyPttConsentExpired(ChatId chatId, CancellationToken cancellationToken)
     {
