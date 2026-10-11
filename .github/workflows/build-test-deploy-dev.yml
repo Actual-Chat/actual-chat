@@ -502,7 +502,13 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
+      # Each deploy step below runs a second time 30s after a failure: the
+      # services it calls answer an occasional 5xx that a retry clears. The
+      # retry keeps the step's name, so CI watchdog files it under the same
+      # category when it fails too.
       - name: Deploy dev
+        id: deploy-dev-app
+        continue-on-error: true
         if: |
           github.ref == 'refs/heads/dev' ||
           startsWith(github.ref, 'refs/heads/release/')
@@ -511,8 +517,19 @@ jobs:
           src: ghcr.io/actual-chat/actual-chat-app:${{needs.build.outputs.semver2}}
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-app:${{needs.build.outputs.semver2}}
+      - if: steps.deploy-dev-app.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy dev (retry)
+        if: steps.deploy-dev-app.outcome == 'failure'
+        uses: akhilerm/tag-push-action@v2.2.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-app:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-app:${{needs.build.outputs.semver2}}
 
       - name: Deploy dev migrations
+        id: deploy-dev-migrations
+        continue-on-error: true
         if: |
           github.ref == 'refs/heads/dev' ||
           startsWith(github.ref, 'refs/heads/release/')
@@ -521,11 +538,31 @@ jobs:
           src: ghcr.io/actual-chat/actual-chat-migration:${{needs.build.outputs.semver2}}
           dst: |
             us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-migration:${{needs.build.outputs.semver2}}
+      - if: steps.deploy-dev-migrations.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy dev migrations (retry)
+        if: steps.deploy-dev-migrations.outcome == 'failure'
+        uses: akhilerm/tag-push-action@v2.2.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-migration:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-migration:${{needs.build.outputs.semver2}}
 
       - name: Deploy dev opensearch configurator
+        id: deploy-dev-osc
+        continue-on-error: true
         if: |
           github.ref == 'refs/heads/dev' ||
           startsWith(github.ref, 'refs/heads/release/')
+        uses: akhilerm/tag-push-action@v2.2.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
+      - if: steps.deploy-dev-osc.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy dev opensearch configurator (retry)
+        if: steps.deploy-dev-osc.outcome == 'failure'
         uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
@@ -575,6 +612,17 @@ jobs:
           password: ${{ steps.auth.outputs.access_token }}
 
       - name: Deploy prod
+        id: deploy-prod-app
+        continue-on-error: true
+        uses: akhilerm/tag-push-action@v2.2.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-app:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{needs.build.outputs.simple-version}}
+      - if: steps.deploy-prod-app.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy prod (retry)
+        if: steps.deploy-prod-app.outcome == 'failure'
         uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-app:${{needs.build.outputs.semver2}}
@@ -582,6 +630,17 @@ jobs:
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-app:${{needs.build.outputs.simple-version}}
 
       - name: Deploy prod migrations
+        id: deploy-prod-migrations
+        continue-on-error: true
+        uses: akhilerm/tag-push-action@v2.2.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-migration:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-migration:${{needs.build.outputs.semver2}}
+      - if: steps.deploy-prod-migrations.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy prod migrations (retry)
+        if: steps.deploy-prod-migrations.outcome == 'failure'
         uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-migration:${{needs.build.outputs.semver2}}
@@ -589,6 +648,17 @@ jobs:
             us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-migration:${{needs.build.outputs.semver2}}
 
       - name: Deploy prod opensearch configurator
+        id: deploy-prod-osc
+        continue-on-error: true
+        uses: akhilerm/tag-push-action@v2.2.0
+        with:
+          src: ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
+          dst: |
+            us-central1-docker.pkg.dev/actual-infrastructure/docker/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
+      - if: steps.deploy-prod-osc.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy prod opensearch configurator (retry)
+        if: steps.deploy-prod-osc.outcome == 'failure'
         uses: akhilerm/tag-push-action@v2.2.0
         with:
           src: ghcr.io/actual-chat/actual-chat-opensearch-configurator:${{needs.build.outputs.semver2}}
@@ -837,12 +907,20 @@ jobs:
 
       - name: Validate App
         run: |-
-          xcrun altool --validate-app -f ${{env.PACKAGE_FILE_NAME}} -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+          for attempt in 1 2; do
+            xcrun altool --validate-app -f ${{env.PACKAGE_FILE_NAME}} -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json && exit 0
+            [ $attempt -eq 1 ] && sleep 30
+          done
+          exit 1
         shell: bash
 
       - name: Upload App
         run: |
-          xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+          for attempt in 1 2; do
+            xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t ios --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json && exit 0
+            [ $attempt -eq 1 ] && sleep 30
+          done
+          exit 1
         shell: bash
 
   build-maccatalyst-pkg:
@@ -1016,12 +1094,20 @@ jobs:
 
       - name: Validate App
         run: |-
-          xcrun altool --validate-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+          for attempt in 1 2; do
+            xcrun altool --validate-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json && exit 0
+            [ $attempt -eq 1 ] && sleep 30
+          done
+          exit 1
         shell: bash
 
       - name: Upload App
         run: |
-          xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+          for attempt in 1 2; do
+            xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json && exit 0
+            [ $attempt -eq 1 ] && sleep 30
+          done
+          exit 1
         shell: bash
 
   # Experimental AppKit (net11.0-macos) build of the same app id - see PR #4312. It's always
@@ -1181,12 +1267,20 @@ jobs:
 
       - name: Validate App
         run: |-
-          xcrun altool --validate-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+          for attempt in 1 2; do
+            xcrun altool --validate-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json && exit 0
+            [ $attempt -eq 1 ] && sleep 30
+          done
+          exit 1
         shell: bash
 
       - name: Upload App
         run: |
-          xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json
+          for attempt in 1 2; do
+            xcrun altool --upload-app -f ${{env.PACKAGE_FILE_NAME}} -t macos --apiKey ${{env.API_KEY_ID}} --apiIssuer ${{env.API_ISSUER_ID}} --show-progress --verbose --output-format json && exit 0
+            [ $attempt -eq 1 ] && sleep 30
+          done
+          exit 1
         shell: bash
 
 
@@ -1315,6 +1409,20 @@ jobs:
           echo "SERVICE_ACCOUNT_JSON=$saJson" >> $GITHUB_ENV
 
       - name: Upload app package to google drive
+        id: upload-to-drive
+        continue-on-error: true
+        uses: logickoder/g-drive-upload@main
+        with:
+          filename: v${{env.MAJOR_MINOR_VERSION}}/${{env.PACKAGE_FILE_NAME}}
+          name: ${{env.ARTIFACT_NAME}}
+          folderId: ${{secrets.GDRIVE_BUILDS_FOLDER_ID}}
+          credentials: ${{env.SERVICE_ACCOUNT_JSON}}
+          mirrorDirectoryStructure: true
+          overwrite: true
+      - if: steps.upload-to-drive.outcome == 'failure'
+        run: sleep 30
+      - name: Upload app package to google drive (retry)
+        if: steps.upload-to-drive.outcome == 'failure'
         uses: logickoder/g-drive-upload@main
         with:
           filename: v${{env.MAJOR_MINOR_VERSION}}/${{env.PACKAGE_FILE_NAME}}
@@ -1380,6 +1488,19 @@ jobs:
           ls -la "$libdir"
 
       - name: Deploy to internal testing
+        id: deploy-to-play
+        continue-on-error: true
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
+          packageName: ${{env.APP_ID}}
+          releaseFiles: ${{env.PACKAGE_FILE_NAME}}
+          track: internal
+          debugSymbols: native-debug-symbols/base/lib
+      - if: steps.deploy-to-play.outcome == 'failure'
+        run: sleep 30
+      - name: Deploy to internal testing (retry)
+        if: steps.deploy-to-play.outcome == 'failure'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJson: ${{ steps.auth.outputs.credentials_file_path }}
@@ -1464,6 +1585,24 @@ jobs:
       # in certification this job fails and nothing new is staged — wait for
       # it to publish, or cancel it in Partner Center, then re-run the job.
       - name: Upload to a pending Store submission
+        id: upload-to-store
+        continue-on-error: true
+        uses: ActualLab/windows-store-action@main
+        with:
+          mode: upload
+          tenant-id: ${{ secrets.MSFT_TENANT_ID }}
+          client-id: ${{ secrets.MSFT_CLIENT_ID }}
+          client-secret: ${{ secrets.MSFT_CLIENT_SECRET }}
+          app-id: ${{ secrets.MSFT_PRODUCT_ID }}
+          package-path: ./packages
+          delete-pending: true
+          delete-packages: true
+          packages-keep: 10
+      - if: steps.upload-to-store.outcome == 'failure'
+        run: sleep 30
+        shell: bash
+      - name: Upload to a pending Store submission (retry)
+        if: steps.upload-to-store.outcome == 'failure'
         uses: ActualLab/windows-store-action@main
         with:
           mode: upload
