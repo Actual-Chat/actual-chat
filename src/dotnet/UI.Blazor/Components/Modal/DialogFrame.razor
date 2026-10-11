@@ -18,7 +18,7 @@
     };
 }
 
-<ModalFrame Class="@cls">
+<ModalFrame Class="@cls" Children="@Children">
     <Header>
         @if (HeaderMode == HeaderMode.Custom) {
             @Header
@@ -57,6 +57,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
 
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Children { get; set; } = "";
     [Parameter] public string ButtonsClass { get; set; } = "";
     [Parameter] public string BodyClass { get; set; } = "";
     [Parameter] public BodyVariant BodyVariant { get; set; }
