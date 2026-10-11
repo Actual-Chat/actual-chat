@@ -20,6 +20,9 @@ using Microsoft.Maui.LifecycleEvents;
 using Microsoft.Maui.Platforms.MacOS.Controls;
 using Microsoft.Maui.Platforms.MacOS.Essentials;
 using Microsoft.Maui.Platforms.MacOS.Hosting;
+#elif LINUX
+using Microsoft.Maui.Platforms.Linux.Gtk4.Essentials.Hosting;
+using Microsoft.Maui.Platforms.Linux.Gtk4.Hosting;
 #endif
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using Tracer = ActualChat.Performance.Tracer;
@@ -105,6 +108,9 @@ public static partial class MauiProgram
                 // which otherwise resolve to their "not implemented" neutral build on the macos TFM;
                 // must precede CreateHostInfo, which reads DeviceInfo and (via MauiSettings) Preferences.
                 appBuilder.AddMacOSEssentials();
+#elif LINUX
+                // TODO(maui-labs): the same on Linux - see LinuxEssentialsDefaults.
+                appBuilder.AddLinuxGtk4Essentials();
 #endif
                 Constants.HostInfo = CreateHostInfo(appBuilder.Configuration);
                 ConfigureMauiApp(appBuilder);
@@ -272,6 +278,11 @@ public static partial class MauiProgram
             .AddMacOSBlazorWebView()
             .ConfigureMauiHandlers(static handlers
                 => handlers.AddHandler<MacOSBlazorWebView>(_ => new MacOSCustomBlazorWebViewHandler()))
+#elif LINUX
+            // TODO(maui-labs): the regular UseMauiBlazorApp path once the backend is in MAUI proper.
+            .UseMauiAppLinuxGtk4<App>()
+            .ConfigureMauiHandlers(static handlers
+                => handlers.AddHandler<BlazorWebView>(_ => new LinuxCustomBlazorWebViewHandler()))
 #else
             .UseMauiBlazorApp<App>()
             .ConfigureMauiHandlers(static handlers
@@ -299,6 +310,8 @@ public static partial class MauiProgram
         services.AddSingleton(Tracer.Default);
 #if MACOS
         services.AddSingleton<IDeviceIdProvider>(_ => new MacOSDeviceIdProvider());
+#elif LINUX
+        services.AddSingleton<IDeviceIdProvider>(_ => new LinuxDeviceIdProvider());
 #else
         services.Add(GetDeviceIdProviderServiceDescriptor());
 #endif
@@ -310,7 +323,7 @@ public static partial class MauiProgram
         ConfigureBlazorWebViewAppServices(services);
     }
 
-#if !MACOS
+#if !MACOS && !LINUX
     private static ServiceDescriptor GetDeviceIdProviderServiceDescriptor()
         => MauiApp.CreateBuilder(false)
             .ConfigureDeviceIdProvider()

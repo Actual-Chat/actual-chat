@@ -6,6 +6,9 @@
     <!-- Experimental AppKit backend; opt-in so machines without the `macos` workload still restore -->
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx')) AND '$(EnableMacOSAppKit)' == 'true'">$(TargetFrameworks);net11.0-macos</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net11.0-windows10.0.22621.0</TargetFrameworks>
+    <!-- Experimental GTK4 backend (dotnet/maui-labs). Linux has no workload and no TFM of its own,
+         so the Linux app is the plain net11.0 build; opt-in, it's the only TFM without a platform -->
+    <TargetFrameworks Condition="'$(EnableLinuxGtk)' == 'true'">$(TargetFrameworks);net11.0</TargetFrameworks>
     <UseMauiEssentials>true</UseMauiEssentials>
 <!--    <UseMaui>true</UseMaui>-->
     <SingleProject>true</SingleProject>
@@ -16,6 +19,11 @@
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-macos'))">14.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <!-- App.Maui gets LINUX from the labs package; this project doesn't reference it -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
+    <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IsDevMaui)' == ''">
@@ -71,6 +79,14 @@
     <None Include="**\**\*.MacCatalyst.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\MacCatalyst\**\*.cs" />
     <None Include="**\MacCatalyst\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+  </ItemGroup>
+
+  <!-- NOT Linux (GTK4) -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'net11.0'">
+    <Compile Remove="**\*.Linux.cs" />
+    <None Include="**\*.Linux.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\Linux\**\*.cs" />
+    <None Include="**\Linux\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
 
   <!-- NOT Windows -->
@@ -141,6 +157,10 @@
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
     <!-- TODO(maui-labs): see the MACOS branch of MauiDiagnostics.AddPlatformLoggerSinks -->
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
+    <PackageReference Include="GirCore.GLib-2.0" />
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">

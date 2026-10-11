@@ -12,7 +12,7 @@ public class MauiBrowserInfo : BrowserInfo
     public MauiBrowserInfo(UIHub hub) : base(hub)
     {
         var appKind = HostInfo.AppKind;
-        var isWindowsOrMacOS = appKind is AppKind.Windows or AppKind.MacOS;
+        var isDesktop = appKind is AppKind.Windows or AppKind.MacOS or AppKind.Linux;
         var deviceIdiom = DeviceInfo.Current.Idiom;
         var isMobile = deviceIdiom == DeviceIdiom.Phone
             || deviceIdiom == DeviceIdiom.Tablet
@@ -20,12 +20,12 @@ public class MauiBrowserInfo : BrowserInfo
 
         UtcOffset = TimeZoneInfo.Local.BaseUtcOffset;
         TimeZone = TimeZoneInfo.Local.Id;
-        IsMobile = isMobile && !isWindowsOrMacOS;
+        IsMobile = isMobile && !isDesktop;
         IsAndroid = appKind == AppKind.Android;
         IsIos = appKind == AppKind.Ios;
         IsEdge = appKind == AppKind.Windows;
         IsChromium = IsAndroid || IsEdge; // IsEdge is needed for MAUI on Windows
-        IsWebKit = IsIos || appKind == AppKind.MacOS;
+        IsWebKit = IsIos || appKind is AppKind.MacOS or AppKind.Linux;
         IsTouchCapable = isMobile;
 
 #if ANDROID

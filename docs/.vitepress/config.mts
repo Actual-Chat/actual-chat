@@ -192,6 +192,7 @@ export default withMermaid(defineConfig({
               { text: "iOS-specific Behavior", link: "/ios-specific" },
               { text: "Android-specific Behavior", link: "/android-specific" },
               { text: "macOS AppKit Backend", link: "/macos-appkit" },
+              { text: "Linux GTK Backend", link: "/linux-gtk" },
               { text: "Native AOT", link: "/native-aot" },
               { text: "Startup Profiling", link: "/startup-profiling" },
               { text: "App Bundles", link: "/app-bundles" },

@@ -16,7 +16,7 @@ public static partial class MauiProgram
     private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
         // Push notifications are not wired up on MacCatalyst yet (no Firebase native bindings).
-        services.AddTransient<IDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
+        services.AddTransient<IDeviceTokenRetriever>(_ => new NoDeviceTokenRetriever());
         services.AddScoped<INotificationsPermission>(_ => new MacNotificationsPermission());
         services.AddScoped<IRecordingPermissionRequester>(c
             => new AppleRecordingPermissionRequester(c.GetRequiredService<SystemSettingsUI>()));

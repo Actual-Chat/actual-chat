@@ -57,7 +57,7 @@ public sealed class SessionTokens(UIHub hub) : UIWorkerBase<UIHub>(hub), IComput
 
     private async Task AutoRefresh(CancellationToken cancellationToken)
     {
-        if (HostInfo.AppKind is not (AppKind.Ios or AppKind.MacOS)) {
+        if (HostInfo.AppKind is not (AppKind.Ios or AppKind.MacOS or AppKind.Linux)) {
             var expiresAtMs = (long)(SystemNow.EpochOffset + InfLifespan).TotalMilliseconds;
             await SetJSToken("", expiresAtMs, cancellationToken).ConfigureAwait(false);
             return;

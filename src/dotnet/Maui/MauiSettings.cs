@@ -55,6 +55,8 @@ public static class MauiSettings
         AppKind = AppKind.MacOS;
 #elif IOS
         AppKind = AppKind.Ios;
+#elif LINUX
+        AppKind = AppKind.Linux;
 #else
         AppKind = AppKind.Unknown;
 #endif

@@ -139,10 +139,11 @@ public static class MauiDiagnostics
                     retainedFileCountLimit: LoggingExt.RetainedFileCountLimit));
 #elif IOS
         logging = logging.WriteTo.AppleLog();
-#elif MACOS
+#elif MACOS || LINUX
         // The MaciOS AppleLog sink isn't compiled for the macos TFM and Sentry's native crash
         // capture (Cocoa bindings) doesn't cover it either - the managed Sentry sink below still
-        // runs - so a plain file is where the AppKit app's logs land.
+        // runs - so a plain file is where the AppKit app's logs land. The GTK app's too: a Linux
+        // desktop has no log of its own for an app started from the launcher.
         // TODO(maui-labs): add WriteTo.AppleLog (move MaciOS/Logging to MacShared) and native
         // Sentry once the backend is officially supported.
         AppDataLogFilePath = Path.Combine(FileSystem.AppDataDirectory, "Logs", "ActualChat.log");
@@ -153,7 +154,7 @@ public static class MauiDiagnostics
             retainedFileCountLimit: LoggingExt.RetainedFileCountLimit);
 #if DEBUG
         // The sandbox container's log file is TCC-protected, so scripts/run-mac.sh reads the
-        // console instead (open --stdout)
+        // console instead (open --stdout); on Linux it's what a terminal launch shows
         logging = logging.WriteTo.Sink(new ConsoleSink());
 #endif
 #endif
@@ -237,7 +238,7 @@ public static class MauiDiagnostics
         return builder;
     }
 
-#if MACOS && DEBUG
+#if (MACOS || LINUX) && DEBUG
     private sealed class ConsoleSink : ILogEventSink
     {
         private readonly MessageTemplateTextFormatter _formatter = new(LoggingExt.OutputTemplate);
