@@ -7,7 +7,7 @@ namespace ActualChat.App.Maui;
 
 /// <summary>
 /// The app's registration with the Windows notification platform: routes toast clicks and
-/// incoming-call buttons into the app and reports whether toasts are enabled for it.
+/// incoming-call buttons into the app.
 /// </summary>
 public static class WindowsNotificationActivation
 {
@@ -18,9 +18,6 @@ public static class WindowsNotificationActivation
     private static int _isRegistered;
     // Register runs before MauiDiagnostics sets up logging, so its failure waits here for the first reader
     private static Exception? _registrationError;
-
-    public static bool IsEnabled
-        => IsRegistered && AppNotificationManager.Default.Setting == AppNotificationSetting.Enabled;
 
     public static bool IsRegistered {
         get {

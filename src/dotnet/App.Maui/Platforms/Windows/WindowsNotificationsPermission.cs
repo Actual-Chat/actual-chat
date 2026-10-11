@@ -2,6 +2,7 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
+using Microsoft.Windows.AppNotifications;
 
 namespace ActualChat.App.Maui;
 
@@ -15,12 +16,16 @@ public class WindowsNotificationsPermission(AppUIHub hub) : UIServiceBase<AppUIH
 
     private NotificationUI NotificationUI => field ??= Hub.Services.GetRequiredService<NotificationUI>();
 
+    private static bool IsEnabled
+        => WindowsNotificationActivation.IsRegistered
+            && AppNotificationManager.Default.Setting == AppNotificationSetting.Enabled;
+
     public Task<bool?> IsGranted(CancellationToken cancellationToken = default)
-        => Task.FromResult((bool?)WindowsNotificationActivation.IsEnabled);
+        => Task.FromResult((bool?)IsEnabled);
 
     public Task Request(CancellationToken cancellationToken = default)
         => ForegroundTask.Run(async () => {
-            var isGranted = WindowsNotificationActivation.IsEnabled;
+            var isGranted = IsEnabled;
             if (!isGranted)
                 await Launcher.OpenAsync(SettingsUri).ConfigureAwait(true);
             NotificationUI.SetIsGranted(isGranted);
