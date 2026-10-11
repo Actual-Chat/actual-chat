@@ -211,4 +211,122 @@ import("./.claude/hooks/style-check/build-agents-guide.mjs").then(m => {
             finally { Remove-Item -LiteralPath $path }
         }
     }
+
+    Context "ledger" {
+        BeforeEach {
+            $script:LedgerRoot = "tmp/style-check/test-session"
+            Remove-Item -Recurse -Force $script:LedgerRoot -ErrorAction SilentlyContinue
+        }
+
+        It "stores the baseline once per file and hands it to the review" {
+            $path = Join-Path ([IO.Path]::GetTempPath()) 'style-check-ledger.cs'
+            Set-Content -LiteralPath $path -Value "namespace Sample;`n`npublic class A`n{`n}`n" -NoNewline
+            try {
+                foreach ($i in 1..2) {
+                    Invoke-StyleCheck @{
+                        session_id = 'test-session'
+                        hook_event_name = 'PostToolUse'
+                        tool_name = 'Edit'
+                        tool_input = @{ file_path = $path }
+                        tool_response = @{ originalFile = "namespace Sample;`n`npublic class A`n{`n    // $i`n}`n" }
+                    } | Out-Null
+                }
+                (Get-ChildItem "$script:LedgerRoot/main/ledger/base").Count | Should -Be 1
+                $ledger = Get-Content "$script:LedgerRoot/main/ledger/ledger.json" -Raw | ConvertFrom-Json
+                $ledger.PSObject.Properties.Name.Count | Should -Be 1
+            }
+            finally { Remove-Item -LiteralPath $path }
+        }
+
+        It "drops the previous turn's entries when a new prompt starts" {
+            $first = Join-Path ([IO.Path]::GetTempPath()) 'style-check-turn1.cs'
+            $second = Join-Path ([IO.Path]::GetTempPath()) 'style-check-turn2.cs'
+            Set-Content -LiteralPath $first -Value "namespace Sample;`n`npublic class A`n{`n}`n" -NoNewline
+            Set-Content -LiteralPath $second -Value "namespace Sample;`n`npublic class B`n{`n}`n" -NoNewline
+            try {
+                Invoke-StyleCheck @{
+                    session_id = 'test-session'; prompt_id = 'turn-1'
+                    hook_event_name = 'PostToolUse'; tool_name = 'Edit'
+                    tool_input = @{ file_path = $first }
+                    tool_response = @{ originalFile = "namespace Sample;`n`npublic class A`n{`n    // 1`n}`n" }
+                } | Out-Null
+                Invoke-StyleCheck @{
+                    session_id = 'test-session'; prompt_id = 'turn-2'
+                    hook_event_name = 'PostToolUse'; tool_name = 'Edit'
+                    tool_input = @{ file_path = $second }
+                    tool_response = @{ originalFile = "namespace Sample;`n`npublic class B`n{`n    // 2`n}`n" }
+                } | Out-Null
+
+                $ledger = Get-Content "$script:LedgerRoot/main/ledger/ledger.json" -Raw | ConvertFrom-Json
+                # @() matters: one property makes .Name a string, and indexing a string yields a character
+                $names = @($ledger.PSObject.Properties.Name)
+                $names.Count | Should -Be 1
+                ($names[0] -like '*turn2.cs') | Should -BeTrue
+            }
+            finally { Remove-Item -LiteralPath $first, $second }
+        }
+
+        It "keeps a subagent's edits apart, and wipes every agent's ledger on a new turn" {
+            $path = Join-Path ([IO.Path]::GetTempPath()) 'style-check-sub.cs'
+            $other = Join-Path ([IO.Path]::GetTempPath()) 'style-check-sub-next.cs'
+            Set-Content -LiteralPath $path -Value "namespace Sample;`n`npublic class A`n{`n}`n" -NoNewline
+            Set-Content -LiteralPath $other -Value "namespace Sample;`n`npublic class B`n{`n}`n" -NoNewline
+            try {
+                foreach ($agent in @('main', 'sub-1')) {
+                    $hookInput = @{
+                        session_id = 'test-session'; prompt_id = 'turn-1'
+                        hook_event_name = 'PostToolUse'; tool_name = 'Edit'
+                        tool_input = @{ file_path = $path }
+                        tool_response = @{ originalFile = "namespace Sample;`n`npublic class A`n{`n    // 1`n}`n" }
+                    }
+                    if ($agent -ne 'main') { $hookInput.agent_id = $agent }
+                    Invoke-StyleCheck $hookInput | Out-Null
+                }
+                (Test-Path "$script:LedgerRoot/main/ledger/ledger.json") | Should -BeTrue
+                (Test-Path "$script:LedgerRoot/sub-1/ledger/ledger.json") | Should -BeTrue
+
+                Invoke-StyleCheck @{
+                    session_id = 'test-session'; prompt_id = 'turn-2'
+                    hook_event_name = 'PostToolUse'; tool_name = 'Edit'
+                    tool_input = @{ file_path = $other }
+                    tool_response = @{ originalFile = "namespace Sample;`n`npublic class B`n{`n    // 2`n}`n" }
+                } | Out-Null
+
+                (Test-Path "$script:LedgerRoot/sub-1") | Should -BeFalse
+                $ledger = Get-Content "$script:LedgerRoot/main/ledger/ledger.json" -Raw | ConvertFrom-Json
+                @($ledger.PSObject.Properties.Name).Count | Should -Be 1
+            }
+            finally { Remove-Item -LiteralPath $path, $other }
+        }
+
+        It "gives the reviewer the pre-edit content, and null for a file created this turn" {
+            $edited = Join-Path ([IO.Path]::GetTempPath()) 'style-check-ledger-edited.cs'
+            $created = Join-Path ([IO.Path]::GetTempPath()) 'style-check-ledger-created.cs'
+            $before = "namespace Sample;`n`npublic class A`n{`n    // 1`n}`n"
+            Set-Content -LiteralPath $edited -Value "namespace Sample;`n`npublic class A`n{`n}`n" -NoNewline
+            Set-Content -LiteralPath $created -Value "namespace Sample;`n`npublic class B`n{`n}`n" -NoNewline
+            try {
+                Invoke-StyleCheck @{
+                    session_id = 'test-session'
+                    hook_event_name = 'PostToolUse'; tool_name = 'Edit'
+                    tool_input = @{ file_path = $edited }
+                    tool_response = @{ originalFile = $before }
+                } | Out-Null
+                Invoke-StyleCheck @{
+                    session_id = 'test-session'
+                    hook_event_name = 'PostToolUse'; tool_name = 'Write'
+                    tool_input = @{ file_path = $created }
+                    tool_response = @{ originalFile = '' }
+                } | Out-Null
+
+                $ledger = Get-Content "$script:LedgerRoot/main/ledger/ledger.json" -Raw | ConvertFrom-Json
+                $baseName = $ledger.PSObject.Properties | Where-Object { $_.Name -like '*ledger-edited.cs' }
+                $newFile = $ledger.PSObject.Properties | Where-Object { $_.Name -like '*ledger-created.cs' }
+                $newFile.Value | Should -BeNullOrEmpty
+                $baseline = Get-Content "$script:LedgerRoot/main/ledger/base/$($baseName.Value)" -Raw
+                $baseline | Should -Be $before
+            }
+            finally { Remove-Item -LiteralPath $edited, $created }
+        }
+    }
 }

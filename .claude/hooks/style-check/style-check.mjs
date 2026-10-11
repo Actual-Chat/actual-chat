@@ -1,5 +1,8 @@
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+    appendFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -62,6 +65,64 @@ export function beforeText(input) {
     return typeof response.originalFile === 'string' ? response.originalFile : '';
 }
 
+export function sessionRoot(input) {
+    return join('tmp', 'style-check', input?.session_id ?? 'no-session');
+}
+
+// A subagent gets its own directory, so two of them editing at once cannot overwrite each other's
+// ledger. Both end up under the session, which is what the reviewer reads
+export function ledgerRoot(input) {
+    return join(sessionRoot(input), input?.agent_id ?? 'main');
+}
+
+// The reviewer is an agent hook with no write tools, so it cannot consume the ledgers itself:
+// the turn's first edit — by the assistant or by any subagent, they share the prompt id —
+// clears what the previous turn left behind
+function resetLedgersOnNewTurn(input) {
+    const promptId = input?.prompt_id;
+    if (!promptId)
+        return;
+
+    const root = sessionRoot(input);
+    const turnPath = join(root, 'turn');
+    if (existsSync(turnPath) && readFileSync(turnPath, 'utf8') === promptId)
+        return;
+
+    rmSync(root, { recursive: true, force: true });
+    mkdirSync(root, { recursive: true });
+    writeFileSync(turnPath, promptId);
+    pruneOldSessions();
+}
+
+export function recordEdit(input, path, before) {
+    resetLedgersOnNewTurn(input);
+    const root = ledgerRoot(input);
+    const baseDir = join(root, 'ledger', 'base');
+    mkdirSync(baseDir, { recursive: true });
+    const ledgerPath = join(root, 'ledger', 'ledger.json');
+    const ledger = existsSync(ledgerPath) ? JSON.parse(readFileSync(ledgerPath, 'utf8')) : {};
+    const key = resolve(path);
+    if (key in ledger)
+        return;
+
+    const baseName = createHash('sha1').update(key).digest('hex');
+    writeFileSync(join(baseDir, baseName), before);
+    ledger[key] = before === '' ? null : baseName;
+    writeFileSync(ledgerPath, JSON.stringify(ledger, null, 2));
+}
+
+export function pruneOldSessions(now = Date.now()) {
+    const root = join('tmp', 'style-check');
+    if (!existsSync(root))
+        return;
+
+    for (const entry of readdirSync(root)) {
+        const dir = join(root, entry);
+        if (now - statSync(dir).mtimeMs > 3 * 24 * 3600 * 1000)
+            rmSync(dir, { recursive: true, force: true });
+    }
+}
+
 async function main() {
     const input = await readHookInput();
     const path = input?.tool_input?.file_path;
@@ -73,6 +134,7 @@ async function main() {
     if (ranges.length === 0)
         return;
 
+    recordEdit(input, path, beforeText(input));
     const findings = checkMechanical({ path, text, ranges, limit: maxLineLength(dirname(resolve(path))) });
     if (findings.length === 0)
         return;

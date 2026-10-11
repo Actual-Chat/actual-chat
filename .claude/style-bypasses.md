@@ -2,9 +2,10 @@
 
 Violations the style hook must not report again.
 
-The default is that **every** style violation gets fixed, including ones that
-were already in a file before the edit that surfaced them. An entry belongs here
-only when a human has explicitly decided to keep the code as it is.
+The default is that every style violation **in the lines an edit changed, plus
+three lines around them**, gets fixed. Violations elsewhere in the file are
+nobody's business until someone edits those lines. An entry belongs here only
+when a human has explicitly decided to keep the code as it is.
 
 ## General
 
