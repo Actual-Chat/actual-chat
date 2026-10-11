@@ -9,7 +9,7 @@ namespace ActualChat.App.Maui;
 /// The app's registration with the Windows notification platform: routes toast clicks and
 /// incoming-call buttons into the app and reports whether toasts are enabled for it.
 /// </summary>
-public static class WindowsAppNotifications
+public static class WindowsNotificationActivation
 {
     public const string ActionKey = "action";
     public const string AcceptCallAction = "accept-call";
@@ -25,7 +25,7 @@ public static class WindowsAppNotifications
     public static bool IsRegistered {
         get {
             if (Interlocked.Exchange(ref _registrationError, null) is { } error)
-                StaticLog.For(typeof(WindowsAppNotifications))
+                StaticLog.For(typeof(WindowsNotificationActivation))
                     .LogWarning(error, "App notifications are unavailable - no toasts for this session");
             return Volatile.Read(ref _isRegistered) != 0;
         }

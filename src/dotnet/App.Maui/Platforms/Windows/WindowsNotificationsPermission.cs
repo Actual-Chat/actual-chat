@@ -16,11 +16,11 @@ public class WindowsNotificationsPermission(AppUIHub hub) : UIServiceBase<AppUIH
     private NotificationUI NotificationUI => field ??= Hub.Services.GetRequiredService<NotificationUI>();
 
     public Task<bool?> IsGranted(CancellationToken cancellationToken = default)
-        => Task.FromResult((bool?)WindowsAppNotifications.IsEnabled);
+        => Task.FromResult((bool?)WindowsNotificationActivation.IsEnabled);
 
     public Task Request(CancellationToken cancellationToken = default)
         => ForegroundTask.Run(async () => {
-            var isGranted = WindowsAppNotifications.IsEnabled;
+            var isGranted = WindowsNotificationActivation.IsEnabled;
             if (!isGranted)
                 await Launcher.OpenAsync(SettingsUri).ConfigureAwait(true);
             NotificationUI.SetIsGranted(isGranted);

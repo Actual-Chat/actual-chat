@@ -39,7 +39,7 @@ public class WindowsDeviceNotifications(IServiceProvider services) : IDeviceNoti
         IReadOnlyCollection<string> createTags,
         CancellationToken cancellationToken)
     {
-        if (!WindowsAppNotifications.IsRegistered)
+        if (!WindowsNotificationActivation.IsRegistered)
             return;
 
         await _reconcileLock.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -112,10 +112,10 @@ public class WindowsDeviceNotifications(IServiceProvider services) : IDeviceNoti
         if (NotificationExt.IsCallTag(info.Tag)) {
             var accept = new AppNotificationButton(L.Common_Accept)
                 .AddArgument(tagKey, info.Tag)
-                .AddArgument(WindowsAppNotifications.ActionKey, WindowsAppNotifications.AcceptCallAction);
+                .AddArgument(WindowsNotificationActivation.ActionKey, WindowsNotificationActivation.AcceptCallAction);
             var decline = new AppNotificationButton(L.Common_Decline)
                 .AddArgument(tagKey, info.Tag)
-                .AddArgument(WindowsAppNotifications.ActionKey, WindowsAppNotifications.DeclineCallAction);
+                .AddArgument(WindowsNotificationActivation.ActionKey, WindowsNotificationActivation.DeclineCallAction);
             // The scenario keeps the toast on screen while the call rings, and it's muted
             // since the app's own ringtone already sounds.
             builder = builder

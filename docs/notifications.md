@@ -161,7 +161,7 @@ re-shows it.
   `WindowsDeviceNotifications` turn every newly active or changed notification into a banner or
   toast while the app runs, and skip it while its window is in front. Nothing arrives once the
   process has exited. On Windows the toasts go through the Windows App SDK
-  (`AppNotificationManager`, registered in `WindowsAppNotifications` before the activation
+  (`AppNotificationManager`, registered in `WindowsNotificationActivation` before the activation
   arguments are read); a click comes back either as `NotificationInvoked` or, when it started
   the app, as the launch activation. A packaged build needs the COM activator declared in
   `Package.appxmanifest`; an unpackaged one needs

@@ -23,10 +23,10 @@ public partial class App
         var appInstance = AppInstance.FindOrRegisterForKey("sharedKey");
         if (appInstance.IsCurrent) {
             appInstance.Activated += OnAppInstanceActivated;
-            WindowsAppNotifications.Register();
+            WindowsNotificationActivation.Register();
             // A toast clicked while the app wasn't running starts it with the click as the activation
             if (AppInstance.GetCurrent().GetActivatedEventArgs().Data is AppNotificationActivatedEventArgs toastArgs)
-                WindowsAppNotifications.Handle(toastArgs);
+                WindowsNotificationActivation.Handle(toastArgs);
             return false;
         }
         var args = AppInstance.GetCurrent().GetActivatedEventArgs();
@@ -37,7 +37,7 @@ public partial class App
     private void OnAppInstanceActivated(object? sender, AppActivationArguments e)
     {
         if (e.Data is AppNotificationActivatedEventArgs toastArgs) {
-            WindowsAppNotifications.Handle(toastArgs);
+            WindowsNotificationActivation.Handle(toastArgs);
             return;
         }
 
