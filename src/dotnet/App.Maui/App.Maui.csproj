@@ -640,6 +640,35 @@
     <!-- <WindowsPackageType>None</WindowsPackageType>-->
   </PropertyGroup>
 
+  <!-- An unpackaged build carries the Windows App SDK app-local, and the SDK leaves
+       Microsoft.WindowsAppRuntime.Insights.Resource.dll out of that set. AppNotificationManager.Register
+       fails without it ("Unable to load resource dll"), so the app shows no toasts. The DLL ships only
+       inside the framework MSIX of the Runtime package, which is where this takes it from. -->
+  <Target Name="AddWindowsAppRuntimeInsightsResource"
+          BeforeTargets="AssignTargetPaths"
+          Condition="$(TargetFramework.Contains('-windows')) and '$(WindowsPackageType)' == 'None' and '$(MicrosoftWindowsAppSDKPackageDir)' != ''">
+    <PropertyGroup>
+      <_WindowsAppRuntimeArch>x64</_WindowsAppRuntimeArch>
+      <_WindowsAppRuntimeArch Condition="$(RuntimeIdentifier.EndsWith('-arm64'))">arm64</_WindowsAppRuntimeArch>
+      <_WindowsAppRuntimeArch Condition="$(RuntimeIdentifier.EndsWith('-x86'))">x86</_WindowsAppRuntimeArch>
+      <_WindowsAppRuntimeInsightsDir>$(IntermediateOutputPath)WindowsAppRuntimeInsights\</_WindowsAppRuntimeInsightsDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <!-- "?" is the SDK's major version; the DDLM, Main and Singleton packages next to it don't match -->
+      <_WindowsAppRuntimeMsix Include="$(MicrosoftWindowsAppSDKPackageDir)tools\MSIX\win10-$(_WindowsAppRuntimeArch)\Microsoft.WindowsAppRuntime.?.msix" />
+    </ItemGroup>
+    <Unzip SourceFiles="@(_WindowsAppRuntimeMsix)"
+           DestinationFolder="$(_WindowsAppRuntimeInsightsDir)"
+           Include="Microsoft.WindowsAppRuntime.Insights.Resource.dll"
+           SkipUnchangedFiles="true" />
+    <ItemGroup>
+      <None Include="$(_WindowsAppRuntimeInsightsDir)Microsoft.WindowsAppRuntime.Insights.Resource.dll"
+            Link="Microsoft.WindowsAppRuntime.Insights.Resource.dll"
+            CopyToOutputDirectory="PreserveNewest"
+            CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
   <!-- Windows: Release (default — CoreCLR + R2R). The common NAOT block at the end overrides
        PublishAot / PublishTrimmed / PublishReadyToRun* and adds WindowsPackageType / IlcTrimMetadata
        when UseNativeAot=true. -->
