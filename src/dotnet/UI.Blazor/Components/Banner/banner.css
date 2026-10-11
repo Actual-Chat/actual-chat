@@ -127,6 +127,11 @@ body.hoverable .banner .btn-h:hover {
 body.hoverable .banner .close-banner:hover {
     color: inherit;
 }
+/* The close is a HeaderButton, so .btn-h i would size it 1.5rem like every header button; the banner
+   wants a lighter 1.25rem cross, and this out-specifics .btn-h i. */
+.banner .close-banner i {
+    @apply text-xl leading-5;
+}
 
 .banner-success {
     @apply bg-banner-success;
