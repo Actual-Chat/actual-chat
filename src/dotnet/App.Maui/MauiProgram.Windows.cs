@@ -16,7 +16,8 @@ public static partial class MauiProgram
     {
         services.AddTransient<IAppIconBadge>(c => new WindowsAppIconBadge(c.LogFor<WindowsAppIconBadge>()));
         services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
-        services.AddScoped<INotificationsPermission>(_ => new WindowsNotificationsPermission());
+        services.AddScoped<INotificationsPermission>(c => new WindowsNotificationsPermission(c.AppUIHub()));
+        services.AddScoped<IDeviceNotifications>(c => new WindowsDeviceNotifications(c));
         services.AddTransient<INativeAppSettings>(
             c => new WindowsAppSettings(c.GetRequiredService<IStringLocalizer>()));
         services.AddScoped<IRecordingPermissionRequester>(_ => new WindowsRecordingPermissionRequester());
