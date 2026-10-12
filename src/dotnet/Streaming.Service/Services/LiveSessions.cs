@@ -27,6 +27,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private ICallsBackend CallsBackend => field ??= Services.GetRequiredService<ICallsBackend>();
     private IMaintenancesBackend MaintenancesBackend => field ??= Services.GetRequiredService<IMaintenancesBackend>();
     private MomentClockSet Clocks => field ??= Services.Clocks();
+    private ICommander Commander => field ??= Services.Commander();
 
     // [ComputeMethod]
     public virtual async Task<LiveSessionState?> GetState(
@@ -141,8 +142,18 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     public async Task SetRules(Session session, ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
     {
         var authority = await GetCallAuthority(session, chatId, cancellationToken).ConfigureAwait(false);
-        authority.RequireManage();
+        var live = await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        var oldRules = live?.Rules ?? SessionRules.Default;
+        // A 1:1 call has no host to ask: either side decides whether it's transcribed, and nothing else.
+        var isPeerTranscriptionChange = chatId is PeerChatId
+            && authority.OwnAuthorId is not null
+            && rules == oldRules.WithText(rules.HasText());
+        if (!isPeerTranscriptionChange)
+            authority.RequireManage();
         await Backend.SetRules(chatId, rules, cancellationToken).ConfigureAwait(false);
+        if (live is not null && rules.HasText() != oldRules.HasText())
+            await PostTranscriptionChangedEntry(session, chatId, rules.HasText(), cancellationToken)
+                .ConfigureAwait(false);
     }
 
     public async Task MutePeer(
@@ -437,6 +448,25 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
 
             tile = EntryIdTiles.GetTile(tile.Range.Start - 1);
         }
+    }
+
+    private async Task PostTranscriptionChangedEntry(
+        Session session, ChatId chatId, bool isTranscriptionOn, CancellationToken cancellationToken)
+    {
+        var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        var authorId = author is null || author.IsAnonymous ? null : author.Id;
+        var authorName = authorId is null ? "" : author?.Avatar.Name ?? "";
+        var changeEntryCmd = new ChatsBackend_ChangeEntry(
+            ChatEntryId.New(chatId, 0),
+            null,
+            Change.Create(new ChatEntryDiff {
+                Kind = ChatEntryKind.TranscriptionChanged,
+                AuthorId = Bots.GetWalleId(chatId),
+                TargetAuthorId = authorId,
+                TargetAuthorName = authorName.NullIfEmpty() ?? MentionMarkup.NotAvailableName,
+                IsTranscriptionOn = isTranscriptionOn,
+            }));
+        await Commander.Call(changeEntryCmd, true, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<AuthorId?> RequireOwnAuthorId(

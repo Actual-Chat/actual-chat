@@ -27,6 +27,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private readonly ConcurrentDictionary<ChatId, Conversation?> _lastConversations = new();
     private readonly ConcurrentDictionary<ChatId, LiveBlockState?> _lastBlockStates = new();
     private readonly ConcurrentDictionary<ChatId, bool> _ownHandIntents = new();
+    private readonly ConcurrentDictionary<ChatId, bool> _ownTranscriptionIntents = new();
     private readonly MutableState<(ChatId ChatId, bool IsRaised)?> _pendingOwnHand
         = hub.StateFactory.NewMutable(default((ChatId ChatId, bool IsRaised)?));
 
@@ -84,6 +85,47 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     {
         var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
         return state?.HasTranscript ?? false;
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0)]
+    public virtual async Task<bool> IsTranscriptionOn(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        return live?.Rules.HasText() ?? true;
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0)]
+    public virtual async Task<bool> CanSetTranscription(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Without voice the transcript is all the session has: SessionRules.WithText keeps it on
+        var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is null || !live.Rules.HasVoice())
+            return false;
+
+        var ownAuthor = await Hub.Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (ownAuthor is null)
+            return false;
+        if (chatId.Kind == ChatKind.Peer)
+            return true;
+
+        var rules = await Hub.Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return rules.CanModerate() || live.Host == ownAuthor.Id;
+    }
+
+    public async Task SetTranscription(ChatId chatId, bool isOn, CancellationToken cancellationToken)
+    {
+        var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is null)
+            return;
+
+        _ownTranscriptionIntents[chatId] = isOn;
+        try {
+            await SetRules(chatId, live.Rules.WithText(isOn), cancellationToken).ConfigureAwait(false);
+        }
+        catch {
+            _ownTranscriptionIntents.TryRemove(chatId, out _);
+            throw;
+        }
     }
 
     public Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
@@ -249,6 +291,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             AsyncChain.From(StopRecordingWhenMuted),
             AsyncChain.From(NotifyWhenHandLowered),
             AsyncChain.From(LowerOwnHandWhenSpoken),
+            AsyncChain.From(NotifyWhenTranscriptionChanged),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 8);
         return (
@@ -436,6 +479,32 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         }
     }
 
+    private async Task NotifyWhenTranscriptionChanged(CancellationToken cancellationToken)
+    {
+        // Whoever didn't flip the switch feels it: being transcribed or not is theirs to know too.
+        var cStates = await Computed
+            .Capture(() => GetOwnTranscriptionStates(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var states = cStates.ValueOrDefault ?? ImmutableDictionary<ChatId, bool>.Empty;
+        while (!cancellationToken.IsCancellationRequested) {
+            await cStates.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            cStates = await cStates.Update(cancellationToken).ConfigureAwait(false);
+            // ValueOrDefault is null only when the computed errored: keep the last known states until it recovers.
+            if (cStates.ValueOrDefault is not { } next)
+                continue;
+
+            foreach (var (chatId, isOn) in next) {
+                if (!states.TryGetValue(chatId, out var wasOn) || wasOn == isOn)
+                    continue;
+
+                var isOwnChange = _ownTranscriptionIntents.TryRemove(chatId, out var intent) && intent == isOn;
+                if (!isOwnChange)
+                    _ = Hub.TuneUI.Play(Tune.CallTranscriptionChanged);
+            }
+            states = next;
+        }
+    }
+
     // Protected/internal methods
 
     // It's internal to be accessible from tests
@@ -474,6 +543,20 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
             var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
             if (me is { IsHandRaised: true })
                 result.Add(chatId);
+        }
+        return result.ToImmutable();
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<ImmutableDictionary<ChatId, bool>> GetOwnTranscriptionStates(
+        CancellationToken cancellationToken)
+    {
+        var participations = await GetMyParticipations(cancellationToken).ConfigureAwait(false);
+        var result = ImmutableDictionary.CreateBuilder<ChatId, bool>();
+        foreach (var chatId in participations.Keys) {
+            var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (live is not null)
+                result[chatId] = live.Rules.HasText();
         }
         return result.ToImmutable();
     }

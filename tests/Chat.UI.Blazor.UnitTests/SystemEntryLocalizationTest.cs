@@ -150,6 +150,12 @@ public class SystemEntryLocalizationTest
                 HistoryChange = change,
                 HistoryPeriod = period,
             };
+        foreach (var isTranscriptionOn in new[] { true, false })
+            yield return new TranscriptionChangedEntry {
+                TargetAuthorId = authorId,
+                TargetAuthorName = AuthorName,
+                IsTranscriptionOn = isTranscriptionOn,
+            };
     }
 
     private static SystemEntryMarkupBuilder NewBuilder(Language language)

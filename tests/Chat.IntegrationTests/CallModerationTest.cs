@@ -322,7 +322,65 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await WhenHandRaised(call.ChatId, call.ModeratorAuthorId, false);
     }
 
+    [Fact]
+    public async Task ChangingTranscriptionShouldPostSystemEntries()
+    {
+        // arrange
+        var call = await ArrangeCall();
+        var maxLid = await ChatsBackend(Owner).GetMaxLid(call.ChatId, false, default);
+        var rules = SessionRules.Default with { VideoAllowed = false };
+
+        // act
+        await LiveSessions(Owner).SetRules(Owner.Session, call.ChatId, rules, default);
+        await LiveSessions(Owner).SetRules(Owner.Session, call.ChatId, rules.WithText(false), default);
+        await LiveSessions(Owner).SetRules(Owner.Session, call.ChatId, rules.WithText(true), default);
+
+        // assert
+        var entries = await WhenTranscriptionChangedEntries(call.ChatId, maxLid + 1, 2);
+        entries.Select(x => x.IsTranscriptionOn).Should().Equal([false, true],
+            "only a transcription flip is announced, and each flip once");
+        entries.Should().OnlyContain(x => x.TargetAuthorId == call.OwnerAuthorId);
+    }
+
+    [Fact]
+    public async Task EitherPeerShouldChangeTranscriptionAndNothingElse()
+    {
+        // arrange - Member is the callee, so not the call's host
+        var chatId = await ArrangePeerCall();
+        var maxLid = await ChatsBackend(Owner).GetMaxLid(chatId, false, default);
+
+        // act
+        await LiveSessions(Member).SetRules(Member.Session, chatId, SessionRules.Default.WithText(false), default);
+        var memberTurnsVideoOff = () => LiveSessions(Member)
+            .SetRules(Member.Session, chatId, SessionRules.Default with { VideoAllowed = false }, default);
+
+        // assert
+        var state = await Backend(Owner).GetState(chatId, default);
+        state!.Rules.HasText().Should().BeFalse();
+        await memberTurnsVideoOff.Should().ThrowAsync<Exception>();
+        var entries = await WhenTranscriptionChangedEntries(chatId, maxLid + 1, 1);
+        entries[0].IsTranscriptionOn.Should().BeFalse();
+    }
+
     // Private methods
+
+    private async Task<ChatId> ArrangePeerCall()
+    {
+        var owner = await Owner.SignInAsUniqueBob();
+        var member = await Member.SignInAsUniqueAlice();
+        var chatId = (ChatId)PeerChatId.New(owner.Id, member.Id);
+        // A reply is what makes the two contacts, and gives each an author in the chat
+        await Owner.CreateTextEntry(chatId, "hi");
+        await Member.CreateTextEntry(chatId, "hey");
+        var ownerAuthor = await Owner.GetOwnAuthor(chatId).Require();
+        var memberAuthor = await Member.GetOwnAuthor(chatId).Require();
+
+        var backend = Backend(Owner);
+        await backend.StartCall(chatId, ownerAuthor.Id, new ApiArray<AuthorId>([memberAuthor.Id]), false, default);
+        await backend.AcceptCall(chatId, memberAuthor.Id, default);
+        await backend.SetParticipation(chatId, memberAuthor.Id, ParticipationKind.Record, true, default);
+        return chatId;
+    }
 
     private async Task<CallSetup> ArrangeCall()
     {
@@ -385,6 +443,23 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         }, callerFilePath: callerFilePath, callerLine: callerLine);
     }
 
+    private Task<List<TranscriptionChangedEntry>> WhenTranscriptionChangedEntries(
+        ChatId chatId, long minLid, int expectedCount)
+    {
+        var chatsBackend = ChatsBackend(Owner);
+        return TestWait.WhenPolled(async () => {
+            var maxLid = await chatsBackend.GetMaxLid(chatId, false, default);
+            var found = new List<TranscriptionChangedEntry>();
+            for (var lid = minLid; lid <= maxLid; lid++) {
+                var entry = await chatsBackend.GetEntry(ChatEntryId.New(chatId, lid), default);
+                if (entry is TranscriptionChangedEntry transcriptionChanged)
+                    found.Add(transcriptionChanged);
+            }
+            found.Should().HaveCount(expectedCount);
+            return found;
+        }, TimeSpan.FromSeconds(30));
+    }
+
     private static async Task WaitForModerate(WebClientTester tester, ChatId chatId)
     {
         var chats = tester.AppServices.GetRequiredService<IChats>();
@@ -396,6 +471,8 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         => tester.AppServices.GetRequiredService<ILiveSessions>();
     private static ILiveSessionsBackend Backend(WebClientTester tester)
         => tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+    private static IChatsBackend ChatsBackend(WebClientTester tester)
+        => tester.AppServices.GetRequiredService<IChatsBackend>();
     private static bool MicMuted(LiveSession? live, AuthorId authorId)
         => live?.Members.FirstOrDefault(x => x.AuthorId == authorId)?.MicMuted ?? false;
     private static bool HandRaised(LiveSession? live, AuthorId authorId)

@@ -436,6 +436,8 @@
   "SystemEntry_HistoryWipedPeriod_Format": " ha cancellato la cronologia della chat degli ultimi {0}.",
   "SystemEntry_RetentionChanged_Format": " ha impostato la conservazione della cronologia a {0}.",
   "SystemEntry_RetentionTurnedOff": " ha disattivato la conservazione della cronologia.",
+  "SystemEntry_TranscriptionTurnedOn": " ha attivato la trascrizione.",
+  "SystemEntry_TranscriptionTurnedOff": " ha disattivato la trascrizione.",
 
   "ChatMaintenance_Mode": "Modalità manutenzione",
   "ChatImport_Start": "Avvia importazione",

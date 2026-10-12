@@ -48,6 +48,8 @@ public abstract class TuneUI : ProcessorBase
         // PttReplyFailed's three.
         [Tune.PttGestureDetected] = new ([90]),
         [Tune.PttReplyFailed] = new ([150, 100, 150, 100, 150]),
+        // Calls
+        [Tune.CallTranscriptionChanged] = new ([60, 80, 60], "remind-of-recording", TunePlayMode.VibrateOrSound),
     };
     // Suppress redundant tactile feedback fired as a side-effect of starting
     // recording: ConfirmRecording (mic-live signal ~0.5–1 s after start) and
@@ -209,6 +211,7 @@ public enum Tune
     PttGestureDetected,
     PttReplyFailed,
     RecordingWillStop,
+    CallTranscriptionChanged,
 }
 
 // Mode never reaches JS: TuneUI resolves it away before handing the table over.

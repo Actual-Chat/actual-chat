@@ -436,6 +436,8 @@
   "SystemEntry_HistoryWipedPeriod_Format": " ने पिछले {0} का चैट इतिहास मिटा दिया।",
   "SystemEntry_RetentionChanged_Format": " ने इतिहास रखने की अवधि {0} तय की।",
   "SystemEntry_RetentionTurnedOff": " ने इतिहास रखने की अवधि बंद कर दी।",
+  "SystemEntry_TranscriptionTurnedOn": " ने ट्रांसक्रिप्शन चालू किया।",
+  "SystemEntry_TranscriptionTurnedOff": " ने ट्रांसक्रिप्शन बंद किया।",
 
   "ChatMaintenance_Mode": "रखरखाव मोड",
   "ChatImport_Start": "आयात शुरू करें",

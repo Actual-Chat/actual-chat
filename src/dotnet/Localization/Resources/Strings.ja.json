@@ -436,6 +436,8 @@
   "SystemEntry_HistoryWipedPeriod_Format": " さんが過去 {0} のチャット履歴を消去しました。",
   "SystemEntry_RetentionChanged_Format": " さんが履歴の保存期間を {0} に設定しました。",
   "SystemEntry_RetentionTurnedOff": " さんが履歴の保存期間を無効にしました。",
+  "SystemEntry_TranscriptionTurnedOn": " さんが文字起こしをオンにしました。",
+  "SystemEntry_TranscriptionTurnedOff": " さんが文字起こしをオフにしました。",
 
   "ChatMaintenance_Mode": "メンテナンスモード",
   "ChatImport_Start": "インポートを開始",

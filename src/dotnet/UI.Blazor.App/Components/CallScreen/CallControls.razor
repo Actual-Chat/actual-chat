@@ -26,6 +26,13 @@
    appears or goes moves neither the recorder nor the controls before it. *@
 <div class="call-screen-toolbar call-screen-footer">
     <div class="c-side c-before">
+        @* Shows the call's state to everyone; only who may change it gets a live button. *@
+        <HeaderButton
+            Click="@(() => OnTranscriptionClick(!m.IsTranscriptionOn))"
+            IsDisabled="@(!m.CanSetTranscription)"
+            Class="@("btn-glass btn-transcription " + (m.IsTranscriptionOn ? "on" : ""))">
+            <i class="icon-voice-to-text-message text-lg"></i>
+        </HeaderButton>
         @if (isMobileOrNarrow) {
             @videoToggle
         } else {
@@ -129,6 +136,10 @@
         var canReact = await LiveSessionUI.CanReact(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
         var selectedCameraDeviceId = await Hub.CameraUI.GetSelectedDeviceId(cancellationToken).ConfigureAwait(false);
+        var isTranscriptionOn = await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(false);
+        var canSetTranscription = await LiveSessionUI
+            .CanSetTranscription(chatId, cancellationToken)
+            .ConfigureAwait(false);
         return new Model {
             IsDialing = screen?.Call?.Phase == CallPhase.Dialing,
             HasVideo = screen?.HasVideo ?? false,
@@ -140,10 +151,15 @@
             CanReact = canReact,
             IsOwnHandRaised = isOwnHandRaised,
             SelectedCameraDeviceId = selectedCameraDeviceId,
+            IsTranscriptionOn = isTranscriptionOn,
+            CanSetTranscription = canSetTranscription,
         };
     }
 
     // Private methods
+
+    private Task OnTranscriptionClick(bool isOn)
+        => LiveSessionUI.SetTranscription(Chat.Id, isOn, CancellationToken.None);
 
     private void OnVideoClick(bool mustEnable) {
         var chat = Chat;
@@ -191,5 +207,7 @@
         public bool CanReact { get; init; }
         public bool IsOwnHandRaised { get; init; }
         public string? SelectedCameraDeviceId { get; init; }
+        public bool IsTranscriptionOn { get; init; } = true;
+        public bool CanSetTranscription { get; init; }
     }
 }
