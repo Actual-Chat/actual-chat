@@ -331,7 +331,7 @@ notifications — by the time it runs, the notifications are gone.
 
 On Windows this matters more than elsewhere: `MauiProgram.Windows.cs` registers
 no `IDeviceNotifications` (`BlazorUIAppModule.cs:210` gates `WebDeviceNotifications`
-to `IsServerOrWasmApp()`) and `WindowsDeviceTokenRetriever` returns `null`, so
+to `IsServerOrWasmApp()`) and `NoDeviceTokenRetriever` returns `null`, so
 there are no toasts and no pushes. The app-icon badge is the *entire* notification
 surface, and `UpdateOnActiveChanges` is its only driver.
 

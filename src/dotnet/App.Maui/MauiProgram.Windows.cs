@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Audio;
+using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Maui.Services;
 using ActualChat.UI.Blazor;
@@ -15,7 +16,7 @@ public static partial class MauiProgram
     private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
         services.AddTransient<IAppIconBadge>(c => new WindowsAppIconBadge(c.LogFor<WindowsAppIconBadge>()));
-        services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
+        services.AddTransient<IDeviceTokenRetriever>(_ => new NoDeviceTokenRetriever());
         services.AddScoped<INotificationsPermission>(c => new WindowsNotificationsPermission(c.AppUIHub()));
         services.AddScoped<IDeviceNotifications>(c => new WindowsDeviceNotifications(c));
         services.AddTransient<INativeAppSettings>(
