@@ -1,0 +1,196 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, CoachSkillDetail.Model>
+@{
+    var m = State.Value;
+    var metric = m.Summary.Metrics.FirstOrDefault(x => x.Kind == Kind);
+    var labels = Labels;
+}
+
+<div class="coach-skill-detail" data-metric="@Kind">
+    @if (m.Word is { } word) {
+        <CoachOccurrences Word="@word" Window="@m.Window" Language="@m.Language" Kind="@Kind" Back="@OnWordBack"/>
+    } else {
+        <div class="c-head">
+            <ButtonRound Click="@(() => Back.InvokeAsync())" Class="btn-sm" Title="@L.Common_Back">
+                <i class="icon-arrow-left text-2xl" aria-hidden="true"></i>
+            </ButtonRound>
+            <h2>@labels.MetricTitle(Kind)</h2>
+        </div>
+        <div class="c-scope">@(m.Language is null ? L.Coach_AllLanguages : labels.LanguageName(m.Language))</div>
+        <div class="c-periods">
+            @foreach (var window in new[] { CoachWindow.Days7, CoachWindow.Days30, CoachWindow.AllTime }) {
+                <button type="button" class="chip @(window == m.Window ? "on" : "")"
+                        aria-pressed="@(window == m.Window)" @onclick="@(() => WindowChanged.InvokeAsync(window))">
+                    @labels.Window(window)
+                </button>
+            }
+        </div>
+        <Card Class="c-overview">
+            <div class="c-value">@(metric?.Value is null ? L.Coach_NotEnoughSpeech : labels.Value(metric))</div>
+            @if (metric?.Rate is not null) {
+                <div class="c-rate">@labels.Rate(metric)</div>
+            }
+            @if (Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords) {
+                @if (m.Summary.TaggedWords > 0) {
+                    <div class="c-coverage">@L.Coach_DetailCount_Format(metric?.Value ?? 0, m.Summary.TaggedWords)</div>
+                }
+                <div class="c-explanation">@labels.Explain(Kind, m.Language, m.Summary)</div>
+            } else {
+                <div class="c-explanation">@L.Coach_PaceDetailExplanation</div>
+            }
+        </Card>
+        @if (Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords) {
+            <Card Class="c-words">
+                @if (m.Words.Count == 0) {
+                    <div>@L.Coach_OccurrencesEmpty</div>
+                } else {
+                    @foreach (var chip in m.Words) {
+                        <button type="button" class="btn-word-detail" @onclick="@(() => OnWord(chip.Word))">
+                            <span>@chip.Word</span>
+                            <span>@chip.Count</span>
+                        </button>
+                    }
+                }
+            </Card>
+        } else if (m.Pace.Summary is { } coverage) {
+            <Card Class="c-distribution">
+                <div>@L.Coach_ComfortableRange_Format(m.Pace.Slow, m.Pace.Fast)</div>
+                @if (m.Pace.Distribution.WithinRate is { } rate) {
+                    <div class="c-value">@L.Coach_Percent_Format((100 * rate).ToString("0.#", null))</div>
+                    <BarChart Items="@DistributionItems(m.Pace)" ShowValues="true" ValueFormat="0.#"/>
+                    <div class="c-ranges">
+                        <span>@L.Coach_PaceBelow · @Percent(m.Pace.Distribution.BelowMilliseconds, m.Pace)</span>
+                        <span>@L.Coach_PaceWithin · @Percent(m.Pace.Distribution.WithinMilliseconds, m.Pace)</span>
+                        <span>@L.Coach_PaceAbove · @Percent(m.Pace.Distribution.AboveMilliseconds, m.Pace)</span>
+                    </div>
+                } else {
+                    <div>@L.Coach_PaceUnavailable</div>
+                }
+                <div class="c-coverage">@L.Coach_PaceCoverage_Format(coverage.MeasuredEntries,
+                    Percent(m.Pace.Distribution.TotalMilliseconds, coverage.AudioMilliseconds))</div>
+                @if (m.Pace.IsTruncated) {
+                    <div class="c-coverage">@L.Coach_PacePartial</div>
+                }
+            </Card>
+            @if (m.Pace.Moments.Count == ICoach.MaxOccurrences) {
+                <div class="c-coverage">@L.Coach_OccurrencesLimit_Format(ICoach.MaxOccurrences)</div>
+            }
+            @foreach (var item in m.Moments) {
+                <Card Class="c-moment">
+                    <div class="c-moment-head">
+                        <span>@item.ChatTitle</span>
+                        <span>@L.Coach_Wpm_Format(Math.Round(item.Moment.Segment.WordsPerMinute))</span>
+                    </div>
+                    <div class="c-coverage">
+                        @DateTimeConverter.ToLocalTime(item.Moment.Occurrence.At).ToString("g", DateFormatter)
+                        · @CoachLabels.Clock(item.Moment.Segment.TimeRange.Start / 1_000d)–@CoachLabels.Clock(
+                            item.Moment.Segment.TimeRange.End / 1_000d)
+                    </div>
+                    <p>@item.Text</p>
+                    <Button Click="@(() => OnMoment(item))" Class="btn-text btn-open-occurrence">
+                        @(item.CanReplay ? L.MessageMenu_Play : L.Content_GoToMessage)
+                    </Button>
+                </Card>
+            }
+        } else {
+            <Card Class="c-distribution">
+                <div>@L.Coach_PaceUnavailable</div>
+                @if (m.Pace.IsTruncated) {
+                    <div class="c-coverage">@L.Coach_PacePartial</div>
+                }
+            </Card>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public CoachMetricKind Kind { get; set; }
+    [Parameter] public CoachWindow Window { get; set; }
+    [Parameter] public string? Language { get; set; }
+    [Parameter] public EventCallback Back { get; set; }
+    [Parameter] public EventCallback<CoachWindow> WindowChanged { get; set; }
+
+    private MutableState<string?> _word = null!;
+    private CoachLabels Labels => field ??= new CoachLabels(L);
+
+    protected override void OnInitialized()
+        => _word = StateFactory.NewMutable((string?)null);
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var kind = Kind;
+        var window = Window;
+        var language = kind == CoachMetricKind.Pace
+            ? Language ?? await Hub.CoachUI.GetComparisonLanguage(cancellationToken).ConfigureAwait(false)
+            : Language;
+        var word = await _word.Use(cancellationToken).ConfigureAwait(false);
+        var summary = await Hub.Coach.GetOwnSummary(Session, window, language, cancellationToken)
+            .ConfigureAwait(false);
+        var pace = kind == CoachMetricKind.Pace
+            ? await Hub.Coach.GetOwnPaceDetails(Session, window, language ?? "", cancellationToken).ConfigureAwait(false)
+            : CoachPaceDetails.None;
+        var words = kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords
+            ? await Hub.Coach.ListOwnSkillWords(Session, window, language, kind, cancellationToken)
+                .ConfigureAwait(false)
+            : ApiArray<CoachChip>.Empty;
+        var moments = new List<MomentItem>();
+        foreach (var moment in pace.Moments) {
+            var occurrence = moment.Occurrence;
+            var chat = await Hub.Chats.Get(Session, occurrence.ChatId, cancellationToken).ConfigureAwait(false);
+            var id = ChatEntryId.New(occurrence.ChatId, occurrence.EntryLid);
+            var entry = await Hub.ChatUI.GetEntry(id, cancellationToken).ConfigureAwait(false);
+            var textRange = moment.Segment.TextRange;
+            if (chat is null || entry is null || entry.IsRemoved || textRange.End > entry.Content.Length)
+                continue;
+
+            var map = entry.Audio?.TimeMap;
+            var canReplay = map?.TryMap(textRange.Start) is { } start
+                && Math.Abs(start * 1_000 - moment.Segment.TimeRange.Start) < 1
+                && map?.TryMap(textRange.End) is { } end
+                && Math.Abs(end * 1_000 - moment.Segment.TimeRange.End) < 1;
+            moments.Add(new MomentItem(moment, chat.Title,
+                entry.Content.Substring(textRange.Start, textRange.End - textRange.Start), canReplay));
+        }
+        return new Model(window, language, word, summary, pace, moments, words);
+    }
+
+    private void OnWord(string word)
+        => _word.Value = word;
+
+    private void OnWordBack()
+        => _word.Value = null;
+
+    private Task OnMoment(MomentItem item)
+        => item.CanReplay
+            ? Hub.CoachUI.JumpTo(item.Moment, CancellationToken.None)
+            : Hub.CoachUI.JumpTo(item.Moment.Occurrence, CancellationToken.None, play: false);
+
+    private string Percent(long milliseconds, CoachPaceDetails pace)
+        => Percent(milliseconds, pace.Distribution.TotalMilliseconds);
+
+    private string Percent(long milliseconds, long total)
+        => L.Coach_Percent_Format((total > 0 ? 100d * milliseconds / total : 0).ToString("0.#", null));
+
+    private IReadOnlyList<ChartItem> DistributionItems(CoachPaceDetails pace)
+        => [
+            new ChartItem(L.Coach_PaceBelow, 100d * pace.Distribution.BelowMilliseconds
+                / pace.Distribution.TotalMilliseconds, "text-03"),
+            new ChartItem(L.Coach_PaceWithin, 100d * pace.Distribution.WithinMilliseconds
+                / pace.Distribution.TotalMilliseconds, "text-success"),
+            new ChartItem(L.Coach_PaceAbove, 100d * pace.Distribution.AboveMilliseconds
+                / pace.Distribution.TotalMilliseconds, "text-warning"),
+        ];
+
+    public sealed record MomentItem(CoachPaceMoment Moment, string ChatTitle, string Text, bool CanReplay);
+
+    public sealed record Model(
+        CoachWindow Window, string? Language, string? Word, CoachSummary Summary,
+        CoachPaceDetails Pace, List<MomentItem> Moments, ApiArray<CoachChip> Words) {
+        public static readonly Model None = new(CoachWindow.Days7, null, null, CoachSummary.None,
+            CoachPaceDetails.None, [], ApiArray<CoachChip>.Empty);
+    }
+}

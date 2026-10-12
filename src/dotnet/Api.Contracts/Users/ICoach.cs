@@ -32,6 +32,18 @@ public interface ICoach : IComputeService
         Session session, string word, CoachWindow window, CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<ApiArray<CoachOccurrence>> ListOwnSkillOccurrences(
+        Session session, string word, CoachWindow window,
+        string? language, CoachMetricKind kind, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ApiArray<CoachChip>> ListOwnSkillWords(
+        Session session, CoachWindow window, string? language, CoachMetricKind kind,
+        CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<CoachPaceDetails> GetOwnPaceDetails(
+        Session session, CoachWindow window, string language, CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<CoachMetricKind?> GetOwnFocus(Session session, string? language, CancellationToken cancellationToken);
 
     [ComputeMethod]

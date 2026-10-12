@@ -9,7 +9,15 @@
 
 <div class="coach-skill @(IsHeadline ? "headline" : "plain")" data-metric="@m.Kind">
     <div class="c-row">
-        <span class="c-name">@labels.MetricTitle(m.Kind)</span>
+        @if (DetailClick.HasDelegate && m.Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords
+            or CoachMetricKind.Pace) {
+            <button type="button" class="c-name btn-skill-detail" @onclick="@(() => DetailClick.InvokeAsync(m.Kind))">
+                @labels.MetricTitle(m.Kind)
+                <i class="icon-arrow-right" aria-hidden="true"></i>
+            </button>
+        } else {
+            <span class="c-name">@labels.MetricTitle(m.Kind)</span>
+        }
         <span class="c-value band-@band">
             @if (IsNotMeasured) {
                 @L.Coach_NotMeasuredFor_Format(labels.LanguageName(Language ?? ""))
@@ -54,6 +62,7 @@
     [Parameter] public bool IsFocus { get; set; }
     [Parameter] public bool IsFocusOverridden { get; set; }
     [Parameter] public bool IsNotMeasured { get; set; }
+    [Parameter] public EventCallback<CoachMetricKind> DetailClick { get; set; }
     [Parameter] public EventCallback<string> WordClick { get; set; }
     [Parameter] public EventCallback<CoachMetricKind> FocusClick { get; set; }
     [Parameter] public EventCallback<CoachMetricKind> FocusClear { get; set; }
