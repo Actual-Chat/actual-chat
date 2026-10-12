@@ -66,10 +66,14 @@ public sealed partial class MauiWebView
             HostPage = "wwwroot/index.html",
             BackgroundColor = MauiSettings.SplashBackgroundColor,
         };
+#if !LINUX
+        // TODO(maui-labs): the labs GTK handler takes the regular BlazorWebView, but raises none
+        // of these; LinuxCustomBlazorWebViewHandler and MauiWebView.Linux cover them.
         BlazorWebView.BlazorWebViewInitializing += OnInitializing;
         BlazorWebView.BlazorWebViewInitialized += OnInitialized;
         BlazorWebView.UrlLoading += OnLoading;
         BlazorWebView.Loaded += OnLoaded;
+#endif
         BlazorWebView.Unloaded += OnUnloaded;
         BlazorWebView.RootComponents.Add(
             new RootComponent {
@@ -167,7 +171,7 @@ public sealed partial class MauiWebView
 
     // Private methods
 
-#if !MACOS
+#if !MACOS && !LINUX
     private partial void OnInitializing(object? sender, BlazorWebViewInitializingEventArgs eventArgs);
     private partial void OnInitialized(object? sender, BlazorWebViewInitializedEventArgs eventArgs);
     private partial void OnLoaded(object? sender, EventArgs eventArgs);

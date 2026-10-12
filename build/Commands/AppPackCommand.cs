@@ -76,6 +76,9 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
                 return ValidationResult.Error("--catalyst is only supported for the macos platform.");
             if (IsUniversal && (Platform != AppPlatform.Mac || UseCatalyst))
                 return ValidationResult.Error("--universal is only wired for the macos AppKit package.");
+            if (Platform is AppPlatform.Linux)
+                return ValidationResult.Error(
+                    "There is no Linux package yet - 'b app build linux' produces the app as a folder.");
             if (Platform is AppPlatform.Ios or AppPlatform.Mac && !OperatingSystem.IsMacOS())
                 return ValidationResult.Error($"Packing the {Platform} app needs macOS.");
             if (Platform is AppPlatform.Windows && !OperatingSystem.IsWindows())

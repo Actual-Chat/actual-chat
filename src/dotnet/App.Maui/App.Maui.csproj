@@ -13,6 +13,11 @@
     <!-- TODO(maui-labs): make net11.0-macos a default osx TFM, like maccatalyst, once the AppKit backend is officially supported -->
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx')) AND '$(EnableMacOSAppKit)' == 'true'">$(TargetFrameworks);net11.0-macos</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net11.0-windows10.0.22621.0</TargetFrameworks>
+    <!-- Experimental GTK4 backend (dotnet/maui-labs). Linux has no workload and no TFM of its own,
+         so the Linux app is the plain net11.0 build; opt-in, it's the only TFM without a platform -->
+    <TargetFrameworks Condition="'$(EnableLinuxGtk)' == 'true'">$(TargetFrameworks);net11.0</TargetFrameworks>
+    <!-- The one name for "this is the Linux build": the opt-in plus the TFM without a platform -->
+    <IsLinuxGtk Condition="'$(EnableLinuxGtk)' == 'true' AND '$(TargetFramework)' == 'net11.0'">true</IsLinuxGtk>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
@@ -219,6 +224,11 @@
     <PackageReference Include="Microsoft.Maui.Platforms.MacOS.BlazorWebView" />
     <PackageReference Include="OpusSharp.Core" />
     <PackageReference Include="OpusSharp.Natives" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(IsLinuxGtk)' == 'true'">
+    <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4" />
+    <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4.Essentials" />
+    <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4.BlazorWebView" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-windows'))">
 
@@ -837,6 +847,15 @@
     <MauiPlatformSpecificFolder Include="Platforms\MacOS\" TargetPlatformIdentifier="macos" BackendIdentity="macos" />
   </ItemGroup>
 
+  <!-- The same contract for a backend without a TFM of its own: Platforms\Linux compiles on the
+       neutral TFM, where MauiActiveBackend names the backend -->
+  <PropertyGroup Condition="'$(IsLinuxGtk)' == 'true'">
+    <MauiActiveBackend>gtk</MauiActiveBackend>
+  </PropertyGroup>
+  <ItemGroup>
+    <MauiPlatformSpecificFolder Include="Platforms\Linux\" BackendIdentity="gtk" />
+  </ItemGroup>
+
   <!-- NOT macOS (AppKit) -->
   <ItemGroup Condition="$(TargetFramework.Contains('-macos')) != true">
     <Compile Remove="**\*.MacOS.cs" />
@@ -886,6 +905,22 @@
     <!-- Localized Info.plist usage descriptions; the Link keeps <lang>.lproj at the bundle root,
          where the OS looks for it -->
     <BundleResource Include="Platforms\iOS\Resources\**\InfoPlist.strings" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- Linux (GTK4) -->
+  <ItemGroup Condition="'$(IsLinuxGtk)' == 'true'">
+    <!-- Tunes play through the WebView (WebTuneUI), as on macos: it fetches them from dist/sounds,
+         the folder build.mjs strips from the MAUI wwwroot -->
+    <Content Include="..\..\..\resources\sounds\converted\*.m4a" Link="wwwroot\dist\sounds\%(Filename)%(Extension)" />
+    <Content Remove="Platforms\iOS\Resources\**" />
+  </ItemGroup>
+
+  <!-- NOT Linux (GTK4) -->
+  <ItemGroup Condition="'$(IsLinuxGtk)' != 'true'">
+    <Compile Remove="**\*.Linux.cs" />
+    <None Include="**\*.Linux.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\Linux\**\*.cs" />
+    <None Include="**\Linux\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
 
   <!-- NOT Windows -->

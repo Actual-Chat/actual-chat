@@ -57,10 +57,10 @@ public sealed class MauiAuthController(IServiceProvider services) : ControllerBa
         // We never store the raw session ID in a cookie here to prevent MAUI sessions leaking to the browser.
         HttpContext.AddSessionTokenCookie(sessionToken);
         var baseUrl = HostInfo.GetAllowedBaseUrl(Request.Host.Host);
-        // Windows has no in-app browser, so it needs the close page to actually render (and
-        // script-navigate to the app scheme) rather than 302 straight to it — see CloseFlow.
+        // Windows and Linux have no in-app browser, so they need the close page to actually render
+        // (and script-navigate to the app scheme) rather than 302 straight to it — see CloseFlow.
         var mustClose = Enum.TryParse<AppKind>(appKind, true, out var parsedAppKind)
-            && parsedAppKind == AppKind.Windows;
+            && parsedAppKind is AppKind.Windows or AppKind.Linux;
         var closeFlowUrl = UrlMapper.ToAbsolute(baseUrl,
             Links.CloseFlow(flowName, mustClose, redirectUrl));
         return Redirect($"{endpoint}?returnUrl={closeFlowUrl.UrlEncode()}");

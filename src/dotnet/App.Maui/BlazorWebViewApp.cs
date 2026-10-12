@@ -43,6 +43,22 @@ public class BlazorWebViewApp
     public static BlazorWebViewAppBuilder CreateBuilder()
         => new ();
 
+    public static IServiceProvider WaitForServices(ILogger log)
+    {
+        // The WebView handlers call this from SetMauiContext, i.e. on the UI thread. MainPage
+        // attaches the WebView only once the app is ready, so this normally doesn't wait at all;
+        // it still can via MainPage.MaxAttachDelay. Blocking rather than spinning matters
+        // there - the old poll burned the core that finishes the build it was waiting for.
+        EnsureStarted();
+        if (!WhenAppReady.IsCompleted) {
+            var startedAt = CpuTimestamp.Now;
+            WhenAppReady.Wait();
+            log.LogWarning("Awaiting BlazorWebViewApp readiness blocked the UI thread for {Elapsed}",
+                (CpuTimestamp.Now - startedAt).ToShortString());
+        }
+        return Current.Services;
+    }
+
     public static void Initialize(Func<Task<BlazorWebViewApp>> initializeFactory)
     {
         lock (Lock) {
