@@ -6,6 +6,10 @@
     var m = State.Value;
     var metric = m.Summary.Metrics.FirstOrDefault(x => x.Kind == Kind);
     var labels = Labels;
+    var paceValue = m.History.Value ?? (m.History.MeasuredWords > 0 && m.History.MeasuredSeconds > 0
+        ? 60d * m.History.MeasuredWords / m.History.MeasuredSeconds : (double?)null);
+    var hasSmallSample = m.History.MeasuredWords > 0 && m.History.MeasuredWords < m.History.MinimumWords;
+    var largestWordCount = m.Words.Count > 0 ? Math.Max(1, m.Words.Max(x => x.Count)) : 1;
 }
 
 <div class="coach-skill-detail" data-metric="@Kind">
@@ -38,6 +42,159 @@
                 <i class="icon-arrow-right" aria-hidden="true"></i>
             </ButtonRound>
         </div>
+        @if (m.IsBaselineMode && m.Comparison.Baseline is { } reference) {
+            <div class="c-coverage">@L.Coach_SinceBaseline_Format(
+                reference.CapturedAt.ToDateTime().ToString("d MMM yyyy HH:mm:ss", DateFormatter))</div>
+            <div class="c-baseline-change @CoachLabels.DeltaClass(m.Delta)">@labels.RecentDeltaBadge(m.Delta)</div>
+            @if (m.Comparison.OmittedSeconds > 0) {
+                <div class="c-coverage">@L.Coach_BaselineOmitted_Format(
+                    m.Comparison.OmittedSeconds.ToString("0.#", null))</div>
+            }
+        }
+        @if (Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords) {
+            <Card Class="c-words">
+                @if (m.Words.Count == 0) {
+                    <div>@L.Coach_OccurrencesEmpty</div>
+                } else {
+                    @foreach (var chip in m.Words) {
+                        <button type="button" class="btn-word-detail" @onclick="@(() => OnWord(chip.Word))">
+                            <span class="c-word-bar" aria-hidden="true"
+                                  style="width: @((100d * chip.Count / largestWordCount).ToString("0.####", null))%">
+                            </span>
+                            <span class="c-word-label">@chip.Word</span>
+                            <span class="c-word-count">@chip.Count</span>
+                        </button>
+                    }
+                }
+            </Card>
+        } else if (m.Pace.Summary is { } coverage) {
+            <Card Class="c-distribution">
+                <div>@L.Coach_ComfortableRange_Format(m.Pace.Slow, m.Pace.Fast)</div>
+                @if (m.Pace.Distribution.WithinRate is not null) {
+                    <div class="c-distribution-explanation">@L.Coach_PaceDistributionExplanation</div>
+                    <HistogramChart Bins="@coverage.Durations" BinWidth="@coverage.BinWidth"
+                                    TargetRange="@PaceTargetRange(m.Pace)" XUnit="@L.Coach_Wpm_Format("")"
+                                    MaximumValue="@m.Pace.Distribution.TotalMilliseconds"
+                                    ValueLabel="@(x => L.Coach_Percent_Format(
+                                        (100 * x / m.Pace.Distribution.TotalMilliseconds).ToString("0.#", null)))"
+                                    BinHint="@((bin, duration) => PaceBinHint(
+                                        bin, duration, coverage.BinWidth, m.Pace.Distribution.TotalMilliseconds))"/>
+                    <div class="c-ranges c-distribution-ranges">
+                        <div>
+                            <span>@L.Coach_PaceBelow · @Percent(m.Pace.Distribution.BelowMilliseconds, m.Pace)</span>
+                            <span>@L.Coach_Wpm_Format("< " + m.Pace.Slow.ToString("0.#", null))</span>
+                            <span>@DistributionDuration(m.Pace.Distribution.BelowMilliseconds)</span>
+                        </div>
+                        <div>
+                            <span>@L.Coach_PaceWithin · @Percent(m.Pace.Distribution.WithinMilliseconds, m.Pace)</span>
+                            <span>@L.Coach_Wpm_Format(m.Pace.Slow + "–" + m.Pace.Fast)</span>
+                            <span>@DistributionDuration(m.Pace.Distribution.WithinMilliseconds)</span>
+                        </div>
+                        <div>
+                            <span>@L.Coach_PaceAbove · @Percent(m.Pace.Distribution.AboveMilliseconds, m.Pace)</span>
+                            <span>@L.Coach_Wpm_Format("> " + m.Pace.Fast.ToString("0.#", null))</span>
+                            <span>@DistributionDuration(m.Pace.Distribution.AboveMilliseconds)</span>
+                        </div>
+                    </div>
+                } else {
+                    <div>@L.Coach_PaceUnavailable</div>
+                }
+                <div class="c-coverage">@L.Coach_PaceCoverage_Format(coverage.MeasuredEntries,
+                    Percent(m.Pace.Distribution.TotalMilliseconds, coverage.AudioMilliseconds))</div>
+                @if (m.Pace.IsTruncated) {
+                    <div class="c-coverage">@L.Coach_PacePartial</div>
+                }
+            </Card>
+        } else {
+            <Card Class="c-distribution">
+                <div>@L.Coach_PaceUnavailable</div>
+                @if (m.Pace.IsTruncated) {
+                    <div class="c-coverage">@L.Coach_PacePartial</div>
+                }
+            </Card>
+        }
+        <Card Class="c-overview">
+            <div class="c-value">@(Kind == CoachMetricKind.Pace
+                ? paceValue is { } current ? HistoryValue(current) : L.Coach_PaceUnavailable
+                : m.IsBaselineMode
+                    ? (m.History.Value ?? metric?.Rate) is { } rate ? HistoryValue(rate) : L.Coach_NotEnoughSpeech
+                    : m.History.MeasuredWords == 0 || metric?.Value is null
+                        ? L.Coach_NotEnoughSpeech : labels.Value(metric))</div>
+            @if (hasSmallSample) {
+                <div class="c-provisional">@L.Coach_ProvisionalResult</div>
+                <div class="c-sample-progress">@SampleProgress(m.History)</div>
+            }
+            @if (Kind == CoachMetricKind.Pace && m.History.MeasuredWords > 0) {
+                <div class="c-coverage">@L.Coach_Words(m.History.MeasuredWords, m.History.MeasuredWords)</div>
+            }
+            @if (metric?.Rate is not null) {
+                <div class="c-rate">@labels.Rate(metric)</div>
+            }
+            @if (Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords) {
+                @if (m.Summary.TaggedWords > 0) {
+                    <div class="c-coverage">@L.Coach_DetailCount_Format(metric?.Value ?? 0, m.Summary.TaggedWords)</div>
+                }
+                @if (metric?.Chips.Count > 0) {
+                    <div class="c-explanation">@labels.Explain(Kind, m.Language, m.Summary)</div>
+                }
+            } else {
+                <div class="c-explanation">@L.Coach_PaceDetailExplanation</div>
+            }
+        </Card>
+        <Card Class="c-history">
+            <h3>@L.Coach_SpeakingDays</h3>
+            @if (m.History.MinimumWords > 0) {
+                <div class="c-coverage">@L.Coach_HistoryMinimumWords_Format(m.History.MinimumWords)</div>
+            }
+            @if (m.History.MeasuredWords > 0) {
+                <div class="c-coverage">@L.Coach_Words(m.History.MeasuredWords, m.History.MeasuredWords)</div>
+            }
+            @if (m.History.Value is { } value) {
+                <div class="c-history-value">@HistoryValue(value)</div>
+                @if (Kind == CoachMetricKind.Pace) {
+                    <div class="c-coverage">@L.Coach_SegmentPace</div>
+                }
+            }
+            @if (m.History.Days.Count == 0) {
+                <div class="c-coverage">
+                    @if (Kind == CoachMetricKind.Pace && m.Pace.Summary is null) {
+                        @L.Coach_PaceUnavailable
+                    } else {
+                        @if (m.Selection.Period == CoachHistoryPeriod.Day && hasSmallSample) {
+                            @SampleProgress(m.History)
+                        } else {
+                            @L.Coach_NotEnoughSpeech <span>· @L.Coach_HistorySparse</span>
+                        }
+                    }
+                </div>
+            }
+            @if (m.History.Days.Count > 0 || Kind == CoachMetricKind.Pace && PaceTargetRange(m.Pace) is not null) {
+                <div class="c-chart">
+                    @if (Kind == CoachMetricKind.Pace) {
+                        <LineChart Items="@HistoryItems(m)" ItemClick="@OnDay" Class="c-pace-chart" ScaleStep="50"
+                                   TargetRange="@PaceTargetRange(m.Pace)" ReferenceValue="@BaselineChartValue(m)"/>
+                        @if (PaceTargetRange(m.Pace) is not null) {
+                            <div class="c-range-legend c-coverage">
+                                <span class="c-target-key" aria-hidden="true"></span>
+                                @L.Coach_ComfortableRange_Format(m.Pace.Slow, m.Pace.Fast)
+                            </div>
+                        }
+                    } else {
+                        <BarChart Items="@HistoryItems(m)" ShowValues="true" ShowZeroValues="true"
+                                  ValueFormat="0.#" ItemClick="@OnDay" Class="c-speaking-chart"
+                                  ReferenceValue="@BaselineChartValue(m)" Maximum="@BaselineChartValue(m)"/>
+                    }
+                    @if (m.Comparison.Baseline is { InvalidatedAt: null, MeasurementVersion: 1 } chartBaseline) {
+                        <div class="c-range-legend c-coverage">
+                            <span class="c-baseline-key" aria-hidden="true"></span>
+                            @L.Coach_PersonalBaseline · @PeriodDates(chartBaseline.SourceRange)
+                            · @HistoryValue(chartBaseline.Value)
+                        </div>
+                    }
+                </div>
+                <div class="c-coverage">@L.Coach_HistoryDates</div>
+            }
+        </Card>
         <Card Class="c-baseline">
             <h3>@L.Coach_PersonalBaseline</h3>
             <div class="c-coverage">@L.Coach_BaselineReference</div>
@@ -76,99 +233,16 @@
                         IsDisabled="@(!m.CanSaveBaseline)">@L.Common_Save</Button>
                 <Button Click="@OnCancelBaseline" Class="btn-text">@L.Common_Cancel</Button>
             } else {
+                @if (!m.CanSaveBaseline && m.History.MinimumWords > 0 && !m.IsBaselineMode) {
+                    <div class="c-sample-progress">@SampleProgress(m.History)</div>
+                }
                 <Button Click="@OnPreviewBaseline" Class="btn-text btn-preview-baseline"
                         IsDisabled="@(!m.CanSaveBaseline)">
                     @(m.Comparison.Baseline is null ? L.Coach_UseMeasurements : L.Coach_ReplaceBaseline)
                 </Button>
             }
         </Card>
-        @if (m.IsBaselineMode && m.Comparison.Baseline is { } reference) {
-            <div class="c-coverage">@L.Coach_SinceBaseline_Format(
-                reference.CapturedAt.ToDateTime().ToString("d MMM yyyy HH:mm:ss", DateFormatter))</div>
-            <div class="c-baseline-change @CoachLabels.DeltaClass(m.Delta)">@labels.RecentDeltaBadge(m.Delta)</div>
-            @if (m.Comparison.OmittedSeconds > 0) {
-                <div class="c-coverage">@L.Coach_BaselineOmitted_Format(
-                    m.Comparison.OmittedSeconds.ToString("0.#", null))</div>
-            }
-        }
-        <Card Class="c-overview">
-            <div class="c-value">@(m.IsBaselineMode
-                ? m.History.Value is { } current ? HistoryValue(current) : L.Coach_NotEnoughSpeech
-                : metric?.Value is null ? L.Coach_NotEnoughSpeech : labels.Value(metric))</div>
-            @if (metric?.Rate is not null) {
-                <div class="c-rate">@labels.Rate(metric)</div>
-            }
-            @if (Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords) {
-                @if (m.Summary.TaggedWords > 0) {
-                    <div class="c-coverage">@L.Coach_DetailCount_Format(metric?.Value ?? 0, m.Summary.TaggedWords)</div>
-                }
-                @if (metric?.Chips.Count > 0) {
-                    <div class="c-explanation">@labels.Explain(Kind, m.Language, m.Summary)</div>
-                }
-            } else {
-                <div class="c-explanation">@L.Coach_PaceDetailExplanation</div>
-            }
-        </Card>
-        <Card Class="c-history">
-            <h3>@L.Coach_SpeakingDays</h3>
-            @if (m.History.MinimumWords > 0) {
-                <div class="c-coverage">@L.Coach_HistoryMinimumWords_Format(m.History.MinimumWords)</div>
-            }
-            @if (m.History.Value is { } value) {
-                <div class="c-history-value">@HistoryValue(value)</div>
-                @if (Kind == CoachMetricKind.Pace) {
-                    <div class="c-coverage">@L.Coach_SegmentPace</div>
-                }
-                <div class="c-coverage">@L.Coach_Words(m.History.MeasuredWords, m.History.MeasuredWords)</div>
-            }
-            @if (m.History.Days.Count == 0) {
-                <div class="c-coverage">@L.Coach_NotEnoughSpeech · @L.Coach_HistorySparse</div>
-            } else {
-                <div class="c-chart">
-                    <BarChart Items="@HistoryItems(m)" ShowValues="true" ShowZeroValues="true"
-                              ValueFormat="0.#" ItemClick="@OnDay" Class="c-speaking-chart"
-                              ReferenceValue="@BaselineChartValue(m)" Maximum="@BaselineChartValue(m)"/>
-                    @if (m.Comparison.Baseline is { InvalidatedAt: null, MeasurementVersion: 1 } chartBaseline) {
-                        <div class="c-coverage">@L.Coach_PersonalBaseline · @PeriodDates(chartBaseline.SourceRange)
-                            · @HistoryValue(chartBaseline.Value)</div>
-                    }
-                </div>
-                <div class="c-coverage">@L.Coach_HistoryDates</div>
-            }
-        </Card>
-        @if (Kind is CoachMetricKind.Fillers or CoachMetricKind.WeakWords) {
-            <Card Class="c-words">
-                @if (m.Words.Count == 0) {
-                    <div>@L.Coach_OccurrencesEmpty</div>
-                } else {
-                    @foreach (var chip in m.Words) {
-                        <button type="button" class="btn-word-detail" @onclick="@(() => OnWord(chip.Word))">
-                            <span>@chip.Word</span>
-                            <span>@chip.Count</span>
-                        </button>
-                    }
-                }
-            </Card>
-        } else if (m.Pace.Summary is { } coverage) {
-            <Card Class="c-distribution">
-                <div>@L.Coach_ComfortableRange_Format(m.Pace.Slow, m.Pace.Fast)</div>
-                @if (m.Pace.Distribution.WithinRate is { } rate) {
-                    <div class="c-value">@L.Coach_Percent_Format((100 * rate).ToString("0.#", null))</div>
-                    <BarChart Items="@DistributionItems(m.Pace)" ShowValues="true" ValueFormat="0.#"/>
-                    <div class="c-ranges">
-                        <span>@L.Coach_PaceBelow · @Percent(m.Pace.Distribution.BelowMilliseconds, m.Pace)</span>
-                        <span>@L.Coach_PaceWithin · @Percent(m.Pace.Distribution.WithinMilliseconds, m.Pace)</span>
-                        <span>@L.Coach_PaceAbove · @Percent(m.Pace.Distribution.AboveMilliseconds, m.Pace)</span>
-                    </div>
-                } else {
-                    <div>@L.Coach_PaceUnavailable</div>
-                }
-                <div class="c-coverage">@L.Coach_PaceCoverage_Format(coverage.MeasuredEntries,
-                    Percent(m.Pace.Distribution.TotalMilliseconds, coverage.AudioMilliseconds))</div>
-                @if (m.Pace.IsTruncated) {
-                    <div class="c-coverage">@L.Coach_PacePartial</div>
-                }
-            </Card>
+        @if (Kind == CoachMetricKind.Pace && m.Pace.Summary is not null) {
             @if (m.Pace.Moments.Count == ICoach.MaxOccurrences) {
                 <div class="c-coverage">@L.Coach_OccurrencesLimit_Format(ICoach.MaxOccurrences)</div>
             }
@@ -189,14 +263,8 @@
                     </Button>
                 </Card>
             }
-        } else {
-            <Card Class="c-distribution">
-                <div>@L.Coach_PaceUnavailable</div>
-                @if (m.Pace.IsTruncated) {
-                    <div class="c-coverage">@L.Coach_PacePartial</div>
-                }
-            </Card>
         }
+
     }
 </div>
 
@@ -366,21 +434,27 @@
             ? Hub.CoachUI.JumpTo(item.Moment, CancellationToken.None)
             : Hub.CoachUI.JumpTo(item.Moment.Occurrence, CancellationToken.None, play: false);
 
+    private string SampleProgress(CoachSkillHistory history)
+        => L.Coach_MeasurementProgress_Format(history.MeasuredWords, history.MinimumWords,
+            Math.Max(0, history.MinimumWords - history.MeasuredWords));
+
     private string Percent(long milliseconds, CoachPaceDetails pace)
         => Percent(milliseconds, pace.Distribution.TotalMilliseconds);
 
     private string Percent(long milliseconds, long total)
         => L.Coach_Percent_Format((total > 0 ? 100d * milliseconds / total : 0).ToString("0.#", null));
 
-    private IReadOnlyList<ChartItem> DistributionItems(CoachPaceDetails pace)
-        => [
-            new ChartItem(L.Coach_PaceBelow, 100d * pace.Distribution.BelowMilliseconds
-                / pace.Distribution.TotalMilliseconds, "text-03"),
-            new ChartItem(L.Coach_PaceWithin, 100d * pace.Distribution.WithinMilliseconds
-                / pace.Distribution.TotalMilliseconds, "text-success"),
-            new ChartItem(L.Coach_PaceAbove, 100d * pace.Distribution.AboveMilliseconds
-                / pace.Distribution.TotalMilliseconds, "text-warning"),
-        ];
+    private static Range<double>? PaceTargetRange(CoachPaceDetails pace)
+        => pace.Fast > pace.Slow ? new Range<double>(pace.Slow, pace.Fast) : null;
+
+    private string PaceBinHint(int bin, long milliseconds, int width, long total)
+        => L.Coach_Wpm_Format((long)bin * width + "–<" + ((long)bin + 1) * width)
+            + " · " + Percent(milliseconds, total) + " · " + DistributionDuration(milliseconds);
+
+    private string DistributionDuration(long milliseconds)
+        => milliseconds >= 60_000
+            ? L.Duration_Minutes_Format((milliseconds / 60_000d).ToString("0.#", null))
+            : L.Coach_Seconds_Format((milliseconds / 1_000d).ToString("0.#", null));
 
     public sealed record MomentItem(CoachPaceMoment Moment, string ChatTitle, string Text, bool CanReplay);
 
