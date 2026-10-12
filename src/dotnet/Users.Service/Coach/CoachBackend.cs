@@ -47,6 +47,30 @@ public class CoachBackend(IServiceProvider services)
             .ToApiArray();
     }
 
+    public virtual async Task<ApiArray<CoachDay>> ListHistoryDays(
+        UserId userId, Range<Moment> range, string language, CancellationToken cancellationToken)
+    {
+        var days = await ListDays(userId, range, language, cancellationToken).ConfigureAwait(false);
+        var lastDay = UsageDay.DayOf(range.End);
+        if (lastDay == range.End)
+            return days;
+
+        var start = lastDay.ToDateTimeClamped();
+        var end = range.End.ToDateTimeClamped();
+        var iso = Language.GetIsoCode(language);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var rows = await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry)
+            .Where(e => !e.IsRemoved && !e.IsExcluded && e.OccurredAt >= start && e.OccurredAt < end)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var records = rows.Select(r => r.ToModel())
+            .Where(r => r.Entry?.Language is { } l && Language.GetIsoCode(l) == iso);
+        var partial = CoachDayBuilder.BuildAll(lastDay, records, Settings.Coach.MinVocabularyWords);
+        return days.Where(d => d.Day < lastDay).Concat(partial).ToApiArray();
+    }
+
     // [ComputeMethod]
     public virtual async Task<ApiArray<CoachConversation>> ListConversations(
         UserId userId, int count, string? language, CancellationToken cancellationToken)

@@ -749,6 +749,46 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     }
 
     [Fact(Timeout = 90_000)]
+    public async Task SkillHistoryShouldShowCleanZeroAndSupportCalendarAndDaySelection()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-skill-history");
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        await PostVoice(tester, chatId, string.Join(" ", Enumerable.Repeat("word", 300)));
+        var cut = tester.Render<CoachSkillDetail>(p => p.Add(x => x.Kind, CoachMetricKind.Fillers)
+            .Add(x => x.Language, "en").Add(x => x.Window, CoachWindow.Days7));
+        InitializeHub(tester, hub, cut.Instance);
+
+        // act
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".c-history .btn-chart-item .c-value").TextContent.Should().Be("0");
+            cut.Find(".c-history-value").TextContent.Should().Be("0%");
+        });
+        await cut.InvokeAsync(() => cut.FindAll(".c-periods .chip")[2].Click());
+
+        // assert
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".c-periods .chip.on").TextContent.Should().Be("Month");
+            cut.Find(".c-calendar").TextContent.Should().Contain("UTC");
+            cut.FindAll(".c-calendar button")[1].HasAttribute("disabled").Should().BeTrue();
+            cut.FindAll(".c-history .btn-chart-item").Should().ContainSingle();
+        });
+        await cut.InvokeAsync(() => cut.Find(".c-history .btn-chart-item").Click());
+        await TestWait.WhenRendered(cut, () => cut.Find(".c-periods .chip.on").TextContent.Should().Be("Day"));
+        await cut.InvokeAsync(() => cut.FindAll(".c-calendar button")[0].Click());
+        await TestWait.WhenRendered(cut, () => {
+            cut.FindAll(".c-history .btn-chart-item").Should().BeEmpty();
+            cut.FindAll(".c-calendar button")[1].HasAttribute("disabled").Should().BeFalse();
+        });
+    }
+
+    [Fact(Timeout = 90_000)]
     public async Task PaceDetailsShouldShowExactPercentagesInsteadOfHistogramEstimates()
     {
         // arrange
