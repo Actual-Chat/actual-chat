@@ -118,6 +118,7 @@ b app run windows --package              # ... packaged (MSIX): installs, then l
 b app run windows --release --aot        # Windows, Native AOT
 b app run mac                            # native AppKit app; --catalyst for Mac Catalyst
 b app build linux                        # the GTK app, self-contained; a cross-build off Linux
+b app pack linux                         # the GTK app as a .tar.gz, as CI builds it
 b app pack android --prod                # the .aab you upload to Play Console
 b app pack macos --universal             # the AppKit .pkg as CI builds it (arm64 + x64)
 ```
@@ -200,6 +201,13 @@ has the `wwwroot` the WebView serves - and it works on macOS and Windows as a cr
 `linux-x64`; on Linux it targets the host's CPU. `b app run linux` starts the executable, so it
 needs Linux, and `b app install linux` is rejected: there is nothing to install.
 
+`b app pack linux` runs the `pack-linux` target CI uses: the same Release publish, then the
+folder as `artifacts/publish/App.Maui/<app id>-linux-<arch>.tar.gz`, with the app id as the
+root folder. CI uploads that tarball on every `dev` and release push as the
+`<app id>.<version>.linux-x64.tar.gz` artifact of the "Build test and deploy" workflow. A
+tarball rather than the folder because the artifact zip drops the executable bit - which is
+also why packing is rejected on Windows, where the files have none to keep.
+
 ### iOS and macOS
 
 These delegate to `scripts/run-ios.sh` (a device, or a simulator with `--simulator`),
@@ -258,9 +266,10 @@ default              e2e-tests           generate-version    integration-tests
 integration-tests-chat                   integration-tests-core
 integration-tests-mlsearch               integration-tests-users
 maui                 nightly-tests       npm-build           npm-install
-pack-android         pack-ios            pack-mac            pack-maccatalyst
-pack-win             restore             restore-tools       slnf
-slow-tests           tests               unit-tests          watch
+pack-android         pack-ios            pack-linux          pack-mac
+pack-maccatalyst     pack-win            restore             restore-tools
+slnf                 slow-tests          tests               unit-tests
+watch
 ```
 
 These accept the target-level options: `--configuration`, `--is-dev-maui`,
@@ -296,7 +305,7 @@ b
 │   ├── build  Build (or publish) the app, without installing it
 │   │   └── (same arguments and options as `app run`)
 │   └── pack  Build the store package (App Store / Play Store / MS Store)
-│       ├── <PLATFORM> (Android|Ios|Windows|Mac|Linux)  android | ios | windows | mac (or macos)
+│       ├── <PLATFORM> (Android|Ios|Windows|Mac|Linux)  android | ios | windows | mac (or macos) | linux
 │       ├── --prod  Pack the production app (IsDevMaui=false): voxt.ai instead of dev.voxt.ai
 │       ├── --aot  Build with Native AOT (currently wired for ios only)
 │       └── --dry-run  Print the commands that would run, without running them
