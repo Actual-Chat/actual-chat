@@ -161,7 +161,7 @@ body.device-ios * {
     --sheen-gloss: 0.18;
 }
 :where(.theme-dark) .btn.btn-danger,
-:where(.theme-light, .theme-ash) .btn:is(.btn-primary, .btn-danger) {
+:where([class~="theme-light"], .theme-ash) .btn:is(.btn-primary, .btn-danger) {
     --sheen-level: 2.25;
     --sheen-gloss: 0.22;
 }

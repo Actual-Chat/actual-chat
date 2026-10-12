@@ -24,7 +24,7 @@
 .dub-voice-modal details.main-collapsed > summary.c-summary > .c-section-title {
     @apply px-0 pt-0;
 }
-.dub-voice-modal .btn-preview i.animate-spin {
+.dub-voice-modal .btn-preview i[class~="animate-spin"] {
     @apply text-03;
 }
 /* Narrow: fill the dialog body down to the safe area (grow + min-h-0 so it scrolls

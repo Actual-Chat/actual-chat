@@ -35,6 +35,6 @@
 .phone-verifier .verification-status i {
     @apply text-pal-orange-60;
 }
-.phone-verifier .verification-status i.text-success {
+.phone-verifier .verification-status i[class~="text-success"] {
     @apply text-[var(--success)];
 }

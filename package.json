@@ -3,13 +3,14 @@
   "license": "UNLICENSED",
   "scripts": {
     "build:Debug": "tsc --noEmit && node build.mjs",
-    "build:Verify": "tsc --noEmit && npm run lint:all && node build.mjs",
-    "build:Release": "tsc --noEmit && npm run lint && node build.mjs --production",
+    "build:Verify": "tsc --noEmit && npm run lint:all && npm run lint:css && node build.mjs",
+    "build:Release": "tsc --noEmit && npm run lint && npm run lint:css && node build.mjs --production",
     "bundle-report": "node build.mjs --production --analyze",
     "watch": "node build.mjs --watch",
     "images:kitties": "node scripts/generate-svg-variants.mjs",
     "images:kitties:check": "node scripts/generate-svg-variants.mjs --check",
     "test:svg-variants": "node --test scripts/generate-svg-variants.test.mjs",
+    "test:css-selectors": "node --test scripts/check-css-selectors.test.mjs",
     "font": "svgtofont --sources ./src/nodejs/icons --output ./src/nodejs/fonts/svgtofont",
     "test:unit": "vitest run --config vitest.config.ts",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
@@ -20,6 +21,7 @@
     "typecheck:video-load": "tsc -p src/nodejs/app.video-load-test/tsconfig.json --noEmit",
     "lint": "eslint \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\"",
     "lint:all": "eslint --no-error-on-unmatched-pattern \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\"",
+    "lint:css": "node scripts/check-css-selectors.mjs",
     "lint:fix": "eslint --fix --no-error-on-unmatched-pattern \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\""
   },
   "devDependencies": {
