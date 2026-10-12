@@ -1182,17 +1182,3 @@
 .theme-dark {
     --sheen-surface: 0;
 }
-/* The levels a button takes per theme: on the primary fill, and on the theme's surface (square, round,
-   outline), which in the dark theme is a dark fill that needs the medium level to show at all. */
-:root, .theme-light, .theme-ash {
-    --btn-sheen-level-primary: 2.25;
-    --btn-sheen-gloss-primary: 0.22;
-    --btn-sheen-level-surface: 1;
-    --btn-sheen-gloss-surface: 0.08;
-}
-.theme-dark {
-    --btn-sheen-level-primary: 1.5;
-    --btn-sheen-gloss-primary: 0.18;
-    --btn-sheen-level-surface: 1.5;
-    --btn-sheen-gloss-surface: 0.18;
-}

@@ -460,9 +460,6 @@ What to write instead:
 - **A state of your own**: a class the component owns (`.collapsed`, `.no-destination`) or a `data-`
   attribute, set by the same code that would have set the utility. For "the container has such a
   child", use [presence attributes](#presence-attributes).
-- **A custom property**, when the rule varies by theme: `.theme-light` is applied too, to make a
-  subtree light. The theme block in `colors.css` sets the token (`--btn-sheen-level-primary`) and the
-  rule reads it, so it never names a theme.
 
 Not `[class~="hidden"]`: it matches the same elements and the build leaves it alone, but it still
 couples the rule to a utility name, and it is nothing anyone expects to read in a stylesheet.
