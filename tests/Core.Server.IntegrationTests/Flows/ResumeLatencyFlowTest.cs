@@ -23,6 +23,8 @@ public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITes
 {
     // Resumes are staged 1s ahead: one miss is a busy runner, several are a regression
     private static readonly TimeSpan MaxTypicalDelay = TimeSpan.FromSeconds(3);
+    // A loaded build agent misses two of five budgets in about a quarter of runs, but never three
+    private static readonly int MaxMissedBudgets = TestRunnerInfo.IsBuildAgent() ? 2 : 1;
     private static readonly TimeSpan StallDelay = TimeSpan.FromSeconds(10);
 
     protected override async Task InitializeAsync()
@@ -41,9 +43,10 @@ public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITes
         var delays = await RunFlow();
 
         // assert
-        delays.Count(x => x >= MaxTypicalDelay).Should().BeLessThanOrEqualTo(1,
-            "at most one resume may miss its budget when DelayQuanta=0");
-        delays.Max().Should().BeLessThan(StallDelay, "no resume may stall");
+        var delaysText = delays.Select(x => x.ToShortString()).ToDelimitedString();
+        delays.Count(x => x >= MaxTypicalDelay).Should().BeLessThanOrEqualTo(MaxMissedBudgets,
+            $"at most {MaxMissedBudgets} resumes may miss their budget when DelayQuanta=0 (delays: {delaysText})");
+        delays.Max().Should().BeLessThan(StallDelay, $"no resume may stall (delays: {delaysText})");
     }
 
     private async Task<TimeSpan[]> RunFlow()
