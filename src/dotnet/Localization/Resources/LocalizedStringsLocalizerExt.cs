@@ -2331,6 +2331,10 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_PaceUnavailable => l["Coach_PaceUnavailable"].Value;
         public string Coach_PaceBelow => l["Coach_PaceBelow"].Value;
         public string Coach_PaceWithin => l["Coach_PaceWithin"].Value;
+        public string Coach_PaceDistributionExplanation => l["Coach_PaceDistributionExplanation"].Value;
+        public string Coach_ProvisionalResult => l["Coach_ProvisionalResult"].Value;
+        public string Coach_MeasurementProgress_Format(object arg0, object arg1, object arg2)
+            => l["Coach_MeasurementProgress_Format", arg0, arg1, arg2].Value;
         public string Coach_PaceAbove => l["Coach_PaceAbove"].Value;
         public string Coach_PaceCoverage_Format(object arg0, object arg1)
             => l["Coach_PaceCoverage_Format", arg0, arg1].Value;

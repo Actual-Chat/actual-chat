@@ -236,7 +236,10 @@ body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
 .coach-skill-detail .c-rate,
 .coach-skill-detail .c-coverage,
 .coach-skill-detail .c-ranges,
-.coach-skill-detail .c-explanation { @apply text-caption text-02; }
+.coach-skill-detail .c-explanation,
+.coach-skill-detail .c-distribution-explanation,
+.coach-skill-detail .c-provisional,
+.coach-skill-detail .c-sample-progress { @apply text-caption text-02; }
 .coach-skill-detail .c-ranges {
     @apply flex-y gap-y-1;
 }
@@ -267,6 +270,20 @@ body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
     @apply overflow-x-auto;
     @apply py-2;
 }
+.coach-skill-detail .c-pace-chart { @apply w-full; }
+.coach-skill-detail .c-range-legend { @apply flex-x items-center gap-x-2 pt-2; }
+.coach-skill-detail .c-target-key {
+    @apply flex-none w-4 h-3 rounded-sm border;
+    background: color-mix(in srgb, var(--emerald-50) 15%, transparent);
+    border-color: var(--emerald-30);
+}
+.theme-dark .coach-skill-detail .c-target-key { border-color: var(--emerald-50); }
+.coach-skill-detail .c-baseline-key {
+    @apply flex-none w-4 border-t-2 border-dashed;
+    border-color: var(--text-02);
+}
+.coach-skill-detail .c-ranges.c-distribution-ranges { @apply grid grid-cols-3 gap-3; }
+.coach-skill-detail .c-distribution-ranges > div { @apply flex-y gap-y-1 min-w-0; }
 .coach-skill-detail .c-speaking-chart {
     --bar-chart-label-height: 1.5rem;
     --bar-chart-value-height: 1.25rem;
@@ -289,10 +306,17 @@ body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
     @apply p-4;
 }
 .coach-skill-detail .btn-word-detail {
+    @apply relative min-h-10 px-2 rounded overflow-hidden;
     @apply flex-x items-center justify-between gap-x-2;
     @apply py-2;
     @apply text-body text-01;
 }
+.coach-skill-detail .c-word-bar {
+    @apply absolute inset-y-1 left-0 rounded pointer-events-none;
+    background: color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.coach-skill-detail .c-word-label { @apply relative min-w-0 break-words text-left; overflow-wrap: anywhere; }
+.coach-skill-detail .c-word-count { @apply relative shrink-0; }
 .coach-skill-detail .btn-word-detail:focus-visible,
 .coach-skill .btn-skill-detail:focus-visible {
     @apply outline outline-2 outline-primary;

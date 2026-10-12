@@ -738,6 +738,13 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             cut.Find(".coach-skill-detail .c-rate").TextContent.Should().Contain("%");
             cut.Find(".coach-skill-detail .c-overview .c-coverage").TextContent.Should().Contain("words analyzed");
             cut.Find(".btn-word-detail").TextContent.Should().Contain(word);
+            cut.FindAll(".coach-skill-detail > .card")[0].ClassList.Should().Contain("c-words");
+            cut.FindAll(".coach-skill-detail > .card")[2].ClassList.Should().Contain("c-history");
+            cut.FindAll(".coach-skill-detail > .card")[3].ClassList.Should().Contain("c-baseline");
+            cut.Find(".btn-word-detail .c-word-bar").GetAttribute("style").Should().Contain("width:");
+            cut.Find(".c-provisional").TextContent.Should().Contain("Provisional");
+            cut.Find(".c-overview .c-sample-progress").TextContent.Should().Contain("/ 200");
+            cut.Find(".btn-preview-baseline").HasAttribute("disabled").Should().BeTrue();
         });
         await cut.InvokeAsync(() => cut.Find(".btn-word-detail").Click());
         await TestWait.WhenRendered(cut, () => cut.Find(".coach-occurrences .c-context")
@@ -837,6 +844,42 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         });
     }
 
+    [Fact(Timeout = 60_000)]
+    public async Task PaceDetailsWithoutMeasurementsShouldShowTheTargetWithoutInventingPoints()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-pace-unavailable");
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        var (chatId, _) = await tester.CreateChat(true);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        await OptIn(tester);
+        var entry = await PostVoice(tester, chatId, string.Join(" ", Enumerable.Repeat("word", 300)));
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        await TestWait.When(async ct => {
+            var analysis = await backend.Get(entry.Id, ct);
+            analysis!.TagState.Should().Be(CoachTagState.Tagged);
+            analysis.Pace.Should().BeNull();
+        });
+
+        // act
+        var cut = tester.Render<CoachSkillDetail>(p => p.Add(x => x.Kind, CoachMetricKind.Pace)
+            .Add(x => x.Language, "en").Add(x => x.Window, CoachWindow.Days7));
+        InitializeHub(tester, hub, cut.Instance);
+
+        // assert
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".line-chart .c-target");
+            cut.FindAll(".line-chart .btn-chart-point, .line-chart .c-line").Should().BeEmpty();
+            cut.Find(".c-history").TextContent.Should().Contain("not available");
+            cut.Find(".c-range-legend").TextContent.Should().Contain("Comfortable:");
+            cut.Find(".c-overview .c-value").TextContent.Should().Contain("not available");
+            cut.Find(".btn-preview-baseline").HasAttribute("disabled").Should().BeTrue();
+        });
+    }
+
     [Fact(Timeout = 90_000)]
     public async Task PaceDetailsShouldShowExactPercentagesInsteadOfHistogramEstimates()
     {
@@ -859,10 +902,12 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         });
         var measured = analysis with {
             Version = analysis.Version + 1,
-            Pace = new SpeechPaceMeasurement(1, 60_000, new SpeechPaceAnalysis([
+            BeginsAt = UsageDay.DayOf(appHost.Services.Clocks().SystemClock.Now)
+                - TimeSpan.FromDays(7) + TimeSpan.FromHours(12),
+            Pace = new SpeechPaceMeasurement(1, 70_000, new SpeechPaceAnalysis([
                 new SpeechPaceSegment((0, 424), (0, 30_000), 85),
                 new SpeechPaceSegment((425, 854), (30_000, 60_000), 86),
-            ], 171, 0, 0, 0, 0, 0)),
+            ], 171, 0, 0, 0, 0, 10_000)),
         };
         await tester.Commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(measured), false));
 
@@ -870,14 +915,71 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         var cut = tester.Render<CoachSkillDetail>(p => p.Add(x => x.Kind, CoachMetricKind.Pace)
             .Add(x => x.Language, "en").Add(x => x.Window, CoachWindow.Days7));
         InitializeHub(tester, hub, cut.Instance);
+        await cut.InvokeAsync(() => cut.Find(".c-calendar button").Click());
 
         // assert
         await TestWait.WhenRendered(cut, () => {
-            cut.Find(".c-distribution .c-value").TextContent.Should().Be("50%");
-            cut.Find(".c-ranges").TextContent.Should().Contain("Above range · 50%");
-            cut.Find(".c-distribution .c-coverage").TextContent.Should().Contain("100%");
-            cut.Find(".c-moment-head").TextContent.Should().Contain("172");
+            cut.Find(".c-overview .c-value").TextContent.Should().Contain("171");
+            cut.Find(".c-provisional").TextContent.Should().Contain("Provisional");
+            cut.Find(".c-overview .c-sample-progress").TextContent.Should().Contain("171 / 200")
+                .And.Contain("29 more");
+            cut.Find(".btn-preview-baseline").HasAttribute("disabled").Should().BeTrue();
+            cut.FindAll(".line-chart .btn-chart-point").Should().BeEmpty();
+            cut.FindAll(".coach-skill-detail > .card")[0].ClassList.Should().Contain("c-distribution");
+            cut.FindAll(".coach-skill-detail > .card")[2].ClassList.Should().Contain("c-history");
+            cut.FindAll(".coach-skill-detail > .card")[3].ClassList.Should().Contain("c-baseline");
         });
+
+        var secondEntry = await PostVoice(tester, chatId, text);
+        var secondAnalysis = await TestWait.When(async ct => {
+            var result = await backend.Get(secondEntry.Id, ct);
+            result!.TagState.Should().Be(CoachTagState.Tagged);
+            return result;
+        });
+        var secondMeasured = secondAnalysis with {
+            Version = secondAnalysis.Version + 1,
+            BeginsAt = measured.BeginsAt,
+            Pace = measured.Pace,
+        };
+        var recordCmd = new CoachBackend_Record(account.Id, CoachRecord.FromEntry(secondMeasured), false);
+        await tester.Commander.Call(recordCmd);
+
+        // assert
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".c-overview .c-value").TextContent.Should().Contain("171");
+            cut.FindAll(".c-provisional").Should().BeEmpty();
+            cut.Find(".c-distribution-ranges > div:nth-child(2)").TextContent.Should().Contain("50%");
+            cut.Find(".c-distribution-explanation").TextContent.Should().Contain("each pace");
+            cut.Find(".line-chart .c-target-bound.c-upper").TextContent.Trim().Should().Be("170");
+            cut.Find(".line-chart .c-target-bound.c-lower").TextContent.Trim().Should().Be("130");
+            cut.Find(".c-ranges").TextContent.Should().Contain("Above range · 50%");
+            cut.Find(".c-distribution .c-coverage").TextContent.Should().Contain("85.7%");
+            cut.Find(".c-moment-head").TextContent.Should().Contain("172");
+            cut.Find(".line-chart .c-target");
+            cut.FindAll(".line-chart .btn-chart-point").Should().ContainSingle();
+            cut.Find(".c-range-legend").TextContent.Should().Contain("Comfortable:");
+            cut.FindAll(".histogram-chart .c-bin").Should().ContainSingle();
+            cut.Find(".histogram-chart .c-bin").GetAttribute("data-value").Should().Be("120000");
+            cut.Find(".histogram-chart .c-bin").GetAttribute("aria-label").Should().Contain("100%");
+            cut.FindAll(".histogram-chart .c-y-axis span").Select(x => x.TextContent)
+                .Should().Equal("100%", "50%", "0%");
+            cut.Find(".histogram-chart .c-bounds").TextContent.Should().Contain("130–170");
+            cut.FindAll(".c-distribution-strip").Should().BeEmpty();
+            cut.FindAll(".c-distribution .bar-chart").Should().BeEmpty();
+        });
+        await cut.InvokeAsync(() => cut.Find(".btn-preview-baseline").Click());
+        await TestWait.WhenRendered(cut, () => cut.Find(".btn-save-baseline"));
+        await cut.InvokeAsync(() => cut.Find(".btn-save-baseline").Click());
+        await TestWait.WhenRendered(cut, () => cut.Find(".c-baseline .chip.on"));
+        await cut.InvokeAsync(() => cut.Find(".c-baseline .chip").Click());
+        await TestWait.WhenRendered(cut, () => {
+            cut.Find(".line-chart .c-target");
+            cut.Find(".line-chart .c-reference");
+            cut.FindAll(".line-chart .btn-chart-point").Should().ContainSingle();
+            cut.FindAll(".c-range-legend").Should().HaveCount(2);
+        });
+        await cut.InvokeAsync(() => cut.Find(".line-chart .btn-chart-point").Click());
+        await TestWait.WhenRendered(cut, () => cut.Find(".c-periods .chip.on").TextContent.Should().Be("Day"));
     }
 
     [Theory(Timeout = 60_000)]
