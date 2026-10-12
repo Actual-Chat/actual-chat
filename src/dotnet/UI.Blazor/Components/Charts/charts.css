@@ -10,7 +10,6 @@
 .bar-chart { @apply relative flex-x items-end gap-x-1 h-32; }
 .bar-chart .c-reference {
     @apply absolute left-0 right-0 border-t border-dashed opacity-60 pointer-events-none;
-    margin-bottom: 1.25rem;
 }
 .bar-chart .c-column { @apply relative flex-1 flex-y items-center gap-y-1 h-full; }
 .bar-chart .btn-chart-item:focus-visible { @apply outline outline-2 outline-primary; }
