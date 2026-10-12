@@ -7,7 +7,7 @@
 @if (m.IsVisible) {
     <TileItem Class="c-coach-toggle" Click="@(() => OnToggle(!m.IsOn))">
         <Icon><i class="text-2xl icon-ai-stars @(m.IsOn ? "text-primary" : "text-03")"></i></Icon>
-        <Content>@(IsPlace ? L.Coach_CoachInPlace : L.Coach_CoachMeHere)</Content>
+        <Content>@(IsPlace ? L.Coach_CoachInPlace : L.Coach_CoachInChat)</Content>
         <Caption>@Caption(m)</Caption>
         <Right><Toggle IsChecked="@m.IsOn" IsCheckedChanged="@OnToggle"/></Right>
     </TileItem>

@@ -44,10 +44,13 @@
     }
     @if (IsHeadline) {
         @if (!IsFocus) {
-            <a class="c-focus-link" @onclick="@(() => FocusClick.InvokeAsync(m.Kind))">@L.Coach_MakeFocus</a>
-        } else if (IsFocusOverridden) {
-            <a class="c-focus-link c-focus-clear"
-               @onclick="@(() => FocusClear.InvokeAsync(m.Kind))">@L.Coach_FocusAutomatic</a>
+            <button type="button" class="c-focus-link"
+                    @onclick="@(() => FocusClick.InvokeAsync(m.Kind))">@L.Coach_MakeFocus</button>
+        } else {
+            <span class="c-focus-selected">
+                <span aria-hidden="true">✓</span>
+                @L.Coach_FocusSelected
+            </span>
         }
     } else if (m.Kind == CoachMetricKind.Vocabulary) {
         <div class="c-caption">@labels.Explain(m.Kind, Language, Summary)</div>
@@ -60,12 +63,10 @@
     [Parameter] public string? Language { get; set; }
     [Parameter] public bool IsHeadline { get; set; }
     [Parameter] public bool IsFocus { get; set; }
-    [Parameter] public bool IsFocusOverridden { get; set; }
     [Parameter] public bool IsNotMeasured { get; set; }
     [Parameter] public EventCallback<CoachMetricKind> DetailClick { get; set; }
     [Parameter] public EventCallback<string> WordClick { get; set; }
     [Parameter] public EventCallback<CoachMetricKind> FocusClick { get; set; }
-    [Parameter] public EventCallback<CoachMetricKind> FocusClear { get; set; }
 
     private CoachLabels Labels => field ??= new CoachLabels(L);
 }

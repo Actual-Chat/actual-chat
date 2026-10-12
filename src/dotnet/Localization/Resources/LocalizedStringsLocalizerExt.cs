@@ -2175,7 +2175,9 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_WhatMovesIt => l["Coach_WhatMovesIt"].Value;
         public string Coach_WorkingOn_Format(object arg0) => l["Coach_WorkingOn_Format", arg0].Value;
         public string Coach_ChangeFocus => l["Coach_ChangeFocus"].Value;
-        public string Coach_FocusAutomatic => l["Coach_FocusAutomatic"].Value;
+        public string Coach_FocusSelected => l["Coach_FocusSelected"].Value;
+        public string Coach_ResetFocus => l["Coach_ResetFocus"].Value;
+        public string Coach_ChosenFocus_Format(object arg0) => l["Coach_ChosenFocus_Format", arg0].Value;
         public string Coach_MakeFocus => l["Coach_MakeFocus"].Value;
         public string Coach_FocusHintFillers_Format(object arg0, object arg1)
             => l["Coach_FocusHintFillers_Format", arg0, arg1].Value;
@@ -2303,7 +2305,7 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_YourDataCaption => l["Coach_YourDataCaption"].Value;
         public string Coach_DeleteData => l["Coach_DeleteData"].Value;
         public string Coach_DeleteDataConfirm => l["Coach_DeleteDataConfirm"].Value;
-        public string Coach_CoachMeHere => l["Coach_CoachMeHere"].Value;
+        public string Coach_CoachInChat => l["Coach_CoachInChat"].Value;
         public string Coach_TipCleanTitle => l["Coach_TipCleanTitle"].Value;
         public string Coach_TipCleanBody_Format(object arg0) => l["Coach_TipCleanBody_Format", arg0].Value;
         public string Coach_WeekNoteTitle => l["Coach_WeekNoteTitle"].Value;
