@@ -26,9 +26,10 @@
    appears or goes moves neither the recorder nor the controls before it. *@
 <div class="call-screen-toolbar call-screen-footer">
     <div class="c-side c-before">
-        @* A call's own control: the screen is also up for a chat's video with no call around it.
+        @* A call's own control: the screen is also up for a chat's video with no call around it, and
+           a call being dialed has no session yet to hold the setting.
            Shows the call's state to everyone; only who may change it gets a live button. *@
-        @if (m.CallPhase is CallPhase.Dialing or CallPhase.Active) {
+        @if (m.CallPhase == CallPhase.Active) {
             <HeaderButton
                 Click="@(() => OnTranscriptionClick(!m.IsTranscriptionOn))"
                 IsDisabled="@(!m.CanSetTranscription)"
