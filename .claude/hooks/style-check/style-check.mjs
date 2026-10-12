@@ -74,8 +74,6 @@ async function main() {
         return;
 
     const findings = checkMechanical({ path, text, ranges, limit: maxLineLength(dirname(resolve(path))) });
-    if (path.endsWith('.css'))
-        findings.push(...await checkCssSelectors(text, ranges));
     if (findings.length === 0)
         return;
 
@@ -88,23 +86,6 @@ async function main() {
             additionalContext: `${header}\n${body}`,
         },
     }));
-}
-
-// The rule and its reasons live in scripts/check-css-selectors.mjs, which the build runs over every file
-export async function checkCssSelectors(text, ranges) {
-    let checker;
-    try {
-        checker = await import('../../../scripts/check-css-selectors.mjs');
-    }
-    catch {
-        // It needs postcss, i.e. installed npm packages; a checkout without them still gets the build's check
-        return [];
-    }
-
-    return checker
-        .findUtilitySelectors(text, checker.readAppliedUtilities())
-        .filter(finding => inRanges(ranges, finding.line))
-        .map(finding => ({ line: finding.line, message: checker.describeFinding(finding) }));
 }
 
 export function changedRanges(before, after) {
