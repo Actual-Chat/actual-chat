@@ -71,6 +71,66 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         });
 
     [Fact(Timeout = 60_000)]
+    public async Task SkillHistoryShouldWeightDaysKeepRealDatesAndRefreshAfterExclusion()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var commander = AppHost.Services.Commander();
+        var first = Entry(account.Id, GroupChatId.New(), 1, 200, 100, T0, 20, "like");
+        var second = Entry(account.Id, GroupChatId.New(), 1, 1_800, 900, T0 + TimeSpan.FromDays(1), 18, "like");
+        var other = first with { Id = ChatEntryId.New(GroupChatId.New(), 1), Language = Languages.Russian };
+        foreach (var entry in new[] { first, second, other })
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(entry), false));
+
+        // act
+        var history = await Coach.GetOwnSkillHistory(tester.Session, CoachMetricKind.Fillers,
+            "en-US", CoachHistoryPeriod.Month, T0, default);
+
+        // assert
+        history.Days.Should().HaveCount(2);
+        history.Days.Select(d => d.Day).Should().Equal(UsageDay.DayOf(T0), UsageDay.DayOf(second.BeginsAt));
+        history.Value.Should().Be(0.019);
+        history.MeasuredWords.Should().Be(2_000);
+        history.Words.Should().ContainSingle().Which.Count.Should().Be(38);
+        await commander.Call(new CoachBackend_SetConversationExcluded(account.Id, first.Id.ChatId, 1, "en", true));
+        await TestWait.When(async ct => {
+            var updated = await Coach.GetOwnSkillHistory(tester.Session, CoachMetricKind.Fillers,
+                "en", CoachHistoryPeriod.Month, T0, ct);
+            updated.Days.Should().ContainSingle();
+            updated.Value.Should().Be(0.01);
+        });
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task CurrentHistoryShouldStopAtRequestTimeWithoutIncludingFutureRowsOnTheSameDay()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var now = AppHost.Services.Clocks().SystemClock.Now;
+        var commander = AppHost.Services.Commander();
+        var past = Entry(account.Id, GroupChatId.New(), 1, 200, 50, now - TimeSpan.FromMinutes(1));
+        var future = Entry(account.Id, GroupChatId.New(), 1, 1_000, 500,
+            UsageDay.DayOf(now) + TimeSpan.FromDays(1) - TimeSpan.FromTicks(1), 100, "like");
+        foreach (var entry in new[] { past, future })
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(entry), false));
+
+        // act
+        var history = await Coach.GetOwnSkillHistory(tester.Session, CoachMetricKind.Fillers,
+            "en", CoachHistoryPeriod.Month, UsageDay.DayOf(now), default);
+
+        // assert
+        history.Range.End.Should().BeGreaterThanOrEqualTo(now);
+        history.Range.End.Should().BeLessThan(UsageDay.DayOf(now) + TimeSpan.FromDays(1));
+        history.MeasuredWords.Should().Be(200);
+        history.Value.Should().Be(0);
+        var occurrences = await Coach.ListOwnSkillOccurrencesInRange(tester.Session, "like", history.Range,
+            "en", CoachMetricKind.Fillers, default);
+        occurrences.Should().BeEmpty();
+    }
+
+    [Fact(Timeout = 60_000)]
     public async Task PaceDetailsShouldClassifyExactBoundariesAndRespectLanguageAndExclusion()
     {
         // arrange
