@@ -66,6 +66,7 @@ public sealed partial record CoachSummary(
     [DataMember, Key(7)] public double PaceSlow { get; init; }
     [DataMember, Key(8)] public double PaceFast { get; init; }
     [DataMember, Key(9)] public double FillerGood { get; init; }
+    [DataMember, Key(10)] public int TaggedWords { get; init; }
 
     public static readonly CoachSummary None
         = new (CoachWindow.Today, null, null, 0, 0, 0, ApiArray<CoachMetric>.Empty);

@@ -55,6 +55,8 @@
 
     [Parameter, EditorRequired] public string Word { get; set; } = "";
     [Parameter] public CoachWindow Window { get; set; }
+    [Parameter] public string? Language { get; set; }
+    [Parameter] public CoachMetricKind? Kind { get; set; }
     [Parameter] public EventCallback Back { get; set; }
 
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -63,8 +65,10 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var word = Word;
         var window = Window;
-        var occurrences = await Coach.ListOwnOccurrences(Session, word, window, cancellationToken)
-            .ConfigureAwait(false);
+        var occurrences = Kind is { } kind
+            ? await Coach.ListOwnSkillOccurrences(Session, word, window, Language, kind, cancellationToken)
+                .ConfigureAwait(false)
+            : await Coach.ListOwnOccurrences(Session, word, window, cancellationToken).ConfigureAwait(false);
         var items = new List<Item>(occurrences.Count);
         foreach (var chatGroup in occurrences.GroupBy(o => o.ChatId)) {
             var chat = await Chats.Get(Session, chatGroup.Key, cancellationToken).ConfigureAwait(false);
@@ -84,7 +88,10 @@
                     ?? ApiArray<SpeechSpan>.Empty;
                 foreach (var occurrence in entryGroup) {
                     var span = spans.FirstOrDefault(s => s.Start == occurrence.Start && s.Length == occurrence.Length
-                        && s.Word.Equals(word, StringComparison.OrdinalIgnoreCase));
+                        && s.Word.Equals(word, StringComparison.OrdinalIgnoreCase)
+                        && (Kind is null || Kind == CoachMetricKind.Fillers
+                            && s.Kind is SpeechSpanKind.Filler or SpeechSpanKind.FilledPause
+                            || Kind == CoachMetricKind.WeakWords && s.Kind == SpeechSpanKind.Weak));
                     if (span is null || CoachMarkHint.GetContext(entry.Content, span) is not { } context)
                         continue;
 
