@@ -436,6 +436,8 @@
   "SystemEntry_HistoryWipedPeriod_Format": " son {0} içindeki sohbet geçmişini sildi.",
   "SystemEntry_RetentionChanged_Format": " geçmiş saklama süresini {0} olarak ayarladı.",
   "SystemEntry_RetentionTurnedOff": " geçmiş saklama süresini kapattı.",
+  "SystemEntry_TranscriptionTurnedOn": " deşifreyi açtı.",
+  "SystemEntry_TranscriptionTurnedOff": " deşifreyi kapattı.",
 
   "ChatMaintenance_Mode": "Bakım modu",
   "ChatImport_Start": "İçe aktarmayı başlat",

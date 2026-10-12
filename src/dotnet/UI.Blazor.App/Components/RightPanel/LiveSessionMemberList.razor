@@ -31,7 +31,8 @@
         <span class="c-rules-title">@L.Call_Rules</span>
         <span class="c-rules-text">@RulesText(live.Rules)</span>
     </div>
-    @if (m.IsController) {
+    @* A 1:1 call has no host to ask: either side sets whether it's transcribed, and nothing else *@
+    @if (m.IsController || (m.IsPeerChat && m.OwnAuthorId is not null)) {
         var anyMuted = live.Members.Any(x => x.AuthorId != m.OwnAuthorId && x.MicMuted);
         var anyHandRaised = m.AreHandsEnabled && live.Members.Any(x => x.IsHandRaised);
         <div class="c-manage">
@@ -41,14 +42,12 @@
                         @onclick="@(() => ToggleTranscript(live))" title="@L.Call_Transcription">
                     <i class="icon-voice-to-text-message"></i>
                 </button>
-                <button class="c-manage-btn @(VoiceOn(live.Rules) ? "on" : "off")"
-                        @onclick="@(() => ToggleVoice(live))" title="@L.Call_Voice">
-                    <i class="icon-voice-01"></i>
-                </button>
-                <button class="c-manage-btn @(live.Rules.VideoAllowed ? "on" : "off")"
-                        @onclick="@(() => ToggleVideo(live))" title="@L.Call_Video">
-                    <i class="icon-video"></i>
-                </button>
+                @if (m.IsController) {
+                    <button class="c-manage-btn @(live.Rules.VideoAllowed ? "on" : "off")"
+                            @onclick="@(() => ToggleVideo(live))" title="@L.Call_Video">
+                        <i class="icon-video"></i>
+                    </button>
+                }
                 @if (m.CanMuteOthers) {
                     <button class="c-manage-btn @(anyMuted ? "on" : "off")"
                             @onclick="@(() => ToggleMuteAll(live, !anyMuted))"
@@ -219,9 +218,7 @@
             || (m.CanMuteOthers && m.CanMute(member.AuthorId) && member.Group != MemberGroup.Exited);
 
     private Task ToggleTranscript(LiveSession live)
-        => SetVoiceMode(live, !TranscriptOn(live.Rules), VoiceOn(live.Rules));
-    private Task ToggleVoice(LiveSession live)
-        => SetVoiceMode(live, TranscriptOn(live.Rules), !VoiceOn(live.Rules));
+        => LiveSessionUI.ToggleTranscription(live.ChatId, CancellationToken.None);
     private Task ToggleVideo(LiveSession live)
         => LiveSessionUI.SetRules(live.ChatId,
             live.Rules with { VideoAllowed = !live.Rules.VideoAllowed },
@@ -231,18 +228,8 @@
     private Task LowerAllHands(LiveSession live)
         => LiveSessionUI.LowerAllHands(live.ChatId, CancellationToken.None);
 
-    private Task SetVoiceMode(LiveSession live, bool transcript, bool voice) {
-        var mode = (transcript, voice) switch {
-            (true, true) => VoiceMode.TextAndVoice,
-            (true, false) => VoiceMode.JustText,
-            (false, true) => VoiceMode.JustVoice,
-            _ => VoiceMode.JustText,
-        };
-        return LiveSessionUI.SetRules(live.ChatId, live.Rules with { VoiceModeOverride = mode }, CancellationToken.None);
-    }
-
-    private static bool TranscriptOn(SessionRules r) => r.VoiceModeOverride is not VoiceMode.JustVoice;
-    private static bool VoiceOn(SessionRules r) => r.VoiceModeOverride is not VoiceMode.JustText;
+    private static bool TranscriptOn(SessionRules r) => r.HasText();
+    private static bool VoiceOn(SessionRules r) => r.HasVoice();
 
     private string RulesText(SessionRules r) {
         var parts = new List<string> {

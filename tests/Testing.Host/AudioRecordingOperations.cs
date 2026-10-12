@@ -39,6 +39,15 @@ public static class AudioRecordingOperations
         return OpenAudioSegment.GetStreamId(audioRecord, 0);
     }
 
+    public static Task RecordTextOnlyUtterance(
+        this IWebTester tester,
+        ChatId chatId,
+        Language language,
+        int frameCount = 100,
+        CancellationToken cancellationToken = default)
+        // JustText: nobody hears the speaker, so a transcript is all this utterance can leave behind
+        => RecordVoice(tester, chatId, language, VoiceMode.JustText, frameCount, cancellationToken);
+
     public static async Task<StreamId> RecordTranscribedUtterance(
         this IWebTester tester,
         ChatId chatId,

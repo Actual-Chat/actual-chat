@@ -436,6 +436,8 @@
   "SystemEntry_HistoryWipedPeriod_Format": " đã xóa lịch sử trò chuyện trong {0} qua.",
   "SystemEntry_RetentionChanged_Format": " đã đặt thời hạn lưu lịch sử là {0}.",
   "SystemEntry_RetentionTurnedOff": " đã tắt thời hạn lưu lịch sử.",
+  "SystemEntry_TranscriptionTurnedOn": " đã bật chuyển lời nói thành văn bản.",
+  "SystemEntry_TranscriptionTurnedOff": " đã tắt chuyển lời nói thành văn bản.",
 
   "ChatMaintenance_Mode": "Chế độ bảo trì",
   "ChatImport_Start": "Bắt đầu nhập",

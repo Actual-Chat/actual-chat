@@ -436,6 +436,8 @@
   "SystemEntry_HistoryWipedPeriod_Format": " borró el historial del chat de las últimas {0}.",
   "SystemEntry_RetentionChanged_Format": " estableció la conservación del historial en {0}.",
   "SystemEntry_RetentionTurnedOff": " desactivó la conservación del historial.",
+  "SystemEntry_TranscriptionTurnedOn": " activó la transcripción.",
+  "SystemEntry_TranscriptionTurnedOff": " desactivó la transcripción.",
 
   "ChatMaintenance_Mode": "Modo de mantenimiento",
   "ChatImport_Start": "Iniciar importación",

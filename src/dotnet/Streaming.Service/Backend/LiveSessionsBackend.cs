@@ -468,18 +468,21 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
             await WakeSummaryFlow(chatId).ConfigureAwait(false);
     }
 
-    public virtual async Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
+    public virtual async Task<SessionRules?> SetRules(
+        ChatId chatId, SessionRules rules, CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 
         var state = await SafeGet(chatId).ConfigureAwait(false);
         if (state is null)
-            return;
+            return null;
 
+        var oldRules = state.Rules;
         state = state with { Rules = rules, Version = VersionGenerator.NextVersion(state.Version) };
         await _redisScope.Set(chatId.Value, state).ConfigureAwait(false);
         InvalidateState(chatId);
+        return oldRules;
     }
 
     public virtual async Task MutePeer(

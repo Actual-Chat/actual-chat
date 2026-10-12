@@ -436,6 +436,8 @@
   "SystemEntry_HistoryWipedPeriod_Format": " је обрисао хисторију чета за посљедњих {0}.",
   "SystemEntry_RetentionChanged_Format": " је поставио чување хисторије на {0}.",
   "SystemEntry_RetentionTurnedOff": " је искључио чување хисторије.",
+  "SystemEntry_TranscriptionTurnedOn": " је укључио транскрипцију.",
+  "SystemEntry_TranscriptionTurnedOff": " је искључио транскрипцију.",
 
   "ChatMaintenance_Mode": "Режим одржавања",
   "ChatImport_Start": "Покрени увоз",

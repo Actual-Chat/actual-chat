@@ -436,6 +436,8 @@
   "SystemEntry_HistoryWipedPeriod_Format": " vymazal(a) historii chatu za posledních {0}.",
   "SystemEntry_RetentionChanged_Format": " nastavil(a) uchovávání historie na {0}.",
   "SystemEntry_RetentionTurnedOff": " vypnul(a) uchovávání historie.",
+  "SystemEntry_TranscriptionTurnedOn": " zapnul(a) přepis.",
+  "SystemEntry_TranscriptionTurnedOff": " vypnul(a) přepis.",
 
   "ChatMaintenance_Mode": "Režim údržby",
   "ChatImport_Start": "Zahájit import",
