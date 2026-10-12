@@ -43,9 +43,6 @@
 .share-modal .dialog-buttons > * {
     @apply flex-1 max-w-none;
 }
-.btn-share-action[class~="hidden"] {
-    display: none;
-}
 .share-externally-button {
     @apply flex-x;
 }

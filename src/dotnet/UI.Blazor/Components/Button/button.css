@@ -148,31 +148,30 @@ body.device-ios * {
     @apply text-cancel-title;
     @apply sheen;
 }
-/* Sheen strength: low by default, in three steps, each overriding the one before. The theme sits in :where() on
-   the first so the later steps win on order, not on specificity.
-   1. A primary button takes the medium level in the dark theme and the high one in the light ones; a danger
-      button takes the high one in all of them.
-   2. Where the intent color is not the fill (square, round, outline, tinted, modal danger), back to low.
-   3. A dark fill needs the medium level to show at all, so the dark theme's square, round and outline buttons
-      take it.
+/* Sheen strength: low by default, in steps that override each other on order. The per-theme levels are
+   the --btn-sheen-* tokens in colors.css, so a rule here never names a theme.
+   1. A primary button takes the theme's primary level (medium in the dark theme, high in the light ones);
+      a danger button takes the high one in all of them.
+   2. Where the fill is the theme's surface (square, round, outline), the theme's surface level: low in the
+      light themes, medium in the dark one, where a dark fill needs it to show at all.
+   3. Where the intent color is not the fill either way (tinted, modal danger), low.
    A disabled button is always low. */
-:where(.theme-dark) .btn.btn-primary {
-    --sheen-level: 1.5;
-    --sheen-gloss: 0.18;
+.btn.btn-primary {
+    --sheen-level: var(--btn-sheen-level-primary);
+    --sheen-gloss: var(--btn-sheen-gloss-primary);
 }
-:where(.theme-dark) .btn.btn-danger,
-:where([class~="theme-light"], .theme-ash) .btn:is(.btn-primary, .btn-danger) {
+.btn.btn-danger {
     --sheen-level: 2.25;
     --sheen-gloss: 0.22;
 }
-.btn:is(.btn-square, .btn-round, .btn-outline, .btn-tinted),
+.btn:is(.btn-square, .btn-round, .btn-outline) {
+    --sheen-level: var(--btn-sheen-level-surface);
+    --sheen-gloss: var(--btn-sheen-gloss-surface);
+}
+.btn.btn-tinted,
 .btn.btn-modal.btn-danger {
     --sheen-level: 1;
     --sheen-gloss: 0.08;
-}
-.theme-dark .btn:is(.btn-square, .btn-round, .btn-outline) {
-    --sheen-level: 1.5;
-    --sheen-gloss: 0.18;
 }
 .btn.btn:is(:disabled, .pseudo-disabled) {
     --sheen-level: 1;

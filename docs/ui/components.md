@@ -455,12 +455,17 @@ and nothing in the build complains. Inside a `:has()` the copies are also expens
 turned into 636 selectors WebKit could not scope, and every DOM insertion re-matched the whole
 document — 0.76 ms per inserted node, seconds per chat switch (#5261).
 
-What to write instead, in order of preference:
+What to write instead:
 
 - **A state of your own**: a class the component owns (`.collapsed`, `.no-destination`) or a `data-`
-  attribute. For "the container has such a child", use [presence attributes](#presence-attributes).
-- **`[class~="hidden"]`**, when the rule really has to react to a utility class set in markup. It
-  matches exactly what `.hidden` matches, with the same specificity, and the build leaves it alone.
+  attribute, set by the same code that would have set the utility. For "the container has such a
+  child", use [presence attributes](#presence-attributes).
+- **A custom property**, when the rule varies by theme: `.theme-light` is applied too, to make a
+  subtree light. The theme block in `colors.css` sets the token (`--btn-sheen-level-primary`) and the
+  rule reads it, so it never names a theme.
+
+Not `[class~="hidden"]`: it matches the same elements and the build leaves it alone, but it still
+couples the rule to a utility name, and it is nothing anyone expects to read in a stylesheet.
 
 A rule that *defines* a utility is fine: a selector that is nothing but the class (`.animate-pulse`),
 and anything inside `@layer`.

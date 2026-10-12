@@ -141,7 +141,7 @@
                     }
                 </div>
                 <button type="button"
-                        class="btn-preview @(isPlaying || isLoading ? "on" : "")"
+                        class="btn-preview @(isLoading ? "on loading" : isPlaying ? "on" : "")"
                         aria-label="@L.DubVoice_Preview"
                         title="@L.DubVoice_Preview"
                         @onclick="@(() => OnPreviewClick(voice.Id))"

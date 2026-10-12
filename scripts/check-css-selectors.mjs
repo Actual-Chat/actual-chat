@@ -87,7 +87,7 @@ export function describeFinding(finding) {
 
     return `"${selector}" names .${className}, which ${times} @apply: the build re-emits this rule once for each `
         + `of them, with .${className} replaced by that rule's selector. Use a state class or a data- attribute of `
-        + `your own; to match the utility class as it is set in markup, write [class~="${className}"].`;
+        + `your own instead; for a theme class, a custom property the theme sets.`;
 }
 
 /** The applied utilities of the whole code base - what a single file is checked against. */
