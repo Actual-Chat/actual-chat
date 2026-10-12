@@ -70,6 +70,107 @@ That is where a user's report starts: the chat id is the call id's prefix, and t
 outcome, the reason and every delay. `StartCall` logs the call's placement with the ringing and busy
 counts, and the grace checks log their verdicts between the two.
 
+## Reading the numbers
+
+Nothing charts the call metrics yet. The series are in Google Managed Prometheus (project
+`actual-chat-app-prod`), queryable in Cloud Monitoring's Metrics Explorer with its PromQL tab, or
+over HTTP the way the funnel report in docs-internal (`docs/arrival-funnel.md`) does. The queries
+below are the panels a call dashboard needs, in the order a reader asks the questions; each is
+pasted as is, with the window changed to taste. A boolean tag arrives as the strings `true` and
+`false`, so it is `has_video="true"`, not `has_video=true`.
+
+**How many calls, and did they connect**
+
+```promql
+# Calls placed per hour, by chat kind and video
+sum by (chat_kind, has_video) (increase(calls_started_total[1h]))
+
+# Answer rate: the share of ended calls that were answered
+sum(increase(calls_ended_total{outcome="Ended"}[1d]))
+  / sum(increase(calls_ended_total[1d]))
+
+# Ended calls by outcome
+sum by (outcome) (increase(calls_ended_total[1d]))
+
+# Refused starts and accepts; a rise in chat_busy or accept_refused is two people racing the same chat
+sum by (reason) (increase(calls_start_refused_total[1d]))
+sum(increase(calls_accept_refused_total[1d]))
+```
+
+**Where answered calls failed**
+
+```promql
+# Answered calls by the reason they ended; HungUp and PartyLeft are normal, the rest are failures
+sum by (reason) (increase(calls_ended_total{outcome="Ended"}[1d]))
+
+# Failure share: answered calls that never connected or lost a client
+sum(increase(calls_ended_total{reason=~"ConnectTimeout|Lost"}[1d]))
+  / sum(increase(calls_ended_total{outcome="Ended"}[1d]))
+```
+
+**Did the ring arrive, and how fast**
+
+```promql
+# Ring delivery: the share of invites whose client confirmed the ring at all
+sum(increase(calls_invites_total{ack!="None"}[1d]))
+  / sum(increase(calls_invites_total[1d]))
+
+# Invites by their final status and ack; Missed with ack None is a push that never woke the client
+sum by (status, ack) (increase(calls_invites_total[1d]))
+
+# Ring delivery delay, p50 and p95 (seconds from the ring's write to the client's confirmation)
+histogram_quantile(0.5, sum by (le) (rate(calls_ring_delivery_delay_seconds_bucket[1h])))
+histogram_quantile(0.95, sum by (le) (rate(calls_ring_delivery_delay_seconds_bucket[1h])))
+
+# Answer delay, p50 and p95 (seconds from StartCall to the first answer)
+histogram_quantile(0.5, sum by (le) (rate(calls_answer_delay_seconds_bucket[1h])))
+histogram_quantile(0.95, sum by (le) (rate(calls_answer_delay_seconds_bucket[1h])))
+
+# How long unanswered calls dialed before giving up, by outcome
+histogram_quantile(0.5, sum by (le, outcome) (rate(calls_dial_duration_seconds_bucket[1d])))
+```
+
+**How long and how big**
+
+```promql
+# Talk time: median per chat kind, and the day's total in minutes
+histogram_quantile(0.5, sum by (le, chat_kind) (rate(calls_duration_seconds_bucket[1d])))
+sum(increase(calls_duration_seconds_sum[1d])) / 60
+
+# Calls that ended within 15 s of connecting: a connected call nobody could hear
+sum(increase(calls_duration_seconds_bucket{le="15"}[1d]))
+  / sum(increase(calls_duration_seconds_count[1d]))
+
+# Parties per answered call: the average, and the share with more than two
+sum(increase(calls_party_count_sum[1d])) / sum(increase(calls_party_count_count[1d]))
+1 - sum(increase(calls_party_count_bucket{le="2"}[1d])) / sum(increase(calls_party_count_count[1d]))
+```
+
+**Alerts.** Two conditions are worth paging on. Both require a minimum number of calls in the
+window, or a single bad call at night fires them.
+
+```promql
+# More than a fifth of answered calls failed over the last hour, with at least ten to judge by
+(
+  sum(increase(calls_ended_total{reason=~"ConnectTimeout|Lost"}[1h]))
+    / sum(increase(calls_ended_total{outcome="Ended"}[1h]))
+) > 0.2
+and sum(increase(calls_ended_total{outcome="Ended"}[1h])) >= 10
+
+# Fewer than half the rings were confirmed over the last hour: the push path is down
+(
+  sum(increase(calls_invites_total{ack!="None"}[1h]))
+    / sum(increase(calls_invites_total[1h]))
+) < 0.5
+and sum(increase(calls_invites_total[1h])) >= 10
+```
+
+A histogram's `_sum` and `_count` series are exported next to its `_bucket`s, which is what the
+averages and totals above read. The quantile queries need the fixed bucket bounds `CallMeters`
+sets: a ring is 20 s plus a 10 s grace, so the ring histograms have half-second to a minute
+bounds, and the duration one runs from 5 s to two hours; the OpenTelemetry defaults (0, 5, 10, 25 ...)
+would put nearly every ring in one bucket.
+
 ## Checking a change
 
 - `CallMetricsTest` (`tests/Chat.IntegrationTests`) drives the backend through a canceled, a
@@ -77,5 +178,5 @@ counts, and the grace checks log their verdicts between the two.
 - Locally, with the server running, watch the instruments live:
   `dotnet-counters collect -p <server pid> --counters Streaming --refresh-interval 1 --format csv -o tmp/counters.csv`
   (install once with `dotnet tool install -g dotnet-counters`).
-- In production, query Managed Prometheus the way the funnel report does, for example
-  `sum by (outcome, reason) (increase(calls_ended_total[7d]))`.
+- In production, run any query from [Reading the numbers](#reading-the-numbers) against Managed
+  Prometheus; the series exist from the first deploy that carries `CallMeters`.
