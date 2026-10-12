@@ -1411,7 +1411,7 @@
   "Ptt_UseOnThisDevice": "Использовать Push-to-Talk на этом устройстве",
   "Ptt_UseOnThisDeviceCaption": "Когда выключено, это устройство не будет просыпаться, воспроизводить и передавать голос Push-to-Talk.",
   "Ptt_UseOnDesktopCaption": "Push-to-talk работает, пока приложение запущено. После выхода из приложения он отключается.",
-  "Ptt_ChatsTopic": "Чаты Push-to-Talk",
+  "Ptt_ChatsTopic": "Push-to-Talk чаты",
   "Ptt_NoPttChats": "Push-to-Talk пока не включён ни в одном чате — его включает владелец чата.",
   "Ptt_AvailableTopic": "Чаты, готовые к Push-to-Talk",
   "Ptt_AllowedCount_Format": "Разрешено {0} из {1}",
