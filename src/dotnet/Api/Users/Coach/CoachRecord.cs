@@ -27,7 +27,11 @@ public sealed partial record CoachEntryRecord(
     [property: DataMember, Key(14)] int WeakWords,
     [property: DataMember, Key(15)] int Profanities,
     [property: DataMember, Key(16)] ApiArray<SpeechSpan> Spans
-);
+)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember, Key(17)] public SpeechPaceMeasurement? Pace { get; init; }
+}
 
 [DataContract, MessagePackObject]
 public sealed partial record CoachRunRecord(
@@ -85,7 +89,9 @@ public sealed partial record CoachRecord(
                 a.Fillers,
                 a.WeakWords,
                 a.Profanities,
-                a.Spans.Select(s => s with { Synonyms = ApiArray<string>.Empty }).ToApiArray()),
+                a.Spans.Select(s => s with { Synonyms = ApiArray<string>.Empty }).ToApiArray()) {
+                Pace = a.Pace,
+            },
         };
 
     public static CoachRecord FromRun(CoachConversationAnalysis a)
