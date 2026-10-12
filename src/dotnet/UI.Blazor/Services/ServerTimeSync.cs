@@ -200,6 +200,8 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
                 await peer.WhenConnected(ConnectWait, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                Log.LogWarning("Burst discarded: peer #{PeerId} isn't connected ({Error}), instance #{Id}",
+                    GetObjectId(peer), e.GetType().Name, GetObjectId(this));
                 return null;
             }
 
@@ -208,13 +210,14 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 
         var burstSize = _mode == ServerClockSyncMode.Steady ? SteadyBurstSize : ConvergingBurstSize;
         var samples = new List<Sample>(burstSize);
+        var probeFailures = new List<string>();
         for (var i = 0; i < burstSize; i++) {
             if (i != 0)
                 await CpuClock.Delay(ProbeSpacing, cancellationToken).ConfigureAwait(false);
 
             Sample? sample;
             try {
-                sample = await Probe(offsetBaseClock, cancellationToken).ConfigureAwait(false);
+                sample = await Probe(offsetBaseClock, probeFailures, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (e is JSDisconnectedException or ObjectDisposedException) {
                 return null; // The circuit is gone - the whole burst is void
@@ -224,18 +227,30 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
                 samples.Add(usableSample);
         }
 
-        if (peer != null && !IsSameConnection(connectionState!, peer.ConnectionState.Value))
+        if (peer != null && !IsSameConnection(connectionState!, peer.ConnectionState.Value)) {
+            Log.LogWarning("Burst discarded: the connection of peer #{PeerId} changed, instance #{Id}",
+                GetObjectId(peer), GetObjectId(this));
             return null;
-        if (samples.Count < MinUsableProbes)
+        }
+
+        if (samples.Count < MinUsableProbes) {
+            Log.LogWarning(
+                "Burst discarded: {UsableCount}/{BurstSize} usable probes, peer #{PeerId}, instance #{Id}: {Failures}",
+                samples.Count, burstSize, GetObjectId(peer), GetObjectId(this), string.Join(", ", probeFailures));
             return null;
+        }
 
         return Reduce(samples);
     }
 
-    private async Task<Sample?> Probe(MomentClock offsetBaseClock, CancellationToken cancellationToken)
+    private async Task<Sample?> Probe(
+        MomentClock offsetBaseClock,
+        List<string> failures,
+        CancellationToken cancellationToken)
     {
         using var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(GetProbeTimeout());
+        var timeout = GetProbeTimeout();
+        cts.CancelAfter(timeout);
         var before = offsetBaseClock.Now;
         double remoteMs;
         try {
@@ -245,13 +260,19 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
         }
         catch (Exception e) when (e is not (JSDisconnectedException or ObjectDisposedException)
                                   && !e.IsCancellationOf(cancellationToken)) {
-            return null; // Timed out or failed: this sample is unusable, the burst isn't
+            // Timed out or failed: this sample is unusable, the burst isn't
+            failures.Add(e is OperationCanceledException
+                ? $"timeout {timeout.TotalMilliseconds:F0}ms"
+                : $"{e.GetType().Name}: {e.Message}");
+            return null;
         }
 
         var after = offsetBaseClock.Now;
         var rtt = after - before;
-        if (rtt < PhysicalRttFloor || rtt > MaxProbeRtt)
+        if (rtt < PhysicalRttFloor || rtt > MaxProbeRtt) {
+            failures.Add($"rtt {rtt.TotalMilliseconds:F1}ms");
             return null;
+        }
 
         var localMidMs = 0.5 * (before.EpochOffset.TotalMilliseconds + after.EpochOffset.TotalMilliseconds);
         return new Sample(rtt, IsServer ? localMidMs - remoteMs : remoteMs - localMidMs);
@@ -522,6 +543,9 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
         var cpuElapsed = CpuClock.Now - _lastAcceptedAt;
         return (wallElapsed - cpuElapsed).Duration();
     }
+
+    private static int GetObjectId(object? value)
+        => value is null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(value);
 
     private static BurstResult Reduce(List<Sample> samples)
     {
