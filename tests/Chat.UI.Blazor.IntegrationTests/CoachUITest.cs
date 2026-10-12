@@ -1123,7 +1123,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task FocusShouldBeClearableAndHiddenBelowTheScoreFloor()
+    public async Task FocusShouldShowSelectedIndicatorAndStayHiddenBelowTheScoreFloor()
     {
         // arrange
         var appHost = await NewCoachHost("coach-ui-focus");
@@ -1133,30 +1133,81 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         tester.JSInterop.Mode = JSRuntimeMode.Loose;
         var hub = tester.ScopedAppServices.AppUIHub();
         var metric = new CoachMetric(CoachMetricKind.Fillers, 5, 0.04, CoachBand.Medium, ApiArray<CoachChip>.Empty);
-        var cleared = new List<CoachMetricKind>();
+        var chosen = new List<CoachMetricKind>();
 
         // act
         var row = tester.Render<CoachSkillRow>(p => p
             .Add(x => x.Metric, metric)
             .Add(x => x.IsHeadline, true)
-            .Add(x => x.IsFocus, true)
-            .Add(x => x.IsFocusOverridden, true)
-            .Add(x => x.FocusClear, EventCallback.Factory.Create<CoachMetricKind>(this, k => cleared.Add(k))));
+            .Add(x => x.IsFocus, true));
         InitializeHub(tester, hub, row.Instance);
+        var otherRow = tester.Render<CoachSkillRow>(p => p
+            .Add(x => x.Metric, metric with { Kind = CoachMetricKind.Pace })
+            .Add(x => x.IsHeadline, true)
+            .Add(x => x.FocusClick, EventCallback.Factory.Create<CoachMetricKind>(this, k => chosen.Add(k))));
         var withoutScore = tester.Render<CoachScoreCard>(p => p
             .Add(x => x.Summary, CoachSummary.None)
             .Add(x => x.Focus, CoachMetricKind.Fillers));
         var withScore = tester.Render<CoachScoreCard>(p => p
             .Add(x => x.Summary, CoachSummary.None with { Score = 70, Words = 500 })
             .Add(x => x.Focus, CoachMetricKind.Fillers));
-        await row.InvokeAsync(() => row.Find(".c-focus-clear").Click());
+        await otherRow.InvokeAsync(() => otherRow.Find(".c-focus-link").Click());
 
         // assert
-        cleared.Should().Equal(CoachMetricKind.Fillers);
+        row.Find(".c-focus-selected").TextContent.Should().Contain("Selected");
+        row.FindAll(".c-focus-link, .c-focus-clear").Should().BeEmpty();
+        otherRow.Find(".c-focus-link").TextContent.Should().Be("Make this my focus");
+        otherRow.FindAll(".c-focus-selected").Should().BeEmpty();
+        chosen.Should().Equal(CoachMetricKind.Pace);
         withoutScore.FindAll(".tile-item").Count.Should().Be(1, "no focus row before the first score");
         withScore.FindAll(".tile-item").Count.Should().Be(2);
         withScore.Find(".c-score-ring .c-arc").GetAttribute("stroke-dasharray").Should().Be("70.00 30.00");
         withoutScore.FindAll(".c-score-ring").Should().BeEmpty("no ring before the first score");
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task FocusShouldResetFromSettingsForOnlyTheChosenLanguage()
+    {
+        // arrange
+        var appHost = await NewCoachHost("coach-ui-focus-reset");
+        await using var _1 = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        tester.JSInterop.Mode = JSRuntimeMode.Loose;
+        await OptIn(tester);
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var kvas = appHost.Services.GetRequiredService<IServerKvasBackend>().ForUser(account.Id);
+        await kvas.UserLanguageSettings().Set(new UserLanguageSettings {
+            Primary = Languages.English,
+            Secondary = Languages.Russian,
+        });
+        foreach (var (iso, kind) in new[] { ("en", CoachMetricKind.Fillers), ("ru", CoachMetricKind.Pace) }) {
+            var setFocusCmd = new Coach_SetFocus { Session = tester.Session, Language = iso, Kind = kind };
+            await hub.Commander.Call(setFocusCmd);
+        }
+
+        // act
+        var cut = tester.Render<CoachSettingsPage>();
+        InitializeHub(tester, hub, cut.Instance);
+        await TestWait.WhenRendered(cut, () => {
+            cut.FindAll(".c-focus-reset").Should().HaveCount(2);
+            cut.Find(".c-language-focus[data-language='en']").TextContent.Should().Contain("Your focus: Filler words");
+        });
+        (await kvas.UserCoachSettings().Get(default)).FocusByLanguage.Should().HaveCount(2);
+        await cut.InvokeAsync(() => cut.Find(".c-language-focus[data-language='en'] .c-focus-reset").Click());
+
+        // assert
+        await TestWait.When(async ct => {
+            var settings = await kvas.UserCoachSettings().Get(ct);
+            settings.FocusByLanguage.ContainsKey("en").Should().BeFalse();
+            settings.FocusByLanguage["ru"].Should().Be(CoachMetricKind.Pace);
+            settings.IsCoachingEnabled.Should().BeTrue();
+        });
+        await TestWait.WhenRendered(cut, () => {
+            cut.FindAll(".c-language-focus[data-language='en']").Should().BeEmpty();
+            cut.Find(".c-language-focus[data-language='ru'] .c-focus-reset").TextContent
+                .Should().Be("Let Coach choose my focus");
+        });
     }
 
     [Fact(Timeout = 60_000)]
@@ -1289,7 +1340,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         cut.FindAll(".coach-panel .c-coach-toggle")
             .Should().BeEmpty("the switch lives in the settings, not on the panel");
         await cut.InvokeAsync(() => cut.Find(".coach-header .c-settings-btn").Click());
-        cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-coach-toggle").TextContent
-            .Should().Contain("Coach me here"), TimeSpan.FromSeconds(10));
+        await TestWait.WhenRendered(cut, () => cut.Find(".coach-settings-page .c-coach-toggle").TextContent
+            .Should().Contain("Coach me in this chat"));
     }
 }
