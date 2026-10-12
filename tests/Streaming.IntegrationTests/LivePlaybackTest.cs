@@ -10,7 +10,7 @@ namespace ActualChat.Streaming.IntegrationTests;
 public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [LocalFact("Requires DeepGram / Google Cloud credentials", Timeout = 30_000)]
+    [Fact(Timeout = 30_000)]
     public async Task LiveStreamMuxer_ShouldEmitStreamItemsWhenRecording()
     {
         var appHost = AppHost;
@@ -21,9 +21,6 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         _ = await appHost.SignIn(session, new AccountFull("Bobby"));
         var log = services.LogFor<LivePlaybackTest>();
         var userSettingsUI = services.UserSettingsUI(session);
-
-        await userSettingsUI.UserLanguageSettings().Set(
-            new UserLanguageSettings { Primary = Languages.Main });
 
         // Create a chat
         var chat = await commander.Call(new Chats_Change {
@@ -38,6 +35,9 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
             },
         });
         chat.Require();
+        // JustVoice keeps this recording out of the transcription pipeline, which needs credentials
+        await userSettingsUI.ChatUserSettings(chat.Id)
+            .Set(new ChatUserSettings { VoiceMode = VoiceMode.JustVoice }, CancellationToken.None);
 
         // Start Live Streams listener
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
