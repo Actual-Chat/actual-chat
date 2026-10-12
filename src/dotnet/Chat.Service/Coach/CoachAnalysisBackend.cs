@@ -101,7 +101,7 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             return;
         }
 
-        if (command.UpdatePace && command.EntryVersion != entry.Version)
+        if (command.UpdatePace && !command.MatchesEntry(entry))
             return;
 
         var isUnchanged = existing is not null && existing.ContentHash == entry.ContentHash;
@@ -147,12 +147,12 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             .FirstOrDefaultAsync(x => x.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
         var current = await ChatsBackend.GetEntry(id, cancellationToken).ConfigureAwait(false);
-        if (current is null || !IsAnalyzable(current) || (paceChanged && current.Version != entry.Version)
+        if (current is null || !IsAnalyzable(current) || command.UpdatePace && !command.MatchesEntry(current)
             || !IsStillWorthWriting(dbEntry, analysis, current.ContentHash, paceChanged))
             return;
 
-        if (!command.UpdatePace && dbEntry?.ContentHash == analysis.ContentHash.Value)
-            analysis = analysis with { Pace = dbEntry.ToModel().Pace };
+        if (!command.UpdatePace)
+            analysis = WithStoredPace(analysis, dbEntry);
         analysis = analysis with { Version = VersionGenerator.NextVersion(dbEntry?.Version ?? 0) };
         if (dbEntry is null)
             dbContext.Add(new DbCoachEntry(analysis));
@@ -216,9 +216,8 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
             if (dbEntry is null || !IsStillWorthWriting(dbEntry, analysis, runEntries[analysis.Id].ContentHash))
                 continue;
 
-            var stored = analysis with {
+            var stored = WithStoredPace(analysis, dbEntry) with {
                 Version = VersionGenerator.NextVersion(dbEntry.Version),
-                Pace = dbEntry.ToModel().Pace,
             };
             dbEntry.UpdateFrom(stored);
             touchedEntries.Add(new CoachTaggedEntry(stored.Id, stored.AuthorId));
@@ -357,11 +356,8 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         if (!await CoachScopeKvas.IsInScope(kvas, entry.ChatId, cancellationToken).ConfigureAwait(false))
             return;
 
-        await Queues.Enqueue(new CoachAnalysisBackend_AnalyzeEntry(entry.Id, false) {
-            UpdatePace = true,
-            EntryVersion = entry.Version,
-            CapturePace = isFinalized,
-        }, cancellationToken).ConfigureAwait(false);
+        var analyzeEntryCmd = CoachAnalysisBackend_AnalyzeEntry.New(entry, isFinalized);
+        await Queues.Enqueue(analyzeEntryCmd, cancellationToken).ConfigureAwait(false);
         // An edit after the run went quiet must also re-tag the row; its delay counts
         // from now so the run command finds the row already reset by the entry command
         var anchor = isFinalized ? entry.EndsAt ?? Clocks.SystemClock.Now : Clocks.SystemClock.Now;
@@ -372,6 +368,36 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
         };
         await Queues.Enqueue(analyzeRun, cancellationToken).ConfigureAwait(false);
     }
+
+    // Protected/internal methods
+
+    internal static bool IsStillWorthWriting(
+        DbCoachEntry? dbEntry, CoachEntryAnalysis analysis, HashString currentContentHash, bool paceChanged = false)
+    {
+        // The entry may have been edited while the LLM was running (then the analysis is stale), or a
+        // concurrent command may already have stored the same tags
+        if (analysis.ContentHash != currentContentHash)
+            return false;
+        if (dbEntry is null || dbEntry.ContentHash != analysis.ContentHash.Value)
+            return true;
+
+        if (paceChanged) {
+            if (dbEntry.Version != analysis.Version)
+                throw StandardError.Postpone(TimeSpan.FromMilliseconds(100));
+
+            return true;
+        }
+
+        // Same text: only newer tags are worth writing; a pending re-analysis of identical text
+        // carries nothing and must not downgrade a row a concurrent command just tagged
+        return analysis.TagState == CoachTagState.Tagged
+            && (dbEntry.TagState != CoachTagState.Tagged || dbEntry.PromptVersion < analysis.PromptVersion);
+    }
+
+    internal static CoachEntryAnalysis WithStoredPace(CoachEntryAnalysis analysis, DbCoachEntry? dbEntry)
+        => analysis with {
+            Pace = dbEntry?.ContentHash == analysis.ContentHash.Value ? dbEntry.ToModel().Pace : null,
+        };
 
     // Private methods
 
@@ -384,24 +410,6 @@ public partial class CoachAnalysisBackend(IServiceProvider services)
                 EndsAt: not null,
             }
             && !entry.Content.IsNullOrWhiteSpace();
-
-    private static bool IsStillWorthWriting(
-        DbCoachEntry? dbEntry, CoachEntryAnalysis analysis, HashString currentContentHash, bool paceChanged = false)
-    {
-        // The entry may have been edited while the LLM was running (then the analysis is stale), or a
-        // concurrent command may already have stored the same tags
-        if (analysis.ContentHash != currentContentHash)
-            return false;
-        if (dbEntry is null || dbEntry.ContentHash != analysis.ContentHash.Value)
-            return true;
-        if (paceChanged)
-            return dbEntry.Version == analysis.Version;
-
-        // Same text: only newer tags are worth writing; a pending re-analysis of identical text
-        // carries nothing and must not downgrade a row a concurrent command just tagged
-        return analysis.TagState == CoachTagState.Tagged
-            && (dbEntry.TagState != CoachTagState.Tagged || dbEntry.PromptVersion < analysis.PromptVersion);
-    }
 
     private void InvalidateEntry(ChatEntryId id, AuthorId authorId)
     {
