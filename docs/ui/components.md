@@ -439,8 +439,8 @@ Selectors go from parent to children, top to bottom:
 
 ### No utility class names in selectors
 
-A selector must not name a class that other rules `@apply` — `.hidden`, `.flex-x`, `.rounded`,
-`.text-success` and the like:
+A selector must not name a class that many other rules `@apply` — `.hidden`, `.flex-x`, `.rounded`
+and the like:
 
 ```css
 /* Wrong: `hidden` is applied by ~190 rules */
@@ -468,7 +468,10 @@ Not `[class~="hidden"]`: it matches the same elements and the build leaves it al
 couples the rule to a utility name, and it is nothing anyone expects to read in a stylesheet.
 
 A rule that *defines* a utility is fine: a selector that is nothing but the class (`.animate-pulse`),
-and anything inside `@layer`.
+and anything inside `@layer`. So is naming a class that few rules apply: `i.animate-spin` costs one
+copy of a one-line rule, and the check reports a class only from ten `@apply`s up. It counts over the
+whole code base on every build, so a rule starts failing the build the day its class crosses the line;
+the message then names the rule to rewrite.
 
 `scripts/check-css-selectors.mjs` enforces this: `npm run lint:css` is a part of `npm run lint` and
 `lint:all`, so `build:Verify` and `build:Release` run it, and the edit hook reports it on the lines

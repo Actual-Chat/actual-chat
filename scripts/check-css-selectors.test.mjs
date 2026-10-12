@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { checkFiles, collectAppliedUtilities, findUtilitySelectors } from './check-css-selectors.mjs';
+import { checkFiles, collectAppliedUtilities, findUtilitySelectors, MinApplyCount } from './check-css-selectors.mjs';
 
 const applied = collectAppliedUtilities([`
     .copied-hint { @apply hidden; }
@@ -9,8 +9,8 @@ const applied = collectAppliedUtilities([`
     .wide { @apply w-[calc(100%-1rem)] top-1/2; }
 `]);
 
-function classNamesIn(css) {
-    return findUtilitySelectors(css, applied).map(finding => finding.className);
+function classNamesIn(css, minApplyCount = 1) {
+    return findUtilitySelectors(css, applied, minApplyCount).map(finding => finding.className);
 }
 
 test('counts a utility once per @apply, whatever its variants and flags', () => {
@@ -40,14 +40,21 @@ test('leaves alone a definition: the bare class, and anything inside @layer', ()
     assert.deepEqual(classNamesIn('@layer components { body.narrow .flex-x::before { gap: 0; } }'), []);
 });
 
+test('reports only a utility applied by at least the threshold', () => {
+    const widelyApplied = collectAppliedUtilities(Array(MinApplyCount).fill('.x { @apply hidden; }'));
+    assert.deepEqual(classNamesIn('.a .hidden { color: red; }', MinApplyCount), []);
+    assert.deepEqual(classNamesIn('.a .hidden { color: red; }', 2), ['hidden']);
+    assert.deepEqual(findUtilitySelectors('.a .hidden { color: red; }', widelyApplied).map(f => f.className), ['hidden']);
+});
+
 test('reports the line of the offending selector in a multi-line list', () => {
-    const findings = findUtilitySelectors('.a,\n.b .hidden,\n.c {\n    color: red;\n}\n', applied);
+    const findings = findUtilitySelectors('.a,\n.b .hidden,\n.c {\n    color: red;\n}\n', applied, 1);
     assert.equal(findings.length, 1);
     assert.equal(findings[0].line, 2);
     assert.equal(findings[0].selector, '.b .hidden');
     assert.equal(findings[0].applyCount, 2);
 });
 
-test('the source stylesheets name no applied utility in a selector', () => {
+test('the source stylesheets name no widely applied utility in a selector', () => {
     assert.deepEqual(checkFiles(), []);
 });

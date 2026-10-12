@@ -1,4 +1,4 @@
-// Fails when a custom CSS rule names, in its selector, a class that other rules @apply.
+// Fails when a custom CSS rule names, in its selector, a class that many other rules @apply.
 //
 // Tailwind treats every rule whose selector mentions `.hidden` as a part of the `hidden` utility.
 // So for each rule that says `@apply hidden`, it re-emits that custom rule too, with `.hidden`
@@ -6,6 +6,11 @@
 // per `@apply hidden` in the code base - 182 at the time of writing - and the copies are valid CSS,
 // so nothing complains. Twice that produced hundreds of `:has()` selectors WebKit cannot scope,
 // which made every DOM insertion re-match the whole document (#5261).
+//
+// A class applied by fewer than MinApplyCount rules is not reported: a handful of copies of a short
+// rule costs nothing, and `i.animate-spin` is an ordinary thing to write. The check runs over the
+// whole code base on every build, so a rule starts failing the build the day its class crosses the
+// line.
 //
 // Usage: node scripts/check-css-selectors.mjs [file.css ...]
 //   With no files, every source stylesheet is checked. With files, only those are reported on;
@@ -20,6 +25,8 @@ const RepoRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
 const SourceRoots = ['src/nodejs/styles', 'src/dotnet'];
 const SkippedDirs = new Set(['dist', 'wwwroot', 'bin', 'obj', 'node_modules', 'artifacts']);
 const ClassToken = /\.(-?(?:\\.|[A-Za-z_])(?:\\.|[\w-])*)/g;
+
+export const MinApplyCount = 10;
 
 /** Every source stylesheet of the web bundle, as absolute paths. */
 export function findSourceFiles(repoRoot = RepoRoot) {
@@ -58,11 +65,12 @@ export function collectAppliedUtilities(texts) {
 }
 
 /**
- * The selectors of `text` that name an applied utility. A selector that is nothing but the class
- * (`.animate-pulse`, or `.theme-light` in `:root, .theme-light`) is a definition and is left alone,
- * and so is everything inside `@layer`, where the code base declares its own utilities.
+ * The selectors of `text` that name a utility applied by at least `minApplyCount` rules. A selector
+ * that is nothing but the class (`.animate-pulse`, or `.theme-light` in `:root, .theme-light`) is a
+ * definition and is left alone, and so is everything inside `@layer`, where the code base declares
+ * its own utilities.
  */
-export function findUtilitySelectors(text, applied) {
+export function findUtilitySelectors(text, applied, minApplyCount = MinApplyCount) {
     const findings = [];
     postcss.parse(text).walkRules(rule => {
         if (isInside(rule, 'layer') || isInside(rule, 'keyframes'))
@@ -72,7 +80,7 @@ export function findUtilitySelectors(text, applied) {
         for (const { selector, lineOffset } of splitSelectorList(selectorList)) {
             for (const className of new Set(classNamesOf(selector))) {
                 const applyCount = applied.get(className);
-                if (applyCount && selector !== `.${className}`)
+                if (applyCount >= minApplyCount && selector !== `.${className}`)
                     findings.push({ line: rule.source.start.line + lineOffset, selector, className, applyCount });
             }
         }

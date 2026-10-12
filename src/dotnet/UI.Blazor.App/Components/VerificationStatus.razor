@@ -4,10 +4,10 @@
     var icon = IsVerified ? "icon-checkmark-circle-2" : "icon-alert-circle";
     var text = IsVerified ? L.Common_Verified : L.Common_Unverified;
     var colorCls = IsVerified ? "text-success" : "text-danger";
-    var stateCls = IsVerified ? "verified" : "cursor-pointer";
+    var cursorCls = !IsVerified ? "cursor-pointer" : "";
 }
 
-<div class="verification-status @Class @stateCls"
+<div class="verification-status @Class @cursorCls"
      @onclick="@(IsVerified ? default : Verify)"
      data-tooltip="@text">
     <i class="@icon text-lg @colorCls" aria-hidden="true"></i>
