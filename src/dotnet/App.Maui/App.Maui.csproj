@@ -16,6 +16,8 @@
     <!-- Experimental GTK4 backend (dotnet/maui-labs). Linux has no workload and no TFM of its own,
          so the Linux app is the plain net11.0 build; opt-in, it's the only TFM without a platform -->
     <TargetFrameworks Condition="'$(EnableLinuxGtk)' == 'true'">$(TargetFrameworks);net11.0</TargetFrameworks>
+    <!-- The one name for "this is the Linux build": the opt-in plus the TFM without a platform -->
+    <IsLinuxGtk Condition="'$(EnableLinuxGtk)' == 'true' AND '$(TargetFramework)' == 'net11.0'">true</IsLinuxGtk>
     <OutputType>Exe</OutputType>
     <AssemblyName>$(BaseName)</AssemblyName>
     <RootNamespace>$(BaseName).$(MSBuildProjectName)</RootNamespace>
@@ -223,7 +225,7 @@
     <PackageReference Include="OpusSharp.Core" />
     <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
+  <ItemGroup Condition="'$(IsLinuxGtk)' == 'true'">
     <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4" />
     <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4.Essentials" />
     <PackageReference Include="Microsoft.Maui.Platforms.Linux.Gtk4.BlazorWebView" />
@@ -847,7 +849,7 @@
 
   <!-- The same contract for a backend without a TFM of its own: Platforms\Linux compiles on the
        neutral TFM, where MauiActiveBackend names the backend -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
+  <PropertyGroup Condition="'$(IsLinuxGtk)' == 'true'">
     <MauiActiveBackend>gtk</MauiActiveBackend>
   </PropertyGroup>
   <ItemGroup>
@@ -906,7 +908,7 @@
   </ItemGroup>
 
   <!-- Linux (GTK4) -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
+  <ItemGroup Condition="'$(IsLinuxGtk)' == 'true'">
     <!-- Tunes play through the WebView (WebTuneUI), as on macos: it fetches them from dist/sounds,
          the folder build.mjs strips from the MAUI wwwroot -->
     <Content Include="..\..\..\resources\sounds\converted\*.m4a" Link="wwwroot\dist\sounds\%(Filename)%(Extension)" />
@@ -914,7 +916,7 @@
   </ItemGroup>
 
   <!-- NOT Linux (GTK4) -->
-  <ItemGroup Condition="'$(TargetFramework)' != 'net11.0'">
+  <ItemGroup Condition="'$(IsLinuxGtk)' != 'true'">
     <Compile Remove="**\*.Linux.cs" />
     <None Include="**\*.Linux.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Linux\**\*.cs" />

@@ -9,6 +9,8 @@
     <!-- Experimental GTK4 backend (dotnet/maui-labs). Linux has no workload and no TFM of its own,
          so the Linux app is the plain net11.0 build; opt-in, it's the only TFM without a platform -->
     <TargetFrameworks Condition="'$(EnableLinuxGtk)' == 'true'">$(TargetFrameworks);net11.0</TargetFrameworks>
+    <!-- The one name for "this is the Linux build": the opt-in plus the TFM without a platform -->
+    <IsLinuxGtk Condition="'$(EnableLinuxGtk)' == 'true' AND '$(TargetFramework)' == 'net11.0'">true</IsLinuxGtk>
     <UseMauiEssentials>true</UseMauiEssentials>
 <!--    <UseMaui>true</UseMaui>-->
     <SingleProject>true</SingleProject>
@@ -22,7 +24,7 @@
   </PropertyGroup>
 
   <!-- App.Maui gets LINUX from the labs package; this project doesn't reference it -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
+  <PropertyGroup Condition="'$(IsLinuxGtk)' == 'true'">
     <DefineConstants>$(DefineConstants);LINUX</DefineConstants>
   </PropertyGroup>
 
@@ -82,7 +84,7 @@
   </ItemGroup>
 
   <!-- NOT Linux (GTK4) -->
-  <ItemGroup Condition="'$(TargetFramework)' != 'net11.0'">
+  <ItemGroup Condition="'$(IsLinuxGtk)' != 'true'">
     <Compile Remove="**\*.Linux.cs" />
     <None Include="**\*.Linux.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Linux\**\*.cs" />
@@ -159,7 +161,7 @@
     <!-- TODO(maui-labs): see the MACOS branch of MauiDiagnostics.AddPlatformLoggerSinks -->
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
+  <ItemGroup Condition="'$(IsLinuxGtk)' == 'true'">
     <PackageReference Include="GirCore.GLib-2.0" />
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
