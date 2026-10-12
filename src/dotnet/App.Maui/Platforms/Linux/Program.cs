@@ -11,7 +11,7 @@ public sealed class Program : GtkMauiApplication
     // This is the main entry point of the application.
     public static void Main(string[] args)
     {
-        if (LinuxActivation.TryForward(args))
+        if (!LinuxActivation.TryStart(args))
             return;
 
         LinuxEssentialsDefaults.Apply(); // TODO(maui-labs): see LinuxEssentialsDefaults
@@ -21,7 +21,12 @@ public sealed class Program : GtkMauiApplication
         SynchronizationContext.SetSynchronizationContext(new GLib.Internal.MainLoopSynchronizationContext());
         // No arguments for GApplication: it would try to open a link as a file, and it rejects
         // the options MauiProgram reads from the command line itself
-        new Program().Run([]);
+        try {
+            new Program().Run([]);
+        }
+        finally {
+            LinuxActivation.Stop();
+        }
     }
 
     protected override MauiApp CreateMauiApp()
