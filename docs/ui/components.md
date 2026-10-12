@@ -471,8 +471,7 @@ whole code base on every build, so a rule starts failing the build the day its c
 the message then names the rule to rewrite.
 
 `scripts/check-css-selectors.mjs` enforces this: `npm run lint:css` is a part of `npm run lint` and
-`lint:all`, so `build:Verify` and `build:Release` run it, and the edit hook reports it on the lines
-you change.
+`lint:all`, so `build:Verify` and `build:Release` run it.
 
 ### Property Ordering Within a Rule
 

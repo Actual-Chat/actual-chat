@@ -89,20 +89,6 @@ export function findUtilitySelectors(text, applied, minApplyCount = MinApplyCoun
     return findings;
 }
 
-export function describeFinding(finding) {
-    const { selector, className, applyCount } = finding;
-    const times = applyCount === 1 ? '1 rule' : `${applyCount} rules`;
-
-    return `"${selector}" names .${className}, which ${times} @apply: the build re-emits this rule once for each `
-        + `of them, with .${className} replaced by that rule's selector. Use a state class or a data- attribute of `
-        + `your own instead.`;
-}
-
-/** The applied utilities of the whole code base - what a single file is checked against. */
-export function readAppliedUtilities(repoRoot = RepoRoot) {
-    return collectAppliedUtilities(findSourceFiles(repoRoot).map(file => readFileSync(file, 'utf8')));
-}
-
 /** Findings for the given files (all source files when none are given), as formatted lines. */
 export function checkFiles(paths = [], repoRoot = RepoRoot) {
     const applied = readAppliedUtilities(repoRoot);
@@ -118,6 +104,19 @@ export function checkFiles(paths = [], repoRoot = RepoRoot) {
 }
 
 // Private methods
+
+function describeFinding(finding) {
+    const { selector, className, applyCount } = finding;
+    const times = applyCount === 1 ? '1 rule' : `${applyCount} rules`;
+
+    return `"${selector}" names .${className}, which ${times} @apply: the build re-emits this rule once for each `
+        + `of them, with .${className} replaced by that rule's selector. Use a state class or a data- attribute of `
+        + `your own instead.`;
+}
+
+function readAppliedUtilities(repoRoot = RepoRoot) {
+    return collectAppliedUtilities(findSourceFiles(repoRoot).map(file => readFileSync(file, 'utf8')));
+}
 
 function toUtilityName(token) {
     // "!hidden", "hidden!" and the "!important" flag; "md:hover:hidden" applies `hidden` too
