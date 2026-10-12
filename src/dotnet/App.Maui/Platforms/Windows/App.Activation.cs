@@ -6,6 +6,8 @@ namespace ActualChat.App.Maui.WinUI;
 
 public partial class App
 {
+    private static readonly TimeSpan RedirectTimeout = TimeSpan.FromSeconds(3);
+
     public static event Action<string> AppInstanceActivated = _ => { };
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
@@ -21,17 +23,36 @@ public partial class App
     private async Task<bool> DecideRedirection()
     {
         var appInstance = AppInstance.FindOrRegisterForKey("sharedKey");
-        if (appInstance.IsCurrent) {
-            appInstance.Activated += OnAppInstanceActivated;
-            WindowsNotificationActivation.Register();
-            // A toast clicked while the app wasn't running starts it with the click as the activation
-            if (AppInstance.GetCurrent().GetActivatedEventArgs().Data is AppNotificationActivatedEventArgs toastArgs)
-                WindowsNotificationActivation.Handle(toastArgs);
+        var args = AppInstance.GetCurrent().GetActivatedEventArgs();
+        if (!appInstance.IsCurrent && await TryRedirect(appInstance, args).ConfigureAwait(true))
+            return true;
+
+        // Nobody took the activation: the instance with this key is stuck, or there is none and another
+        // build holds the data folder (the key only matches within one package identity)
+        if (!await WindowsInstanceGuard.TakeOver().ConfigureAwait(true))
+            return true;
+
+        appInstance = AppInstance.FindOrRegisterForKey("sharedKey");
+        if (!appInstance.IsCurrent)
+            return true;
+
+        appInstance.Activated += OnAppInstanceActivated;
+        WindowsNotificationActivation.Register();
+        // A toast clicked while the app wasn't running starts it with the click as the activation
+        if (args.Data is AppNotificationActivatedEventArgs toastArgs)
+            WindowsNotificationActivation.Handle(toastArgs);
+        return false;
+    }
+
+    private static async Task<bool> TryRedirect(AppInstance appInstance, AppActivationArguments args)
+    {
+        try {
+            await appInstance.RedirectActivationToAsync(args).AsTask().WaitAsync(RedirectTimeout).ConfigureAwait(true);
+            return true;
+        }
+        catch (TimeoutException) {
             return false;
         }
-        var args = AppInstance.GetCurrent().GetActivatedEventArgs();
-        await appInstance.RedirectActivationToAsync(args);
-        return true;
     }
 
     private void OnAppInstanceActivated(object? sender, AppActivationArguments e)
