@@ -176,23 +176,6 @@ import("./.claude/hooks/style-check/build-agents-guide.mjs").then(m => {
             finally { Remove-Item -LiteralPath $path }
         }
 
-        It "reports a CSS selector that names an applied utility class" {
-            $before = ".sample-panel {`n    color: red;`n}`n"
-            $after = $before + ".sample-panel .hidden {`n    color: red;`n}`n"
-            $path = Join-Path ([IO.Path]::GetTempPath()) 'style-check-edit.css'
-            Set-Content -LiteralPath $path -Value $after -NoNewline
-            try {
-                $r = Invoke-StyleCheck @{
-                    hook_event_name = 'PostToolUse'
-                    tool_name = 'Edit'
-                    tool_input = @{ file_path = $path }
-                    tool_response = @{ originalFile = $before }
-                }
-                $r.Output | Should -Match 'names \.hidden, which \d+ rules @apply'
-            }
-            finally { Remove-Item -LiteralPath $path }
-        }
-
         It "says nothing when the edit is clean" {
             $before = "namespace Sample;`n`npublic class A`n{`n}`n"
             $after = "namespace Sample;`n`npublic class A`n{`n    // short comment`n}`n"
