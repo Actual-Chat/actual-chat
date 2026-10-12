@@ -31,7 +31,18 @@ public interface ICoachBackend : IComputeService, IBackendService
     Task<CoachPaceDetails> GetPaceDetails(
         UserId userId, Range<Moment> range, string language, CancellationToken cancellationToken);
 
+    [ComputeMethod]
+    Task<CoachBaseline?> GetBaseline(
+        UserId userId, CoachMetricKind kind, string language, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<CoachBaselineComparison> GetBaselineComparison(
+        UserId userId, CoachMetricKind kind, string language, Range<Moment> range,
+        CancellationToken cancellationToken);
+
     // Commands
+
+    [CommandHandler]
+    Task OnSetBaseline(CoachBackend_SetBaseline command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnRecord(CoachBackend_Record command, CancellationToken cancellationToken);
@@ -99,6 +110,19 @@ public sealed partial record CoachBackend_SetConversationExcluded(
     [property: DataMember, Key(2)] long StartEntryLid,
     [property: DataMember, Key(3)] string Language,
     [property: DataMember, Key(4)] bool IsExcluded
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => UserId.ShardKey;
+}
+
+[DataContract, MessagePackObject]
+public sealed partial record CoachBackend_SetBaseline(
+    [property: DataMember, Key(0)] UserId UserId,
+    [property: DataMember, Key(1)] CoachMetricKind Kind,
+    [property: DataMember, Key(2)] string Language,
+    [property: DataMember, Key(3)] CoachHistoryPeriod? Period,
+    [property: DataMember, Key(4)] Moment Anchor
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

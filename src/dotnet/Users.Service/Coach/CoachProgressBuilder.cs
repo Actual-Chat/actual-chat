@@ -98,29 +98,7 @@ public static class CoachProgressBuilder
     public static Moment WeekStart(Moment day)
         => CoachWeek.StartOf(day);
 
-    // Private methods
-
-    private static Moment MonthStart(Moment day)
-    {
-        var date = day.ToDateTime();
-        return new Moment(new DateTime(date.Year, date.Month, 1, 0, 0, 0, DateTimeKind.Utc));
-    }
-
-    private static double? ComparisonValue(CoachMetric? metric, CoachDay day, CoachScoringSettings s)
-    {
-        if (metric is null || day.Words < s.MinScoreWords)
-            return null;
-
-        return metric.Kind switch {
-            CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Profanity
-                => day.TaggedWords >= s.MinScoreWords ? metric.Rate : null,
-            CoachMetricKind.Repetition or CoachMetricKind.TurnTaking or CoachMetricKind.Interruptions
-                => metric.Rate,
-            _ => metric.Value,
-        };
-    }
-
-    private static bool? IsBetter(
+    public static bool? IsBetter(
         CoachMetricKind kind, double? was, double? now, CoachScoringSettings s, string? language)
     {
         if (was is not { } before || now is not { } after || Math.Abs(before - after) < 1e-9)
@@ -146,6 +124,28 @@ public static class CoachProgressBuilder
         default:
             return null;
         }
+    }
+
+    // Private methods
+
+    private static Moment MonthStart(Moment day)
+    {
+        var date = day.ToDateTime();
+        return new Moment(new DateTime(date.Year, date.Month, 1, 0, 0, 0, DateTimeKind.Utc));
+    }
+
+    private static double? ComparisonValue(CoachMetric? metric, CoachDay day, CoachScoringSettings s)
+    {
+        if (metric is null || day.Words < s.MinScoreWords)
+            return null;
+
+        return metric.Kind switch {
+            CoachMetricKind.Fillers or CoachMetricKind.WeakWords or CoachMetricKind.Profanity
+                => day.TaggedWords >= s.MinScoreWords ? metric.Rate : null,
+            CoachMetricKind.Repetition or CoachMetricKind.TurnTaking or CoachMetricKind.Interruptions
+                => metric.Rate,
+            _ => metric.Value,
+        };
     }
 
     private static bool? CompareDistance(

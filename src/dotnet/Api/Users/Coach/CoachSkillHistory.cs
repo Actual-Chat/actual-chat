@@ -18,6 +18,7 @@ public sealed partial record CoachSkillHistory
     [DataMember, Key(6)] public long MeasuredWords { get; init; }
     [DataMember, Key(7)] public double MeasuredSeconds { get; init; }
     [DataMember, Key(8)] public int MinimumWords { get; init; }
+    [DataMember, Key(9)] public int SpeakingDays { get; init; }
 }
 
 [DataContract, MessagePackObject]

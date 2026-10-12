@@ -32,14 +32,69 @@
             <ButtonRound Click="@(() => OnMove(-1))" Class="btn-sm" Title="@L.Coach_PreviousPeriod">
                 <i class="icon-arrow-left" aria-hidden="true"></i>
             </ButtonRound>
-            <span>@PeriodDates(m.History.Range) · UTC</span>
+            <span>@PeriodDates(m.SelectedRange) · UTC</span>
             <ButtonRound Click="@(() => OnMove(1))" Class="btn-sm" Title="@L.Coach_NextPeriod"
                          IsDisabled="@(!m.CanMoveForward)">
                 <i class="icon-arrow-right" aria-hidden="true"></i>
             </ButtonRound>
         </div>
+        <Card Class="c-baseline">
+            <h3>@L.Coach_PersonalBaseline</h3>
+            <div class="c-coverage">@L.Coach_BaselineReference</div>
+            @if (m.Comparison.Baseline is { } baseline) {
+                <div>@PeriodDates(baseline.SourceRange) · @HistoryValue(baseline.Value)</div>
+                <div class="c-coverage">@L.Coach_Words(baseline.History.MeasuredWords,
+                    baseline.History.MeasuredWords)</div>
+                <div class="c-coverage">@L.Coach_SpeakingDays · @baseline.History.SpeakingDays
+                    · @L.Coach_Seconds_Format(baseline.History.MeasuredSeconds.ToString("0.#", null))</div>
+                @if (baseline.OmittedSeconds > 0) {
+                    <div class="c-coverage">@L.Coach_BaselineOmitted_Format(
+                        baseline.OmittedSeconds.ToString("0.#", null))</div>
+                }
+                @if (baseline.InvalidatedAt is not null || baseline.MeasurementVersion != 1) {
+                    <div class="c-coverage">@L.Coach_BaselineInvalid</div>
+                } else {
+                    <button type="button" class="chip @(m.BaselineSelection.IsEnabled ? "on" : "")"
+                            aria-pressed="@m.BaselineSelection.IsEnabled" @onclick="@OnBaselineMode">
+                        @L.Coach_CompareBaseline
+                    </button>
+                }
+                @if (m.Comparison.HasRangeChanged) {
+                    <div class="c-coverage">@L.Coach_BaselineRangeChanged</div>
+                }
+                <Button Click="@(() => OnSaveBaseline(mustClear: true))" Class="btn-text btn-clear-baseline">
+                    @L.Common_Clear
+                </Button>
+            }
+            @if (m.BaselineSelection.IsPreview) {
+                <div>@PeriodDates(m.History.Range) · @(m.History.Value is { } preview
+                    ? HistoryValue(preview) : L.Coach_NotEnoughSpeech)</div>
+                <div class="c-coverage">@L.Coach_Words(m.History.MeasuredWords, m.History.MeasuredWords)</div>
+                <div class="c-coverage">@L.Coach_SpeakingDays · @m.History.SpeakingDays
+                    · @L.Coach_Seconds_Format(m.History.MeasuredSeconds.ToString("0.#", null))</div>
+                <Button Click="@(() => OnSaveBaseline())" Class="btn-primary btn-save-baseline"
+                        IsDisabled="@(!m.CanSaveBaseline)">@L.Common_Save</Button>
+                <Button Click="@OnCancelBaseline" Class="btn-text">@L.Common_Cancel</Button>
+            } else {
+                <Button Click="@OnPreviewBaseline" Class="btn-text btn-preview-baseline"
+                        IsDisabled="@(!m.CanSaveBaseline)">
+                    @(m.Comparison.Baseline is null ? L.Coach_UseMeasurements : L.Coach_ReplaceBaseline)
+                </Button>
+            }
+        </Card>
+        @if (m.IsBaselineMode && m.Comparison.Baseline is { } reference) {
+            <div class="c-coverage">@L.Coach_SinceBaseline_Format(
+                reference.CapturedAt.ToDateTime().ToString("d MMM yyyy HH:mm:ss", DateFormatter))</div>
+            <div class="c-baseline-change @CoachLabels.DeltaClass(m.Delta)">@labels.RecentDeltaBadge(m.Delta)</div>
+            @if (m.Comparison.OmittedSeconds > 0) {
+                <div class="c-coverage">@L.Coach_BaselineOmitted_Format(
+                    m.Comparison.OmittedSeconds.ToString("0.#", null))</div>
+            }
+        }
         <Card Class="c-overview">
-            <div class="c-value">@(metric?.Value is null ? L.Coach_NotEnoughSpeech : labels.Value(metric))</div>
+            <div class="c-value">@(m.IsBaselineMode
+                ? m.History.Value is { } current ? HistoryValue(current) : L.Coach_NotEnoughSpeech
+                : metric?.Value is null ? L.Coach_NotEnoughSpeech : labels.Value(metric))</div>
             @if (metric?.Rate is not null) {
                 <div class="c-rate">@labels.Rate(metric)</div>
             }
@@ -47,7 +102,9 @@
                 @if (m.Summary.TaggedWords > 0) {
                     <div class="c-coverage">@L.Coach_DetailCount_Format(metric?.Value ?? 0, m.Summary.TaggedWords)</div>
                 }
-                <div class="c-explanation">@labels.Explain(Kind, m.Language, m.Summary)</div>
+                @if (metric?.Chips.Count > 0) {
+                    <div class="c-explanation">@labels.Explain(Kind, m.Language, m.Summary)</div>
+                }
             } else {
                 <div class="c-explanation">@L.Coach_PaceDetailExplanation</div>
             }
@@ -69,7 +126,12 @@
             } else {
                 <div class="c-chart">
                     <BarChart Items="@HistoryItems(m)" ShowValues="true" ShowZeroValues="true"
-                              ValueFormat="0.#" ItemClick="@OnDay" Class="c-speaking-chart"/>
+                              ValueFormat="0.#" ItemClick="@OnDay" Class="c-speaking-chart"
+                              ReferenceValue="@BaselineChartValue(m)" Maximum="@BaselineChartValue(m)"/>
+                    @if (m.Comparison.Baseline is { InvalidatedAt: null, MeasurementVersion: 1 } chartBaseline) {
+                        <div class="c-coverage">@L.Coach_PersonalBaseline · @PeriodDates(chartBaseline.SourceRange)
+                            · @HistoryValue(chartBaseline.Value)</div>
+                    }
                 </div>
                 <div class="c-coverage">@L.Coach_HistoryDates</div>
             }
@@ -146,10 +208,12 @@
 
     private MutableState<string?> _word = null!;
     private MutableState<Selection> _selection = null!;
+    private MutableState<BaselineSelection> _baselineSelection = null!;
     private CoachLabels Labels => field ??= new CoachLabels(L);
 
     protected override void OnInitialized() {
         _word = StateFactory.NewMutable((string?)null);
+        _baselineSelection = StateFactory.NewMutable(new BaselineSelection(true, false));
         var period = Window is CoachWindow.Days30 or CoachWindow.Month or CoachWindow.AllTime
             ? CoachHistoryPeriod.Month
             : CoachHistoryPeriod.Week;
@@ -165,13 +229,26 @@
         var language = Language;
         var wordState = _word;
         var selectionState = _selection;
+        var baselineState = _baselineSelection;
         var now = Clocks.SystemClock.Now;
         await ThreadPoolExt.Yield();
         language ??= await Hub.CoachUI.GetComparisonLanguage(cancellationToken).ConfigureAwait(false);
         var word = await wordState.Use(cancellationToken).ConfigureAwait(false);
         var selection = await selectionState.Use(cancellationToken).ConfigureAwait(false);
-        var history = await Hub.Coach.GetOwnSkillHistory(Session, kind, language,
-            selection.Period, selection.Anchor, cancellationToken).ConfigureAwait(false);
+        var baselineSelection = await baselineState.Use(cancellationToken).ConfigureAwait(false);
+        var historyTask = Hub.Coach.GetOwnSkillHistory(Session, kind, language,
+            selection.Period, selection.Anchor, cancellationToken);
+        var comparisonTask = Hub.Coach.GetOwnBaselineComparison(Session, kind, language,
+            selection.Period, selection.Anchor, cancellationToken);
+        var history = await historyTask.ConfigureAwait(false);
+        var comparison = await comparisonTask.ConfigureAwait(false);
+        var selectedRange = history.Range;
+        var canSaveBaseline = history.Value is not null;
+        var isBaselineMode = baselineSelection.IsEnabled && !baselineSelection.IsPreview
+            && comparison.Baseline is { InvalidatedAt: null, MeasurementVersion: 1 };
+        if (isBaselineMode)
+            history = comparison.History;
+
         var pace = history.Pace;
         var moments = new List<MomentItem>();
         foreach (var moment in pace.Moments) {
@@ -192,7 +269,33 @@
                 entry.Content.Substring(textRange.Start, textRange.End - textRange.Start), canReplay));
         }
         var canMoveForward = CoachHistoryRanges.Move(selection.Period, selection.Anchor, 1) <= now;
-        return new Model(language, word, selection, history, moments, canMoveForward);
+        return new Model(language, word, selection, history, moments, canMoveForward,
+            comparison, baselineSelection, selectedRange, canSaveBaseline, isBaselineMode);
+    }
+
+    private void OnPreviewBaseline()
+        => _baselineSelection.Value = new BaselineSelection(false, true);
+
+    private void OnCancelBaseline()
+        => _baselineSelection.Value = new BaselineSelection(true, false);
+
+    private void OnBaselineMode()
+        => _baselineSelection.Value = _baselineSelection.Value with {
+            IsEnabled = !_baselineSelection.Value.IsEnabled,
+        };
+
+    private async Task OnSaveBaseline(bool mustClear = false) {
+        var m = State.Value;
+        if (m.Language is null)
+            return;
+
+        var command = new Coach_SetBaseline {
+            Session = Session, Language = m.Language, Kind = Kind,
+            Period = mustClear ? null : m.Selection.Period, Anchor = m.Selection.Anchor,
+        };
+        var (_, error) = await UICommander.Run(command).ConfigureAwait(true);
+        if (error is null)
+            _baselineSelection.Value = new BaselineSelection(true, false);
     }
 
     private void OnPeriod(CoachHistoryPeriod period) {
@@ -236,6 +339,11 @@
             ? L.Coach_Wpm_Format(value.ToString("0.#", null))
             : L.Coach_Percent_Format((100 * value).ToString("0.#", null));
 
+    private double? BaselineChartValue(Model m)
+        => m.Comparison.Baseline is { InvalidatedAt: null, MeasurementVersion: 1 } baseline
+            ? Kind == CoachMetricKind.Pace ? baseline.Value : baseline.Value * 100
+            : null;
+
     private IReadOnlyList<ChartItem> HistoryItems(Model m)
         => m.History.Days.Select(day => {
             var date = day.Day.ToDateTime().ToString("d MMM", DateFormatter);
@@ -278,12 +386,19 @@
 
     public sealed record Selection(CoachHistoryPeriod Period, Moment Anchor);
 
+    public sealed record BaselineSelection(bool IsEnabled, bool IsPreview);
+
     public sealed record Model(
         string? Language, string? Word, Selection Selection, CoachSkillHistory History,
-        List<MomentItem> Moments, bool CanMoveForward) {
+        List<MomentItem> Moments, bool CanMoveForward, CoachBaselineComparison Comparison,
+        BaselineSelection BaselineSelection, Range<Moment> SelectedRange,
+        bool CanSaveBaseline, bool IsBaselineMode) {
         public static readonly Model None = new(null, null,
-            new Selection(CoachHistoryPeriod.Week, Moment.EpochStart), CoachSkillHistory.None, [], false);
+            new Selection(CoachHistoryPeriod.Week, Moment.EpochStart), CoachSkillHistory.None, [], false,
+            new CoachBaselineComparison(), new BaselineSelection(true, false), default, false, false);
 
+        public CoachWeekDelta Delta => new(Comparison.Baseline?.Kind ?? CoachMetricKind.Fillers,
+            Comparison.Baseline?.Value, History.Value, CoachBand.None, Comparison.IsBetter);
         public CoachSummary Summary => History.Summary;
         public CoachPaceDetails Pace => History.Pace;
         public ApiArray<CoachChip> Words => History.Words;

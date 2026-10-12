@@ -6,7 +6,7 @@ namespace ActualChat.Users;
 /// </summary>
 public interface ICoach : IComputeService
 {
-    public const int MaxOccurrences = 20;
+    public const int MaxOccurrences = CoachOccurrence.MaxCount;
 
     // The per-user verdict: the chat-side master switch and the rollout rule
     [ComputeMethod]
@@ -53,6 +53,11 @@ public interface ICoach : IComputeService
         CoachMetricKind kind, CancellationToken cancellationToken);
 
     [ComputeMethod]
+    Task<CoachBaselineComparison> GetOwnBaselineComparison(
+        Session session, CoachMetricKind kind, string language, CoachHistoryPeriod period,
+        Moment anchor, CancellationToken cancellationToken);
+
+    [ComputeMethod]
     Task<CoachMetricKind?> GetOwnFocus(Session session, string? language, CancellationToken cancellationToken);
 
     [ComputeMethod]
@@ -70,6 +75,8 @@ public interface ICoach : IComputeService
     Task<ApiArray<CoachLanguageInfo>> ListOwnLanguages(Session session, CancellationToken cancellationToken);
 
     [CommandHandler]
+    Task OnSetBaseline(Coach_SetBaseline command, CancellationToken cancellationToken);
+    [CommandHandler]
     Task OnSetFocus(Coach_SetFocus command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnSetLanguageLevel(Coach_SetLanguageLevel command, CancellationToken cancellationToken);
@@ -83,6 +90,15 @@ public interface ICoach : IComputeService
     Task OnDismissTip(Coach_DismissTip command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRebuildOwnDays(Coach_RebuildOwnDays command, CancellationToken cancellationToken);
+}
+
+[DataContract, MessagePackObject]
+public sealed partial record Coach_SetBaseline : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required string Language { get; init; }
+    [DataMember(Order = 3), Key(3)] public required CoachMetricKind Kind { get; init; }
+    [DataMember(Order = 4), Key(4)] public CoachHistoryPeriod? Period { get; init; }
+    [DataMember(Order = 5), Key(5)] public Moment Anchor { get; init; }
 }
 
 [DataContract, MessagePackObject]

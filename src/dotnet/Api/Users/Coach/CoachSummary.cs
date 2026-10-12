@@ -79,4 +79,7 @@ public sealed partial record CoachOccurrence(
     [property: DataMember, Key(2)] int Start,
     [property: DataMember, Key(3)] int Length,
     [property: DataMember, Key(4)] Moment At
-);
+)
+{
+    public const int MaxCount = 20;
+}
