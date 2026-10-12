@@ -436,6 +436,8 @@
   "SystemEntry_HistoryWipedPeriod_Format": ": удалена история чата за последние {0}.",
   "SystemEntry_RetentionChanged_Format": ": срок хранения истории — {0}.",
   "SystemEntry_RetentionTurnedOff": ": срок хранения истории отключён.",
+  "SystemEntry_TranscriptionTurnedOn": ": транскрипция включена.",
+  "SystemEntry_TranscriptionTurnedOff": ": транскрипция отключена.",
 
   "ChatMaintenance_Mode": "Режим обслуживания",
   "ChatImport_Start": "Начать импорт",

@@ -40,6 +40,8 @@ export enum Tune {
     PttGestureDetected,
     PttReplyFailed,
     RecordingWillStop,
+    CallTranscriptionOn,
+    CallTranscriptionOff,
 }
 
 export type TuneName = keyof typeof Tune;

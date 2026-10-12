@@ -65,6 +65,19 @@ public sealed class LocalizedSystemEntryMarkupBuilder(IServiceProvider services)
                 new PlainTextMarkup(text));
     }
 
+    protected override Markup BuildTranscriptionChanged(TranscriptionChangedEntry entry)
+    {
+        var authorName = entry.TargetAuthorName.NullIfEmpty() ?? SomeoneName;
+        var text = entry.IsTranscriptionOn
+            ? L.SystemEntry_TranscriptionTurnedOn
+            : L.SystemEntry_TranscriptionTurnedOff;
+        return entry.TargetAuthorId is null
+            ? new PlainTextMarkup(authorName + text)
+            : new MarkupSeq(
+                new AuthorMention(MentionRef.NewAuthor(entry.TargetAuthorId), authorName),
+                new PlainTextMarkup(text));
+    }
+
     protected override string FormatPeriod(TimeSpan period)
         => L.PeriodText(period);
 }

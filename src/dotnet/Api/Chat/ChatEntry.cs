@@ -20,6 +20,7 @@ namespace ActualChat.Chat;
 [Union(100, typeof(UnsupportedSystemEntry))]
 [Union(101, typeof(CallEntry))]
 [Union(102, typeof(HistoryChangedEntry))]
+[Union(103, typeof(TranscriptionChangedEntry))]
 public abstract partial record ChatEntry(
     [property: DataMember(Order = 0), Key(0)] ChatEntryId Id,
     [property: DataMember(Order = 1), Key(1)] long Version = 0
@@ -45,6 +46,7 @@ public abstract partial record ChatEntry(
             ChatEntryKind.NotifyMembers => new NotifyMembersEntry(id),
             ChatEntryKind.Call => new CallEntry(id),
             ChatEntryKind.HistoryChanged => new HistoryChangedEntry(id),
+            ChatEntryKind.TranscriptionChanged => new TranscriptionChangedEntry(id),
             _ => new TextEntry(id),
         };
 
@@ -206,6 +208,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember] public bool? HasVideo { get; init; }
     [DataMember] public HistoryChangeKind? HistoryChange { get; init; }
     [DataMember] public Option<TimeSpan?> HistoryPeriod { get; init; }
+    [DataMember] public bool? IsTranscriptionOn { get; init; }
 
     public ChatEntryDiff(ChatEntry entry) : this()
     {
@@ -214,6 +217,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
             NotifyMembersEntry => ChatEntryKind.NotifyMembers,
             CallEntry => ChatEntryKind.Call,
             HistoryChangedEntry => ChatEntryKind.HistoryChanged,
+            TranscriptionChangedEntry => ChatEntryKind.TranscriptionChanged,
             _ => ChatEntryKind.Text,
         };
         AuthorId = entry.AuthorId;
@@ -258,6 +262,11 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
             HistoryChange = hc.HistoryChange;
             HistoryPeriod = hc.HistoryPeriod;
             break;
+        case TranscriptionChangedEntry tc:
+            TargetAuthorId = tc.TargetAuthorId;
+            TargetAuthorName = tc.TargetAuthorName;
+            IsTranscriptionOn = tc.IsTranscriptionOn;
+            break;
         }
     }
 }
@@ -268,4 +277,5 @@ public enum ChatEntryKind {
     NotifyMembers = 2,
     Call = 3,
     HistoryChanged = 4,
+    TranscriptionChanged = 5,
 }

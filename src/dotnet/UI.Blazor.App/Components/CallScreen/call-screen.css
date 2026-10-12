@@ -512,6 +512,7 @@ body.hoverable .btn-glass.btn-h:hover {
 .btn-glass.btn-h.btn-pin-toggle.on,
 .btn-glass.btn-h.btn-hand.on,
 .btn-glass.btn-h.btn-react.on,
+.btn-glass.btn-h.btn-transcription.on,
 /* Lit whenever the sound leaves the earpiece: speaker, headset or car. */
 .btn-glass.btn-h.btn-speaker.on,
 .btn-glass.btn-h.btn-primary {
@@ -537,6 +538,10 @@ body.hoverable .btn-glass.btn-h:hover {
 .call-screen-footer .btn-glass.btn,
 .call-screen-footer .btn-glass.btn-h {
     @apply w-12 h-12;
+}
+/* Still tells whether the call is transcribed to those who can't change it */
+.call-screen-footer .btn-glass.btn-h.btn-transcription:disabled {
+    @apply opacity-50;
 }
 .call-screen-footer .btn-incut {
     @apply flex-none w-12 h-12;

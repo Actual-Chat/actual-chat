@@ -11,17 +11,16 @@ public sealed partial record SessionRules
     [DataMember(Order = 1), Key(1)]
     public bool VideoAllowed { get; init; } = true;
 
-    public VoiceMode Merge(VoiceMode userMode)
-    {
-        if (VoiceModeOverride is not { } o)
-            return userMode;
-        var transcript = userMode != VoiceMode.JustVoice && o != VoiceMode.JustVoice;
-        var voice = userMode.HasVoice() && o.HasVoice();
-        return (transcript, voice) switch {
-            (true, true) => VoiceMode.TextAndVoice,
-            (true, false) => VoiceMode.JustText,
-            (false, true) => VoiceMode.JustVoice,
-            _ => VoiceMode.JustText,
+    public bool HasText() => VoiceModeOverride?.HasText() ?? true;
+    public bool HasVoice() => VoiceModeOverride?.HasVoice() ?? true;
+
+    public SessionRules WithText(bool hasText)
+        // VoiceMode has no "neither": a session without voice keeps its transcript
+        => this with {
+            VoiceModeOverride = (hasText, HasVoice()) switch {
+                (true, true) => VoiceMode.TextAndVoice,
+                (false, true) => VoiceMode.JustVoice,
+                _ => VoiceMode.JustText,
+            },
         };
-    }
 }
