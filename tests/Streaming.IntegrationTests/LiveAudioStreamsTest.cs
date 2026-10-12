@@ -452,6 +452,61 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         await liveTask.SilentAwait(false);
     }
 
+    [Fact(Timeout = 60_000)]
+    public async Task LateStreamShouldNotReplaceAuthorsLiveStream()
+    {
+        // An utterance a client resends long after recording it registers with the server clock,
+        // which made it look fresher than the speaker's live stream (#5201).
+
+        // arrange
+        var appHost = AppHost;
+        var services = appHost.Services;
+        var commander = services.Commander();
+        var session = Session.New();
+        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "LateStreamTest",
+                    Kind = ChatKind.Group,
+                },
+            },
+        });
+        chat.Require();
+        await services.UserSettingsUI(session)
+            .ChatUserSettings(chat.Id)
+            .Set(new ChatUserSettings { VoiceMode = VoiceMode.JustVoice }, CancellationToken.None);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
+        var now = SystemClock.Instance.Now.EpochOffset.TotalSeconds;
+        var liveRecord = new AudioRecord(
+            StreamId.New(services.MeshWatcher().ThisNode.Ref), session, chat.Id, now, null);
+        var liveStreamId = OpenAudioSegment.GetStreamId(liveRecord, 0).Value;
+        var liveTask = BackgroundTask.Run(
+            () => backend.ProcessAudio(
+                liveRecord, 0, new RpcStream<AudioFrame>(GetEndlessFrames(cts.Token)), cts.Token),
+            cts.Token);
+        _ = await WaitForStream(liveStreams, session, liveStreamId, cts.Token);
+        var lateRecord = new AudioRecord(
+            StreamId.New(services.MeshWatcher().ThisNode.Ref), session, chat.Id, now - 60, null);
+
+        // act
+        await backend.ProcessAudio(lateRecord, 0, new RpcStream<AudioFrame>(GetFrames()), cts.Token);
+
+        // assert
+        var streams = await liveStreams.List(session, chat.Id, cts.Token);
+        streams.Select(x => x.StreamId).Should().Equal([liveStreamId],
+            "an utterance recorded before the live one must not evict it");
+
+        await cts.CancelAsync();
+        await liveTask.SilentAwait(false);
+    }
+
     // Private methods
 
     private static async Task<RpcStream<AudioFrame>?> WaitForStream(
