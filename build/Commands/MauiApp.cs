@@ -16,7 +16,7 @@ internal static class MauiApp
     // Windows PowerShell rather than pwsh: the Appx module is in-box there, and pwsh may not be installed
     private const string PowerShellExe = "powershell";
     // The host's own CPU on Linux; a cross-build from macOS or Windows targets the common one
-    private static readonly string LinuxRuntimeId =
+    internal static readonly string LinuxRuntimeId =
         OperatingSystem.IsLinux() && RuntimeInformation.OSArchitecture == Architecture.Arm64
             ? "linux-arm64"
             : "linux-x64";
@@ -81,6 +81,19 @@ internal static class MauiApp
 
         return plan;
     }
+
+    // Protected/internal methods
+
+    // The publish folder as a tarball: it keeps the mode bits a CI artifact zip drops
+    internal static string GetLinuxPackagePath(bool isDev)
+        => Path.Combine("artifacts", "publish", "App.Maui", $"{GetAppId(isDev)}-{LinuxRuntimeId}.tar.gz");
+
+    internal static string GetLinuxPublishDir(string configuration)
+        => Path.Combine("artifacts", "publish", "App.Maui",
+            $"{configuration.ToLower()}_{TargetFrameworkPrefix}_{LinuxRuntimeId}");
+
+    internal static string GetAppId(bool isDev)
+        => isDev ? "chat.actual.dev.app" : "chat.actual.app";
 
     // Private methods
 
@@ -218,7 +231,7 @@ internal static class MauiApp
         => Path.GetFullPath(Path.Combine(GetOutputDir(settings), "AppX", "AppxManifest.xml"));
 
     private static string GetAppId(AppSettings settings)
-        => settings.IsDev ? "chat.actual.dev.app" : "chat.actual.app";
+        => GetAppId(settings.IsDev);
 
     private static string GetTargetFramework(AppSettings settings)
         => settings switch {

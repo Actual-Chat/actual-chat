@@ -1,3 +1,5 @@
+using System.Formats.Tar;
+using System.IO.Compression;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
 
@@ -5,6 +7,19 @@ namespace Build;
 
 public static class FileExt
 {
+    public static async Task CreateTarGz(
+        string sourceDir, string rootDirName, string tarGzPath, CancellationToken cancellationToken)
+    {
+        var root = Path.GetFullPath(sourceDir);
+        await using var file = File.Create(tarGzPath);
+        await using var gzip = new GZipStream(file, CompressionLevel.Optimal);
+        await using var writer = new TarWriter(gzip, TarEntryFormat.Pax);
+        foreach (var path in Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories)) {
+            var entryName = rootDirName + "/" + Path.GetRelativePath(root, path).Replace('\\', '/');
+            await writer.WriteEntryAsync(path, entryName, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     public static void Remove(params string[] patterns)
     {
         var workingDir = Environment.CurrentDirectory;

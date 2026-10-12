@@ -1,3 +1,4 @@
+| Pack | `./b.cmd app pack linux` - the Release folder as `artifacts/publish/App.Maui/<app id>-linux-x64.tar.gz`; CI uploads it on every `dev` and release push as the `<app id>.<version>.linux-x64.tar.gz` artifact of the "Build test and deploy" workflow |
 # Linux GTK backend
 
 The Linux app runs on the experimental GTK4 backend from
@@ -53,6 +54,9 @@ A cross-build runs from a copy of its output folder, so a Linux box on the netwo
 ./b.cmd app build linux
 rsync -az --delete artifacts/publish/App.Maui/debug_net11.0_linux-x64/ user@linux-box:voxt-linux/
 ```
+
+The CI artifact is the same folder as a tarball: `tar xzf chat.actual.dev.app-linux-x64.tar.gz`
+and start `chat.actual.dev.app/ActualChat`.
 
 Started over SSH, the app needs the desktop session's environment to find the display:
 
@@ -150,7 +154,8 @@ recreated the WebView off the UI thread and took the process down.
 - **Passkeys** are unavailable, as in the Windows app: the page's origin can't target the RP id.
 - **The `GCLB` cookie** that pins WebView WebSockets to the backend the native layer talks to
   isn't set: GirCore 0.7 has no binding for `webkit_cookie_manager_add_cookie`.
-- **Packaging.** The labs package has `.deb`, AppImage and Flatpak targets; none is wired up.
+- **Packaging.** CI ships the publish folder as a tarball (`b app pack linux`). The labs
+  package has `.deb`, AppImage and Flatpak targets; none is wired up.
 
 ## Behaviour worth knowing
 

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Build.Commands;
 using Bullseye;
 using CliWrap;
 using CliWrap.Buffered;
@@ -44,6 +45,7 @@ internal static class Program
         public const string PackMac = "pack-mac";
         public const string PackAndroid = "pack-android";
         public const string PackWin = "pack-win";
+        public const string PackLinux = "pack-linux";
         public const string RestoreTools = "restore-tools";
         public const string Restore = "restore";
         public const string Default = "default";
@@ -484,6 +486,34 @@ internal static class Program
                 .ExecuteAsync(cancellationToken)
                 .Task
                 .ConfigureAwait(false);
+        });
+
+        Target(Targets.PackLinux, DependsOn(Targets.NpmBuild), async () => {
+            var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
+            isDevMaui ??= !isProduction;
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("publish",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net11.0",
+                    @"/p:TargetFrameworks=\""net11.0\""", // otherwise needs maui-android etc
+                    "-p:EnableLinuxGtk=true",
+                    $"-r {MauiApp.LinuxRuntimeId}",
+                    "--self-contained",
+                    $"-c {configuration}",
+                    $"-p:IsDevMaui={isDevMaui}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
+                .ConfigureAwait(false);
+            await FileExt.CreateTarGz(
+                MauiApp.GetLinuxPublishDir(configuration),
+                MauiApp.GetAppId(isDevMaui.Value),
+                MauiApp.GetLinuxPackagePath(isDevMaui.Value),
+                cancellationToken).ConfigureAwait(false);
         });
 
         Target(Targets.RestoreTools, async () => {
