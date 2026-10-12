@@ -150,8 +150,10 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             && rules == oldRules.WithText(rules.HasText());
         if (!isPeerTranscriptionChange)
             authority.RequireManage();
-        await Backend.SetRules(chatId, rules, cancellationToken).ConfigureAwait(false);
-        if (live is not null && rules.HasText() != oldRules.HasText())
+        // Whether it changed is told by the rules the backend replaced, not by the ones read above:
+        // the same request racing itself gets "changed" once, so the chat gets one entry
+        var replacedRules = await Backend.SetRules(chatId, rules, cancellationToken).ConfigureAwait(false);
+        if (replacedRules is not null && replacedRules.HasText() != rules.HasText())
             await PostTranscriptionChangedEntry(session, chatId, rules.HasText(), cancellationToken)
                 .ConfigureAwait(false);
     }

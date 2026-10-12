@@ -362,6 +362,27 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         entries[0].IsTranscriptionOn.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task SameTranscriptionChangeRacingItselfShouldPostOneSystemEntry()
+    {
+        // arrange
+        var chatId = await ArrangePeerCall();
+        var maxLid = await ChatsBackend(Owner).GetMaxLid(chatId, false, default);
+        var rules = SessionRules.Default.WithText(false);
+
+        // act - both sides press "off" at once, each more than once
+        var requests = new List<Task>();
+        for (var i = 0; i < 4; i++) {
+            requests.Add(LiveSessions(Owner).SetRules(Owner.Session, chatId, rules, default));
+            requests.Add(LiveSessions(Member).SetRules(Member.Session, chatId, rules, default));
+        }
+        await Task.WhenAll(requests);
+
+        // assert - an entry is written before its request completes, so none is still on its way
+        var entries = await WhenTranscriptionChangedEntries(chatId, maxLid + 1, 1);
+        entries[0].IsTranscriptionOn.Should().BeFalse();
+    }
+
     // Private methods
 
     private async Task<ChatId> ArrangePeerCall()
