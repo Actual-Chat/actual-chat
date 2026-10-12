@@ -64,7 +64,7 @@
    raw colour vars are the usual carve-out (no pal- utilities inside a gradient). */
 .navbar-chats .c-active-chats[data-has-active-chats],
 .navbar-chats .c-active-chats[data-has-ptt-chats] {
-    @apply rounded-t-2xl;
+    @apply rounded-t-lg;
     background: linear-gradient(
         to bottom,
         var(--magenta-90-10) 0,
@@ -134,14 +134,15 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
     @apply px-2 pb-2;
     @apply text-sm font-medium;
 }
-/* Row-level styling shared by both docks (Active Chats and the PTT list), scoped to their common
-   .c-active-chats wrapper so the PTT section's expanded rows get the same badge/mute visuals. */
+/* The active (selected) chat row inside the Active Chats dock. */
 .c-active-chats .navbar-item.active {
     @apply bg-selected;
 }
 .c-active-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
 }
+/* The PTT mute control on a live PTT chat's Active Chats row: the push-to-talk glyph replaces the
+   listen toggle, a tap opens the mute menu, and a muted chat shows a draining countdown ring. */
 .c-active-chats .c-ptt-badge {
     @apply text-primary;
 }
@@ -187,10 +188,10 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
 }
 
 /* ── Push-to-talk dock ──
-   A collapsible section docked above Active Chats. Collapsed it shows a preview row of chat avatars;
-   expanded it swaps that for a scrollable list of full rows. The outer .ptt-chats is only the
-   enter/exit animator (grid 0fr↔1fr + slide + fade, kept mounted so it can fold away when the last
-   PTT chat leaves - display is transitioned with allow-discrete); .c-inner is the visible card. */
+   A preview row of PTT chat avatars docked above Active Chats; a click opens the PTT settings, where
+   the full list lives. The outer .ptt-chats is only the enter/exit animator (grid 0fr↔1fr + slide +
+   fade, kept mounted so it can fold away when the last PTT chat leaves - display is transitioned with
+   allow-discrete); .c-inner is the visible card. */
 .ptt-chats {
     @apply grid;
     grid-template-rows: 0fr;
@@ -228,87 +229,95 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
 .c-active-chats:not([data-has-ptt-chats]) .active-chats {
     padding-bottom: calc(0.5rem + var(--safe-area-bottom));
 }
-/* Collapsed preview and expanded body each fold between 0fr and 1fr grid rows: the preview folds up
-   as the expanded body unfolds. */
-.ptt-chats .c-preview,
-.ptt-chats .c-expanded {
-    @apply grid;
-    transition: grid-template-rows 200ms ease, opacity 200ms ease;
+.ptt-chats .c-inner {
+    @apply relative;
 }
+/* Full-panel click target behind the content: a tap anywhere opens PTT settings. The content above is
+   pointer-events-none so clicks fall through to here; only a speaking avatar opts back in (it owns its
+   own tap - the mute menu - and isn't a descendant of this layer, so that tap never reaches it). */
+.ptt-chats .c-settings-hit {
+    @apply absolute inset-0 z-0;
+    @apply cursor-pointer;
+}
+.ptt-chats .c-title {
+    @apply px-2 pb-2;
+    @apply text-sm font-medium;
+    @apply pointer-events-none;
+}
+/* A left-aligned row of chat avatars that overlap by 0.5rem. */
 .ptt-chats .c-preview {
-    grid-template-rows: 1fr;
-    @apply opacity-100 cursor-pointer;
+    @apply flex-x items-center;
+    @apply pointer-events-none;
 }
-.ptt-chats .c-expanded {
-    grid-template-rows: 0fr;
-    @apply opacity-0;
-}
-.ptt-chats.expanded .c-preview {
-    grid-template-rows: 0fr;
-    @apply opacity-0;
-}
-.ptt-chats.expanded .c-expanded {
-    grid-template-rows: 1fr;
-    @apply opacity-100;
-}
-.ptt-chats .c-preview-inner,
-.ptt-chats .c-expanded-inner {
-    @apply min-h-0 overflow-hidden;
-}
-/* Collapsed row: up to three avatars, then the expand button - kept left so the floating create
-   button (top-right of the panel) doesn't land on it. */
-/* No padding on this grid-collapse child: vertical padding doesn't fold with grid-template-rows: 0fr,
-   so it would leave a residual height in the expanded state. Outer spacing comes from .c-inner's p-2. */
-.ptt-chats .c-preview-inner {
-    @apply flex-x items-center gap-x-2;
-}
+/* Avatars overlap; later ones paint on top (like the activity panel), so the first/left one sits
+   lowest. Each carries an inline ascending z-index (positioned) so a later avatar's 2px ring lands
+   cleanly over its left neighbour instead of the neighbour's inner image leaking over it. The ring is
+   a box-shadow in the panel's own colour - no layout cost. */
 .ptt-chats .c-avatar {
+    @apply relative;
     @apply flex-none;
-    transition: transform 180ms ease, opacity 180ms ease;
+    @apply -ml-2 first:ml-0;
+    @apply rounded-full;
+    @apply pointer-events-none;
+    box-shadow: 0 0 0 2px var(--background-01);
+    transition: transform 180ms ease, opacity 180ms ease, box-shadow 400ms ease, margin-right 180ms ease;
     @starting-style {
         opacity: 0;
         transform: scale(0.6);
     }
 }
-/* Round chevron toggle (ButtonRound) - expand before the avatars (collapsed), collapse before Settings
-   (expanded). Both sit leftmost, clear of the floating create button; sized by btn-sm/btn-xs, kept
-   circular with aspect-square. */
-.ptt-chats .c-expand-btn.btn.btn-round,
-.ptt-chats .c-collapse-btn.btn.btn-round {
-    @apply aspect-square;
+/* Live speech in the chat: the ring snaps to the accent blue the instant someone talks, then fades
+   back over 400ms once they stop (the compute signal already lingers ~0.2s, so a one-word burst still
+   registers). Instant on, slow off - no loop, which suits short push-to-talk bursts.
+   A speaking chat is sorted to the front (left) by PttChats, and each speaking avatar nudges the
+   avatars after it a little to the right, peeling itself out of the overlap just enough to be tapped
+   on its own. */
+.ptt-chats .c-avatar.speaking {
+    @apply mr-4;
+    @apply cursor-pointer pointer-events-auto;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 70%, var(--background-01));
+    transition: transform 180ms ease, opacity 180ms ease, box-shadow 0ms, margin-right 180ms ease;
 }
-.ptt-chats .c-expand-btn i {
-    @apply text-title;
+/* State + tap target on a speaking avatar: a speaker glyph pinned bottom-right. Blue filled disc with
+   volume-up = you hear this chat (tap to mute); danger disc with volume-off (struck through) = muted
+   (tap to unmute). The ring cuts it out from the avatar. Sized for legibility, like the language badge. */
+.ptt-chats .c-avatar .c-mute-badge {
+    @apply absolute -bottom-0.5 -right-0.5 z-10;
+    @apply flex items-center justify-center;
+    @apply w-5 h-5;
+    @apply rounded-full;
+    @apply bg-primary;
+    @apply text-white text-sm;
+    box-shadow: 0 0 0 1.5px var(--background-01);
 }
-/* Expanded body: a collapse chevron + Settings link, then the scrollable list. */
-.ptt-chats .c-expanded-inner {
-    @apply flex-y gap-y-1;
+.ptt-chats .c-avatar .c-mute-badge.c-muted {
+    @apply bg-danger;
 }
-.ptt-chats .c-settings-row {
-    @apply flex-x items-center gap-x-1;
+/* "+N" tail: how many PTT chats aren't shown. Overlaps the last avatar; an explicit top z-index keeps
+   it above every avatar (the avatars' inner content makes DOM order alone unreliable). Kept muted (a
+   neutral chip, not a saturated badge) so it reads as a tail. Same cut-out ring as the avatars. */
+.ptt-chats .c-more {
+    @apply relative z-10;
+    @apply flex-none flex items-center justify-center;
+    @apply w-8 h-8;
+    @apply -ml-2;
+    @apply rounded-full;
+    @apply bg-04;
+    @apply text-02 text-sm font-medium;
+    box-shadow: 0 0 0 2px var(--background-01);
 }
-.ptt-chats .c-settings-btn.btn {
-    @apply min-w-fit max-w-fit;
+/* Affordance pinned to the right edge: the push-to-talk glyph + a right chevron, in the accent blue,
+   to make it obvious the card is tappable (it opens PTT settings). */
+.ptt-chats .c-open-hint {
+    @apply flex-x items-center;
+    @apply ml-auto;
+    @apply text-primary;
 }
-.ptt-chats .c-settings-btn .btn-content {
-    @apply flex-x items-center gap-x-0.5;
+.ptt-chats .c-open-hint .c-rac {
+    @apply text-2xl;
 }
-.ptt-chats .c-settings-btn .c-title {
-    @apply text-sm font-medium text-02;
-}
-.ptt-chats .c-settings-btn i {
-    @apply text-base text-03;
-}
-/* No chevron-down glyph in the icon font, so the up chevron is rotated to point down. */
-.ptt-chats .c-collapse-btn i {
-    @apply text-title;
-    transform: rotate(180deg);
-}
-/* The scroll cap lives on its own layer, held constant in both states so the list never snaps to full
-   height before folding; .c-expanded-inner is the grid-clip layer that folds, this one just scrolls. */
-.ptt-chats .c-list-scroll {
-    @apply max-h-44;
-    @apply overflow-y-auto custom-scrollbar;
+.ptt-chats .c-open-hint .c-chevron {
+    @apply text-lg;
 }
 
 /* PTT mute menu (PttMuteMenu) */
