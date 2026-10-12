@@ -36,22 +36,9 @@ const CALL_TAB = '.chat-side-panel .live-session-member-list';
 const MANAGE_BUTTONS = `${CALL_TAB} .c-manage-btn`;
 const MANAGE_TOGGLE = `${MANAGE_BUTTONS}:has(.icon-voice-to-text-message)`;
 
-/** Waits for the toggle to show the given state: it follows the server, a round trip after a click. */
-async function waitForToggle(page: Page, isOn: boolean) {
-    const selector = isOn ? `${TOGGLE}.on` : `${TOGGLE}:not(.on)`;
-    await page.locator(selector).first().waitFor({ state: 'visible', timeout: 15_000 });
-}
-
-/** Opens the right panel, which shows its Call tab while the chat has a call. */
-async function openCallTab(page: Page) {
-    await page.locator('i.icon-layout:visible').first().click();
-    await page.locator(MANAGE_TOGGLE).first().waitFor({ state: 'visible', timeout: 15_000 });
-    // The panel slides in; wait until it stops moving
-    await page.waitForTimeout(1_000);
-}
-
-async function waitForManageToggle(page: Page, isOn: boolean) {
-    const selector = `${MANAGE_TOGGLE}.${isOn ? 'on' : 'off'}`;
+/** Waits for a toggle to show the given state: it follows the server, a round trip after a click. */
+async function waitForToggle(page: Page, toggle: string, isOn: boolean) {
+    const selector = isOn ? `${toggle}.on` : `${toggle}:not(.on)`;
     await page.locator(selector).first().waitFor({ state: 'visible', timeout: 15_000 });
 }
 
@@ -85,7 +72,7 @@ describe('call transcription toggle', () => {
         const { caller, callee } = users!;
         await startPeerCall(caller, callee);
         for (const page of [caller, callee]) {
-            await waitForToggle(page, true);
+            await waitForToggle(page, TOGGLE, true);
             const isEnabled = await page.locator(TOGGLE).first().isEnabled();
             expect(isEnabled, 'either side may press it').toBe(true);
         }
@@ -96,7 +83,7 @@ describe('call transcription toggle', () => {
 
         // assert
         for (const page of [caller, callee])
-            await waitForToggle(page, false);
+            await waitForToggle(page, TOGGLE, false);
         await expect.poll(() => getLastTranscriptionLine(caller), { timeout: 15_000 })
             .toContain('turned off transcription');
         await caller.screenshot({ path: shot('caller-off') });
@@ -107,7 +94,7 @@ describe('call transcription toggle', () => {
 
         // assert
         for (const page of [caller, callee])
-            await waitForToggle(page, true);
+            await waitForToggle(page, TOGGLE, true);
         await expect.poll(() => getLastTranscriptionLine(caller), { timeout: 15_000 })
             .toContain('turned on transcription');
     }, 180_000);
@@ -134,8 +121,11 @@ describe('call transcription toggle in the right panel', () => {
         const { caller, callee } = users!;
         await startPeerCall(caller, callee);
         for (const page of [caller, callee]) {
-            await openCallTab(page);
-            await waitForManageToggle(page, true);
+            // The right panel shows its Call tab while the chat has a call
+            await page.locator('i.icon-layout:visible').first().click();
+            await waitForToggle(page, MANAGE_TOGGLE, true);
+            // The panel slides in; wait until it stops moving
+            await page.waitForTimeout(1_000);
         }
         const calleeButtonCount = await callee.locator(MANAGE_BUTTONS).count();
         const callerButtonCount = await caller.locator(MANAGE_BUTTONS).count();
@@ -149,7 +139,7 @@ describe('call transcription toggle in the right panel', () => {
         expect(calleeButtonCount, 'the callee manages transcription only').toBe(1);
         expect(callerButtonCount, 'the host also manages video').toBe(2);
         for (const page of [caller, callee])
-            await waitForManageToggle(page, false);
+            await waitForToggle(page, MANAGE_TOGGLE, false);
         await expect.poll(() => getLastTranscriptionLine(callee), { timeout: 15_000 })
             .toContain('turned off transcription');
         await callee.screenshot({ path: shot('panel-callee-off') });
@@ -160,7 +150,7 @@ describe('call transcription toggle in the right panel', () => {
 
         // assert
         for (const page of [caller, callee])
-            await waitForManageToggle(page, true);
+            await waitForToggle(page, MANAGE_TOGGLE, true);
         await expect.poll(() => getLastTranscriptionLine(callee), { timeout: 15_000 })
             .toContain('turned on transcription');
         await callee.screenshot({ path: shot('panel-callee-on-again') });

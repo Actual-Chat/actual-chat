@@ -26,13 +26,16 @@
    appears or goes moves neither the recorder nor the controls before it. *@
 <div class="call-screen-toolbar call-screen-footer">
     <div class="c-side c-before">
-        @* Shows the call's state to everyone; only who may change it gets a live button. *@
-        <HeaderButton
-            Click="@(() => OnTranscriptionClick(!m.IsTranscriptionOn))"
-            IsDisabled="@(!m.CanSetTranscription)"
-            Class="@("btn-glass btn-transcription " + (m.IsTranscriptionOn ? "on" : ""))">
-            <i class="icon-voice-to-text-message text-lg"></i>
-        </HeaderButton>
+        @* A call's own control: the screen is also up for a chat's video with no call around it.
+           Shows the call's state to everyone; only who may change it gets a live button. *@
+        @if (m.CallPhase is CallPhase.Dialing or CallPhase.Active) {
+            <HeaderButton
+                Click="@(() => OnTranscriptionClick(!m.IsTranscriptionOn))"
+                IsDisabled="@(!m.CanSetTranscription)"
+                Class="@("btn-glass btn-transcription " + (m.IsTranscriptionOn ? "on" : ""))">
+                <i class="icon-voice-to-text-message text-lg"></i>
+            </HeaderButton>
+        }
         @if (isMobileOrNarrow) {
             @videoToggle
         } else {
@@ -44,7 +47,7 @@
         }
     </div>
     @* Dialing: nothing to record yet, so the mic waits for the peer to answer. *@
-    <RecorderToggle Chat="@chat" Compact="true" IsDisabled="@m.IsDialing"/>
+    <RecorderToggle Chat="@chat" Compact="true" IsDisabled="@(m.CallPhase == CallPhase.Dialing)"/>
     <div class="c-side c-after">
         @if (!isMobileOrNarrow) {
             @videoToggle
@@ -141,7 +144,7 @@
             .CanSetTranscription(chatId, cancellationToken)
             .ConfigureAwait(false);
         return new Model {
-            IsDialing = screen?.Call?.Phase == CallPhase.Dialing,
+            CallPhase = screen?.Call?.Phase,
             HasVideo = screen?.HasVideo ?? false,
             IsDesktopLayout = isDesktopLayout,
             IsChatVisible = isChatVisible,
@@ -197,7 +200,7 @@
 
     public sealed record Model {
         public static readonly Model Loading = new();
-        public bool IsDialing { get; init; }
+        public CallPhase? CallPhase { get; init; }
         public bool HasVideo { get; init; }
         public bool IsDesktopLayout { get; init; }
         public bool IsChatVisible { get; init; }
