@@ -37,6 +37,6 @@
 body.wide .share-incoming-modal:not([data-has-share-action]) .dialog-body {
     padding-bottom: 1rem;
 }
-.btn-share-action.hidden {
+.btn-share-action.no-destination {
     display: none;
 }

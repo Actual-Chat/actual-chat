@@ -5,7 +5,7 @@
 @{
     var selectedChatIds = SelectedChatIds;
     var destinationSelected = selectedChatIds.Count > 0;
-    var shareButtonClass = !destinationSelected ? "hidden" : "";
+    var shareButtonClass = !destinationSelected ? "no-destination" : "";
     shareButtonClass += " btn-modal btn-primary btn-share-action";
     var willPrefillEditor = ModalModel.HasFiles
         && selectedChatIds.Count == 1
