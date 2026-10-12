@@ -24,6 +24,9 @@ internal static class WindowConfigurator
             return;
 
         _window = window;
+        // LinuxActivation's GApplication is created first, which makes it the default one, while
+        // notifications and their actions go through the default one and belong to the backend's
+        window.GetApplication()?.SetDefault();
         // TODO(maui-labs): drop once the backend stops pinning its window at 800x600 or more
         // (it does in this preview), which rules out the narrow layout.
         window.SetSizeRequest(MinWidth, MinHeight);

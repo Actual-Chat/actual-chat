@@ -21,12 +21,7 @@ public sealed class Program : GtkMauiApplication
         SynchronizationContext.SetSynchronizationContext(new GLib.Internal.MainLoopSynchronizationContext());
         // No arguments for GApplication: it would try to open a link as a file, and it rejects
         // the options MauiProgram reads from the command line itself
-        try {
-            new Program().Run([]);
-        }
-        finally {
-            LinuxActivation.Stop();
-        }
+        new Program().Run([]);
     }
 
     protected override MauiApp CreateMauiApp()
@@ -37,6 +32,5 @@ public sealed class Program : GtkMauiApplication
         WindowConfigurator.Configure();
         LinuxDesktopEntry.Ensure(ApplicationId);
         LinuxDeviceNotifications.AddOpenAction();
-        LinuxActivation.Listen();
     }
 }

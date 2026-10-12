@@ -131,7 +131,8 @@ recreated the WebView off the UI thread and took the process down.
 - WebKit prints `Cannot register URI scheme app more than once` when the WebView is recreated:
   a web context takes a scheme once, and the handler stays registered across WebViews.
 - A second activation of the same GApplication would make the backend build a second
-  `MauiApp`. It never gets one: `LinuxActivation` stops a second launch before GTK starts.
+  `MauiApp`. It never gets one: `LinuxActivation` ends a second launch before the
+  backend's application runs.
 :::
 
 ## What is deliberately not ported yet
@@ -154,11 +155,11 @@ recreated the WebView off the UI thread and took the process down.
 ## Behaviour worth knowing
 
 - **One instance per user.** [LinuxActivation](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/Linux/LinuxActivation.cs)
-  holds an exclusive lock on a file in `$XDG_RUNTIME_DIR` and listens on a Unix socket next to
-  it. A second launch - from the launcher, or from the desktop handing over a `voxt://` link -
-  can't take the lock, so it forwards its link to the socket and exits; the running instance
-  presents its window. The socket opens in `Main`, so a link that arrives while the app starts
-  waits for it. Without `XDG_RUNTIME_DIR` every launch is an instance of its own.
+  registers a GApplication of its own in `Main`, which owns a name on the session bus. A second
+  launch - from the launcher, or from the desktop handing over a `voxt://` link - finds the
+  name taken, activates the owner's `open` action with its link and exits; the running instance
+  presents its window. A link that arrives while the app starts waits on the bus for the main
+  loop. Without a session bus every launch is an instance of its own.
 - **A recreated WebView terminates the old page's web process.** Each WebKit view runs its page
   in a process of its own, which keeps running scripts for as long as anything references the
   view; `LinuxCustomBlazorWebViewHandler.DisconnectHandler` ends it explicitly.
