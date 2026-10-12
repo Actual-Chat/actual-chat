@@ -127,6 +127,7 @@ export default withMermaid(defineConfig({
             items: [
               { text: "Incoming call flow", link: "/calls/incoming-call-flow" },
               { text: "Call entries", link: "/calls/call-entries" },
+              { text: "Call metrics", link: "/calls/call-metrics" },
             ],
           },
           {
