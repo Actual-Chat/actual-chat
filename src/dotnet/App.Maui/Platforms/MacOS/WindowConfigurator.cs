@@ -9,8 +9,9 @@ namespace ActualChat.App.Maui;
 /// <summary>
 /// Desktop window policy of the AppKit app, the twin of the Windows <c>WindowConfigurator</c>:
 /// the red button hides the window instead of closing it while <see cref="App.MustMinimizeOnQuit"/>
-/// holds, a Dock click brings it back, the background state follows window visibility, and the
-/// web UI extends under the titlebar: the page reserves its height and marks its own drag regions.
+/// holds, a Dock click brings it back, the background state follows window visibility, banners are
+/// held back while the window is in front, and the web UI extends under the titlebar: the page
+/// reserves its height and marks its own drag regions.
 /// </summary>
 internal static partial class WindowConfigurator
 {
@@ -26,6 +27,12 @@ internal static partial class WindowConfigurator
     private static bool _hasInsetTrafficLights;
 
     public static IWKScriptMessageHandler WindowDragHandler { get; } = new WindowDragMessageHandler();
+
+    public static bool IsInForeground
+        // "Is the user working in Voxt" as the OS sees it, not the background state: a window in
+        // sight beside another app is visible yet not in front. A locked screen deactivates the app.
+        => NSApplication.SharedApplication.Active && _window is { IsMainWindow: true };
+
     private static NSWindow? Window
         => _window ??= App.Current.Windows.FirstOrDefault()?.Handler?.PlatformView as NSWindow;
 
