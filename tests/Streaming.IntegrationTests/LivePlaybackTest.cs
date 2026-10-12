@@ -10,7 +10,7 @@ namespace ActualChat.Streaming.IntegrationTests;
 public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [Fact(Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task LiveStreamMuxer_ShouldEmitStreamItemsWhenRecording()
     {
         var appHost = AppHost;
@@ -42,28 +42,25 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Start Live Streams listener
         var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
 
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
         var liveStreamTask = liveStreams.GetListeningStream(session, chat.Id, default, cts.Token);
         var liveStream = await liveStreamTask;
 
         // Collect items in background
-        var receivedItems = new List<MuxedAudioStreamItem>();
+        var receivedItems = new ConcurrentQueue<MuxedAudioStreamItem>();
         var collectTask = BackgroundTask.Run(async () => {
             log.LogInformation("Starting to collect Live items");
             try {
                 await foreach (var item in liveStream.WithCancellation(cts.Token)) {
                     log.LogInformation("Received Live item: {ItemType}, StreamIndex={StreamIndex}",
                         item.GetType().Name, item.StreamIndex);
-                    receivedItems.Add(item);
+                    receivedItems.Enqueue(item);
                 }
             }
             catch (OperationCanceledException) {
                 log.LogInformation("Live stream collection cancelled, received {Count} items", receivedItems.Count);
             }
         }, cts.Token);
-
-        // Wait a bit for the muxer to start observing
-        await Task.Delay(500, cts.Token);
 
         // Now start recording audio
         var backend = services.GetRequiredService<IAudioStreamingBackend>();
@@ -73,19 +70,17 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
             streamId, session, chat.Id,
             CpuClock.Instance.Now.EpochOffset.TotalSeconds, null);
 
-        log.LogInformation("Processing audio file...");
-        var audioFrames = GetTestAudioFrames();
-        await backend.ProcessAudio(audioRecord, 333,
-            new RpcStream<AudioFrame>(audioFrames),
+        // The recording lasts until the listener has seen it, however late the muxer starts observing
+        var processTask = BackgroundTask.Run(
+            () => backend.ProcessAudio(
+                audioRecord, 333, new RpcStream<AudioFrame>(GetTestAudioFrames(cts.Token)), cts.Token),
             cts.Token);
-        log.LogInformation("Audio file processed");
-
-        // Wait for items to be received
-        await Task.Delay(2000, cts.Token);
+        await TestWait.WhenPolled(() => receivedItems.OfType<MuxedAudioStreamStart>().Should().NotBeEmpty());
 
         // Cancel collection
         await cts.CancelAsync();
         await collectTask.SilentAwait(false);
+        await processTask.SilentAwait(false);
 
         // Verify we received items
         log.LogInformation("Total items received: {Count}", receivedItems.Count);
@@ -104,7 +99,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         startItems.Should().NotBeEmpty("should receive at least one StreamStart");
     }
 
-    [LocalFact("Requires DeepGram / Google Cloud credentials", Timeout = 30_000)]
+    [Fact(Timeout = 60_000)]
     public async Task LiveStreamDemuxer_ShouldRaiseEventsForReceivedStreams()
     {
         var appHost = AppHost;
@@ -154,13 +149,8 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
         // Run demuxer
         await demuxer.Run();
 
-        // Wait for frame collection with timeout
-        try {
-            await frameCollectionTcs.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        }
-        catch (TimeoutException) {
-            log.LogWarning("Frame collection timed out");
-        }
+        await TestWait.WhenPolled(() => frameCollectionTcs.Task.IsCompleted.Should().BeTrue(
+            "the stream's frames must be collected"));
 
         // Verify events
         log.LogInformation("Verifying: streamStartedEvents={Count}, receivedFrames={FrameCount}",
@@ -197,13 +187,14 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
 
     // Private methods
 
-    private static async IAsyncEnumerable<AudioFrame> GetTestAudioFrames()
+    private static async IAsyncEnumerable<AudioFrame> GetTestAudioFrames(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         // Generate some test audio frames
         var offset = TimeSpan.Zero;
         var duration = Constants.Audio.OpusFrameDuration;
 
-        for (var i = 0; i < 50; i++) {
+        for (var i = 0; !cancellationToken.IsCancellationRequested; i++) {
             // Generate a simple test frame (not valid opus, but good for testing the pipeline)
             var data = new byte[100];
             Array.Fill(data, (byte)(i % 256));
@@ -215,7 +206,7 @@ public class LivePlaybackTest(AppHostFixture fixture, ITestOutputHelper @out)
             };
 
             offset += duration;
-            await Task.Delay(10); // Simulate real-time recording
+            await Task.Delay(10, CancellationToken.None); // Simulate real-time recording
         }
     }
 }
