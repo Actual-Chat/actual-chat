@@ -192,6 +192,17 @@ public partial class AudioStreamingBackend
             TimeSpan.Zero,
             AudioSourceLog,
             cancellationToken);
+        // A client resending an utterance it has already drained pushes no frames. Registering such
+        // a stream takes the author's live stream away from listeners, and failing it on transcription
+        // makes the client resend it again. A producer may post a transcript with no audio, so it's exempt.
+        if (!isProducerDriven) {
+            var hasFrames = await audio.GetFrames(cancellationToken).AnyAsync(cancellationToken).ConfigureAwait(false);
+            if (!hasFrames) {
+                Log.LogWarning("ProcessAudio: stream #{StreamId} has no frames, skipping it", record.StreamId);
+                return;
+            }
+        }
+
         var openSegment = new OpenAudioSegment(0,
             record,
             audio,

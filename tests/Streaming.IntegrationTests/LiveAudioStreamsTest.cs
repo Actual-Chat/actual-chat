@@ -389,6 +389,69 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         await processTask.SilentAwait(false);
     }
 
+    [Fact(Timeout = 60_000)]
+    public async Task EmptyStreamShouldNotReplaceAuthorsLiveStream()
+    {
+        // A client resending an utterance it had already drained pushed empty streams in a loop,
+        // and each one took the speaker's live stream away from listeners (#5201).
+
+        // arrange
+        var appHost = AppHost;
+        var services = appHost.Services;
+        var commander = services.Commander();
+        var session = Session.New();
+        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
+        var chat = await commander.Call(new Chats_Change {
+            Session = session,
+            ChatId = default,
+            ExpectedVersion = null,
+            Change = new() {
+                Create = new ChatDiff {
+                    Title = "EmptyStreamTest",
+                    Kind = ChatKind.Group,
+                },
+            },
+        });
+        chat.Require();
+        await services.UserSettingsUI(session)
+            .ChatUserSettings(chat.Id)
+            .Set(new ChatUserSettings { VoiceMode = VoiceMode.JustVoice }, CancellationToken.None);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(45));
+        var backend = services.GetRequiredService<IAudioStreamingBackend>();
+        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
+        var liveRecord = new AudioRecord(
+            StreamId.New(services.MeshWatcher().ThisNode.Ref),
+            session,
+            chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds,
+            null);
+        var liveStreamId = OpenAudioSegment.GetStreamId(liveRecord, 0).Value;
+        var liveTask = BackgroundTask.Run(
+            () => backend.ProcessAudio(
+                liveRecord, 0, new RpcStream<AudioFrame>(GetEndlessFrames(cts.Token)), cts.Token),
+            cts.Token);
+        _ = await WaitForStream(liveStreams, session, liveStreamId, cts.Token);
+        var emptyRecord = new AudioRecord(
+            StreamId.New(services.MeshWatcher().ThisNode.Ref),
+            session,
+            chat.Id,
+            SystemClock.Instance.Now.EpochOffset.TotalSeconds,
+            null);
+
+        // act
+        await backend.ProcessAudio(
+            emptyRecord, 0, new RpcStream<AudioFrame>(AsyncEnumerable.Empty<AudioFrame>()), cts.Token);
+
+        // assert
+        var streams = await liveStreams.List(session, chat.Id, cts.Token);
+        streams.Select(x => x.StreamId).Should().Equal([liveStreamId],
+            "a stream without frames must neither register nor evict the author's live one");
+
+        await cts.CancelAsync();
+        await liveTask.SilentAwait(false);
+    }
+
     // Private methods
 
     private static async Task<RpcStream<AudioFrame>?> WaitForStream(
@@ -403,6 +466,24 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
                 return stream;
 
             await Task.Delay(50, cancellationToken);
+        }
+    }
+
+    private static async IAsyncEnumerable<AudioFrame> GetEndlessFrames(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        // Keeps a stream live for as long as the test needs: a pause longer than the server's
+        // frame silence timeout would end it on its own
+        var offset = TimeSpan.Zero;
+        while (!cancellationToken.IsCancellationRequested) {
+            yield return new AudioFrame {
+                Data = new byte[100],
+                Offset = offset,
+                Duration = Constants.Audio.OpusFrameDuration,
+            };
+
+            offset += Constants.Audio.OpusFrameDuration;
+            await Task.Delay(20, CancellationToken.None);
         }
     }
 
