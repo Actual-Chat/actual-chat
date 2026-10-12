@@ -222,11 +222,11 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         var whilePending = (AppUpdateInfo?)null;
         await WhenPolled(async () => {
             var storeInfo = await Backend.GetCachedStoreUpdateInfo(appKind, default);
-            storeInfo!.PendingInfo!.VersionString.Should()
+            (storeInfo?.PendingInfo?.VersionString).Should()
                 .Be(OwnVersion.ToString(), "the release must be detected first");
             // Invalidate's consolidation may still be under way, so the value can lag behind the record
             whilePending = await Service.GetLatestUpdateInfo(appKind, default);
-            whilePending!.VersionString.Should().Be("1.0.0", "a detected release is held back for AnnounceDelay");
+            (whilePending?.VersionString).Should().Be("1.0.0", "a detected release is held back for AnnounceDelay");
         });
         var afterDelay = await When(async ct => {
             var info = await Service.GetLatestUpdateInfo(appKind, ct);
