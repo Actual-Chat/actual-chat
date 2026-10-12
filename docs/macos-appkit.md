@@ -144,7 +144,11 @@ markers:
   needs an AVAudioSession-free audio session, a macos build of the Opus codec and the CoreML VAD
   model.
 - **Notifications** are pull-based through `NotificationReconciler` and delivered only while the
-  app runs; there is no APNs-for-Mac push path.
+  app runs; there is no APNs-for-Mac push path. macOS asks the app about every notification it
+  posts, in front or not, and `MacOSNotificationDelegate` hides the banner only while Voxt is the
+  active app with its window in front (`WindowConfigurator.IsInForeground`, the twin of the Windows
+  one) - not while the window is merely visible, which is what the background state tracks. A
+  locked screen makes `loginwindow` the active app, so the lock screen gets the banners.
 
 ## Behaviour worth knowing
 
