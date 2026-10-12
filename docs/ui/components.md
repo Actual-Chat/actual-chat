@@ -465,8 +465,9 @@ What to write instead, in order of preference:
 A rule that *defines* a utility is fine: a selector that is nothing but the class (`.animate-pulse`),
 and anything inside `@layer`.
 
-`scripts/check-css-selectors.mjs` enforces this: `npm run lint:css` runs in `build:Verify` and
-`build:Release`, and the edit hook reports it on the lines you change.
+`scripts/check-css-selectors.mjs` enforces this: `npm run lint:css` is a part of `npm run lint` and
+`lint:all`, so `build:Verify` and `build:Release` run it, and the edit hook reports it on the lines
+you change.
 
 ### Property Ordering Within a Rule
 
