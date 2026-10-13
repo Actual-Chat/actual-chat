@@ -1,10 +1,10 @@
 .playback-speed-btn {
     @apply flex-none;
-    @apply min-w-14 max-w-14;
-    @apply p-0;
+    @apply w-auto;
+    @apply px-2 py-0.5;
     @apply rounded-lg;
+    @apply bg-btn-hover;
 }
 .playback-speed-btn .c-speed-label {
-    @apply px-1.5 py-0.5;
-    @apply text-caption-500 whitespace-nowrap;
+    @apply text-02 text-body-500 whitespace-nowrap;
 }

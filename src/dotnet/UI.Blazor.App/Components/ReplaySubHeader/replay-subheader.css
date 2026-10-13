@@ -7,6 +7,23 @@
     @apply rounded-lg;
     @apply bg-replay;
     @apply text-replay;
+    box-shadow: 0 2px 6px -3px color-mix(in srgb, var(--accent-replay), transparent 50%);
+}
+.replay-subheader .btn-h {
+    color: var(--accent-replay);
+}
+body.hoverable .replay-subheader .btn-h:hover {
+    color: var(--accent-replay);
+    filter: brightness(1.15);
+}
+.replay-subheader .playback-speed-btn .c-speed-label {
+    color: var(--accent-replay);
+}
+.replay-subheader .c-close {
+    @apply -mt-2 -mr-1;
+}
+.replay-subheader .c-close i {
+    @apply text-xl leading-5;
 }
 .replay-subheader .c-authors-block {
     @apply relative;
@@ -26,7 +43,7 @@
     @apply flex-1;
 }
 .replay-subheader .author-circle .avatar-circle::after {
-    border-color: var(--border-replay);
+    border-color: transparent;
 }
 .replay-subheader .c-skeletons {
     @apply absolute inset-0 z-0;

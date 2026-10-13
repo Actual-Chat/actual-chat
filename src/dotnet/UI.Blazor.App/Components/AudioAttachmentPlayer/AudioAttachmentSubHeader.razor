@@ -13,7 +13,6 @@
 
 @if (m is not null) {
 <div class="audio-attachment-subheader">
-    <PlaybackRunningBorder IsPlaying="@m.IsPlaying"/>
     <div class="c-row-main">
         <ButtonRound Tooltip="@(m?.IsPlaying == true ? L.Common_Pause : L.MessageMenu_Play)"
                      Click="@OnToggle"
@@ -25,16 +24,16 @@
         </div>
         <div class="c-actions">
             @if (ScreenSize.IsWide()) {
-                <HeaderButton Class="btn-glass btn-sm" Tooltip="@L.AudioPlayer_Backward" Click="@OnBackward">
+                <HeaderButton Tooltip="@L.AudioPlayer_Backward" Click="@OnBackward">
                     <i class="icon-media-backward-10"></i>
                 </HeaderButton>
-                <HeaderButton Class="btn-glass btn-sm" Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
+                <HeaderButton Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
                     <i class="icon-media-forward-10"></i>
                 </HeaderButton>
             }
             <PlaybackSpeedButton Speed="@speed" Menu="@(MenuRef.New<AudioAttachmentSpeedMenu>())"/>
-            <HeaderButton Click="@OnStop">
-                <i class="icon-close-fill text-2xl"></i>
+            <HeaderButton Class="c-close" Click="@OnStop">
+                <i class="icon-close"></i>
             </HeaderButton>
         </div>
     </div>

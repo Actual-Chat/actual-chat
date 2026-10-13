@@ -319,6 +319,7 @@ module.exports = {
         'banner-info': 'var(--text-banner-info)',
         'banner-success': 'var(--text-banner-success)',
         'replay': 'var(--text-replay)',
+        'music': 'var(--text-music)',
         'post-panel-text': 'var(--post-panel-text)',
       },
       borderColor: {
@@ -344,6 +345,7 @@ module.exports = {
         'banner-warning': 'var(--border-banner-warning)',
         'banner-error': 'var(--border-banner-error)',
         'replay': 'var(--border-replay)',
+        'music': 'var(--border-music)',
       },
       backgroundColor: {
         '01': 'var(--background-01)',
@@ -365,6 +367,7 @@ module.exports = {
         'banner-info-btn': 'var(--background-banner-info-btn)',
         'banner-success-btn': 'var(--background-banner-success-btn)',
         'replay': 'var(--background-replay)',
+        'music': 'var(--background-music)',
         'recording-countdown': 'var(--background-recording-countdown)',
         'modal': 'var(--modal-background)',
         'modal-input': 'var(--modal-input-bg)',
