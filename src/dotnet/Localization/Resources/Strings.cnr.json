@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "{0} od vas",
   "LocationMessage_ShareBack": "Podijelite svoju lokaciju zauzvrat",
 
+  "GithubPreview_OpenedBy_Format": "Otvoreno {1}, autor: {0}",
+  "GithubPreview_CommittedBy_Format": "Commit {1}, autor: {0}",
+  "GithubPreview_CreatedBy_Format": "Kreirano {1}, autor: {0}",
+  "GithubPreview_AssignedTo_Format": "Dodijeljeno: {0}",
+  "GithubPreview_Files": "{0} fajl|{0} fajla|{0} fajlova",
+
   "Editor_ChoosePhoto": "Odaberite fotografiju",
   "Editor_SelectVideo": "Odaberite video",
   "Editor_AddEmoji": "Dodajte emoji",

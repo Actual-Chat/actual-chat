@@ -48,7 +48,10 @@ public sealed class MediaServiceModule(IServiceProvider moduleServices)
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
         services.AddEgressHttpClient(ImageGrabber.HttpClientName)
             .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
+        services.AddEgressHttpClient(GithubLinkCards.HttpClientName)
+            .ConfigureHttpClient(client => client.DefaultRequestHeaders.UserAgent.ParseAdd(Crawler.DefaultUserAgent));
         services.AddSingleton<Crawler>();
+        services.AddSingleton<GithubLinkCards>();
         services.AddSingleton<RobotsFiles>();
         services.AddSingleton<ICrawlingHandler, WebSiteHandler>();
         services.AddSingleton<ICrawlingHandler, ImageLinkHandler>();

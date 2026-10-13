@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "{0} от вас",
   "LocationMessage_ShareBack": "Отправить свою геопозицию в ответ",
 
+  "GithubPreview_OpenedBy_Format": "Открыто {1}, автор: {0}",
+  "GithubPreview_CommittedBy_Format": "Коммит {1}, автор: {0}",
+  "GithubPreview_CreatedBy_Format": "Создано {1}, автор: {0}",
+  "GithubPreview_AssignedTo_Format": "Назначено: {0}",
+  "GithubPreview_Files": "{0} файл|{0} файла|{0} файлов",
+
   "Editor_ChoosePhoto": "Выбрать фото",
   "Editor_SelectVideo": "Выбрать видео",
   "Editor_AddEmoji": "Добавить эмодзи",

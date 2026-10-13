@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "आपसे {0} दूर",
   "LocationMessage_ShareBack": "अपनी लोकेशन भी साझा करें",
 
+  "GithubPreview_OpenedBy_Format": "{0} द्वारा {1} को खोला गया",
+  "GithubPreview_CommittedBy_Format": "{0} द्वारा {1} को कमिट किया गया",
+  "GithubPreview_CreatedBy_Format": "{0} द्वारा {1} को बनाया गया",
+  "GithubPreview_AssignedTo_Format": "{0} को सौंपा गया",
+  "GithubPreview_Files": "{0} फ़ाइल|{0} फ़ाइलें",
+
   "Editor_ChoosePhoto": "फ़ोटो चुनें",
   "Editor_SelectVideo": "वीडियो चुनें",
   "Editor_AddEmoji": "इमोजी जोड़ें",

@@ -636,6 +636,14 @@
   "LocationMessage_DistanceFromYou_Format": "{0} from you",
   "LocationMessage_ShareBack": "Share your location back",
 
+  // The card of a GitHub link in a chat: a pull request, an issue, a commit or a repository, built from
+  // GitHub's API record. {0} is the GitHub login of whoever filed it, {1} the date it was filed on.
+  "GithubPreview_OpenedBy_Format": "Opened by {0} on {1}",
+  "GithubPreview_CommittedBy_Format": "Committed by {0} on {1}",
+  "GithubPreview_CreatedBy_Format": "Created by {0} on {1}",
+  "GithubPreview_AssignedTo_Format": "Assigned to {0}",
+  "GithubPreview_Files": "{0} file|{0} files",
+
   // The message editor: its attachment menu, the attachment list, and the prompt offered when a
   // very large text is pasted.
   "Editor_ChoosePhoto": "Choose Photo",

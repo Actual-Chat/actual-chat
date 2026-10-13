@@ -636,6 +636,14 @@
   "LocationMessage_DistanceFromYou_Format": "{0} von Ihnen entfernt",
   "LocationMessage_ShareBack": "Споделете местоположението си в отговор",
 
+  // The card of a GitHub link in a chat: a pull request, an issue, a commit or a repository, built from
+  // GitHub's API record. {0} is the GitHub login of whoever filed it, {1} the date it was filed on.
+  "GithubPreview_OpenedBy_Format": "{1} tarihinde {0} tarafından açıldı",
+  "GithubPreview_CommittedBy_Format": "{1} tarihinde {0} tarafından commit edildi",
+  "GithubPreview_CreatedBy_Format": "{1} tarihinde {0} tarafından oluşturuldu",
+  "GithubPreview_AssignedTo_Format": "Ditugaskan kepada {0}",
+  "GithubPreview_Files": "{0} ファイル",
+
   // The message editor: its attachment menu, the attachment list, and the prompt offered when a
   // very large text is pasted.
   "Editor_ChoosePhoto": "Одаберите фотографију",

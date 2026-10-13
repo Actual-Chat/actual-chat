@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "距你 {0}",
   "LocationMessage_ShareBack": "回传你的位置",
 
+  "GithubPreview_OpenedBy_Format": "{0} 于 {1} 创建",
+  "GithubPreview_CommittedBy_Format": "{0} 于 {1} 提交",
+  "GithubPreview_CreatedBy_Format": "{0} 于 {1} 创建",
+  "GithubPreview_AssignedTo_Format": "指派给 {0}",
+  "GithubPreview_Files": "{0} 个文件",
+
   "Editor_ChoosePhoto": "选择照片",
   "Editor_SelectVideo": "选择视频",
   "Editor_AddEmoji": "添加表情",

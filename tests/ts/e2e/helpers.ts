@@ -734,3 +734,22 @@ export async function setUILanguage(page: Page, code: string): Promise<string> {
     await waitForAppReady(page);
     return previous;
 }
+
+/** Types a message into the editor of the open chat, posts it, and returns the message that carries `marker`. */
+export async function postMessage(page: Page, content: string, marker: string): Promise<Locator> {
+    const editor = page.locator('#message-input .editor-content[contenteditable="true"]').first();
+    await editor.click({ force: true });
+    // ChatMessageEditor restores per-chat drafts, so a previous run's unsent text would be prepended
+    await editor.evaluate(el => {
+        el.innerHTML = '';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await editor.click({ force: true });
+    await page.keyboard.type(content);
+    // MarkupEditor posts on 'keypress' for Enter; dispatching it skips the actionability checks
+    await editor.dispatchEvent('keypress', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true });
+
+    const message = page.locator(`.message-wrapper:has(.chat-message-markup:has-text("${marker}"))`).first();
+    await message.waitFor({ state: 'visible', timeout: 30_000 });
+    return message;
+}

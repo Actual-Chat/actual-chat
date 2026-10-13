@@ -12,6 +12,7 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
     private MediaSettings MediaSettings => field ??= Services.GetRequiredService<MediaSettings>();
     private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Services.GetRequiredService<ILinkPreviewsBackend>();
     private Crawler Crawler => field ??= Services.GetRequiredService<Crawler>();
+    private GithubLinkCards GithubLinkCards => field ??= Services.GetRequiredService<GithubLinkCards>();
     private ICommander Commander => field ??= Services.Commander();
 
     protected override TimeSpan ThrottlePeriod => MediaSettings.LinkPreviewUpdatePeriod;
@@ -21,7 +22,29 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
         var id = LinkPreview.ComposeId(Target);
         var linkPreview = await LinkPreviewsBackend.Get(id, false, cancellationToken).ConfigureAwait(false);
 
-        using var activity = CoreServerInstruments.ActivitySource.StartActivity(typeof(Crawler), nameof(Crawler.Crawl), ActivityKind.Client);
+        var githubLink = GithubLinkParser.TryParse(Target) is { } githubTarget
+            ? await GithubLinkCards.Get(githubTarget, cancellationToken).ConfigureAwait(false)
+            : null;
+        if (githubLink is not null) {
+            linkPreview ??= new LinkPreview { Id = id, Url = Target };
+            linkPreview = linkPreview with {
+                Title = githubLink.Title,
+                Description = githubLink.Description,
+                GithubCard = githubLink.Card,
+            };
+        }
+        else
+            linkPreview = await Crawl(linkPreview, cancellationToken).ConfigureAwait(false);
+        var cmd = new LinkPreviewsBackend_Change(id, null, Change.Upsert(linkPreview));
+        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task<LinkPreview> Crawl(LinkPreview? linkPreview, CancellationToken cancellationToken)
+    {
+        using var activity = CoreServerInstruments.ActivitySource
+            .StartActivity(typeof(Crawler), nameof(Crawler.Crawl), ActivityKind.Client);
         var linkMeta = await Crawler.Crawl(Target, cancellationToken)
             .WithActivity(activity, cancellationToken)
             .ConfigureAwait(false);
@@ -46,7 +69,6 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
         // A short map link has no coordinates in it, but the URL it redirects to usually does
         if ((MapLinkParser.TryParse(Target) ?? MapLinkParser.TryParse(linkMeta.ResolvedUrl)) is { } mapLinkTarget)
             linkPreview = linkPreview with { MapPoint = mapLinkTarget.Point, MapPointName = mapLinkTarget.Name };
-        var cmd = new LinkPreviewsBackend_Change(id, null, Change.Upsert(linkPreview));
-        await Commander.Call(cmd, cancellationToken).ConfigureAwait(false);
+        return linkPreview;
     }
 }

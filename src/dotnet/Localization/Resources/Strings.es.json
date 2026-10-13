@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "A {0} de ti",
   "LocationMessage_ShareBack": "Compartir tu ubicación a cambio",
 
+  "GithubPreview_OpenedBy_Format": "Abierto por {0} el {1}",
+  "GithubPreview_CommittedBy_Format": "Confirmado por {0} el {1}",
+  "GithubPreview_CreatedBy_Format": "Creado por {0} el {1}",
+  "GithubPreview_AssignedTo_Format": "Asignado a {0}",
+  "GithubPreview_Files": "{0} archivo|{0} archivos",
+
   "Editor_ChoosePhoto": "Elegir foto",
   "Editor_SelectVideo": "Elegir vídeo",
   "Editor_AddEmoji": "Añadir emoji",

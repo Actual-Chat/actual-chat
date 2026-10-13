@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "{0} од вас",
   "LocationMessage_ShareBack": "Поделите своју локацију заузврат",
 
+  "GithubPreview_OpenedBy_Format": "Отворено {1}, аутор: {0}",
+  "GithubPreview_CommittedBy_Format": "Цоммит {1}, аутор: {0}",
+  "GithubPreview_CreatedBy_Format": "Креирано {1}, аутор: {0}",
+  "GithubPreview_AssignedTo_Format": "Додељено: {0}",
+  "GithubPreview_Files": "{0} фајл|{0} фајла|{0} фајлова",
+
   "Editor_ChoosePhoto": "Одаберите фотографију",
   "Editor_SelectVideo": "Одаберите видео",
   "Editor_AddEmoji": "Додајте emoji",
