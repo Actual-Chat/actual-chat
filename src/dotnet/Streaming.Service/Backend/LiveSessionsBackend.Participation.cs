@@ -146,8 +146,12 @@ public partial class LiveSessionsBackend
                 await _redisStates.Refresh(chatId.Value).ConfigureAwait(false);
                 await AddParticipantToConversation(chatId, authorId).ConfigureAwait(false);
                 // An answered call lives as long as its session does; a ringing one keeps its own short TTL.
-                if (await SafeGetCall(chatId).ConfigureAwait(false) is { IsAnswered: true })
+                // Its invites go with it: they name the call's parties, and a steady call never rewrites them.
+                var call = await SafeGetCall(chatId).ConfigureAwait(false);
+                if (call is { IsAnswered: true }) {
                     await _redisCalls.Refresh(chatId.Value).ConfigureAwait(false);
+                    await _redisInvites.Touch(chatId.Value).ConfigureAwait(false);
+                }
             }
             else {
                 // Kind-guarded: a stream ending must only clear the registration it itself owns. Two

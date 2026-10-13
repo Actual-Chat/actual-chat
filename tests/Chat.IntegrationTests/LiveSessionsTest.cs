@@ -2411,6 +2411,29 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         aliceCall!.Phase.Should().Be(CallPhase.Active, "an ended claim stops the call's media on the client");
     }
 
+    [Fact]
+    public async Task ConnectedCallHeartbeatShouldKeepItsInvites()
+    {
+        // arrange - the invites' TTL cut short stands in for KeyTtl running out in a steady call (#5300)
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewTwoPartyCall(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var invites = tester.AppServices.GetRequiredService<RedisDb<StreamingContext>>()
+            .WithKeyPrefix("live-session:invites");
+        var redis = await invites.Database.Get();
+        await redis.KeyExpireAsync(chatId.Value, TimeSpan.FromSeconds(5));
+
+        // act
+        await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, true, default);
+
+        // assert
+        var ttl = await redis.KeyTimeToLiveAsync(chatId.Value);
+        ttl.Should().BeGreaterThan(TimeSpan.FromMinutes(1),
+            "the invites name the call's parties, so a call that lost them ends as Lost");
+    }
+
     [Theory]
     [InlineData("bob,alice", false)]
     [InlineData("bob", true)]
