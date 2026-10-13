@@ -3,7 +3,10 @@ using ActualLab.Generators;
 
 namespace ActualChat.Core.Server.IntegrationTests.Flows;
 
-[CollectionDefinition(nameof(ResumeLatencyFlowCollection))]
+// Runs on its own, after the parallel collections of the assembly: their app hosts kept the runner's
+// CPUs busy enough to push resumes staged 1s ahead to 5s
+
+[CollectionDefinition(nameof(ResumeLatencyFlowCollection), DisableParallelization = true)]
 public sealed class ResumeLatencyFlowCollection : ICollectionFixture<ResumeLatencyFlowFixture>;
 
 public sealed class ResumeLatencyFlowFixture(IMessageSink messageSink) : ActualChat.Testing.Host.AppHostFixture(
@@ -37,8 +40,22 @@ public sealed class ResumeLatencyFlowTest(ResumeLatencyFlowFixture fixture, ITes
 
     [Fact]
     [Trait("Category", "Slow")]
+    public async Task ResumesShouldNotStall()
+    {
+        // act
+        var delays = await RunFlow();
+
+        // assert
+        var delaysText = delays.Select(x => x.ToShortString()).ToDelimitedString();
+        delays.Max().Should().BeLessThan(StallDelay, $"no resume may stall (delays: {delaysText})");
+    }
+
+    [Fact]
+    [Trait("Category", "Nightly")]
     public async Task ResumeDelaysShouldStayWithinBudget()
     {
+        // Other test assemblies still load the runner, so the budget is checked nightly, not on every PR (#5297)
+
         // act
         var delays = await RunFlow();
 
