@@ -214,8 +214,9 @@ the call's own parties.
 
 **Whose call it is.** The claim is per user, but a call runs on one client: the one that placed
 it or answered the ring. The claim names that client - `SessionHash` for the device, and
-`ClientId` for the running app instance or browser tab, a random id `CallUI` makes at start
-and sends with `StartCall`, `AcceptCall` and `GetMyCall`. `GetMyCall` answers with the claim
+`ClientId` for the browser tab or app window - its `BrowserInfo.WindowId`, which a reload of the
+same tab keeps and a duplicated tab doesn't inherit - that `CallUI` sends with `StartCall`,
+`AcceptCall` and `GetMyCall`. `GetMyCall` answers with the claim
 only on that client (`LiveSessions.IsOnClient`), as a `UserCall`: the claim less the fields
 only the server needs (`AuthorId`, `SinceAt`, `SessionHash`, `ClientId`). Every other client
 of the user reads "no call" and behaves as it would without one - no screens, no ringback, no
@@ -224,10 +225,16 @@ rings on all of them, and answering it makes it the answering client's
 (`LiveSessionsBackend.ClaimAnswer`). The user
 stays busy on every client all the same: `StartCall` is still arbitrated by the per-user claim.
 
-A reloaded tab or a restarted app is a new client and doesn't see the call it had - the call's
-audio died with it anyway, and the call closes on the missing presence. A claim that names no
-session or no client - one taken through the backend directly, as tests do - is shown to every
-client that could have made it.
+A reloaded tab is the same client, and gets its call back if the call outlived the reload: the
+slot takes it from `GetMyCall` and starts its audio, the callee's too (`ShouldStartCallAudio`) -
+an answer made here starts the callee's audio itself, so the slot only does it for a call it didn't
+hold (#5300). The call outlives a reload only where the client's presence ends as a dropped
+connection's: a WASM tab's peer is released past `ParticipationDisconnectGrace`, which a quick reload
+beats. A Blazor Server tab tears its circuit down on the unload, and `LiveSessionUI.ClearParticipations`
+sends a leave that ends a peer call at once - its reload finds no call. A restarted app, or a client
+that read `ClientId` before `BrowserInfo` knew the window id, is a new client and doesn't see the call
+it had - the call closes on the missing presence. A claim that names no session or no client - one
+taken through the backend directly, as tests do - is shown to every client that could have made it.
 
 **The client slot** is `CallUI._activeCall`: the one call this client is in. A call enters it on a
 gesture made here - `StartCall` sets `Caller/Dialing`, `Accept` sets `Active`, each before its RPC,

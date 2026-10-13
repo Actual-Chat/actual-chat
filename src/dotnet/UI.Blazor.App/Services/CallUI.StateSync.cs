@@ -8,6 +8,8 @@ public partial class CallUI
     // connection drops (ParticipationDisconnectGrace + CallLeaveGrace), so past this nobody hears the call
     // and its end can't reach this client. A server restart shorter than this doesn't end a call.
     private static readonly TimeSpan OfflineCallTimeout = TimeSpan.FromSeconds(20);
+    // How long the first GetMyCall waits for the window id ClientId is made of: a ring must not wait on it.
+    private static readonly TimeSpan ClientIdTimeout = TimeSpan.FromSeconds(5);
 
     private Computed<UserCall?>? _cMyCall;
 
@@ -72,12 +74,16 @@ public partial class CallUI
             ? myCall.CallId
             : null;
 
-    // Placing a call is itself the intent to talk, so an answered one puts the caller on the line - once.
-    // Read from the slot it replaced, not latched: a latch outlives a slot this client frees itself, and
-    // the next call to that chat then connects with no audio.
     internal static bool ShouldStartCallAudio(ActiveCall? held, [NotNullWhen(true)] ActiveCall? next)
-        => next is { Role: CallRole.Caller, Phase: CallPhase.Active }
-            && (held is not { Role: CallRole.Caller, Phase: CallPhase.Active } || !held.IsSameCall(next));
+        // Placing a call is the intent to talk, so its answer puts the caller on the line; a callee joins through
+        // Accept, so only a call it gets back after a reload does. Once each, read from the slot it replaced:
+        // a latch outlives a slot this client frees itself, and the next call there connects with no audio.
+        => next switch {
+            { Role: CallRole.Caller, Phase: CallPhase.Active }
+                => held is not { Role: CallRole.Caller, Phase: CallPhase.Active } || !held.IsSameCall(next),
+            { Role: CallRole.Callee, Phase: CallPhase.Active } => held?.IsSameCall(next) != true,
+            _ => false,
+        };
 
     // Private methods
 
@@ -85,6 +91,8 @@ public partial class CallUI
     {
         // GetMyCall is NoCache: every value it has is the server's answer - it waits out a disconnect
         // instead of standing in for one, so the slot keeps its call meanwhile.
+        var whenClientIdTimeout = Clocks.CpuClock.Delay(ClientIdTimeout, cancellationToken);
+        await Task.WhenAny(Hub.BrowserInfo.WhenReady, whenClientIdTimeout).ConfigureAwait(true);
         var c = await Computed
             .Capture(() => LiveSessions.GetMyCall(Session, ClientId, cancellationToken), cancellationToken)
             .ConfigureAwait(false);

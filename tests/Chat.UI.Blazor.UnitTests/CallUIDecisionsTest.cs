@@ -316,6 +316,30 @@ public class CallUIDecisionsTest
         shouldStart.Should().BeFalse();
     }
 
+    [Fact]
+    public void AnAnsweredCallGotBackAfterReloadShouldStartTheCalleeAudio()
+    {
+        // act
+        var shouldStart = CallUI.ShouldStartCallAudio(null, Call(CallRole.Callee, CallPhase.Active));
+
+        // assert — a reloaded client joins no call by Accept, and the call is still on (#5300)
+        shouldStart.Should().BeTrue();
+    }
+
+    [Fact]
+    public void AnAcceptedCallNamedByTheServerShouldNotStartTheCalleeAudioAgain()
+    {
+        // arrange
+        var held = Call(CallRole.Callee, CallPhase.Active);
+        var next = held with { CallId = Call1 };
+
+        // act
+        var shouldStart = CallUI.ShouldStartCallAudio(held, next);
+
+        // assert — Accept started it, or chose not to over the lock screen
+        shouldStart.Should().BeFalse();
+    }
+
     private static UserCall MyCall(ChatId chatId, CallRole role, CallPhase phase, CallId? callId = null)
         => new() {
             CallId = callId ?? CallId.New(chatId, "0"),
