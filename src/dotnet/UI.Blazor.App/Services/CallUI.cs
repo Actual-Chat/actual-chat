@@ -33,6 +33,7 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     // get ahead of the cancel before it.
     private PlacedCall? _placedCall;
     private Task _whenCancelled = Task.CompletedTask;
+    private string? _clientId;
 
     private IIncomingCallsBridge? Bridge { get; }
     private ISystemCallUI SystemCallUI => field ??= Hub.Services.GetRequiredService<ISystemCallUI>();
@@ -44,9 +45,18 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private IAuthors Authors => Hub.Authors;
     private ILogger? CallDebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
-    // Names this running client to the server, which shows a placed or answered call only to the client
-    // that placed or answered it. It lives exactly as long as the call's audio can: a reload is a new client.
-    public string ClientId { get; } = RandomStringGenerator.Default.Next();
+    public string ClientId {
+        get {
+            // The window id, so a reloaded tab is the client that holds its call. Read before BrowserInfo
+            // knows it, it's a random id for this client's life. The first read's choice is published once.
+            if (Volatile.Read(ref _clientId) is { } clientId)
+                return clientId;
+
+            var windowId = Hub.BrowserInfo.WindowId;
+            var newClientId = windowId.IsNullOrEmpty() ? RandomStringGenerator.Default.Next() : windowId;
+            return Interlocked.CompareExchange(ref _clientId, newClientId, null) ?? newClientId;
+        }
+    }
 
     public CallUI(AppUIHub hub) : base(hub)
     {
