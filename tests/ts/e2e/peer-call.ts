@@ -105,7 +105,12 @@ export async function send(page: Page, text: string) {
     await editor.waitFor({ state: 'visible', timeout: 30_000 });
     await editor.focus();
     await page.keyboard.type(text, { delay: 20 });
-    await page.keyboard.press('Enter');
+    // A mobile device's Enter is a line break: there the post button sends, on mousedown
+    const isMobile = await page.evaluate(() => document.body.classList.contains('device-mobile'));
+    if (isMobile)
+        await page.locator('.post-panel .post-message').first().dispatchEvent('mousedown');
+    else
+        await page.keyboard.press('Enter');
     await page.waitForTimeout(1_500);
 }
 

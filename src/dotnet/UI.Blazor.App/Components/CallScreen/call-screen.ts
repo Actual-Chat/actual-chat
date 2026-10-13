@@ -78,9 +78,10 @@ export class CallScreen {
     private forcedCollapseActive = false;
 
     // Name-badge placement (full-screen video only): a rAF-coalesced relayout fed by a ResizeObserver
-    // (stage resize) and a MutationObserver (tiles join/leave, name edits, bars-hidden and
-    // layout-equal toggles). movedBadges holds the labels carrying inline styles this run,
-    // so they can be reset on teardown or when the layout stops needing them.
+    // (stage resize), a MutationObserver (tiles join/leave or change class, name edits, footer
+    // buttons appearing, bars-hidden and layout-equal toggles) and the end of the bars' slide.
+    // movedBadges holds the labels carrying inline styles this run, so they can be reset on teardown
+    // or when the layout stops needing them.
     private badgeResizeObserver: ResizeObserver | null = null;
     private badgeMutationObserver: MutationObserver | null = null;
     private badgeRaf = 0;
@@ -136,6 +137,15 @@ export class CallScreen {
         const classObserver = new MutationObserver(() => this.update());
         classObserver.observe(this.root, { attributes: true, attributeFilter: ['class'] });
         this.disposed$.subscribe(() => classObserver.disconnect());
+        // The bars slide back in over a transition: the badges laid out when the attribute went were
+        // measured against a footer still on its way, so they are laid out again once it has arrived.
+        fromEvent<TransitionEvent>(this.root, 'transitionend')
+            .pipe(
+                takeUntil(this.disposed$),
+                filter(e => e.propertyName === 'transform' && this.badgeResizeObserver != null
+                    && (e.target as HTMLElement).classList.contains('call-screen-toolbar')),
+            )
+            .subscribe(() => this.scheduleBadgeLayout());
         this.update();
     }
 
@@ -202,14 +212,27 @@ export class CallScreen {
 
         this.badgeResizeObserver = new ResizeObserver(() => this.scheduleBadgeLayout());
         this.badgeResizeObserver.observe(stage);
-        this.badgeMutationObserver = new MutationObserver(() => this.scheduleBadgeLayout());
-        this.badgeMutationObserver.observe(stage, { childList: true, subtree: true, characterData: true });
+        // The whole screen is watched, since the footer the badges flow around is rendered apart from
+        // the stage and can gain a button after a badge was placed; the header's clock ticks are
+        // filtered out, as is the inline style this layout writes itself.
+        this.badgeMutationObserver = new MutationObserver(records => {
+            if (records.some(record => this.isBadgeLayoutInput(record)))
+                this.scheduleBadgeLayout();
+        });
         this.badgeMutationObserver.observe(this.root, {
+            childList: true,
+            subtree: true,
+            characterData: true,
             attributes: true,
             attributeFilter: ['class', BarsHiddenAttribute],
         });
         void document.fonts.ready.then(() => this.scheduleBadgeLayout());
         this.scheduleBadgeLayout();
+    }
+
+    private isBadgeLayoutInput(record: MutationRecord): boolean {
+        const target = record.target instanceof Element ? record.target : record.target.parentElement;
+        return target === this.root || target?.closest('.video-stage, .call-screen-footer') != null;
     }
 
     private teardownBadgeLayout(): void {
