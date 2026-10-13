@@ -185,8 +185,6 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     [ComputeMethod(ConsolidationDelay = 0)]
     public virtual async Task<bool> CanReact(ChatId chatId, CancellationToken cancellationToken)
     {
-        if (chatId.Kind == ChatKind.Peer)
-            return false;
         if (!await AreHandsEnabled(cancellationToken).ConfigureAwait(false))
             return false;
 
