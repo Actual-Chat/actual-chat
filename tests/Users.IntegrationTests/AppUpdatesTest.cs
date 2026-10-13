@@ -1,29 +1,55 @@
 using ActualChat.Testing.Host;
 using ActualChat.Users.Module;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace ActualChat.Users.IntegrationTests;
 
-[Collection(nameof(AppUpdatesCollection))]
-public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutputHelper @out)
-    : SharedAppHostTestBase<AppUpdatesAppHostFixture>(fixture, @out)
+// Every test gets its own host: a kind behind the server keeps re-checking the store on the recheck
+// period, and on a shared host those checks outlive the test and call the probes the next one scripts
+
+public sealed class AppUpdatesTest(ITestOutputHelper @out)
+    : AppHostTestBase("app-updates", TestAppHostOptions.Default with {
+        ConfigureServices = (_, services) => services.Replace(
+            ServiceDescriptor.Singleton<AppStoreProbes>(c => new ScriptedAppStoreProbes(c))),
+    }, @out)
 {
     private static readonly Version OwnVersion = ApiConstants.BuildVersion;
     // Generous, because the collections of this suite run in parallel
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(20);
     private IAppUpdates Service => field ??= AppHost.Services.GetRequiredService<IAppUpdates>();
+    private MomentClockSet Clocks => AppHost.Services.Clocks();
+
     private AppUpdatesBackend Backend
         => field ??= (AppUpdatesBackend)AppHost.Services.GetRequiredService<IAppUpdatesBackend>();
+
     private ScriptedAppStoreProbes Probes
         => (ScriptedAppStoreProbes)AppHost.Services.GetRequiredService<AppStoreProbes>();
+
     private AppUpdateSettings Settings
         => AppHost.Services.GetRequiredService<UsersSettings>().AppUpdates;
+
+    private TestAppHost AppHost { get; set; } = null!;
+
+    protected override async Task InitializeAsync()
+    {
+        await base.InitializeAsync();
+        AppHost = await NewAppHost();
+    }
+
+    protected override async Task DisposeAsync()
+    {
+        // The records outlive the host, so a check still in flight must find no probe and write nothing
+        Probes.Probes.Clear();
+        await AppHost.DisposeSilentlyAsync();
+        await base.DisposeAsync();
+    }
 
     [Fact]
     public async Task ShouldReportWhatTheStoreServes()
     {
         // arrange
         const AppKind appKind = AppKind.Android;
-        using var __ = await NewTestSettings(appKind);
+        await NewTestSettings(appKind);
         const string olderTrain = "1.0.0";
         var probe = Probes.Script(appKind, new(olderTrain, null));
 
@@ -54,7 +80,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     {
         // arrange - a hotfix published on the train the store already serves, both behind S
         const AppKind appKind = AppKind.Windows;
-        using var __ = await NewTestSettings(appKind);
+        await NewTestSettings(appKind);
         var firstBuild = NewBuildBehindOwn(2);
         var hotfixBuild = NewBuildBehindOwn(1);
         var probe = Probes.Script(appKind, new(firstBuild, null));
@@ -80,7 +106,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     {
         // arrange - NextCheckAt is shared, so a second check finds the first one's result cached
         const AppKind appKind = AppKind.Windows;
-        using var __ = await NewTestSettings(appKind);
+        await NewTestSettings(appKind);
         Settings.RecheckPeriods = [TimeSpan.FromMinutes(5)];
         var probe = Probes.Script(appKind, new(NewBuildBehindOwn(1), null));
 
@@ -106,9 +132,9 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // arrange - the steady state in production: every store trails the deployed server, so
         // Play is behind it and must not gate a kind whose own record holds nothing yet
         const AppKind appKind = AppKind.Windows;
-        using var __ = await NewTestSettings(appKind, isPlayGateEnabled: true);
+        await NewTestSettings(appKind, isPlayGateEnabled: true);
         var storeBuild = NewBuildBehindOwn(1);
-        var playProbe = Probes.Script(AppKind.Android, new(storeBuild, null));
+        Probes.Script(AppKind.Android, new(storeBuild, null));
         Probes.Script(appKind, new(storeBuild, null));
 
         // act
@@ -117,7 +143,6 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
             info!.VersionString.Should().Be(storeBuild);
             return info;
         });
-        await SettleAndroid(playProbe);
 
         // assert
         published.Should().NotBeNull("Play trailing the server can't mean the other stores are empty");
@@ -129,7 +154,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
         // arrange - both Play and this kind's record sit on the same build, so there's nothing
         // to ask about. Both are behind the server, which is the normal steady state.
         const AppKind appKind = AppKind.Windows;
-        using var __ = await NewTestSettings(appKind, isPlayGateEnabled: true);
+        await NewTestSettings(appKind, isPlayGateEnabled: true);
         var knownBuild = NewBuildBehindOwn(1);
         var detectedAt = Clocks.SystemClock.Now;
         var known = new AppUpdateInfo(appKind, knownBuild, knownBuild, detectedAt, detectedAt);
@@ -164,7 +189,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     {
         // arrange - the stores publish one build per train, and the server keeps deploying on top
         const AppKind appKind = AppKind.Android;
-        using var __ = await NewTestSettings(appKind);
+        await NewTestSettings(appKind);
         var storeBuild = NewBuildBehindOwn(1);
         Probes.Script(appKind, new(storeBuild, null));
 
@@ -185,7 +210,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     {
         // arrange
         const AppKind appKind = AppKind.Windows;
-        using var __ = await NewTestSettings(appKind);
+        await NewTestSettings(appKind);
         var announcedAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
         var announced = new AppUpdateInfo(appKind, "1.0.0", "1.0.0.0", announcedAt, announcedAt);
         await Backend.SetCachedStoreUpdateInfo(appKind, new AppUpdatesBackend.CachedUpdateInfo(announced), default);
@@ -208,7 +233,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     {
         // arrange
         const AppKind appKind = AppKind.Android;
-        using var __ = await NewTestSettings(appKind);
+        await NewTestSettings(appKind);
         Settings.AnnounceDelay = TimeSpan.FromSeconds(6);
         var announcedAt = Clocks.SystemClock.Now - TimeSpan.FromDays(1);
         var announced = new AppUpdateInfo(appKind, "1.0.0", "1.0.0.0", announcedAt, announcedAt);
@@ -243,7 +268,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     {
         // arrange - this is what a server bump during the pending window leaves behind
         const AppKind appKind = AppKind.Ios;
-        using var __ = await NewTestSettings(appKind);
+        await NewTestSettings(appKind);
         // Long enough to outlast any stall of a loaded build agent - the window is ended below
         Settings.AnnounceDelay = TimeSpan.FromHours(1);
         var now = Clocks.SystemClock.Now;
@@ -276,7 +301,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     public async Task WasmShouldWaitOutTheRollingDeployGrace()
     {
         // arrange
-        using var __ = await NewTestSettings(AppKind.Wasm);
+        await NewTestSettings(AppKind.Wasm);
         Settings.WasmGracePeriod = TimeSpan.FromHours(1);
 
         // act
@@ -304,7 +329,7 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     {
         // arrange
         const AppKind appKind = AppKind.MacOS;
-        using var __ = await NewTestSettings(appKind);
+        await NewTestSettings(appKind);
         Settings.IsEnabled = null; // i.e. production instances only, and a test host isn't one
 
         // act
@@ -330,51 +355,18 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
 
     // isPlayGateEnabled keeps the Play dependency on, which every other test turns off by
     // clearing GoogleStoreId - otherwise each of them would have to script an Android probe
-    private async Task<IDisposable> NewTestSettings(AppKind appKind, bool isPlayGateEnabled = false)
+    private async Task NewTestSettings(AppKind appKind, bool isPlayGateEnabled = false)
     {
-        Probes.Probes.Clear();
-        // The records have no TTL, so a rerun would otherwise see what the last run settled
+        // The records have no TTL, so a test would otherwise see what the last one settled
         await Backend.RemoveCachedStoreUpdateInfo(appKind, default);
         await Backend.RemoveCachedStoreUpdateInfo(AppKind.Android, default);
         var settings = Settings;
-        var restore = new SettingsBackup(settings);
         settings.IsEnabled = true;
         settings.RecheckPeriods = [TimeSpan.FromSeconds(1)];
         settings.AnnounceDelay = TimeSpan.Zero; // The tests that need one set their own
         settings.Overrides = ImmutableDictionary<string, string>.Empty;
         if (!isPlayGateEnabled && appKind != AppKind.Android)
             settings.GoogleStoreId = "";
-
-        // The app host is shared, and the previous test's value outlives its record until the
-        // invalidation this starts has been consolidated - so wait for the cleared state to show
-        await WhenClear(appKind);
-        if (isPlayGateEnabled)
-            await WhenClear(AppKind.Android);
-
-        return restore;
-    }
-
-    private Task SettleAndroid(ScriptedStoreProbe playProbe)
-    {
-        // A kind the store hasn't caught up with keeps re-checking on the recheck period, and that
-        // loop outlives the test - rewriting the record the next test cleared. Settling it ends it.
-        playProbe.Result = new(OwnVersion.ToString(), null);
-        return WhenPolled(async () => {
-            var info = await Service.GetLatestUpdateInfo(AppKind.Android, default);
-            info!.VersionString.Should().Be(OwnVersion.ToString());
-        });
-    }
-
-    private Task WhenClear(AppKind appKind)
-    {
-        if (appKind == AppKind.Wasm)
-            return Task.CompletedTask;
-
-        return WhenPolled(async () => {
-            await Backend.Invalidate(appKind);
-            var info = await Service.GetLatestUpdateInfo(appKind, default);
-            info.Should().BeNull();
-        });
     }
 
     private static Task When(
@@ -406,29 +398,4 @@ public sealed class AppUpdatesTest(AppUpdatesAppHostFixture fixture, ITestOutput
     private static string NewBuildBehindOwn(int buildOffset)
         => new Version(OwnVersion.Major, OwnVersion.Minor, Math.Max(OwnVersion.Build - buildOffset, 0))
             .ToString();
-
-    // Nested types
-
-    private sealed class SettingsBackup(AppUpdateSettings settings) : IDisposable
-    {
-        private readonly AppUpdateSettings _backup = new() {
-            IsEnabled = settings.IsEnabled,
-            GoogleStoreId = settings.GoogleStoreId,
-            RecheckPeriods = settings.RecheckPeriods,
-            AnnounceDelay = settings.AnnounceDelay,
-            WasmGracePeriod = settings.WasmGracePeriod,
-            Overrides = settings.Overrides,
-        };
-        private AppUpdateSettings Settings { get; } = settings;
-
-        public void Dispose()
-        {
-            Settings.IsEnabled = _backup.IsEnabled;
-            Settings.GoogleStoreId = _backup.GoogleStoreId;
-            Settings.RecheckPeriods = _backup.RecheckPeriods;
-            Settings.AnnounceDelay = _backup.AnnounceDelay;
-            Settings.WasmGracePeriod = _backup.WasmGracePeriod;
-            Settings.Overrides = _backup.Overrides;
-        }
-    }
 }
