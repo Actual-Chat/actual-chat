@@ -83,10 +83,17 @@
         var screenCastChatId = await ChatVideoUI.GetScreenCastChatId(cancellationToken).ConfigureAwait(false);
         var stopRecordingAt = await ChatAudioUI.StopRecordingAt.Use(cancellationToken).ConfigureAwait(false);
         var selectedChatId = await ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var callChatId = await Hub.CallUI.GetCallChatId(cancellationToken).ConfigureAwait(false);
 
         var rows = new List<Row>(2);
         var isAudioRowAdded = false;
         foreach (var chatId in new[] { audioChatId, cameraChatId, screenCastChatId }.SkipNullItems().Distinct()) {
+            // The call's island already stands for it, and the call has no idle countdown
+            if (chatId == callChatId) {
+                isAudioRowAdded |= chatId == audioChatId;
+                continue;
+            }
+
             if (chatId == selectedChatId)
                 continue;
 
