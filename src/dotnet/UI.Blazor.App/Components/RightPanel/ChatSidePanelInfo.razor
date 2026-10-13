@@ -21,7 +21,7 @@
             @if (m.ShowPttSettings) {
                 var pttIconCls = m.IsPttEnabled && !m.IsPttPaused ? "text-primary" : "text-03";
                 <TileItem Click="@OnPttSettingsClick">
-                    <Icon><i class="text-xl icon-push-to-talk-2 @pttIconCls"></i></Icon>
+                    <Icon><i class="text-xl icon-push-to-talk @pttIconCls"></i></Icon>
                     <Content>@L.VoiceSettings_Ptt</Content>
                     <Caption>@GetPttCaption(m)</Caption>
                     <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
