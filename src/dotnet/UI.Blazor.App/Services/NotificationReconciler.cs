@@ -7,7 +7,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 // Client-side safety net: keeps the device's OS notifications in sync with the server's active
 // set (INotifications.ListActive).
 // - Prune: removes notifications that are no longer active — healing a lost silent-dismissal push
-//   or a read on another device. Runs on every active-set change and on foreground resume.
+//   or a read on another device. Runs on every active-set change and when the page is shown again.
 // - Create: re-shows a notification that newly entered the active set but isn't on the device —
 //   healing a dropped delivery push. Only newly-added tags are create candidates, so dismissing a
 //   banner (which doesn't change the active set) never resurrects it. iOS is prune-only.
@@ -31,7 +31,7 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
 
         return Task.WhenAll(
             RunChain(ct => ReconcileOnActiveChanges(deviceNotifications, ct), cancellationToken),
-            RunChain(ct => ReconcileOnForeground(deviceNotifications, ct), cancellationToken));
+            RunChain(ct => ReconcileOnShown(deviceNotifications, ct), cancellationToken));
     }
 
     private Task RunChain(Func<CancellationToken, Task> loop, CancellationToken cancellationToken)
@@ -75,27 +75,27 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
         }
     }
 
-    private async Task ReconcileOnForeground(IDeviceNotifications deviceNotifications, CancellationToken cancellationToken)
+    private async Task ReconcileOnShown(IDeviceNotifications deviceNotifications, CancellationToken cancellationToken)
     {
         var backgroundStateTracker = Services.GetService<BackgroundStateTracker>();
         if (backgroundStateTracker is null)
             return;
 
-        var cIsBackground = await Computed
-            .Capture(() => backgroundStateTracker.IsBackground.Use(cancellationToken), cancellationToken)
+        var cIsHidden = await Computed
+            .Capture(() => backgroundStateTracker.IsHidden.Use(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        var wasBackground = cIsBackground.Value;
-        await foreach (var c in cIsBackground.Changes(cancellationToken).ConfigureAwait(false)) {
+        var wasHidden = cIsHidden.Value;
+        await foreach (var c in cIsHidden.Changes(cancellationToken).ConfigureAwait(false)) {
             if (c.HasError)
                 continue;
 
-            var isBackground = c.Value;
-            // On resume only prune (createTags empty): a notification that arrived while we were
-            // backgrounded was already create-handled by the active-changes driver (the app stays
+            var isHidden = c.Value;
+            // On return only prune (createTags empty): a notification that arrived while the page
+            // was hidden was already create-handled by the active-changes driver (the app stays
             // alive while backgrounded); re-creating here could resurrect a banner read elsewhere.
-            if (wasBackground && !isBackground) {
+            if (wasHidden && !isHidden) {
                 try {
-                    // A resume is exactly when the cached active set is stale, and this path only
+                    // A return is exactly when the cached active set is stale, and this path only
                     // prunes - so acting on a stale one can only ever close a live banner.
                     var cActive = await Computed
                         .Capture(() => Hub.Notifications.ListActive(Hub.Session, cancellationToken), cancellationToken)
@@ -106,12 +106,12 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
                             .ConfigureAwait(false);
                 }
                 catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
-                    // A transient ListActive/reconcile failure on one resume must not kill the loop.
-                    Log.LogWarning(e, "Foreground notification reconcile failed");
+                    // A transient ListActive/reconcile failure on one return must not kill the loop.
+                    Log.LogWarning(e, "Notification reconcile on show failed");
                 }
             }
 
-            wasBackground = isBackground;
+            wasHidden = isHidden;
         }
     }
 

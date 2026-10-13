@@ -54,9 +54,10 @@ public sealed partial class VideoQualityUI
     // intentionally paused inbound frames (Hidden/Collapsed) — without that,
     // OnPlaybackStats dries up, entries age out, and resume can't dispatch.
     private VisualActivityPanelMode _currentPanelMode = VisualActivityPanelMode.Inline;
-    // Snapshot of BackgroundStateTracker.IsBackground observed by WatchBackgroundState.
-    // Hidden tab / backgrounded app pauses every stream just like the Hidden panel mode.
-    private volatile bool _isBackground;
+    // Snapshot of BackgroundStateTracker.IsHidden observed by WatchVisibility, written under
+    // _playbackLock and read without it. A hidden tab, window or app pauses every stream just like
+    // the Hidden panel mode.
+    private bool _isHidden;
     private readonly BandwidthEstimator _inboundBwEstimator;
     private PlaybackQualitySnapshot _playbackSnapshot = PlaybackQualitySnapshot.Empty;
     // Per-stream classifier instances — each owns its own streak counters for
@@ -414,11 +415,11 @@ public sealed partial class VideoQualityUI
             requestedMap[streamId.Value] = quality with { IsThumbnail = isThumbnail };
         }
         // Float (Collapsed) shows only the primary tile — pause every secondary
-        // stream. Hide (or a hidden tab / backgrounded app) pauses every stream.
+        // stream. Hide (or a hidden tab, window or app) pauses every stream.
         // The server filter drops every frame while Paused is in effect, so this
         // also throttles inbound bandwidth.
         var panelMode = await Hub.ChatVideoUI.GetWatchingPanelMode(cancellationToken).ConfigureAwait(false);
-        if (panelMode == VisualActivityPanelMode.Hidden || _isBackground) {
+        if (panelMode == VisualActivityPanelMode.Hidden || Volatile.Read(ref _isHidden)) {
             foreach (var (streamId, _) in entries)
                 requestedMap[streamId.Value] = ReceiveQuality.Paused;
         }
@@ -823,7 +824,7 @@ public sealed partial class VideoQualityUI
                 .ToArray();
             foreach (var streamId in expiredStallReportIds)
                 _lastStallReportAt.Remove(streamId);
-            var isPaused = _isBackground
+            var isPaused = Volatile.Read(ref _isHidden)
                 || _currentPanelMode is VisualActivityPanelMode.Hidden or VisualActivityPanelMode.Collapsed;
             if (!isPaused) {
                 var staleStreamIds = _playbackByStream

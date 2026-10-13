@@ -183,5 +183,5 @@ public static partial class MauiProgram
     }
 
     private static void SetBackgroundState(bool isBackground)
-        => MauiBackgroundState.Set(isBackground);
+        => MauiBackgroundState.SetIsBackground(isBackground);
 }
