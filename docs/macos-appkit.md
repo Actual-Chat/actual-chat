@@ -147,7 +147,7 @@ markers:
   app runs; there is no APNs-for-Mac push path. macOS asks the app about every notification it
   posts, in front or not, and `MacOSNotificationDelegate` hides the banner only while Voxt is the
   active app with its window in front (`WindowConfigurator.IsInForeground`, the twin of the Windows
-  one) - not while the window is merely visible, which is what the background state tracks. A
+  one) - not while the window is merely visible, which is what the hidden state tracks. A
   locked screen makes `loginwindow` the active app, so the lock screen gets the banners.
 
 ## Behaviour worth knowing
@@ -156,10 +156,12 @@ markers:
   Windows app: while `App.MustMinimizeOnQuit` holds, [WindowConfigurator](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/WindowConfigurator.cs)
   answers `windowShouldClose` with an `orderOut`, and a Dock click brings the same window back
   through `applicationShouldHandleReopen`. The labs backend has neither: its window closes for
-  good and nothing reopens it, which left a windowless process in the Dock. The background
-  state follows whether the window is on screen (`NSWindow.occlusionState`), not focus: a hidden,
-  minimized or fully covered window stops rendering, auto-reading chats and playing incoming
-  video, while a window in plain sight beside another app keeps all three. Cmd+Q quits as usual.
+  good and nothing reopens it, which left a windowless process in the Dock. The app is never
+  backgrounded (#5275): macOS doesn't suspend it, so the RPC client, the audio context and the
+  on-disk store keep working with the window hidden, minimized or covered, and notifications keep
+  arriving. What a hidden window does stop - rendering, auto-reading chats and incoming video -
+  follows whether the window is on screen (`NSWindow.occlusionState`), not focus, so a window in
+  plain sight beside another app keeps all three. Cmd+Q quits as usual.
 - **The web UI extends under the titlebar**, the way Telegram's does. The labs window is a
   full-size-content-view with a transparent titlebar and no title. While an expanded call fills the
   wide window, `MacWindowUI` (the AppKit half of `WindowUI`, which follows the video panel) has

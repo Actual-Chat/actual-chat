@@ -9,9 +9,9 @@ namespace ActualChat.App.Maui;
 /// <summary>
 /// Desktop window policy of the AppKit app, the twin of the Windows <c>WindowConfigurator</c>:
 /// the red button hides the window instead of closing it while <see cref="App.MustMinimizeOnQuit"/>
-/// holds, a Dock click brings it back, the background state follows window visibility, banners are
-/// held back while the window is in front, and the web UI extends under the titlebar: the page
-/// reserves its height and marks its own drag regions.
+/// holds, a Dock click brings it back, the hidden state follows window visibility, banners are held
+/// back while the window is in front, and the web UI extends under the titlebar: the page reserves
+/// its height and marks its own drag regions.
 /// </summary>
 internal static partial class WindowConfigurator
 {
@@ -47,7 +47,7 @@ internal static partial class WindowConfigurator
         // Not on NSWindowDelegate in the bindings, hence the raw notification
         _occlusionObserver = NSNotificationCenter.DefaultCenter.AddObserver(
             new NSString("NSWindowDidChangeOcclusionStateNotification"),
-            _ => UpdateBackgroundState(),
+            _ => UpdateHiddenState(),
             window);
         // A window drag must start from the press that began it, and once the page's request
         // arrives CurrentEvent has often moved on - to a trackpad pressure event, typically
@@ -59,7 +59,7 @@ internal static partial class WindowConfigurator
             windowsMenu.InsertItem(NSMenuItem.SeparatorItem, 0);
             windowsMenu.InsertItem(new NSMenuItem("Close Window", new Selector("performClose:"), "w"), 0);
         }
-        UpdateBackgroundState();
+        UpdateHiddenState();
     }
 
     // Returns false when there is no window to show, i.e. AppKit's default reopen handling applies
@@ -72,18 +72,17 @@ internal static partial class WindowConfigurator
             window.Deminiaturize(null);
         else
             window.MakeKeyAndOrderFront(null);
-        UpdateBackgroundState();
+        UpdateHiddenState();
         return true;
     }
 
-    public static void UpdateBackgroundState()
+    public static void UpdateHiddenState()
     {
-        // "Can the user see the window", not "is the app active": the background state holds back
-        // renders and pauses incoming video, and a window in plain sight beside another app must keep
-        // both. Occlusion also covers a fully covered window, another Space and a locked screen.
+        // "Can the user see the window", not "is the app active": the hidden state holds back renders
+        // and pauses incoming video, and a window in plain sight beside another app must keep both.
+        // Occlusion also covers a fully covered window, another Space and a locked screen.
         var isVisible = _window is not { } window
             || (window.IsVisible && window.OcclusionState.HasFlag(NSWindowOcclusionState.Visible));
-        MauiBackgroundState.SetIsBackground(!isVisible);
         MauiBackgroundState.SetIsHidden(!isVisible);
     }
 
@@ -180,7 +179,7 @@ internal static partial class WindowConfigurator
                 return inner?.WindowShouldClose(sender) ?? true;
 
             (sender as NSWindow)?.OrderOut(null);
-            UpdateBackgroundState();
+            UpdateHiddenState();
             return false;
         }
 
@@ -188,10 +187,10 @@ internal static partial class WindowConfigurator
             => inner?.WillClose(notification);
 
         public override void DidMiniaturize(NSNotification notification)
-            => UpdateBackgroundState();
+            => UpdateHiddenState();
 
         public override void DidDeminiaturize(NSNotification notification)
-            => UpdateBackgroundState();
+            => UpdateHiddenState();
 
         public override void WillEnterFullScreen(NSNotification notification)
         {

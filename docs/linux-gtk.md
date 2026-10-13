@@ -75,8 +75,8 @@ export DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
   /etc/ssl/certs/ca-certificates.crt ./ActualChat` overlays it for the app alone. The server
   itself is selected by the `app_server_instance_override` key in
   `~/.config/ActualChat/preferences.json`.
-- **A locked screen stalls the UI.** The compositor suspends the window, the app goes to its
-  background state and holds back renders, and WebKit leaves `getUserMedia` pending.
+- **A locked screen stalls the UI.** The compositor suspends the window, the app marks itself
+  hidden and holds back renders, and WebKit leaves `getUserMedia` pending.
 
 ## Workarounds to remove when the backend moves on
 
@@ -176,9 +176,11 @@ recreated the WebView off the UI thread and took the process down.
   that database lists for the scheme and otherwise shows "No Apps Available".
 - **JS RPC authenticates with session tokens**, as in the Apple WebViews: the page's origin
   makes every cookie of the host a third-party one. See `SessionTokens.AutoRefresh`.
-- **The background state follows `GtkWindow:suspended`**: a minimized, fully covered or
-  other-workspace window stops rendering and auto-reading chats, a window in plain sight
-  beside another app keeps both. A notification is posted unless the window is the active one.
+- **The hidden state follows `GtkWindow:suspended`**, and the app is never backgrounded (#5275):
+  the OS doesn't suspend it, so the RPC client, the audio context and the on-disk store keep
+  working with the window out of sight. A minimized, fully covered or other-workspace window
+  stops rendering and auto-reading chats, a window in plain sight beside another app keeps both.
+  A notification is posted unless the window is the active one.
 - **Clicking a notification** activates the `app.open-notification` GAction, which the desktop
   reaches over D-Bus: it navigates to the chat and presents the window.
 - **Media permissions have no prompt.** WebKitGTK hands every permission request to the
