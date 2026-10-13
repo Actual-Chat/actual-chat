@@ -2,7 +2,7 @@
 
 public interface IHistoryStepRefImpl
 {
-    void MarkClosed();
+    void MarkClosed(bool isNavigation);
 }
 
 public sealed class HistoryStepRef : IHasId<Symbol>, IHistoryStepRefImpl
@@ -16,6 +16,7 @@ public sealed class HistoryStepRef : IHasId<Symbol>, IHistoryStepRefImpl
     public HistoryStepper Stepper { get; }
 
     public Task WhenClosed => _whenClosedSource.Task;
+    public bool IsClosedByNavigation { get; private set; }
 
     public HistoryStepRef(string descriptor, HistoryStepper stepper)
     {
@@ -27,6 +28,9 @@ public sealed class HistoryStepRef : IHasId<Symbol>, IHistoryStepRefImpl
     public void Close()
         => Stepper.Close(Id);
 
-    void IHistoryStepRefImpl.MarkClosed()
-        => _whenClosedSource.TrySetResult();
+    void IHistoryStepRefImpl.MarkClosed(bool isNavigation)
+    {
+        IsClosedByNavigation = isNavigation;
+        _whenClosedSource.TrySetResult();
+    }
 }
