@@ -148,7 +148,7 @@ export async function hangUpIfAny(page: Page | undefined) {
     // Most specific first: the recorder toggle would restart a recording that a hang-up is still stopping.
     const controls = [
         page.locator(CALL_HANG_UP).first(),
-        // A call's video out of its screen carries the hang-up, inline or floating
+        // A call's video floating over another chat carries the hang-up; inline, the chat's activity panel has it
         page.locator('.call-screen.in-call .call-screen-header .btn-hang-up').first(),
         // The chat's own first: on a narrow screen the chat list's copy is off-screen, yet counts as visible
         page.locator('.chat-activity-panel .chat-audio-controls .c-hangup').first(),
