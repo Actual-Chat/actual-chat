@@ -1121,6 +1121,12 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
 body.narrow .call-screen.expanded.layout-equal .c-grid {
     @apply p-0.5;
 }
+/* The insets and the gaps between tiles show what is behind the grid: the full-screen video
+   of speaker view never lets the page's light background through, and neither should this */
+body.narrow .call-screen.expanded.layout-equal,
+body.narrow .call-screen.expanded.layout-equal .video-stage {
+    @apply bg-black;
+}
 body.device-mobile.narrow .call-screen.expanded.layout-equal .c-grid {
     padding:
         calc(var(--vp-safe-top) + 0.125rem)
