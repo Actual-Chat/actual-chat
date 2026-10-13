@@ -174,5 +174,5 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     }
 
     private static void SetBackgroundState(bool isBackground)
-        => MauiBackgroundState.Set(isBackground);
+        => MauiBackgroundState.SetIsBackground(isBackground);
 }

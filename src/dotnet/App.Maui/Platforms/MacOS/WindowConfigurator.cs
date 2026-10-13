@@ -83,7 +83,8 @@ internal static partial class WindowConfigurator
         // both. Occlusion also covers a fully covered window, another Space and a locked screen.
         var isVisible = _window is not { } window
             || (window.IsVisible && window.OcclusionState.HasFlag(NSWindowOcclusionState.Visible));
-        MauiBackgroundState.Set(!isVisible);
+        MauiBackgroundState.SetIsBackground(!isVisible);
+        MauiBackgroundState.SetIsHidden(!isVisible);
     }
 
     public static void RemoveTitlebarDragOverlay(NSWindow window)
