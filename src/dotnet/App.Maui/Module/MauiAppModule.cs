@@ -104,6 +104,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 
         // Connectivity
         services.AddScoped<ConnectivityUI>(c => new MauiConnectivityUI(c.UIHub()));
+        services.AddSingleton(_ => MauiRpcPaths.CreateSettings());
 
         // Audio
 #if MACOS || LINUX

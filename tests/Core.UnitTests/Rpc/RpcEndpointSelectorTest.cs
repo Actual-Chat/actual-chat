@@ -21,6 +21,22 @@ public class RpcEndpointSelectorTest
     }
 
     [Fact]
+    public void AttestationShouldBeKnownOnlyForTheHostItCameFrom()
+    {
+        // arrange
+        var selector = new RpcEndpointSelector([Origin, Edge1]);
+
+        // act
+        selector.UseAttestation(Edge1, "line");
+
+        // assert
+        selector.GetAttestation(Edge1).Should().Be("line");
+        selector.GetAttestation("KZ1.edge.voxt.ai").Should().Be("line");
+        selector.GetAttestation(Origin).Should().BeNull();
+        selector.GetAttestation(Edge2).Should().BeNull();
+    }
+
+    [Fact]
     public void ShouldRestoreAKnownStoredEndpoint()
     {
         // act

@@ -108,7 +108,7 @@ Everything here is needed before the first screen is usable, on every launch.
 | `IAccounts.GetOwn` | cached | `ChatUI.FixChatId`, the corrector of the stored `SelectedChatId` | S |
 
 Startup workers that are **not** on the render path but talk to the server: `ServerTimeSync`
-(`ISystemProperties.GetTime`, 0.5 s connect timeout), `RpcEndpointMonitor` (HTTP probes with 3-30 s
+(`ISystemProperties.GetTime`, 0.5 s connect timeout), `RpcEndpointMonitor` (RPC path checks, 8-30 s
 timeouts), `AppPresenceReporter` (`UserPresences_CheckIn`, guarded by a bounded
 `WhenClientPeerConnected`), `ContactSync`. All run under `RetryForever` and only cost log noise.
 

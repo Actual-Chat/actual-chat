@@ -4,6 +4,7 @@ using ActualChat.Db.Module;
 using ActualChat.Kvas;
 using ActualChat.Operations;
 using ActualChat.Redis.Module;
+using ActualChat.Rpc;
 using ActualChat.Security;
 using ActualChat.Users.Db;
 using ActualChat.Users.Email;
@@ -126,6 +127,7 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
 
         // System properties
         rpcHost.AddApi<ISystemProperties, SystemProperties>();
+        rpcHost.AddApi<IRpcChecks, RpcChecks>();
         rpcHost.AddBackend<ISystemPropertiesBackend, SystemPropertiesBackend>();
         rpcHost.AddBackend<IMaintenancesBackend, MaintenancesBackend>();
 

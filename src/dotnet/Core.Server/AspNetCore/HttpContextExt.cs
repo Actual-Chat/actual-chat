@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
+using ActualChat.Rpc;
 using Microsoft.Net.Http.Headers;
 
 namespace ActualChat.AspNetCore;
@@ -7,6 +8,7 @@ namespace ActualChat.AspNetCore;
 public static class HttpContextExt
 {
     private const string OriginalHostKey = "OriginalHost";
+    private const string RelayAttestedIPKey = "RelayAttestedIP";
 
     public static void RememberOriginalHost(this HttpContext context)
         // UseBaseUrl normalizes Request.Host to the base host, so the host the client actually
@@ -30,6 +32,10 @@ public static class HttpContextExt
     public static IPAddress? GetRemoteIPAddress(this HttpContext context, bool useForwardedForHeaders = true)
     {
         if (useForwardedForHeaders) {
+            // Behind a relay every other source says the relay's address
+            if (context.GetRelayAttestedIPAddress() is { } attestedIpAddress)
+                return attestedIpAddress;
+
             var headers = context.Request.Headers;
             // If you are allowing CloudFlare headers, you must ensure you are restricting
             // your front-end servers to their IPs: https://www.cloudflare.com/ips/ ,
@@ -40,6 +46,19 @@ public static class HttpContextExt
                 return ipAddress;
         }
         return context.Connection.RemoteIpAddress;
+    }
+
+    private static IPAddress? GetRelayAttestedIPAddress(this HttpContext context)
+    {
+        if (context.Items.TryGetValue(RelayAttestedIPKey, out var cached))
+            return cached as IPAddress;
+
+        var attestation = context.Request.Query[RpcRelayAttestation.QueryParameterName].FirstOrDefault();
+        var ipAddress = attestation.IsNullOrEmpty()
+            ? null
+            : context.RequestServices.GetService<RpcRelayAttestationVerifier>()?.TryGetClientIP(attestation);
+        context.Items[RelayAttestedIPKey] = ipAddress;
+        return ipAddress;
     }
 
     // Rounded up, so the client never retries earlier than the server meant
