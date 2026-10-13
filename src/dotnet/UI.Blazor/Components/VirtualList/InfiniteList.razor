@@ -44,6 +44,7 @@
      style="@Style"
      data-identity="@Identity"
      data-child="@Child.NullIfEmpty()"
+     data-is-empty="@(items.Count == 0 ? "true" : null)"
      data-content-swap-dependency="@IsContentSwapDependency">
 
     <div @key="@VirtualListSpecialKeys.RenderIndex"

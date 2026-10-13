@@ -12,25 +12,10 @@
         var cls = Class + " " + pageContext.Class;
         var narrowViewSettings = _narrowViewSettingsBuilder.GetFrom(pageContext.Buttons, Position);
         var hasButtons = pageContext.Buttons.Length != 0;
-    }
-    <DialogFrame
-        HasHeader="@HasHeader"
-        HasCloseButton="@HasCloseButton"
-        HideHeaderBackButton="@(isInnerStep && hasButtons)"
-        HeaderMode="@(pageContext.Header != null ? HeaderMode.Custom : HeaderMode.Default)"
-        Header="@pageContext.Header"
-        Footer="@pageContext.Footer"
-        Title="@title"
-        ButtonsClass="@ButtonsClass"
-        BodyClass="@BodyClass"
-        BodyVariant="@BodyVariant"
-        Class="@cls"
-        NarrowViewSettings="@narrowViewSettings">
-        <Body>
-            @_pageInfo.Body
-        </Body>
-        <Buttons>
-            @if (hasButtons) {
+        // Without buttons there is no footer at all: an empty one still takes its padding and the frame gap
+        RenderFragment? buttons = null;
+        if (hasButtons)
+            buttons = @<text>
                 @if (isInnerStep) {
                     <div class="btn-group">
                         <ButtonSquare Class="btn-back btn-sm btn-cancel" Click="@(_ => Modal.StepBack())">
@@ -41,8 +26,25 @@
                 } else {
                     <DialogButtons ButtonInfos="@pageContext.Buttons" Cancel="@OnClose" />
                 }
-            }
-        </Buttons>
+            </text>;
+    }
+    <DialogFrame
+        HasHeader="@HasHeader"
+        HasCloseButton="@HasCloseButton"
+        HideHeaderBackButton="@(isInnerStep && hasButtons)"
+        HeaderMode="@(pageContext.Header != null ? HeaderMode.Custom : HeaderMode.Default)"
+        Header="@pageContext.Header"
+        Footer="@pageContext.Footer"
+        Buttons="@buttons"
+        Title="@title"
+        ButtonsClass="@ButtonsClass"
+        BodyClass="@BodyClass"
+        BodyVariant="@BodyVariant"
+        Class="@cls"
+        NarrowViewSettings="@narrowViewSettings">
+        <Body>
+            @_pageInfo.Body
+        </Body>
     </DialogFrame>
 </CascadingValue>
 </CascadingValue>

@@ -85,6 +85,29 @@ public sealed class PttWakeGateTest(ChatAppHostFixture fixture, ITestOutputHelpe
         reason.Should().Be(PttWakeIgnoreReason.Muted);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AWakeShouldBeIgnoredWhileChatPttIsPaused(bool isForeground)
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var (chatId, _) = await tester.CreateChat(true);
+        var diff = new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart, IsPttPaused = true };
+        var pauseCmd = new ChatsBackend_Change(chatId, null, Change.Update(diff));
+        await tester.AppServices.Commander().Call(pauseCmd);
+        hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
+
+        // act
+        var reason = await StartPlayback(tester, new TestPttPlatform(), chatId, isForeground);
+
+        // assert
+        reason.Should().Be(PttWakeIgnoreReason.Paused);
+        (await hub.ChatAudioUI.GetListeningChatIds()).Should().NotContain(chatId);
+    }
+
     // Private methods
 
     private static Task<PttWakeIgnoreReason?> StartPlayback(

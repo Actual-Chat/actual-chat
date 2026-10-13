@@ -65,12 +65,26 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         _audioManager.UnregisterAudioDeviceCallback(_deviceCallback);
     }
 
-    public Task<bool> RequestFocusForCall(bool useCommunicationRoute)
+    public bool IsCommunicationTargetBuiltin()
+    {
+        // A forced built-in pick (phone or speaker in a call) ignores whatever is plugged in
+        if (_deviceRouter.CallAudioRoute.IsBuiltinForced)
+            return true;
+
+        var devices = _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [];
+        return devices.All(d => d.Type is AudioDeviceType.BuiltinEarpiece
+            or AudioDeviceType.BuiltinSpeaker
+            or AudioDeviceType.BuiltinSpeakerSafe
+            or AudioDeviceType.Telephony
+            or AudioDeviceType.RemoteSubmix);
+    }
+
+    public Task<bool> RequestFocusForCall(bool useCommunicationRoute, bool mustAwaitRoute = true)
         // Without the communication route we never open SCO - and opening SCO outside a real
         // call is an HFP virtual call, which makes a car head unit take over its screen.
         => useCommunicationRoute
             ? RequestFocus(AudioFocus.GainTransient, AudioUsageKind.VoiceCommunication, AudioContentType.Speech,
-                ScoLink.VirtualCall)
+                ScoLink.VirtualCall, mustAwaitRoute: mustAwaitRoute)
             : RequestFocus(AudioFocus.GainTransient, AudioUsageKind.Media, AudioContentType.Speech);
 
     public Task<bool> RequestFocusForAssistantLink()
@@ -292,7 +306,8 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         AudioUsageKind audioUsageKind,
         AudioContentType audioContentType,
         ScoLink scoLink = ScoLink.None,
-        bool canEscalateGain = true)
+        bool canEscalateGain = true,
+        bool mustAwaitRoute = true)
     {
         LogAudioState();
         // Resolved ahead of the mode change below, which is what the silence check reads.
@@ -354,8 +369,11 @@ public sealed class AndroidAudioFocusHelper : IDisposable
         }
 
         // After gaining focus, apply routing preference (handles external devices like Bluetooth)
-        if (_hasFocus && isCommunication)
-            await _deviceRouter.SelectCommunicationDevice(CancellationToken.None).ConfigureAwait(false);
+        if (_hasFocus && isCommunication) {
+            // A deferred route is asserted later through EnsureCommunicationRoute, under the focus lock
+            if (mustAwaitRoute)
+                await _deviceRouter.SelectCommunicationDevice(CancellationToken.None).ConfigureAwait(false);
+        }
         else if (_hasFocus && scoLink == ScoLink.VoiceRecognition)
             await EnsureVoiceRecognitionLink().ConfigureAwait(false);
 

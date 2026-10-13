@@ -42,6 +42,11 @@ public partial record SessionsBackend_Upsert(
     [DataMember, Key(5)] public UserIdentity? AuthenticatedIdentity { get; init; }
     [DataMember, Key(6)] public Moment? ExpiresAt { get; init; }
 
+    public SessionsBackend_Upsert WithRollingExpiration(Moment now)
+        => Session.Kind is SessionKind.Session
+            ? this with { ExpiresAt = now + CoreConstants.Session.SessionExpirationTime }
+            : this;
+
     // Protected methods
 
     protected virtual bool PrintMembers(StringBuilder builder)

@@ -207,11 +207,11 @@
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            // Tapping the mic to record lifts a soft "mute all" applied by the host.
-            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-            if (chat?.Rules.Author?.Id is { } ownAuthorId)
-                await LiveSessionUI.MutePeer(chatId, ownAuthorId, false, cancellationToken).ConfigureAwait(false);
+            // Tapping the mic to record lifts a soft "mute all" applied by the host. It runs alongside the
+            // start: a host mute that is still in place is caught by LiveSessionUI.StopRecordingWhenMuted.
+            var unmuteTask = LiveSessionUI.UnmuteOwn(chatId, cancellationToken);
             await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(false);
+            await unmuteTask.ConfigureAwait(false);
         });
     }
 

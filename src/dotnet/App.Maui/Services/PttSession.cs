@@ -196,6 +196,8 @@ public static class PttSession
         // doesn't persist. The catch-up anchor deliberately stays behind: the new player joins
         // at the live edge, a copied anchor would replay the utterance from its start.
         var headlessHub = headless.Services.GetRequiredService<AppUIHub>();
+        var foregroundChatId = await headlessHub.ChatAudioUI.GetForegroundChatId(CancellationToken.None)
+            .ConfigureAwait(false);
         var listeningChatIds = await headlessHub.ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
         var lastIncomingVoiceAt = headlessHub.VoiceActivityUI.SnapshotLastIncomingVoiceAt();
         // The headless players stop before the WebView ones start: a gap of one buffer beats two
@@ -209,7 +211,8 @@ public static class PttSession
             var scopedServices = await AppServicesAccessor.WhenBlazorAppServicesReady()
                 .WaitAsync(StartupTimeout)
                 .ConfigureAwait(false);
-            await Resume(scopedServices, listeningChatIds, lastIncomingVoiceAt).ConfigureAwait(false);
+            await Resume(scopedServices, listeningChatIds, lastIncomingVoiceAt, foregroundChatId)
+                .ConfigureAwait(false);
         }
         catch (Exception e) {
             // Still dispose below: a kept headless scope would be the second audio stack again.
@@ -219,8 +222,7 @@ public static class PttSession
         if (headlessHub.ChatAudioUI.IsRecording()) {
             // An Apple PTT Talk press on a killed app boots the WebView while the reply it
             // opened is still recording, and closing the mic here would cut that very reply.
-            // The WebView scope can't compete for the mic: ActiveChatsUI.FixStoredActiveChats
-            // drops a stored recording on start.
+            // The WebView scope can't compete for the mic: its active chats start empty.
             Log.LogInformation("PTT: a hot reply keeps the headless scope alive until it closes");
             using var cts = new CancellationTokenSource(HandOffHotReplyTimeout);
             var cRecordingChatId = await Computed
@@ -234,22 +236,21 @@ public static class PttSession
     private static async Task Resume(
         IServiceProvider scopedServices,
         ImmutableHashSet<ChatId> listeningChatIds,
-        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt)
+        IReadOnlyDictionary<ChatId, Moment> lastIncomingVoiceAt,
+        ChatId? foregroundChatId)
     {
         var hub = scopedServices.GetRequiredService<AppUIHub>();
         foreach (var (chatId, at) in lastIncomingVoiceAt)
             hub.VoiceActivityUI.NoteIncomingVoice(chatId, at);
-        if (listeningChatIds.IsEmpty)
-            return;
-
-        Log.LogInformation(
-            "PTT: handing {Count} listening chat(s) off to the WebView scope", listeningChatIds.Count);
-        // A SetListeningState landing before the stored active chats are read would make
-        // StoredState discard them.
-        await hub.ActiveChatsUI.WhenReady.ConfigureAwait(false);
-        hub.ChatAudioUI.Enable();
-        foreach (var chatId in listeningChatIds)
-            await hub.ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
+        if (!listeningChatIds.IsEmpty) {
+            Log.LogInformation(
+                "PTT: handing {Count} listening chat(s) off to the WebView scope", listeningChatIds.Count);
+            hub.ChatAudioUI.Enable();
+            foreach (var chatId in listeningChatIds)
+                await hub.ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
+        }
+        if (foregroundChatId is not null)
+            await hub.ChatAudioUI.NavigateToForegroundChat(foregroundChatId).ConfigureAwait(false);
     }
 
     private static void EnsureTeardownWatcher(PttPlatform platform)

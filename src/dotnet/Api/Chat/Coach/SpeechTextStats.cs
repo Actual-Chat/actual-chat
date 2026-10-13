@@ -24,17 +24,11 @@ public sealed record SpeechTextStats(
     {
         var words = new List<(string Core, int Start)>();
         foreach (var w in markup.Words) {
-            var value = w.Value;
-            var start = 0;
-            while (start < value.Length && !char.IsLetterOrDigit(value[start]))
-                start++;
-            var end = value.Length;
-            while (end > start && !char.IsLetterOrDigit(value[end - 1]))
-                end--;
-            if (end <= start)
+            if (GetWordRange(w) is not { } range)
                 continue;
 
-            words.Add((value[start..end].ToLower(), w.TextRange.Start + start));
+            var core = markup.Text[range.Start..range.End].ToLower();
+            words.Add((core, range.Start));
         }
         if (words.Count == 0)
             return null;
@@ -55,6 +49,19 @@ public sealed record SpeechTextStats(
             repetitionSpans.Count,
             words.Select(w => w.Core).Distinct().Count(),
             repetitionSpans.ToApiArray());
+    }
+
+    public static Range<int>? GetWordRange(PlayableTextMarkup.Word word)
+    {
+        var value = word.Value;
+        var start = 0;
+        while (start < value.Length && !char.IsLetterOrDigit(value[start]))
+            start++;
+        var end = value.Length;
+        while (end > start && !char.IsLetterOrDigit(value[end - 1]))
+            end--;
+
+        return end > start ? new Range<int>(word.TextRange.Start + start, word.TextRange.Start + end) : null;
     }
 
     // Private methods

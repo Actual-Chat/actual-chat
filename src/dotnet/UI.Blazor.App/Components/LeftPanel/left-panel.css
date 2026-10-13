@@ -198,6 +198,11 @@ body.narrow .left-panel-content-header::before {
 .left-panel-content.search-open .left-panel-content-header:not(.place) {
     @apply border-transparent;
 }
+/* The Clear button of the notifications header takes the same 40px slot as the search close button:
+   a bare header button is only as big as its glyph */
+.left-panel-content-header .c-clear-btn {
+    @apply w-10 h-10;
+}
 .left-panel-content-header.place {
     @apply relative;
     @apply flex-y;

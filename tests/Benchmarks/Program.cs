@@ -6,6 +6,19 @@ using BenchmarkDotNet.Running;
 
 var assembly = typeof(Program).Assembly;
 
+if (args is ["speech-pace-report"]) {
+    SpeechPaceStorageBenchmarks.Report();
+    return 0;
+}
+if (args is ["speech-pace-corpus", var corpusPath]) {
+    SpeechPaceStorageBenchmarks.ReportCorpus(corpusPath);
+    return 0;
+}
+if (args is ["speech-pace-existing", var existingPath]) {
+    SpeechPaceStorageBenchmarks.ReportExisting(existingPath);
+    return 0;
+}
+
 // `profile <sample> <seconds>` parses one sample in a loop, so an external sampling profiler
 // (dotnet-trace collect --format speedscope -- <this exe> profile Long 20) has a steady workload
 // to sample. BenchmarkDotNet's own harness is not usable here: its iterations are short and

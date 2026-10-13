@@ -46,7 +46,9 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         ParticipationKind kind,
         bool isActive,
         CancellationToken cancellationToken);
-    Task SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken);
+    // Returns the rules it replaced, null if there's no session: with every change made under one lock,
+    // of two identical requests racing each other only one gets back rules that differ from its own
+    Task<SessionRules?> SetRules(ChatId chatId, SessionRules rules, CancellationToken cancellationToken);
     Task MutePeer(ChatId chatId, AuthorId targetAuthorId, bool muted, CancellationToken cancellationToken);
     Task MuteAll(
         ChatId chatId,

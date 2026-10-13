@@ -1,5 +1,6 @@
 @using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
 @{
     var tabs = Tabs;
     var selectedTabId = SelectedTabId;
@@ -54,7 +55,7 @@
                     class="c-version @versionExpandedClass"
                     data-tooltip="@ApiConstants.DisplayVersionString"
                     data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"
-                    @onclick="@(() => _isVersionExpanded = !_isVersionExpanded)">
+                    @onclick="@OnVersionClick">
                     @ApiConstants.DisplayVersionString
                 </div>
                 <div class="flex-none">
@@ -161,6 +162,12 @@
             .FirstOrDefault(x => selectable.Any(y => y.Id == x.Id))
             ?.Id
             ?? selectable[^1].Id;
+    }
+
+    private async Task OnVersionClick() {
+        _isVersionExpanded = !_isVersionExpanded;
+        await Hub.ClipboardUI.WriteText(ApiConstants.DisplayVersionString).ConfigureAwait(true);
+        ToastUI.Show(L.Settings_VersionCopied, "icon-copy", ToastDismissDelay.Short);
     }
 
     private void OnTabClick(SettingsTabDef tab) {

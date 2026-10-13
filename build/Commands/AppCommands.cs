@@ -12,6 +12,7 @@ public enum AppPlatform
     Ios,
     Windows,
     Mac,
+    Linux,
 }
 
 // "macos" is accepted as a synonym of "mac" - both mean the AppKit app.
@@ -31,7 +32,7 @@ public sealed class AppPlatformConverter() : EnumConverter(typeof(AppPlatform))
 public sealed class AppSettings : PlanSettings
 {
     [CommandArgument(0, "<PLATFORM>")]
-    [Description("android | ios | windows | mac (or macos)")]
+    [Description("android | ios | windows | mac (or macos) | linux")]
     public AppPlatform Platform { get; init; }
 
     [CommandOption("-c|--configuration <CONFIGURATION>")]
@@ -96,9 +97,10 @@ public sealed class AppSettings : PlanSettings
     public bool MustUseCiBuild => UseCiBuild || CiBranch is not null;
     public bool MustUsePublish
         // Android is always published: that's where the signed APK comes from, in Debug too.
+        // So is Linux: only the publish output has the wwwroot the WebView serves.
         => !MustNotPublish
             && (MustPublish
-                || Platform == AppPlatform.Android
+                || Platform is AppPlatform.Android or AppPlatform.Linux
                 || OrdinalIgnoreCaseEquals(ResolvedConfiguration, "Release"));
 
     // Installing on Windows means registering an MSIX, so "app install" implies --package
@@ -123,6 +125,8 @@ public sealed class AppSettings : PlanSettings
             return ValidationResult.Error("--launch and --no-launch are mutually exclusive.");
         if (Platform is AppPlatform.Ios or AppPlatform.Mac && OperatingSystem.IsWindows())
             return ValidationResult.Error($"Building the {Platform} app needs macOS.");
+        if (Platform is AppPlatform.Linux && MustNotPublish)
+            return ValidationResult.Error("The Linux app runs from its publish output only.");
         if (UseSimulator && Platform != AppPlatform.Ios)
             return ValidationResult.Error("--simulator is only supported for the ios platform.");
         if (UseCatalyst && Platform != AppPlatform.Mac)

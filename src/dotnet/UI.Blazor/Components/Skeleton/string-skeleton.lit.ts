@@ -27,7 +27,7 @@ export class StringSkeletonLit extends LitElement {
             wrapperWidthStyle = `max-width: ${this.maxWidth / 4}rem`;
             messageWidthCls = 'w-full';
         }
-        const roundedCls = this.rounded ? 'rounded' : '';
+        const roundedCls = this.rounded ? 'round-ends' : '';
 
         return html`
             <div class="string-skeleton-wrapper ${this.system ? 'system-string' : ''}" style=${wrapperWidthStyle}>

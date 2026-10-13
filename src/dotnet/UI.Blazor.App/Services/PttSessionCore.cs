@@ -52,6 +52,10 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
             return PttWakeIgnoreReason.Muted;
         }
 
+        var chat = await Hub.Chats.Get(Hub.Session, chatId, CancellationToken.None).ConfigureAwait(false);
+        if (chat?.IsPttPaused == true)
+            return PttWakeIgnoreReason.Paused;
+
         if (isHeadless)
             chatAudioUI.IsPttHeadless = true;
         // Before Enable: the audio workers start on it and re-listen the armed set at once, and

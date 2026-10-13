@@ -18,18 +18,7 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
 
     public override void SetMauiContext(IMauiContext mauiContext)
     {
-        BlazorWebViewApp.EnsureStarted();
-
-        // Same trade-off as in CustomBlazorWebViewHandler: MainPage attaches the WebView only
-        // once the app is ready, so this normally doesn't wait at all.
-        if (!BlazorWebViewApp.WhenAppReady.IsCompleted) {
-            var startedAt = CpuTimestamp.Now;
-            BlazorWebViewApp.WhenAppReady.Wait();
-            Log.LogWarning("Awaiting BlazorWebViewApp readiness blocked the UI thread for {Elapsed}",
-                (CpuTimestamp.Now - startedAt).ToShortString());
-        }
-
-        var services = BlazorWebViewApp.Current.Services;
+        var services = BlazorWebViewApp.WaitForServices(Log);
         base.SetMauiContext(new MacOSMauiContext(services));
     }
 

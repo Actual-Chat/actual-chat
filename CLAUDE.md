@@ -152,6 +152,8 @@ The only exception is when `/server-loop` is running - in this case you should t
 
 **Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
 
+**Shared resources (the server loop, Chrome)**: `/server-loop` is yours to use — and to start, on the host, in a visible window, never in Docker — when the user says so or when you are the only agent. If more than one agent may need it, one coordinator agent owns it and the others queue through it; see the `/shared-resources` skill for the protocol and for who starts the coordinator.
+
 ## The `voxt-*` MCP servers talk to PRODUCTION
 
 `mcp__voxt-alex__*`, `mcp__voxt-robokitty__*` and the other `voxt-*` MCP tools operate against

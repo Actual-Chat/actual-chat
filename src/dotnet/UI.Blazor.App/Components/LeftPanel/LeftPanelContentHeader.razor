@@ -17,8 +17,10 @@
     }
 } else {
     <LeftPanelChatContentHeader
-        Title="@(IsNotifications ? L.Navbar_Notifications : L.Navbar_Chats)"
-        Menu="@(IsNotifications ? MenuRef.New<NotificationsMenu>() : null)">
+        Title="@(IsNotifications ? L.Navbar_Notifications : L.Navbar_Chats)">
+        @if (IsNotifications) {
+            <NotificationsClearButton/>
+        }
         @if (hasSearch) {
             <LeftChatSearchInput/>
         }

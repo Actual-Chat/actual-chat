@@ -119,6 +119,36 @@ public class CoachMarkHintTest
     }
 
     [Fact]
+    public void MenuArgumentsShouldRoundTripTheReplayPoint()
+    {
+        // arrange
+        var span = new SpeechSpan(SpeechSpanKind.Filler, "like", 3, 4, ApiArray<string>.Empty);
+        var chatId = ChatId.Parse("dpwo1tm0tw");
+        var startAt = new Moment(638_000_000_000_000_000L);
+
+        // act
+        var arguments = CoachMarkHint.ToArguments(span, chatId, startAt);
+        var point = CoachMarkHint.GetReplayPoint(arguments);
+
+        // assert
+        point.Should().Be(new CoachMarkHint.ReplayPoint(chatId, startAt));
+        CoachMarkHint.FromArguments(arguments).Word.Should().Be("like");
+    }
+
+    [Fact]
+    public void ReplayPointShouldBeAbsentWithoutReplayArguments()
+    {
+        // arrange
+        var span = new SpeechSpan(SpeechSpanKind.Filler, "like", 3, 4, ApiArray<string>.Empty);
+
+        // act
+        var point = CoachMarkHint.GetReplayPoint(CoachMarkHint.ToArguments(span));
+
+        // assert
+        point.Should().BeNull();
+    }
+
+    [Fact]
     public void ProfanityHintShouldOfferMilderAlternatives()
     {
         // arrange

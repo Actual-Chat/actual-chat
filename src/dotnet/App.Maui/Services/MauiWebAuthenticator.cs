@@ -2,12 +2,12 @@ namespace ActualChat.App.Maui.Services;
 
 /// <summary>
 /// Runs a web authentication flow in the platform's in-app browser, completing once
-/// the server redirects to <see cref="MauiSettings.AuthCallbackUrl"/>. Windows has no
-/// in-app browser, so it uses the default browser plus protocol activation.
+/// the server redirects to <see cref="MauiSettings.AuthCallbackUrl"/>. The desktop apps
+/// have no in-app browser, so they use the default browser plus protocol activation.
 /// </summary>
 public sealed class MauiWebAuthenticator(IServiceProvider services)
 {
-#if WINDOWS || MACOS
+#if WINDOWS || MACOS || LINUX
     private static readonly TimeSpan Timeout = TimeSpan.FromMinutes(10);
 #endif
 
@@ -19,8 +19,8 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
         try {
 #if WINDOWS
             return await RunWindows(url, endpoint, cancellationToken).ConfigureAwait(false);
-#elif MACOS
-            return await RunMacOS(url, endpoint, cancellationToken).ConfigureAwait(false);
+#elif MACOS || LINUX
+            return await RunInDefaultBrowser(url, endpoint, cancellationToken).ConfigureAwait(false);
 #else
             var options = new WebAuthenticatorOptions {
                 Url = url.ToUri(),
@@ -47,23 +47,29 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
         }
     }
 
-#if MACOS
+#if MACOS || LINUX
     // Private methods
 
-    private async Task<WebAuthResult> RunMacOS(string url, string endpoint, CancellationToken cancellationToken)
+    private async Task<WebAuthResult> RunInDefaultBrowser(
+        string url, string endpoint, CancellationToken cancellationToken)
     {
         // Same shape as RunWindows: the default browser runs the flow, and the app learns of
-        // completion through its voxt-dev:// URL activation (CFBundleURLTypes in Info.plist).
-        // ASWebAuthenticationSession was tried first, but the default-browser handoff stalls
-        // on about:blank in Chromium-based browsers, and its ephemeral fallback window forces
-        // a separate Google login instead of reusing the browser's.
+        // completion through its voxt-dev:// URL activation (CFBundleURLTypes in Info.plist on
+        // macOS, LinuxDesktopEntry on Linux).
+        // On macOS ASWebAuthenticationSession was tried first, but the default-browser handoff
+        // stalls on about:blank in Chromium-based browsers, and its ephemeral fallback window
+        // forces a separate Google login instead of reusing the browser's.
         var callbackSource = TaskCompletionSourceExt.New<bool>();
         void OnUrlOpened(string activatedUrl) {
             if (activatedUrl.StartsWith(MauiSettings.AuthCallbackUrl, StringComparison.OrdinalIgnoreCase))
                 callbackSource.TrySetResult(true);
         }
 
+#if MACOS
         AppDelegate.UrlOpened += OnUrlOpened;
+#else
+        LinuxActivation.UrlOpened += OnUrlOpened;
+#endif
         try {
             if (!await MauiBrowser.Open(url).ConfigureAwait(false)) {
                 Log.LogError("Failed to launch the browser for web auth (endpoint: {Endpoint})", endpoint);
@@ -74,7 +80,11 @@ public sealed class MauiWebAuthenticator(IServiceProvider services)
             return WebAuthResult.Completed;
         }
         finally {
+#if MACOS
             AppDelegate.UrlOpened -= OnUrlOpened;
+#else
+            LinuxActivation.UrlOpened -= OnUrlOpened;
+#endif
         }
     }
 #endif

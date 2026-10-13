@@ -1,0 +1,30 @@
+@using ActualChat.Notifications
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<HeaderButton
+    Class="c-clear-btn"
+    Click="OnClearClick"
+    Tooltip="@L.Common_Clear"
+    TooltipPosition="FloatingPosition.Bottom">
+    <i class="icon-broom"></i>
+</HeaderButton>
+
+@code {
+    private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
+
+    private void OnClearClick() {
+        var model = new ConfirmModal.Model(false, L.Notifications_ClearConfirm, Clear) {
+            Title = L.Common_Clear,
+            ConfirmButtonText = L.Common_Clear,
+        };
+        _ = ModalUI.Show(model);
+    }
+
+    private void Clear() {
+        // Before the command, so the chats it reads are never seen leaving the panel's list.
+        NotificationsPanelUI.DismissAll();
+        var dismissAllCmd = new Notifications_DismissAll { Session = Session };
+        _ = UICommander.Run(dismissAllCmd);
+    }
+}

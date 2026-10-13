@@ -13,8 +13,9 @@ two-user scenarios.
 For server lifecycle / rebuild concerns (stopping, restarting, reading
 build errors), see `/server-loop`. They're meant to be used together: the
 loop manages the .NET server; this skill manages the browser side.
-When subagents are involved, the main agent arbitrates access to both —
-see **Coordinating subagents** in `/server-loop`.
+When more than one agent may need the loop or a Chrome, access goes through
+a coordinator agent — see `/shared-resources` and **Coordinating subagents**
+in `/server-loop`. If you were told the loop is yours, just use it.
 
 ## TL;DR
 
@@ -146,8 +147,9 @@ one MCP clobber each other's page selection and sign each other out.
 
 So when the work is split across subagents: one agent per Chrome, named
 explicitly in its prompt, and no subagent restarts the server without an
-explicit grant. The main agent arbitrates — see **Coordinating
-subagents** in `/server-loop` for the grant format and the sequencing.
+explicit grant. The coordinator issues the grants — see `/shared-resources`,
+and **Coordinating subagents** in `/server-loop` for the grant format and
+the sequencing.
 
 ### Combine the MCP with Playwright when you need richer data
 

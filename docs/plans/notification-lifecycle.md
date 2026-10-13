@@ -331,15 +331,16 @@ notifications — by the time it runs, the notifications are gone.
 
 On Windows this matters more than elsewhere: `MauiProgram.Windows.cs` registers
 no `IDeviceNotifications` (`BlazorUIAppModule.cs:210` gates `WebDeviceNotifications`
-to `IsServerOrWasmApp()`) and `WindowsDeviceTokenRetriever` returns `null`, so
+to `IsServerOrWasmApp()`) and `NoDeviceTokenRetriever` returns `null`, so
 there are no toasts and no pushes. The app-icon badge is the *entire* notification
 surface, and `UpdateOnActiveChanges` is its only driver.
 
 ### 8 — "Dismiss all" menu (done)
 
 `Notifications_DismissAll` had no caller. The Notifications navbar panel header
-now carries a three-dots menu (`NotificationsMenu`, same shape as the Place one)
-with a single "Dismiss all" entry.
+now carries a "Clear" button (`NotificationsClearButton`) that asks for
+confirmation in a `ConfirmModal` and then dismisses all. It first shipped as a
+three-dots menu with a single "Dismiss all" entry.
 
 ### 9 — dismissal that satisfies the mode (done)
 

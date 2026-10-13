@@ -115,6 +115,24 @@ body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
     color: #e9e9ec;
 }
 .banner.coach-tip-bar .c-tip-close i { @apply text-base; color: #e9e9ec; }
+/* Mobile: pin the coach tip as a fixed banner above the audio panel, out of the subfooter's flow, so
+   the transcript scrolls under it. The anchor is absolute against the chat column (.c-container is the
+   positioned ancestor); the grown end anchor below keeps the newest message clear of the banner.
+   data-has-coach-tip is the presence flag the banner declares via data-child - see CoachTipBar.razor. */
+body.narrow .list-view-layout[data-has-coach-tip] .coach-tip-anchor {
+    @apply absolute inset-x-0 z-40 pointer-events-none bottom-28;
+}
+body.narrow .list-view-layout[data-has-coach-tip] .coach-tip-anchor > * {
+    @apply pointer-events-auto;
+}
+body.narrow .list-view-layout[data-has-coach-tip][data-has-listening-activity] .coach-tip-anchor,
+body.narrow .list-view-layout[data-has-coach-tip][data-has-audio-panel-header] .coach-tip-anchor {
+    @apply bottom-30;
+}
+/* Room at the transcript's end so the newest message rests above the pinned banner instead of behind it. */
+body.narrow .list-view-layout[data-has-coach-tip] .virtual-list > .c-wrapper > ul.c-virtual-container > .c-end-anchor {
+    @apply h-36;
+}
 .coach-mark-menu {
     @apply flex-y gap-y-1;
     @apply max-w-80 p-3;
@@ -174,14 +192,19 @@ body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
 .coach-progress .c-deltas-hint { @apply text-caption text-03 -mt-2; }
 .coach-progress .c-scores-caption { @apply text-caption text-03 -mt-2; }
 .coach-week-deltas .c-badge { @apply font-medium min-w-11 text-right; }
+.coach-skill-detail .c-baseline-change.improving,
 .coach-recent-summary .c-change.improving,
 .coach-week-deltas .c-badge.improving { color: var(--green-10); }
+.coach-skill-detail .c-baseline-change.stable,
 .coach-recent-summary .c-change.stable,
 .coach-week-deltas .c-badge.stable { color: var(--emerald-10); }
+.coach-skill-detail .c-baseline-change.worsening,
 .coach-recent-summary .c-change.worsening,
 .coach-week-deltas .c-badge.worsening { color: var(--text-banner-warning); }
+.theme-dark .coach-skill-detail .c-baseline-change.improving,
 .theme-dark .coach-recent-summary .c-change.improving,
 .theme-dark .coach-week-deltas .c-badge.improving { color: var(--green-70); }
+.theme-dark .coach-skill-detail .c-baseline-change.stable,
 .theme-dark .coach-recent-summary .c-change.stable,
 .theme-dark .coach-week-deltas .c-badge.stable { color: var(--emerald-40); }
 .coach-milestones .c-check {
@@ -201,6 +224,123 @@ body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
 .coach-skill + .coach-skill { @apply border-t border-separator; }
 .coach-skill .c-row { @apply flex-x items-baseline justify-between gap-x-3; }
 .coach-skill .c-name { @apply text-body-500 text-01; }
+.coach-skill .btn-skill-detail {
+    @apply flex-x items-center gap-x-2;
+    @apply text-left;
+}
+.coach-skill-detail {
+    @apply flex-y gap-y-3;
+    @apply min-w-0;
+}
+.coach-skill-detail .c-head {
+    @apply flex-x items-center gap-x-2;
+}
+.coach-skill-detail .c-moment-head {
+    @apply flex-x items-center justify-between gap-x-2;
+}
+.coach-skill-detail h2 { @apply text-heading-500 text-01; }
+.coach-skill-detail .c-periods {
+    @apply flex-x flex-wrap gap-2;
+}
+.coach-skill-detail .c-overview,
+.coach-skill-detail .c-distribution,
+.coach-skill-detail .c-moment {
+    @apply flex-y gap-y-3;
+    @apply p-4;
+    @apply text-body text-01;
+}
+.coach-skill-detail .c-value { @apply text-heading-500 text-01; }
+.coach-skill-detail .c-scope,
+.coach-skill-detail .c-rate,
+.coach-skill-detail .c-coverage,
+.coach-skill-detail .c-ranges,
+.coach-skill-detail .c-explanation,
+.coach-skill-detail .c-distribution-explanation,
+.coach-skill-detail .c-provisional,
+.coach-skill-detail .c-sample-progress { @apply text-caption text-02; }
+.coach-skill-detail .c-ranges {
+    @apply flex-y gap-y-1;
+}
+.coach-skill-detail .c-calendar {
+    @apply flex-x items-center justify-between gap-x-2;
+    @apply text-caption text-02;
+}
+.coach-skill-detail .c-baseline {
+    @apply flex-y gap-y-2;
+    @apply p-4;
+}
+.coach-skill-detail .c-baseline .chip { @apply whitespace-normal; }
+.coach-skill-detail .c-baseline .btn-text {
+    @apply self-start max-w-full justify-start px-0;
+    @apply text-01 text-left underline underline-offset-2;
+}
+.coach-skill-detail .c-baseline .btn-text > .btn-content { @apply text-left line-clamp-none; }
+.coach-skill-detail .c-baseline .btn-save-baseline,
+.coach-skill-detail .c-baseline .chip.on { color: var(--black); }
+.coach-skill-detail .c-baseline h3 { @apply text-body-500 text-01; }
+.coach-skill-detail .c-history {
+    @apply flex-y gap-y-3;
+    @apply p-4;
+}
+.coach-skill-detail .c-history h3 { @apply text-body-500 text-01; }
+.coach-skill-detail .c-history-value { @apply text-heading-500 text-01; }
+.coach-skill-detail .c-chart {
+    @apply overflow-x-auto;
+    @apply py-2;
+}
+.coach-skill-detail .c-pace-chart { @apply w-full; }
+.coach-skill-detail .c-range-legend { @apply flex-x items-center gap-x-2 pt-2; }
+.coach-skill-detail .c-target-key {
+    @apply flex-none w-4 h-3 rounded-sm border;
+    background: color-mix(in srgb, var(--emerald-50) 15%, transparent);
+    border-color: var(--emerald-30);
+}
+.theme-dark .coach-skill-detail .c-target-key { border-color: var(--emerald-50); }
+.coach-skill-detail .c-baseline-key {
+    @apply flex-none w-4 border-t-2 border-dashed;
+    border-color: var(--text-02);
+}
+.coach-skill-detail .c-ranges.c-distribution-ranges { @apply grid grid-cols-3 gap-3; }
+.coach-skill-detail .c-distribution-ranges > div { @apply flex-y gap-y-1 min-w-0; }
+.coach-skill-detail .c-speaking-chart {
+    --bar-chart-label-height: 1.5rem;
+    --bar-chart-value-height: 1.25rem;
+}
+.coach-skill-detail .c-speaking-chart .c-column {
+    @apply min-w-16 pt-5;
+}
+.coach-skill-detail .c-speaking-chart .c-bar-track { @apply relative; }
+.coach-skill-detail .c-speaking-chart .c-value {
+    @apply absolute w-full;
+    bottom: var(--bar-height);
+}
+.coach-skill-detail .c-speaking-chart .c-bar { @apply shrink-0; }
+.coach-skill-detail .c-speaking-chart .c-reference { @apply border-primary; }
+.coach-skill-detail .c-speaking-chart .c-bar { min-height: 2px; }
+.coach-skill-detail .bar-chart .c-value,
+.coach-skill-detail .bar-chart .c-label { @apply text-caption text-02; }
+.coach-skill-detail .c-words {
+    @apply flex-y gap-y-2;
+    @apply p-4;
+}
+.coach-skill-detail .btn-word-detail {
+    @apply relative min-h-10 px-2 rounded overflow-hidden;
+    @apply flex-x items-center justify-between gap-x-2;
+    @apply py-2;
+    @apply text-body text-01;
+}
+.coach-skill-detail .c-word-bar {
+    @apply absolute inset-y-1 left-0 rounded pointer-events-none;
+    background: color-mix(in srgb, var(--primary) 20%, transparent);
+}
+.coach-skill-detail .c-word-label { @apply relative min-w-0 break-words text-left; overflow-wrap: anywhere; }
+.coach-skill-detail .c-word-count { @apply relative shrink-0; }
+.coach-skill-detail .btn-word-detail:focus-visible,
+.coach-skill .btn-skill-detail:focus-visible,
+.coach-skill .c-focus-link:focus-visible,
+.coach-settings-page .c-focus-reset:focus-visible {
+    @apply outline outline-2 outline-primary;
+}
 .coach-skill .c-value { @apply text-sm font-medium text-03 text-right; }
 .coach-skill .c-value.band-good { @apply text-success; }
 .coach-skill .c-value.band-medium { @apply text-warning; }
@@ -209,7 +349,8 @@ body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
 .coach-skill.plain .c-name { @apply text-base font-normal; }
 .coach-skill .c-caption { @apply text-caption text-03; }
 .coach-skill .c-chips { @apply flex-x flex-wrap gap-2 pt-1; }
-.coach-skill .c-focus-link { @apply text-sm text-primary cursor-pointer; }
+.coach-skill .c-focus-link { @apply text-sm text-01 underline text-left; }
+.coach-skill .c-focus-selected { @apply flex-x items-center gap-x-2 text-sm font-medium text-01; }
 .coach-score-sheet .c-points { @apply text-sm text-03 whitespace-nowrap; }
 .coach-settings-page { @apply flex-y gap-y-3 px-4 pt-2 pb-4; }
 .coach-settings-page .c-title-row { @apply flex-x items-center gap-x-2; }
@@ -221,6 +362,16 @@ body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
 .coach-settings-page .c-topic { @apply text-caption text-03 px-2 pt-1; }
 .coach-settings-page .c-iso { @apply text-sm font-medium text-01; }
 .coach-settings-page .c-data .c-hint { @apply px-2 pb-2; }
+.coach-settings-page .c-language-focus { @apply flex-y gap-y-2 px-4 pb-4 text-caption text-02; }
+.coach-settings-page .c-focus-reset { @apply self-start text-sm text-01 underline text-left; }
+body.hoverable .coach-skill .c-focus-link:hover,
+body.hoverable .coach-settings-page .c-focus-reset:hover {
+    color: var(--blue-40);
+}
+.theme-dark body.hoverable .coach-skill .c-focus-link:hover,
+.theme-dark body.hoverable .coach-settings-page .c-focus-reset:hover {
+    color: var(--blue-70);
+}
 .coach-menu-entry { @apply flex-x items-center justify-between gap-x-4 w-full; }
 .coach-panel .tab-panel { @apply flex-none; }
 .coach-language-chips { @apply flex-y items-start gap-y-1; }

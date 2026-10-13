@@ -269,7 +269,7 @@ public sealed class CoachLabels(IStringLocalizer l)
                 or CoachMetricKind.Profanity => metric.Rate is null ? l.Coach_NoData : Round(value).ToString(),
             CoachMetricKind.SentenceLength => l.Coach_WordsPerSentence_Format(value.ToString("F1", null)),
             CoachMetricKind.Vocabulary => l.Coach_OfEvery100_Format(Round(value * 100)),
-            CoachMetricKind.TurnTaking => l.Coach_PercentOfTalkTime_Format(Round(value * 100)),
+            CoachMetricKind.TurnTaking => l.Coach_Percent_Format(Round(value * 100)),
             CoachMetricKind.Monologue => Clock(value),
             CoachMetricKind.Patience => l.Coach_Seconds_Format(value.ToString("F1", null)),
             _ => Round(value).ToString(),

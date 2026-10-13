@@ -348,6 +348,8 @@ Resolving *which* language a given user reads is `UserLocalizers`
 - `WebRemoteComputedCache` — IndexedDB-based remote computed cache
 
 - `DonutChart` / `BarChart` / `ChartItem` — inline SVG donut and div bar chart; colors come from the `Class` the caller passes (`currentColor`)
+- `LineChart` — shared history chart using `ChartItem`, with target bands, separate reference lines, gap breaks, accessible point selection, and bounded date labels.
+- `HistogramChart` — numeric sparse-bin distribution with actual bin positions, an overlaid target range, and an explicit vertical maximum for percentage scales.
 
 ## Blazor App (`ActualChat.UI.Blazor.App`)
 

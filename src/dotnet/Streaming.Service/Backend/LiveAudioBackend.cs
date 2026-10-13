@@ -67,10 +67,19 @@ public partial class LiveAudioBackend : ShardedComputeServiceBase, ILiveAudioBac
             if (prevStreamInfo.StreamId == streamInfo.StreamId)
                 return; // Already registered
             if (prevStreamInfo.AuthorId == streamInfo.AuthorId) {
-                Log.LogWarning("Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
+                if (IsLateReplay(streamInfo, prevStreamInfo)) {
+                    Log.LogWarning("Register: ignoring late stream {StreamId} for author {AuthorId}, "
+                        + "it began before the live {LiveStreamId}",
+                        streamInfo.StreamId, streamInfo.AuthorId, prevStreamInfo.StreamId);
+                    return;
+                }
+
+                Log.LogWarning(
+                    "Register: evicting stale stream {OldStreamId} for author {AuthorId} (replaced by {NewStreamId})",
                     prevStreamInfo.StreamId, streamInfo.AuthorId, streamInfo.StreamId);
                 continue;
             }
+
             streams.Add(prevStreamInfo);
         }
         streams.Add(streamInfo);
@@ -172,6 +181,14 @@ public partial class LiveAudioBackend : ShardedComputeServiceBase, ILiveAudioBac
             return state;
         }
     }
+
+    // Private methods
+
+    private static bool IsLateReplay(LiveAudioStreamInfo streamInfo, LiveAudioStreamInfo liveStreamInfo)
+        // An utterance resent long after recording gets the server clock as BeginsAt and looks fresher
+        // than the live stream; source starts still compare right, as both come from the author's client
+        => streamInfo.BeginsAt != streamInfo.SourceBeginsAt
+            && streamInfo.SourceBeginsAt < liveStreamInfo.SourceBeginsAt;
 
     // Nested types
 

@@ -475,6 +475,7 @@ public partial class Chats(IServiceProvider services) : IChats
                 || chatDiff.AllowAnonymousAuthors.HasValue
                 || chatDiff.AllowGuestAuthors.HasValue
                 || chatDiff.PttEnabledAt.HasValue
+                || chatDiff.IsPttPaused.HasValue
                 || chatDiff.RetentionPeriod.HasValue;
             if (isReadOnlyProperty)
                 throw StandardError.Constraint("It's allowed to change only Title or Description for the thread.");

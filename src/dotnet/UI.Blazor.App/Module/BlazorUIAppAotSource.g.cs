@@ -138,6 +138,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPinnedBar>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPinnedBarMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatPttSettingsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatQuickNavModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSearchTab>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSettingsModal>();
@@ -352,7 +353,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NoChatSelected>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NoResults>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationHistoryListItem>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsMenu>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsClearButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount>();
@@ -1017,6 +1018,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPinnedBar), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPinnedBarMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPropertiesMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatPttSettingsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatQuickNavModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSearchTab), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSettingsModal), AotTypeKind.Component),
@@ -1231,7 +1233,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.NoChatSelected), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NoResults), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationHistoryListItem), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsMenu), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsClearButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsNavbarWidget), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsPermissionBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.NotificationsTabUnreadCount), AotTypeKind.Component),

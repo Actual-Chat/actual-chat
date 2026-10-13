@@ -1,3 +1,4 @@
+using ActualChat.Hosting;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.Users;
 
@@ -6,6 +7,38 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public class PttTest
 {
     private static readonly Moment T0 = Moment.EpochStart + TimeSpan.FromDays(20_000);
+
+    [Theory]
+    [InlineData("local.voxt.ai", "Development",
+        HostKind.Server, true)]
+    [InlineData("wt1.local.voxt.ai", "Development",
+        HostKind.Server, true)]
+    [InlineData("local.voxt.ai", "Production",
+        HostKind.Server, false)]
+    [InlineData("local.voxt.ai", "Staging",
+        HostKind.Server, false)]
+    [InlineData("voxt.ai", "Development",
+        HostKind.Server, false)]
+    [InlineData("dev.voxt.ai", "Development",
+        HostKind.Server, false)]
+    [InlineData("local.voxt.ai", "Development",
+        HostKind.MauiApp, false)]
+    public void SettingsPreviewShouldBeRestrictedToLocalDevelopmentWeb(
+        string hostname, string environment, HostKind hostKind, bool isExpected)
+    {
+        // arrange
+        var hostInfo = new HostInfo {
+            BaseUrl = $"https://{hostname}/",
+            Environment = environment,
+            HostKind = hostKind,
+        };
+
+        // act
+        var isPreview = Ptt.IsLocalSettingsPreview(hostInfo);
+
+        // assert
+        isPreview.Should().Be(isExpected);
+    }
 
     [Fact]
     public void FreshWakeIsNotStale()
@@ -173,14 +206,15 @@ public class PttTest
         Ptt.ShouldShowMutedBanner(muted, now, dismissedMutedAt: mutedAt - TimeSpan.FromDays(1)).Should().BeTrue();
     }
 
-    [Fact]
-    public void UnconsentedChatShowsAllowChatBanner()
+    [Theory]
+    [InlineData(false, PttJoinBannerKind.AllowChatAndDevice)]
+    [InlineData(true, PttJoinBannerKind.AllowChat)]
+    public void UnconsentedChatShouldAskOnlyForMissingConsent(
+        bool isDeviceEnabled, PttJoinBannerKind expectedKind)
     {
         // act + assert
-        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled: false, dismissedAt: default, enabledAt: T0)
-            .Should().Be(PttJoinBannerKind.AllowChat);
-        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled: true, dismissedAt: default, enabledAt: T0)
-            .Should().Be(PttJoinBannerKind.AllowChat);
+        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled, dismissedAt: default, enabledAt: T0)
+            .Should().Be(expectedKind);
     }
 
     [Fact]
@@ -200,10 +234,12 @@ public class PttTest
     }
 
     [Fact]
-    public void DismissalWithinEpochHidesBothBannerKinds()
+    public void DismissalWithinEpochShouldHideAllBannerKinds()
     {
         // act + assert
         Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled: false, dismissedAt: T0, enabledAt: T0)
+            .Should().Be(PttJoinBannerKind.None);
+        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled: true, dismissedAt: T0, enabledAt: T0)
             .Should().Be(PttJoinBannerKind.None);
         Ptt.GetJoinBannerKind(isArmedInChat: true, isDeviceEnabled: false, dismissedAt: T0, enabledAt: T0)
             .Should().Be(PttJoinBannerKind.None);
@@ -217,7 +253,7 @@ public class PttTest
         Ptt.GetJoinBannerKind(
                 isArmedInChat: false, isDeviceEnabled: false,
                 dismissedAt: T0 - TimeSpan.FromSeconds(1), enabledAt: T0)
-            .Should().Be(PttJoinBannerKind.AllowChat);
+            .Should().Be(PttJoinBannerKind.AllowChatAndDevice);
     }
 
     [Fact]

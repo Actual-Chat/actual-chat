@@ -37,6 +37,7 @@ public class NotificationsBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
     private Streaming.ILiveSessionsBackend LiveSessionsBackend { get; }
         = services.GetRequiredService<Streaming.ILiveSessionsBackend>();
     private IChatThreadsBackend ChatThreadsBackend { get; } = services.GetRequiredService<IChatThreadsBackend>();
@@ -669,6 +670,17 @@ public class NotificationsBackend(IServiceProvider services)
         if (eventCommand.MustSkipNotification || entry.IsImported
             || await IsChatUnderMaintenance(entry.ChatId, cancellationToken).ConfigureAwait(false))
             return;
+
+        if (entry.IsRemoved && oldEntry is not { IsRemoved: true }) {
+            // A removed entry can't come on screen, and a reaction clears only once its entry has been seen.
+            if (!author.UserId.IsGuest) {
+                var reactionId = ReactionNotification.New(author.UserId, entry.Id).Id;
+                await Queues
+                    .Enqueue(new NotificationsBackend_Dismiss(reactionId), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            return;
+        }
         if (!ShouldNotify(entry, oldEntry, changeKind))
             return;
 
@@ -678,6 +690,11 @@ public class NotificationsBackend(IServiceProvider services)
         var live = await LiveSessionsBackend.GetState(entry.ChatId, cancellationToken).ConfigureAwait(false);
         if (live is { SessionStartedAt: not null } lc
             && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
+            return;
+
+        var isLateCallTranscript = await IsLateCallTranscript(entry, author, changeKind, cancellationToken)
+            .ConfigureAwait(false);
+        if (isLateCallTranscript)
             return;
 
         // ShouldNotify lets a Create through only when it is not streaming (typed text) and an
@@ -928,6 +945,35 @@ public class NotificationsBackend(IServiceProvider services)
 
         var maintenanceMode = await MaintenancesBackend.GetMode(chatId, cancellationToken).ConfigureAwait(false);
         return maintenanceMode != MaintenanceMode.None;
+    }
+
+    private async Task<bool> IsLateCallTranscript(
+        ChatEntry entry, AuthorFull author, ChangeKind changeKind, CancellationToken cancellationToken)
+    {
+        if (changeKind != ChangeKind.Update)
+            return false;
+
+        // A call's last utterance is finalized after the call and its live session are gone, so the
+        // session guard in OnChatEntryChangedEvent can't see it. The call's conversation survives, and
+        // its EndsAt is the test CallTailFlow uses to decide that an utterance belongs to the call.
+        var chatId = entry.ChatId;
+        var tile = Constants.Chat.ConversationIdTiles.GetTile(entry.LocalId);
+        var rangeTile = await ConversationsBackend
+            .GetConversationRangeTile(chatId, tile.Start, cancellationToken)
+            .ConfigureAwait(false);
+        var ranges = rangeTile.PreviousConversationRange is { } previous
+            ? rangeTile.ConversationRanges.Append(previous)
+            : rangeTile.ConversationRanges;
+        var startLid = ranges.Where(r => r.Start <= entry.LocalId).Select(r => r.Start).DefaultIfEmpty().Max();
+        if (startLid <= 0)
+            return false;
+
+        var conversation = await ConversationsBackend
+            .Get(ConversationId.New(chatId, startLid), cancellationToken)
+            .ConfigureAwait(false);
+        return conversation is { IsCall: true }
+            && entry.BeginsAt <= conversation.EndsAt
+            && conversation.AuthorIds.Contains(author.Id);
     }
 
     private async Task SendChatMessageNotification(
@@ -1457,7 +1503,7 @@ public class NotificationsBackend(IServiceProvider services)
         var pttSettings = await ServerKvasBackend.ForUser(userId).UserPttSettings()
             .Get(cancellationToken)
             .ConfigureAwait(false);
-        if (!pttSettings.IsArmedIn(chatId, chat?.PttEnabledAt)) {
+        if (!pttSettings.IsArmedIn(chatId, chat?.ActivePttEnabledAt)) {
             Log.LogInformation("PTT wake for user '{UserId}' in chat '{ChatId}': not armed", userId, chatId);
             return;
         }

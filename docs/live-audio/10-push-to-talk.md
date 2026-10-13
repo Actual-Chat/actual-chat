@@ -12,36 +12,81 @@ device, and when**.
 
 ## States: off, armed, muted, hot
 
-A chat is in exactly one of four PTT states per user:
+A chat is in exactly one of five PTT states per user:
 
 | State | Meaning | Source of truth |
 |---|---|---|
 | **off** | Ordinary chat. No wakes, no gestures, no reply button. | `Chat.PttEnabledAt` is null, or the user's consent is missing/stale |
-| **armed** | The chat may wake this device and may be answered hands-free. | `Chat.PttEnabledAt != null` **and** `UserPttSettings.PttChats` holds an entry with `JoinedAt >= PttEnabledAt` |
+| **paused** | The owner pauses PTT for everyone; consent, banner dismissals and personal preferences survive. | `Chat.IsPttPaused` |
+| **armed** | The chat may wake this device and may be answered hands-free. | `Chat.ActivePttEnabledAt != null` **and** `UserPttSettings.PttChats` holds an entry with `JoinedAt >= PttEnabledAt` |
 | **muted** | Armed consent kept, but inert for a period: no wakes, no auto-listening, no gestures. Lapses by itself. | The armed entry additionally has `MutedUntil` in the future (`PttChat.IsMutedAt(now)`) |
 | **hot** | The microphone is open for a PTT reply into this chat. | `PttReplyUI` holds a `PttReply` for it |
 
 Armed is thus a **two-key state**: the chat owner turns PTT on for the chat
-(`Chat.PttEnabledAt`, a right-panel toggle; for peer chats either author may),
+(`Chat.PttEnabledAt`, via the right-panel PTT settings; for peer chats either author may),
 and each author consents for themselves (`PttChats`, via the join banner or the
-per-chat Voice settings). `PttEnabledAt` doubles as a **consent epoch** —
-`UserPttSettings.IsArmed(pttEnabledAt, joinedAt)` requires
-`JoinedAt >= PttEnabledAt`, so turning the chat's toggle off and on again
-invalidates every prior consent (and every prior banner dismissal) without any
-fan-out: stale consent is self-invalidating on both client and server.
+personal participation controls). `PttEnabledAt` remains the **consent epoch**:
+`UserPttSettings.IsArmed(pttEnabledAt, joinedAt)` requires `JoinedAt >= PttEnabledAt`.
+Pause/resume changes only `Chat.IsPttPaused`, never that epoch. Consent-driven
+rosters include paused chats, so opting into another chat cannot prune their
+consent. Armed and muted sets exclude paused chats; server wake delivery,
+playback reporting and queued client wake playback apply the same pause gate.
+The native joined set retains consent during a pause to avoid losing the iOS
+channel or Android service needed to resume from the background.
 
 Arming is a **separate opt-in** — waking a killed device is a materially
 stronger commitment than keeping a player alive, so consent has its own chat
 set. Arming a chat does imply listening, though:
 `ChatAudioUI.GetChatsYouNeedToKeepListeningTo` delegates to `GetPttChatIds` —
-armed chats are the only always-listened chats — since arming alone starts no
-player. `ChatAudioUI.GetPttChatIds` is the client's
+armed chats are the only always-listened chats. Listening synchronization
+restores their players once the audio workers are enabled. `ChatAudioUI.GetPttChatIds` is the client's
 single armed-set choke point: it joins `PttChats` with `Chats.Get` and applies
-the epoch predicate, so an owner's toggle flip propagates to every consumer
+the epoch and pause predicates, so an owner's availability change propagates to every consumer
 (gestures, reply resolver, iOS PTT channel, `AudioActivitySource`, Active
 Chats) through ordinary invalidation. Armed chats also always appear in the
 **Active Chats** list with a PTT badge, and removing one there also revokes
 consent.
+
+**Desktop while running.** Windows and macOS expose the same device opt-in and
+chat participation settings. `SyncListeningWithPttArming` enables the audio
+workers when a native desktop app has an armed chat, including at startup;
+opening a chat first is not required. Device opt-out, mute and chat-wide pause
+still remove automatic listening without revoking consent. The existing chat
+recording and mute controls remain available. Desktop settings explain that
+PTT stops when the app quits, and omit mobile gesture and lock-screen controls.
+No desktop cold-start wake mechanism is installed.
+
+**Local web settings preview.** On local domains (including worktree subdomains)
+in the Development environment, the web settings expose all PTT controls for
+any account, including mobile gestures, headset buttons, lock-screen transmit
+and practice. Platform-only controls are shown for UI troubleshooting, not as
+browser capabilities; actual sensor availability remains unchanged and its
+warning stays visible. The preview gate does not apply to native apps or
+non-local/non-development web hosts. Chat-management permissions are unchanged.
+
+**Foreground navigation.** `ChatAudioUI.NavigateOnForeground` reacts only to
+background-to-foreground transitions, not incoming playback while the app is
+already visible. Recording wins; otherwise `GetForegroundChatId` chooses the
+most recently active audible PTT chat from the listening set. Armed-but-idle,
+muted, paused and locally paused listening chats do not redirect the user.
+Navigation uses `AutoNavigationUI` and hides side panels on narrow screens.
+
+A cold-start headless-to-WebView handoff samples that target before clearing
+headless listening and queues it in the live scope after restoring listening.
+This also covers a hot reply whose microphone remains in the headless scope
+until the reply closes; the live scope cannot infer that recording itself.
+
+**Wake preserves native audio.** A suspended WebView can report a sleep interval
+when the app opens even while the native microphone and playback kept running.
+`StopRecordingAndReplayOnDeviceAwake` therefore resets audio only in browser
+hosts; MAUI keeps recording intent and replay intact.
+
+Android ordinary PTT tracks use media playback even when a concurrent reply
+holds communication focus. Otherwise a track created during that reply keeps
+`VOICE_COMMUNICATION` after the microphone closes and the speaker route is
+cleared, allowing it to fall back to the earpiece. Actual calls and explicit
+car routes retain their communication playback through
+`CarAudioRoute.UseCommunicationPlayback`.
 
 **Muting** is a timed pause of an armed chat that keeps the consent:
 `ChatListPttToggle`, the Active Chats badge, opens `PttMuteMenu` (15 min / 1 h /
@@ -161,11 +206,15 @@ with an unbounded window.
 stateDiagram-v2
     [*] --> Off
     Off --> Armed: owner enables chat PTT + author joins
-    Armed --> Off: author leaves, or owner disables (epoch reset)
+    Armed --> Off: author leaves
+    Armed --> Paused: owner pauses for everyone
+    Muted --> Paused: owner pauses for everyone
+    Paused --> Armed: owner resumes, author is not muted
+    Paused --> Muted: owner resumes, personal mute has not lapsed
     Armed --> Muted: mute for 15 min / 1 h / 8 h (Active Chats badge)
     Armed --> Muted: hush (face-down, double-pat, power, headset long-press, Mute action)
     Muted --> Armed: MutedUntil passes, or the badge is tapped
-    Muted --> Off: author leaves, or owner disables
+    Muted --> Off: author leaves
     Armed --> Armed: wake push → headless playback
     Armed --> Hot: RequestReply — gesture, headset, PTT Talk, on-screen toggle
     Hot --> Armed: StopReply, cold-start dead-man, RecordChat idle (HotWindow)
@@ -861,30 +910,44 @@ devices:
 consent/leave helpers; `WithPttChatMuted(chatId, mutedAt, mutedUntil)` /
 `WithPttChatUnmuted(chatId)` pause and resume an entry, and `IsMutedIn(chatId, now)`
 is the predicate both the server wake gate and the client read. Writers never stamp `JoinedAt` from a raw client clock —
-the owner's auto-arm uses the `PttEnabledAt` returned by `Chats_Change`, and
 join paths use `Moment.Max(ServerClock.Now, enabledAt)` — otherwise clock skew
 could land consent just before the epoch and read as stale. The two nullable
 flags are read as `?? true` on purpose: a blob written before the member existed
 deserializes to `default`, not to the initializer's `true` (`PttChats` gets the
 same treatment via a null-normalizing getter).
 
-**Chat-level state.** `Chat.PttEnabledAt` rides the `IsSummarized` pattern:
-`ChatDiff.PttEnabledAt` is in `ChatDiff.RequiresOwner()` (owner-only in group
-chats), absent from `ValidatePeerChatChangeConstraints`' rejection list (either
-peer author may flip it), and rejected for threads. The epoch is
-**server-stamped** in `ChatsBackend`'s `ApplyDiff`: any non-null incoming value
-is a "turn it on" sentinel replaced with `SystemClock.Now`, and enabling while
-already on keeps the current stamp, so only an off→on cycle starts a new epoch.
-The owner's toggle lives in the right panel (`RightPanelChatInfo`) and
-auto-arms the owner; other authors get `PttJoinBanner` (dismissal stored per
-chat in `PttJoinBannerUserSettings`, expiring with the epoch) or the Voice
-settings row, which is disabled while the chat's PTT is off.
+**Chat-level state.** `ChatDiff.PttEnabledAt` and `ChatDiff.IsPttPaused`
+require an owner in group chats, may be changed by either peer author, and are
+rejected for threads. The epoch is **server-stamped** in `ChatsBackend.ApplyDiff`;
+enabling an already-enabled chat preserves it. Pausing a chat without an epoch
+is rejected. `Chat.ActivePttEnabledAt` is null while paused, otherwise the epoch.
+
+`ChatSidePanelInfo` opens `ChatPttSettingsModal` instead of presenting a global
+toggle. The dialog shows one owner toggle labelled "Push-to-talk for everyone";
+non-managers see read-only status explaining that only chat owners can change
+availability while personal consent remains their choice. The right-panel
+caption combines chat availability with personal status: "Available · Not yet
+allowed", "Available · Allowed", "Available · Off on this device", or
+"Available · Muted for you". Paused/not-enabled chat status takes precedence.
+Consent, device and mute changes update that caption reactively; the dialog's
+availability toggle remains chat-wide.
+On enables or resumes PTT; off pauses it,
+with confirmation. The toggle is disabled during confirmation and saving,
+and cancellation or failure restores persisted state. Personal participation
+stays in the join banner and PTT roster; device enablement stays in app settings.
+Resume keeps existing consent and personal mute/device choices. Enabling does not auto-enrol
+the owner. `PttJoinBanner` is hidden during a pause; on resume it asks only
+members/devices that still need consent, using the unchanged epoch and dismissal.
+The join banner distinguishes chat consent (`AllowChat`), device enablement
+(`EnableDevice`) and both missing (`AllowChatAndDevice`). It mentions "on this
+device" only when the device is off; device-only prompts use a "Turn on" action,
+while chat consent prompts use "Allow".
 
 **Gating.** PTT is available to every user on every host. The only surface
 that is not universal is the Settings page: `SettingsModal` shows it in the
-MAUI apps, and on the web only to an admin on a `BaseUrlKind.Local` host, since
-its device sections (gestures, Lock Screen, practice, shake sensitivity) need a
-real accelerometer. The right-panel owner toggle, the join banner and the Voice
+MAUI apps, and on the web to any account on a `BaseUrlKind.Local` host in the
+Development environment. Local web previews show mobile-only controls for UI
+troubleshooting without enabling native capabilities. The right-panel PTT settings, the join banner and the Voice
 settings row are unconditional. There is no on-screen reply button — replies
 are triggered only through the native paths below.
 

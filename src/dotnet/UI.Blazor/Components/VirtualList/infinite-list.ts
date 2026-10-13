@@ -982,28 +982,6 @@ export class InfiniteList extends VirtualList {
         return this.renderState.hasVeryLastItem ? 0 : this.spacerSize;
     }
 
-    // How much of the end anchor the bottom limit honours. The anchor keeps the newest message clear of
-    // the editor, but a whole conversation that fits on screen has nothing to keep clear of anything,
-    // and honouring it there pushes the first message off the top of a list that cannot scroll back. So
-    // around one viewport it is honoured only as far as it fits: below that size, as much as the slack
-    // above the chain allows; above it, growing with the overflow. The limit is continuous through the
-    // crossing, so a transcript growing and shrinking by a line there follows rather than jumps by the
-    // anchor's height - which is what the hysteresis this replaces was for, at the price of hiding up
-    // to its own width of the newest content.
-    private get honouredEndAnchorSize(): number {
-        const rs = this.renderState;
-        if (!rs.hasVeryFirstItem || !rs.hasVeryLastItem || this.items.length === 0)
-            return this.endAnchorSize;
-
-        return Math.min(this.endAnchorSize, Math.abs(this.ref.clientHeight - this.chainSize));
-    }
-
-    // What the anchor is short of at the bottom limit: the newest content is flush with the end there
-    // while the anchor's bottom hangs that far below the fold.
-    private get endAnchorSlack(): number {
-        return this.endAnchorSize - this.honouredEndAnchorSize;
-    }
-
     // Where the view sits once the pinned edge has been followed, which is not where it sits mid-render:
     // against the live position the fold is still at the chain's old end.
     private get pinnedScrollOffset(): number {
@@ -1012,7 +990,7 @@ export class InfiniteList extends VirtualList {
             return this.scrollOffset;
 
         return edge === VirtualListEdge.End
-            ? this.chainEnd + this.honouredEndAnchorSize - this.ref.clientHeight
+            ? this.chainEnd + this.endAnchorSize - this.ref.clientHeight
             : this.chainStart;
     }
 
@@ -1136,11 +1114,8 @@ export class InfiniteList extends VirtualList {
             return;
         }
 
-        // Around one viewport the bottom limit leaves the anchor's slack hanging below the fold, so the
-        // end is reached with the anchor that far out. Without this an End-edge list would settle on
-        // Start and stop following new messages until the conversation outgrew the viewport.
         const isAtEnd = rs.hasVeryLastItem
-            && (this.distanceToEndEdge() ?? Infinity) <= this.endAnchorSlack + EdgeEpsilon;
+            && (this.distanceToEndEdge() ?? Infinity) <= EdgeEpsilon;
         // Leaving the far edge for this one is a claim about where the reader is, and a window that
         // can't see its last item has no basis for it - while distanceToStartEdge has no lower bound, so
         // a chain hanging below the viewport top satisfies it as readily as one flush with it. A
@@ -1223,14 +1198,7 @@ export class InfiniteList extends VirtualList {
                     : maxScrollOffset - scrollOffset;
             }
         }
-        const target = clamp(scrollOffset + delta, 0, maxScrollOffset);
-        // Same cap as computeScrollLimits: only the honoured part of the anchor may pull the view past
-        // the newest content. Left to the DOM measure where nothing is capped, so a model a pixel short
-        // cannot stop the re-pin from landing flush.
-        const honoured = this.honouredEndAnchorSize;
-        return edge === VirtualListEdge.End && honoured < this.endAnchorSize
-            ? Math.min(target, this.chainEnd + honoured - this.ref.clientHeight)
-            : target;
+        return clamp(scrollOffset + delta, 0, maxScrollOffset);
     }
 
     // A follow moves the position the user is at, so it moves the scroll position - the term the
@@ -1547,7 +1515,7 @@ export class InfiniteList extends VirtualList {
         // the scroller enforces itself can't rubber-band. Blank space below the newest item is now
         // unreachable only because this says so, the same way the top is.
         let max = rs.hasVeryLastItem
-            ? this.chainEnd + this.honouredEndAnchorSize - this.ref.clientHeight
+            ? this.chainEnd + this.endAnchorSize - this.ref.clientHeight
             : this.chainEnd + this.maxOverscroll - this.ref.clientHeight;
         if (min > max) {
             if (this.defaultEdge === VirtualListEdge.End)
@@ -2203,11 +2171,9 @@ export class InfiniteList extends VirtualList {
         // Never true while the tab is in the background: the list stays flush at its edge there, and the
         // chat view reads this flag as "the user is looking at the newest message" to advance the read
         // position - so reporting it would mark messages read that nobody has seen.
-        // Around one viewport the bottom limit leaves the anchor's slack below the fold - the newest
-        // message is on screen all the same, and without this it would never be marked read.
         const isEndAnchorVisible = !document.hidden
             && this.renderState.hasVeryLastItem
-            && (this.distanceToEndEdge() ?? Infinity) <= this.endAnchorSlack + EdgeEpsilon;
+            && (this.distanceToEndEdge() ?? Infinity) <= EdgeEpsilon;
         // A level signal for the badge gate: stays true while the list follows its end edge, even
         // when a streaming expansion momentarily pushes the anchor out before the follow catches up.
         const isPinnedToEnd = isEndAnchorVisible || this.pinnedEdge === VirtualListEdge.End;
@@ -2434,9 +2400,8 @@ export class InfiniteList extends VirtualList {
             return rect.height > 0 && rect.bottom > viewRect.top && rect.top < viewRect.bottom;
         }
 
-        // At the end the anchor rests its slack below the fold, so that is where "flush" is.
         return this.defaultEdge === VirtualListEdge.End
-            ? Math.abs((this.distanceToEndEdge() ?? Infinity) - this.endAnchorSlack) <= RevealEpsilon
+            ? Math.abs(this.distanceToEndEdge() ?? Infinity) <= RevealEpsilon
             : Math.abs(this.distanceToStartEdge()) <= RevealEpsilon;
     }
 

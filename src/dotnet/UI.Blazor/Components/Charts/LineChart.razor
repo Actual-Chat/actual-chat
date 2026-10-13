@@ -1,0 +1,148 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="line-chart @Class" data-target-range="@(TargetRange is null ? "false" : "true")"
+     style="min-width: @(Items.Count <= 1 ? 0 : (Items.Count - 1) * 28 + 110)px">
+    <div class="c-axis" aria-hidden="true">
+        <span>@_maximum.ToString(ValueFormat, null)</span>
+        <span>@((_minimum + (_maximum - _minimum) / 2).ToString(ValueFormat, null))</span>
+        <span>@_minimum.ToString(ValueFormat, null)</span>
+    </div>
+    <div class="c-plot">
+        @if (TargetRange is { } range) {
+            <div class="c-target" aria-hidden="true"
+                 style="top: @Position(range.End)%; height: @Number((range.End - range.Start) / Span * 100)%">
+            </div>
+        }
+        <div class="c-grid" aria-hidden="true"></div>
+        @if (ReferenceValue is { } reference) {
+            <div class="c-reference" aria-hidden="true" style="top: @Position(reference)%"></div>
+        }
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+            @for (var i = 1; i < Items.Count; i++) {
+                @if (!Items[i].HasGap) {
+                    <line class="c-line" x1="@X(i - 1)" y1="@Position(Items[i - 1].Value)"
+                          x2="@X(i)" y2="@Position(Items[i].Value)" vector-effect="non-scaling-stroke"/>
+                }
+            }
+        </svg>
+        @for (var i = 0; i < Items.Count; i++) {
+            var item = Items[i];
+            @if (item.HasGap) {
+                <span class="c-gap" aria-hidden="true" style="left: @X(i)%">⋯</span>
+            }
+            @if (ItemClick.HasDelegate) {
+                <button type="button" class="btn-chart-point @item.Class"
+                        aria-label="@(item.Hint ?? item.Label + " · " + item.Value.ToString(ValueFormat, null))"
+                        title="@(item.Hint ?? item.Value.ToString(ValueFormat, null))"
+                        style="left: @X(i)%; top: @Position(item.Value)%;
+                            width: min(2.5rem, @Number(90d / Math.Max(1, Items.Count - 1))%)"
+                        @onclick="@(() => ItemClick.InvokeAsync(item))">
+                    <span class="c-dot" aria-hidden="true"></span>
+                </button>
+            } else {
+                <span class="c-dot c-point @item.Class" title="@(item.Hint ?? item.Value.ToString(ValueFormat, null))"
+                      style="left: @X(i)%; top: @Position(item.Value)%"></span>
+            }
+            @if (!ItemClick.HasDelegate) {
+                <span class="sr-only">@(item.Hint ?? item.Label + " · " + item.Value.ToString(ValueFormat, null))</span>
+            }
+        }
+    </div>
+    @if (TargetRange is { } bounds) {
+        <div class="c-target-axis" aria-hidden="true">
+            <span class="c-sizing">
+                @if ((bounds.End - bounds.Start) / Span >= 0.15) {
+                    <span>@bounds.Start.ToString(ValueFormat, null)</span>
+                    <span>@bounds.End.ToString(ValueFormat, null)</span>
+                } else {
+                    <span>@bounds.Start.ToString(ValueFormat, null)–@bounds.End.ToString(ValueFormat, null)</span>
+                }
+            </span>
+            <span class="c-target-tick" style="top: @Position(bounds.End)%"></span>
+            <span class="c-target-tick" style="top: @Position(bounds.Start)%"></span>
+            @if ((bounds.End - bounds.Start) / Span >= 0.15) {
+                <span class="c-target-bound c-upper" style="top: @Position(bounds.End)%">
+                    @bounds.End.ToString(ValueFormat, null)
+                </span>
+                <span class="c-target-bound c-lower" style="top: @Position(bounds.Start)%">
+                    @bounds.Start.ToString(ValueFormat, null)
+                </span>
+            } else {
+                <span class="c-target-bound c-pair" style="top: @Position(bounds.Start + (bounds.End - bounds.Start) / 2)%">
+                    @bounds.Start.ToString(ValueFormat, null)–@bounds.End.ToString(ValueFormat, null)
+                </span>
+            }
+        </div>
+    }
+    <div class="c-labels" aria-hidden="true">
+        @for (var i = 0; i < Items.Count; i++) {
+            @if (i == 0 || i == Items.Count - 1 || i % Math.Max(1, (int)Math.Ceiling(Items.Count / 4d)) == 0) {
+                <span class="c-label" style="left: @LabelX(i)%">@Items[i].Label</span>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private double _minimum;
+    private double _maximum;
+
+    private double Span => _maximum - _minimum;
+
+    [Parameter, EditorRequired] public IReadOnlyList<ChartItem> Items { get; set; } = [];
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ValueFormat { get; set; } = "0.#";
+    [Parameter] public Range<double>? TargetRange { get; set; }
+    [Parameter] public double? ReferenceValue { get; set; }
+    [Parameter] public double ScaleStep { get; set; } = 1;
+    [Parameter] public EventCallback<ChartItem> ItemClick { get; set; }
+
+    protected override void OnParametersSet() {
+        if (!double.IsFinite(ScaleStep) || ScaleStep <= 0)
+            throw new ArgumentOutOfRangeException(nameof(ScaleStep));
+        if (TargetRange is { } range && (!double.IsFinite(range.Start) || !double.IsFinite(range.End)
+            || range.Start > range.End))
+            throw new ArgumentOutOfRangeException(nameof(TargetRange));
+        if (ReferenceValue is { } reference && !double.IsFinite(reference))
+            throw new ArgumentOutOfRangeException(nameof(ReferenceValue));
+        if (Items.Any(x => !double.IsFinite(x.Value)))
+            throw new ArgumentOutOfRangeException(nameof(Items));
+
+        var values = Items.Select(x => x.Value).ToList();
+        if (TargetRange is { } target) {
+            values.Add(target.Start);
+            values.Add(target.End);
+        }
+        if (ReferenceValue is { } baseline)
+            values.Add(baseline);
+
+        var low = values.Count == 0 ? 0 : values.Min();
+        var high = values.Count == 0 ? 0 : values.Max();
+        _minimum = Math.Floor(low / ScaleStep) * ScaleStep;
+        if (_minimum == low)
+            _minimum -= ScaleStep;
+        if (low >= 0)
+            _minimum = Math.Max(0, _minimum);
+
+        _maximum = Math.Ceiling(high / ScaleStep) * ScaleStep;
+        if (_maximum == high)
+            _maximum += ScaleStep;
+        if (!double.IsFinite(Span) || Span <= 0)
+            throw new ArgumentOutOfRangeException(nameof(Items));
+    }
+
+    private string X(int index)
+        => Number(Items.Count <= 1 ? 50 : 5 + 90d * index / (Items.Count - 1));
+
+    private string LabelX(int index)
+        => Items.Count <= 1 ? "50"
+            : index == 0 ? "0"
+            : index == Items.Count - 1 ? "100"
+            : X(index);
+
+    private string Position(double value)
+        => Number((_maximum - value) / Span * 100);
+
+    private static string Number(double value)
+        => value.ToString("0.####", null);
+}

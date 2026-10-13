@@ -15,13 +15,36 @@ namespace ActualChat.App.Maui;
 internal static partial class WindowConfigurator
 {
     private static AppWindow? _appWindow;
+    private static Window? _window;
+    private static nint _windowHandle;
+
+    // Read by the notification reconciler off the UI thread
+    public static bool IsInForeground {
+        get {
+            var windowHandle = Volatile.Read(ref _windowHandle);
+            return windowHandle != 0 && GetForegroundWindow() == windowHandle;
+        }
+    }
 
     public static void Configure(Window window)
     {
+        _window = window;
+        try {
+            Volatile.Write(ref _windowHandle, WindowNative.GetWindowHandle(window));
+        }
+        catch {
+            // GetWindowHandle may fail in unpackaged/AOT mode, same as GetAppWindow elsewhere here
+        }
         ConfigureMinimization(window);
         ConfigureStartupSize(window);
         ConfigureTitleBar(window);
         WindowsSplashScreen.Attach(window);
+    }
+
+    public static void ShowWindow()
+    {
+        if (_window is { } window)
+            window.DispatcherQueue.TryEnqueue(() => Restore(window));
     }
 
     public static void BringToForeground(Window window)
@@ -74,15 +97,7 @@ internal static partial class WindowConfigurator
                     return;
                 }
 
-                try {
-                    if (window.GetAppWindow() is { Presenter: OverlappedPresenter presenter }
-                        && presenter.State == OverlappedPresenterState.Minimized)
-                        presenter.Restore();
-                }
-                catch {
-                    // In unpackaged/AOT mode, GetAppWindow may fail
-                }
-                BringToForeground(window);
+                Restore(window);
             });
         };
 
@@ -109,6 +124,19 @@ internal static partial class WindowConfigurator
         catch {
             // In unpackaged/AOT mode, GetAppWindow may fail
         }
+    }
+
+    private static void Restore(Window window)
+    {
+        try {
+            if (window.GetAppWindow() is { Presenter: OverlappedPresenter presenter }
+                && presenter.State == OverlappedPresenterState.Minimized)
+                presenter.Restore();
+        }
+        catch {
+            // In unpackaged/AOT mode, GetAppWindow may fail
+        }
+        BringToForeground(window);
     }
 
     private static void ConfigureStartupSize(Window window)
@@ -154,4 +182,7 @@ internal static partial class WindowConfigurator
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool SetForegroundWindow(nint hWnd);
+
+    [LibraryImport("user32.dll")]
+    private static partial nint GetForegroundWindow();
 }

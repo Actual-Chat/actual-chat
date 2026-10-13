@@ -3,7 +3,7 @@ namespace ActualChat.Hosting;
 public static class AppKindExt
 {
     public static bool IsMaui(this AppKind appKind)
-        => appKind is AppKind.Ios or AppKind.MacOS or AppKind.Android or AppKind.Windows;
+        => appKind is AppKind.Ios or AppKind.MacOS or AppKind.Android or AppKind.Windows or AppKind.Linux;
 
     public static bool IsMobile(this AppKind appKind)
         => appKind is AppKind.Ios or AppKind.Android;
@@ -12,7 +12,7 @@ public static class AppKindExt
         => appKind is AppKind.Ios or AppKind.MacOS;
 
     public static bool HasJit(this AppKind appKind)
-        => appKind is AppKind.Android or AppKind.Windows;
+        => appKind is AppKind.Android or AppKind.Windows or AppKind.Linux;
 
     public static string ToUserAgent(this AppKind appKind, string version)
         => $"{appKind:G}App/{version}";

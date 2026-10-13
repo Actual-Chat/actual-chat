@@ -74,7 +74,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         Hub.RegisterDisposable(ReplaySettings);
 
         _stopRecordingAt = stateFactory.NewMutable((Moment?)null, StateCategories.Get(type, nameof(StopRecordingAt)));
-        // Seeded with "now" so an active chat restored as recording still gets its grace period
         _recordingIntentChangedAt = stateFactory.NewMutable(
             CpuNow,
             StateCategories.Get(type, nameof(GetRecordingStatus)));
@@ -189,8 +188,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<PttChat>> GetConsentedPttChats(CancellationToken cancellationToken)
     {
-        // Armed = consent within the chat's current enable-epoch; the Chats.Get dependency
-        // re-arms/disarms everything downstream when an owner flips the chat's PTT toggle.
+        // Include paused chats: pruning them here would lose consent when another chat is added.
         await Hub.ChatUI.WhenReady.ConfigureAwait(false);
         var pttChats = await UserSettingsUI.UserPttSettings()
             .Get(x => x.PttChats, cancellationToken)
@@ -249,13 +247,17 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // Non-computed: GestureUI's loop polls this on its own cadence instead of depending on
         // per-chat player states.
         foreach (var chatId in chatIds) {
-            if (GetListeningPlayerNonComputed(chatId)?.Playback.IsPlaying.Value == true)
+            if (IsListeningPlaying(chatId))
                 return true;
         }
         return ReplayState.Value is { } replay
             && chatIds.Contains(replay.ChatId)
             && GetReplayPlayerNonComputed(replay.ChatId)?.Playback.IsPlaying.Value == true;
     }
+
+    // Static so tests can exercise the decision without a host
+    public static bool MustConfirmReplay(IEnumerable<ChatId> listeningChatIds, Func<ChatId, bool> isListeningPlaying)
+        => listeningChatIds.Any(isListeningPlaying);
 
     public async Task<List<PttChat>> HushPtt(CancellationToken cancellationToken)
     {
@@ -556,13 +558,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             : new(null, countdownDelay, false);
     }
 
-    public static Moment ComputeStopListeningAt(
-        Moment lastActivityAt, bool hasRecorded, TimeSpan listenerTimeout, TimeSpan speakerTimeout)
-        // A speaker session (the user recorded during it) ends per their listening-linger
-        // setting; a pure listener session always holds for the fixed listener timeout, so
-        // joining muted stays usable even with the setting off.
-        => lastActivityAt + (hasRecorded ? speakerTimeout : listenerTimeout);
-
     // Static so tests can exercise the thresholds without a host
     public static bool IsActuallyConversing(
         ConversationStats? stats,
@@ -652,6 +647,15 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
     // Private methods
 
+    private bool IsListeningPlaying(ChatId chatId)
+        => GetListeningPlayerNonComputed(chatId)?.Playback.IsPlaying.Value == true;
+
+    private bool IsListeningAudible(ChatId chatId)
+        // A paused player (e.g. after losing audio focus) keeps IsPlaying set, but nothing is audible
+        => GetListeningPlayerNonComputed(chatId)?.Playback is { } playback
+            && playback.IsPlaying.Value
+            && !playback.IsPaused.Value;
+
     private async Task NotifyPttConsentExpired(ChatId chatId, CancellationToken cancellationToken)
     {
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -687,6 +691,10 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var result = new List<ChatId>(pttChats.Count);
         Moment? nextMuteEnd = null;
         foreach (var pttChat in pttChats) {
+            var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
+            if (chat?.ActivePttEnabledAt is null)
+                continue;
+
             var isChatMuted = pttChat.IsMutedAt(now);
             if (isChatMuted && !isMuted)
                 Log.LogInformation("FilterConsentedPttChatIds: {ChatId} is muted until {MutedUntil}",

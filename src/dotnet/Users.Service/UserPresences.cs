@@ -5,7 +5,6 @@ namespace ActualChat.Users;
 /// </summary>
 public class UserPresences(IServiceProvider services) : IUserPresences
 {
-    private static readonly TimeSpan SessionUpdatePeriod = TimeSpan.FromHours(1);
     private static readonly TimeSpan PresenceChangeDelay = TimeSpan.FromSeconds(0.25);
 
     private IUserPresencesBackend Backend { get; } = services.GetRequiredService<IUserPresencesBackend>();
@@ -68,8 +67,10 @@ public class UserPresences(IServiceProvider services) : IUserPresences
             return; // The client has no session yet (e.g. reconnecting without a session cookie)
 
         var sessionInfo = await Accounts.GetSessionInfo(session, cancellationToken).ConfigureAwait(false);
-        if (sessionInfo != null && SystemNow - sessionInfo.LastSeenAt > SessionUpdatePeriod) {
-            var upsertSessionCmd = new SessionsBackend_Upsert(session);
+        if (command.MustExtendSession
+            && sessionInfo is { IsActive: true, Session.Kind: SessionKind.Session }
+            && sessionInfo.LastSeenAt + Constants.Session.LastSeenAtUpdatePeriod <= SystemNow) {
+            var upsertSessionCmd = new SessionsBackend_Upsert(session).WithRollingExpiration(SystemNow);
             await Commander.Call(upsertSessionCmd, true, cancellationToken).ConfigureAwait(false);
         }
 

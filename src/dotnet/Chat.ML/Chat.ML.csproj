@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="ActualChat.Chat.IntegrationTests$(AssemblyPublicKey)" />
+    <InternalsVisibleTo Include="ActualChat.Chat.UnitTests$(AssemblyPublicKey)" />
   </ItemGroup>
   
   <ItemGroup>

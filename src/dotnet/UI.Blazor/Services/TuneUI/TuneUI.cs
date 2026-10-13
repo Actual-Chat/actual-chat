@@ -19,7 +19,7 @@ public abstract class TuneUI : ProcessorBase
         [Tune.ChangeToggle] = new ([20] /*, "change-toggle"*/),
         [Tune.ClickButton] = new ([20] /*, "click-button"*/),
         // Recording
-        [Tune.BeginRecording] = new ([100, 50, 50], "begin-recording"),
+        [Tune.BeginRecording] = new ([50, 25, 25], "begin-recording"),
         [Tune.ConfirmRecording] = new ([50, 50, 100] /*, "confirm-recording"*/),
         [Tune.EndRecording] = new ([100], "end-recording"),
         [Tune.RemindOfRecording] = new ([15], "remind-of-recording", TunePlayMode.VibrateOrSound),
@@ -48,6 +48,9 @@ public abstract class TuneUI : ProcessorBase
         // PttReplyFailed's three.
         [Tune.PttGestureDetected] = new ([90]),
         [Tune.PttReplyFailed] = new ([150, 100, 150, 100, 150]),
+        // Calls
+        [Tune.CallTranscriptionOn] = new ([60, 80, 60], "call-transcription-on", TunePlayMode.VibrateOrSound),
+        [Tune.CallTranscriptionOff] = new ([60, 80, 60], "call-transcription-off", TunePlayMode.VibrateOrSound),
     };
     // Suppress redundant tactile feedback fired as a side-effect of starting
     // recording: ConfirmRecording (mic-live signal ~0.5–1 s after start) and
@@ -68,6 +71,16 @@ public abstract class TuneUI : ProcessorBase
     }
 
     protected UIHub Hub { get; }
+
+    // Whether the recorder start has to wait for the begin-recording tune to finish before it opens the
+    // microphone. A tune played into a live mic is recorded by the Windows app and fed back on Apple devices
+    // (WebKit's echo cancellation misses the playback path), so those wait: the Windows, iOS and macOS apps
+    // and WebKit browsers (Safari, and every browser on iOS). Android and the other browsers play it alongside.
+    public bool MustWaitForBeginRecording => Hub.HostInfo.AppKind switch {
+        AppKind.Android => false,
+        AppKind.Wasm => Hub.BrowserInfo.IsWebKit,
+        _ => true,
+    };
 
     protected ILogger Log => field ??= Hub.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.Tunes);
@@ -199,6 +212,8 @@ public enum Tune
     PttGestureDetected,
     PttReplyFailed,
     RecordingWillStop,
+    CallTranscriptionOn,
+    CallTranscriptionOff,
 }
 
 // Mode never reaches JS: TuneUI resolves it away before handing the table over.

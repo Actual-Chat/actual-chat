@@ -138,6 +138,8 @@ public sealed class ReplayStreamMuxer : WorkerBase
         }
         catch (Exception e) when (!e.IsCancellationOf(StopToken)) {
             Log.LogError(e, "OnRun: Failed for chat {ChatId}", ChatId);
+            // Completing the channel normally would end the replay for the listener as if it were over
+            _output.Writer.TryComplete(e);
         }
         finally {
             // The pending entry uses the enumerator and the dub tasks, so it's awaited before either goes

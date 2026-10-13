@@ -322,6 +322,7 @@ public class Accounts(IServiceProvider services) : IAccounts
             AppKind.Ios => "iOS App",
             AppKind.Windows => "Windows App",
             AppKind.MacOS => "macOS App",
+            AppKind.Linux => "Linux App",
             AppKind.Wasm => "Web App",
             _ => "App",
         };

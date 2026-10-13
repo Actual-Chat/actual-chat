@@ -76,20 +76,22 @@ public partial class ChatAudioUI
         var tracer = Constants.DebugMode.ReplayTiming
             ? new Tracer("Replay", () => Tracer.Default.IsEnabled, Tracer.Default.Writer, CpuTimestamp.Now)
             : Tracer.None;
-        // If listening is active, ask user to confirm stopping it
+        // Listening is stopped for the replay, but the user is asked only if real-time audio is playing
         var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
         if (!listeningChatIds.IsEmpty) {
-            var confirmed = false;
-            var model = new ConfirmModal.Model(false,
-                L.Replay_ConfirmText,
-                () => { confirmed = true; }) {
-                Title = L.Replay_ConfirmTitle,
-                ConfirmButtonText = L.Common_Yes,
-            };
-            var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
-            await modalRef.WhenClosed.ConfigureAwait(false);
-            if (!confirmed)
-                return;
+            if (MustConfirmReplay(listeningChatIds, IsListeningAudible)) {
+                var confirmed = false;
+                var model = new ConfirmModal.Model(false,
+                    L.Replay_ConfirmText,
+                    () => { confirmed = true; }) {
+                    Title = L.Replay_ConfirmTitle,
+                    ConfirmButtonText = L.Common_Yes,
+                };
+                var modalRef = await ModalUI.Show(model).ConfigureAwait(false);
+                await modalRef.WhenClosed.ConfigureAwait(false);
+                if (!confirmed)
+                    return;
+            }
 
             // One-shot per replay session: preserve the snapshot across replay switches
             // (when a stop transition hasn't been processed yet by StartStopReplayingPlayers).
@@ -98,7 +100,7 @@ public partial class ChatAudioUI
                     _listeningChatsBeforeReplay = listeningChatIds;
             }
             await ClearListeningChats().ConfigureAwait(false);
-            tracer.Point("StartReplay: listening confirmed and cleared");
+            tracer.Point("StartReplay: listening cleared");
         }
 
         var speed = ReplaySettings.Value.Speed;

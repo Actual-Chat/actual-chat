@@ -16,7 +16,10 @@ internal class TextEntryTranslationSource(ChatEntry entry, TranslationSourceId s
     public override string Content => ChatEntry.Content;
 }
 
-internal class ConversationTranslationSource(Conversation conversation, TranslationSourceId sourceId)
+internal class ConversationTranslationSource(
+    Conversation conversation,
+    TranslationSourceId sourceId,
+    bool isLive = false)
     : TranslationSource(ValidateKind(sourceId))
 {
     private static TranslationSourceId ValidateKind(TranslationSourceId sourceId)
@@ -36,9 +39,10 @@ internal class ConversationTranslationSource(Conversation conversation, Translat
 
     // Surrogate hash.
     // If Conversation is updated => version id is updated, and we consider that we need to update translations.
-    public override HashString ContentHash => new HashString(HashAlgorithm.None,
-        HashEncoding.Base64,
-        Conversation.Version.ToString().ToBase64());
+    // A live conversation changes on every new message, so it is keyed by the text being translated instead.
+    public override HashString ContentHash => isLive
+        ? ChatEntryHashExt.GetContentHashString(Content)
+        : new HashString(HashAlgorithm.None, HashEncoding.Base64, Conversation.Version.ToString().ToBase64());
 
     public override string Content => TranslationSourceId.Kind switch {
         TranslationIdKind.ConversationTitle => Conversation.Title,

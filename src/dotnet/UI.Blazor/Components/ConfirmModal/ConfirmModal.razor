@@ -25,7 +25,7 @@
     var altText = ModalModel.AltButtonText;
     var hasAlt = ModalModel.Alt != null && !altText.IsNullOrEmpty();
     // Three buttons don't fit one modal-sm row - they clip their labels, so stack them instead
-    var cls = $"confirm-modal modal-sm {(hasAlt ? "wide-dialog-buttons " : "")}{ModalModel.Class}";
+    var cls = $"confirm-modal compact-header modal-sm {(hasAlt ? "wide-dialog-buttons " : "")}{ModalModel.Class}";
 }
 
 <DialogFrame Class="@cls" Title="@title">

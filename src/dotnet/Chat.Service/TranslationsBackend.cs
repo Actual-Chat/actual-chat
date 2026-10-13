@@ -42,6 +42,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IAudioStreamingBackend StreamingBackend => field ??= Services.GetRequiredService<IAudioStreamingBackend>();
     private IConversationsBackend ConversationsBackend => field ??= Services.GetRequiredService<IConversationsBackend>();
+    private ILiveSessionsBackend LiveSessionsBackend => field ??= Services.GetRequiredService<ILiveSessionsBackend>();
     private IHostApplicationLifetime HostLifetime => field ??= Services.HostLifetime();
     private FlowHub FlowHub => field ??= Services.FlowHub();
     // Absent when no TTS provider is configured (no key, and not the fake): then there are no voices
@@ -692,10 +693,12 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                 var lid = sourceId.RefLid;
                 var conversationId = ConversationId.New(sourceId.ChatId, lid);
                 var conversation = await ConversationsBackend.Get(conversationId, cancellationToken).ConfigureAwait(false);
-                if (conversation is null)
-                    return null;
+                if (conversation is not null)
+                    return new ConversationTranslationSource(conversation, sourceId);
 
-                return new ConversationTranslationSource(conversation, sourceId);
+                // A live conversation is not in the database until its session closes
+                var live = await GetLiveConversation(conversationId, cancellationToken).ConfigureAwait(false);
+                return live is null ? null : new ConversationTranslationSource(live, sourceId, isLive: true);
             }
             case TranslationIdKind.ThreadTitle or
                 TranslationIdKind.ThreadDescription : {
@@ -712,6 +715,15 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
     }
 
     // Private methods
+
+    private async Task<Conversation?> GetLiveConversation(
+        ConversationId conversationId,
+        CancellationToken cancellationToken)
+    {
+        var live = await LiveSessionsBackend.GetLiveConversation(conversationId.ChatId, cancellationToken)
+            .ConfigureAwait(false);
+        return live?.Id == conversationId ? live : null;
+    }
 
     private static string? GetTranslationContextHint(TranslationIdKind kind)
         // Titles/descriptions/summaries are short standalone texts with no sibling-message context,

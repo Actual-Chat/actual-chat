@@ -10,7 +10,7 @@
     <MenuEntry Icon="icon-ai-stars text-2xl" Click="@OnClick">
         <TextContent>
             <div class="coach-menu-entry">
-                <span>@L.Coach_CoachMeHere</span>
+                <span>@(ChatId is PlaceChatId { IsRoot: true } ? L.Coach_CoachInPlace : L.Coach_CoachInChat)</span>
                 <Toggle IsChecked="@m.IsOn"/>
             </div>
         </TextContent>

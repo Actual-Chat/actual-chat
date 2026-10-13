@@ -12,10 +12,11 @@
             <ShareExternallyButton ButtonClass="btn-square" Request="@request"/>
         </span>
         <span class="contents" @onclick="@(() => Tapped?.Invoke(ShareActionKind.Copy))">
-            <CopyTrigger Tooltip="@L.Share_CopyLink" CopyText="@link">
+            <CopyTrigger Class="c-copy-link c-fixed" Tooltip="@L.Share_CopyLink" CopyText="@link">
                 <ButtonSquare>
                     <i class="hide-on-copied-hint icon-copy" aria-hidden="true"></i>
                     <i class="copied-hint icon-checkmark-simple" aria-hidden="true"></i>
+                    <span>@L.Common_Copy</span>
                 </ButtonSquare>
             </CopyTrigger>
         </span>

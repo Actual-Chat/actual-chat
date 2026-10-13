@@ -11,7 +11,7 @@ public static class HttpSessionExt
         HttpOnly = true,
         SecurePolicy = CookieSecurePolicy.Always,
         SameSite = SameSiteMode.Lax,
-        Expiration = TimeSpan.FromDays(28),
+        Expiration = CoreConstants.Session.SessionExpirationTime,
     };
     public static readonly CookieBuilder TokenCookie = new() {
         Name = Constants.Session.TokenCookieName,

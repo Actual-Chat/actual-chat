@@ -27,6 +27,7 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
 
     public const string ServiceKey = nameof(ConversationSummarizer);
     internal const int MaxMentionCount = 100;
+    internal const int MaxDetectedEntryCount = 5;
     internal const int MaxOutputLength = MaxTitleLength + MaxDescriptionLength + MaxSummaryLength;
 
     private const int MaxTitleLength = 200;
@@ -201,17 +202,24 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
         var frequency = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var entryLanguages = tiles
             .SelectMany(t => t.Entries)
-            .Where(t => idSet.Contains(t.Id.LocalId));
-        foreach (var entry in entryLanguages) {
-            var lang = entry.Languages.FirstOrDefault();
-            if (lang == null)
-                continue;
+            .Where(t => idSet.Contains(t.Id.LocalId))
+            .ToList();
+        foreach (var entry in entryLanguages)
+            CountLanguage(frequency, entry);
 
-            var id = lang.Value;
-            if (id.IsNullOrEmpty())
-                continue;
-
-            frequency[id] = frequency.TryGetValue(id, out var count) ? count + 1 : 1;
+        // Detection is queued by the entry-changed event, so a fresh live entry may have no language yet
+        var detectedLids = entryLanguages.Where(e => e.Languages.Length > 0).Select(e => e.Id.LocalId).ToHashSet();
+        var undetectedEntries = chatEntries
+            .Where(ce => !detectedLids.Contains(ce.LocalId) && ce.Content.Any(char.IsLetter))
+            .OrderByDescending(ce => ce.LocalId)
+            .Take(MaxDetectedEntryCount);
+        var commander = services.Commander();
+        foreach (var chatEntry in undetectedEntries) {
+            var detectCmd = new ChatEntryLanguagesBackend_Detect(
+                ChatEntryId.New(chatId, chatEntry.LocalId),
+                ChatEntryHashExt.GetContentHashString(chatEntry.Content));
+            var detected = await commander.Call(detectCmd, cancellationToken).ConfigureAwait(false);
+            CountLanguage(frequency, detected);
         }
 
         if (frequency.Count == 0)
@@ -224,6 +232,15 @@ public class ConversationSummarizer(ConversationSummarizer.Options settings, ISe
             .First().Key;
 
         return Language.Parse(best);
+    }
+
+    private static void CountLanguage(Dictionary<string, int> frequency, ChatEntryLanguage? entryLanguage)
+    {
+        var id = entryLanguage?.Languages.FirstOrDefault()?.Value;
+        if (id.IsNullOrEmpty())
+            return;
+
+        frequency[id] = frequency.TryGetValue(id, out var count) ? count + 1 : 1;
     }
 
     private static bool TryExtractTryAgainInDelay(string message, out TimeSpan tryAgainInDelay)

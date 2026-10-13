@@ -216,6 +216,31 @@ public class Coach(IServiceProvider services) : ICoach
             .ToApiArray();
     }
 
+    public virtual async Task<CoachBaselineComparison> GetOwnBaselineComparison(
+        Session session, CoachMetricKind kind, string language, CoachHistoryPeriod period,
+        Moment anchor, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull() || language.IsNullOrWhiteSpace())
+            return new CoachBaselineComparison();
+
+        var now = Clocks.SystemClock.Now;
+        var range = CoachHistoryRanges.Get(period, anchor, now);
+        var result = await Backend.GetBaselineComparison(account.Id, kind,
+            Language.GetIsoCode(language), range, cancellationToken).ConfigureAwait(false);
+        InvalidateAtMidnight(new Range<Moment>(range.Start, UsageDay.DayOf(now) + TimeSpan.FromDays(1)));
+        return result;
+    }
+
+    public virtual async Task OnSetBaseline(Coach_SetBaseline command, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustBeActive);
+        var setBaselineCmd = new CoachBackend_SetBaseline(account.Id, command.Kind,
+            command.Language, command.Period, command.Anchor);
+        await Commander.Call(setBaselineCmd, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task OnSetFocus(Coach_SetFocus command, CancellationToken cancellationToken)
     {
@@ -321,6 +346,93 @@ public class Coach(IServiceProvider services) : ICoach
         InvalidateAtMidnight(range);
         return await Backend
             .ListOccurrences(account.Id, word.Trim().ToLower(), range, ICoach.MaxOccurrences, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachOccurrence>> ListOwnSkillOccurrences(
+        Session session, string word, CoachWindow window,
+        string? language, CoachMetricKind kind, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull() || word.IsNullOrWhiteSpace()
+            || kind is not (CoachMetricKind.Fillers or CoachMetricKind.WeakWords))
+            return ApiArray<CoachOccurrence>.Empty;
+
+        var (range, _) = Ranges(window);
+        InvalidateAtMidnight(range);
+        return await Backend.ListSkillOccurrences(account.Id, word.Trim().ToLower(), range,
+            ICoach.MaxOccurrences, language, kind, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachChip>> ListOwnSkillWords(
+        Session session, CoachWindow window, string? language, CoachMetricKind kind,
+        CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull() || kind is not (CoachMetricKind.Fillers or CoachMetricKind.WeakWords))
+            return ApiArray<CoachChip>.Empty;
+
+        var (range, _) = Ranges(window);
+        InvalidateAtMidnight(range);
+        var days = await Backend.ListDays(account.Id, range, language, cancellationToken).ConfigureAwait(false);
+        var day = CoachDayBuilder.Merge(range.Start, days);
+        var words = kind == CoachMetricKind.Fillers ? day.FillerCounts : day.WeakWordCounts;
+        return words
+            .OrderByDescending(p => p.Value)
+            .ThenBy(p => p.Key, StringComparer.Ordinal)
+            .Select(p => new CoachChip(p.Key, p.Value))
+            .ToApiArray();
+    }
+
+    public virtual async Task<CoachPaceDetails> GetOwnPaceDetails(
+        Session session, CoachWindow window, string language, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull() || language.IsNullOrWhiteSpace())
+            return CoachPaceDetails.None;
+
+        var (range, _) = Ranges(window);
+        InvalidateAtMidnight(range);
+        return await Backend.GetPaceDetails(account.Id, range, language, cancellationToken).ConfigureAwait(false);
+    }
+
+    public virtual async Task<CoachSkillHistory> GetOwnSkillHistory(
+        Session session, CoachMetricKind kind, string language, CoachHistoryPeriod period,
+        Moment anchor, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull() || language.IsNullOrWhiteSpace())
+            return CoachSkillHistory.None;
+
+        var now = Clocks.SystemClock.Now;
+        var range = CoachHistoryRanges.Get(period, anchor, now);
+        var iso = Language.GetIsoCode(language);
+        var days = await Backend.ListHistoryDays(account.Id, range, iso, cancellationToken).ConfigureAwait(false);
+        var history = CoachHistoryBuilder.Build(range, kind, days, Settings.Coach, iso);
+        if (kind == CoachMetricKind.Pace) {
+            var pace = await Backend.GetPaceDetails(account.Id, range, iso, cancellationToken).ConfigureAwait(false);
+            history = history with { Pace = pace };
+        }
+        InvalidateAtMidnight(new Range<Moment>(range.Start, UsageDay.DayOf(now) + TimeSpan.FromDays(1)));
+        return history;
+    }
+
+    public virtual async Task<ApiArray<CoachOccurrence>> ListOwnSkillOccurrencesInRange(
+        Session session, string word, Range<Moment> range, string language,
+        CoachMetricKind kind, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull() || word.IsNullOrWhiteSpace() || language.IsNullOrWhiteSpace()
+            || kind is not (CoachMetricKind.Fillers or CoachMetricKind.WeakWords))
+            return ApiArray<CoachOccurrence>.Empty;
+        if (range.Start > range.End || range.End - range.Start > TimeSpan.FromDays(31))
+            throw new ArgumentOutOfRangeException(nameof(range));
+
+        var end = Moment.Min(range.End, Clocks.SystemClock.Now);
+        return await Backend.ListSkillOccurrences(account.Id, word.Trim().ToLower(),
+            new Range<Moment>(range.Start, end), ICoach.MaxOccurrences, language, kind, cancellationToken)
             .ConfigureAwait(false);
     }
 

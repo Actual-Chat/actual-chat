@@ -40,10 +40,11 @@ public sealed partial record Chat(
     [DataMember, Key(15)] public string Description { get; init; } = "";
     [DataMember, Key(16)] public AliasId? AliasId { get; init; }
     [DataMember, Key(17)] public bool? IsSummarized { get; init; }
-    // Non-null = PTT is on; the value is the consent epoch: only PttChat.JoinedAt >= PttEnabledAt counts as armed.
+    // Pausing keeps this consent epoch, so resuming never invalidates members' participation.
     [DataMember, Key(18)] public Moment? PttEnabledAt { get; init; }
 
     [DataMember, Key(19)] public MaintenanceMode MaintenanceMode { get; init; }
+    [DataMember, Key(20)] public bool IsPttPaused { get; init; }
     [DataMember, Key(21)] public TimeSpan? RetentionPeriod { get; init; }
 
     // Populated only on front-end
@@ -54,6 +55,9 @@ public sealed partial record Chat(
     public ChatKind Kind => Id.Kind;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool HasSingleAuthor => this.IsNotes;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public Moment? ActivePttEnabledAt => IsPttPaused ? null : PttEnabledAt;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public AliasInfo<ChatId> AliasInfo => field ??= new(Id, AliasId);
@@ -92,5 +96,6 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember] public AliasId? AliasId { get; init; }
     [DataMember] public Option<bool?> IsSummarized { get; init; }
     [DataMember] public Option<Moment?> PttEnabledAt { get; init; }
+    [DataMember] public bool? IsPttPaused { get; init; }
     [DataMember] public Option<TimeSpan?> RetentionPeriod { get; init; }
 }

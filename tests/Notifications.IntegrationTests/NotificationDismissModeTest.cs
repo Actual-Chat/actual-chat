@@ -38,6 +38,34 @@ public sealed class NotificationDismissModeTest(AppHostFixture fixture, ITestOut
     }
 
     [Fact]
+    public async Task ReactionShouldBeDroppedWhenItsEntryIsRemoved()
+    {
+        // arrange
+        var bob = await Tester.SignInAsBob();
+        var alice = await Tester.SignInAsAlice();
+        var (chatId, _) = await Tester.CreateChat(false, "Reaction removed-entry chat");
+        await Tester.InviteToChat(chatId, bob);
+        var entry = await Tester.CreateTextEntry(chatId, "Ok!");
+        await Tester.SignIn(bob);
+        await Tester.React(entry.Id, Emojis.Love);
+        await Tester.SignIn(alice);
+        await TestWait.WhenPolled(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            info.Items.Should().ContainSingle(n => n is ReactionNotification);
+        }, TimeSpan.FromSeconds(10));
+
+        // act
+        await Tester.RemoveTextEntry(entry.Id);
+
+        // assert
+        await TestWait.WhenPolled(async () => {
+            var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
+            info.Items.Should().NotContain(n => n is ReactionNotification,
+                "a removed entry can never be seen, so nothing else would clear its reaction");
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task MessageShouldBeDroppedWhenAuthorHasReadItsEntry()
     {
         // arrange
