@@ -38,7 +38,6 @@
 
 @if (m is not null) {
     <div class="replay-subheader">
-        <PlaybackRunningBorder IsPlaying="@(!m.IsPaused)"/>
         <div class="c-authors-block @slotsCls">
             @if (showSkeletons) {
                 <div class="c-skeletons" aria-hidden="true">
@@ -69,31 +68,30 @@
                 <Spinner/>
             } else {
                 @if (ScreenSize.IsWide()) {
-                    <HeaderButton Class="btn-glass btn-sm" Tooltip="@L.Replay_Backward" Click="@OnBackward">
-                        <i class="icon-rewind-left-fill"></i>
+                    <HeaderButton Tooltip="@L.Replay_Backward" Click="@OnBackward">
+                        <i class="icon-rewind-left"></i>
                     </HeaderButton>
                 }
                 @if (m?.IsPaused ?? false) {
-                    <HeaderButton Class="btn-glass btn-primary btn-sm" Tooltip="@L.MessageMenu_Play"
-                                  Click="@OnResume">
-                        <i class="icon-play-fill"></i>
+                    <HeaderButton Tooltip="@L.MessageMenu_Play" Click="@OnResume">
+                        <i class="icon-play"></i>
                     </HeaderButton>
                 } else {
-                    <HeaderButton Class="btn-glass btn-primary btn-sm" Tooltip="@L.Common_Pause" Click="@OnPause">
-                        <i class="icon-pause-fill"></i>
+                    <HeaderButton Tooltip="@L.Common_Pause" Click="@OnPause">
+                        <i class="icon-pause"></i>
                     </HeaderButton>
                 }
                 @if (ScreenSize.IsWide()) {
-                    <HeaderButton Class="btn-glass btn-sm" Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
-                        <i class="icon-rewind-right-fill"></i>
+                    <HeaderButton Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
+                        <i class="icon-rewind-right"></i>
                     </HeaderButton>
                 }
             }
         </div>
         <div class="c-actions">
             <PlaybackSpeedButton Speed="@speed" Menu="@(MenuRef.New<ReplaySpeedMenu>())"/>
-            <HeaderButton Click="@OnStop">
-                <i class="icon-close-fill text-2xl"></i>
+            <HeaderButton Class="c-close" Click="@OnStop">
+                <i class="icon-close"></i>
             </HeaderButton>
         </div>
     </div>

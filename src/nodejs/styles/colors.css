@@ -341,9 +341,14 @@
     --file-executable: var(--ash-30);
     --file-default: var(--gray-40);
 
-    --background-replay: var(--ash-99);
+    --background-replay: var(--blue-95);
     --text-replay: var(--text-02);
-    --border-replay: var(--ash-95);
+    --border-replay: var(--blue-90);
+    --accent-replay: var(--blue-50);
+    --background-music: var(--violet-95);
+    --text-music: var(--text-02);
+    --border-music: var(--violet-90);
+    --accent-music: var(--violet-40);
 
     /* Toasts */
     --toast-body: var(--gray-20);
@@ -621,9 +626,14 @@
     --file-executable: var(--ash-60);
     --file-default: var(--gray-40);
 
-    --background-replay: var(--ash-30);
+    --background-replay: color-mix(in srgb, var(--background-01), var(--blue-50) 15%);
     --text-replay: var(--text-02);
-    --border-replay: var(--ash-40);
+    --border-replay: var(--blue-20);
+    --accent-replay: var(--blue-80);
+    --background-music: color-mix(in srgb, var(--background-01), var(--violet-50) 15%);
+    --text-music: var(--text-02);
+    --border-music: var(--violet-30);
+    --accent-music: var(--violet-70);
 
     /* Toasts */
     --toast-body: var(--ash-95);
@@ -898,9 +908,14 @@
     --file-executable: var(--ash-30);
     --file-default: var(--gray-40);
 
-    --background-replay: var(--ash-99);
+    --background-replay: var(--blue-95);
     --text-replay: var(--text-02);
-    --border-replay: var(--ash-95);
+    --border-replay: var(--blue-90);
+    --accent-replay: var(--blue-50);
+    --background-music: var(--violet-95);
+    --text-music: var(--text-02);
+    --border-music: var(--violet-90);
+    --accent-music: var(--violet-40);
 
     /* Toasts */
     --toast-body: var(--gray-20);
