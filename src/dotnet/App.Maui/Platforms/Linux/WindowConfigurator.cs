@@ -4,7 +4,7 @@ namespace ActualChat.App.Maui;
 
 /// <summary>
 /// Desktop window policy of the GTK app, the twin of the Windows and AppKit
-/// <c>WindowConfigurator</c>s: the window may shrink to the narrow layout, and the background
+/// <c>WindowConfigurator</c>s: the window may shrink to the narrow layout, and the hidden
 /// state follows whether the user can see it.
 /// </summary>
 internal static class WindowConfigurator
@@ -32,7 +32,7 @@ internal static class WindowConfigurator
         window.SetSizeRequest(MinWidth, MinHeight);
         window.SetDefaultSize(DefaultWidth, DefaultHeight);
         window.OnNotify += OnNotify;
-        UpdateBackgroundState();
+        UpdateHiddenState();
     }
 
     public static void ShowWindow()
@@ -43,15 +43,14 @@ internal static class WindowConfigurator
     private static void OnNotify(GObject.Object sender, GObject.Object.NotifySignalArgs args)
     {
         if (args.Pspec.GetName() == "suspended")
-            UpdateBackgroundState();
+            UpdateHiddenState();
     }
 
-    private static void UpdateBackgroundState()
+    private static void UpdateHiddenState()
     {
         // "Can the user see the window", not "is the app active", as in the AppKit app: the
         // compositor suspends a window that is minimized, fully covered or on another workspace.
         var isHidden = _window?.IsSuspended() ?? false;
-        MauiBackgroundState.SetIsBackground(isHidden);
         MauiBackgroundState.SetIsHidden(isHidden);
     }
 }

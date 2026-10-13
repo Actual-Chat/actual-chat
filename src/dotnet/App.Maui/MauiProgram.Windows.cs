@@ -37,10 +37,7 @@ public static partial class MauiProgram
         events.AddWindows(builder => {
             builder
                 .OnWindowCreated(WindowConfigurator.Configure)
-                .OnVisibilityChanged((_, args) => {
-                    MauiBackgroundState.SetIsBackground(!args.Visible);
-                    MauiBackgroundState.SetIsHidden(!args.Visible);
-                });
+                .OnVisibilityChanged((_, args) => MauiBackgroundState.SetIsHidden(!args.Visible));
         });
         #if false
         // NOTE(DF): MauiLivenessProbe is switched off for now.
