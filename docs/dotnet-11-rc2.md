@@ -157,7 +157,28 @@ dotnet build src/dotnet/App.Maui/App.Maui.csproj -c Release -f net11.0-android \
 
 The candidate APK is under
 `artifacts/bin/App.Maui/release_net11.0-android_android-arm64/`.
-The local packages have not been uploaded to Play Console or tested on a device.
+### Device deployment and first regression
+
+Deployed the debug-key-signed dev APK to the attached ARM64 CPH2747 with
+`adb install -r`, preserving app data. Windows ADB works directly; this session's
+configured WSL TCP connection to the Windows ADB server times out.
+
+The first candidate crashes during SecureStorage initialization:
+`EncryptedSharedPreferences$PrefKeyEncryptionScheme.AES256_SIV` is missing.
+Generated binding rules preserve the enum class but have an empty member block;
+R8 removes the constant because its managed JNI access is invisible to Java.
+The subsequent `BlazorWebViewApp.Current` initialization failure is secondary.
+
+Added a targeted rule preserving public static enum fields only under
+`androidx.security.crypto`. After rebuilding and reinstalling, the app logs
+`BlazorWebViewApp ready`, remains alive, and keeps MainActivity in the foreground
+without the previous missing-field crash. R8 metadata remains **27.34%
+obfuscation, 60.08% optimization, and 64.30% shrinking**, with 10,849,736 DEX bytes.
+
+This is not a complete functional pass: the visible UI remains a blank purple
+screen, and Firebase rejects the local Android client configuration. WebView
+rendering, auth/passkeys, push delivery, audio, and background controls still need
+validation. The packages have not been uploaded to Play Console.
 
 ## Sources
 
