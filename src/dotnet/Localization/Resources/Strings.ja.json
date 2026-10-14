@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "現在地から {0}",
   "LocationMessage_ShareBack": "自分の位置情報を返す",
 
+  "GithubPreview_OpenedBy_Format": "{0} が {1} に作成",
+  "GithubPreview_CommittedBy_Format": "{0} が {1} にコミット",
+  "GithubPreview_CreatedBy_Format": "{0} が {1} に作成",
+  "GithubPreview_AssignedTo_Format": "担当: {0}",
+  "GithubPreview_Files": "{0} ファイル",
+
   "Editor_ChoosePhoto": "写真を選択",
   "Editor_SelectVideo": "動画を選択",
   "Editor_AddEmoji": "絵文字を追加",

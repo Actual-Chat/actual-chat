@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "Cách bạn {0}",
   "LocationMessage_ShareBack": "Chia sẻ lại vị trí của bạn",
 
+  "GithubPreview_OpenedBy_Format": "Mở bởi {0} vào {1}",
+  "GithubPreview_CommittedBy_Format": "Commit bởi {0} vào {1}",
+  "GithubPreview_CreatedBy_Format": "Tạo bởi {0} vào {1}",
+  "GithubPreview_AssignedTo_Format": "Giao cho {0}",
+  "GithubPreview_Files": "{0} tệp",
+
   "Editor_ChoosePhoto": "Chọn ảnh",
   "Editor_SelectVideo": "Chọn video",
   "Editor_AddEmoji": "Thêm biểu tượng cảm xúc",

@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "내 위치에서 {0}",
   "LocationMessage_ShareBack": "내 위치도 공유하기",
 
+  "GithubPreview_OpenedBy_Format": "{1}에 {0}님이 생성",
+  "GithubPreview_CommittedBy_Format": "{1}에 {0}님이 커밋",
+  "GithubPreview_CreatedBy_Format": "{1}에 {0}님이 생성",
+  "GithubPreview_AssignedTo_Format": "담당자: {0}",
+  "GithubPreview_Files": "파일 {0}개",
+
   "Editor_ChoosePhoto": "사진 선택",
   "Editor_SelectVideo": "동영상 선택",
   "Editor_AddEmoji": "이모지 추가",

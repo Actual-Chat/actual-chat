@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "Size {0} uzaklıkta",
   "LocationMessage_ShareBack": "Kendi konumunuzu paylaşın",
 
+  "GithubPreview_OpenedBy_Format": "{1} tarihinde {0} tarafından açıldı",
+  "GithubPreview_CommittedBy_Format": "{1} tarihinde {0} tarafından commit edildi",
+  "GithubPreview_CreatedBy_Format": "{1} tarihinde {0} tarafından oluşturuldu",
+  "GithubPreview_AssignedTo_Format": "{0} kişisine atandı",
+  "GithubPreview_Files": "{0} dosya",
+
   "Editor_ChoosePhoto": "Fotoğraf seçin",
   "Editor_SelectVideo": "Video seçin",
   "Editor_AddEmoji": "Emoji ekleyin",

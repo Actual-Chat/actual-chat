@@ -32,6 +32,19 @@ public static class HttpMockExt
                 },
             });
 
+    public static HttpHandlerMock SetupJson(this HttpHandlerMock mock, string url, string json)
+        => mock.Setup(url,
+            req => new (HttpStatusCode.OK) {
+                RequestMessage = req,
+                Content = new StringContent(json, MediaTypeHeaderValue.Parse("application/json")),
+            });
+
+    public static HttpHandlerMock SetupStatus(this HttpHandlerMock mock, string url, HttpStatusCode statusCode)
+        => mock.Setup(url,
+            req => new (statusCode) {
+                RequestMessage = req,
+            });
+
     public static HttpHandlerMock SetupRobotsNotFound(this HttpHandlerMock mock, string url)
         => mock.Setup(GetRobotsUrl(url),
             req => new (HttpStatusCode.NotFound) {

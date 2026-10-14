@@ -238,6 +238,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundChatList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundGroupListItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundMessageListItem>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.GithubLinkPreview>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundPlaceListItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundResult>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundUserListItem>();
@@ -1125,6 +1126,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundChatList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundGroupListItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundMessageListItem), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.GithubLinkPreview), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundPlaceListItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundResult), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundUserListItem), AotTypeKind.Component),

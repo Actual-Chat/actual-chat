@@ -19,6 +19,8 @@
 
 @if (m.LocalLink is { CanRender: true }) {
     <LocalLinkPreview Data="@m.LocalLink" DataMenu="@linkMenuRef"/>
+} else if (preview.GithubCard is { } githubCard) {
+    <GithubLinkPreview Preview="@preview" Card="@githubCard" Uri="@uri" DataMenu="@linkMenuRef"/>
 } else if (preview.MapPoint is { } mapPoint) {
     var mapMarkers = new[] { new MapMarker(preview.Id.Value, mapPoint) };
     <a class="map-link-preview unfocusable"

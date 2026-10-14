@@ -1,0 +1,124 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Media
+@using LinkPreview = ActualChat.Media.LinkPreview;
+@inherits FusionComponentBase<AppUIHub>
+@{
+    var preview = Preview;
+    var card = Card;
+    var uri = Uri;
+    var (kindCls, icon) = card.Kind switch {
+        GithubLinkKind.PullRequest => ("pull-request", "icon-git-pull-request"),
+        GithubLinkKind.Issue => ("issue", "icon-issue"),
+        GithubLinkKind.Commit => ("commit", "icon-git-commit"),
+        _ => ("repository", "icon-repository"),
+    };
+    var number = card.Kind is GithubLinkKind.PullRequest or GithubLinkKind.Issue ? $"#{card.Number}" : "";
+    var avatarUrl = GetAvatarUrl(preview.PreviewMedia);
+    var hasDiff = card.Kind is GithubLinkKind.PullRequest or GithubLinkKind.Commit
+        && card.Additions + card.Deletions + card.ChangedFiles > 0;
+    var hasFacts = hasDiff
+        || card.Kind == GithubLinkKind.PullRequest
+        || !card.IssueType.IsNullOrEmpty()
+        || card.Labels.Length > 0
+        || card.Assignees.Length > 0
+        || !card.Language.IsNullOrEmpty()
+        || !card.DefaultBranch.IsNullOrEmpty();
+}
+
+<a class="link-preview github-link-preview no-thumbnail unfocusable @kindCls"
+   href="@uri"
+   target="_blank"
+   data-menu="@DataMenu">
+    <div class="c-icon">
+        @if (!avatarUrl.IsNullOrEmpty()) {
+            <image-skeleton class="c-avatar" src="@avatarUrl"/>
+            <i class="c-badge @icon" aria-hidden="true"></i>
+        } else {
+            <i class="@icon" aria-hidden="true"></i>
+        }
+    </div>
+    <div class="c-info">
+        @if (card.Kind != GithubLinkKind.Repository) {
+            <span class="c-repo">@card.Repo</span>
+        }
+        <span class="c-title">
+            @preview.Title
+            @if (!number.IsNullOrEmpty()) {
+                <span class="c-number">@number</span>
+            }
+        </span>
+        @if (!preview.Description.IsNullOrEmpty()) {
+            <div class="c-description">@preview.Description</div>
+        }
+        @if (hasFacts) {
+            <div class="c-facts">
+                @if (card.Kind == GithubLinkKind.PullRequest) {
+                    <span class="c-chip c-branches">@card.BaseRef ← @card.HeadRef</span>
+                }
+                @if (card.Kind == GithubLinkKind.Commit) {
+                    <span class="c-chip c-branches">@card.ShortSha</span>
+                }
+                @if (hasDiff) {
+                    <span class="c-additions">+@card.Additions.ToString("N0")</span>
+                    <span class="c-deletions">−@card.Deletions.ToString("N0")</span>
+                    <span class="c-files">@L.GithubPreview_Files(card.ChangedFiles, card.ChangedFiles)</span>
+                }
+                @if (!card.IssueType.IsNullOrEmpty()) {
+                    <span class="c-chip">@card.IssueType</span>
+                }
+                @foreach (var label in card.Labels) {
+                    <span class="c-chip">@label</span>
+                }
+                @if (card.Assignees.Length > 0) {
+                    var assignees = string.Join(", ", card.Assignees);
+                    <span class="c-assignees">@L.GithubPreview_AssignedTo_Format(assignees)</span>
+                }
+                @if (!card.Language.IsNullOrEmpty()) {
+                    <span class="c-chip">@card.Language</span>
+                }
+                @if (!card.DefaultBranch.IsNullOrEmpty()) {
+                    <span class="c-chip c-branches">@card.DefaultBranch</span>
+                }
+            </div>
+        }
+        <div class="c-footer">
+            <span class="c-by">@GetByLine(card)</span>
+            <span class="c-domain">@uri.Host</span>
+        </div>
+    </div>
+    <div class="incut"></div>
+</a>
+
+@code {
+    private const int AvatarSize = 96; // the 3rem slot at 2x
+
+    [Parameter, EditorRequired] public LinkPreview Preview { get; set; } = null!;
+    [Parameter, EditorRequired] public GithubLinkCard Card { get; set; } = null!;
+    [Parameter, EditorRequired] public Uri Uri { get; set; } = null!;
+    [Parameter] public string DataMenu { get; set; } = "";
+
+    private string GetAvatarUrl(Media? media)
+    {
+        if (media?.BlobId.IsNullOrEmpty() != false)
+            return "";
+
+        return UrlMapper.ImagePreviewUrl(UrlMapper.ContentUrl(media.BlobId), AvatarSize, AvatarSize);
+    }
+
+    private string GetByLine(GithubLinkCard card)
+    {
+        if (card.CreatedAt == default)
+            return card.Author;
+
+        var createdAt = DateTimeConverter.ToLocalTime(card.CreatedAt.ToDateTime());
+        var now = DateTimeConverter.ToLocalTime(Clocks.SystemClock.Now.ToDateTime());
+        var date = createdAt.Year == now.Year
+            ? createdAt.ToString("m", DateFormatter)
+            : createdAt.ToString("d", DateFormatter);
+        return card.Kind switch {
+            GithubLinkKind.Commit => L.GithubPreview_CommittedBy_Format(card.Author, date),
+            GithubLinkKind.Repository => L.GithubPreview_CreatedBy_Format(card.Author, date),
+            _ => L.GithubPreview_OpenedBy_Format(card.Author, date),
+        };
+    }
+}

@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "{0} dari Anda",
   "LocationMessage_ShareBack": "Bagikan lokasi Anda kembali",
 
+  "GithubPreview_OpenedBy_Format": "Dibuka oleh {0} pada {1}",
+  "GithubPreview_CommittedBy_Format": "Commit oleh {0} pada {1}",
+  "GithubPreview_CreatedBy_Format": "Dibuat oleh {0} pada {1}",
+  "GithubPreview_AssignedTo_Format": "Ditugaskan kepada {0}",
+  "GithubPreview_Files": "{0} berkas",
+
   "Editor_ChoosePhoto": "Pilih foto",
   "Editor_SelectVideo": "Pilih video",
   "Editor_AddEmoji": "Tambah emoji",

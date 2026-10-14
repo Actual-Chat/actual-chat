@@ -531,6 +531,12 @@
   "LocationMessage_DistanceFromYou_Format": "{0} od vás",
   "LocationMessage_ShareBack": "Sdílet svou polohu zpět",
 
+  "GithubPreview_OpenedBy_Format": "Otevřeno {1}, autor: {0}",
+  "GithubPreview_CommittedBy_Format": "Commit {1}, autor: {0}",
+  "GithubPreview_CreatedBy_Format": "Vytvořeno {1}, autor: {0}",
+  "GithubPreview_AssignedTo_Format": "Přiřazeno: {0}",
+  "GithubPreview_Files": "{0} soubor|{0} soubory|{0} souborů",
+
   "Editor_ChoosePhoto": "Vybrat fotku",
   "Editor_SelectVideo": "Vybrat video",
   "Editor_AddEmoji": "Přidat emoji",

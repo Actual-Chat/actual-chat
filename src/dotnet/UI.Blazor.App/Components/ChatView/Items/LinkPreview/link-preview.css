@@ -259,3 +259,85 @@ body.narrow .link-preview.local-link .c-info {
     @apply truncate;
     @apply text-sm text-03;
 }
+
+/* GitHub card: a pull request, issue, commit or repository drawn from the API record (#5291) */
+.link-preview.github-link-preview {
+    @apply items-start gap-x-3;
+    @apply h-auto;
+    @apply p-3;
+}
+body.narrow .link-preview.github-link-preview {
+    @apply flex-x items-start gap-x-3;
+    @apply min-h-0;
+    @apply p-3;
+}
+.link-preview.github-link-preview .c-icon {
+    @apply relative;
+    @apply h-12 w-12;
+}
+.link-preview.github-link-preview .c-avatar {
+    @apply h-full w-full;
+    @apply rounded-full overflow-hidden;
+}
+.link-preview.github-link-preview .c-icon > .c-badge {
+    @apply absolute -bottom-1 -right-1;
+    @apply flex-x items-center justify-center;
+    @apply h-5 w-5;
+    @apply rounded-full;
+    @apply bg-01;
+    @apply text-sm text-primary;
+}
+.link-preview.github-link-preview .c-info {
+    @apply gap-y-1;
+    @apply md:py-0;
+}
+.link-preview.github-link-preview .c-repo {
+    @apply text-caption-500 text-03;
+    @apply truncate;
+}
+.link-preview.github-link-preview .c-title {
+    @apply text-body-500 leading-tight text-01;
+    @apply line-clamp-2;
+}
+.link-preview.github-link-preview .c-number {
+    @apply ml-1;
+    @apply font-normal text-03;
+}
+.link-preview.github-link-preview .c-description {
+    @apply line-clamp-2;
+    @apply wrap-anywhere whitespace-normal;
+}
+.link-preview.github-link-preview .c-facts {
+    @apply flex-x flex-wrap items-center gap-x-2 gap-y-1;
+    @apply min-w-0 max-w-full;
+    @apply text-caption text-03;
+}
+.link-preview.github-link-preview .c-chip {
+    @apply max-w-full;
+    @apply px-2 py-0.5;
+    @apply rounded-md;
+    @apply bg-03;
+    @apply text-micro-500 text-02 truncate;
+}
+.link-preview.github-link-preview .c-branches {
+    @apply font-mono;
+}
+.link-preview.github-link-preview .c-additions {
+    @apply text-caption-500 text-success;
+}
+.link-preview.github-link-preview .c-deletions {
+    @apply text-caption-500 text-danger;
+}
+.link-preview.github-link-preview .c-footer {
+    @apply flex-x items-center gap-x-2;
+    @apply min-w-0 max-w-full;
+    @apply text-caption text-03;
+}
+.link-preview.github-link-preview .c-by {
+    @apply flex-1;
+    @apply min-w-0;
+}
+.link-preview.github-link-preview .c-domain {
+    @apply flex-none;
+    @apply ml-auto;
+}

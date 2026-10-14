@@ -61,6 +61,12 @@ public sealed partial record LinkPreview : IHasId<Symbol>, IHasVersion<long>, IH
     }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public GithubLinkCard? GithubCard {
+        get => GithubLinkCard.FromMetadata(this);
+        init => GithubLinkCard.WriteMetadata(this, value);
+    }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsEmpty => Title.IsNullOrEmpty() && Description.IsNullOrEmpty() && PreviewMediaId == null;
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

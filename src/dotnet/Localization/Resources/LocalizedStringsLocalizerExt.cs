@@ -574,6 +574,16 @@ public static class LocalizedStringsLocalizerExt
             => l["LocationMessage_DistanceFromYou_Format", arg0].Value;
         public string LocationMessage_ShareBack => l["LocationMessage_ShareBack"].Value;
 
+        public string GithubPreview_OpenedBy_Format(object arg0, object arg1)
+            => l["GithubPreview_OpenedBy_Format", arg0, arg1].Value;
+        public string GithubPreview_CommittedBy_Format(object arg0, object arg1)
+            => l["GithubPreview_CommittedBy_Format", arg0, arg1].Value;
+        public string GithubPreview_CreatedBy_Format(object arg0, object arg1)
+            => l["GithubPreview_CreatedBy_Format", arg0, arg1].Value;
+        public string GithubPreview_AssignedTo_Format(object arg0)
+            => l["GithubPreview_AssignedTo_Format", arg0].Value;
+        public string GithubPreview_Files(long count, object arg0) => l.Plural("GithubPreview_Files", count, arg0);
+
         public string Editor_ChoosePhoto => l["Editor_ChoosePhoto"].Value;
         public string Editor_SelectVideo => l["Editor_SelectVideo"].Value;
         public string Editor_AddEmoji => l["Editor_AddEmoji"].Value;
