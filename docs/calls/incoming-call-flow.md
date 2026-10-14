@@ -275,6 +275,18 @@ client's connection drops
 (`ParticipationDisconnectGrace` + `CallLeaveGrace`), so by then the call is over there too. A server
 restart doesn't end a call there - presence outlives it - but one longer than 20 s ends it here.
 
+**App exit.** A process that just goes sends no leave, and the server keeps the user in the call
+until that grace runs out - the other parties see them in it, and the app reopened in time comes
+back to it. So the MAUI window's `Destroying` - raised on every platform's quit path (Cmd+Q, the
+Windows quit; the red button hides the window on macOS and Windows, which isn't an exit) ahead of the
+teardown that takes the Blazor scope - runs `MauiAppExit.LeaveLiveSessions`, and so do the hooks of
+the quits that may skip it: `applicationWillTerminate:` on iOS and Mac Catalyst, the recents swipe
+on Android (the foreground service's `onTaskRemoved`), the GTK window's close request. It runs the
+leave once and holds the exit for up to 3 s while `CallUI.LeaveOnExit` sends what a hang-up sends: a
+`CancelCall` for a call still dialing, and the leave for each participation (`LiveSessionUI.LeaveAll`).
+Nothing local is torn down - the process takes the media with it. A suspended iOS app gets no such
+call, so its call ends by the grace, as a crashed app's does.
+
 Everything that shows a call reads the slot. The modal, the island and the full-screen view
 read it through `CallScreensUI.GetCallView`; the ringtone through `GetIncomingCall`, the slot
 filtered to `Callee/Ringing`; the ringback through `CallUI`.
