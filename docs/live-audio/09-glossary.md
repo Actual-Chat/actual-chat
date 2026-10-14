@@ -128,7 +128,7 @@ live-audio docs.
 | `List` | Subscriber → server | Active streams in chat (Fusion compute) |
 | `ReportAudioLatency` | Subscriber → server | Presentation lag + A/V sync error telemetry |
 | `ReportPlayback` | Subscriber → server | A PTT chat's track started playing |
-| `LegacyGetListeningStream`, `LegacyChangeSettings` | Subscriber → server | Kept for already-published clients; the latter is a no-op |
+| `LegacyGetListeningStream` | Subscriber → server | Kept for already-published clients |
 
 `IAudioStreamingBackend` (backend, used internally):
 
@@ -162,7 +162,7 @@ src/dotnet/
 │  ├ Live/
 │  │  ├ MuxedAudioStreamItem.cs, MuxedAudioStreamStart.cs, MuxedAudioFrame.cs
 │  │  ├ MuxedAudioStreamEnd.cs, MuxedAudioStreamReset.cs
-│  │  ├ LiveAudioStreamInfo.cs, Legacy/LegacyLiveStreamSettings.cs
+│  │  ├ LiveAudioStreamInfo.cs
 │  ├ MediaPlayback/* (TrackPlayer, Playback, PlayerCommands, …)
 │  ├ StandardRpcStream.cs
 │  └ Constants.Audio.cs, AppConstants.Audio.cs

@@ -41,8 +41,8 @@ public interface ILiveAudioStreams : IComputeService
 
     Task ReportPlayback(Session session, ChatId chatId, string streamId, ChatEntryId? entryId, CancellationToken ct);
 
-    // Legacy methods, kept for already-published clients: LegacyGetListeningStream (no catchUpFrom),
-    // LegacyChangeSettings (a no-op), and the 3-argument ReportAudioLatency (its reading is discarded)
+    // Legacy methods, kept for already-published clients: LegacyGetListeningStream (no catchUpFrom)
+    // and the 3-argument ReportAudioLatency (its reading is discarded)
 }
 ```
 

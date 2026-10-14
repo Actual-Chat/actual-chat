@@ -99,11 +99,4 @@ public interface ILiveAudioStreams : IComputeService
         Session session,
         ChatId chatId,
         CancellationToken cancellationToken);
-
-    [LegacyName("ChangeSettings", "2.9.9999")]
-    Task LegacyChangeSettings(
-        Session session,
-        ChatId chatId,
-        LegacyLiveStreamSettings settings,
-        CancellationToken cancellationToken);
 }

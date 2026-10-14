@@ -451,7 +451,7 @@ Nearly every hot invalidation converges on the same tail:
 ```
 <root>
   → ChatsBackend.GetLidRange / GetTile / GetNews
-    → Chats.GetFullNews → Chats.GetNews
+    → Chats.GetNews
       → ChatUI.Get                                  ← the client-side aggregator
         → ChatUI.GetState / GetUnreadCount / GetDetectedLanguage
         → ChatListUI.ListUnorderedRaw → ListUnordered → ListAllUnorderedRaw

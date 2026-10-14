@@ -155,7 +155,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Live.CallReaction>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.CallState>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.ConversationStats>();
-        CodeKeeper.KeepSerializable<global::ActualChat.Live.LegacyLiveStreamSettings>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveAudioStreamInfo>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveConversation>();
         CodeKeeper.KeepSerializable<global::ActualChat.Live.LiveConversationSummary>();
@@ -887,12 +886,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.ConversationStats>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.ConversationStats>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.ConversationStats>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.LegacyLiveStreamKind>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.LegacyLiveStreamKind>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.LegacyLiveStreamKind>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.LegacyLiveStreamSettings>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.LegacyLiveStreamSettings>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.LegacyLiveStreamSettings>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.LiveAudioStreamInfo>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.LiveAudioStreamInfo>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Live.LiveAudioStreamInfo>>>>();
@@ -2372,8 +2365,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Live+CallStateFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Live+CallStatusFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Live+ConversationStatsFormatter, ActualChat.Api");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Live+LegacyLiveStreamKindFormatter, ActualChat.Api");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Live+LegacyLiveStreamSettingsFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Live+LiveAudioStreamInfoFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Live+LiveConversationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Live+LiveConversationSummaryFormatter, ActualChat.Api");
@@ -2687,7 +2678,6 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Live.CallReaction), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.CallState), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.ConversationStats), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.Live.LegacyLiveStreamSettings), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.LiveAudioStreamInfo), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.LiveConversation), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Live.LiveConversationSummary), AotTypeKind.Serializable),

@@ -3,42 +3,18 @@ using ActualLab.Rpc;
 namespace ActualChat.Chat.UnitTests;
 
 /// <summary>
-/// The three-way <c>[LegacyName]</c> split of wire name "GetNews" across GetFullNews (v2.12-
-/// peers), GetLegacyNews (v2.13..v2.19 peers) and GetNews itself (v2.20+ peers). A wrong band
-/// assignment doesn't fail the build - RpcMethodResolver's lowest-MaxVersion tie-break can mask it
-/// - so this pins the resolution by test rather than by manual review.
+/// The <c>[LegacyName]</c> split of wire name "GetNews" between GetLegacyNews (v2.19- peers) and
+/// GetNews itself (v2.20+ peers). A wrong band assignment doesn't fail the build -
+/// RpcMethodResolver's lowest-MaxVersion tie-break can mask it - so this pins the resolution by
+/// test rather than by manual review.
 /// </summary>
 public class LegacyNewsRoutingTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    private static readonly Version LowBoundary = Version.Parse("2.12.9999");
     private static readonly Version HighBoundary = Version.Parse(ApiConstants.LastVersionWithoutUnionTolerance);
-    private static readonly Version APreLowBoundaryPeer = new (2, 10);
     private static readonly Version AMidBandPeer = new (2, 15);
     // Derived, not written out: a hardcoded copy of the boundary is exactly what went stale once,
     // when 2.19 shipped without the tolerant formatter and the band still called it tolerant.
     private static readonly Version APostHighBoundaryPeer = new (HighBoundary.Major, HighBoundary.Minor + 1);
-
-    [Fact]
-    public void APreV212PeerShouldReachGetFullNews()
-    {
-        // act
-        var legacyName = LegacyNameOf(nameof(IChats.GetFullNews), APreLowBoundaryPeer);
-
-        // assert
-        legacyName?.Name.Should().Be(nameof(IChats.GetNews),
-            "a v2.10 peer calls the wire name GetNews and must land on GetFullNews");
-    }
-
-    [Fact]
-    public void APreV212PeerShouldNotReachGetLegacyNews()
-    {
-        // act
-        var legacyName = LegacyNameOf(nameof(IChats.GetLegacyNews), APreLowBoundaryPeer);
-
-        // assert
-        legacyName?.Name.Should().NotBe(nameof(IChats.GetNews),
-            "GetLegacyNews must step aside for the older band instead of competing for the wire name");
-    }
 
     [Fact]
     public void AMidBandPeerShouldReachGetLegacyNews()
@@ -48,18 +24,7 @@ public class LegacyNewsRoutingTest(ITestOutputHelper @out) : TestBase(@out)
 
         // assert
         legacyName?.Name.Should().Be(nameof(IChats.GetNews),
-            "a v2.15 peer is past the v2.12 boundary but at or below the union-tolerance one, " +
-            "so it must land on GetLegacyNews");
-    }
-
-    [Fact]
-    public void AMidBandPeerShouldNotReachGetFullNews()
-    {
-        // act
-        var legacyName = LegacyNameOf(nameof(IChats.GetFullNews), AMidBandPeer);
-
-        // assert
-        legacyName.Should().BeNull("GetFullNews only answers to peers at or below its own v2.12 boundary");
+            "a v2.15 peer is at or below the union-tolerance boundary, so it must land on GetLegacyNews");
     }
 
     [Fact]
@@ -75,16 +40,14 @@ public class LegacyNewsRoutingTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void EachBoundaryShouldBeClaimedByExactlyOneMethod()
+    public void TheBoundaryShouldBeClaimedByExactlyOneMethod()
     {
         // act
-        var methodNames = new[] { nameof(IChats.GetNews), nameof(IChats.GetFullNews), nameof(IChats.GetLegacyNews) };
-        var claimantsAtLowBoundary = methodNames.Count(x => LegacyNameOf(x, LowBoundary)?.Name == nameof(IChats.GetNews));
-        var claimantsAtHighBoundary = methodNames.Count(x => LegacyNameOf(x, HighBoundary)?.Name == nameof(IChats.GetNews));
+        var methodNames = new[] { nameof(IChats.GetNews), nameof(IChats.GetLegacyNews) };
+        var claimantsAtBoundary = methodNames.Count(x => LegacyNameOf(x, HighBoundary)?.Name == nameof(IChats.GetNews));
 
         // assert
-        claimantsAtLowBoundary.Should().Be(1, "exactly one method may answer to GetNews at the v2.12 boundary");
-        claimantsAtHighBoundary.Should().Be(1, "exactly one method may answer to GetNews at the v2.18 boundary");
+        claimantsAtBoundary.Should().Be(1, "exactly one method may answer to GetNews at the v2.19 boundary");
     }
 
     // Private methods

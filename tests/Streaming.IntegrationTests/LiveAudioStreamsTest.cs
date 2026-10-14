@@ -175,36 +175,6 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         items.Should().BeEmpty();
     }
 
-    [Fact]
-    public async Task UpdateConfigDoesNotThrow()
-    {
-        // arrange
-        var appHost = AppHost;
-        var services = appHost.Services;
-        var commander = services.Commander();
-        var session = Session.New();
-        _ = await appHost.SignIn(session, new AccountFull("Bobby"));
-
-        var chat = await commander.Call(new Chats_Change {
-            Session = session,
-            ChatId = default,
-            ExpectedVersion = null,
-            Change = new() {
-                Create = new ChatDiff {
-                    Title = "LiveStreamsTest",
-                    Kind = ChatKind.Group,
-                },
-            },
-        });
-        chat.Require();
-
-        var liveStreams = services.GetRequiredService<ILiveAudioStreams>();
-        var settings = new LegacyLiveStreamSettings { StreamKindFilter = LegacyLiveStreamKind.None };
-
-        // act, assert (no throw)
-        await liveStreams.LegacyChangeSettings(session, chat.Id, settings, CancellationToken.None);
-    }
-
     [Fact(Timeout = 60_000)]
     public async Task ListeningStreamEndShouldNotDropPresence()
     {

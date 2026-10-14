@@ -21,6 +21,5 @@ public class SerializationCodeGenTest(ITestOutputHelper @out) : TestBase(@out)
         SerializationCodeGen.ValidateType<LiveAudioStreamInfo>();
         SerializationCodeGen.ValidateType<MuxedAudioStreamStart>();
         SerializationCodeGen.ValidateType<MuxedAudioStreamEnd>();
-        SerializationCodeGen.ValidateType<LegacyLiveStreamSettings>();
     }
 }

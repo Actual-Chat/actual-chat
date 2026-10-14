@@ -245,25 +245,11 @@ public partial class Chats(IServiceProvider services) : IChats
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-#pragma warning disable CS0618 // GetFullNews is the routing point for v2.12- clients, and the data source here
-        var news = await GetFullNews(session, chatId, cancellationToken).ConfigureAwait(false);
-#pragma warning restore CS0618
-        return news?.ToSlim();
-    }
-
-    // [ComputeMethod]
-    [Obsolete("2026.07: Use GetNews - it returns a slim LastTextEntry, which is all the UI needs.")]
-    public virtual async Task<ChatNews?> GetFullNews(
-        Session session,
-        ChatId chatId,
-        CancellationToken cancellationToken)
-    {
         if (!await CanRead(session, chatId, cancellationToken).ConfigureAwait(false))
             return null;
 
-        // The filtering backend, like GetLegacyNews below: this serves peers at or below 2.12, which
-        // are pre-2.20 too, so an entry kind they can't read is fatal to the whole ChatNews here as well.
-        return await Backend.GetLegacyNews(chatId, cancellationToken).ConfigureAwait(false);
+        var news = await Backend.GetLegacyNews(chatId, cancellationToken).ConfigureAwait(false);
+        return news?.ToSlim();
     }
 
     // [ComputeMethod]
