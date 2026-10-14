@@ -1,4 +1,4 @@
-# Chat block coverage
+﻿# Chat block coverage
 
 `ChatUI` projects completed conversations and live blocks into `ChatBlock`, a UI view of an existing
 `Conversation`. It carries the render identity, full entry-ID coverage, and a nullable `CollapsedAt`.
@@ -40,7 +40,7 @@ that are unavailable do not become fabricated cards.
 `BuildChatBlocks` uses metadata coverage for completed conversations and the finite current block
 coverage for a live block. The latter can extend beyond the persisted conversation's last summarized
 entry. An open block ends at the current chat snapshot; a closed block is also bounded by its
-`ClosedLiveBlock.EndLid`. A block with no entries can still cover its own card ID.
+`LiveBlock.EndLid`. A block with no entries can still cover its own card ID.
 
 The live block's render ID survives materialization. Its persisted conversation can have a different
 ID because it includes earlier context. The projection resolves that alias before assigning coverage.
@@ -79,7 +79,7 @@ coverage. Cached open-ended metadata remains valid as the live summary grows, so
 chat snapshot or closed block end before expanding fetch boundaries; no fetch enumerates an open-ended range.
 Grouping an open block separately uses an open-ended range so pending sends at or beyond
 the chat end and the `long.MaxValue` transcription placeholder stay before its footer. This includes
-a viewer who left while the session continues: their block remains an `OpenLiveBlock`.
+a viewer who left while the session continues: their block remains an open `LiveBlock`.
 Closed grouping remains bounded. Grouping coverage must not be reused for entry fetching.
 Open live folding and transcript filtering are not truncated by later completed ranges. Materialized
 block filtering still stops at a later block's start, including when that record is unavailable.
@@ -92,49 +92,44 @@ overlapping persisted records; revisiting those building rules is separate work.
 
 ## Viewer-local live block lifecycle
 
-`LiveSessionUI.GetBlockState` projects the seven session fields needed for block rendering into the
-value-equality `LiveBlockState`. Participant and activity updates that leave those fields unchanged
-do not invalidate this projection's consumers. `LiveBlockUI.GetBlock` combines it with the viewer's
-attendance and fold state, returning one of these results:
+`LiveBlockUI.GetBlock` reads the open `LiveConversation` (`LiveSessionUI.GetOpenConversation`, null
+until the session starts), consolidated on the server, and combines it with the viewer's attendance and
+fold state, returning a `LiveBlock` (`IsOpen` is `EndLid == long.MaxValue`) or `null`:
 
 | Result | Meaning | Lifetime |
 | --- | --- | --- |
-| `OpenLiveBlock` | A latched session still exists, whether the viewer is joined or has left. | Until the session closes. |
-| `ClosedLiveBlock` with `MaterializedId` | An attended session closed with a summary. | Until dismissed, another chat is selected, or the session restarts. |
-| `ClosedLiveBlock` without `MaterializedId` | An attended session closed without a persisted replacement. | The 300 ms dissolve interval. |
-| `null` | No latched session or retained block for this viewer. | Until a block becomes available. |
+| open `LiveBlock` | A started session still exists, whether the viewer is joined or has left. | Until the session closes. |
+| closed `LiveBlock` with `MaterializedId` | An attended session closed with a summary. | Until dismissed, another chat is selected, or the session restarts. |
+| closed `LiveBlock` without `MaterializedId` (`IsDissolving`) | An attended session closed without a persisted replacement. | The 300 ms dissolve interval. |
+| `null` | No started session or retained block for this viewer. | Until a block becomes available. |
 
-Open/closed describe session lifetime; expanded/collapsed describe presentation. `HasAttended` includes
-current attendance and remains true after leaving. Closed blocks always represent an attended session.
+Open/closed describe session lifetime; expanded/collapsed describe presentation. `HasAttended` is true when the viewer is joined now or
+the server lists them in `LiveConversation.ParticipantIds` (everyone who joined it in any way, kept after
+leaving), so it survives leaving, reloading and another device. A silent stretch changes nothing: `IsQuiet`
+on `LiveSessionState` is the server's own liveness timer and the UI never reads it. Closed blocks always represent an attended session.
 `ConversationId` retains the live render identity even when the materialized conversation has another ID.
-`ClosedLiveBlock.EndLid` is exclusive, unlike `Conversation.EndEntryLid`.
+`LiveBlock.EndLid` is exclusive, unlike `Conversation.EndEntryLid`.
 
 The public `FoldEndLid` is the effective minimum of the governed boundary and any reveal boundary.
 `FoldRange` derives from it and the conversation start. The governor and reveal bookkeeping remain
 private; consumers cannot accidentally ignore an active reveal. A private `LiveBlockTemplate` captures
-both chat and summary ends because an unsummarized dissolve retains the chat tail, while materialization
+the open `LiveConversation` and the chat end because an unsummarized dissolve retains the chat tail, while materialization
 uses the summarized end.
 
-Attendance and its retained descriptor are latched together before publishing an attended block,
-including when a previously created viewer context joins and immediately leaves. Session and attendance
-dependencies update `GetBlock` directly. Private changes that alter its result explicitly invalidate it
+The retained descriptor (`LiveBlockTemplate`, which also records whether the viewer attended) is built by
+`GetBlock` itself as soon as the viewer attends, so a join followed by an immediate leave or close cannot
+outrun the governor. Session and attendance dependencies update `GetBlock` directly. Private changes that alter its result explicitly invalidate it
 outside the state lock: reveal/reset, governor transitions, dissolve expiry, and closed-block dismissal.
 The governor publishes its new fold only after completing private state changes. A changed fold's
 reactive notification covers those changes; with an unchanged fold, it compares the projected result
 and explicitly invalidates if needed. Reveal resets therefore still notify without a fold advance,
 and fold advances do not also trigger an explicit invalidation.
 
-Conversation and block-state projections consolidate independently. When the block state has no latch,
-`GetBlock` also consults the conversation projection through its last-known helper. If no retained block
-exists, an available conversation supplies the open block's identity; the private effective fold and
-attendance (including current membership) still apply. Consumers use this result directly. Latched
-block-state reads avoid the extra conversation dependency, preserving their resistance to transcript churn.
-
 ## Unsummarized close and dissolve
 
 An attended session that closes without a summary has no persisted replacement conversation.
 `LiveBlockUI` retains a `Conversation` descriptor in its private template before closure,
-bounded to that snapshot's chat end. The dissolving `ClosedLiveBlock` exposes this descriptor until its
+bounded to that snapshot's chat end. The dissolving `LiveBlock` exposes this descriptor until its
 timer expires. The record is released from the template when the dissolve finishes.
 
 Both `BuildChatBlocks` and the per-tile card builder use the retained descriptor, even if chat

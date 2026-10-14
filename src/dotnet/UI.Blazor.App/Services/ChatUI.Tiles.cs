@@ -1,4 +1,4 @@
-using System.Diagnostics.Metrics;
+﻿using System.Diagnostics.Metrics;
 using ActualChat.Diagnostics;
 using ActualChat.UI.Blazor.Diagnostics;
 using CommunityToolkit.HighPerformance;
@@ -180,7 +180,7 @@ public partial class ChatUI
         ChatSwitchTracer.Mark("ChatUI.Prefetch: entered", chatId);
         // Everything GetChatItemsInternal issues before its first await, in the same order
         var chatTask = Chats.Get(Session, chatId, cancellationToken);
-        var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
+        var liveConversationTask = Hub.LiveSessionUI.GetOpenConversation(chatId, cancellationToken);
         var liveBlockTask = Hub.LiveBlockUI.GetBlock(chatId, cancellationToken);
         var chatLidRangeTask = Chats.GetIdRange(Session, chatId, cancellationToken);
         var readPositionTask = ChatPositions.GetOwn(Session, chatId, ChatPositionKind.Read, cancellationToken);
@@ -318,7 +318,7 @@ public partial class ChatUI
         // another, so they're all issued before the first await. Awaiting them in sequence cost ~4 x RTT
         // per rebuild - a full second on a 200ms+ link, which is invisible on Blazor Server.
         var chatTask = Chats.Get(Session, chatId, cancellationToken);
-        var liveConversationTask = Hub.LiveSessionUI.GetConversation(chatId, cancellationToken);
+        var liveConversationTask = Hub.LiveSessionUI.GetOpenConversation(chatId, cancellationToken);
         var liveBlockTask = Hub.LiveBlockUI.GetBlock(chatId, cancellationToken);
         var cidTiles = GetCidTiles(dataQuery.ExistingLidRange);
         var chatRangeTilesTask = cidTiles
@@ -363,15 +363,15 @@ public partial class ChatUI
         // These are all in flight already, so each timestamp marks when that await stopped blocking -
         // the first long delta is the straggler, the rest complete immediately behind it.
         var chatAt = CpuTimestamp.Now;
-        var liveConversation = await Hub.LiveSessionUI
-            .UseConversationOrLastKnown(chatId, liveConversationTask)
-            .ConfigureAwait(false);
+        var liveConversation = (await Hub.LiveSessionUI
+            .UseOpenConversationOrLastKnown(chatId, liveConversationTask)
+            .ConfigureAwait(false))?.ToConversation();
         var conversationAt = CpuTimestamp.Now;
         var amInLiveConversation = liveConversation != null
             && await Hub.LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
         var amInLiveAt = CpuTimestamp.Now;
         var liveBlock = await liveBlockTask.ConfigureAwait(false);
-        var closedBlock = liveBlock as ClosedLiveBlock;
+        var closedBlock = liveBlock is { IsOpen: false } ? liveBlock : null;
         var liveBlockId = liveBlock?.ConversationId;
         var liveBlockFoldRange = liveBlock?.FoldRange ?? default;
         var materializedBlockId = closedBlock?.MaterializedId;
@@ -483,7 +483,7 @@ public partial class ChatUI
 
             // Joining expands the live block if it was collapsed, and that is the only automatic move
             // made to it - nothing collapses it again, so a reader's own collapse sticks. Recorded per
-            // block id, not per chat: the id jumps every time the session latches a new block, and the
+            // block id, not per chat: the id jumps every time the session starts a new block, and the
             // new one starts collapsed. Recorded only once there is a block to act on, so a join that
             // lands before the block exists is picked up by the first render that has one.
             if (!isPrefetch) {
@@ -958,7 +958,7 @@ public partial class ChatUI
         var projectedLiveBlock = blocks.FirstOrDefault(b => b.Id == liveBlockId);
         // Fetch coverage stays finite; active grouping also owns optimistic sends and the long.MaxValue placeholder.
         // Closed blocks must not absorb entries from after their boundary.
-        var liveBlockRange = liveBlock is OpenLiveBlock && projectedLiveBlock != null
+        var liveBlockRange = liveBlock is { IsOpen: true } && projectedLiveBlock != null
             ? new Range<long>(projectedLiveBlock.EntryLidRange.Start, long.MaxValue)
             : projectedLiveBlock?.EntryLidRange ?? default;
         // Expanded is not the only form that renders rows: a closed block that kept its card hides
@@ -1144,7 +1144,7 @@ public partial class ChatUI
                 var expandedConversation = conversations.FirstOrDefault(c => c.EntryLidRange.Contains(entry.LocalId));
                 var isBlockStart = IsBlockStart(prevEntry, entry);
                 // Force a block start on the first entry crossing into the joined live block, so a same-author
-                // pre-latch group can't swallow the block's tail entries.
+                // pre-start group can't swallow the block's tail entries.
                 if (liveBlockId is { } jlId && entry.LocalId >= jlId.StartEntryLid
                     && (prevEntry == null || prevEntry.LocalId < jlId.StartEntryLid))
                     isBlockStart = true;

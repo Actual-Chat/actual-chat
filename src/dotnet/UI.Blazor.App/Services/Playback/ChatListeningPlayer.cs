@@ -157,7 +157,7 @@ public sealed class ChatListeningPlayer : ChatPlayer
                 // session already running (incoming or own outgoing, audio or video) never plays it.
                 var liveSessionState = await Hub.LiveSessionUI.GetState(ChatId, cancellationToken)
                     .ConfigureAwait(false);
-                var isSessionActive = liveSessionState is { SessionStartedAt: not null }
+                var isSessionActive = liveSessionState is { StartedAt: not null }
                     || await Hub.ChatVideoUI.IsAnyoneVideoStreaming(ChatId, cancellationToken).ConfigureAwait(false);
 
                 lock (state.Lock) {

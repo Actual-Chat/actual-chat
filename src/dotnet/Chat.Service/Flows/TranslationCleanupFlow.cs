@@ -1,4 +1,4 @@
-using ActualChat.Chat.Module;
+﻿using ActualChat.Chat.Module;
 using ActualChat.Flows;
 
 namespace ActualChat.Chat.Flows;
@@ -39,7 +39,7 @@ public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
             ? Hub.SystemNow
             : Hub.SystemNow + Settings.Translation.CleanupInterval;
 
-        Task<Translation> FinalizeTranslation(Translation translation)
+        Task<Translation?> FinalizeTranslation(Translation translation)
         {
             var cmd = new TranslationsBackend_Change(translation.Id,
                 translation.Version,

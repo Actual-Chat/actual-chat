@@ -400,8 +400,8 @@ ring's ack, `SyncInviteeActivity`). `CallsBackend.GetUserCall` depends on `GetCa
 `ListInvites` through `GetPhase`. During an active call this is a continuous
 background invalidation source, per chat, independent of user activity — but most of
 it now stops at the consolidating layer (§10) instead of reaching the conversation
-metadata cache. `InvalidateLiveView` is gone: `GetVisibleStartLid` /
-`GetLiveConversation` derive from `GetState` again, so they invalidate transitively.
+metadata cache. `InvalidateLiveView` is gone: `GetOpenLiveConversation` /
+`ListLiveConversations` derive from `GetState` again, so they invalidate transitively.
 
 ### 4.8 Other roots
 
@@ -937,7 +937,7 @@ real client-side numbers rather than static reasoning.
 
 ### 9.7 `LiveSessionsBackend.GetState` — **superseded**
 
-> The live-session rework consolidated `GetVisibleStartLid`, `GetLiveConversation`,
+> The live-session rework consolidated `GetOpenLiveConversation`, `ListLiveConversations`,
 > `ListParticipants` and `HasRecorder` onto protected `GetConsolidated*` methods, with
 > `ConsolidationComparer`s where the result type compares by reference. `GetState`
 > itself stays unconsolidated and is filtered at its consumers, which is what this
@@ -951,7 +951,7 @@ The original analysis, kept for the reasoning:
 > stale `null` right after a write, because consolidation propagates asynchronously.
 > That's tolerable on the projections but not on `GetState`, whose writes are read back
 > immediately, so option 1 stands as the right one. Consolidated instead:
-> `LiveSessionUI.GetConversation` (with `ConversationContentComparer`) and
+> `LiveSessionUI.GetOpenConversation` and
 > `ILiveSessions.GetCallStatus` — the latter server-side, so a no-op change never
 > reaches the caller at all. `LiveSessionUI.HasTranscript` came with §9.6.
 
@@ -967,8 +967,8 @@ It looks like the ideal target — but it isn't, for two compounding reasons:
 The two together guarantee the outputs never compare equal under the *default*
 comparer, so a bare `ConsolidationDelay` here would be a pure delay — the failure mode
 `ListParticipants` used to have (§10). Since Fusion 14.1.71 a third option exists:
-supply a `ConsolidationComparer`, which is how `GetConsolidatedLiveConversation`
-consolidates a rebuilt `Conversation`.
+supply a `ConsolidationComparer`, which is how `GetConsolidatedLiveConversationList`
+consolidates a freshly built `ApiArray`.
 
 Options, in order of preference:
 
@@ -1038,8 +1038,10 @@ shows `GetRules` still churning.
 | `LiveStreamUI.GetLastActivityServerTime` (`UI.Blazor.App/Services/LiveStreamUI.cs:37`) | 0.5 s | `Moment?` | **✅ yes** — struct, value equality. While anyone streams it returns `null`; while idle it returns a cached first-idle `Moment`. Both are stable across recomputes, so the churn from `GetStreamingAuthorIds` is absorbed |
 | `IUserPresences.Get` (`Api.Contracts/Users/IUserPresences.cs:10`) | 0.5 s | `Presence` | **✅ yes** — *now*. The consolidation used to sit on `GetLastCheckIn`, where the value moves on every check-in by construction, so it never suppressed anything; `Get` is where the value is stable across check-ins. `GetLastCheckIn`'s own readers (`Authors.GetLastCheckIn` → `AuthorPresenceText`) want each new timestamp anyway |
 | `LiveSessionsBackend.GetConsolidatedParticipants` | 0.5 s | `ApiArray<AuthorId>` | **✅ yes** — *now*, via `ConsolidationComparer`. `ApiArray<T>.Equals` compares the backing array by reference (`ApiArray.cs:305`) and the method builds a fresh one via `.ToApiArray()` on every compute, so the default comparer could never suppress |
-| `LiveSessionsBackend.GetConsolidatedLiveConversation` | 0 s | `Conversation?` | **✅ yes** — via `ConsolidationComparer`; `Conversation` compares by reference and `ToConversation()` rebuilds it every time |
-| `LiveSessionsBackend.GetConsolidatedVisibleStartLid` | 0 s | `long?` | **✅ yes** — value equality, no comparer needed |
+| `LiveSessionsBackend.GetConsolidatedOpenLiveConversation` | 0 s | `LiveConversation?` | **✅ yes** — `LiveConversation.Equals` compares by content, `Version` excluded, so a write that leaves the conversation as it was is absorbed |
+| `LiveSessionsBackend.GetConsolidatedLiveConversationList` | 0 s | `ApiArray<ConversationId>` | **✅ yes** — via `ConsolidationComparer` (`ApiArrayComparer<ConversationId>`); it re-reads Redis every 30 s while closed conversations are listed |
+| `LiveSessionsBackend.GetConsolidatedLiveConversation` | 0 s | `LiveConversation?` | **✅ yes** — content equality; a closed conversation never changes, so the 5 min recheck is absorbed |
+| `LiveSessionsBackend.GetConsolidatedOpenLiveConversationId` | 0 s | `ConversationId?` | **✅ yes** — value equality, no comparer needed |
 | `ChatsBackend.GetConsolidatedRules` | 0.2 s | `AuthorRules` | **✅ yes** — via `ConsolidationComparer`. `AuthorRulesComparer` compares `ChatId`/`Permissions` by value and `Author`/`Account` by reference, so only a real author or account change propagates. On a protected method, per §2.2 |
 | `ChatUI.GetReadEntryLid` | 0.2 s | `long` | **✅ yes** — client-local; the local lease usually already holds the position the server is catching up to |
 | `IChats.IsEntryReadByMentionedUser` | 0.2 s | `bool` | **✅ yes** — monotone, so after the single false→true flip every later invalidation is swallowed |
@@ -1052,9 +1054,8 @@ Both are fixed as of Fusion 14.1.71, which added
 compare consecutive outputs. That removes the need for the workaround this section
 used to recommend for `ListParticipants` (returning the previous instance so
 reference equality holds), and for the Fusion-wide change it rejected (making
-`ApiArray<T>` sequence-comparable). The per-method comparers now live next to the
-types they compare: `ApiArrayComparer<T>` (`Core/Comparison/`) and
-`ConversationContentComparer` (`Api/Chat/`).
+`ApiArray<T>` sequence-comparable). The per-method comparer lives next to the
+type it compares: `ApiArrayComparer<T>` (`Core/Comparison/`).
 
 14.1.71 also turned the §2.2 precondition into a startup error for `Distributed`
 services, which is what surfaced the `HasRecorder` / `ListParticipants` rows as

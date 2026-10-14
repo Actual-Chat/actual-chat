@@ -1,4 +1,4 @@
-using ActualChat.Chat.ML;
+﻿using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
 using ActualChat.Live;
@@ -8,7 +8,7 @@ namespace ActualChat.Chat.Flows;
 
 /// <summary>
 /// Throttled resummarization of an in-progress live conversation, plus close-time finalization: once the
-/// backend marks a latched transcription session <c>IsClosing</c>, this flow runs the final summary pass,
+/// backend marks a started transcription session <c>IsQuiet</c>, this flow runs the final summary pass,
 /// decides the tier, and materializes (or vanishes) the conversation before calling
 /// <c>ILiveSessionsBackend.FinalizeSession</c>.
 /// </summary>
@@ -46,15 +46,15 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         if (live is null)
             return; // closed
 
-        if (live.IsClosing) {
-            // A latched transcription session hands its close to this flow; other shapes are the backend's.
-            if (live is { TranscriptionOn: true, SessionStartedAt: not null, Kind: LiveSessionKind.Ambient })
+        if (live.IsQuiet) {
+            // A started transcription session hands its close to this flow; other shapes are the backend's.
+            if (live is { IsTranscriptionOn: true, StartedAt: not null, Kind: LiveSessionKind.Ambient })
                 await Finalize(live, cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        // Pre-latch (solo): the normal ConversationSplitFlow owns summarization, so don't double-summarize.
-        if (live.SessionStartedAt is null) {
+        // Pre-start (solo): the normal ConversationSplitFlow owns summarization, so don't double-summarize.
+        if (live.OpenConversation is not { } liveConversation) {
             Runtime.StageResumeIn(Throttle);
             return;
         }
@@ -71,12 +71,12 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         var enoughData = entries.Count >= Settings.Summarization.MinLiveConversationEntries
             && entries.Sum(WordCount) >= Settings.Summarization.MinLiveConversationWords;
         var hasNew = entries.Count > 0 && entries[^1].LocalId > LastSummaryEndLid;
-        var dueForResummary = ResumedAt - live.LastSummaryAt >= Settings.Summarization.LiveResummarizationDelay;
+        var dueForResummary = ResumedAt - liveConversation.SummarizedAt >= Settings.Summarization.LiveResummarizationDelay;
         if (enoughData && hasNew && (neverSummarized || dueForResummary)) {
             var result = await ConversationSummarizer.Summarize(entries, cancellationToken).ConfigureAwait(false);
             if (result.Summary is { } summary) {
                 await LiveSessionsBackend
-                    .UpdateSummary(ChatId, ToLiveSummary(summary, entries), cancellationToken)
+                    .UpdateLiveConversationSummary(ChatId, ToLiveSummary(summary, entries), cancellationToken)
                     .ConfigureAwait(false);
                 LastSummaryEndLid = entries[^1].LocalId;
             }
@@ -109,7 +109,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
         var isExpandedByDefault = Settings.Summarization.IsExpandedByDefault(words, entries.Count);
         await LiveSessionsBackend
-            .UpdateSummary(ChatId, ToLiveSummary(summary, entries, isExpandedByDefault), cancellationToken)
+            .UpdateLiveConversationSummary(ChatId, ToLiveSummary(summary, entries, isExpandedByDefault), cancellationToken)
             .ConfigureAwait(false);
         await LiveSessionsBackend.FinalizeSession(ChatId, cancellationToken).ConfigureAwait(false);
         Runtime.StageResumeIn(Throttle);
@@ -117,12 +117,12 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
     private async Task<long> EnsureContextStart(LiveSessionState live, CancellationToken cancellationToken)
     {
-        if (live.ContextStartLid > 0)
-            return live.ContextStartLid;
-        if (!live.TranscriptionOn)
-            return live.StartEntryLid;
+        if (live.OpenConversation is { ContextStartLid: > 0 } liveConversation)
+            return liveConversation.ContextStartLid;
+        if (!live.IsTranscriptionOn)
+            return live.FirstSpeechLid;
 
-        var anchorLid = live.StartEntryLid;
+        var anchorLid = live.FirstSpeechLid;
         var minLid = (await ChatsBackend.GetLidRange(ChatId, false, cancellationToken).ConfigureAwait(false)).Start;
         var (anchor, preceding) = await GetContextScanEntries(anchorLid, minLid, cancellationToken)
             .ConfigureAwait(false);
@@ -138,7 +138,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
         if (rangeTile.PreviousConversationRange is { } prev && prev.End > contextStart)
             contextStart = prev.End;
 
-        await LiveSessionsBackend.SetContextStart(ChatId, contextStart, cancellationToken).ConfigureAwait(false);
+        await LiveSessionsBackend.SetLiveConversationContextStart(ChatId, contextStart, cancellationToken).ConfigureAwait(false);
         return contextStart;
     }
 
@@ -200,14 +200,14 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
             .ToList();
     }
 
-    private static LiveSessionSummary ToLiveSummary(
+    private static LiveConversationSummary ToLiveSummary(
         ConversationSummary summary, IReadOnlyList<ChatEntrySlim> entries, bool isExpandedByDefault = false)
         => new() {
             Title = summary.Title,
             Description = summary.Description,
             Summary = summary.Summary,
-            EndEntryLid = entries[^1].LocalId,
-            MessageCount = entries.Count,
+            SummaryEndLid = entries[^1].LocalId + 1,
+            SummarizedEntryCount = entries.Count,
             AuthorIds = entries
                 .GroupBy(e => e.AuthorId)
                 .OrderByDescending(g => g.Count())

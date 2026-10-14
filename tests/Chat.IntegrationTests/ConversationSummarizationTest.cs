@@ -134,7 +134,7 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
         var conversation = await commander.Call(new ConversationBackend_Summarize(chatId, lidRanges));
 
         // assert
-        conversation.MessageCount.Should().Be(2);
+        conversation!.MessageCount.Should().Be(2);
         conversation.AuthorIds.Should().NotBeEmpty();
     }
 
@@ -195,7 +195,7 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
         var lidRange = new Range<long>(entries[0].LocalId, entries[2].LocalId + 1);
         var commander = tester.AppServices.Commander();
         var conversation = await commander.Call(new ConversationBackend_Summarize(chatId, [lidRange]));
-        var baselineCount = conversation.MessageCount;
+        var baselineCount = conversation!.MessageCount;
         baselineCount.Should().BeGreaterThanOrEqualTo(3);
         var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
 
@@ -238,7 +238,7 @@ public class ConversationSummarizationTest(ChatCollection.AppHostFixture fixture
         var lidRange = new Range<long>(entries[0].LocalId, entries[2].LocalId + 1);
         var commander = tester.AppServices.Commander();
         var conversation = await commander.Call(new ConversationBackend_Summarize(chatId, [lidRange]));
-        var baselineCount = conversation.MessageCount;
+        var baselineCount = conversation!.MessageCount;
         baselineCount.Should().BeGreaterThanOrEqualTo(3);
         var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
 

@@ -1,9 +1,9 @@
-using ActualChat.Live;
+﻿using ActualChat.Live;
 
 namespace ActualChat;
 
 /// <summary>
-/// Fired once when a latched live session closes, with everyone who took part in it.
+/// Fired once when a started live session closes, with everyone who took part in it.
 /// </summary>
 [DataContract, MessagePackObject(true)]
 public partial record LiveSessionEndedEvent(

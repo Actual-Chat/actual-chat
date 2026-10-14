@@ -75,13 +75,13 @@
         await ThreadPoolExt.Yield();
 
         var translatedTask = ConversationUI.GetTranslatedConversation(conversation, cancellationToken);
-        var liveTask = LiveSessionUI.GetConversation(chatId, cancellationToken);
+        var liveTask = LiveSessionUI.GetOpenConversation(chatId, cancellationToken);
         var blockTask = LiveBlockUI.GetBlock(chatId, cancellationToken);
         var translated = await translatedTask.ConfigureAwait(false);
         var live = await liveTask.ConfigureAwait(false);
         var block = await blockTask.ConfigureAwait(false);
         var isLive = live != null && live.Id == conversation.Id;
-        var isDissolving = block is ClosedLiveBlock { IsDissolving: true };
+        var isDissolving = block is { IsDissolving: true };
         // The rest stay conditional: asking them when there is no live session would add dependencies
         // that recompute this header for sessions it doesn't show
         var isJoined = isLive
@@ -93,7 +93,7 @@
                 .GetText(Authors, L, Hub.Session, chatId, conversation.AuthorIds, cancellationToken)
                 .ConfigureAwait(false)
             : "";
-        var canExpand = isLive && !isVoiceOnly && block is not ClosedLiveBlock;
+        var canExpand = isLive && !isVoiceOnly && (block?.IsOpen ?? true);
         var isAnyoneTalking = isLive
             && await LiveStreamUI.IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         var isTranslationOn = isLive

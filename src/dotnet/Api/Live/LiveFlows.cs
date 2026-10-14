@@ -10,4 +10,8 @@ public static class LiveFlows
     // The CallTailFlow's registered FlowDefs name, scheduled by the streaming backend when a call's
     // conversation is materialized. Kept in sync with the flow by CallTailFlowNameShouldMatchConstant.
     public const string CallTailFlowName = "CallTailFlow";
+
+    // The ClosedLiveConversationFlow's registered FlowDefs name, scheduled by the streaming backend when an ambient
+    // conversation closes. Kept in sync with the flow by ClosedLiveConversationFlowNameShouldMatchConstant.
+    public const string ClosedLiveConversationFlowName = "ClosedLiveConversationFlow";
 }

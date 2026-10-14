@@ -1,10 +1,10 @@
 namespace ActualChat.Live;
 
 /// <summary>
-/// The evolving summary fields written into a <see cref="LiveSessionState"/> by the live summary loop.
+/// The evolving summary fields written into the open <see cref="LiveConversation"/> by the live summary loop.
 /// </summary>
 [DataContract, MessagePackObject]
-public sealed partial record LiveSessionSummary
+public sealed partial record LiveConversationSummary
 {
     [DataMember(Order = 0), Key(0)]
     public string Title { get; init; } = "";
@@ -13,9 +13,9 @@ public sealed partial record LiveSessionSummary
     [DataMember(Order = 2), Key(2)]
     public string Summary { get; init; } = "";
     [DataMember(Order = 3), Key(3)]
-    public long EndEntryLid { get; init; }
+    public long SummaryEndLid { get; init; }
     [DataMember(Order = 4), Key(4)]
-    public int MessageCount { get; init; }
+    public int SummarizedEntryCount { get; init; }
     [DataMember(Order = 5), Key(5)]
     public IReadOnlyList<AuthorId> AuthorIds { get; init; } = [];
     [DataMember(Order = 6), Key(6)]

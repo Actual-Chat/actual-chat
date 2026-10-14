@@ -1,4 +1,4 @@
-using ActualChat.Live;
+﻿using ActualChat.Live;
 using ActualChat.Streaming;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -8,7 +8,7 @@ public enum VisualActivityTab { Call, Map }
 public enum VisualActivityPanelMode { Inline, Expanded, Collapsed, Hidden }
 
 /// <summary>
-/// The per-chat "what's live right now" signal — a latched live session (2+ peers or a ringing
+/// The per-chat "what's live right now" signal — a started live session (2+ peers or a ringing
 /// call), a lone talking streamer, or live location shares — plus the state of the shared
 /// visual activity panel presenting those activities (its mode and Call/Map tab selection).
 /// Wraps <see cref="ILiveSessions"/>, <see cref="LiveStreamUI"/> and <see cref="LocationUI"/>.

@@ -153,7 +153,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         entries[0].CallerId.Should().Be(bob.Id);
         entries[0].HasVideo.Should().BeTrue();
 
-        var conversation = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
+        var conversation = await conversations.Get(connected!.OpenConversation!.ToMaterializedConversation().Id, default);
         conversation.Should().NotBeNull();
         conversation!.IsCall.Should().BeTrue();
         // Nothing was said, so there is nothing to expand into: the card is the whole of it.
@@ -184,7 +184,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await HangUp(backend, chatId, alice.Id);
 
         // assert
-        var shortConversation = await conversations.Get(shortCall!.ToMaterializedConversation().Id, default);
+        var shortConversation = await conversations.Get(shortCall!.OpenConversation!.ToMaterializedConversation().Id, default);
         shortConversation!.MessageCount.Should().Be(2);
         shortConversation.IsExpandedByDefault.Should().BeTrue();
 
@@ -197,7 +197,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await HangUp(backend, chatId, alice.Id);
 
         // assert
-        var longConversation = await conversations.Get(longCall!.ToMaterializedConversation().Id, default);
+        var longConversation = await conversations.Get(longCall!.OpenConversation!.ToMaterializedConversation().Id, default);
         longConversation!.MessageCount.Should().Be(settings.MinConversationEntries);
         longConversation.IsExpandedByDefault.Should().BeFalse();
     }
@@ -205,7 +205,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     [Fact]
     public async Task AnsweredCallInterruptedByAMessageShouldMaterializeARangeAroundItsEntry()
     {
-        // A message written between the ring and the answer pushes VisibleStartLid (set at the latch)
+        // A message written between the ring and the answer pushes StartLid (set when the conversation starts)
         // past EndEntryLid, which only a summary ever advances and a transcription-off call never gets.
         // The resulting range runs backwards, and a degenerate one drops both the card and the Ended
         // entry it anchors - the call disappears from the chat entirely.
@@ -229,7 +229,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         entries.Should().ContainSingle();
         entries[0].Outcome.Should().Be(CallOutcome.Ended);
 
-        var conversation = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
+        var conversation = await conversations.Get(connected!.OpenConversation!.ToMaterializedConversation().Id, default);
         conversation.Should().NotBeNull();
         conversation!.EntryLidRange.Contains(entries[0].LocalId).Should()
             .BeTrue("the card must cover the entry that is the call's only row");
@@ -407,7 +407,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await tester.CreateTextEntry(chatId, "hi");
         await HangUp(backend, chatId, alice.Id);
 
-        var conversationId = connected!.ToMaterializedConversation().Id;
+        var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
         var materialized = await conversations.Get(conversationId, default);
         materialized.Should().NotBeNull();
         var callEntry = (await ReadCallEntries(tester, chatId)).Single();
@@ -445,12 +445,12 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var connected = await backend.GetState(chatId, default);
         await tester.CreateTextEntry(chatId, "hi");
         await HangUp(backend, chatId, alice.Id);
-        var conversationId = connected!.ToMaterializedConversation().Id;
+        var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
         var callEntry = (await ReadCallEntries(tester, chatId)).Single();
         var materialized = await conversations.Get(conversationId, default).Require();
         var raced = await tester.AppServices.Commander()
             .Call(new ConversationBackend_Materialize(materialized with { EndEntryLid = callEntry.LocalId - 1 }));
-        raced.EntryLidRange.Contains(callEntry.LocalId).Should().BeFalse("the race is in place");
+        raced!.EntryLidRange.Contains(callEntry.LocalId).Should().BeFalse("the race is in place");
 
         // act
         await RunCallTailFlow(tester, conversationId);
@@ -482,7 +482,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await tester.CreateTextEntry(chatId, "hi");
         await HangUp(backend, chatId, alice.Id);
 
-        var conversationId = connected!.ToMaterializedConversation().Id;
+        var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
         var backdated = await BackdateCallEnd(tester, conversationId);
 
         // act
@@ -520,7 +520,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
             streaming.Add(await tester.CreateStreamingEntry(chatId, Languages.English));
         await HangUp(backend, chatId, alice.Id);
 
-        var conversationId = connected!.ToMaterializedConversation().Id;
+        var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
         var materialized = await BackdateCallEnd(tester, conversationId);
         materialized.IsExpandedByDefault.Should()
             .BeTrue("with no text yet the call measures as a short one");
@@ -562,7 +562,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         await tester.CreateTextEntry(chatId, "hi back");
         await HangUp(backend, chatId, alice.Id);
 
-        var materialized = await conversations.Get(connected!.ToMaterializedConversation().Id, default);
+        var materialized = await conversations.Get(connected!.OpenConversation!.ToMaterializedConversation().Id, default);
         materialized.Should().NotBeNull();
         var callEntry = (await ReadCallEntries(tester, chatId)).Single();
 
@@ -571,7 +571,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
             .Call(new ConversationBackend_Summarize(chatId, [materialized!.EntryLidRange]));
 
         // assert
-        refreshed.Title.Should().NotBeNullOrWhiteSpace("the refresh exists to give the call a summary");
+        refreshed!.Title.Should().NotBeNullOrWhiteSpace("the refresh exists to give the call a summary");
         refreshed.EntryLidRange.Contains(callEntry.LocalId).Should()
             .BeTrue("the card must keep covering the entry it stands in for");
         refreshed.CallerId.Should().Be(bob.Id);
@@ -612,7 +612,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         var backdated = conversation with {
             EndsAt = conversation.EndsAt - Constants.Transcription.EntryFinalizationTimeout - TimeSpan.FromMinutes(1),
         };
-        return await tester.AppServices.Commander().Call(new ConversationBackend_Materialize(backdated));
+        return (await tester.AppServices.Commander().Call(new ConversationBackend_Materialize(backdated)))!;
     }
 
     private static async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewPeerChat(IWebTester tester)

@@ -1,4 +1,4 @@
-using ActualChat.Chat.ML;
+﻿using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Flows;
 using ActualChat.Queues;
@@ -69,13 +69,11 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         LastRunAt = now;
         Console.Log($"Process: LastLid={LastLid}");
 
-        // Never (re)summarize a range a latched live session owns — the live flow materializes it.
-        var live = await LiveSessionsBackend.GetState(ChatId, cancellationToken).ConfigureAwait(false);
-        var liveSessionRange = live is { SessionStartedAt: not null } lc
-            ? new Range<long>(lc.ContextStartLid > 0 ? lc.ContextStartLid : lc.StartEntryLid, long.MaxValue)
-            : (Range<long>?)null;
+        // Never (re)summarize a range a live conversation owns: the open one is summarized by the live flow,
+        // and a closed one is written to the saved conversations by ClosedLiveConversationFlow.
+        var liveRanges = await GetLiveRanges(cancellationToken).ConfigureAwait(false);
         bool OverlapsLiveSession(IReadOnlyList<Range<long>> ranges)
-            => liveSessionRange is { } lsr && ranges.Any(r => !r.IntersectWith(lsr).IsEmpty);
+            => liveRanges.Any(lr => ranges.Any(r => !r.IntersectWith(lr).IsEmpty));
 
         var (entries, hasMore, hasImmature) = await GetEntries(LastLid, cancellationToken).ConfigureAwait(false);
         Console.Log($"Fetched {entries.Count} entries, hasMore={hasMore}, hasImmature={hasImmature}");
@@ -225,6 +223,23 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
 
     // Private methods
 
+    private async Task<List<Range<long>>> GetLiveRanges(CancellationToken cancellationToken)
+    {
+        var ranges = new List<Range<long>>();
+        var live = await LiveSessionsBackend.GetState(ChatId, cancellationToken).ConfigureAwait(false);
+        var openId = live?.OpenConversation?.Id;
+        if (live is { OpenConversation: { } liveConversation })
+            ranges.Add(new(liveConversation.ContextStartLid > 0 ? liveConversation.ContextStartLid : live.FirstSpeechLid, long.MaxValue));
+
+        var ids = await LiveSessionsBackend.ListLiveConversations(ChatId, cancellationToken).ConfigureAwait(false);
+        foreach (var id in ids.Where(id => id != openId)) {
+            var closed = await LiveSessionsBackend.GetLiveConversation(id, cancellationToken).ConfigureAwait(false);
+            if (closed is not null)
+                ranges.Add(new(closed.MaterializedStartLid, closed.EndLid));
+        }
+        return ranges;
+    }
+
     private async Task<(IReadOnlyList<ChatEntrySlim> Entries, bool HasMore, bool HasImmatureInWindow)> GetEntries(
         long lastId,
         CancellationToken cancellationToken)
@@ -233,10 +248,10 @@ public sealed partial class ConversationSplitFlow : Flow<Unit>, IHasLastRunAt
         var chatId = ChatId;
         var immatureMoment = now - Settings.Summarization.ChatEntrySummarizationDelay;
 
-        // A latched live session owns its tail [StartEntryLid, ...); pre-latch (solo) the split flow summarizes normally.
+        // A started live session owns its tail [FirstSpeechLid, ...); pre-start (solo) the split flow summarizes normally.
         var live = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        var liveStartLid = live is { SessionStartedAt: not null } lc
-            ? (lc.ContextStartLid > 0 ? lc.ContextStartLid : lc.StartEntryLid)
+        var liveStartLid = live is { OpenConversation: { } liveConversation }
+            ? (liveConversation.ContextStartLid > 0 ? liveConversation.ContextStartLid : live.FirstSpeechLid)
             : long.MaxValue;
 
         // Fetch up to (BatchSize + 1) items

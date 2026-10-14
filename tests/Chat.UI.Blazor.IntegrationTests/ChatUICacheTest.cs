@@ -1,4 +1,4 @@
-using ActualChat.Live;
+﻿using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Components;
@@ -37,7 +37,7 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
         await liveBackend
             .OnStreamRegistered(chat.Id, AuthorId.New(chat.Id, 777_072), null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
-        live!.SessionStartedAt.Should().NotBeNull("the session must latch or this test doesn't bite");
+        live!.StartedAt.Should().NotBeNull("the session must start or this test doesn't bite");
 
         // Build the view once so the whole client-side chain is warm.
         var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
@@ -46,9 +46,9 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
         var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
         items.Items.Should().NotBeEmpty();
 
-        // The summary flow writes the live session's conversation card shortly after the latch, and that
+        // The summary flow writes the live session's conversation card shortly after the start, and that
         // write invalidates the range meta as well - so wait it out before probing what SetRules does.
-        var tileStart = ChatUI.ConversationIdTiles.GetTile(live.EffectiveVisibleStartLid).Start;
+        var tileStart = ChatUI.ConversationIdTiles.GetTile(live.OpenConversation!.StartLid).Start;
         var cRangeTile = await SettledComputed.Capture(
             () => Tester.Chats.GetChatRangeTile(Tester.Session, chat.Id, tileStart, CancellationToken.None));
         var whenInvalidated = cRangeTile.WhenInvalidated(CancellationToken.None);

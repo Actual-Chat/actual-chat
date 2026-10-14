@@ -617,8 +617,8 @@ All three conditions have to hold:
    method in a single-process service might not justify it.
 
 Worked example: `LiveSessionsBackend.GetState` self-invalidates every 30 s so a dropped
-stream eventually surfaces, and re-reads Redis each time. `GetVisibleStartLid`,
-`GetLiveConversation`, `ListParticipants` and `HasRecorder` are projections of it whose
+stream eventually surfaces, and re-reads Redis each time. `GetOpenLiveConversation`,
+`ListLiveConversations`, `ListParticipants` and `HasRecorder` are projections of it whose
 values almost never move between ticks. Consolidating each projection turns a guaranteed
 once-per-30-s fan-out per open chat into fan-out only when something actually changed.
 
@@ -637,7 +637,6 @@ The fix is an explicit `ConsolidationComparer` — a parameterless-constructible
 |---|---|
 | `bool`, `long?`, ids, enums, other value types | none needed |
 | `ApiArray<T>` | `ApiArrayComparer<T>` |
-| `Conversation` | `ConversationContentComparer` |
 | `AuthorRules` | `AuthorRulesComparer` |
 
 A comparer without a delay is a startup error too, so the two always travel together.
@@ -654,7 +653,7 @@ latency budget for the *changed* case, paid on every real change:
 
 | Delay | Use for | In the codebase |
 |---|---|---|
-| `0` | pure dedup, no added latency — the churn is the problem, not its rate | `GetConsolidatedVisibleStartLid`, `GetConsolidatedLiveConversation`, `ILiveSessions.GetCallStatus` (a ring/accept path, with no latency to spare) |
+| `0` | pure dedup, no added latency — the churn is the problem, not its rate | `GetConsolidatedOpenLiveConversationId`, `GetConsolidatedOpenLiveConversation`, `ILiveSessions.GetCallStatus` (a ring/accept path, with no latency to spare) |
 | `0.2` – `0.5` | dedup plus a small debounce for bursty sources | `GetConsolidatedParticipants`, `GetConsolidatedHasRecorder` (0.2); `ILiveSessions.HasActivity`, `GetAudioStreamingAuthorIds` (0.5) |
 | `~1` | slow-moving state where a second of staleness is invisible | `IUserPresences.Get` (1) |
 
@@ -671,7 +670,7 @@ differently:
 |---|---|---|
 | Distributed backend (`ILiveSessionsBackend`) | `Distributed` | only on a `protected` method; on the interface method it is a startup error |
 | API service (`ILiveSessions`, `IChats`) | `Server` | on the interface method — it is computed locally on the API host |
-| Client replica of an API method | client | **impossible** — a `RemoteComputed` ignores it; consolidate a client-local wrapper instead (`LiveSessionUI.GetConversation`, `ChatUI`) |
+| Client replica of an API method | client | **impossible** — a `RemoteComputed` ignores it; consolidate a client-local wrapper instead (`ChatUI`) |
 
 Consolidating at more than one layer is normal, not redundant: the backend suppresses churn
 that never leaves the shard owner, the API layer suppresses churn its own session-scoped

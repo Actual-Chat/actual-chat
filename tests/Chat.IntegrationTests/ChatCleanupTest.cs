@@ -1,4 +1,4 @@
-using ActualChat.Chat.Db;
+﻿using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Media;
 using ActualChat.Streaming;
@@ -431,13 +431,13 @@ public sealed class ChatCleanupTest(ChatCollection.AppHostFixture fixture, ITest
         var old = await Owner.CreateTextEntry(chatId, "before the session");
         var author = await Owner.GetOwnAuthor(chatId);
         var live = Owner.AppServices.GetRequiredService<ILiveSessionsBackend>();
-        // Two streamers latch the session, which is what gives it a visible start
+        // Two streamers start the session, which is what gives it a visible start
         await live.OnStreamRegistered(chatId, author.Require().Id, null, true, true, default);
         await live.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_072), null, true, true, default);
         var visibleStartLid = await TestWait.When(async ct => {
-            var lid = await live.GetVisibleStartLid(chatId, ct);
-            lid.Should().NotBeNull();
-            return lid!.Value;
+            var liveConversation = await live.GetOpenLiveConversation(chatId, ct);
+            liveConversation.Should().NotBeNull();
+            return liveConversation!.StartLid;
         });
         var during = await Owner.CreateTextEntry(chatId, "during the session");
         during.LocalId.Should().BeGreaterThanOrEqualTo(visibleStartLid);

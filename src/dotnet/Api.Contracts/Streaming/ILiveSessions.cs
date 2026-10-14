@@ -1,4 +1,4 @@
-using ActualChat.Comparison;
+﻿using ActualChat.Comparison;
 using ActualChat.Live;
 
 namespace ActualChat.Streaming;
@@ -14,6 +14,16 @@ public interface ILiveSessions : IComputeService
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<LiveSessionState?> GetState(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    Task<LiveConversation?> GetOpenConversation(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    Task<ApiArray<ConversationId>> ListConversations(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    Task<LiveConversation?> GetConversation(
+        Session session, ConversationId conversationId, CancellationToken cancellationToken);
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<LiveSession?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
@@ -36,7 +46,7 @@ public interface ILiveSessions : IComputeService
         CancellationToken cancellationToken);
     // The "is anyone actually talking" signal: stream activity alone can't tell speech from noise
     // that trips VAD. Null means there is no live conversation at all - no session, or one that
-    // never latched to 2+ authors. Re-measured on a fixed period rather than on chat traffic, so
+    // never started with 2+ authors. Re-measured on a fixed period rather than on chat traffic, so
     // it also paces its consumers; see LiveSessions.GetConversationStats.
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]

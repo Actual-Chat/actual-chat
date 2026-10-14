@@ -1,4 +1,4 @@
-using ActualLab.Rpc;
+﻿using ActualLab.Rpc;
 
 namespace ActualChat.Chat;
 
@@ -68,7 +68,7 @@ public sealed partial record AuthorsBackend_Remove(
     [property: DataMember, Key(0)] ChatId? ByChatId,
     [property: DataMember, Key(1)] AuthorId? ByAuthorId,
     [property: DataMember, Key(2)] UserId? ByUserId
-) : ICommand<AuthorFull>, IBackendCommand, IHasShardKey
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => ByChatId?.ShardKey ?? ByAuthorId?.ShardKey ?? ByUserId?.ShardKey ?? default;

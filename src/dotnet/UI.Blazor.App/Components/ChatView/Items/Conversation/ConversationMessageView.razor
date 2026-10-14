@@ -234,7 +234,7 @@
         await ThreadPoolExt.Yield();
 
         var translatedTask = ConversationUI.GetTranslatedConversation(conversation, cancellationToken);
-        var liveTask = LiveSessionUI.GetConversation(chatId, cancellationToken);
+        var liveTask = LiveSessionUI.GetOpenConversation(chatId, cancellationToken);
         var blockTask = LiveBlockUI.GetBlock(chatId, cancellationToken);
         var translated = await translatedTask.ConfigureAwait(false);
         var live = await liveTask.ConfigureAwait(false);

@@ -47,12 +47,14 @@ public sealed class TranscriptionContextSource(IServiceProvider services) : ITra
 
     private async Task<string> GetSummary(ChatId chatId, CancellationToken cancellationToken)
     {
-        var state = await LiveSessions.GetState(chatId, cancellationToken).ConfigureAwait(false);
+        var openConversation = await LiveSessions
+            .GetOpenLiveConversation(chatId, cancellationToken)
+            .ConfigureAwait(false);
         // An ongoing call describes the topic far better than the chat's static title.
-        if (state != null && !state.Summary.IsNullOrEmpty())
-            return state.Summary;
-        if (state != null && !state.Title.IsNullOrEmpty())
-            return state.Title;
+        if (openConversation != null && !openConversation.Summary.IsNullOrEmpty())
+            return openConversation.Summary;
+        if (openConversation != null && !openConversation.Title.IsNullOrEmpty())
+            return openConversation.Title;
 
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
         return chat?.Title ?? "";

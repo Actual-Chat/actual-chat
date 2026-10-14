@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Flows;
@@ -685,11 +685,11 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         // Suppress per-message notifications for a session participant's own entries inside a
-        // latched live session — the call's own transcript. Solo (pre-latch) transcription and
+        // started live session — the call's own transcript. Solo (pre-start) transcription and
         // non-participants' messages typed during the call still notify normally.
         var live = await LiveSessionsBackend.GetState(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        if (live is { SessionStartedAt: not null } lc
-            && entry.LocalId >= lc.StartEntryLid && lc.AuthorIds.Contains(entry.AuthorId))
+        if (live is { StartedAt: not null } lc
+            && entry.LocalId >= lc.FirstSpeechLid && lc.AuthorIds.Contains(entry.AuthorId))
             return;
 
         var isLateCallTranscript = await IsLateCallTranscript(entry, author, changeKind, cancellationToken)
@@ -1011,7 +1011,7 @@ public class NotificationsBackend(IServiceProvider services)
                 .ConfigureAwait(false);
         }
         // Don't interrupt users who are actively in this chat's live call — they're present.
-        if (live is { SessionStartedAt: not null }) {
+        if (live is { StartedAt: not null }) {
             var active = await GetActiveParticipantUserIds(chatId, cancellationToken).ConfigureAwait(false);
             if (active.Count != 0) {
                 userIds = userIds.Where(x => !active.Contains(x)).ToList();
@@ -1019,8 +1019,8 @@ public class NotificationsBackend(IServiceProvider services)
             }
         }
 
-        // The voice context the beep policy groups by. A latched session's own utterances never
-        // reach here - the guard in OnChatEntryChangedEvent drops them - and an un-latched session
+        // The voice context the beep policy groups by. A started session's own utterances never
+        // reach here - the guard in OnChatEntryChangedEvent drops them - and a session that has not started
         // is one speaker whose session is torn down RecordingCloseGrace after they stop, so its id
         // changes mid-monologue and would alert on every utterance. The author is the one identity
         // that survives the whole run; the prefix keeps the value self-describing.
