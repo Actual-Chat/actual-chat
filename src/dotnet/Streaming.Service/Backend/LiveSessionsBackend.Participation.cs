@@ -81,9 +81,9 @@ public partial class LiveSessionsBackend
         }
 
         if (state.OpenConversation is null && state.AuthorIds.Count >= 2) {
-            var startLid = (await ChatsBackend
-                .GetLidRange(chatId, false, cancellationToken)
-                .ConfigureAwait(false)).End;
+            var startLid = MustStartFromFirstSpeech
+                ? state.FirstSpeechLid
+                : (await ChatsBackend.GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false)).End;
             var version = VersionGenerator.NextVersion(state.Version);
             state = state with {
                 OpenConversation = new LiveConversation {

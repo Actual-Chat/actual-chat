@@ -16,6 +16,9 @@ namespace ActualChat.Streaming;
 public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessionsBackend
 {
 
+    // Where a started conversation begins: at the entry of whoever spoke first (true), or at the end of the
+    // chat when the second peer joined (false), which leaves what the first one said before that outside it.
+    internal const bool MustStartFromFirstSpeech = true;
     private static readonly TimeSpan KeyTtl = TimeSpan.FromMinutes(6);
     // How long a closed conversation stays listed, unless the saved conversation covering it appears first
     private static readonly TimeSpan ClosedTtl = TimeSpan.FromHours(1);

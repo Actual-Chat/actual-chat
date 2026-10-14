@@ -19,6 +19,7 @@
     <InternalsVisibleTo Include="$(BaseName).Streaming.UnitTests" />
     <InternalsVisibleTo Include="$(BaseName).Audio.IntegrationTests" />
     <InternalsVisibleTo Include="$(BaseName).Chat.IntegrationTests" />
+    <InternalsVisibleTo Include="$(BaseName).Chat.UI.Blazor.IntegrationTests" />
     <InternalsVisibleTo Include="$(BaseName).Transcription.UnitTests" />
     <InternalsVisibleTo Include="$(BaseName).Transcription.IntegrationTests" />
   </ItemGroup>
