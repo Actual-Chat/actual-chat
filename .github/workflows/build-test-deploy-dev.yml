@@ -641,7 +641,7 @@ jobs:
     needs:
       - calc-pkg-params
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && contains(needs.calc-pkg-params.outputs.APP_PLATFORMS, ',ios,') }}
-    runs-on: macos-26
+    runs-on: xcode-27
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
@@ -655,7 +655,7 @@ jobs:
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 26.6
+          xcode-version: '27.0'
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -746,7 +746,7 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
-      - name: Install workloads (pinned to the .NET 11 RC 1 workload band — see #3839)
+      - name: Install workloads (pinned to the .NET 11 RC 2 workload band — see #3839)
         run: dotnet workload install maui ios maui-ios --from-rollback-file ${{github.workspace}}/.github/workloads-net11-rc2.json
 
       # The Xcode projects under src/swift/ are generated from their project.yml, not
@@ -891,7 +891,7 @@ jobs:
     needs:
       - calc-pkg-params
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && contains(needs.calc-pkg-params.outputs.APP_PLATFORMS, ',maccatalyst,') }}
-    runs-on: macos-26
+    runs-on: xcode-27
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
@@ -903,7 +903,7 @@ jobs:
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 26.6
+          xcode-version: '27.0'
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -968,7 +968,7 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
-      - name: Install workloads (pinned to the .NET 11 RC 1 workload band — see #3839)
+      - name: Install workloads (pinned to the .NET 11 RC 2 workload band — see #3839)
         run: dotnet workload install maui maccatalyst maui-maccatalyst --from-rollback-file ${{github.workspace}}/.github/workloads-net11-rc2.json
 
       - name: Replace git+ssh://git@ to https://
@@ -1074,7 +1074,7 @@ jobs:
     needs:
       - calc-pkg-params
     if: ${{ needs.calc-pkg-params.outputs.MUST_BUILD_PACKAGE == 'true' && contains(needs.calc-pkg-params.outputs.APP_PLATFORMS, ',macos,') }}
-    runs-on: macos-26
+    runs-on: xcode-27
     env:
       NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
       NPM_READ_TOKEN: ${{ secrets.NPM_READ_TOKEN }}
@@ -1086,7 +1086,7 @@ jobs:
     steps:
       - uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 26.6
+          xcode-version: '27.0'
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -1150,7 +1150,7 @@ jobs:
       - name: Setup dotnet
         uses: ./.github/actions/setup-dotnet
 
-      - name: Install workloads (pinned to the .NET 11 RC 1 workload band — see #3839)
+      - name: Install workloads (pinned to the .NET 11 RC 2 workload band — see #3839)
         run: dotnet workload install maui macos --from-rollback-file ${{github.workspace}}/.github/workloads-net11-rc2.json
 
       - name: Replace git+ssh://git@ to https://
@@ -1274,7 +1274,20 @@ jobs:
         uses: ./.github/actions/setup-dotnet
 
       - name: Install workloads
-        run: dotnet workload install maui android maui-android
+        run: dotnet workload install maui android maui-android --from-rollback-file ${{github.workspace}}/.github/workloads-net11-rc2.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: microsoft
+          java-version: '21'
+
+      - name: Install Android SDK dependencies
+        run: >-
+          dotnet build src/dotnet/App.Maui/App.Maui.csproj -t:InstallAndroidDependencies
+          -f net11.0-android -p:TargetFrameworks=net11.0-android
+          -p:AndroidSdkDirectory="$env:ANDROID_HOME" -p:JavaSdkDirectory="$env:JAVA_HOME"
+          -p:AcceptAndroidSdkLicenses=true
 
       - name: Replace git+ssh://git@ to https://
         run: (Get-Content package-lock.json) -replace 'git\+ssh:\/\/git@', 'https://' | Set-Content package-lock.json
@@ -1557,7 +1570,7 @@ jobs:
 
       # The GTK app is the plain net11.0 target, so it needs the MAUI SDK packs (maui-core) only;
       # maui-android is the smallest workload that carries them on Linux.
-      - name: Install workloads (pinned to the .NET 11 RC 1 workload band — see #3839)
+      - name: Install workloads (pinned to the .NET 11 RC 2 workload band — see #3839)
         run: dotnet workload install maui-android --from-rollback-file ${{github.workspace}}/.github/workloads-net11-rc2.json
 
       - name: Replace git+ssh://git@ to https://

@@ -1,8 +1,6 @@
 using ActualChat.App.Maui.Services;
-using ActualChat.Maui.Services;
 using Firebase.CloudMessaging;
 using Foundation;
-using Intents;
 using UIKit;
 using UserNotifications;
 using DeviceType = ActualChat.Notifications.DeviceType;
@@ -21,53 +19,6 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
     {
         NSHttpCookieStorage.SharedStorage.AcceptPolicy = NSHttpCookieAcceptPolicy.Always;
         return MauiProgram.CreateMauiApp();
-    }
-
-    public override bool FinishedLaunching(UIApplication application, NSDictionary? launchOptions)
-    {
-        var result = base.FinishedLaunching(application, launchOptions);
-
-        // The root view controller's view is white by default and shows for a frame between the
-        // launch screen and WebKit's first paint - that's the white blink. The window is below it.
-        if (Window is { } window) {
-            var backgroundColor = UIColor.FromRGB(
-                MauiSettings.SplashBackgroundColor.Red,
-                MauiSettings.SplashBackgroundColor.Green,
-                MauiSettings.SplashBackgroundColor.Blue);
-            window.BackgroundColor = backgroundColor;
-            if (window.RootViewController?.View is { } rootView)
-                rootView.BackgroundColor = backgroundColor;
-        }
-
-        return result;
-    }
-
-    public override bool ContinueUserActivity(
-        UIApplication application,
-        NSUserActivity userActivity,
-        UIApplicationRestorationHandler completionHandler)
-    {
-        var intent = userActivity.GetInteraction()?.Intent;
-        if (intent is INStartCallIntent or INStartVideoCallIntent)
-            IosCalls.Instance.ContinueCall(intent);
-        else
-            CheckForAppLink(userActivity);
-        return base.ContinueUserActivity(application, userActivity, completionHandler);
-    }
-
-    public override void OnActivated(UIApplication application)
-    {
-        SetBackgroundState(false);
-        base.OnActivated(application);
-    }
-
-    public override void DidEnterBackground(UIApplication application)
-    {
-        // Hold the assertion until suspend handlers (incl. closing the Kvasar stores) finish;
-        // otherwise iOS suspends us with file locks held -> 0xdead10cc.
-        using (application.BeginBackgroundTaskScope("ActualChat.Suspend"))
-            SetBackgroundState(true);
-        base.DidEnterBackground(application);
     }
 
     // Silent dismissal pushes (content-available, no alert) are delivered here, not to the
@@ -165,14 +116,4 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
         => value.IsNullOrEmpty()
             ? []
             : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-    private static void CheckForAppLink(NSUserActivity userActivity)
-    {
-        var url = userActivity.GetAppLinkUrl();
-        if (!url.IsNullOrEmpty())
-            App.Current.SendOnAppLinkRequestReceived(url.ToUri());
-    }
-
-    private static void SetBackgroundState(bool isBackground)
-        => MauiBackgroundState.SetIsBackground(isBackground);
 }
