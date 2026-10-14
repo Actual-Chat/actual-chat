@@ -191,7 +191,7 @@ whole build, and with it every scroll request until the peer reconnects.
 | Remote call | Kind | Needed by | Coverage |
 |---|---|---|---|
 | `IChats.Get`, `IChats.GetIdRange` | cached | Every build | S, T |
-| `IChats.GetChatRangeTile(session, chatId, metaTileStart)` × meta tiles covering the load zone ± `LoadLimit` | cached | Every build. `UseRangeTileOrLastKnown` stands in only after a first successful read. | T (around the tail), D |
+| `IChats.GetChatRangeTile(session, chatId, metaTileStart)` × meta tiles covering the load zone ± `LoadLimit` | cached | Every build. `ChatRangeTileCache` stands in only after a first successful read. | T (around the tail), D |
 | `IConversations.GetTile(session, chatId, metaTileRange)` × meta tiles | cached | Every build, unconditionally | T |
 | `IChats.GetTile(session, chatId, idTileRange)` × id tiles (+1 preceding) | cached | Every tile in the zone, plus a speculative second copy for the adjacent zone | T (last 100 entries only) |
 | `ILiveSessions.GetState(session, chatId)` via `LiveSessionUI.GetOpenConversation` and `LiveBlockUI.GetBlock` | **no-cache** | Every build. `UseOpenConversationOrLastKnown` **awaits the first read** - a chat opened for the first time in this process never renders offline. | n/a |

@@ -17,7 +17,7 @@ public sealed class ChatRangeTileStandInTest
     public void StandInShouldSynthesizeTheTailUpToTheChatEnd()
     {
         // act
-        var tiles = ChatUI.ExtendLastKnownRangeTiles([CachedTail], QueriedCidTiles, ChatLidRange);
+        var tiles = ChatRangeTileCache.StandIn([CachedTail], QueriedCidTiles, ChatLidRange);
 
         // assert
         tiles.Should().NotBeNull();
@@ -30,7 +30,7 @@ public sealed class ChatRangeTileStandInTest
     public void NavigationBuildFromStandInShouldReachTheNewEntries()
     {
         // arrange
-        var tiles = ChatUI.ExtendLastKnownRangeTiles([CachedTail], QueriedCidTiles, ChatLidRange)!;
+        var tiles = ChatRangeTileCache.StandIn([CachedTail], QueriedCidTiles, ChatLidRange)!;
         var view = new ConversationViewState(
             true, ImmutableHashSet<ConversationId>.Empty, default, null, default, null);
         var conversationId = ConversationId.New(TestChatId, Conversation.Start);
@@ -57,7 +57,7 @@ public sealed class ChatRangeTileStandInTest
         var cached = new ChatRangeTile(new(1280, 2560), [new(1281, 2560)], [], 100, 0, 2560);
 
         // act
-        var tiles = ChatUI.ExtendLastKnownRangeTiles([cached], new(1280, 3840), ChatLidRange);
+        var tiles = ChatRangeTileCache.StandIn([cached], new(1280, 3840), ChatLidRange);
 
         // assert
         tiles.Should().BeNull();
