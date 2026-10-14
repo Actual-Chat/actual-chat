@@ -98,7 +98,10 @@
                 </div>
             }
             @if (state.TailPreview is { Count: > 0 } tailPreview) {
-                <Divider/>
+                @* The split header's own border is the line when nothing sits between it and the preview *@
+                @if ((!Message.HasSplitHeader && hasLiveTitle) || (!Message.IsExpanded && (hasDescription || state.HasSummary))) {
+                    <Divider/>
+                }
                 <LastEntriesPreview Entries="@tailPreview" Faded="true" MustSuppressMenu="true"/>
             }
             @if (Message.IsExpanded && state.SwallowedCount > 0) {
