@@ -7,11 +7,12 @@ using ActualLab.Versioning;
 namespace ActualChat.Chat.Db;
 
 [Table("ChatEntries")]
-[Index(nameof(ChatId), nameof(LocalId), IsUnique = true)]
-[Index(nameof(ChatId), nameof(IsRemoved), nameof(LocalId))] // For GetMaxLid queries
-[Index(nameof(ChatId), nameof(IsRemoved), nameof(RemovedAt))] // For cleanup grace-period scans
-[Index(nameof(ChatId), nameof(BeginsAt), nameof(EndsAt))]
-[Index(nameof(ChatId), nameof(EndsAt), nameof(BeginsAt))]
+[Index(nameof(ChatId), nameof(Kind), nameof(LocalId), IsUnique = true)]
+[Index(nameof(ChatId), nameof(Kind), nameof(IsRemoved), nameof(LocalId))] // For GetMaxLid queries
+[Index(nameof(ChatId), nameof(Kind), nameof(IsRemoved), nameof(RemovedAt))] // For cleanup grace-period scans
+[Index(nameof(ChatId), nameof(Kind), nameof(BeginsAt), nameof(EndsAt))]
+[Index(nameof(ChatId), nameof(Kind), nameof(EndsAt), nameof(BeginsAt))]
+[Index(nameof(ChatId), nameof(Kind), nameof(Version))]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
@@ -61,11 +62,29 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
+    // TODO(AY): Leftover column, never read or written - to be removed
+    public DateTime? ClientSideBeginsAt {
+        get => field?.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
+    }
+
     public DateTime? EndsAt {
         get => field?.DefaultKind(DateTimeKind.Utc);
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
+    // TODO(AY): Leftover column, never read or written - to be removed
+    public DateTime? ContentEndsAt {
+        get => field?.DefaultKind(DateTimeKind.Utc);
+        set => field = value.DefaultKind(DateTimeKind.Utc);
+    }
+
+    // TODO(AY): Leftover column, written but never read (EndsAt - BeginsAt) - to be removed
+    public double Duration { get; set; }
+
+    // TODO(AY): Leftover column, always 0 since ChatEntryMigrationFlow merged the legacy audio (1) entries;
+    // to be removed along with the indexes and query filters that use it
+    public int Kind { get; set; }
     public string Content { get; set; } = "";
     public string? ContentHash { get; set; } = "";
     public bool HasAttachments { get; set; }
@@ -74,6 +93,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public LinkPreviewMode? LinkPreviewMode { get; set; }
     public string? ContentStreamId { get; set; }
 
+    // TODO(AY): Leftover column, never read or written - to be removed
+    public long? AudioEntryId { get; set; }
     public string? AudioId { get; set; }
     public string? TimeMap { get; set; }
     public string? LocationId { get; set; }
@@ -209,6 +230,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
         Id = id.Value;
         ChatId = model.ChatId.Value;
+        Kind = 0;
         LocalId = model.LocalId;
         Version = model.Version;
         IsRemoved = model.IsRemoved;
@@ -221,6 +243,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         AuthorId = model.AuthorId.Value;
         BeginsAt = model.BeginsAt;
         EndsAt = model.EndsAt;
+        Duration = EndsAt.HasValue ? (EndsAt.GetValueOrDefault() - BeginsAt).TotalSeconds : 0;
         HasReactions = model.HasReactions;
         ContentStreamId = model.ContentStreamId;
         RepliedChatEntryId = model.RepliedEntryLid;
@@ -280,7 +303,8 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         {
             builder.Property(x => x.AuthorId).IsRequired();
 
-            builder.HasIndex(nameof(ChatId), nameof(Version), nameof(LocalId));
+            builder.HasIndex(nameof(ChatId), nameof(Version), nameof(LocalId))
+                .HasFilter("kind = 0");
         }
     }
 }

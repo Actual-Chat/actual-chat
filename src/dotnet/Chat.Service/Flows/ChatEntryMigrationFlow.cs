@@ -1,15 +1,26 @@
+using ActualChat.Chat.Db;
+using ActualChat.Db;
 using ActualChat.Flows;
+using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.Flows;
 
 /// <summary>
-/// Retired: the legacy audio entries were migrated to the media table long ago.
-/// The type stays so that the persisted flow state still resolves.
+/// Migrates audio entries to the media table and sets MediaId on corresponding text entries.
+/// Processes one chat at a time, in batches of 100 text entries per resume.
 /// </summary>
 [Flow(DataVersion = 1, DelayQuanta = 0)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
 {
+    private const int BatchSize = 300;
+    private const int MaxChatsPerResume = 300;
+    private static readonly RandomTimeSpan BatchDelay = TimeSpan.FromSeconds(2).ToRandom(0.25);
+
+    private DbHub<ChatDbContext> DbHub => field ??= Services.DbHub<ChatDbContext>();
+    private ICommander Commander => Hub.Commander;
+
     [DataMember(Order = 0), MemoryPackOrder(0), Key(0)]
     public string? LastProcessedChatId { get; set; }
     [DataMember(Order = 1), MemoryPackOrder(1), Key(1)]
@@ -23,9 +34,149 @@ public partial class ChatEntryMigrationFlow : Flow<(Moment, long, long)>
     [DataMember(Order = 5), MemoryPackOrder(5), Key(5)]
     public long TotalChatCount { get; set; }
 
-    protected override ValueTask Resume(CancellationToken cancellationToken)
+    protected override async ValueTask Resume(CancellationToken cancellationToken)
     {
+        var dbContext = await DbHub.CreateDbContext(readWrite: true, cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        if (TotalEntryCount == 0 || TotalChatCount == 0) {
+            using var _ = dbContext.Database.UseCommandTimeout(10);
+            if (TotalEntryCount == 0)
+                TotalEntryCount = Math.Max(1, await dbContext.ChatEntries
+                    .CountAsync(x => x.Kind == 1, cancellationToken) // 1 = legacy Audio kind
+                    .ConfigureAwait(false));
+            if (TotalChatCount == 0)
+                TotalChatCount = Math.Max(1, await dbContext.Chats
+                    .CountAsync(cancellationToken)
+                    .ConfigureAwait(false));
+        }
+
+        var processedInResume = 0;
+        var chatsInResume = 0;
+        while (processedInResume < BatchSize && chatsInResume < MaxChatsPerResume) {
+            // Get next chat to process
+            var chatQuery = dbContext.Chats.OrderBy(x => x.Id);
+            if (!LastProcessedChatId.IsNullOrEmpty())
+                chatQuery = (IOrderedQueryable<DbChat>)chatQuery.Where(x => string.Compare(x.Id, LastProcessedChatId) > 0);
+
+            var chatId = await chatQuery
+                .Select(x => x.Id)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (chatId == null) {
+                Complete();
+                return;
+            }
+
+            // Get batch of text entries - uses (ChatId, Kind, LocalId) index
+            var remaining = BatchSize - processedInResume;
+            var batch = await dbContext.ChatEntries
+                .Where(e => e.ChatId == chatId
+                    && e.Kind == 0 // 0 = Text kind
+                    && e.LocalId > LastProcessedLocalId)
+                .OrderBy(e => e.LocalId)
+                .Take(remaining)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (batch.Count == 0) {
+                // Current chat done, move to next
+                LastProcessedLocalId = 0;
+                LastProcessedChatId = chatId;
+                MigratedChatCount++;
+                chatsInResume++;
+                continue;
+            }
+
+            try {
+                var migratedInBatch = 0;
+                foreach (var textEntry in batch) {
+                    // Skip entries that don't need migration
+                    if (textEntry.AudioEntryId == null || !textEntry.AudioId.IsNullOrEmpty())
+                        continue;
+
+                    try {
+                        await ProcessOne(dbContext, textEntry, cancellationToken).ConfigureAwait(false);
+                        migratedInBatch++;
+                    }
+                    catch (Exception e) {
+                        Console.LogError($"Failed to process entry #{textEntry.Id}: {e.Message}", e);
+                    }
+                }
+                LastProcessedLocalId = batch[^1].LocalId;
+                MigratedEntryCount += migratedInBatch;
+                processedInResume += batch.Count;
+            }
+            finally {
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            if (batch.Count < remaining) {
+                // Current chat done
+                LastProcessedLocalId = 0;
+                LastProcessedChatId = chatId;
+                MigratedChatCount++;
+                chatsInResume++;
+            }
+        }
+
+        var progress = (double)MigratedEntryCount / TotalEntryCount * 100;
+        Console.Log(
+            $"Progress: {progress:F1}% "
+            + $"({MigratedChatCount}/{TotalChatCount} chats, {MigratedEntryCount}/{TotalEntryCount} entries)");
+
+        Runtime.StageResumeIn(BatchDelay.Next());
+    }
+
+    protected virtual void Complete()
+    {
+        Console.Log($"Completed, processed {MigratedChatCount} chats, {MigratedEntryCount} entries");
         SetResult((Hub.Clocks.SystemClock.Now, MigratedChatCount, MigratedEntryCount));
-        return ValueTask.CompletedTask;
+    }
+
+    protected virtual async Task ProcessOne(ChatDbContext dbContext, DbChatEntry textEntry, CancellationToken cancellationToken)
+    {
+        var chatId = ChatId.Parse(textEntry.ChatId);
+        var audioEntryLid = textEntry.AudioEntryId!.Value;
+
+        // Look up the corresponding audio entry
+        // Legacy audio entries had kind=1, construct ID directly
+        var audioEntryDbId = $"{chatId.Value}:1:{audioEntryLid.Format()}";
+        var audioEntry = await dbContext.ChatEntries
+            .FirstOrDefaultAsync(e => e.Id == audioEntryDbId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (audioEntry == null) {
+            Console.LogWarning($"Audio entry {audioEntryDbId} not found for text entry {textEntry.Id}");
+            return;
+        }
+
+        var audioBlobId = audioEntry.Content;
+        if (audioBlobId.IsNullOrEmpty()) {
+            // Audio entry has no blob yet (not finalized), skip
+            return;
+        }
+
+        // Create Media record
+        var mediaId = MediaId.New(chatId.Value);
+        var beginsAt = audioEntry.BeginsAt.ToMoment();
+        var endsAt = audioEntry.EndsAt?.ToMoment() ?? beginsAt;
+        var contentEndsAt = audioEntry.ContentEndsAt?.ToMoment() ?? endsAt;
+
+        var media = new MediaFull(mediaId) {
+            BlobId = audioBlobId,
+            Kind = MediaKind.ChatEntryAudio,
+            ContentType = "audio/webm",
+            BeginsAt = beginsAt,
+            EndsAt = endsAt,
+            ContentEndsAt = contentEndsAt,
+        };
+        var changeCommand = new MediaBackend_Change(mediaId, null, new Change<MediaFull> { Create = media });
+
+        await Commander.Call(changeCommand, true, cancellationToken).ConfigureAwait(false);
+
+        // Update text entry's AudioId directly in DB
+        textEntry.AudioId = mediaId.Value;
     }
 }

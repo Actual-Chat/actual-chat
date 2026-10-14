@@ -71,8 +71,8 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         // A finalized entry keeps an empty ContentStreamId rather than null, so an IS NOT NULL
         // filter here indexes every entry ever streamed - orders of magnitude more rows than the
         // handful still streaming, which is all either this index's lookups or the fixup flow want.
-        chatEntry.HasIndex(e => e.ContentStreamId).HasFilter("\"content_stream_id\" <> ''");
-        chatEntry.HasIndex(e => e.AudioId).HasFilter("\"audio_id\" IS NOT NULL");
+        chatEntry.HasIndex(e => e.ContentStreamId).HasFilter("\"kind\" = 0 AND \"content_stream_id\" <> ''");
+        chatEntry.HasIndex(e => e.AudioId).HasFilter("\"kind\" = 0 AND \"audio_id\" IS NOT NULL");
 
         var chatEntryLanguage = model.Entity<DbChatEntryLanguage>();
         chatEntryLanguage.Property(e => e.Id).UseCollation("C");

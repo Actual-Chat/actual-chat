@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261014091148_RemoveUnusedChatEntryColumns";
+    public override string LastMigrationId => "20261012070154_AddCoachPace";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -324,6 +324,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasColumnName("id")
                     .UseCollation("C");
 
+                b.Property<long?>("AudioEntryId")
+                    .HasColumnType("bigint")
+                    .HasColumnName("audio_entry_id");
+
                 b.Property<string>("AudioId")
                     .HasColumnType("text")
                     .HasColumnName("audio_id")
@@ -350,10 +354,18 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("text")
                     .HasColumnName("client_id");
 
+                b.Property<DateTime?>("ClientSideBeginsAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("client_side_begins_at");
+
                 b.Property<string>("Content")
                     .IsRequired()
                     .HasColumnType("text")
                     .HasColumnName("content");
+
+                b.Property<DateTime?>("ContentEndsAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("content_ends_at");
 
                 b.Property<string>("ContentHash")
                     .HasColumnType("text")
@@ -363,6 +375,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("text")
                     .HasColumnName("content_stream_id")
                     .UseCollation("C");
+
+                b.Property<double>("Duration")
+                    .HasColumnType("double precision")
+                    .HasColumnName("duration");
 
                 b.Property<DateTime?>("EndsAt")
                     .HasColumnType("timestamp with time zone")
@@ -425,6 +441,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("boolean")
                     .HasColumnName("is_via_api");
 
+                b.Property<int>("Kind")
+                    .HasColumnType("integer")
+                    .HasColumnName("kind");
+
                 b.Property<string>("LinkPreviewIds")
                     .HasColumnType("text")
                     .HasColumnName("link_preview_ids")
@@ -467,29 +487,33 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasName("pk_chat_entries");
 
                 b.HasIndex("AudioId")
-                    .HasFilter("\"audio_id\" IS NOT NULL");
+                    .HasFilter("\"kind\" = 0 AND \"audio_id\" IS NOT NULL");
 
                 b.HasIndex("ContentStreamId")
-                    .HasFilter("\"content_stream_id\" <> ''");
+                    .HasFilter("\"kind\" = 0 AND \"content_stream_id\" <> ''");
 
-                b.HasIndex("ChatId", "LocalId")
+                b.HasIndex("ChatId", "Kind", "LocalId")
                     .IsUnique()
-                    .HasDatabaseName("ix_chat_entries_chat_id_local_id");
+                    .HasDatabaseName("ix_chat_entries_chat_id_kind_local_id");
 
-                b.HasIndex("ChatId", "BeginsAt", "EndsAt")
-                    .HasDatabaseName("ix_chat_entries_chat_id_begins_at_ends_at");
-
-                b.HasIndex("ChatId", "EndsAt", "BeginsAt")
-                    .HasDatabaseName("ix_chat_entries_chat_id_ends_at_begins_at");
-
-                b.HasIndex("ChatId", "IsRemoved", "LocalId")
-                    .HasDatabaseName("ix_chat_entries_chat_id_is_removed_local_id");
-
-                b.HasIndex("ChatId", "IsRemoved", "RemovedAt")
-                    .HasDatabaseName("ix_chat_entries_chat_id_is_removed_removed_at");
+                b.HasIndex("ChatId", "Kind", "Version")
+                    .HasDatabaseName("ix_chat_entries_chat_id_kind_version");
 
                 b.HasIndex("ChatId", "Version", "LocalId")
-                    .HasDatabaseName("ix_chat_entries_chat_id_version_local_id");
+                    .HasDatabaseName("ix_chat_entries_chat_id_version_local_id")
+                    .HasFilter("kind = 0");
+
+                b.HasIndex("ChatId", "Kind", "BeginsAt", "EndsAt")
+                    .HasDatabaseName("ix_chat_entries_chat_id_kind_begins_at_ends_at");
+
+                b.HasIndex("ChatId", "Kind", "EndsAt", "BeginsAt")
+                    .HasDatabaseName("ix_chat_entries_chat_id_kind_ends_at_begins_at");
+
+                b.HasIndex("ChatId", "Kind", "IsRemoved", "LocalId")
+                    .HasDatabaseName("ix_chat_entries_chat_id_kind_is_removed_local_id");
+
+                b.HasIndex("ChatId", "Kind", "IsRemoved", "RemovedAt")
+                    .HasDatabaseName("ix_chat_entries_chat_id_kind_is_removed_removed_at");
 
                 b.ToTable("chat_entries");
             });

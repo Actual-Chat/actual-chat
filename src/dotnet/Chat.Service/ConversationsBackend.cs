@@ -190,7 +190,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                 var startEntryLid = conversationId.StartEntryLid;
                 var endEntryLid = createDiff.EndEntryLid ?? startEntryLid;
                 var hasSource = await dbContext.ChatEntries
-                    .AnyAsync(e => e.ChatId == chatId.Value && !e.IsRemoved
+                    .AnyAsync(e => e.ChatId == chatId.Value && e.Kind == 0 && !e.IsRemoved
                             && e.LocalId >= startEntryLid && e.LocalId <= endEntryLid,
                         cancellationToken)
                     .ConfigureAwait(false);
