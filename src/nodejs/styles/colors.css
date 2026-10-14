@@ -341,7 +341,7 @@
     --file-executable: var(--ash-30);
     --file-default: var(--gray-40);
 
-    --background-replay: var(--blue-95);
+    --background-replay: var(--blue-99);
     --text-replay: var(--text-02);
     --border-replay: var(--blue-90);
     --accent-replay: var(--blue-50);
@@ -629,8 +629,8 @@
     --background-replay: color-mix(in srgb, var(--background-01), var(--blue-50) 15%);
     --text-replay: var(--text-02);
     --border-replay: var(--blue-20);
-    --accent-replay: var(--blue-80);
-    --background-music: color-mix(in srgb, var(--background-01), var(--violet-50) 15%);
+    --accent-replay: var(--blue-70);
+    --background-music: color-mix(in srgb, var(--background-01), var(--violet-50) 10%);
     --text-music: var(--text-02);
     --border-music: var(--violet-30);
     --accent-music: var(--violet-70);
@@ -908,7 +908,7 @@
     --file-executable: var(--ash-30);
     --file-default: var(--gray-40);
 
-    --background-replay: var(--blue-95);
+    --background-replay: var(--blue-99);
     --text-replay: var(--text-02);
     --border-replay: var(--blue-90);
     --accent-replay: var(--blue-50);

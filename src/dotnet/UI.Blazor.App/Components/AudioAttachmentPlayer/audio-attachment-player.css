@@ -39,7 +39,7 @@ body.hoverable .audio-file-attachment .c-play-btn:hover {
     @apply rounded-lg;
     @apply bg-music;
     @apply text-music;
-    box-shadow: 0 2px 6px -3px color-mix(in srgb, var(--accent-music), transparent 50%);
+    box-shadow: 0 2px 6px var(--black-05);
 }
 .audio-attachment-subheader .c-row-main {
     @apply flex-x items-center gap-x-2;
@@ -49,21 +49,11 @@ body.hoverable .audio-file-attachment .c-play-btn:hover {
     @apply flex-none;
     @apply w-10 h-10;
     @apply rounded-full;
-    @apply text-white;
+    color: var(--background-music);
     background: var(--accent-music);
 }
 body.hoverable .audio-attachment-subheader .c-play-btn:hover {
     filter: brightness(1.1);
-}
-.audio-attachment-subheader .btn-h {
-    color: var(--accent-music);
-}
-body.hoverable .audio-attachment-subheader .btn-h:hover {
-    color: var(--accent-music);
-    filter: brightness(1.15);
-}
-.audio-attachment-subheader .playback-speed-btn .c-speed-label {
-    color: var(--accent-music);
 }
 .audio-attachment-subheader .c-close {
     @apply -mt-2;
@@ -173,7 +163,7 @@ body.hoverable .c-progress:hover .c-progress-fill,
     cursor: default;
 }
 .audio-attachment-subheader .c-progress-track {
-    @apply bg-pal-violet-50-20;
+    background: color-mix(in srgb, var(--accent-music), transparent 80%);
 }
 .audio-attachment-subheader .c-progress-fill,
 .audio-attachment-subheader .c-progress-thumb {
