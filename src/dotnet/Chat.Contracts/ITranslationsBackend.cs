@@ -1,4 +1,4 @@
-using ActualChat.Sharding;
+﻿using ActualChat.Sharding;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
 
@@ -46,7 +46,7 @@ public sealed partial record TranslationsBackend_Change(
     [property: DataMember, Key(0)] TranslationId Id,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<TranslationDiff> Change
-) : ICommand<Translation>, IBackendCommand, IHasShardKey
+) : ICommand<Translation?>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Id.SourceId.ShardKey;

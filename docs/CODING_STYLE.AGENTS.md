@@ -778,11 +778,11 @@ public override async Task Require(CancellationToken cancellationToken)
     violations.
 
     ```csharp
-    // Correct - not sealed: Fusion overrides GetBlockState in the generated proxy
+    // Correct - not sealed: Fusion overrides GetOpenConversation in the generated proxy
     public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeService
     {
         [ComputeMethod]
-        public virtual async Task<LiveBlockState> GetBlockState(...)
+        public virtual async Task<LiveConversation?> GetOpenConversation(...)
     }
     ```
 

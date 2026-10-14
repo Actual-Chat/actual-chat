@@ -1,4 +1,4 @@
-using ActualChat.Live;
+﻿using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 
@@ -6,8 +6,8 @@ namespace ActualChat.Chat.IntegrationTests;
 
 // Guards the conversation metadata cache against live-session churn. ConversationsBackend reaches
 // LiveSessionsBackend.GetState - invalidated ~3x/min per session by its liveness poll - through
-// GetVisibleStartLid/GetLiveConversationSnapshot, which consolidate: they recompute on that churn and
-// swallow the invalidation when neither the block's start nor its card actually moved. Consolidation
+// GetOpenLiveConversation, which consolidates: it recomputes on that churn and
+// swallows the invalidation when the conversation did not actually change. Consolidation
 // runs on a background task, so these tests wait rather than assert synchronously.
 
 [Collection(nameof(ChatCollection))]
@@ -57,24 +57,24 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
     {
         // arrange
         var (chatId, tileStart, live, conversations) = await StartLiveSession();
-        var summary = new LiveSessionSummary {
+        var summary = new LiveConversationSummary {
             Title = "Standup",
             Description = "d",
             Summary = "s",
-            EndEntryLid = 1,
-            MessageCount = 1,
+            SummaryEndLid = 2,
+            SummarizedEntryCount = 1,
         };
-        await live.UpdateSummary(chatId, summary, default);
+        await live.UpdateLiveConversationSummary(chatId, summary, default);
 
         var cRangeTile = await Computed.Capture(
             () => conversations.GetConversationRangeTile(chatId, tileStart, default));
-        var cLiveConversation = await Computed.Capture(() => live.GetLiveConversation(chatId, default));
+        var cLiveConversation = await Computed.Capture(() => live.GetOpenLiveConversation(chatId, default));
         cRangeTile.IsConsistent().Should().BeTrue();
         var whenRangeTileInvalidated = cRangeTile.WhenInvalidated();
         var whenLiveConversationInvalidated = cLiveConversation.WhenInvalidated();
 
         // act - the summary flow re-runs on a schedule and usually carries the very same summary
-        await live.UpdateSummary(chatId, summary, default);
+        await live.UpdateLiveConversationSummary(chatId, summary, default);
 
         // assert
         await Task.WhenAny(whenRangeTileInvalidated, whenLiveConversationInvalidated, Task.Delay(SettleDelay));
@@ -89,22 +89,22 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
     {
         // arrange
         var (chatId, _, live, _) = await StartLiveSession();
-        await live.UpdateSummary(
+        await live.UpdateLiveConversationSummary(
             chatId,
-            new LiveSessionSummary { Title = "before", EndEntryLid = 1, MessageCount = 1 },
+            new LiveConversationSummary { Title = "before", SummaryEndLid = 2, SummarizedEntryCount = 1 },
             default);
-        var cLiveConversation = await Computed.Capture(() => live.GetLiveConversation(chatId, default));
+        var cLiveConversation = await Computed.Capture(() => live.GetOpenLiveConversation(chatId, default));
         cLiveConversation.Value!.Title.Should().Be("before");
 
         // act
-        await live.UpdateSummary(
+        await live.UpdateLiveConversationSummary(
             chatId,
-            new LiveSessionSummary { Title = "after", EndEntryLid = 2, MessageCount = 2 },
+            new LiveConversationSummary { Title = "after", SummaryEndLid = 3, SummarizedEntryCount = 2 },
             default);
 
         // assert
         await TestWait.When(async ct => {
-            var conversation = await live.GetLiveConversation(chatId, ct);
+            var conversation = await live.GetOpenLiveConversation(chatId, ct);
             conversation!.Title.Should().Be("after");
         });
         cLiveConversation.IsConsistent().Should().BeFalse();
@@ -121,12 +121,12 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
         var live = Tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var conversations = Tester.AppServices.GetRequiredService<IConversationsBackend>();
 
-        // Two streamers latch the session - only a latched one owns a range and renders a card.
+        // Two streamers start the session - only a started one owns a range and renders a card.
         await live.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
         await live.OnStreamRegistered(chatId, AuthorId.New(chatId, 777_071), null, true, true, default);
         var state = await live.GetState(chatId, default);
-        state!.SessionStartedAt.Should().NotBeNull("the session must latch or these tests don't bite");
+        state!.StartedAt.Should().NotBeNull("the session must start or these tests don't bite");
 
-        return (chatId, ConversationIdTiles.GetTile(state.EffectiveVisibleStartLid).Start, live, conversations);
+        return (chatId, ConversationIdTiles.GetTile(state.OpenConversation!.StartLid).Start, live, conversations);
     }
 }

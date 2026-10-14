@@ -156,7 +156,7 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // assert
         var state = await Backend(Owner).GetState(call.ChatId, default);
-        state!.Host.Should().Be(call.MemberAuthorId);
+        state!.HostAuthorId.Should().Be(call.MemberAuthorId);
     }
 
     [Fact]
@@ -186,7 +186,7 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
 
         // assert
         var state = await Backend(Owner).GetState(call.ChatId, default);
-        state!.Host.Should().Be(call.OwnerAuthorId);
+        state!.HostAuthorId.Should().Be(call.OwnerAuthorId);
     }
 
     [Fact]
@@ -197,16 +197,16 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var backend = Backend(Owner);
         var stateComputed = await Computed.Capture(() => backend.GetState(call.ChatId, default));
         var getComputed = await Computed.Capture(() => backend.Get(call.ChatId, default));
-        stateComputed.Value!.Host.Should().Be(call.OwnerAuthorId);
+        stateComputed.Value!.HostAuthorId.Should().Be(call.OwnerAuthorId);
 
         // act
         await LiveSessions(Owner).SetHost(Owner.Session, call.ChatId, call.MemberAuthorId, default);
 
         // assert
         stateComputed = await stateComputed
-            .When(x => x!.Host == call.MemberAuthorId)
+            .When(x => x!.HostAuthorId == call.MemberAuthorId)
             .WaitAsync(TimeSpan.FromSeconds(10));
-        stateComputed.Value!.Host.Should().Be(call.MemberAuthorId);
+        stateComputed.Value!.HostAuthorId.Should().Be(call.MemberAuthorId);
         getComputed = await getComputed
             .When(x => x!.Host == call.MemberAuthorId)
             .WaitAsync(TimeSpan.FromSeconds(10));

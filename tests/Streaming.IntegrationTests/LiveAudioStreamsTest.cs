@@ -1,4 +1,4 @@
-using System.Security;
+﻿using System.Security;
 using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.Testing.Host;
@@ -254,7 +254,7 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
     }
 
     [Fact(Timeout = 60_000)]
-    public async Task AmbientSessionShouldLatchAcrossSequentialUtterances()
+    public async Task AmbientSessionShouldStartAcrossSequentialUtterances()
     {
         // arrange - two distinct authors in the same group chat, both on JustVoice
         var appHost = AppHost;
@@ -271,9 +271,9 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
             ExpectedVersion = null,
             Change = new() {
                 Create = new ChatDiff {
-                    Title = "AmbientLatchTest",
+                    Title = "AmbientStartTest",
                     Kind = ChatKind.Group,
-                    IsPublic = true, // so Bob can join and latch the session
+                    IsPublic = true, // so Bob can join and start the session
                 },
             },
         });
@@ -314,13 +314,13 @@ public sealed class LiveAudioStreamsTest(AppHostFixture fixture, ITestOutputHelp
         await backend.ProcessAudio(record2, 0, new RpcStream<AudioFrame>(GetFrames()), CancellationToken.None);
 
         // assert - Alice's utterance ending must not have torn the session down before Bob's utterance
-        // could join it: the session must still exist, with both authors present and latched.
+        // could join it: the session must still exist, with both authors present and started.
         await TestWait.When(async ct => {
             var live = await liveSessionsBackend.GetState(chat.Id, ct);
             live.Should().NotBeNull("Alice's stream ending must not tear down the session before Bob joins it");
             live!.AuthorIds.Should().Contain(author1!.Id);
             live.AuthorIds.Should().Contain(author2!.Id);
-            live.SessionStartedAt.Should().NotBeNull("two distinct authors must latch the session");
+            live.StartedAt.Should().NotBeNull("two distinct authors must start the session");
         });
         var liveSession = await liveSessionsBackend.Get(chat.Id, default);
         liveSession.Should().NotBeNull();

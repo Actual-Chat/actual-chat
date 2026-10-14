@@ -1,4 +1,4 @@
-using ActualChat.Chat.Db;
+﻿using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
@@ -132,7 +132,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         ApiArray<DubVoice> voices;
         using (Computed.BeginIsolation())
             voices = await ListDubVoices(cancellationToken).ConfigureAwait(false);
-        if (!voices.Any(x => x.Id == voiceId))
+        if (voices.All(x => x.Id != voiceId))
             return null;
 
         var text = LanguageStringLocalizer.Get(language).Transcription_DubVoicePreviewText;
@@ -305,7 +305,7 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         {
             var streamId = StreamId.New(MeshWatcher.ThisNode.Ref);
             var context = await GetTranslationContext1().ConfigureAwait(false);
-            using var stream = Translator
+            var stream = Translator
                 .Stream(
                     translationSource.Content,
                     id.Language,
@@ -314,6 +314,8 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                     cancellationToken)
                 .ToTranscriptDiffs()
                 .Memoize(cancellationToken);
+            await using var _ = stream.ConfigureAwait(false);
+
             var rpcStream = RpcStream.New(stream.Replay(cancellationToken));
             var publishStreamTask = StreamingBackend.PushTranscript(streamId, rpcStream, cancellationToken);
             // ensure a translation is created
@@ -518,6 +520,9 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         var translation = await Commander
             .Call(cmd, cancellationToken)
             .ConfigureAwait(false);
+        if (translation is null)
+            return null; // Translation is disabled, or its source is gone
+
         if (translation.Version != newTranslationVersion)
             return translatedStreamId; // Already being translated
 
@@ -697,8 +702,11 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
                     return new ConversationTranslationSource(conversation, sourceId);
 
                 // A live conversation is not in the database until its session closes
-                var live = await GetLiveConversation(conversationId, cancellationToken).ConfigureAwait(false);
-                return live is null ? null : new ConversationTranslationSource(live, sourceId, isLive: true);
+                var liveConversation = await GetLiveConversation(conversationId, cancellationToken)
+                    .ConfigureAwait(false);
+                return liveConversation is null
+                    ? null
+                    : new ConversationTranslationSource(liveConversation, sourceId, isLive: true);
             }
             case TranslationIdKind.ThreadTitle or
                 TranslationIdKind.ThreadDescription : {
@@ -720,9 +728,10 @@ public class TranslationsBackend(IServiceProvider services) : DbServiceBase<Chat
         ConversationId conversationId,
         CancellationToken cancellationToken)
     {
-        var live = await LiveSessionsBackend.GetLiveConversation(conversationId.ChatId, cancellationToken)
+        var liveConversation = await LiveSessionsBackend
+            .GetLiveConversation(conversationId, cancellationToken)
             .ConfigureAwait(false);
-        return live?.Id == conversationId ? live : null;
+        return liveConversation?.ToConversation();
     }
 
     private static string? GetTranslationContextHint(TranslationIdKind kind)

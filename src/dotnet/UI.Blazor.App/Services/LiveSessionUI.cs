@@ -1,4 +1,4 @@
-using ActualChat.Comparison;
+﻿using ActualChat.Comparison;
 using ActualChat.Localization;
 using ActualChat.Live;
 using ActualChat.Streaming;
@@ -21,11 +21,10 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     // peer's own mute lift to come back from the server, short enough to feel immediate.
     private static readonly TimeSpan MuteEnforcementDelay = TimeSpan.FromSeconds(1);
     // How long an own raise / lower shows ahead of the server echo; a raise the server ignored
-    // (no session latched yet) snaps back once it runs out.
+    // (no session started yet) snaps back once it runs out.
     private static readonly TimeSpan PendingOwnHandTimeout = TimeSpan.FromSeconds(5);
 
-    private readonly ConcurrentDictionary<ChatId, Conversation?> _lastConversations = new();
-    private readonly ConcurrentDictionary<ChatId, LiveBlockState?> _lastBlockStates = new();
+    private readonly ConcurrentDictionary<ChatId, LiveConversation?> _lastOpenConversations = new();
     private readonly ConcurrentDictionary<ChatId, bool> _ownHandIntents = new();
     private readonly ConcurrentDictionary<ChatId, bool> _ownTranscriptionIntents = new();
     private readonly MutableState<(ChatId ChatId, bool IsRaised)?> _pendingOwnHand
@@ -39,38 +38,19 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     void INotifyInitialized.Initialized()
         => this.Start();
 
-    [ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ConversationContentComparer))]
-    public virtual async Task<Conversation?> GetConversation(ChatId chatId, CancellationToken cancellationToken)
+    [ComputeMethod]
+    public virtual async Task<LiveConversation?> GetOpenConversation(ChatId chatId, CancellationToken cancellationToken)
     {
-        // GetState churns far more often than the card it projects, and ToConversation() rebuilds it
-        // every time, so the comparer is what lets this absorb the churn.
-        var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return _lastConversations[chatId] = state is { SessionStartedAt: not null } ? state.ToConversation() : null;
+        var liveConversation = await LiveSessions.GetOpenConversation(Session, chatId, cancellationToken).ConfigureAwait(false);
+        return _lastOpenConversations[chatId] = liveConversation;
     }
 
-    [ComputeMethod(ConsolidationDelay = 0)]
-    public virtual async Task<LiveBlockState?> GetBlockState(ChatId chatId, CancellationToken cancellationToken)
-    {
-        // Consolidated at the SOURCE deliberately: everything downstream of AmIInLiveConversation has to
-        // stay immediately reactive, so the churn has to be absorbed here rather than on their outputs.
-        var state = await LiveSessions.GetState(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return _lastBlockStates[chatId] = state is null
-            ? null
-            : new LiveBlockState(
-                state.SessionStartedAt is not null,
-                state.EffectiveVisibleStartLid,
-                state.ContextStartLid,
-                state.EndEntryLid,
-                state.IsExpandedByDefault,
-                state.LastSummaryAt.EpochOffsetTicks > 0,
-                state.IsClosing);
-    }
+    [ComputeMethod]
+    public virtual Task<LiveConversation?> GetClosed(ConversationId conversationId, CancellationToken cancellationToken)
+        => LiveSessions.GetConversation(Session, conversationId, cancellationToken);
 
-    public Task<Conversation?> UseConversationOrLastKnown(ChatId chatId, Task<Conversation?> conversationTask)
-        => UseOrLastKnown(_lastConversations, chatId, conversationTask);
-
-    public Task<LiveBlockState?> UseBlockStateOrLastKnown(ChatId chatId, Task<LiveBlockState?> blockStateTask)
-        => UseOrLastKnown(_lastBlockStates, chatId, blockStateTask);
+    public Task<LiveConversation?> UseOpenConversationOrLastKnown(ChatId chatId, Task<LiveConversation?> task)
+        => UseOrLastKnown(_lastOpenConversations, chatId, task);
 
     [ComputeMethod]
     public virtual Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken)
@@ -507,8 +487,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     // Protected/internal methods
 
     // It's internal to be accessible from tests
-    internal LiveBlockState? GetLastKnownBlockState(ChatId chatId)
-        => _lastBlockStates.GetValueOrDefault(chatId);
+    internal LiveConversation? GetLastKnownOpenConversation(ChatId chatId)
+        => _lastOpenConversations.GetValueOrDefault(chatId);
 
     [ComputeMethod]
     protected virtual async Task<ChatId?> GetMutedRecordingChat(CancellationToken cancellationToken)
@@ -645,17 +625,3 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         return Task.FromResult(task.UseIfReady(lastKnown, computed));
     }
 }
-
-/// <summary>
-/// The live-session fields the block and the chat view render from, projected so the rest of
-/// <see cref="LiveSessionState"/> - participants, rules, ring state, activity - can churn without
-/// invalidating them.
-/// </summary>
-public sealed record LiveBlockState(
-    bool IsLatched,
-    long VisibleStartLid,
-    long ContextStartLid,
-    long EndEntryLid,
-    bool IsExpandedByDefault,
-    bool HasSummary,
-    bool IsClosing = false);

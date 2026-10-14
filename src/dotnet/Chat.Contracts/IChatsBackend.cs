@@ -1,4 +1,4 @@
-using ActualLab.Rpc;
+﻿using ActualLab.Rpc;
 
 namespace ActualChat.Chat;
 
@@ -280,7 +280,7 @@ public sealed partial record ChatsBackend_ChangeEntry(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatsBackend_CreateNotesChat(
     [property: DataMember, Key(0)] UserId UserId
-) : ICommand<ChatEntry>, IBackendCommand, IHasShardKey
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => UserId.ShardKey;

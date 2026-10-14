@@ -1,4 +1,4 @@
-using ActualChat.Live;
+﻿using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 
@@ -31,8 +31,8 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
         var after = await backend.GetState(chatId, default);
         after.Should().NotBeNull("the session the call rang into goes on");
         after!.Kind.Should().Be(LiveSessionKind.Ambient);
-        after.ConversationId.Should().Be(before.ConversationId, "its block is the same one");
-        after.IsClosing.Should().BeFalse("both of its speakers are still there");
+        after.OpenConversation!.Id.Should().Be(before.OpenConversation!.Id, "its block is the same one");
+        after.IsQuiet.Should().BeFalse("both of its speakers are still there");
         var live = await backend.Get(chatId, default);
         live!.Kind.Should().Be(LiveSessionKind.Ambient, "the call no longer overlays the session");
         var entries = await ReadCallEntries(tester, chatId);
@@ -57,7 +57,7 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
         (await backend.GetCall(chatId, default))!.IsAnswered.Should().BeTrue();
         var during = await backend.GetState(chatId, default);
         during!.Kind.Should().Be(LiveSessionKind.Ambient);
-        during.ConversationId.Should().Be(before.ConversationId);
+        during.OpenConversation!.Id.Should().Be(before.OpenConversation!.Id);
         var live = await backend.Get(chatId, default);
         live!.Kind.Should().Be(LiveSessionKind.Call);
         live.Conversation!.IsCall.Should().BeFalse("the block is the session's, not the call's");
@@ -69,7 +69,7 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
         (await backend.GetCall(chatId, default)).Should().BeNull("a call with one party left is over");
         var after = await backend.GetState(chatId, default);
         after.Should().NotBeNull("Alice still records, so the session goes on");
-        after!.ConversationId.Should().Be(before.ConversationId);
+        after!.OpenConversation!.Id.Should().Be(before.OpenConversation!.Id);
         (await ReadCallEntries(tester, chatId)).Should().BeEmpty("the entry waits for the call's last words");
         // Polled, as the chat's entries aren't read through anything the call invalidates. Nothing streams
         // here, so only the transcriber's own post-audio deadline (5 s) stands between the end and the entry.
@@ -106,7 +106,7 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
         // assert - nobody records, so the session closes, and its block is kept as the call's card
         (await backend.GetState(chatId, default)).Should().BeNull();
         var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
-        var conversation = await conversations.Get(session.ConversationId, default);
+        var conversation = await conversations.Get(session.OpenConversation!.Id, default);
         conversation!.IsCall.Should().BeTrue();
     }
 
@@ -172,7 +172,7 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
         // assert - it closes, and its block is kept as the call's card
         (await backend.GetState(chatId, default)).Should().BeNull();
         var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
-        var conversation = await conversations.Get(session.ConversationId, default);
+        var conversation = await conversations.Get(session.OpenConversation!.Id, default);
         conversation.Should().NotBeNull();
         conversation!.IsCall.Should().BeTrue();
     }
@@ -207,7 +207,7 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
         await backend.OnStreamRegistered(chatId, bobId, null, false, true, default);
         await backend.OnStreamRegistered(chatId, aliceId, null, false, true, default);
         var state = await backend.GetState(chatId, default);
-        state!.SessionStartedAt.Should().NotBeNull("two speakers latch the session");
+        state!.StartedAt.Should().NotBeNull("two speakers start the session");
         state.Kind.Should().Be(LiveSessionKind.Ambient);
         return state;
     }

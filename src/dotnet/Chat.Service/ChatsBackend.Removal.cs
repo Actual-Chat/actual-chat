@@ -46,6 +46,7 @@ public partial class ChatsBackend
     }
 
     // [CommandHandler]
+    [SuppressMessage("ReSharper", "AccessToModifiedClosure")]
     public virtual async Task<Range<long>> OnRequestHistoryWipe(
         ChatsBackend_RequestHistoryWipe command, CancellationToken cancellationToken)
     {
@@ -131,6 +132,7 @@ public partial class ChatsBackend
     }
 
     // [CommandHandler]
+    [SuppressMessage("ReSharper", "AccessToModifiedClosure")]
     public virtual async Task<int> OnPurgeEntryBatch(
         ChatsBackend_PurgeEntryBatch command, CancellationToken cancellationToken)
     {
@@ -180,10 +182,11 @@ public partial class ChatsBackend
             if (conversationStart is { } start)
                 firstKeptEntryLid = Math.Min(firstKeptEntryLid, start);
 
-            var liveStart = await LiveSessionsBackend
-                .GetVisibleStartLid(chatId, cancellationToken).ConfigureAwait(false);
-            if (liveStart is { } liveEntryLid)
-                firstKeptEntryLid = Math.Min(firstKeptEntryLid, liveEntryLid);
+            var liveConversationId = await LiveSessionsBackend
+                .GetOpenLiveConversationId(chatId, cancellationToken)
+                .ConfigureAwait(false);
+            if (liveConversationId is not null)
+                firstKeptEntryLid = Math.Min(firstKeptEntryLid, liveConversationId.StartEntryLid);
             var activeThreadStartEntryLid = await GetActiveThreadStartEntryLid(
                     dbContext, chatId, maxClearedEntryLid, firstKeptEntryLid, cutoff, cancellationToken)
                 .ConfigureAwait(false);

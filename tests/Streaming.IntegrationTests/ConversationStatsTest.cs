@@ -1,4 +1,4 @@
-using ActualChat.Audio;
+﻿using ActualChat.Audio;
 using ActualChat.Live;
 using ActualChat.Testing.Host;
 using ActualLab.Generators;
@@ -10,17 +10,17 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact(Timeout = 60_000)]
-    public async Task NoLatchedSessionYieldsNull()
+    public async Task NoStartedSessionYieldsNull()
     {
         // arrange
         var services = AppHost.Services;
         var session = Session.New();
         _ = await AppHost.SignIn(session, new AccountFull("Kate"));
-        var chat = await CreateChat(session, nameof(NoLatchedSessionYieldsNull));
+        var chat = await CreateChat(session, nameof(NoStartedSessionYieldsNull));
         var author = await services.GetRequiredService<IAuthors>().GetOwn(session, chat.Id, default);
         author.Require();
 
-        // act - voice entries alone don't latch a session; it takes 2+ authors streaming
+        // act - voice entries alone don't start a session; it takes 2+ authors streaming
         await AddVoiceEntry(chat.Id, author.Id, "Hello there");
 
         // assert
@@ -33,7 +33,7 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task TranscriptSizeIsSummedPerAuthor()
     {
         // arrange
-        var (session, chat, authorId) = await NewLatchedSession(nameof(TranscriptSizeIsSummedPerAuthor));
+        var (session, chat, authorId) = await NewStartedSession(nameof(TranscriptSizeIsSummedPerAuthor));
 
         // act
         await AddVoiceEntry(chat.Id, authorId, "Hello there");
@@ -49,7 +49,7 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task SpeechDurationIsSummedPerAuthor()
     {
         // arrange
-        var (session, chat, authorId) = await NewLatchedSession(nameof(SpeechDurationIsSummedPerAuthor));
+        var (session, chat, authorId) = await NewStartedSession(nameof(SpeechDurationIsSummedPerAuthor));
         // The window is clamped to the session start, so these have to sit inside the session
         var now = AppHost.Services.Clocks().SystemClock.Now;
 
@@ -66,7 +66,7 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task TypedMessagesDoNotCount()
     {
         // arrange
-        var (session, chat, authorId) = await NewLatchedSession(nameof(TypedMessagesDoNotCount));
+        var (session, chat, authorId) = await NewStartedSession(nameof(TypedMessagesDoNotCount));
 
         // act - no Audio on this one, so nobody could have heard it
         await AppHost.Services.Commander().Call(new ChatsBackend_ChangeEntry(
@@ -87,7 +87,7 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
     public async Task SpeechOlderThanTheWindowIsNotCounted()
     {
         // arrange
-        var (session, chat, authorId) = await NewLatchedSession(nameof(SpeechOlderThanTheWindowIsNotCounted));
+        var (session, chat, authorId) = await NewStartedSession(nameof(SpeechOlderThanTheWindowIsNotCounted));
         var window = AppHost.Services.GetRequiredService<AudioSettings>().ConversationWindow;
 
         // act
@@ -102,7 +102,7 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
 
     // Private methods
 
-    private async Task<(Session Session, Chat.Chat Chat, AuthorId AuthorId)> NewLatchedSession(string title)
+    private async Task<(Session Session, Chat.Chat Chat, AuthorId AuthorId)> NewStartedSession(string title)
     {
         var services = AppHost.Services;
         var session = Session.New();
@@ -117,7 +117,7 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
         var otherAuthor = await services.GetRequiredService<IAuthors>().GetOwn(otherSession, chat.Id, default);
         otherAuthor.Require();
 
-        // SessionStartedAt latches only once a second author is in - accepting a call is the
+        // StartedAt is set only once a second author is in - accepting a call is the
         // shortest path to that; ambient sessions get there via two registered audio streams.
         var liveSessions = services.GetRequiredService<ILiveSessions>();
         var callId = await liveSessions.StartCall(session, chat.Id, default, false, "test-caller", default);
@@ -141,7 +141,7 @@ public class ConversationStatsTest(AppHostFixture fixture, ITestOutputHelper @ou
                 Create = new ChatDiff {
                     Title = title,
                     Kind = ChatKind.Group,
-                    IsPublic = true, // So the second author can join and latch the session
+                    IsPublic = true, // So the second author can join and start the session
                 },
             },
         });

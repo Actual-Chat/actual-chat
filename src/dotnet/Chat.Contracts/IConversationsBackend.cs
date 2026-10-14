@@ -25,13 +25,13 @@ public interface IConversationsBackend : IComputeService, IBackendService
     // Commands
 
     [CommandHandler]
-    Task<Conversation> OnChange(ConversationBackend_Change command, CancellationToken cancellationToken);
+    Task<Conversation?> OnChange(ConversationBackend_Change command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Conversation> OnSummarize(ConversationBackend_Summarize command, CancellationToken cancellationToken);
+    Task<Conversation?> OnSummarize(ConversationBackend_Summarize command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Conversation> OnMaterialize(ConversationBackend_Materialize command, CancellationToken cancellationToken);
+    Task<Conversation?> OnMaterialize(ConversationBackend_Materialize command, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<Conversation?> OnAppendReply(ConversationBackend_AppendReply command, CancellationToken cancellationToken);
@@ -46,7 +46,7 @@ public sealed partial record ConversationBackend_Change(
     [property: DataMember, Key(0)] ConversationId ConversationId,
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<ConversationDiff> Change
-) : ICommand<Conversation>, IBackendCommand, IHasShardKey
+) : ICommand<Conversation?>, IBackendCommand, IHasShardKey
 {
     [DataMember, Key(3)]
     public bool IsLiveMaterialization { get; init; }
@@ -63,7 +63,7 @@ public sealed partial record ConversationBackend_Change(
 public sealed partial record ConversationBackend_Summarize(
     [property: DataMember, Key(0)] ChatId ChatId,
     [property: DataMember, Key(1)] Range<long>[] EntryLidRanges
-    ) : ICommand<Conversation>, IBackendCommand, IHasShardKey, IHasDelayUntil, IHasTimeout
+    ) : ICommand<Conversation?>, IBackendCommand, IHasShardKey, IHasDelayUntil, IHasTimeout
 {
     [DataMember, Key(2)]
     public Moment DelayUntil { get; init; }
@@ -84,7 +84,7 @@ public sealed partial record ConversationBackend_Summarize(
 // ReSharper disable once InconsistentNaming
 public sealed partial record ConversationBackend_Materialize(
     [property: DataMember, Key(0)] Conversation Conversation
-) : ICommand<Conversation>, IBackendCommand, IHasShardKey
+) : ICommand<Conversation?>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Conversation.Id.ChatId.ShardKey;
@@ -99,7 +99,7 @@ public sealed partial record ConversationBackend_AppendReply(
     [property: DataMember, Key(0)] ChatId ChatId,
     [property: DataMember, Key(1)] long EntryLid,
     [property: DataMember, Key(2)] Range<long> ReplyLidRange
-) : ICommand<Conversation>, IBackendCommand, IHasShardKey, IHasDelayUntil, IHasTimeout
+) : ICommand<Conversation?>, IBackendCommand, IHasShardKey, IHasDelayUntil, IHasTimeout
 {
     [DataMember, Key(3)]
     public Moment DelayUntil { get; init; }

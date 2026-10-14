@@ -4,6 +4,7 @@ using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
 using ActualChat.Db;
 using ActualChat.Flows;
+using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -96,10 +97,14 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (nextConversationRange is { } next)
             conversationRanges.Add(next);
 
-        var liveStartLid = await LiveSessionsBackend.GetVisibleStartLid(chatId, cancellationToken)
+        var openConversationId = await LiveSessionsBackend
+            .GetOpenLiveConversationId(chatId, cancellationToken)
             .ConfigureAwait(false);
-        if (liveStartLid is { } liveStart)
-            conversationRanges.Add(new(liveStart, long.MaxValue));
+        if (openConversationId is not null)
+            conversationRanges.Add(new(openConversationId.StartEntryLid, long.MaxValue));
+        var closedConversations = await ListClosedLiveConversations(chatId, cancellationToken).ConfigureAwait(false);
+        foreach (var closedConversation in closedConversations)
+            conversationRanges.Add(new(closedConversation.MaterializedStartLid, closedConversation.EndLid));
 
         return ConversationRangeTile.NewNormalized(chatId, range, conversationRanges);
     }
@@ -109,27 +114,50 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatId chatId, Range<long> range, CancellationToken cancellationToken)
     {
         var tile = ConversationIdTiles.GetTile(range);
-        var conversationRangeTile = await GetConversationRangeTile(chatId, tile.Start, cancellationToken)
-            .ConfigureAwait(false);
+        var rangeTileTask = GetConversationRangeTile(chatId, tile.Start, cancellationToken);
+        var openLiveConversationTask = LiveSessionsBackend.GetOpenLiveConversation(chatId, cancellationToken);
+        var closedLiveConversationsTask = ListClosedLiveConversations(chatId, cancellationToken);
+
+        var conversationRangeTile = await rangeTileTask.ConfigureAwait(false);
         var conversations = await conversationRangeTile.ConversationIds
             .Distinct()
             .Select(cId => Get(cId, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-        var liveConversation = await LiveSessionsBackend.GetLiveConversation(chatId, cancellationToken)
-            .ConfigureAwait(false);
-        var records = conversations.SkipNullItems().Where(c => c.Id != liveConversation?.Id);
-        if (liveConversation != null)
-            records = records.Append(liveConversation);
+        var openLiveConversation = await openLiveConversationTask.ConfigureAwait(false);
+        var openConversation = openLiveConversation?.ToConversation();
+        var closedLiveConversations = await closedLiveConversationsTask.ConfigureAwait(false);
+        var closedConversations = closedLiveConversations
+            .Select(c => c.ToMaterializedConversation())
+            .ToList();
 
-        return conversationRangeTile.ApplyTo(records, range);
+        var allConversations = conversations.SkipNullItems()
+            .Where(c => c.Id != openConversation?.Id && closedConversations.All(x => x.Id != c.Id));
+        if (openConversation != null)
+            allConversations = allConversations.Append(openConversation);
+        allConversations = allConversations.Concat(closedConversations);
+        return conversationRangeTile.ApplyTo(allConversations, range);
+    }
+
+    // Closed live conversations nobody has saved yet stand in for their saved ones, so that the chat
+    // doesn't lose their cards between the close and the save
+    private async Task<List<LiveConversation>> ListClosedLiveConversations(
+        ChatId chatId, CancellationToken cancellationToken)
+    {
+        var result = new List<LiveConversation>();
+        foreach (var id in await LiveSessionsBackend.ListLiveConversations(chatId, cancellationToken).ConfigureAwait(false)) {
+            var conversation = await LiveSessionsBackend.GetLiveConversation(id, cancellationToken).ConfigureAwait(false);
+            if (conversation is { IsOpen: false })
+                result.Add(conversation);
+        }
+        return result;
     }
 
     // Commands
 
     // [CommandHandler]
-    public virtual async Task<Conversation> OnChange(ConversationBackend_Change command, CancellationToken cancellationToken)
+    public virtual async Task<Conversation?> OnChange(ConversationBackend_Change command, CancellationToken cancellationToken)
     {
         var (conversationId, _, change) = command;
         var chatId = conversationId.ChatId;
@@ -147,7 +175,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             var dbChat = await dbContext.Chats.ForShare()
                 .FirstOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken).ConfigureAwait(false);
             if (dbChat is null || await ChatsBackend.IsRemovalPending(chatId, cancellationToken).ConfigureAwait(false))
-                return null!;
+                return null;
 
             // A summary can finish after a purge took the messages it was made of and removed their
             // conversation: the chat lock is shared with the purge, so a source that is gone by now
@@ -163,7 +191,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
                         cancellationToken)
                     .ConfigureAwait(false);
                 if (!hasSource)
-                    return null!;
+                    return null;
             }
         }
 
@@ -303,7 +331,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     [CommandHandler]
-    public virtual async Task<Conversation> OnSummarize(
+    public virtual async Task<Conversation?> OnSummarize(
         ConversationBackend_Summarize command,
         CancellationToken cancellationToken)
     {
@@ -329,9 +357,9 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (emptyExisting is not null && emptyExisting.EndEntryLid <= endEntryLid) {
                 var removeCommand = new ConversationBackend_Change(
                     conversationId, emptyExisting.Version, Change.Remove<ConversationDiff>());
-                await DbHub.Commander.Call(removeCommand, false, cancellationToken).ConfigureAwait(false);
+                await Commander.Call(removeCommand, false, cancellationToken).ConfigureAwait(false);
             }
-            return default!;
+            return null;
         }
 
         var firstEntry = entries.First();
@@ -373,12 +401,12 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (existing is { IsCall: true })
             conversation = KeepCallShape(existing, conversation, entries);
 
-        return (await Persist(conversation, command.IsLiveMaterialization, cancellationToken)
-            .ConfigureAwait(false))!;
+        return await Persist(conversation, command.IsLiveMaterialization, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     [CommandHandler]
-    public virtual async Task<Conversation> OnMaterialize(
+    public virtual async Task<Conversation?> OnMaterialize(
         ConversationBackend_Materialize command,
         CancellationToken cancellationToken)
     {
@@ -386,15 +414,13 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var conversation = command.Conversation;
         var words = 0;
         if (conversation.IsCall)
-            (conversation, words) = await SizeCallConversation(conversation, cancellationToken)
-                .ConfigureAwait(false);
+            (conversation, words) = await SizeCallConversation(conversation, cancellationToken).ConfigureAwait(false);
         // Persist writes nothing and returns null when the conversation is already below the chat's
         // visibility boundary, so there is no call left to schedule a refresh for.
-        var result = await Persist(conversation, isLiveMaterialization: true, cancellationToken)
-            .ConfigureAwait(false);
+        var result = await Persist(conversation, isLiveMaterialization: true, cancellationToken).ConfigureAwait(false);
         if (conversation.IsCall && result is not null)
             await ScheduleCallRefresh(result, words, cancellationToken).ConfigureAwait(false);
-        return result!;
+        return result;
     }
 
     private Task ScheduleCallRefresh(Conversation conversation, int words, CancellationToken cancellationToken)
@@ -463,7 +489,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
 
     // Returns null when OnChange declined the write - see its visibility boundary check
     private async Task<Conversation?> Persist(
-        Conversation conversation, bool isLiveMaterialization, CancellationToken cancellationToken)
+        Conversation conversation, bool isLiveMaterialization,
+        CancellationToken cancellationToken)
     {
         var existing = await Get(conversation.Id, cancellationToken).ConfigureAwait(false);
         var change = existing != null
@@ -472,7 +499,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var changeCommand = new ConversationBackend_Change(conversation.Id, existing?.Version, change) {
             IsLiveMaterialization = isLiveMaterialization,
         };
-        return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
+        return await Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -519,7 +546,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         };
         var change = Change.Update(diff);
         var changeCommand = new ConversationBackend_Change(conversationId, conversation.Version, change);
-        return await DbHub.Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
+        return await Commander.Call(changeCommand, false, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods

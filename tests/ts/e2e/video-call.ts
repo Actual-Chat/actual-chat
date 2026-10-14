@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Shared steps for e2e tests that need a live video session between two signed-in users: opening
  * the call chat, starting the recorder and the camera, driving the call screen's video, and hanging up.
  */
@@ -199,7 +199,7 @@ export async function hangUpIfAny(page: Page | undefined) {
 
 /** Host first, so they own the session; resolves once the guest can react and the host sees the guest's tile. */
 export async function startSession(host: Page, guest: Page) {
-    // A session has to latch before a hand can go up, and it closes again if nobody is recording
+    // A session has to start before a hand can go up, and it closes again if nobody is recording
     // yet when the cameras start. The speech WAV makes that rare; the retry covers the rest.
     for (let attempt = 1; ; attempt++) {
         await startRecording(host);
@@ -214,9 +214,9 @@ export async function startSession(host: Page, guest: Page) {
         if (canReact)
             break;
         if (attempt === 3)
-            throw new Error('The live session never latched: no React button after 3 attempts');
+            throw new Error('The live session never started: no React button after 3 attempts');
 
-        console.log(`Live session did not latch (attempt ${attempt}), restarting both cameras`);
+        console.log(`Live session did not start (attempt ${attempt}), restarting both cameras`);
         await hangUpIfAny(guest);
         await hangUpIfAny(host);
         await host.waitForTimeout(3_000);

@@ -2,7 +2,7 @@ namespace ActualChat.Testing.Host;
 
 public static class ConversationOperations
 {
-    public static Task<Conversation> CreateConversation(
+    public static async Task<Conversation> CreateConversation(
         this IWebTester tester,
         ChatEntry firstEntry,
         ChatEntry lastEntry,
@@ -19,6 +19,6 @@ public static class ConversationOperations
             StartsAt = firstEntry.BeginsAt,
             EndsAt = lastEntry.BeginsAt,
         };
-        return tester.Commander.Call(new ConversationBackend_Materialize(conversation));
+        return (await tester.Commander.Call(new ConversationBackend_Materialize(conversation)))!;
     }
 }

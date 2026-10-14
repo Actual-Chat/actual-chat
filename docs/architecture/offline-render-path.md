@@ -194,7 +194,7 @@ whole build, and with it every scroll request until the peer reconnects.
 | `IChats.GetChatRangeTile(session, chatId, metaTileStart)` × meta tiles covering the load zone ± `LoadLimit` | cached | Every build. `UseRangeTileOrLastKnown` stands in only after a first successful read. | T (around the tail), D |
 | `IConversations.GetTile(session, chatId, metaTileRange)` × meta tiles | cached | Every build, unconditionally | T |
 | `IChats.GetTile(session, chatId, idTileRange)` × id tiles (+1 preceding) | cached | Every tile in the zone, plus a speculative second copy for the adjacent zone | T (last 100 entries only) |
-| `ILiveSessions.GetState(session, chatId)` via `LiveSessionUI.GetConversation`, `LiveSessionUI.GetBlockState` and `LiveBlockUI.GetBlock` | **no-cache** | Every build. `UseConversationOrLastKnown` / `UseBlockStateOrLastKnown` **await the first read** - a chat opened for the first time in this process never renders offline. | n/a |
+| `ILiveSessions.GetState(session, chatId)` via `LiveSessionUI.GetOpenConversation` and `LiveBlockUI.GetBlock` | **no-cache** | Every build. `UseOpenConversationOrLastKnown` **awaits the first read** - a chat opened for the first time in this process never renders offline. | n/a |
 | `IChats.GetIdRange` + `IChats.GetTile` scan (`ChatUI.IsEmpty`) | cached | Only when a build yields no items | T |
 
 ### Chat view: per rendered message
@@ -216,7 +216,7 @@ whole build, and with it every scroll request until the peer reconnects.
 | `ISharedLocations.Get` | cached | Location messages | — |
 | `IChats.Get(forwardedChatId)`, `IChats.GetForwardChatReplacement`, `IAuthors.Get` | cached | Forwarded messages | — |
 | `LinkPreviewUI` chain: `IChats.Get`, `IChats.GetEntry`, `IAuthors.Get`, `IPlaces.Get`, `IAccounts.Get`, `IInvites.GetInviteChatLinkPreview` | cached | Every Voxt link inside a message | — |
-| Conversation cards: `ITranslations.Get` ×3, `ILiveSessions.GetState` ×3 (**no-cache**), `IAuthors.Get` per participant, `LiveBlockUI.GetBlockState` | mixed | Summarised conversations | T for the tile, — for the rest |
+| Conversation cards: `ITranslations.Get` ×3, `ILiveSessions.GetState` ×3 (**no-cache**), `IAuthors.Get` per participant | mixed | Summarised conversations | T for the tile, — for the rest |
 | `ILiveAudioStreams.GetTranscriptStream` | rpc stream | Entries still marked as streaming; `RetryForever` with 3-60 s backoff | n/a |
 | `ILiveAudioStreams.GetReplayStream` | rpc stream | Play button | n/a |
 | `IInvites.GetOrGenerateChatInvite` | cached, side-effecting | Welcome block of an empty chat | n/a |

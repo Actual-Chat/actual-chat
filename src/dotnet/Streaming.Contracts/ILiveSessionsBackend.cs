@@ -1,4 +1,4 @@
-using ActualChat.Attributes;
+﻿using ActualChat.Attributes;
 using ActualChat.Live;
 using ActualLab.Rpc;
 
@@ -11,12 +11,21 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken);
 
-    // The two below drop GetState's churn - see LiveSessionsBackend.GetConsolidatedVisibleStartLid.
-    // A latched session owns [lid, +inf) - it always runs to the chat's tail, so there is no end to return.
     [ComputeMethod]
-    Task<long?> GetVisibleStartLid(ChatId chatId, CancellationToken cancellationToken);
+    Task<ConversationId?> GetOpenLiveConversationId(ChatId chatId, CancellationToken cancellationToken);
+    // The open conversation, null until the session starts. It drops GetState's churn - see
+    // LiveSessionsBackend.GetConsolidatedOpenLiveConversation. An open conversation owns [StartLid, +inf).
     [ComputeMethod]
-    Task<Conversation?> GetLiveConversation(ChatId chatId, CancellationToken cancellationToken);
+    Task<LiveConversation?> GetOpenLiveConversation(ChatId chatId, CancellationToken cancellationToken);
+    // The open conversation's id first, then the closed ones, newest first. A closed one is listed until the
+    // saved conversation covering it appears, or it expires.
+    [ComputeMethod]
+    Task<ApiArray<ConversationId>> ListLiveConversations(ChatId chatId, CancellationToken cancellationToken);
+    // A closed conversation never changes; the open one is served here too, but GetOpenLiveConversation is the one to follow.
+    // Not named Get: RPC methods are told apart by name and argument count, and Get(ChatId) has both.
+    [ComputeMethod]
+    Task<LiveConversation?> GetLiveConversation(ConversationId conversationId, CancellationToken cancellationToken);
+
     [ComputeMethod]
     Task<LiveSession?> Get(ChatId chatId, CancellationToken cancellationToken);
     // These two consolidate as well - see LiveSessionsBackend.GetConsolidatedParticipants.
@@ -58,11 +67,11 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     Task SetHost(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
     Task SetHandRaised(ChatId chatId, AuthorId authorId, bool isRaised, CancellationToken cancellationToken);
     Task LowerAllHands(ChatId chatId, CancellationToken cancellationToken);
-    Task UpdateSummary(
+    Task UpdateLiveConversationSummary(
         ChatId chatId,
-        LiveSessionSummary summary,
+        LiveConversationSummary summary,
         CancellationToken cancellationToken);
-    Task SetContextStart(ChatId chatId, long contextStartLid, CancellationToken cancellationToken);
+    Task SetLiveConversationContextStart(ChatId chatId, long contextStartLid, CancellationToken cancellationToken);
     Task FinalizeSession(ChatId chatId, CancellationToken cancellationToken);
 
     // Voice-call ring lifecycle (StartCall invitees empty = every other chat member).

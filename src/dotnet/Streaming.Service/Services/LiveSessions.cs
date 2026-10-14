@@ -1,4 +1,4 @@
-using ActualChat.Audio;
+﻿using ActualChat.Audio;
 using ActualChat.Live;
 using ActualLab.Rpc.Infrastructure;
 
@@ -36,6 +36,33 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
         return await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<LiveConversation?> GetOpenConversation(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        return await Backend.GetOpenLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ConversationId>> ListConversations(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        return await Backend.ListLiveConversations(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<LiveConversation?> GetConversation(
+        Session session, ConversationId conversationId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, conversationId.ChatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        return await Backend.GetLiveConversation(conversationId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -331,9 +358,9 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         using var _ = Computed.BeginIsolation();
 
         var state = await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        // A session that never latched to 2+ authors isn't a conversation - one person streaming
+        // A session that never started with 2+ authors isn't a conversation - one person streaming
         // into an empty chat is exactly what the reminder this feeds exists for.
-        if (state?.SessionStartedAt is not { } startedAt)
+        if (state?.StartedAt is not { } startedAt)
             return null;
 
         var now = Clocks.ServerClock.Now;
@@ -486,7 +513,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         chat.Require();
         var ownAuthorId = chat.Rules.Author?.Id;
         var live = await Backend.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        var isHost = ownAuthorId is not null && live?.Host == ownAuthorId;
+        var isHost = ownAuthorId is not null && live?.HostAuthorId == ownAuthorId;
         return new CallAuthority(ownAuthorId, chat.Rules.IsOwner(), chat.Rules.CanModerate(), isHost);
     }
 
