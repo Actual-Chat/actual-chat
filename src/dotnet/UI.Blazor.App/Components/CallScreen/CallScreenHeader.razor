@@ -10,6 +10,9 @@
     var isExpanded = m.Mode == VisualActivityPanelMode.Expanded;
     var isIsland = m.Mode == VisualActivityPanelMode.Collapsed;
     var isInCall = m.Phase == CallPhase.Active;
+    var hasPinToggle = m.RemoteAuthorCount > 1;
+    // Speaker view hides the speaker's tile label (the name is in the header), so its hand moves here too
+    var hasFocusedHand = isExpanded && m.IsFocusedHandRaised;
 }
 
 <div class="call-screen-toolbar call-screen-header">
@@ -95,17 +98,18 @@
     @* Pin toggle: fixes the focused (big) tile on a chosen author instead of auto-following the
        active speaker. Only in the default (non-equal) layout, and only with two remote authors or more:
        a single one is always the one in focus. *@
-    @if (m.RemoteAuthorCount > 1 && !m.IsEqualLayout && !isIsland) {
+    @if ((hasPinToggle || hasFocusedHand) && !m.IsEqualLayout && !isIsland) {
         <div class="header-row header-row-pin">
-            <HeaderButton
-                Class="@("btn-glass btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
-                StopPropagation="true"
-                PreventDefault="true"
-                Click="@OnTogglePinClick">
-                <i class="icon-pin text-lg"></i>
-            </HeaderButton>
-            @* Speaker view hides the speaker's tile label (the name is in the header), so its hand moves here too *@
-            @if (isExpanded && m.IsFocusedHandRaised) {
+            @if (hasPinToggle) {
+                <HeaderButton
+                    Class="@("btn-glass btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@OnTogglePinClick">
+                    <i class="icon-pin text-lg"></i>
+                </HeaderButton>
+            }
+            @if (hasFocusedHand) {
                 <div class="btn-glass btn-h btn-hand on">
                     <i class="icon-hand text-lg"></i>
                 </div>
