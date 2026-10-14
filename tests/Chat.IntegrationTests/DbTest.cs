@@ -22,7 +22,6 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         logger.LogInformation("app host init");
 
         var chatId = TestChatId;
-        var entryKind = 0;
         var range = new Range<long>(1500, 1601);
 
         var dbHub = appHost.Services.GetRequiredService<DbHub<ChatDbContext>>();
@@ -59,7 +58,7 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         for (var i = 0; i < 10; i++) {
             var localI = i;
             var readTask = MeasureDuration(
-                () => ReadChatEntries(dbHub, chatId, entryKind, range, default),
+                () => ReadChatEntries(dbHub, chatId, range, default),
                 logger, $"ReadChatEntries#{localI}");
             readTasks.Add(readTask);
         }
@@ -82,13 +81,12 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
         logger.LogInformation("app host init");
 
         var chatId = TestChatId;
-        var entryKind = 0;
         var localId1 = 1500;
         var localId2 = 1600;
 
         var dbHub = appHost.Services.GetRequiredService<DbHub<ChatDbContext>>();
-        var task1 = Task.Run(() => ProvokeDeadlock(dbHub, chatId, entryKind, localId1, localId2, default));
-        var task2 = Task.Run(() => ProvokeDeadlock(dbHub, chatId, entryKind, localId2, localId1, default));
+        var task1 = Task.Run(() => ProvokeDeadlock(dbHub, chatId, localId1, localId2, default));
+        var task2 = Task.Run(() => ProvokeDeadlock(dbHub, chatId, localId2, localId1, default));
         Exception? exception = null;
         try {
             await Task.WhenAll(task1, task2);
@@ -117,7 +115,6 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
     private static async Task<ChatEntry[]> ReadChatEntries(
         DbHub<ChatDbContext> dbHub,
         ChatId chatId,
-        int entryKind,
         Range<long> range,
         CancellationToken cancellationToken)
     {
@@ -126,7 +123,6 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
 
         var dbEntries = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value
-                && e.Kind == entryKind
                 && e.LocalId >= range.Start
                 && e.LocalId < range.End)
             .OrderBy(e => e.LocalId)
@@ -175,7 +171,6 @@ public class DbTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @ou
     private static async Task<Unit> ProvokeDeadlock(
         DbHub<ChatDbContext> dbHub,
         ChatId chatId,
-        int entryKind,
         long entry1LocalId,
         long entry2LocalId,
         CancellationToken cancellationToken)

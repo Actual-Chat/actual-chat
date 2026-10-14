@@ -379,7 +379,7 @@ public partial class ChatsBackend
         var reactionIds = new List<long>();
 
         var entries = await dbContext.ChatEntries
-            .Where(c => c.ChatId == chatSid && c.Kind == 0 && !c.IsRemovedAndPurged)
+            .Where(c => c.ChatId == chatSid && !c.IsRemovedAndPurged)
             .Where(c => c.LocalId >= minLocalId && c.LocalId < maxLocalId)
             .OrderBy(c => c.LocalId)
             .Take(batchLimit)
