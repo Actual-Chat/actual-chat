@@ -4,17 +4,16 @@
     @apply flex items-center gap-x-1 md:gap-x-2;
     @apply w-full min-h-12;
     @apply pl-2 pr-3;
-    @apply rounded-lg;
+    @apply rounded-lg border-b border-replay;
     @apply bg-replay;
     @apply text-replay;
-    box-shadow: 0 2px 6px var(--black-05);
 }
 .replay-subheader .c-play-btn {
     @apply flex-none;
     @apply w-10 h-10;
     @apply rounded-full;
-    color: var(--background-replay);
-    background: var(--accent-replay);
+    color: var(--accent-replay);
+    background: var(--border-replay);
 }
 body.hoverable .replay-subheader .c-play-btn:hover {
     filter: brightness(1.1);

@@ -1,6 +1,6 @@
 .translation-sub-header {
     @apply pl-1 pr-0;
-    @apply rounded-lg border-banner-default border-2;
+    @apply rounded-lg border-banner-default border-b;
     @apply bg-banner-default;
     @apply text-banner-default;
 }
