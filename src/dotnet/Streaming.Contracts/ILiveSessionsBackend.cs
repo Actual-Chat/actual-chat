@@ -9,6 +9,7 @@ namespace ActualChat.Streaming;
 public interface ILiveSessionsBackend : IComputeService, IBackendService
 {
     [ComputeMethod]
+    [LegacyName("GetState_Hidden", "2.21.9999")]
     Task<LiveSessionState?> GetState(ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
@@ -24,6 +25,7 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
     // A closed conversation never changes; the open one is served here too, but GetOpenLiveConversation is the one to follow.
     // Not named Get: RPC methods are told apart by name and argument count, and Get(ChatId) has both.
     [ComputeMethod]
+    [LegacyName("GetLiveConversation_Hidden", "2.21.9999")]
     Task<LiveConversation?> GetLiveConversation(ConversationId conversationId, CancellationToken cancellationToken);
 
     [ComputeMethod]
@@ -114,4 +116,33 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         long? entryLid,
         bool transcriptionOn,
         CancellationToken cancellationToken);
+
+    // Added with the live-conversation rework for 2.21 and older callers; GetState and GetLiveConversation
+    // keep their wire names there, so the new ones step aside as _Hidden.
+    [ComputeMethod]
+    [LegacyName(nameof(GetState), "2.21.9999")]
+    [Obsolete("2026.10: Use GetState - this one serves the 2.21 LiveSessionState layout to older callers.")]
+    Task<LegacyLiveSessionState?> LegacyGetState(ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    [LegacyName("GetVisibleStartLid", "2.21.9999")]
+    [Obsolete("2026.10: Use GetOpenLiveConversationId - this one answers 2.21 and older callers.")]
+    Task<long?> LegacyGetVisibleStartLid(ChatId chatId, CancellationToken cancellationToken);
+
+    [ComputeMethod]
+    [LegacyName(nameof(GetLiveConversation), "2.21.9999")]
+    [Obsolete("2026.10: Use GetOpenLiveConversation - this one answers 2.21 and older callers.")]
+    Task<Conversation?> LegacyGetLiveConversation(ChatId chatId, CancellationToken cancellationToken);
+
+    // Lays out like the old LiveSessionSummary, but SummaryEndLid arrives as its inclusive EndEntryLid
+    [LegacyName("UpdateSummary", "2.21.9999")]
+    [Obsolete("2026.10: Use UpdateLiveConversationSummary - this one takes the 2.21 inclusive summary end.")]
+    Task LegacyUpdateSummary(
+        ChatId chatId,
+        LiveConversationSummary summary,
+        CancellationToken cancellationToken);
+
+    [LegacyName("SetContextStart", "2.21.9999")]
+    [Obsolete("2026.10: Use SetLiveConversationContextStart - this one answers 2.21 and older callers.")]
+    Task LegacySetContextStart(ChatId chatId, long contextStartLid, CancellationToken cancellationToken);
 }

@@ -318,6 +318,44 @@ public partial class LiveSessionsBackend
         CancellationToken cancellationToken)
         => OnStreamRegistered(chatId, authorId, entryLid, transcriptionOn, true, cancellationToken);
 
+    // [ComputeMethod]
+    [Obsolete("2026.10: Use GetState - this one serves the 2.21 LiveSessionState layout to older callers.")]
+    public virtual async Task<LegacyLiveSessionState?> LegacyGetState(
+        ChatId chatId, CancellationToken cancellationToken)
+    {
+        var state = await GetState(chatId, cancellationToken).ConfigureAwait(false);
+        return LegacyLiveSessionState.From(state);
+    }
+
+    // [ComputeMethod]
+    [Obsolete("2026.10: Use GetOpenLiveConversationId - this one answers 2.21 and older callers.")]
+    public virtual async Task<long?> LegacyGetVisibleStartLid(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var id = await GetOpenLiveConversationId(chatId, cancellationToken).ConfigureAwait(false);
+        return id?.StartEntryLid;
+    }
+
+    // [ComputeMethod]
+    [Obsolete("2026.10: Use GetOpenLiveConversation - this one answers 2.21 and older callers.")]
+    public virtual async Task<Conversation?> LegacyGetLiveConversation(
+        ChatId chatId, CancellationToken cancellationToken)
+    {
+        var liveConversation = await GetOpenLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        return liveConversation?.ToConversation();
+    }
+
+    [Obsolete("2026.10: Use UpdateLiveConversationSummary - this one takes the 2.21 inclusive summary end.")]
+    public Task LegacyUpdateSummary(
+        ChatId chatId,
+        LiveConversationSummary summary,
+        CancellationToken cancellationToken)
+        => UpdateLiveConversationSummary(
+            chatId, summary with { SummaryEndLid = summary.SummaryEndLid + 1 }, cancellationToken);
+
+    [Obsolete("2026.10: Use SetLiveConversationContextStart - this one answers 2.21 and older callers.")]
+    public Task LegacySetContextStart(ChatId chatId, long contextStartLid, CancellationToken cancellationToken)
+        => SetLiveConversationContextStart(chatId, contextStartLid, cancellationToken);
+
     // Private methods
 
     private async Task<ParticipationInfo?> SafeGetParticipant(ChatId chatId, AuthorId authorId)

@@ -344,6 +344,18 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         => throw StandardError.NotSupported<ILiveSessions>(
             $"{nameof(LeaveCall)} is obsolete and no longer available.");
 
+    // Legacy methods
+
+    // [ComputeMethod]
+    [Obsolete("2026.10: Use GetState - this one serves the 2.21 LiveSessionState layout to older clients.")]
+    public virtual async Task<LegacyLiveSessionState?> LegacyGetState(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        chat.Require();
+        return await Backend.LegacyGetState(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
     // Protected methods
 
     // Session-less for the same reason as GetAudioStreamingAuthorIdsByChat. Every read below is

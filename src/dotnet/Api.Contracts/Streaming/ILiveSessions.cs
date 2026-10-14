@@ -1,5 +1,6 @@
 ﻿using ActualChat.Comparison;
 using ActualChat.Live;
+using ActualLab.Rpc;
 
 namespace ActualChat.Streaming;
 
@@ -13,6 +14,7 @@ public interface ILiveSessions : IComputeService
     // parks until reconnect - and "no session" is both the right offline answer and a non-blocking one.
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [LegacyName("GetState_Hidden", "2.21.9999")]
     Task<LiveSessionState?> GetState(Session session, ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
@@ -115,4 +117,13 @@ public interface ILiveSessions : IComputeService
     // Obsolete: hanging up now goes through SetParticipation (see ChatAudioUI/LiveSessionUI). Kept as a
     // throwing stub rather than removed, in case a stale client build still calls it.
     Task LeaveCall(Session session, ChatId chatId, CancellationToken cancellationToken);
+
+    // Legacy methods
+
+    // Added with the live-conversation rework: the 2.21 and older clients read the old LiveSessionState layout
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [LegacyName(nameof(GetState), "2.21.9999")]
+    [Obsolete("2026.10: Use GetState - this one serves the 2.21 LiveSessionState layout to older clients.")]
+    Task<LegacyLiveSessionState?> LegacyGetState(Session session, ChatId chatId, CancellationToken cancellationToken);
 }
