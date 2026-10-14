@@ -6,6 +6,7 @@ export * from './Pages/Landing/landing-video-modal';
 export * from './Pages/Landing/Docs/scrollToId';
 export * from './Pages/Landing/Docs/setSettings';
 export * from './Pages/Landing/landing';
+export * from './Pages/Ui/ui-page';
 export * from './Pages/VideoInputTestPage/video-input-test-page';
 
 export * from './Components/EmojiModal/emoji-modal';

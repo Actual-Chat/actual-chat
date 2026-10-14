@@ -1,0 +1,261 @@
+@page "/ui"
+@page "/ui/{Category}"
+@layout BaseLayout
+@using ActualChat.UI.Blazor.App.Module
+@using ActualChat.UI.Blazor.Services
+@inherits ComponentBase<AppUIHub>
+
+<RequireAccount MustBeAdmin="true"/>
+
+<div class="ui-kit theme-light" @ref="_rootRef" data-child="ui-kit">
+    <aside class="uk-sidebar">
+        <div class="uk-brand"><i class="icon-voxt"></i><span>Voxt UI</span></div>
+        <nav class="uk-nav">
+            @foreach (var group in Groups) {
+                <div class="uk-nav-group">
+                    <div class="uk-nav-group-title">@group.Title</div>
+                    @foreach (var item in group.Items) {
+                        <a class="@NavLinkClass(item.Key)" href="/ui/@item.Key">
+                            <i class="@item.Icon"></i><span>@item.Title</span>
+                        </a>
+                    }
+                </div>
+            }
+        </nav>
+        <a class="uk-exit" href="/chat">
+            <i class="icon-arrow-left"></i><span>Back to chats</span>
+        </a>
+    </aside>
+
+    <main class="uk-content">
+        <header class="uk-header">
+            <h1 class="uk-title">@CurrentItem.Title</h1>
+            <div class="uk-theme-switch">
+                <button type="button" data-theme="theme-light" class="is-active">Light</button>
+                <button type="button" data-theme="theme-dark">Dark</button>
+                <button type="button" data-theme="theme-ash">Ash</button>
+            </div>
+        </header>
+
+        <div class="uk-body">
+        @switch (CurrentKey) {
+            case "colors":
+                <p class="uk-lead">
+                    Semantic tokens resolve live for the selected theme.
+                    Click any swatch to copy its <code>var(--token)</code>.
+                </p>
+                <h2 class="uk-h2">Semantic</h2>
+                <div class="uk-colors-semantic"></div>
+                <h2 class="uk-h2">Raw palette</h2>
+                <div class="uk-colors-palette"></div>
+                break;
+            case "typography":
+                <p class="uk-lead">
+                    Semantic type scale — <code>text-&lt;role&gt;-&lt;weight&gt;</code>.
+                    Real <code>TT Commons Pro</code>.
+                </p>
+                <div class="uk-typescale"></div>
+                <h2 class="uk-h2">Families</h2>
+                <div class="uk-card uk-families">
+                    <div class="uk-type-row">
+                        <div class="uk-type-meta">sans<span>TT Commons Pro</span></div>
+                        <div class="uk-type-sample" style="font-size:1.25rem">
+                            The quick brown fox — Съешь ещё этих булок 0123456789
+                        </div>
+                    </div>
+                    <div class="uk-type-row">
+                        <div class="uk-type-meta">mono<span>TT Commons Pro Mono</span></div>
+                        <div class="uk-type-sample uk-mono" style="font-size:1.25rem">const value = 0123456789;</div>
+                    </div>
+                </div>
+                break;
+            case "icons":
+                <p class="uk-lead">The <code>icon</code> webfont. Click to copy the class.</p>
+                <div class="uk-icons-toolbar">
+                    <input class="uk-icons-search" type="search" placeholder="Filter icons…" autocomplete="off"/>
+                    <span class="uk-icons-count"></span>
+                </div>
+                <div class="uk-icons-grid"></div>
+                break;
+            case "shape":
+                <h2 class="uk-h2">Border radius</h2>
+                <div class="uk-card uk-specs">
+                    @foreach (var r in Radii) {
+                        <div class="uk-spec">
+                            <div class="uk-spec-box" style="border-radius:@r.Value"></div>
+                            <div class="uk-spec-cap">@r.Label</div>
+                        </div>
+                    }
+                </div>
+                <h2 class="uk-h2">Shadow</h2>
+                <div class="uk-card uk-specs">
+                    @foreach (var s in Shadows) {
+                        <div class="uk-spec">
+                            <div class="uk-spec-box uk-sh" style="box-shadow:@s.Value"></div>
+                            <div class="uk-spec-cap">@s.Label</div>
+                        </div>
+                    }
+                </div>
+                break;
+            case "buttons":
+                <h2 class="uk-h2">Variants</h2>
+                <div class="uk-card uk-row">
+                    <Button Class="btn-primary">Primary</Button>
+                    <Button Class="btn-secondary">Secondary</Button>
+                    <Button Class="btn-danger">Danger</Button>
+                    <Button Class="btn-cancel">Cancel</Button>
+                    <Button Class="btn-outline">Outline</Button>
+                    <Button Class="btn-transparent">Transparent</Button>
+                </div>
+                <h2 class="uk-h2">Sizes</h2>
+                <div class="uk-card uk-row">
+                    <Button Class="btn-primary btn-lg">Large</Button>
+                    <Button Class="btn-primary">Medium</Button>
+                    <Button Class="btn-primary btn-sm">Small</Button>
+                    <Button Class="btn-primary btn-xs">XS</Button>
+                </div>
+                <h2 class="uk-h2">Icon</h2>
+                <div class="uk-card uk-row">
+                    <ButtonRound><i class="icon-plus"></i></ButtonRound>
+                    <ButtonRound><i class="icon-search"></i></ButtonRound>
+                    <ButtonRound><i class="icon-settings"></i></ButtonRound>
+                    <Button Class="btn-primary"><i class="icon-paper-plane"></i>Send</Button>
+                </div>
+                break;
+            case "controls":
+                <h2 class="uk-h2">Toggle</h2>
+                <div class="uk-card uk-row">
+                    <Toggle IsChecked="false"/>
+                    <Toggle IsChecked="true"/>
+                </div>
+                <h2 class="uk-h2">Inputs</h2>
+                <div class="uk-card uk-row">
+                    <input class="uk-input" placeholder="Placeholder…"/>
+                    <input class="uk-input" value="Filled value"/>
+                </div>
+                break;
+            case "banners":
+                <div class="uk-card uk-stack">
+                    <div class="uk-banner uk-banner-default">
+                        <i class="icon-info"></i><span>Default banner message.</span>
+                        <button class="uk-banner-btn" type="button">Action</button>
+                    </div>
+                    <div class="uk-banner uk-banner-success">
+                        <i class="icon-checkmark-circle"></i><span>Saved successfully.</span>
+                        <button class="uk-banner-btn" type="button">Undo</button>
+                    </div>
+                    <div class="uk-banner uk-banner-info">
+                        <i class="icon-info"></i><span>A new version is available.</span>
+                        <button class="uk-banner-btn" type="button">Reload</button>
+                    </div>
+                    <div class="uk-banner uk-banner-warning">
+                        <i class="icon-alert-triangle"></i><span>Recording stops in 9s.</span>
+                        <button class="uk-banner-btn" type="button">Keep</button>
+                    </div>
+                    <div class="uk-banner uk-banner-error">
+                        <i class="icon-alert-circle"></i><span>Something went wrong.</span>
+                        <button class="uk-banner-btn" type="button">Retry</button>
+                    </div>
+                </div>
+                break;
+            case "toasts":
+                <p class="uk-lead">These fire the real <code>ToastUI</code>.</p>
+                <div class="uk-card uk-row">
+                    <Button Class="btn-primary"
+                            Click="@(_ => ToastUI.Show("With icon", "icon-checkmark-circle", ToastDismissDelay.Short))">
+                        Icon
+                    </Button>
+                    <Button Class="btn-primary"
+                            Click="@(_ => ToastUI.Show("Auto-dismiss toast", ToastDismissDelay.Long))">
+                        Auto dismiss
+                    </Button>
+                    <Button Class="btn-primary"
+                            Click="@(_ => ToastUI.Show("With action", () => {}, "Undo", ToastDismissDelay.Short))">
+                        Action
+                    </Button>
+                </div>
+                break;
+            case "surfaces":
+                <h2 class="uk-h2">Tiles</h2>
+                <div class="uk-card uk-stack">
+                    <div class="uk-tile">
+                        <div class="uk-tile-icon"><i class="icon-bell"></i></div>
+                        <div class="uk-tile-body">
+                            <div class="uk-tile-title">Notifications</div>
+                            <div class="uk-tile-caption">Alerts, mentions and replies</div>
+                        </div>
+                        <Toggle IsChecked="true"/>
+                    </div>
+                    <div class="uk-tile">
+                        <div class="uk-tile-icon"><i class="icon-language"></i></div>
+                        <div class="uk-tile-body">
+                            <div class="uk-tile-title">Language</div>
+                            <div class="uk-tile-caption">Transcription &amp; UI</div>
+                        </div>
+                        <i class="icon-chevron-right uk-tile-chevron"></i>
+                    </div>
+                </div>
+                <h2 class="uk-h2">Skeleton</h2>
+                <div class="uk-card">
+                    <div class="uk-skel-row">
+                        <div class="uk-skeleton" style="width:44px;height:44px;border-radius:50%"></div>
+                        <div class="uk-skel-lines">
+                            <div class="uk-skeleton" style="width:40%;height:14px"></div>
+                            <div class="uk-skeleton" style="width:75%;height:12px"></div>
+                        </div>
+                    </div>
+                </div>
+                break;
+        }
+        </div>
+    </main>
+</div>
+
+@code {
+    private static readonly string JSInitMethod = $"{BlazorUIAppModule.ImportName}.{nameof(UiPage)}.init";
+    private static readonly IReadOnlyList<NavGroup> Groups = [
+        new("Foundations", [
+            new("colors", "Colors", "icon-color-swatch"),
+            new("typography", "Typography", "icon-text"),
+            new("icons", "Icons", "icon-grid"),
+            new("shape", "Shape", "icon-layout"),
+        ]),
+        new("Components", [
+            new("buttons", "Buttons", "icon-interface"),
+            new("controls", "Controls", "icon-settings"),
+            new("banners", "Banners", "icon-megaphone"),
+            new("toasts", "Toasts", "icon-info"),
+            new("surfaces", "Surfaces", "icon-list"),
+        ]),
+    ];
+    private static readonly IReadOnlyList<Spec> Radii = [
+        new("8px · rounded-lg", "8px"),
+        new("12px · buttons/inputs", "12px"),
+        new("16px · cards/modals", "16px"),
+        new("24px", "24px"),
+        new("full · avatars", "50%"),
+    ];
+    private static readonly IReadOnlyList<Spec> Shadows = [
+        new("card", "0 1px 3px rgba(0,0,0,.08), 0 8px 24px rgba(0,0,0,.08)"),
+        new("hover", "0 2px 8px rgba(0,0,0,.1), 0 12px 32px rgba(0,0,0,.12)"),
+        new("modal", "0 25px 50px -12px rgba(0,0,0,.35)"),
+    ];
+
+    private ElementReference _rootRef;
+
+    [Parameter] public string? Category { get; set; }
+
+    private string CurrentKey
+        => Groups.SelectMany(g => g.Items).Any(i => i.Key == Category) ? Category! : "colors";
+    private NavItem CurrentItem => Groups.SelectMany(g => g.Items).First(i => i.Key == CurrentKey);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+        => await JS.InvokeVoidAsync(JSInitMethod, _rootRef, CurrentKey);
+
+    private string NavLinkClass(string key)
+        => key == CurrentKey ? "uk-nav-link is-active" : "uk-nav-link";
+
+    private sealed record NavGroup(string Title, IReadOnlyList<NavItem> Items);
+    private sealed record NavItem(string Key, string Title, string Icon);
+    private sealed record Spec(string Label, string Value);
+}
