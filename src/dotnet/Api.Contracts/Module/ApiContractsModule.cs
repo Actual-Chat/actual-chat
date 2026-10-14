@@ -106,6 +106,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         // Misc.
         rpc.AddClient<ICaptcha>();
         fusion.AddClient<ISystemProperties>();
+        AddRpcChecks(services, rpc);
         fusion.AddClient<IAppUpdates>();
         fusion.AddClient<ITimeZones>();
         fusion.AddClient<IPhones>();
@@ -121,14 +122,11 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.Rpc.AddWebSocketClient(c => {
             var options = RpcWebSocketClientOptions.Default with {
                 ConnectionUriResolver = peer => {
-                    if (peer.Ref != RpcRef.Default)
-                        throw StandardError.Internal("Client-side RpcPeer.Ref != RpcRef.Default.");
-
                     var client = c.GetRequiredService<RpcWebSocketClient>();
                     var settings = client.Options;
                     var urlMapper = client.Services.UrlMapper();
                     var sb = ActualLab.Text.StringBuilderExt.Acquire();
-                    sb.Append(RpcEndpointSelector.ApplyTo(urlMapper.WebsocketBaseUrl));
+                    sb.Append(GetPeerBaseUrl(peer, urlMapper.WebsocketBaseUrl));
                     sb.Append(settings.RequestPath);
                     sb.Append('?');
                     sb.Append(settings.ClientIdParameterName);
@@ -138,6 +136,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                     sb.Append(settings.SerializationFormatParameterName);
                     sb.Append('=');
                     sb.Append(peer.SerializationFormat.Key);
+                    AppendRelayAttestation(sb, peer);
                     var uri = sb.ToStringAndRelease().ToUri();
                     client.Services.LogFor<RpcWebSocketClient>()
                         .LogInformation("RPC WebSocket endpoint: {Host}", uri.Host);
@@ -191,14 +190,11 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         if (useRpcSwitchingClient)
             fusion.Rpc.AddHttpClient(c => RpcHttpClientOptions.Default with {
                 ConnectionUriResolver = peer => {
-                    if (peer.Ref != RpcRef.Default)
-                        throw StandardError.Internal("Client-side RpcPeer.Ref != RpcRef.Default.");
-
                     var client = c.GetRequiredService<RpcHttpClient>();
                     var settings = client.Options;
                     var urlMapper = client.Services.UrlMapper();
                     var sb = ActualLab.Text.StringBuilderExt.Acquire();
-                    sb.Append(RpcEndpointSelector.ApplyTo(urlMapper.BaseUrl.TrimSuffix("/")));
+                    sb.Append(GetPeerBaseUrl(peer, urlMapper.BaseUrl.TrimSuffix("/")));
                     sb.Append(settings.RequestPath);
                     sb.Append('?');
                     sb.Append(settings.ClientIdParameterName);
@@ -208,6 +204,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
                     sb.Append(settings.SerializationFormatParameterName);
                     sb.Append('=');
                     sb.Append(peer.SerializationFormat.Key);
+                    AppendRelayAttestation(sb, peer);
                     var uri = sb.ToStringAndRelease().ToUri();
                     client.Services.LogFor<RpcHttpClient>()
                         .LogInformation("RPC HTTP endpoint: {Host}", uri.Host);
@@ -282,6 +279,55 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
     }
 
     // Private methods
+
+    private static string GetPeerBaseUrl(RpcPeer peer, string baseUrl)
+    {
+        if (peer.Ref == RpcRef.Default)
+            return RpcEndpointSelector.ApplyToForConnection(baseUrl);
+        if (RelayRef.TryParse(peer.Ref, out var relayRef))
+            return RpcEndpointSelector.WithHost(baseUrl, relayRef.Host);
+
+        throw StandardError.Internal("Client-side RpcPeer.Ref is neither RpcRef.Default nor a RelayRef's.");
+    }
+
+    private static void AddRpcChecks(IServiceCollection services, RpcBuilder rpc)
+    {
+        rpc.AddClient<IRpcChecks>();
+
+        // A check goes through the peer its first argument names
+        services.ReplaceFactory<RpcOutboundCallOptions>((_, oldFactory) => {
+            var options = oldFactory.Invoke();
+            var defaultRouterFactory = options.RouterFactory;
+            return options with {
+                RouterFactory = methodDef => methodDef.Service.Type == typeof(IRpcChecks)
+                    ? args => ((RelayRef)args.GetUntyped(0)!).ToRpcRef()
+                    : defaultRouterFactory.Invoke(methodDef),
+            };
+        });
+
+        // A check connects once: whatever goes wrong with its peer ends it, so it never reconnects
+        services.ReplaceFactory<RpcPeerOptions>((_, oldFactory) => {
+            var options = oldFactory.Invoke();
+            var defaultDetector = options.TerminalErrorDetector;
+            return options with {
+                TerminalErrorDetector = (peer, error)
+                    => RelayRef.IsRelayRef(peer.Ref) || defaultDetector.Invoke(peer, error),
+            };
+        });
+    }
+
+    // Through a relay the origin can't see the client's IP, so the relay's word for it goes along
+    private static void AppendRelayAttestation(System.Text.StringBuilder sb, RpcPeer peer)
+    {
+        if (peer.Ref != RpcRef.Default
+            || RpcEndpointSelector.Instance is not { } selector
+            || selector.ConnectHost is not { } connectHost
+            || selector.GetAttestation(connectHost) is not { } attestation)
+            return;
+
+        sb.Append('&').Append(RpcRelayAttestation.QueryParameterName)
+            .Append('=').Append(Uri.EscapeDataString(attestation));
+    }
 
     private static RpcSwitchingClient CreateRpcSwitchingClient(IServiceProvider c)
     {

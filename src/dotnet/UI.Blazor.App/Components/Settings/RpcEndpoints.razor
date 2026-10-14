@@ -12,7 +12,7 @@
                     <div class="c-status @GetStatusClass(endpoint)"></div>
                 </Icon>
                 <Content>@endpoint.Host</Content>
-                <Caption>@GetRoundTripText(endpoint)</Caption>
+                <Caption>@GetPingText(endpoint)</Caption>
                 <Right>
                     <i class="@(endpoint.IsSelected ? "icon-checkmark-simple" : "icon-checkmark-simple invisible")"></i>
                 </Right>
@@ -22,7 +22,7 @@
 }
 
 @code {
-    private static readonly TimeSpan RefreshPeriod = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan RefreshPeriod = TimeSpan.FromSeconds(30);
 
     private CancellationTokenSource? _measureCts;
     private RpcEndpointMonitor Monitor => field ??= Services.GetRequiredService<RpcEndpointMonitor>();
@@ -67,9 +67,9 @@
             _ => "",
         };
 
-    private static string GetRoundTripText(RpcEndpointMonitor.EndpointInfo endpoint)
+    private static string GetPingText(RpcEndpointMonitor.EndpointInfo endpoint)
         // Values, not prose: the dot carries reachability, so no language has to be picked here.
-        => endpoint.MeanRoundTrip is { } roundTrip
-            ? $"{roundTrip.TotalMilliseconds:F0} ms"
+        => endpoint.PingTime is { } pingTime
+            ? $"{pingTime.TotalMilliseconds:F0} ms"
             : endpoint.IsReachable is null ? "…" : "—";
 }

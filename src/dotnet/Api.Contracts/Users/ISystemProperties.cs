@@ -12,8 +12,11 @@ public interface ISystemProperties : IComputeService
     Task<double> GetTime(CancellationToken cancellationToken);
     // Not a [ComputeMethod]! The payload must cross the wire on every call - it measures
     // sustained throughput, so a cached or compressible result would prove nothing.
+    // Served to v2.21- clients under the wire name GetProbePayload; newer ones use IRpcChecks.GetPayload.
     [RpcMethod(ConnectTimeout = 0.5)]
-    Task<byte[]> GetProbePayload(int size, CancellationToken cancellationToken);
+    [LegacyName("GetProbePayload", "2.21.9999")]
+    [Obsolete("2026.10: Use IRpcChecks.GetPayload - it names the host the check goes through.")]
+    Task<byte[]> GetProbePayloadLegacy(int size, CancellationToken cancellationToken);
     [RpcMethod(RemoteExecutionMode = RpcRemoteExecutionMode.AwaitForConnection, ConnectTimeout = 10)]
     Task ReportRpcEndpoint(RpcEndpointReport report, CancellationToken cancellationToken);
     [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]

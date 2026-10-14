@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using ActualChat.Geo;
 using ActualChat.Module;
 
@@ -11,10 +12,24 @@ namespace ActualChat.Rpc;
 public sealed class RpcProbePolicy(CoreServerSettings settings)
 {
     public const string EdgeHostInfix = ".edge.";
+    private const int MinPayloadSize = 1024;
+    private const int MaxPayloadSize = 256 * 1024;
     private static readonly char[] Separators = [';', ','];
     private readonly HashSet<string> _countries = settings.RpcProbeCountries
         .Split(Separators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    // An empty payload outside the probed countries: the client reads a short one as "inconclusive",
+    // which keeps the host, rather than as a failure.
+    public async ValueTask<byte[]> CreatePayload(string? ipAddress, string? host, int size)
+    {
+        if (!await ShouldMeasure(ipAddress, host).ConfigureAwait(false))
+            return [];
+
+        // Random rather than zeroed: WebSocket deflate would shrink a compressible payload
+        // to nothing, so it would cross a throttled link just fine and prove nothing.
+        return RandomNumberGenerator.GetBytes(size.Clamp(MinPayloadSize, MaxPayloadSize));
+    }
 
     public async ValueTask<bool> ShouldMeasure(string? ipAddress, string? host)
     {

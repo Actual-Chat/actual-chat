@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using ActualChat.Diagnostics;
 using ActualChat.Rpc;
 using ActualLab.Rpc;
@@ -8,8 +7,6 @@ namespace ActualChat.Users;
 
 public class SystemProperties(IServiceProvider services) : ISystemProperties
 {
-    private const int MinProbePayloadSize = 1024;
-    private const int MaxProbePayloadSize = 256 * 1024;
     private const int MaxEdgeNameLength = 16;
     private const double MaxProbeDurationMs = 600_000;
     private static readonly Version MinCompatibleVersion = new(2, 15);
@@ -27,19 +24,10 @@ public class SystemProperties(IServiceProvider services) : ISystemProperties
         => Task.FromResult(Clocks.SystemClock.Now.EpochOffset.TotalSeconds);
 
     // Not a [ComputeMethod]!
-    public async Task<byte[]> GetProbePayload(int size, CancellationToken cancellationToken)
+    public Task<byte[]> GetProbePayloadLegacy(int size, CancellationToken cancellationToken)
     {
-        // An empty reply outside the probed countries: the client reads a short payload as
-        // "inconclusive", which keeps the endpoint, rather than as a failure.
         var context = RpcInboundContext.Current;
-        var ipAddress = context.GetRemoteIPAddress();
-        if (!await ProbePolicy.ShouldMeasure(ipAddress, context.GetRequestHost()).ConfigureAwait(false))
-            return [];
-
-        // Random rather than zeroed: WebSocket deflate would shrink a compressible payload
-        // to nothing, so it would cross a throttled link just fine and prove nothing.
-        size = size.Clamp(MinProbePayloadSize, MaxProbePayloadSize);
-        return RandomNumberGenerator.GetBytes(size);
+        return ProbePolicy.CreatePayload(context.GetRemoteIPAddress(), context.GetRequestHost(), size).AsTask();
     }
 
     public Task ReportRpcEndpoint(RpcEndpointReport report, CancellationToken cancellationToken)

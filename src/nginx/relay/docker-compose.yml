@@ -1,0 +1,18 @@
+name: relay
+
+services:
+  relay:
+    image: nginx:stable
+    restart: unless-stopped
+    # A relay without a name, an origin or a key doesn't start: nginx would run and answer every
+    # attestation request with an error
+    environment:
+      RELAY_ID: ${RELAY_ID:?RELAY_ID is not set}
+      RELAY_ORIGIN: ${RELAY_ORIGIN:?RELAY_ORIGIN is not set}
+      RELAY_KEY: ${RELAY_KEY:?RELAY_KEY is not set}
+    ports:
+      - "443:443"
+      - "8443:8443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./relay.js:/etc/nginx/relay.js:ro

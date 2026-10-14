@@ -6,20 +6,30 @@ namespace ActualChat.Rpc;
 /// </summary>
 public class RpcEndpointSelector
 {
+    // Older than this, an attestation is about to expire at the origin
+    private static readonly TimeSpan AttestationMaxAge = TimeSpan.FromSeconds(45);
+
     public static RpcEndpointSelector? Instance { get; set; }
 
     private readonly string[] _candidates;
     private string _current;
+    private string? _connectHost;
+    private HostAttestation? _attestation;
     private int _version;
 
     public IReadOnlyList<string> Candidates => _candidates;
     public string OriginHost => _candidates[0];
     public string Current => Volatile.Read(ref _current);
+    // The host the latest connection attempt of the default peer was started against. It differs from
+    // Current when a switch landed in the middle of an attempt, which then ends up on the old host.
+    public string? ConnectHost => Volatile.Read(ref _connectHost);
     public bool IsOnOrigin => string.Equals(Current, OriginHost, StringComparison.OrdinalIgnoreCase);
     public int Version
         // Bumped only when a new network makes every earlier verdict meaningless. Moving
         // between endpoints doesn't bump it, so a fresh move isn't mistaken for a reset.
         => Volatile.Read(ref _version);
+
+    public event Action? NetworkChanged;
 
     public RpcEndpointSelector(string[] candidates, string? current = null)
     {
@@ -32,11 +42,25 @@ public class RpcEndpointSelector
             : candidates[0];
     }
 
+    // What a relay said about this client's IP, which the origin can't see through the relay
+    public void UseAttestation(string host, string value)
+        => Volatile.Write(ref _attestation, new HostAttestation(host, value, Moment.CpuNow));
+
+    public string? GetAttestation(string host)
+        => Volatile.Read(ref _attestation) is { } attestation
+            && string.Equals(attestation.Host, host, StringComparison.OrdinalIgnoreCase)
+            && Moment.CpuNow - attestation.At < AttestationMaxAge
+                ? attestation.Value
+                : null;
+
     public string Get(string host)
         => string.Equals(host, OriginHost, StringComparison.OrdinalIgnoreCase) ? Current : host;
 
     public void Invalidate()
-        => Interlocked.Increment(ref _version);
+    {
+        Interlocked.Increment(ref _version);
+        NetworkChanged?.Invoke();
+    }
 
     public void UseDirect()
     {
@@ -81,6 +105,18 @@ public class RpcEndpointSelector
             : string.Concat(baseUrl.AsSpan(0, hostStart), endpoint, baseUrl.AsSpan(hostEnd));
     }
 
+    // Same as ApplyTo, and notes the host a connection is about to be made to
+    public static string ApplyToForConnection(string baseUrl)
+    {
+        var result = ApplyTo(baseUrl);
+        if (Instance is { } instance) {
+            var (hostStart, hostEnd) = GetHostRange(result);
+            if (hostStart >= 0)
+                Volatile.Write(ref instance._connectHost, result[hostStart..hostEnd]);
+        }
+        return result;
+    }
+
     public static string WithHost(string baseUrl, string host)
     {
         var (hostStart, hostEnd) = GetHostRange(baseUrl);
@@ -116,4 +152,8 @@ public class RpcEndpointSelector
         Volatile.Write(ref _current, endpoint);
         OnChanged(endpoint);
     }
+
+    // Nested types
+
+    private sealed record HostAttestation(string Host, string Value, Moment At);
 }

@@ -5,8 +5,7 @@ namespace ActualChat.Module;
 
 /// <summary>
 /// Probes the server over plain HTTP to tell "the server is unreachable"
-/// apart from "this RPC transport is broken", and to measure what a given
-/// host can actually carry.
+/// apart from "this RPC transport is broken".
 /// </summary>
 public sealed class RpcServerProbe(IServiceProvider services)
 {
@@ -16,10 +15,7 @@ public sealed class RpcServerProbe(IServiceProvider services)
     private IServiceProvider Services { get; } = services;
     private UrlMapper UrlMapper => field ??= Services.UrlMapper();
     private ILogger Log => field ??= Services.LogFor(GetType());
-    // False once a server answers a sized probe with the bare "ok": the client is outside the
-    // countries it measures, or has no session yet to be served one. Both can change with the
-    // network, so this can go back.
-    public bool IsMeasurable { get; private set; } = true;
+
     public async Task<bool> IsServerReachable(CancellationToken cancellationToken)
     {
         var url = UrlMapper.BaseUrl.TrimSuffix("/") + ProbePath;
@@ -38,69 +34,6 @@ public sealed class RpcServerProbe(IServiceProvider services)
         catch (Exception e) {
             Log.LogWarning(e, "RPC probe to {Url}: FAILED", url);
             return false;
-        }
-    }
-
-    public async Task<TimeSpan?> MeasureTransfer(
-        string host,
-        int size,
-        TimeSpan timeout,
-        CancellationToken cancellationToken)
-    {
-        var baseUrl = RpcEndpointSelector.WithHost(UrlMapper.BaseUrl.TrimSuffix("/"), host);
-        var url = $"{baseUrl}{ProbePath}?size={size}";
-        var httpClient = _httpClient ??= CreateHttpClient();
-        var startedAt = CpuTimestamp.Now;
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(timeout);
-        try {
-            var payload = await httpClient.GetByteArrayAsync(url, cts.Token).ConfigureAwait(false);
-            var elapsed = CpuTimestamp.Now - startedAt;
-            if (payload.Length >= size) {
-                IsMeasurable = true;
-                Log.LogInformation("RPC transfer probe to {Host}: {Size} bytes in {Elapsed}",
-                    host, payload.Length, elapsed.ToShortString());
-                return elapsed;
-            }
-
-            IsMeasurable = false;
-            Log.LogInformation("RPC transfer probe to {Host}: {Size} of {ExpectedSize} bytes, not measurable",
-                host, payload.Length, size);
-            return null;
-        }
-        catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
-            Log.LogWarning(e, "RPC transfer probe to {Host}: FAILED after {Elapsed}",
-                host, (CpuTimestamp.Now - startedAt).ToShortString());
-            return null;
-        }
-    }
-
-    public async Task<TimeSpan?> MeasureRoundTrip(
-        string host,
-        TimeSpan timeout,
-        CancellationToken cancellationToken)
-    {
-        // The unsized reply is 2 bytes, which crosses even a fully capped link, so this
-        // times distance rather than bandwidth - the one ranks candidates, the other vets them.
-        var url = RpcEndpointSelector.WithHost(UrlMapper.BaseUrl.TrimSuffix("/"), host) + ProbePath;
-        var httpClient = _httpClient ??= CreateHttpClient();
-        var startedAt = CpuTimestamp.Now;
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(timeout);
-        try {
-            using var response = await httpClient.GetAsync(url, cts.Token).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode) {
-                Log.LogWarning("RPC round-trip probe to {Host}: {StatusCode}", host, (int)response.StatusCode);
-                return null;
-            }
-
-            var elapsed = CpuTimestamp.Now - startedAt;
-            Log.LogInformation("RPC round-trip probe to {Host}: {Elapsed}", host, elapsed.ToShortString());
-            return elapsed;
-        }
-        catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
-            Log.LogWarning(e, "RPC round-trip probe to {Host}: FAILED", host);
-            return null;
         }
     }
 

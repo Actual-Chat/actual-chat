@@ -29,6 +29,7 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
         // RPC host
         services.AddRpcHost(HostInfo, Log);
         services.AddSingleton(_ => new RpcProbePolicy(Settings));
+        services.AddSingleton(c => new RpcRelayAttestationVerifier(Settings, c.Clocks()));
         services.AddSingleton<EgressGuard>();
 
         // ShardOwners

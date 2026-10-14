@@ -14,6 +14,8 @@ public sealed class CoreServerSettings
     public bool UseGoogleTranscoder { get; set; }
     // ISO country codes (";" or ","), or "*" for every country; empty serves nobody
     public string RpcProbeCountries { get; set; } = "";
+    // Keys of the relays that vouch for client IPs: "kz1=key1;kz1=key2;tr1=key3". Empty trusts no relay.
+    public string RpcRelayKeys { get; set; } = "";
     public string[] EgressCidrDenylist { get; set; } = [];
     public string[] EgressDomainDenylist { get; set; } = [];
     public string[] EgressHostAllowList { get; set; } = [];
