@@ -141,7 +141,8 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // Closed live conversations nobody has saved yet stand in for their saved ones, so that the chat
-    // doesn't lose their cards between the close and the save
+    // doesn't lose their cards between the close and the save. Sessions that follow each other share a
+    // context start, hence a saved conversation: the one that ends last stands for all of them.
     private async Task<List<LiveConversation>> ListClosedLiveConversations(
         ChatId chatId, CancellationToken cancellationToken)
     {
@@ -151,7 +152,10 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (conversation is { IsOpen: false })
                 result.Add(conversation);
         }
-        return result;
+        return result
+            .GroupBy(c => c.MaterializedId)
+            .Select(g => g.MaxBy(c => c.EndLid)!)
+            .ToList();
     }
 
     // Commands

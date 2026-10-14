@@ -128,7 +128,7 @@ public partial class LiveSessionsBackend
         var map = await _redisClosedLiveConversations.GetHashMap(chatId.Value).ConfigureAwait(false);
         var result = new List<LiveConversation>();
         foreach (var closed in map.Values.SkipNullItems().OrderByDescending(c => c.StartLid))
-            if (!await ExistConversation(closed.MaterializedId, cancellationToken).ConfigureAwait(false))
+            if (!await IsCovered(closed, cancellationToken).ConfigureAwait(false))
                 result.Add(closed);
         return result;
     }
@@ -136,10 +136,13 @@ public partial class LiveSessionsBackend
     private Task<LiveConversation?> GetClosedLiveConversation(ChatId chatId, ConversationId conversationId)
         => _redisClosedLiveConversations.Get(chatId.Value, conversationId.Value);
 
-    private async Task<bool> ExistConversation(ConversationId conversationId, CancellationToken cancellationToken)
+    // Saved under the closed conversation's materialized id and reaching its end. The id alone isn't enough:
+    // sessions that follow each other share a context start, so a saved conversation of the earlier one
+    // carries the later one's id while stopping short of it.
+    private async Task<bool> IsCovered(LiveConversation closed, CancellationToken cancellationToken)
     {
-        var c = await ConversationsBackend.Get(conversationId, cancellationToken).ConfigureAwait(false);
-        return c is not null;
+        var saved = await ConversationsBackend.Get(closed.MaterializedId, cancellationToken).ConfigureAwait(false);
+        return saved is not null && saved.EndEntryLid >= closed.EndLid - 1;
     }
 
     private Task EnqueueLiveNotification(

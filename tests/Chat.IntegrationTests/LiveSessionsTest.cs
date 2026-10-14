@@ -1903,6 +1903,95 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ClosedConversationShouldStayListedWhileTheSavedOneWithItsIdStopsShort()
+    {
+        // arrange - a closed conversation, and a saved one under its materialized id that ends before it
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var otherId = AuthorId.New(chatId, 777_027);
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+        await backend.OnStreamRegistered(chatId, otherId, null, true, true, default);
+        var first = await tester.CreateTextEntry(chatId, "first");
+        var last = await tester.CreateTextEntry(chatId, "last");
+        await backend.UpdateLiveConversationSummary(chatId, new LiveConversationSummary {
+            Title = "Recap", Description = "d", Summary = "s",
+            SummaryEndLid = last.LocalId + 1, SummarizedEntryCount = 2,
+        }, default);
+        await backend.SetParticipation(chatId, otherId, ParticipationKind.Record, false, default);
+        await backend.SetParticipation(chatId, author.Id, ParticipationKind.Record, false, default);
+        await backend.FinalizeSession(chatId, default);
+        var closedId = await TestWait.When(async ct => {
+            var listed = await backend.ListLiveConversations(chatId, ct);
+            listed.Should().ContainSingle();
+            return listed[0];
+        });
+        var closed = (await backend.GetLiveConversation(closedId, default))!;
+        var earlier = new Conversation(closed.MaterializedId, 1) {
+            Title = "Earlier session", Description = "d", Summary = "s", MessageCount = 1,
+            EndEntryLid = first.LocalId,
+            StartsAt = first.BeginsAt, EndsAt = first.BeginsAt,
+        };
+
+        // act
+        await tester.Commander.Call(new ConversationBackend_Materialize(earlier));
+
+        // assert - it stops short of the closed conversation, which must still be listed to be saved
+        await Task.Delay(500);
+        (await backend.ListLiveConversations(chatId, default)).Should().Contain(closedId);
+    }
+
+    [Fact]
+    public async Task SessionsThatShareAContextStartShouldGiveOneConversationInTheTile()
+    {
+        // arrange - two sessions in a row, the second starting before the first one is saved, so that both
+        // close with the same context start and therefore the same materialized id
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var session = tester.Session;
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(session, chatId, default);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversationsBackend = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        var otherId = AuthorId.New(chatId, 777_028);
+        var contextStart = (await tester.CreateTextEntry(chatId, "before both sessions")).LocalId;
+
+        async Task<ConversationId> RunSession(string text)
+        {
+            await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+            await backend.OnStreamRegistered(chatId, otherId, null, true, true, default);
+            await backend.SetLiveConversationContextStart(chatId, contextStart, default);
+            var tail = await tester.CreateTextEntry(chatId, text);
+            await backend.UpdateLiveConversationSummary(chatId, new LiveConversationSummary {
+                Title = text, Description = "d", Summary = "s",
+                SummaryEndLid = tail.LocalId + 1, SummarizedEntryCount = 1,
+            }, default);
+            var id = (await backend.GetOpenLiveConversationId(chatId, default))!;
+            await backend.SetParticipation(chatId, otherId, ParticipationKind.Record, false, default);
+            await backend.SetParticipation(chatId, author.Id, ParticipationKind.Record, false, default);
+            await backend.FinalizeSession(chatId, default);
+            await TestWait.When(async ct => (await backend.ListLiveConversations(chatId, ct)).Should().Contain(id));
+            return id;
+        }
+
+        // act
+        var first = await RunSession("first session");
+        var second = await RunSession("second session");
+
+        // assert - both stay listed (neither is saved), and the tile merges them into one card
+        var listed = await backend.ListLiveConversations(chatId, default);
+        listed.Should().Contain([first, second]);
+        var closedSecond = (await backend.GetLiveConversation(second, default))!;
+        var tileRange = Constants.Chat.ConversationIdTiles.GetTile(closedSecond.MaterializedStartLid).Range;
+        var tile = await conversationsBackend.GetTile(chatId, tileRange, default);
+        tile.Should().ContainSingle(c => c.Id == closedSecond.MaterializedId)
+            .Which.EndEntryLid.Should().Be(closedSecond.EndLid - 1);
+    }
+
+    [Fact]
     public void ClosedLiveConversationFlowNameShouldMatchConstant()
     {
         // Same as above for the flow the streaming backend wakes once an ambient conversation closes.
