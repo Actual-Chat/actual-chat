@@ -82,13 +82,7 @@ version through `[LegacyName]` version bands:
 | Method | Serves | Filtering |
 |---|---|---|
 | `IChats.GetTile` → `GetLegacyTile` | ≤ 2.19.9999 | Drops entries whose kind postdates the peer's API version. |
-| `IChats.GetNews` → `GetLegacyNews` | 2.13 … 2.19.9999 | Substitutes the previous readable entry for an unreadable `LastTextEntry`. |
-| `IChats.GetNews` → `GetFullNews` | ≤ 2.12.9999 | The same, through the same backend: the older band is also a pre-2.20 band. |
-
-The band split on `GetNews` is a leftover from an earlier migration — `GetFullNews` returned
-the full entry where `GetNews` returns a slim one — and the resolver picks the lower band on
-a name collision. It is easy to fix only one of the two and leave the *oldest* clients less
-protected than the newer ones, which is exactly the shape of the bug that once shipped here.
+| `IChats.GetNews` → `GetLegacyNews` | ≤ 2.19.9999 | Substitutes the previous readable entry for an unreadable `LastTextEntry`. |
 
 `ChatEntry.UnionTagSinceVersions` (`src/dotnet/Api/Chat/ChatEntry.Unsupported.cs`) is the
 table both twins read: tag → the release that introduced it. **An undeclared tag is treated

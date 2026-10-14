@@ -262,13 +262,6 @@ public class LiveAudioStreams(IServiceProvider services) : ILiveAudioStreams
         CancellationToken cancellationToken)
         => GetListeningStream(session, chatId, default, cancellationToken);
 
-    public Task LegacyChangeSettings(
-        Session session,
-        ChatId chatId,
-        LegacyLiveStreamSettings settings,
-        CancellationToken cancellationToken)
-        => Task.CompletedTask;
-
     // Private methods
 
     private async Task<bool> IsTextOnly(ChatId? chatId, StreamId streamId, CancellationToken cancellationToken)

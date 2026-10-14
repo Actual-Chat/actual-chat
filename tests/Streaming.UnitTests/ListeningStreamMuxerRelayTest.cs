@@ -236,9 +236,5 @@ public class ListeningStreamMuxerRelayTest(ITestOutputHelper @out) : TestBase(@o
         public Task<RpcStream<MuxedAudioStreamItem>> LegacyGetListeningStream(
             Session session, ChatId chatId, CancellationToken cancellationToken)
             => throw new NotSupportedException();
-
-        public Task LegacyChangeSettings(
-            Session session, ChatId chatId, LegacyLiveStreamSettings settings, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
     }
 }
