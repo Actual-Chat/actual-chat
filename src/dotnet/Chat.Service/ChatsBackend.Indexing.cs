@@ -69,7 +69,6 @@ public partial class ChatsBackend
         if (query.LastLocalId == 0) {
             var dbEntries = await dbContext.ChatEntries
                 .Where(x => x.ChatId == query.ChatId.Value
-                    && x.Kind == 0
                     && x.Version >= query.MinVersion
                     && x.Version <= query.MaxVersion)
                 .WhereIf(x => x.HasAttachments, query.RequireAttachments)
@@ -84,7 +83,6 @@ public partial class ChatsBackend
 
         var part1 = await dbContext.ChatEntries
             .Where(x => x.ChatId == query.ChatId.Value
-                && x.Kind == 0
                 && x.Version == query.MinVersion
                 && x.LocalId > query.LastLocalId)
             .WhereIf(x => x.HasAttachments, query.RequireAttachments)
@@ -100,7 +98,6 @@ public partial class ChatsBackend
 
         var part2 = await dbContext.ChatEntries
             .Where(x => x.ChatId == query.ChatId.Value
-                && x.Kind == 0
                 && x.Version > query.MinVersion
                 && x.Version <= query.MaxVersion)
             .WhereIf(x => x.HasAttachments, query.RequireAttachments)
@@ -133,7 +130,6 @@ public partial class ChatsBackend
             var batchLimit = limit - dbEntries.Count;
             var batch = await dbContext.ChatEntries.Where(x
                     => x.ChatId == chatId.Value
-                    && x.Kind == 0
                     && x.LocalId > lastLid
                     && !x.IsRemoved)
                 .OrderBy(x => x.LocalId)

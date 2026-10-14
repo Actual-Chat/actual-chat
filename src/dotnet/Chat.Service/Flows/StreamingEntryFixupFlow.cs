@@ -97,8 +97,7 @@ public sealed partial class StreamingEntryFixupFlow : PeriodicFlow, IMasterFlow
 
         var staleBefore = (Hub.SystemNow - Constants.Chat.StreamingEntryFixupDelay).ToDateTime();
         return await dbContext.ChatEntries
-            .Where(e => e.Kind == 0
-                && !e.IsRemoved
+            .Where(e => !e.IsRemoved
                 && e.ContentStreamId != null
                 && e.ContentStreamId != ""
                 && e.BeginsAt < staleBefore)

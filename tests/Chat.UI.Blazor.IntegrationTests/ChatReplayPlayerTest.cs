@@ -92,7 +92,6 @@ public class ChatReplayPlayerTest(ChatAppHostFixture fixture, ITestOutputHelper 
             Id = id.Value,
             ChatId = id.ChatId.Value,
             AuthorId = authorId.Value,
-            Kind = 0,
             LocalId = id.LocalId,
             Version = 1,
             BeginsAt = beginsAt,

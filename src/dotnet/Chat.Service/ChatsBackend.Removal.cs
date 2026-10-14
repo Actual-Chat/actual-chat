@@ -39,7 +39,7 @@ public partial class ChatsBackend
 
         var (start, end) = entryLidRange;
         return await dbContext.ChatEntries
-            .AnyAsync(e => e.ChatId == chatId.Value && e.Kind == 0 && !e.IsRemovedAndPurged
+            .AnyAsync(e => e.ChatId == chatId.Value && !e.IsRemovedAndPurged
                     && e.LocalId >= start && e.LocalId < end,
                 cancellationToken)
             .ConfigureAwait(false);
@@ -60,7 +60,7 @@ public partial class ChatsBackend
         var dbChat = await dbContext.Chats
             .FirstOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken).ConfigureAwait(false);
         dbChat.Require();
-        var maxEntryLid = await dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value && e.Kind == 0)
+        var maxEntryLid = await dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value)
             .MaxAsync(e => (long?)e.LocalId, cancellationToken).ConfigureAwait(false) ?? 0;
         endEntryLid = Math.Min(endEntryLid, maxEntryLid + 1);
         if (fromEntryLid >= endEntryLid)
@@ -70,7 +70,7 @@ public partial class ChatsBackend
         // keeps it as the boundary it clears up to rather than as one more range
         if (fromEntryLid > 0) {
             var hasEarlierEntries = await dbContext.ChatEntries
-                .AnyAsync(e => e.ChatId == chatId.Value && e.Kind == 0 && !e.IsRemoved && !e.IsSystemEntry
+                .AnyAsync(e => e.ChatId == chatId.Value && !e.IsRemoved && !e.IsSystemEntry
                         && e.LocalId < fromEntryLid,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -159,7 +159,7 @@ public partial class ChatsBackend
 
         var wipeEntryLidRange = command.WipeEntryLidRange;
         ArgumentOutOfRangeException.ThrowIfNegative(wipeEntryLidRange.Start);
-        var maxEntryLid = await dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value && e.Kind == 0)
+        var maxEntryLid = await dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value)
             .MaxAsync(e => (long?)e.LocalId, cancellationToken).ConfigureAwait(false) ?? 0;
         if (command.ClearUntilEntryLid > maxEntryLid || wipeEntryLidRange.End - 1 > maxEntryLid)
             throw StandardError.Constraint("The history cannot be cleared past the end of the chat.");
@@ -169,7 +169,7 @@ public partial class ChatsBackend
             var cutoff = (Clocks.SystemClock.Now - retention).ToDateTime();
             // The first entry that outlives the cutoff - everything before it has expired
             var firstKeptEntryLid = await dbContext.ChatEntries
-                .Where(e => e.ChatId == chatId.Value && e.Kind == 0 && !e.IsRemovedAndPurged
+                .Where(e => e.ChatId == chatId.Value && !e.IsRemovedAndPurged
                     && e.LocalId > maxClearedEntryLid
                     && (e.BeginsAt >= cutoff || e.EndsAt >= cutoff
                         || e.ContentStreamId != null && e.ContentStreamId != ""))
@@ -266,7 +266,7 @@ public partial class ChatsBackend
         var isIdle = !isRemoval && localIds.Length == 0 && conversationIds.Count == 0;
         if (isIdle && dbChat.RetentionPeriod is null) {
             var hasPendingEntries = await dbContext.ChatEntries
-                .AnyAsync(e => e.ChatId == chatId.Value && e.Kind == 0 && !e.IsRemovedAndPurged
+                .AnyAsync(e => e.ChatId == chatId.Value && !e.IsRemovedAndPurged
                         && (e.IsRemoved || e.LocalId <= maxClearedEntryLid
                             || e.LocalId >= wipeStartEntryLid && e.LocalId < wipeEndEntryLid),
                     cancellationToken)
@@ -294,7 +294,7 @@ public partial class ChatsBackend
         await using var dbContextDisposer = dbContext.ConfigureAwait(false);
 
         var localIds = await dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value
-                && e.AuthorId == authorId.Value && e.Kind == 0 && !e.IsRemovedAndPurged)
+                && e.AuthorId == authorId.Value && !e.IsRemovedAndPurged)
             .OrderBy(e => e.LocalId).Take(Settings.CleanupBatchSize).Select(e => e.LocalId)
             .ToArrayAsync(cancellationToken).ConfigureAwait(false);
         if (localIds.Length == 0)
@@ -325,11 +325,11 @@ public partial class ChatsBackend
 
         var maxClearedEntryLid = command.MaxClearedEntryLid;
         var wipeEntryLidRange = command.WipeEntryLidRange;
-        var maxEntryLid = await dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value && e.Kind == 0)
+        var maxEntryLid = await dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value)
             .MaxAsync(e => (long?)e.LocalId, cancellationToken).ConfigureAwait(false) ?? 0;
         var eligibleEntries = GetCleanupEntries(dbContext, chatId, maxClearedEntryLid, wipeEntryLidRange, maxEntryLid);
         if (command.RemovedAuthorId is { } removedAuthorId)
-            eligibleEntries = dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value && e.Kind == 0
+            eligibleEntries = dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value
                 && !e.IsRemovedAndPurged && e.AuthorId == removedAuthorId.Value
                 && command.LocalIds.Contains(e.LocalId));
         var eligibleIds = eligibleEntries.Select(e => e.Id);
@@ -363,7 +363,7 @@ public partial class ChatsBackend
             var emptyConversationIds = new List<string>();
             foreach (var dbConversation in dbConversations) {
                 var hasSurvivingEntries = await dbContext.ChatEntries
-                    .AnyAsync(e => e.ChatId == chatId.Value && e.Kind == 0 && !e.IsRemoved
+                    .AnyAsync(e => e.ChatId == chatId.Value && !e.IsRemoved
                         && !entryIds.Contains(e.Id)
                         && e.LocalId >= dbConversation.StartEntryLid && e.LocalId <= dbConversation.EndEntryLid,
                         cancellationToken)
@@ -568,7 +568,7 @@ public partial class ChatsBackend
         ChatDbContext dbContext, ChatId chatId, CancellationToken cancellationToken)
     {
         var threadStartEntryLids = await dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value && e.Kind == 0 && e.IsThreadStartEntry)
+            .Where(e => e.ChatId == chatId.Value && e.IsThreadStartEntry)
             .OrderBy(e => e.LocalId).Take(Settings.CleanupBatchSize)
             .Select(e => e.LocalId).ToListAsync(cancellationToken).ConfigureAwait(false);
         foreach (var lid in threadStartEntryLids) {
@@ -601,7 +601,7 @@ public partial class ChatsBackend
 
         var candidateSids = threadStartEntryLids.Keys.ToArray();
         var activeThreadSids = await dbContext.ChatEntries
-            .Where(e => candidateSids.Contains(e.ChatId) && e.Kind == 0 && !e.IsRemovedAndPurged
+            .Where(e => candidateSids.Contains(e.ChatId) && !e.IsRemovedAndPurged
                 && (e.BeginsAt >= cutoff || e.EndsAt >= cutoff
                     || e.ContentStreamId != null && e.ContentStreamId != ""))
             .Select(e => e.ChatId).Distinct().ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -617,7 +617,7 @@ public partial class ChatsBackend
     {
         var removedBefore = (Clocks.SystemClock.Now - Settings.RemovedEntryRetention).ToDateTime();
         var (wipeStartEntryLid, wipeEndEntryLid) = wipeEntryLidRange;
-        return dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value && e.Kind == 0
+        return dbContext.ChatEntries.Where(e => e.ChatId == chatId.Value
             && (!e.IsRemovedAndPurged || e.LocalId != maxEntryLid || e.IsThreadStartEntry)
             && ((e.LocalId <= maxClearedEntryLid || e.LocalId >= wipeStartEntryLid && e.LocalId < wipeEndEntryLid)
                     && (e.ContentStreamId == null || e.ContentStreamId == "")

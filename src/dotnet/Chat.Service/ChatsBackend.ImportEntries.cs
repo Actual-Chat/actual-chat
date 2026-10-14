@@ -39,7 +39,7 @@ public partial class ChatsBackend
         }
 
         var tailEntry = await db.ChatEntries
-            .Where(x => x.ChatId == chatId.Value && x.Kind == 0 && !x.IsThreadEntry && !x.IsRemoved)
+            .Where(x => x.ChatId == chatId.Value && !x.IsThreadEntry && !x.IsRemoved)
             .OrderByDescending(x => x.LocalId)
             .Select(x => new { x.LocalId, x.BeginsAt })
             .FirstOrDefaultAsync(cancellationToken)
