@@ -232,13 +232,13 @@ export class UiPage {
     }
 
     private static toHex(rgb: string): string {
-        const match = rgb.match(/rgba?\(([^)]+)\)/);
+        const match = /rgba?\(([^)]+)\)/.exec(rgb);
         if (match == null)
             return rgb;
 
         const parts = match[1].split(',').map(s => s.trim());
         const hex = (n: string) => Number(n).toString(16).padStart(2, '0');
-        const alpha = parts[3] != null ? Math.round(parseFloat(parts[3]) * 255) : 255;
+        const alpha = parts.length > 3 ? Math.round(parseFloat(parts[3]) * 255) : 255;
         let out = `#${hex(parts[0])}${hex(parts[1])}${hex(parts[2])}`;
         if (alpha !== 255)
             out += hex(String(alpha));
@@ -260,7 +260,7 @@ export class UiPage {
         host.textContent = message;
         host.classList.add('is-shown');
         window.clearTimeout(Number(host.dataset.timer));
-        host.dataset.timer = String(window.setTimeout(() => host!.classList.remove('is-shown'), 1400));
+        host.dataset.timer = String(window.setTimeout(() => host.classList.remove('is-shown'), 1400));
     }
 
     private static el(tag: string, className: string, text?: string): HTMLElement {
