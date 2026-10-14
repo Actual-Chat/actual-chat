@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<AppUIHub, AudioAttachmentSubHeader.Model?>
 @{
     var m = State.Value;
-    var iconCls = m?.IsPlaying == true ? "icon-pause-fill" : "icon-play-fill";
+    var iconCls = m?.IsPlaying == true ? "icon-pause" : "icon-play";
     var positionLabel = FormatTime(m?.Position ?? TimeSpan.Zero);
     var durationLabel = m?.Duration is { } d ? FormatTime(d) : "--:--";
     var fraction = m?.Duration is { } dur && dur.TotalSeconds > 0

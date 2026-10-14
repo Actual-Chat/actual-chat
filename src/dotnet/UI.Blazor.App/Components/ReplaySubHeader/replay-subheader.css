@@ -7,17 +7,21 @@
     @apply rounded-lg;
     @apply bg-replay;
     @apply text-replay;
-    box-shadow: 0 2px 6px -3px color-mix(in srgb, var(--accent-replay), transparent 50%);
+    box-shadow: 0 2px 6px var(--black-05);
 }
-.replay-subheader .btn-h {
-    color: var(--accent-replay);
+.replay-subheader .c-play-btn {
+    @apply flex-none;
+    @apply w-10 h-10;
+    @apply rounded-full;
+    color: var(--background-replay);
+    background: var(--accent-replay);
 }
-body.hoverable .replay-subheader .btn-h:hover {
-    color: var(--accent-replay);
-    filter: brightness(1.15);
+body.hoverable .replay-subheader .c-play-btn:hover {
+    filter: brightness(1.1);
 }
-.replay-subheader .playback-speed-btn .c-speed-label {
-    color: var(--accent-replay);
+.replay-subheader .c-play-loading {
+    @apply flex-none flex items-center justify-center;
+    @apply w-10 h-10;
 }
 .replay-subheader .c-close {
     @apply -mt-2 -mr-1;

@@ -38,6 +38,17 @@
 
 @if (m is not null) {
     <div class="replay-subheader">
+        @if (isLoading) {
+            <div class="c-play-loading"><Spinner/></div>
+        } else if (m.IsPaused) {
+            <ButtonRound Tooltip="@L.MessageMenu_Play" Click="@OnResume" Class="c-play-btn btn-xs">
+                <i class="icon-play text-xl"></i>
+            </ButtonRound>
+        } else {
+            <ButtonRound Tooltip="@L.Common_Pause" Click="@OnPause" Class="c-play-btn btn-xs">
+                <i class="icon-pause text-xl"></i>
+            </ButtonRound>
+        }
         <div class="c-authors-block @slotsCls">
             @if (showSkeletons) {
                 <div class="c-skeletons" aria-hidden="true">
@@ -63,31 +74,16 @@
                 <div class="c-date">@dateLabel</div>
             }
         </div>
-        <div class="c-playback">
-            @if (isLoading) {
-                <Spinner/>
-            } else {
-                @if (ScreenSize.IsWide()) {
-                    <HeaderButton Tooltip="@L.Replay_Backward" Click="@OnBackward">
-                        <i class="icon-rewind-left"></i>
-                    </HeaderButton>
-                }
-                @if (m?.IsPaused ?? false) {
-                    <HeaderButton Tooltip="@L.MessageMenu_Play" Click="@OnResume">
-                        <i class="icon-play"></i>
-                    </HeaderButton>
-                } else {
-                    <HeaderButton Tooltip="@L.Common_Pause" Click="@OnPause">
-                        <i class="icon-pause"></i>
-                    </HeaderButton>
-                }
-                @if (ScreenSize.IsWide()) {
-                    <HeaderButton Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
-                        <i class="icon-rewind-right"></i>
-                    </HeaderButton>
-                }
-            }
-        </div>
+        @if (!isLoading && ScreenSize.IsWide()) {
+            <div class="c-playback">
+                <HeaderButton Tooltip="@L.Replay_Backward" Click="@OnBackward">
+                    <i class="icon-rewind-left"></i>
+                </HeaderButton>
+                <HeaderButton Tooltip="@L.AudioPlayer_Forward" Click="@OnForward">
+                    <i class="icon-rewind-right"></i>
+                </HeaderButton>
+            </div>
+        }
         <div class="c-actions">
             <PlaybackSpeedButton Speed="@speed" Menu="@(MenuRef.New<ReplaySpeedMenu>())"/>
             <HeaderButton Class="c-close" Click="@OnStop">
