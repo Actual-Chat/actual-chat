@@ -22,6 +22,7 @@ public class SystemEntryMarkupBuilder
             NotifyMembersEntry e => BuildNotifyMembers(e),
             CallEntry e => BuildCall(e),
             HistoryChangedEntry e => BuildHistoryChanged(e),
+            TranscriptionChangedEntry e => BuildTranscriptionChanged(e),
             // A system event of a kind this build has no member for renders as nothing: a system
             // event is low-value by construction, so "update your app" in its place is just a nag.
             UnsupportedSystemEntry => Markup.EmptyText,
@@ -74,6 +75,17 @@ public class SystemEntryMarkupBuilder
             (_, null) => " turned off history retention.",
             (_, { } period) => $" set history retention to {FormatPeriod(period)}.",
         };
+        return entry.TargetAuthorId is null
+            ? new PlainTextMarkup(authorName + text)
+            : new MarkupSeq(
+                new AuthorMention(MentionRef.NewAuthor(entry.TargetAuthorId), authorName),
+                new PlainTextMarkup(text));
+    }
+
+    protected virtual Markup BuildTranscriptionChanged(TranscriptionChangedEntry entry)
+    {
+        var authorName = entry.TargetAuthorName.NullIfEmpty() ?? SomeoneName;
+        var text = entry.IsTranscriptionOn ? " turned on transcription." : " turned off transcription.";
         return entry.TargetAuthorId is null
             ? new PlainTextMarkup(authorName + text)
             : new MarkupSeq(

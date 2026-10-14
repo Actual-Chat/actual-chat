@@ -77,7 +77,7 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         var chains = new[] {
             AsyncChain.From(WatchConnectivity),
             AsyncChain.From(WatchPanelMode),
-            AsyncChain.From(WatchBackgroundState),
+            AsyncChain.From(WatchVisibility),
             AsyncChain.From(WatchThermal),
             AsyncChain.From(RunPlaybackQualityKeepAlive),
             AsyncChain.From(LoadDebugSettings),
@@ -137,17 +137,17 @@ public sealed partial class VideoQualityUI : UIWorkerBase<AppUIHub>
         }
     }
 
-    private async Task WatchBackgroundState(CancellationToken cancellationToken)
+    private async Task WatchVisibility(CancellationToken cancellationToken)
     {
-        // Hidden tab / backgrounded app must pause inbound video within a tick —
+        // A hidden tab, window or app must pause inbound video within a tick —
         // frames otherwise keep arriving and decoding invisibly, which is the
         // single largest pointless battery drain on mobile.
-        var cState = BackgroundStateTracker.IsBackground.Computed;
-        await foreach (var (isBackground, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+        var cState = BackgroundStateTracker.IsHidden.Computed;
+        await foreach (var (isHidden, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
             bool isResumingPlayback;
             lock (_playbackLock) {
-                isResumingPlayback = _isBackground && !isBackground;
-                _isBackground = isBackground;
+                isResumingPlayback = Volatile.Read(ref _isHidden) && !isHidden;
+                Volatile.Write(ref _isHidden, isHidden);
                 if (isResumingPlayback)
                     RefreshPlaybackEntriesLastSeenLocked();
             }

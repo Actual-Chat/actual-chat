@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Build.Commands;
 using Bullseye;
 using CliWrap;
 using CliWrap.Buffered;
@@ -44,6 +45,7 @@ internal static class Program
         public const string PackMac = "pack-mac";
         public const string PackAndroid = "pack-android";
         public const string PackWin = "pack-win";
+        public const string PackLinux = "pack-linux";
         public const string RestoreTools = "restore-tools";
         public const string Restore = "restore";
         public const string Default = "default";
@@ -247,27 +249,42 @@ internal static class Program
 
         Target(Targets.GenerateCISolutionFilter, SolutionFilterGenerator.Generate);
 
-        Target(Targets.UnitTests, () => RunTests("FullyQualifiedName~UnitTests", 15 * 60));
+        // Each target names the test projects it runs as well: dotnet test starts a host for every
+        // test project it is given, so the test filter alone doesn't keep the others from loading
+        Target(Targets.UnitTests, () => RunTests(Targets.UnitTests, IsUnitTests,
+            "FullyQualifiedName~UnitTests", 15 * 60));
 
-        Target(Targets.IntegrationTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow&Category!~Nightly", 5 * 60));
+        Target(Targets.IntegrationTests, () => RunTests(Targets.IntegrationTests, IsIntegrationTests,
+            "FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests"
+            + "&Category!~Slow&Category!~Nightly", 5 * 60));
 
-        const string integrationTestsCommonTail = "&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow&Category!~Nightly";
-        Target(Targets.IntegrationTestsUsers,    () => RunTests(
+        const string integrationTestsCommonTail =
+            "&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category!~Slow&Category!~Nightly";
+        Target(Targets.IntegrationTestsUsers, () => RunTests(Targets.IntegrationTestsUsers,
+            p => p == "Users.IntegrationTests",
             "FullyQualifiedName~Users.IntegrationTests" + integrationTestsCommonTail, 5 * 60));
-        Target(Targets.IntegrationTestsChat,     () => RunTests(
-            "FullyQualifiedName~Chat.IntegrationTests&FullyQualifiedName!~Chat.UI.Blazor" + integrationTestsCommonTail, 5 * 60));
-        Target(Targets.IntegrationTestsMLSearch, () => RunTests(
+        Target(Targets.IntegrationTestsChat, () => RunTests(Targets.IntegrationTestsChat,
+            p => p == "Chat.IntegrationTests",
+            "FullyQualifiedName~Chat.IntegrationTests&FullyQualifiedName!~Chat.UI.Blazor"
+            + integrationTestsCommonTail, 5 * 60));
+        Target(Targets.IntegrationTestsMLSearch, () => RunTests(Targets.IntegrationTestsMLSearch,
+            p => p == "MLSearch.IntegrationTests",
             "FullyQualifiedName~MLSearch.IntegrationTests" + integrationTestsCommonTail, 10 * 60));
-        Target(Targets.IntegrationTestsCore,     () => RunTests(
+        Target(Targets.IntegrationTestsCore, () => RunTests(Targets.IntegrationTestsCore,
+            p => IsIntegrationTests(p)
+                && p is not ("Users.IntegrationTests" or "Chat.IntegrationTests" or "MLSearch.IntegrationTests"),
             "FullyQualifiedName~IntegrationTests"
             + "&FullyQualifiedName!~Users.IntegrationTests"
             + "&FullyQualifiedName!~Chat.IntegrationTests"
             + "&FullyQualifiedName!~MLSearch.IntegrationTests"
             + integrationTestsCommonTail, 5 * 60));
 
-        Target(Targets.SlowTests,  () => RunTests("FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow", 30 * 60));
+        Target(Targets.SlowTests, () => RunTests(Targets.SlowTests, IsIntegrationTests,
+            "FullyQualifiedName~IntegrationTests&FullyQualifiedName!~UI.Blazor.PlaywrightTests&Category~Slow",
+            30 * 60));
 
-        Target(Targets.NightlyTests,  () => RunTests("FullyQualifiedName~IntegrationTests&Category~Nightly", 30 * 60));
+        Target(Targets.NightlyTests, () => RunTests(Targets.NightlyTests, IsIntegrationTests,
+            "FullyQualifiedName~IntegrationTests&Category~Nightly", 30 * 60));
 
         Target(Targets.E2eTests, DependsOn(Targets.Build), async () => {
             // Playwright's Chromium isn't in node_modules; a no-op when the right version is cached.
@@ -486,6 +503,34 @@ internal static class Program
                 .ConfigureAwait(false);
         });
 
+        Target(Targets.PackLinux, DependsOn(Targets.NpmBuild), async () => {
+            var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
+            isDevMaui ??= !isProduction;
+            await Cli
+                .Wrap(dotnet)
+                .WithArguments("publish",
+                    "-noLogo",
+                    "-maxCpuCount",
+                    "-nodeReuse:false",
+                    "-f net11.0",
+                    @"/p:TargetFrameworks=\""net11.0\""", // otherwise needs maui-android etc
+                    "-p:EnableLinuxGtk=true",
+                    $"-r {MauiApp.LinuxRuntimeId}",
+                    "--self-contained",
+                    $"-c {configuration}",
+                    $"-p:IsDevMaui={isDevMaui}")
+                .WithWorkingDirectory("src/dotnet/App.Maui")
+                .ToConsole(Green("dotnet: "))
+                .ExecuteAsync(cancellationToken)
+                .Task
+                .ConfigureAwait(false);
+            await FileExt.CreateTarGz(
+                MauiApp.GetLinuxPublishDir(configuration),
+                MauiApp.GetAppId(isDevMaui.Value),
+                MauiApp.GetLinuxPackagePath(isDevMaui.Value),
+                cancellationToken).ConfigureAwait(false);
+        });
+
         Target(Targets.RestoreTools, async () => {
             await Cli.Wrap(dotnet).WithArguments("tool restore")
                 .ToConsole()
@@ -571,11 +616,17 @@ internal static class Program
             Console.Write("\n");
         }
 
-        Task<BufferedCommandResult> RunTests(string filter, int timeoutSec)
+        async Task<BufferedCommandResult> RunTests(
+            string name,
+            Func<string, bool> mustRunTestProject,
+            string filter,
+            int timeoutSec)
         {
+            var slnfFilePath = await SolutionFilterGenerator.GenerateForTests(name, mustRunTestProject)
+                .ConfigureAwait(false);
             var args = new List<string> {
                 "test",
-                "ActualChat.CI.slnf",
+                slnfFilePath,
                 "--nologo",
                 $"--filter \"{filter}\"",
                 "--no-restore",
@@ -591,12 +642,19 @@ internal static class Program
                     "--blame-crash",
                     "--blame-crash-dump-type full",
                 ]);
-            return Cli.Wrap(dotnet)
+            return await Cli.Wrap(dotnet)
                 .WithArguments(args, false)
                 .ToConsole()
                 .ExecuteBufferedAsync(cancellationToken)
-                .Task;
+                .Task
+                .ConfigureAwait(false);
         }
+
+        static bool IsUnitTests(string projectName)
+            => projectName.EndsWith(".UnitTests");
+
+        static bool IsIntegrationTests(string projectName)
+            => projectName.EndsWith(".IntegrationTests");
     }
 }
 

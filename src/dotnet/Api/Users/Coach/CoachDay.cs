@@ -42,6 +42,8 @@ public sealed partial record CoachDay([property: DataMember, Key(0)] Moment Day)
     [DataMember, Key(29)] public int TaggedWords { get; init; }
     // ISO code of the entries the row sums; "" for entries without a language and for runs alone
     [DataMember, Key(30)] public string Language { get; init; } = "";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [DataMember, Key(31)] public SpeechPaceSummary? Pace { get; init; }
 }
 
 public static class CoachDayBuilder
@@ -75,8 +77,11 @@ public static class CoachDayBuilder
         var d = new CoachDay(day);
         var fillers = new Dictionary<string, int>();
         var weak = new Dictionary<string, int>();
+        var pace = new List<SpeechPaceSummary>();
         foreach (var r in records.Where(r => r.Day == day)) {
             if (r.Entry is { } e) {
+                if (e.Pace is { } measurement)
+                    pace.Add(SpeechPaceSummary.FromMeasurement(measurement));
                 var words = e.Words ?? 0;
                 var countsForVocabulary = e.Words >= minVocabularyWords;
                 d = d with {
@@ -126,6 +131,7 @@ public static class CoachDayBuilder
         return d with {
             FillerCounts = new ApiMap<string, int>(fillers),
             WeakWordCounts = new ApiMap<string, int>(weak),
+            Pace = SpeechPaceSummary.Merge(pace),
         };
     }
 
@@ -135,7 +141,10 @@ public static class CoachDayBuilder
         var fillers = new Dictionary<string, int>();
         var weak = new Dictionary<string, int>();
         var seenRunDays = new HashSet<Moment>();
+        var pace = new List<SpeechPaceSummary>();
         foreach (var x in days) {
+            if (x.Pace is { } summary)
+                pace.Add(summary);
             var addRuns = seenRunDays.Add(x.Day);
             d = d with {
                 Entries = d.Entries + x.Entries,
@@ -174,6 +183,7 @@ public static class CoachDayBuilder
         return d with {
             FillerCounts = new ApiMap<string, int>(fillers),
             WeakWordCounts = new ApiMap<string, int>(weak),
+            Pace = SpeechPaceSummary.Merge(pace),
         };
     }
 }

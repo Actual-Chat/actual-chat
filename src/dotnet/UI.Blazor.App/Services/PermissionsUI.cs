@@ -39,9 +39,9 @@ public sealed class PermissionsUI : UIServiceBase<AppUIHub>
             return PermissionsState.Unknown;
 
         await _version.Use(cancellationToken).ConfigureAwait(false);
-        // Nothing invalidates an OS-level permission read, so Use()-ing IsBackground is what re-reads
+        // Nothing invalidates an OS-level permission read, so Use()-ing IsHidden is what re-reads
         // them on every return to the app - including the return from its own system settings page.
-        await BackgroundStateTracker.IsBackground.Use(cancellationToken).ConfigureAwait(false);
+        await BackgroundStateTracker.IsHidden.Use(cancellationToken).ConfigureAwait(false);
         // Stored per-device (LocalSettings), not per-account: OS permission state is itself
         // per-device, and a local write persists instantly with no server round-trip to drop it.
         var dismissed = await Hub.LocalSettings.LocalAppSettings()

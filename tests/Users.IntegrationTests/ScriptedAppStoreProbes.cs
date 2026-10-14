@@ -1,16 +1,4 @@
-using ActualChat.Testing.Host;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-
 namespace ActualChat.Users.IntegrationTests;
-
-[CollectionDefinition(nameof(AppUpdatesCollection))]
-public class AppUpdatesCollection : ICollectionFixture<AppUpdatesAppHostFixture>;
-
-public class AppUpdatesAppHostFixture(IMessageSink messageSink)
-    : ActualChat.Testing.Host.AppHostFixture("app-updates", messageSink, TestAppHostOptions.Default with {
-        ConfigureServices = (_, services) => services.Replace(
-            ServiceDescriptor.Singleton<AppStoreProbes>(c => new ScriptedAppStoreProbes(c))),
-    });
 
 /// <summary>
 /// Replaces the real store probes so the detection state machine can be driven from a test.

@@ -28,6 +28,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private CancellationTokenSource? _recordingCts;
     private Task? _processTask;
     private Task? _sendTask;
+    // Completes once the last sender has read all its frames or given up
+    private Task? _whenSendDrained;
     private bool _isRecording;
     private bool _isConnected;
     private bool _isSignalDetected;
@@ -155,6 +157,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             }
 
         var sendTask = Interlocked.Exchange(ref _sendTask, null);
+        _whenSendDrained = null;
         if (sendTask is not null)
             try {
                 await sendTask.WaitAsync(Constants.Audio.RecorderDrainTimeout).ConfigureAwait(false);
@@ -390,7 +393,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         ChatEntryId? repliedChatEntryId,
         int preSkip,
         Moment firstFrameSourceCapturedAt,
-        ChannelReader<IMemoryOwner<byte>> packetReader,
+        Channel<IMemoryOwner<byte>> stream,
+        Task? whenPreviousSendDrained,
         CancellationToken cancellationToken)
     {
         // Mirrors the TS AudioStream.stream() retry loop: PushAudio is configured with
@@ -406,6 +410,17 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         // everything in the channel is preserved.
         var session = _hub.Session;
         var sentFrameCount = 0;
+        var packetReader = stream.Reader;
+        var retryDelays = RetryDelaySeq.Exp(
+            Constants.Audio.StreamErrorRetryDelay,
+            Constants.Audio.StreamErrorRetryDelayMax);
+        var failureCount = 0;
+
+        // The server keeps one live stream per author, so a sender overlapping the previous utterance's
+        // one takes it away from listeners. Only the previous sender's reading is awaited: its call
+        // returns once the server has saved and re-transcribed the entry, which takes seconds.
+        if (whenPreviousSendDrained is not null)
+            await whenPreviousSendDrained.SilentAwait(false);
 
         while (!cancellationToken.IsCancellationRequested) {
             // Per-call state: each iteration is a fresh PushAudio = fresh chat entry,
@@ -496,10 +511,18 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                     preSkip,
                     rpcStream,
                     cancellationToken).ConfigureAwait(false);
-                // Natural completion: channel writer was completed (CompleteAudioStream),
-                // reader drained, BuildFrames returned, PushAudio finished cleanly.
-                Log.LogInformation("PushAudio: completed for chat #{ChatId}, {SentFrames} frames", chatId, packetIndex);
-                return;
+                if (packetReader.Completion.IsCompleted) {
+                    // Natural completion: channel writer was completed (CompleteAudioStream),
+                    // reader drained, BuildFrames returned, PushAudio finished cleanly.
+                    Log.LogInformation("PushAudio: completed for chat #{ChatId}, {SentFrames} frames",
+                        chatId, packetIndex);
+                    return;
+                }
+
+                // The server ends a call without an error when frames stop coming for longer than its
+                // silence timeout, so the rest of the utterance needs a new call.
+                Log.LogWarning("PushAudio call ended early ({SentFrames} frames), continuing with a new call",
+                    packetIndex);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
@@ -510,12 +533,31 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 // The channel still holds whatever packets weren't yet consumed, and the encoder
                 // keeps writing new ones.
                 Log.LogWarning(e, "PushAudio call ended ({SentFrames} frames), retrying with a new call", packetIndex);
-                sentFrameCount += packetIndex;
-                repliedChatEntryId = null; // Only the initial segment carries the reply target.
-                // Short delay to avoid tight-looping on a persistent failure; the recording CT
-                // cancels this delay when the user stops recording. Shared with the web sender.
-                await Task.Delay(Constants.Audio.StreamErrorRetryDelay, cancellationToken).ConfigureAwait(false);
             }
+
+            sentFrameCount += packetIndex;
+            repliedChatEntryId = null; // Only the initial segment carries the reply target.
+            // Once the utterance has ended and its channel is drained - by the failed call or by
+            // CompleteAudioStream - a retry would push an empty stream, and keep doing so on every failure.
+            if (packetReader.Completion.IsCompleted) {
+                Log.LogWarning("PushAudio: no frames left to resend, dropping the utterance");
+                return;
+            }
+
+            failureCount = packetIndex >= Constants.Audio.StreamErrorProgressFrames ? 1 : failureCount + 1;
+            if (failureCount > Constants.Audio.StreamErrorMaxAttempts) {
+                Log.LogWarning("PushAudio: {FailureCount} failed calls in a row, dropping the utterance",
+                    failureCount);
+                // Completing the channel ends the encoder's writes, which would otherwise wait for a reader
+                stream.Writer.TryComplete();
+                while (packetReader.TryRead(out var packet))
+                    packet.Dispose();
+                return;
+            }
+
+            // Short delay to avoid tight-looping on a persistent failure; the recording CT
+            // cancels this delay when the user stops recording.
+            await Task.Delay(retryDelays[failureCount], cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -546,7 +588,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         var stream = StreamChannelOptions.NewChannel<IMemoryOwner<byte>>();
 
         // TODO(AK): Specify PreSkip
-        _sendTask = SendAudio(chatId, repliedChatEntryId, 0, firstFrameSourceCapturedAt, stream.Reader, cancellationToken);
+        var sendTask = SendAudio(
+            chatId, repliedChatEntryId, 0, firstFrameSourceCapturedAt,
+            stream, _whenSendDrained, cancellationToken);
+        _sendTask = sendTask;
+        _whenSendDrained = Task.WhenAny(stream.Reader.Completion, sendTask);
         lock (_lock) {
             _currentStream = stream;
             _repliedChatEntryId = null; // Clear so it's only used once
@@ -560,10 +606,11 @@ public class MauiRecorderEngine : IAudioRecorderEngine
         if (stream is null)
             return;
 
+        // Whatever the sender hasn't read yet is dropped: delivering an utterance that ended while
+        // the sender was offline needs its own handling of late audio for listeners
         stream.Writer.TryComplete();
-        while (stream.Reader.TryRead(out _)) {
-            // Drain remaining frames so GC can reclaim them; AudioFrame is no longer IDisposable.
-        }
+        while (stream.Reader.TryRead(out var packet))
+            packet.Dispose();
     }
 
     // Separate class to handle the complex audio processing logic

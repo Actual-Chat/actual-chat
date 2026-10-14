@@ -29,17 +29,49 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
     private readonly long _stableTokenAgeMs = (long)stableTokenAge.TotalMilliseconds;
     private readonly StringBuilder _finalText = new();
     private readonly List<Language> _languages = [];
-    private LinearMap _finalMap = LinearMap.Zero;
+    private readonly List<SonioxToken> _finalTimingTokens = [];
+    private List<SonioxToken> _tailTimingTokens = [];
+    private LinearMap _finalMap;
     private float _finalEndTime;
     private long _promotedEndMs;
     private string _tailText = "";
     private LinearMap _tailMap = LinearMap.Zero;
     private float _tailEndTime;
 
+    public static LinearMap CreateDetailedTimeMap(IReadOnlyList<SonioxToken> tokens)
+    {
+        var map = default(LinearMap);
+        var offset = 0;
+        foreach (var token in tokens) {
+            if (token.Text == EndpointToken || token.Text.IsNullOrEmpty())
+                continue;
+
+            if (token.StartMs < 0 || token.EndMs < token.StartMs)
+                throw new ArgumentOutOfRangeException(nameof(tokens));
+
+            var text = token.Text.AsSpan();
+            var start = text.Length - text.TrimStart().Length;
+            var end = text.TrimEnd().Length;
+            if (end > start) {
+                var startTime = ToSeconds(token.StartMs);
+                var endTime = ToSeconds(token.EndMs);
+                if (map.Length > 0 && (endTime < map[^1].Y
+                    || (offset + start > map[^1].X && startTime < map[^1].Y)))
+                    throw new ArgumentOutOfRangeException(nameof(tokens));
+
+                map = TryAppend(map, offset + start, startTime);
+                map = TryAppend(map, offset + end, endTime);
+            }
+            offset += text.Length;
+        }
+        return map;
+    }
+
     public IReadOnlyList<Transcript> Update(IReadOnlyList<SonioxToken> tokens, long audioProcMs)
     {
         var stableEndMs = audioProcMs - _stableTokenAgeMs;
         var tail = new StringBuilder();
+        var tailTimingTokens = new List<SonioxToken>();
         var map = _finalMap;
         var tailStartOffset = _finalText.Length;
         var endTime = _finalEndTime;
@@ -52,6 +84,7 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
             }
             if (token.Text.IsNullOrEmpty())
                 continue;
+
             if (token.StartMs < _promotedEndMs)
                 continue;
 
@@ -64,7 +97,8 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
                 // Soniox emits finals before the non-final tail it supersedes.
                 var startOffset = _finalText.Length;
                 _finalText.Append(token.Text);
-                _finalMap = AppendToken(_finalMap, startOffset, _finalText.Length, token);
+                _finalTimingTokens.Add(CopyToken(token));
+                _finalMap = AppendToken(_finalMap, startOffset, token);
                 _finalEndTime = ToSeconds(token.EndMs);
                 if (!token.IsFinal)
                     _promotedEndMs = token.EndMs;
@@ -76,11 +110,13 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
 
             var tailOffset = tailStartOffset + tail.Length;
             tail.Append(token.Text);
-            map = AppendToken(map, tailOffset, tailStartOffset + tail.Length, token);
+            tailTimingTokens.Add(CopyToken(token));
+            map = AppendToken(map, tailOffset, token);
             endTime = ToSeconds(token.EndMs);
         }
 
         _tailText = tail.ToString();
+        _tailTimingTokens = tailTimingTokens;
         _tailMap = map;
         _tailEndTime = endTime;
         var transcripts = new List<Transcript>(2);
@@ -92,11 +128,25 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
     }
 
     public Transcript Complete(bool hasFinished = true)
-        // A stream that ended without a finished response gets no further chance to finalize,
-        // so its tail is the best transcript available and dropping it would lose words.
-        => hasFinished || _tailText.Length == 0
-            ? NewTranscript(_finalText.ToString(), _finalMap, _finalEndTime, true)
-            : NewTranscript(_finalText + _tailText, _tailMap, _tailEndTime, true);
+    {
+        var useTail = !hasFinished && _tailText.Length > 0;
+        var transcript = useTail
+            ? NewTranscript(_finalText + _tailText, _tailMap, _tailEndTime, true)
+            : NewTranscript(_finalText.ToString(), _finalMap, _finalEndTime, true);
+        var tokens = useTail
+            ? _finalTimingTokens.Concat(_tailTimingTokens).ToArray()
+            : _finalTimingTokens.ToArray();
+        try {
+            var map = CreateDetailedTimeMap(tokens);
+            if (map.IsDegenerate)
+                return transcript;
+
+            return transcript with { TimeMap = map };
+        }
+        catch (ArgumentOutOfRangeException) {
+            return transcript;
+        }
+    }
 
     // Private methods
 
@@ -120,8 +170,15 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
             _languages.Add(language);
     }
 
-    private static LinearMap AppendToken(LinearMap map, int startOffset, int endOffset, SonioxToken token)
-        => TryAppend(TryAppend(map, startOffset, ToSeconds(token.StartMs)), endOffset, ToSeconds(token.EndMs));
+    private static LinearMap AppendToken(LinearMap map, int startOffset, SonioxToken token)
+    {
+        var text = token.Text.AsSpan();
+        var start = text.Length - text.TrimStart().Length;
+        var end = text.TrimEnd().Length;
+        return end <= start ? map : TryAppend(
+            TryAppend(map, startOffset + start, ToSeconds(token.StartMs)),
+            startOffset + end, ToSeconds(token.EndMs));
+    }
 
     private static LinearMap TryAppend(LinearMap map, float x, float y)
     {
@@ -135,6 +192,13 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
 
         return map.Append(new Vector2(x, y));
     }
+
+    private static SonioxToken CopyToken(SonioxToken token)
+        => new() {
+            Text = token.Text,
+            StartMs = token.StartMs,
+            EndMs = token.EndMs,
+        };
 
     private static float ToSeconds(long ms)
         => (float)(ms / 1000.0);

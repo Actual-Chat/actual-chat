@@ -37,7 +37,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     // latches onto a granularity artifact and reports zero precision.
     private static readonly TimeSpan PhysicalRttFloor = TimeSpan.FromMilliseconds(1);
     private static readonly TimeSpan TimerGranularity = TimeSpan.FromMilliseconds(1);
-    private static readonly TimeSpan MaxProbeRtt = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan MaxProbeRtt = TimeSpan.FromSeconds(5);
     private const double RttSelectionFactor = 1.5;
     private const double SmallCorrectionFactor = 2;
     private const double ConfirmFactor = 2;
@@ -46,6 +46,7 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     // Must stay below 100%, or a negative correction makes ServerClock.Now run backwards.
     private const double MaxSlewRate = 0.1;
     private static readonly TimeSpan StalenessRelaxTime = TimeSpan.FromMinutes(30);
+    private const double MaxRelaxation = 2;
     // Applied to the 0.5*minRtt precision floor so mode doesn't flap when bursts land exactly on it.
     private const double LinkFloorHeadroom = 1.2;
     private static readonly TimeSpan SuspendDriftThreshold = TimeSpan.FromSeconds(1);
@@ -200,6 +201,8 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
                 await peer.WhenConnected(ConnectWait, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+                Log.LogWarning("Burst discarded: peer #{PeerId} isn't connected ({Error}), instance #{Id}",
+                    GetObjectId(peer), e.GetType().Name, GetObjectId(this));
                 return null;
             }
 
@@ -208,13 +211,14 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 
         var burstSize = _mode == ServerClockSyncMode.Steady ? SteadyBurstSize : ConvergingBurstSize;
         var samples = new List<Sample>(burstSize);
+        var probeFailures = new List<string>();
         for (var i = 0; i < burstSize; i++) {
             if (i != 0)
                 await CpuClock.Delay(ProbeSpacing, cancellationToken).ConfigureAwait(false);
 
             Sample? sample;
             try {
-                sample = await Probe(offsetBaseClock, cancellationToken).ConfigureAwait(false);
+                sample = await Probe(offsetBaseClock, probeFailures, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception e) when (e is JSDisconnectedException or ObjectDisposedException) {
                 return null; // The circuit is gone - the whole burst is void
@@ -222,20 +226,35 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 
             if (sample is { } usableSample)
                 samples.Add(usableSample);
+            // Probes can wait MaxProbeRtt each, so a burst that can't reach MinUsableProbes gives up early
+            if (samples.Count + (burstSize - i - 1) < MinUsableProbes)
+                break;
         }
 
-        if (peer != null && !IsSameConnection(connectionState!, peer.ConnectionState.Value))
+        if (peer != null && !IsSameConnection(connectionState!, peer.ConnectionState.Value)) {
+            Log.LogWarning("Burst discarded: the connection of peer #{PeerId} changed, instance #{Id}",
+                GetObjectId(peer), GetObjectId(this));
             return null;
-        if (samples.Count < MinUsableProbes)
+        }
+
+        if (samples.Count < MinUsableProbes) {
+            Log.LogWarning(
+                "Burst discarded: {UsableCount}/{BurstSize} usable probes, peer #{PeerId}, instance #{Id}: {Failures}",
+                samples.Count, burstSize, GetObjectId(peer), GetObjectId(this), string.Join(", ", probeFailures));
             return null;
+        }
 
         return Reduce(samples);
     }
 
-    private async Task<Sample?> Probe(MomentClock offsetBaseClock, CancellationToken cancellationToken)
+    private async Task<Sample?> Probe(
+        MomentClock offsetBaseClock,
+        List<string> failures,
+        CancellationToken cancellationToken)
     {
         using var cts = cancellationToken.CreateLinkedTokenSource();
-        cts.CancelAfter(GetProbeTimeout());
+        var timeout = GetProbeTimeout();
+        cts.CancelAfter(timeout);
         var before = offsetBaseClock.Now;
         double remoteMs;
         try {
@@ -245,13 +264,19 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
         }
         catch (Exception e) when (e is not (JSDisconnectedException or ObjectDisposedException)
                                   && !e.IsCancellationOf(cancellationToken)) {
-            return null; // Timed out or failed: this sample is unusable, the burst isn't
+            // Timed out or failed: this sample is unusable, the burst isn't
+            failures.Add(e is OperationCanceledException
+                ? $"timeout {timeout.TotalMilliseconds:F0}ms"
+                : $"{e.GetType().Name}: {e.Message}");
+            return null;
         }
 
         var after = offsetBaseClock.Now;
         var rtt = after - before;
-        if (rtt < PhysicalRttFloor || rtt > MaxProbeRtt)
+        if (rtt < PhysicalRttFloor || rtt > MaxProbeRtt) {
+            failures.Add($"rtt {rtt.TotalMilliseconds:F1}ms");
             return null;
+        }
 
         var localMidMs = 0.5 * (before.EpochOffset.TotalMilliseconds + after.EpochOffset.TotalMilliseconds);
         return new Sample(rtt, IsServer ? localMidMs - remoteMs : remoteMs - localMidMs);
@@ -363,11 +388,13 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
     }
 
     private TimeSpan GetProbeTimeout()
-        // A fixed timeout locks out a link that got slower for good: _minRttEma only updates on
-        // accept, so once every probe times out nothing is left to widen it.
-        => TimeSpanExt.Min(
-            MaxProbeRtt,
-            TimeSpanExt.Max(ProbeTimeout, TimeSpan.FromSeconds(ProbeTimeoutRttFactor * _minRttEma.Value)));
+        // _minRttEma only updates on accept, so a short timeout locks out a slow link for good:
+        // until the first accept probes wait the longest
+        => _minRttEma.SampleCount == 0
+            ? MaxProbeRtt
+            : TimeSpanExt.Min(
+                MaxProbeRtt,
+                TimeSpanExt.Max(ProbeTimeout, TimeSpan.FromSeconds(ProbeTimeoutRttFactor * _minRttEma.Value)));
 
     private TimeSpan GetStaleness()
         => SyncCount == 0 ? TimeSpan.MaxValue : (CpuClock.Now - _lastAcceptedAt).Positive();
@@ -382,11 +409,16 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 
     private TimeSpan GetAcceptablePrecision()
     {
+        // The first sync can't do better than what the link allows, and a coarse offset beats none:
+        // later syncs refine it
         if (SyncCount == 0)
-            return PrecisionCeiling;
+            return MaxProbeRtt;
 
-        var relaxation = 1 + (_connectedElapsed.TotalSeconds / StalenessRelaxTime.TotalSeconds);
-        return TimeSpanExt.Min(relaxation * GetEffectiveTargetPrecision(), PrecisionCeiling);
+        // The link floor bounds the precision, not a fixed ceiling: on a slow link a ceiling
+        // below the floor rejects every sound burst
+        var staleness = _connectedElapsed.TotalSeconds / StalenessRelaxTime.TotalSeconds;
+        var relaxation = Math.Min(1 + staleness, MaxRelaxation);
+        return relaxation * GetEffectiveTargetPrecision();
     }
 
     // A target below the link's 0.5*minRtt floor is unattainable: every burst reads "noisy",
@@ -522,6 +554,9 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
         var cpuElapsed = CpuClock.Now - _lastAcceptedAt;
         return (wallElapsed - cpuElapsed).Duration();
     }
+
+    private static int GetObjectId(object? value)
+        => value is null ? 0 : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(value);
 
     private static BurstResult Reduce(List<Sample> samples)
     {

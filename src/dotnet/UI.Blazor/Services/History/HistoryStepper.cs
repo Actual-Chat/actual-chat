@@ -38,10 +38,10 @@ public class HistoryStepper
         History.Save<OwnHistoryState>();
     }
 
-    private void CloseInternal(HistoryStepRef modalRef)
+    private void CloseInternal(HistoryStepRef modalRef, bool isNavigation = false)
     {
         _refs = _refs.Remove(modalRef);
-        ((IHistoryStepRefImpl)modalRef).MarkClosed();
+        ((IHistoryStepRefImpl)modalRef).MarkClosed(isNavigation);
     }
 
     // Nested types
@@ -67,7 +67,7 @@ public class HistoryStepper
             for (var i = stepRefs.Count - 1; i >= 0; i--) {
                 var stepRef = stepRefs[i];
                 if (!stepIds.Contains(stepRef.Id))
-                    Host.CloseInternal(stepRef);
+                    Host.CloseInternal(stepRef, !isHistoryMove);
             }
         }
 

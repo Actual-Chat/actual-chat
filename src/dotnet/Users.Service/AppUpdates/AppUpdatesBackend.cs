@@ -116,14 +116,21 @@ public class AppUpdatesBackend : IAppUpdatesBackend
         }
     }
 
-    internal Task SetCachedStoreUpdateInfo(
+    internal async Task SetCachedStoreUpdateInfo(
         AppKind appKind,
         CachedUpdateInfo info,
         CancellationToken cancellationToken)
-        => RedisDb.Set(appKind.ToString(), info, cancellationToken);
+    {
+        // Under the store lock, or a check in flight writes back what it read before this write
+        var storeLock = await StoreLocks.Lock(appKind.ToString(), cancellationToken).ConfigureAwait(false);
+        await using var _ = storeLock.ConfigureAwait(false);
+        await RedisDb.Set(appKind.ToString(), info, cancellationToken).ConfigureAwait(false);
+    }
 
     internal async Task RemoveCachedStoreUpdateInfo(AppKind appKind, CancellationToken cancellationToken)
     {
+        var storeLock = await StoreLocks.Lock(appKind.ToString(), cancellationToken).ConfigureAwait(false);
+        await using var _ = storeLock.ConfigureAwait(false);
         // RedisDb.Database applies KeyPrefix, so the key goes in unprefixed here
         var database = await RedisDb.Database.Get(cancellationToken).ConfigureAwait(false);
         await database.KeyDeleteAsync(appKind.ToString()).ConfigureAwait(false);
@@ -193,7 +200,7 @@ public class AppUpdatesBackend : IAppUpdatesBackend
         }
 
         var result = new CachedUpdateInfo(info, pendingInfo, nextCheckAt);
-        await SetCachedStoreUpdateInfo(appKind, result, cancellationToken).ConfigureAwait(false);
+        await RedisDb.Set(appKind.ToString(), result, cancellationToken).ConfigureAwait(false);
         return result;
     }
 

@@ -183,6 +183,26 @@ public class CoachLabelsTest
         l.DeltaBadge(quiet).Should().BeEmpty("an unavailable current value is not an unchanged comparison");
     }
 
+    [Theory]
+    [InlineData(0, "0%")]
+    [InlineData(0.354, "35%")]
+    [InlineData(1, "100%")]
+    public void TurnTakingValueShouldOnlyShowThePercentage(double share, string expected)
+    {
+        // arrange
+        var labels = new CoachLabels(new TestStringLocalizer(new() {
+            ["Coach_Percent_Format"] = "{0}%",
+        }));
+        var metric = new CoachMetric(CoachMetricKind.TurnTaking, share, null,
+            CoachBand.Good, ApiArray<CoachChip>.Empty);
+
+        // act
+        var value = labels.Value(metric);
+
+        // assert
+        value.Should().Be(expected);
+    }
+
     [Fact]
     public void ValueShouldShowTheLongestMonologueAsAClock()
     {

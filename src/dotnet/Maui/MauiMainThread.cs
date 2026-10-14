@@ -5,13 +5,17 @@ using Microsoft.Maui.ApplicationModel;
 // MAUI Essentials' MainThread is its "not implemented" neutral build on the macos TFM
 // TODO(maui-labs): see MacOSMainThread
 using MainThread = ActualChat.Maui.MacOSMainThread;
+#elif LINUX
+// The same on the plain net TFM the GTK backend runs on
+// TODO(maui-labs): see LinuxMainThread
+using MainThread = ActualChat.Maui.LinuxMainThread;
 #endif
 
 namespace ActualChat.Maui;
 
 /// <summary>
 /// The main-thread API for every MAUI project: Essentials' <c>MainThread</c> behind an
-/// <c>allowInline</c> switch, and the AppKit alias where Essentials has no implementation.
+/// <c>allowInline</c> switch, and the AppKit and GTK aliases where Essentials has no implementation.
 /// </summary>
 public static class MauiMainThread
 {

@@ -32,7 +32,7 @@ public static class Emojis
     public static readonly Emoji Dead = new("💀", "Skull", EmojiGroup.Negative);
     public static readonly Emoji EyeRoll = new("🙄", "Face with rolling eyes", EmojiGroup.Negative);
     public static readonly Emoji NoWords = new("😶", "Face without mouth", EmojiGroup.Negative);
-    public static readonly Emoji Scared = new("😨", "Fearful face", EmojiGroup.Negative);
+    public static readonly Emoji Scared = new("😱", "Face screaming in fear", EmojiGroup.Negative);
     public static readonly Emoji Sick = new("🤢", "Nauseated face", EmojiGroup.Negative);
     public static readonly Emoji Sleeping = new("😴", "Sleeping face", EmojiGroup.Negative);
 
@@ -70,7 +70,7 @@ public static class Emojis
     public static readonly Emoji Boom = new("💥", "Boom", EmojiGroup.Gestures);
     public static readonly Emoji BeamingFace = new("😁", "Beaming face with smiling eyes", EmojiGroup.Positive);
     public static readonly Emoji Cry = new("😢", "Crying face", EmojiGroup.Negative);
-    public static readonly Emoji ScreamingFaceInFear = new("😱", "Face screaming in fear", EmojiGroup.Negative);
+    public static readonly Emoji Fearful = new("😨", "Fearful face", EmojiGroup.Negative);
     public static readonly Emoji Please = new("🥺", "Pleading face", EmojiGroup.Love);
     public static readonly Emoji Clap = new("👏", "Clapping hands", EmojiGroup.Gestures);
     public static readonly Emoji RaisedHands = new("🙌", "Raising hands", EmojiGroup.Gestures);
@@ -89,7 +89,7 @@ public static class Emojis
         Boom,
         BeamingFace,
         Cry,
-        ScreamingFaceInFear,
+        Fearful,
         Please,
         Clap,
         RaisedHands,
@@ -229,6 +229,7 @@ public static class Emojis
         { HundredPoints, "emoji-hundred-points" },
         // Legacy
         { Boom, "emoji-fire" },
+        { Fearful, "emoji-scared" },
     };
 
     public static Emoji[] GetByGroup(EmojiGroup group)

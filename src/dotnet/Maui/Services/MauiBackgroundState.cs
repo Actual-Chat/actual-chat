@@ -1,9 +1,10 @@
 namespace ActualChat.Maui.Services;
 
 /// <summary>
-/// Static background state shared across the Maui layer.
-/// Set by platform-specific code (AppDelegate on iOS, lifecycle events on Android/Windows).
-/// Consumed by <see cref="KvasarStoreSupport"/> to suspend/resume the Kvasar stores.
+/// Static host state shared across the Maui layer: <see cref="IsBackground"/> is set by the OS
+/// lifecycle (AppDelegate on iOS, lifecycle events on Android) or, on desktop, by the window
+/// observers, which also set <see cref="IsHidden"/>; the phone tracker reads one state for both.
+/// <see cref="KvasarStoreSupport"/> suspends/resumes the Kvasar stores on <see cref="IsBackground"/>.
 /// </summary>
 public static class MauiBackgroundState
 {
@@ -13,19 +14,24 @@ public static class MauiBackgroundState
         = StateFactory.Default.NewMutable(
             initialValue: false,
             StateCategories.Get(typeof(MauiBackgroundState), nameof(IsBackground)));
+    private static readonly MutableState<bool> IsHiddenMutable
+        = StateFactory.Default.NewMutable(
+            initialValue: false,
+            StateCategories.Get(typeof(MauiBackgroundState), nameof(IsHidden)));
 
     // ReSharper disable once InconsistentlySynchronizedField
     public static IState<bool> IsBackground => IsBackgroundMutable;
+    public static IState<bool> IsHidden => IsHiddenMutable;
 
-    // Handlers run synchronously inside Set so the platform callback (e.g. iOS DidEnterBackground,
-    // still holding its background-task assertion) can wait for suspend work to finish.
+    // Handlers run synchronously inside SetIsBackground so the platform callback (e.g. iOS
+    // DidEnterBackground, still holding its background-task assertion) can wait for suspend work to finish.
     public static void RegisterStateHandler(Action<bool> handler)
     {
         lock (Lock)
             StateHandlers.Add(handler);
     }
 
-    public static void Set(bool isBackground)
+    public static void SetIsBackground(bool isBackground)
     {
         Action<bool>[] handlersToRun;
         lock (Lock) {
@@ -40,4 +46,7 @@ public static class MauiBackgroundState
                 // ignored
             }
     }
+
+    public static void SetIsHidden(bool isHidden)
+        => IsHiddenMutable.Value = isHidden;
 }

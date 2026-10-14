@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
+using ActualChat.Blobs;
 using ActualChat.Chat.Coach;
 using ActualChat.Chat.Db;
 using ActualChat.Chat.ML;
 using ActualChat.Chat.Module;
+using ActualChat.Media;
 using ActualChat.Queues;
 using ActualChat.Testing.Host;
 using ActualChat.Users;
@@ -31,9 +33,10 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
 
         public async Task<SpeechTagResult?> Tag(SpeechTagRequest request, CancellationToken cancellationToken)
         {
+            var gateTask = Gate;
             _requests.Enqueue(request);
             Interlocked.Increment(ref _calls);
-            await Gate.ConfigureAwait(false);
+            await gateTask.ConfigureAwait(false);
             if (IsFailing)
                 return null;
 
@@ -134,6 +137,116 @@ public class CoachAnalysisTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         analysis.PromptVersion.Should().Be(1);
         analysis.Language.Should().Be(Languages.English);
         tagger.Calls.Should().Be(1);
+        analysis.Pace.Should().BeNull();
+        appHost.Services.GetRequiredService<ChatSettings>().Coach.IsPaceEnabled.Should().BeTrue();
+    }
+
+    [Theory(Timeout = 120_000)]
+    [InlineData(13_000, false, false)]
+    [InlineData(0, false, false)]
+    [InlineData(13_000, true, false)]
+    [InlineData(0, true, false)]
+    [InlineData(13_000, false, true)]
+    public async Task PaceShouldUseMediaDurationSurviveMetadataChangesAndBeClearedByRemapping(
+        int durationMs, bool mustChangeMetadata, bool mustTagConcurrently)
+    {
+        // arrange
+        var gate = TaskCompletionSourceExt.New();
+        var tagger = new FakeTagger {
+            Gate = mustChangeMetadata ? gate.Task : Task.CompletedTask,
+            IsFailing = mustTagConcurrently,
+        };
+        var (appHost, _) = await NewCoachHost(
+            $"coach-pace-{durationMs}-{mustChangeMetadata}-{mustTagConcurrently}", tagger, null,
+            (nameof(CoachSettings.IsPaceEnabled), "true"));
+        await using var _ = appHost;
+        await using var tester = appHost.NewBlazorTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        await OptIn(appHost, account);
+        var backend = appHost.Services.GetRequiredService<ICoachAnalysisBackend>();
+        var text = string.Join(" ", Enumerable.Repeat("word", 25));
+        var streaming = await tester.CreateStreamingEntry(chatId, Languages.English, content: text);
+        var mediaId = MediaId.New(chatId.Value);
+        var media = new MediaFull(mediaId) {
+            Kind = MediaKind.ChatEntryAudio,
+            BlobId = $"{mediaId.Value}/pace-test.webm",
+            DurationMs = durationMs,
+            BeginsAt = streaming.ChatEntrySlim.BeginsAt,
+            EndsAt = streaming.ChatEntrySlim.BeginsAt + TimeSpan.FromSeconds(13),
+        };
+        using var blob = new MemoryStream([0]);
+        await appHost.Services.GetRequiredService<IBlobStorages>()[BlobScope.AudioRecord]
+            .Write(media.BlobId, blob, "audio/webm", default);
+        await tester.Commander.Call(new MediaBackend_Change(mediaId, null, Change.Create(media)), true);
+        var points = Enumerable.Range(0, 25).SelectMany(i => new[] {
+            i * 5f, 1 + i * 0.4f, i * 5f + 4, 1 + (i + 1) * 0.4f,
+        }).ToArray();
+
+        // act
+        var entry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(streaming.ChatEntrySlim.Id,
+            streaming.ChatEntrySlim.Version, Change.Update(new ChatEntryDiff {
+                ContentStreamId = "",
+                Audio = new ChatEntryAudio { MediaId = mediaId, TimeMap = new LinearMap(points) },
+                EndsAt = streaming.ChatEntrySlim.BeginsAt + TimeSpan.FromSeconds(11),
+            })));
+        if (mustChangeMetadata) {
+            await TestWait.WhenPolled(() => tagger.Calls.Should().BeGreaterThan(0));
+            entry = await tester.Commander.Call(new ChatsBackend_ChangeEntry(entry.Id, entry.Version,
+                Change.Update(new ChatEntryDiff { IsThreadStart = true })));
+            gate.SetResult();
+        }
+
+        var analysis = await TestWait.When(async ct => {
+            var result = await backend.Get(entry.Id, ct);
+            result.Should().NotBeNull();
+            result!.Pace.Should().NotBeNull();
+            result.TagState.Should().Be(mustTagConcurrently ? CoachTagState.Pending : CoachTagState.Tagged);
+            return result;
+        });
+
+        // assert
+        analysis.DurationSeconds.Should().Be(11);
+        analysis.Pace!.AudioMilliseconds.Should().Be(13_000);
+        analysis.Pace.Analysis.ValidWords.Should().Be(25);
+        analysis.Pace.Analysis.UnmappedMilliseconds.Should().Be(3_000);
+        analysis.Pace.Analysis.Segments.Should().OnlyContain(s => s.WordsPerMinute == 150);
+        await tester.Commander.Call(new CoachAnalysisBackend_AnalyzeEntry(entry.Id, false) {
+            UpdatePace = true,
+            EntryVersion = entry.Version - 1,
+        });
+        (await backend.Get(entry.Id, default))!.Version.Should().Be(analysis.Version);
+        if (mustTagConcurrently) {
+            tagger.IsFailing = false;
+            tagger.Gate = gate.Task;
+        }
+
+        var callsBeforeRemapping = tagger.Calls;
+        var remapped = await tester.Commander.Call(new ChatsBackend_ChangeEntry(entry.Id, entry.Version,
+            Change.Update(new ChatEntryDiff {
+                Audio = new ChatEntryAudio { MediaId = mediaId, TimeMap = new LinearMap(0, 0, text.Length, 11) },
+            })));
+        if (mustTagConcurrently) {
+            await TestWait.WhenPolled(() => tagger.Calls.Should().BeGreaterThan(callsBeforeRemapping));
+            tagger.Gate = Task.CompletedTask;
+            var analyzeRunCmd = new CoachAnalysisBackend_AnalyzeConversation(entry.ChatId, entry.LocalId) {
+                DelayUntil = Moment.EpochStart,
+            };
+            await tester.Commander.Call(analyzeRunCmd);
+            var tagged = await WhenTagged(backend, entry.Id);
+            tagged.Pace.Should().NotBeNull();
+            analysis = tagged;
+            gate.SetResult();
+        }
+
+        await TestWait.When(async ct => {
+            var updated = await backend.Get(entry.Id, ct);
+            updated!.Version.Should().BeGreaterThan(analysis.Version);
+            updated.Pace.Should().BeNull();
+        });
+        await tester.Commander.Call(new ChatsBackend_ChangeEntry(remapped.Id, remapped.Version,
+            Change.Update(new ChatEntryDiff { Audio = null })));
+        await TestWait.When(async ct => (await backend.Get(entry.Id, ct)).Should().BeNull());
     }
 
     [Fact]

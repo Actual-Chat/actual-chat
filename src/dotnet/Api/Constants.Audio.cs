@@ -118,6 +118,13 @@ public static partial class Constants
         // rejection tight-looping, not to pace a reconnect - and every millisecond here is
         // silence for the listeners.
         public static readonly TimeSpan StreamErrorRetryDelay = TimeSpan.FromMilliseconds(100);
+        // The retry delay grows by √2 per failed call, capped by this, and the sender drops its
+        // utterance after StreamErrorMaxAttempts failed calls in a row (~2.3s delay, ~7.5s in total):
+        // a persistent rejection must not turn into a retry loop that outlives the utterance.
+        public static readonly TimeSpan StreamErrorRetryDelayMax = TimeSpan.FromSeconds(3);
+        public const int StreamErrorMaxAttempts = 10;
+        // A call that sent at least this many frames made progress and restarts the failure count.
+        public const int StreamErrorProgressFrames = 25;
         // How long the mic staying shut or the connection staying down must last before the UI
         // calls it a failure: a healthy start passes through both states on its way up.
         public static readonly TimeSpan RecordingProblemGracePeriod = TimeSpan.FromSeconds(1.5);

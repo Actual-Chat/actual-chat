@@ -1,4 +1,5 @@
 using ActualChat.App.Maui.Audio;
+using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.Maui.Services;
 using ActualChat.UI.Blazor;
@@ -15,8 +16,9 @@ public static partial class MauiProgram
     private static partial void ConfigureBlazorWebViewAppPlatformServices(this IServiceCollection services)
     {
         services.AddTransient<IAppIconBadge>(c => new WindowsAppIconBadge(c.LogFor<WindowsAppIconBadge>()));
-        services.AddTransient<IDeviceTokenRetriever>(_ => new WindowsDeviceTokenRetriever());
-        services.AddScoped<INotificationsPermission>(_ => new WindowsNotificationsPermission());
+        services.AddTransient<IDeviceTokenRetriever>(_ => new NoDeviceTokenRetriever());
+        services.AddScoped<INotificationsPermission>(c => new WindowsNotificationsPermission(c.AppUIHub()));
+        services.AddScoped<IDeviceNotifications>(c => new WindowsDeviceNotifications(c));
         services.AddTransient<INativeAppSettings>(
             c => new WindowsAppSettings(c.GetRequiredService<IStringLocalizer>()));
         services.AddScoped<IRecordingPermissionRequester>(_ => new WindowsRecordingPermissionRequester());
@@ -35,7 +37,10 @@ public static partial class MauiProgram
         events.AddWindows(builder => {
             builder
                 .OnWindowCreated(WindowConfigurator.Configure)
-                .OnVisibilityChanged((_, args) => MauiBackgroundState.Set(!args.Visible));
+                .OnVisibilityChanged((_, args) => {
+                    MauiBackgroundState.SetIsBackground(!args.Visible);
+                    MauiBackgroundState.SetIsHidden(!args.Visible);
+                });
         });
         #if false
         // NOTE(DF): MauiLivenessProbe is switched off for now.

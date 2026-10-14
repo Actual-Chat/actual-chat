@@ -1,0 +1,89 @@
+@namespace ActualChat.UI.Blazor.Components
+
+<div class="histogram-chart @Class">
+    <div class="c-bounds" aria-hidden="true">
+        @if (TargetRange is { } bounds) {
+            <span style="left: clamp(2.5rem, @X(bounds.Start + (bounds.End - bounds.Start) / 2)%,
+                calc(100% - 2.5rem))">@bounds.Start.ToString("0.#", null)–@bounds.End.ToString("0.#", null)</span>
+        }
+    </div>
+    <div class="c-y-axis" aria-hidden="true">
+        <span>@ValueLabel(_verticalMaximum)</span>
+        <span>@ValueLabel(_verticalMaximum / 2d)</span>
+        <span>@ValueLabel(0)</span>
+    </div>
+    <div class="c-plot">
+        @if (TargetRange is { } range) {
+            <div class="c-target" aria-hidden="true"
+                 style="left: @X(range.Start)%; width: @Number((range.End - range.Start) / Span * 100)%"></div>
+        }
+        <div class="c-grid" aria-hidden="true"></div>
+        @foreach (var (bin, value) in _bins) {
+            var hint = BinHint(bin, value);
+            <span class="c-bin" role="img" aria-label="@hint" data-tooltip="@hint" tabindex="0"
+                  data-bin="@bin" data-value="@value"
+                  style="left: @X((double)bin * BinWidth)%;
+                      width: @Number(BinWidth / Span * 100)%; height: @Number(value / _verticalMaximum * 100)%">
+            </span>
+        }
+    </div>
+    <div class="c-x-axis" aria-hidden="true">
+        @for (var i = 0; i <= 4; i++) {
+            <span style="left: @(i * 25)%">@((_minimum + Span * i / 4).ToString("0.#", null))</span>
+        }
+    </div>
+    <div class="c-x-unit">@XUnit</div>
+</div>
+
+@code {
+    private KeyValuePair<int, long>[] _bins = [];
+    private double _minimum;
+    private double _maximum;
+    private double _verticalMaximum = 1;
+
+    private double Span => _maximum - _minimum;
+
+    [Parameter, EditorRequired] public IEnumerable<KeyValuePair<int, long>> Bins { get; set; } = [];
+    [Parameter, EditorRequired] public Func<int, long, string> BinHint { get; set; } = (_, _) => "";
+    [Parameter, EditorRequired] public Func<double, string> ValueLabel { get; set; } = x => x.ToString("0.#", null);
+    [Parameter] public string XUnit { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public int BinWidth { get; set; } = 5;
+    [Parameter] public double ScaleStep { get; set; } = 25;
+    [Parameter] public Range<double>? TargetRange { get; set; }
+    [Parameter] public double? MaximumValue { get; set; }
+
+    protected override void OnParametersSet() {
+        if (BinWidth <= 0 || !double.IsFinite(ScaleStep) || ScaleStep <= 0)
+            throw new ArgumentOutOfRangeException(nameof(BinWidth));
+        if (TargetRange is { } range && (!double.IsFinite(range.Start) || !double.IsFinite(range.End)
+            || range.Start < 0 || range.Start > range.End))
+            throw new ArgumentOutOfRangeException(nameof(TargetRange));
+
+        _bins = Bins.OrderBy(x => x.Key).ToArray();
+        if (_bins.Any(x => x.Key < 0 || x.Value <= 0) || _bins.Select(x => x.Key).Distinct().Count() != _bins.Length)
+            throw new ArgumentOutOfRangeException(nameof(Bins));
+
+        var low = _bins.Length > 0 ? (double)_bins[0].Key * BinWidth : TargetRange?.Start ?? 0;
+        var high = _bins.Length > 0 ? ((double)_bins[^1].Key + 1) * BinWidth : TargetRange?.End ?? ScaleStep;
+        if (TargetRange is { } target) {
+            low = Math.Min(low, target.Start);
+            high = Math.Max(high, target.End);
+        }
+        _minimum = Math.Max(0, Math.Floor(low / ScaleStep) * ScaleStep - ScaleStep);
+        _maximum = Math.Ceiling(high / ScaleStep) * ScaleStep + ScaleStep;
+        var peak = _bins.Length > 0 ? _bins.Max(x => (double)x.Value) : 0;
+        _verticalMaximum = MaximumValue ?? Math.Max(1, peak);
+        if (!double.IsFinite(_verticalMaximum) || _verticalMaximum <= 0 || _verticalMaximum < peak)
+            throw new ArgumentOutOfRangeException(nameof(MaximumValue));
+
+        if (!double.IsFinite(_maximum) || !double.IsFinite(Span) || Span <= 0)
+            throw new ArgumentOutOfRangeException(nameof(ScaleStep));
+    }
+
+    private string X(double value)
+        => Number((value - _minimum) / Span * 100);
+
+    private static string Number(double value)
+        => value.ToString("0.####", null);
+}

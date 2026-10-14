@@ -28,5 +28,9 @@ public partial class App : MauiWinUIApplication
     }
 
     protected override MauiApp CreateMauiApp()
-        => MauiProgram.CreateMauiApp();
+    {
+        var mauiApp = MauiProgram.CreateMauiApp();
+        WindowsInstanceGuard.LogStartup();
+        return mauiApp;
+    }
 }

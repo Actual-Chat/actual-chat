@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using ActualChat.Chat;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Users.Db;
@@ -32,17 +33,27 @@ public class DbCoachEvent : IRequirementTarget
 
     [Column(TypeName = "jsonb")]
     public string Payload { get; set; } = "{}";
+    public byte[]? PaceData { get; set; }
 
     public DbCoachEvent() { }
     public DbCoachEvent(CoachRecord record) => UpdateFrom(record);
 
     public CoachRecord ToModel()
-        => SystemJsonSerializer.Default.Read<CoachRecord>(Payload) with { IsExcluded = IsExcluded };
+    {
+        var model = SystemJsonSerializer.Default.Read<CoachRecord>(Payload);
+        return model with {
+            IsExcluded = IsExcluded,
+            Entry = model.Entry is { } entry
+                ? entry with { Pace = PaceData is null ? null : SpeechPaceMeasurement.FromBytes(PaceData) }
+                : null,
+        };
+    }
 
     public void MarkRemoved()
     {
         IsRemoved = true;
         Payload = "{}";
+        PaceData = null;
     }
 
     public void UpdateFrom(CoachRecord record)
@@ -56,6 +67,10 @@ public class DbCoachEvent : IRequirementTarget
         ChatId = record.ChatId.Value;
         Day = record.Day.ToDateTimeClamped();
         OccurredAt = record.OccurredAt.ToDateTimeClamped();
-        Payload = SystemJsonSerializer.Default.Write(record);
+        PaceData = record.Entry?.Pace?.ToBytes();
+        var payload = record.Entry?.Pace is null
+            ? record
+            : record with { Entry = record.Entry with { Pace = null } };
+        Payload = SystemJsonSerializer.Default.Write(payload);
     }
 }

@@ -87,6 +87,13 @@
                                 </select>
                             </div>
                         </div>
+                        @if (s.FocusByLanguage.TryGetValue(language.Iso, out var focus)) {
+                            <div class="c-language-focus" data-language="@language.Iso">
+                                <span>@L.Coach_ChosenFocus_Format(labels.MetricTitle(focus))</span>
+                                <button type="button" class="c-focus-reset"
+                                        @onclick="@(() => OnFocusReset(language.Iso))">@L.Coach_ResetFocus</button>
+                            </div>
+                        }
                     </section>
                 }
             </div>
@@ -184,6 +191,12 @@
         => Enum.TryParse<CoachLanguageLevel>(e.Value?.ToString(), out var level)
             ? UICommander.Run(new Coach_SetLanguageLevel { Session = Session, Language = iso, Level = level })
             : Task.CompletedTask;
+
+    private Task OnFocusReset(string iso)
+    {
+        var resetFocusCmd = new Coach_SetFocus { Session = Session, Language = iso, Kind = null };
+        return UICommander.Run(resetFocusCmd);
+    }
 
     private Task OnMinutesChanged(ChangeEventArgs e)
         => int.TryParse(e.Value?.ToString(), out var minutes)

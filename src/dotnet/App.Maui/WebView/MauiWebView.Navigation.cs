@@ -10,7 +10,11 @@ public partial class MauiWebView
     // ReSharper disable once CollectionNeverUpdated.Local
     private static readonly HashSet<string> AllowedExternalHosts = new() { "www.youtube.com" };
 
+#if LINUX
+    public static readonly Uri BaseLocalUri = new($"app://{MauiSettings.LocalHost}/");
+#else
     public static readonly Uri BaseLocalUri = new($"https://{MauiSettings.LocalHost}/");
+#endif
     public Uri LastUri { get; private set; } = BaseLocalUri;
     public Uri LastLocalUri { get; private set; } = BaseLocalUri;
     public bool IsOnLocalUri => LastUri == LastLocalUri;
@@ -90,6 +94,45 @@ public partial class MauiWebView
         eventArgs.UrlLoadingStrategy = UrlLoadingStrategy.CancelLoad;
         return false;
     }
+
+#if MACOS || LINUX
+    private static bool HandleWebNavigation(MauiWebView? mauiWebView, Uri uri)
+    {
+        // The labs backends' twin of HandleLoading: their BlazorWebView handlers don't raise MAUI's
+        // UrlLoading event, so the same policy runs from the WebKit navigation callbacks. Static
+        // and null-tolerant on purpose: an external navigation must be cancelled even when the
+        // delegate can't match the current MauiWebView - failing open here is how an in-chat
+        // link once replaced the whole app with the page it pointed at.
+        if (uri.Host == MauiSettings.LocalHost) {
+            if (mauiWebView != null) {
+                mauiWebView.LastUri = uri;
+                mauiWebView.LastLocalUri = uri;
+            }
+            return true;
+        }
+
+        if (!MauiSettings.BaseUri.IsBaseOf(uri)) {
+            if (AllowedExternalHosts.Contains(uri.Host)) {
+                if (mauiWebView != null)
+                    mauiWebView.LastUri = uri;
+                return true;
+            }
+
+            _ = ForegroundTask.Run(() => MauiBrowser.Open(uri.ToString()));
+            return false;
+        }
+
+        // If we're here, it's a host URL, so we have to re-route it to the local one
+        if (mauiWebView != null) {
+            var wasOnLocalUri = mauiWebView.IsOnLocalUri;
+            var localUri = HostToAbsoluteLocalUri(uri);
+            BeginDispatchToMainThread(
+                () => _ = mauiWebView.NavigateTo(localUri, !wasOnLocalUri),
+                allowInline: false);
+        }
+        return false;
+    }
+#endif
 
     private static string HostToAbsoluteLocalUri(Uri hostUri)
     {

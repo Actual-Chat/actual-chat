@@ -475,6 +475,8 @@ public static class LocalizedStringsLocalizerExt
         public string SystemEntry_RetentionChanged_Format(object arg0)
             => l["SystemEntry_RetentionChanged_Format", arg0].Value;
         public string SystemEntry_RetentionTurnedOff => l["SystemEntry_RetentionTurnedOff"].Value;
+        public string SystemEntry_TranscriptionTurnedOn => l["SystemEntry_TranscriptionTurnedOn"].Value;
+        public string SystemEntry_TranscriptionTurnedOff => l["SystemEntry_TranscriptionTurnedOff"].Value;
 
         public string ChatMaintenance_Mode => l["ChatMaintenance_Mode"].Value;
         public string ChatImport_Start => l["ChatImport_Start"].Value;
@@ -2173,7 +2175,9 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_WhatMovesIt => l["Coach_WhatMovesIt"].Value;
         public string Coach_WorkingOn_Format(object arg0) => l["Coach_WorkingOn_Format", arg0].Value;
         public string Coach_ChangeFocus => l["Coach_ChangeFocus"].Value;
-        public string Coach_FocusAutomatic => l["Coach_FocusAutomatic"].Value;
+        public string Coach_FocusSelected => l["Coach_FocusSelected"].Value;
+        public string Coach_ResetFocus => l["Coach_ResetFocus"].Value;
+        public string Coach_ChosenFocus_Format(object arg0) => l["Coach_ChosenFocus_Format", arg0].Value;
         public string Coach_MakeFocus => l["Coach_MakeFocus"].Value;
         public string Coach_FocusHintFillers_Format(object arg0, object arg1)
             => l["Coach_FocusHintFillers_Format", arg0, arg1].Value;
@@ -2301,7 +2305,7 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_YourDataCaption => l["Coach_YourDataCaption"].Value;
         public string Coach_DeleteData => l["Coach_DeleteData"].Value;
         public string Coach_DeleteDataConfirm => l["Coach_DeleteDataConfirm"].Value;
-        public string Coach_CoachMeHere => l["Coach_CoachMeHere"].Value;
+        public string Coach_CoachInChat => l["Coach_CoachInChat"].Value;
         public string Coach_TipCleanTitle => l["Coach_TipCleanTitle"].Value;
         public string Coach_TipCleanBody_Format(object arg0) => l["Coach_TipCleanBody_Format", arg0].Value;
         public string Coach_WeekNoteTitle => l["Coach_WeekNoteTitle"].Value;
@@ -2323,6 +2327,52 @@ public static class LocalizedStringsLocalizerExt
         public string Coach_NotCounted => l["Coach_NotCounted"].Value;
         public string Coach_DontCount => l["Coach_DontCount"].Value;
         public string Coach_CountAgain => l["Coach_CountAgain"].Value;
+        public string Coach_DetailCount_Format(object arg0, object arg1)
+            => l["Coach_DetailCount_Format", arg0, arg1].Value;
+        public string Coach_PaceDetailExplanation => l["Coach_PaceDetailExplanation"].Value;
+        public string Coach_PaceUnavailable => l["Coach_PaceUnavailable"].Value;
+        public string Coach_PaceBelow => l["Coach_PaceBelow"].Value;
+        public string Coach_PaceWithin => l["Coach_PaceWithin"].Value;
+        public string Coach_PaceDistributionExplanation => l["Coach_PaceDistributionExplanation"].Value;
+        public string Coach_ProvisionalResult => l["Coach_ProvisionalResult"].Value;
+        public string Coach_MeasurementProgress_Format(object arg0, object arg1, object arg2)
+            => l["Coach_MeasurementProgress_Format", arg0, arg1, arg2].Value;
+        public string Coach_PaceAbove => l["Coach_PaceAbove"].Value;
+        public string Coach_PaceCoverage_Format(object arg0, object arg1)
+            => l["Coach_PaceCoverage_Format", arg0, arg1].Value;
+        public string Coach_PacePartial => l["Coach_PacePartial"].Value;
+        public string Coach_CalendarDay => l["Coach_CalendarDay"].Value;
+        public string Coach_CalendarWeek => l["Coach_CalendarWeek"].Value;
+        public string Coach_CalendarMonth => l["Coach_CalendarMonth"].Value;
+        public string Coach_PreviousPeriod => l["Coach_PreviousPeriod"].Value;
+        public string Coach_NextPeriod => l["Coach_NextPeriod"].Value;
+        public string Coach_SpeakingDays => l["Coach_SpeakingDays"].Value;
+        public string Coach_SegmentPace => l["Coach_SegmentPace"].Value;
+        public string Coach_HistorySparse => l["Coach_HistorySparse"].Value;
+        public string Coach_HistoryDates => l["Coach_HistoryDates"].Value;
+        public string Coach_HistoryGap_Format(object arg0) => l["Coach_HistoryGap_Format", arg0].Value;
+        public string Coach_HistoryMinimumWords_Format(object arg0)
+            => l["Coach_HistoryMinimumWords_Format", arg0].Value;
+
+        public string Coach_PersonalBaseline => l["Coach_PersonalBaseline"].Value;
+
+        public string Coach_UseMeasurements => l["Coach_UseMeasurements"].Value;
+
+        public string Coach_ReplaceBaseline => l["Coach_ReplaceBaseline"].Value;
+
+        public string Coach_BaselineInvalid => l["Coach_BaselineInvalid"].Value;
+
+        public string Coach_CompareBaseline => l["Coach_CompareBaseline"].Value;
+
+        public string Coach_SinceBaseline_Format(object arg0)
+            => l["Coach_SinceBaseline_Format", arg0].Value;
+
+        public string Coach_BaselineRangeChanged => l["Coach_BaselineRangeChanged"].Value;
+
+        public string Coach_BaselineOmitted_Format(object arg0)
+            => l["Coach_BaselineOmitted_Format", arg0].Value;
+
+        public string Coach_BaselineReference => l["Coach_BaselineReference"].Value;
         public string Coach_MarkProfanityTitle => l["Coach_MarkProfanityTitle"].Value;
         public string Coach_MarkProfanityBody_Format(object arg0) => l["Coach_MarkProfanityBody_Format", arg0].Value;
 

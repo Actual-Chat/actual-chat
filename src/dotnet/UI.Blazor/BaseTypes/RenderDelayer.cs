@@ -17,10 +17,10 @@ public interface IRenderSyncTarget
 // own rate otherwise produce that many independent render batches per second, every one of them
 // re-rendering and re-measuring the list that holds them.
 //
-// The same postpone-and-flush machinery serves MustPostponeBackgroundRenders. A backgrounded WebView
-// stops acknowledging Blazor's render batches while .NET keeps producing them, and every batch
-// produced in that window is one the host can drop - which desyncs the renderer permanently. Holding
-// renders back until the app is visible keeps that window empty.
+// The same postpone-and-flush machinery serves MustPostponeRendersWhileHidden. A hidden WebView stops
+// acknowledging Blazor's render batches while .NET keeps producing them, and every batch produced in
+// that window is one the host can drop - which desyncs the renderer permanently. Holding renders back
+// until the page is visible again keeps that window empty.
 //
 // Pause holds every render back the same way, but for a caller-provided span - long enough to cover
 // a scroll, an animation, or any other stretch where a render batch would land badly.
@@ -44,18 +44,18 @@ public sealed class RenderDelayer : UIWorkerBase<UIHub>
     // NotifyStateHasChanged - without it they would rejoin _paced and never render.
     private bool _isFlushingPaced;
     // The two independent reasons to hold renders back; _postponed exists while either one does.
-    private bool _isBackgroundPostponing;
+    private bool _isPostponingWhileHidden;
     private bool _isPaused;
     // Read by the pending EndPause rather than baked into its delay, so a later Pause extends the
     // gap simply by moving it - nothing has to be cancelled or rescheduled.
     private CpuTimestamp _pausedUntil;
 
     public IUpdateDelayer UpdateDelayer { get; }
-    public bool MustPostponeBackgroundRenders { get; }
+    public bool MustPostponeRendersWhileHidden { get; }
 
     public RenderDelayer(UIHub hub, bool mustStart = true) : base(hub)
     {
-        MustPostponeBackgroundRenders = HostInfo.HostKind.IsMauiApp();
+        MustPostponeRendersWhileHidden = HostInfo.HostKind.IsMauiApp();
         UpdateDelayer = new GridDelayer(RenderPeriod, UpdatePhase, FixedDelayer.Defaults.RetryDelays);
         if (mustStart)
             this.Start();
@@ -112,10 +112,10 @@ public sealed class RenderDelayer : UIWorkerBase<UIHub>
 
     protected override Task OnRun(CancellationToken cancellationToken)
     {
-        if (!MustPostponeBackgroundRenders)
+        if (!MustPostponeRendersWhileHidden)
             return Task.CompletedTask;
 
-        return AsyncChain.From(TrackBackgroundState)
+        return AsyncChain.From(TrackVisibility)
             .Log(LogLevel.Debug, Log)
             .RetryForever(RetryDelaySeq.Exp(0.1, 1), Log)
             .RunIsolated(cancellationToken);
@@ -152,27 +152,27 @@ public sealed class RenderDelayer : UIWorkerBase<UIHub>
         }
     }
 
-    private async Task TrackBackgroundState(CancellationToken cancellationToken)
+    private async Task TrackVisibility(CancellationToken cancellationToken)
     {
         await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
         var backgroundStateTracker = Services.GetRequiredService<BackgroundStateTracker>();
-        var isBackgroundState = backgroundStateTracker.IsBackground;
-        var cIsBackground = await Computed
-            .Capture(() => isBackgroundState.Use(cancellationToken), cancellationToken)
+        var isHiddenState = backgroundStateTracker.IsHidden;
+        var cIsHidden = await Computed
+            .Capture(() => isHiddenState.Use(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         // Every value is applied, not just transitions, so a retry re-syncs instead of awaiting an
         // edge it already missed; an error stops postponing, since a gate stuck shut freezes the UI.
-        await foreach (var c in cIsBackground.Changes(cancellationToken).ConfigureAwait(false)) {
-            var (isBackground, error) = c;
-            var isPostponing = error == null && isBackground;
-            await Dispatcher.InvokeSafeAsync(() => SetIsBackgroundPostponing(isPostponing), Log)
+        await foreach (var c in cIsHidden.Changes(cancellationToken).ConfigureAwait(false)) {
+            var (isHidden, error) = c;
+            var isPostponing = error == null && isHidden;
+            await Dispatcher.InvokeSafeAsync(() => SetIsPostponingWhileHidden(isPostponing), Log)
                 .ConfigureAwait(false);
         }
     }
 
-    private void SetIsBackgroundPostponing(bool isBackgroundPostponing)
+    private void SetIsPostponingWhileHidden(bool isPostponingWhileHidden)
     {
-        _isBackgroundPostponing = isBackgroundPostponing;
+        _isPostponingWhileHidden = isPostponingWhileHidden;
         UpdatePostponing(LogLevel.Information);
     }
 
@@ -201,11 +201,11 @@ public sealed class RenderDelayer : UIWorkerBase<UIHub>
         await Dispatcher.InvokeSafeAsync(EndPause, Log).ConfigureAwait(false);
     }
 
-    // Background postponing is rare and worth an Information line; pauses are frequent enough that
+    // Hidden-page postponing is rare and worth an Information line; pauses are frequent enough that
     // the same line would be noise - hence the level comes from the caller.
     private void UpdatePostponing(LogLevel resumeLogLevel)
     {
-        if (_isBackgroundPostponing || _isPaused) {
+        if (_isPostponingWhileHidden || _isPaused) {
             _postponed ??= [];
             return;
         }

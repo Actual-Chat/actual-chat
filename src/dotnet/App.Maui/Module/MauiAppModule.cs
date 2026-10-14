@@ -1,7 +1,7 @@
 #if ANDROID
 using ActualChat.App.Maui.Activities;
 #endif
-#if !MACOS
+#if !MACOS && !LINUX
 using ActualChat.App.Maui.Audio;
 #endif
 #if ANDROID || IOS || MACCATALYST
@@ -88,6 +88,12 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<MicrophonePermissionHandler>(c => new MacOSMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<CameraPermissionHandler>(c => new MacOSCameraPermissionHandler(c.UIHub()));
         services.AddScoped<LocationPermissionHandler>(c => new MacOSLocationPermissionHandler(c.UIHub()));
+#elif LINUX
+        // TODO(maui-labs): the same gap as on macos, and nothing native to ask on a Linux desktop:
+        // WebKitGTK raises a permission request the WebView answers itself - see MauiWebView.Linux.cs.
+        services.AddScoped<MicrophonePermissionHandler>(c => new WebMicrophonePermissionHandler(c.UIHub()));
+        services.AddScoped<CameraPermissionHandler>(c => new WebCameraPermissionHandler(c.UIHub()));
+        services.AddScoped<LocationPermissionHandler>(c => new WebLocationPermissionHandler(c.UIHub()));
 #else
         services.AddScoped<MicrophonePermissionHandler>(c => new MauiMicrophonePermissionHandler(c.UIHub()));
         services.AddScoped<CameraPermissionHandler>(c => new MauiCameraPermissionHandler(c.UIHub()));
@@ -100,9 +106,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<ConnectivityUI>(c => new MauiConnectivityUI(c.UIHub()));
 
         // Audio
-#if MACOS
-        // Native audio capture isn't ported to the AppKit backend, so recording runs the same
-        // JS pipeline the web app uses in Safari; WKWebView covers it (getUserMedia + worklets).
+#if MACOS || LINUX
+        // Native audio capture isn't ported to the AppKit and GTK backends, so recording runs the
+        // same JS pipeline the web app uses in Safari; WebKit covers it (getUserMedia + worklets).
         // TODO(FC): switch to MauiRecorderEngine once native capture is ported - see the
         // migration TODO in the MACOS audio branch above.
         services.AddScoped<IAudioRecorderEngine>(c => new WebRecorderEngine(c.AppUIHub()));
@@ -154,6 +160,12 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddSingleton<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<ILocationTracker>(c => new MauiLocationTracker(c.AppUIHub()));
+#elif LINUX
+        // The GTK backend is on the same JS audio pipeline as the AppKit one, minus the codec and
+        // the VAD: only MauiRecorderEngine needs them, and WebRecorderEngine records here.
+        services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
+        services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));
+        services.AddScoped<ILocationTracker>(c => new WebLocationTracker(c.AppUIHub()));
 #elif IOS || MACCATALYST
         services.AddScoped<AudioFocusUI>(c => new AppleAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new AppleTuneUI(c.UIHub()));
@@ -168,7 +180,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<ILocationTracker>(c => new AppleLocationTracker(c.AppUIHub()));
 #endif
         services.AddScoped<SensorFeed>(c => new MauiSensorFeed(c.AppUIHub()));
-#if MACOS
+#if MACOS || LINUX
         services.AddScoped<IAudioInitializer>(c => new AudioInitializer(c.UIHub()));
 #else
         services.AddScoped<IAudioInitializer>(c => new MauiAudioInitializer());
@@ -185,6 +197,9 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Same as the permission handlers above: Essentials Contacts is unimplemented on macos
         services.AddScoped<DeviceContacts>(c => new MacOSContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MacOSContactsPermissionHandler(c.UIHub()));
+#elif LINUX
+        // A Linux desktop has no system address book to sync: DeviceContacts' base registration stays
+        services.AddScoped<ContactsPermissionHandler>(c => new WebContactsPermissionHandler(c.UIHub()));
 #else
         services.AddScoped<DeviceContacts>(c => new MauiContacts(c));
         services.AddScoped<ContactsPermissionHandler>(c => new MauiContactsPermissionHandler(c.UIHub()));
@@ -196,7 +211,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
 #elif IOS || MACCATALYST || MACOS
         services.AddScoped<IAttachmentFilePicker>(c => new AppleAttachmentFilePicker(c));
         services.AddSingleton<ApplePhotoGalleryFiles>();
-#else
+#elif !LINUX
         services.AddScoped<IAttachmentFilePicker>(c => new MauiAttachmentFilePicker(c));
 #endif
         services.AddScoped<IMauiFileProviderImplFactory>(c => new MauiFileProviderImplFactory(c));
