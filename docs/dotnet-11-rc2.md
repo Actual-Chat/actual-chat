@@ -116,9 +116,48 @@ confirms obfuscation, optimization, and shrinking are enabled. It reports
 alone is therefore not enough to establish that the Play warning is resolved;
 review the broad library keep rules next and remeasure after device testing.
 
-The build also reports XA4304 for a missing generated
-`proguard_project_references.cfg`; check this warning on CI before release.
-The local package has not been uploaded to Play Console or tested on a device.
+### First keep-rule cleanup
+
+Removed only the blanket `androidx.**` and `com.google.**` keeps. Dependency
+consumer rules, generated binding rules, SDK JNI protections, and existing
+MAUI/Sentry/TensorFlow/audio rules remain intact.
+
+Using the same build command as the baseline:
+
+| R8 metadata metric | Baseline | First cleanup |
+|---|---:|---:|
+| Obfuscation | 6.43% | 25.64% |
+| Optimization | 8.62% | 58.60% |
+| Shrinking | 8.96% | 61.78% |
+| DEX bytes | 23,068,796 | 9,580,388 |
+| AAB bytes | 61,412,398 | 54,640,386 |
+
+These builds report XA4304 for a missing generated
+`proguard_project_references.cfg`. The RC2 SDK looks under a nested
+`android-arm64/` intermediate directory, but `UseArtifactsOutput` places the
+inner build's generated file in a sibling RID-suffixed directory. The CI
+multi-RID invocation still needs this path mismatch addressed before release.
+Do not suppress the warning or supply an empty file: it contains JNI keep rules.
+
+A subsequent build with an explicit `-r android-arm64` correctly consumes the
+generated rules and has no XA4304 warning. That device-test candidate reports
+**27.36% obfuscation, 60.09% optimization, and 64.30% shrinking**; DEX size is
+10,844,508 bytes. These figures are not a controlled comparison to the earlier
+baseline because this invocation also includes the previously missing rules.
+
+Device-test build command (debug-key signing, dev flavor):
+
+```sh
+dotnet build src/dotnet/App.Maui/App.Maui.csproj -c Release -f net11.0-android \
+  -r android-arm64 '-p:TargetFrameworks="net11.0-android;net11.0"' \
+  -p:AndroidSdkDirectory=/home/undead/android-sdk \
+  -p:JavaSdkDirectory=/home/undead/java-sdk \
+  -p:AndroidKeyStore=false -p:AndroidBuildApplicationPackage=true -m:1
+```
+
+The candidate APK is under
+`artifacts/bin/App.Maui/release_net11.0-android_android-arm64/`.
+The local packages have not been uploaded to Play Console or tested on a device.
 
 ## Sources
 
