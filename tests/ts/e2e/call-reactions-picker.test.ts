@@ -1,7 +1,8 @@
 /**
  * E2E test: any emoji as a call reaction (#4918).
  *
- * Bob opens the React menu in a video call with Alice. The menu starts as the six quick emojis plus
+ * Bob opens the reactions in a video call with Alice - the React menu, or the ⋮ menu on a phone, which has
+ * no room for a React button. The reactions start as the six quick emojis plus
  * a chevron; the chevron expands it to the whole picker, and an emoji from there (💩 - never in the
  * old preset) floats over Alice's video panel. Once on a wide viewport, once on a phone-sized one,
  * with a screenshot of each menu state.
@@ -20,7 +21,9 @@ import {
     BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, screenshot, setIncompleteUI,
     type BrowserConnection,
 } from './helpers';
-import { SPEECH_WAV, expandVideoPanel, hangUpIfAny, openCallChat, startSession } from './video-call';
+import {
+    SPEECH_WAV, expandVideoPanel, hangUpIfAny, openCallChat, openReactionsMenu, startSession,
+} from './video-call';
 
 const shot = (name: string) => screenshot('e2e-call-reactions', name);
 
@@ -87,14 +90,13 @@ describe('call reactions picker', () => {
     }, 300_000);
 
     async function pickFromFullPicker(layout: 'wide' | 'narrow') {
-        // arrange - Bob expands the panel (the React button lives in its footer) and opens the React
-        // menu: six quick emojis and the chevron
+        // arrange - Bob expands the panel and opens the reactions (the React button in its footer, the ⋮ menu
+        // on a narrow screen): six quick emojis and the chevron
         await expandVideoPanel(bob);
-        const reactButton = bob.locator('.call-screen .btn-react').first();
-        await reactButton.waitFor({ state: 'visible', timeout: 20_000 });
-        await reactButton.click();
-        const menu = bob.locator('.call-reactions-menu').first();
-        await menu.waitFor({ state: 'visible', timeout: 10_000 });
+        const menu = await openReactionsMenu(bob, 20_000);
+        if (!menu)
+            throw new Error('The call offers no reactions');
+
         await expect.poll(async () => menu.locator('.reaction-select-reaction').count()).toBe(QUICK_EMOJI_COUNT);
         await waitForMenuShown(menu);
         await bob.screenshot({ path: shot(`${layout}-1-quick-row`) });
