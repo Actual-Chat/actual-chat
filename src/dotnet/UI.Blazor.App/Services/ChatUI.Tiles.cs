@@ -1683,6 +1683,15 @@ public partial class ChatUI
         if (freshMetaTask.UseIfReady(null!, computed) != null)
             return null;
 
+        return ExtendLastKnownRangeTiles(lastKnown, cidTilesRange, chatLidRange);
+    }
+
+    // Internal to be reachable from tests
+    internal static List<ChatRangeTile>? ExtendLastKnownRangeTiles(
+        IReadOnlyList<ChatRangeTile> lastKnown,
+        Range<long> cidTilesRange,
+        Range<long> chatLidRange)
+    {
         var first = lastKnown[0];
         var last = lastKnown[^1];
         if (first.LidRange.Start > cidTilesRange.Start && first.PreviousLidTileStart != null)
@@ -1690,20 +1699,25 @@ public partial class ChatUI
 
         // Copied so the meta walk in GetChatItemsInternal can't mutate the cached list
         var result = new List<ChatRangeTile>(lastKnown);
-        var targetEnd = Math.Min(cidTilesRange.End, chatLidRange.End);
         if (last.NextLidTileStart == null) {
             // The cached list ended at the chat's tail, so every lid past its entry ranges is a new entry
             var entryRanges = last.EntryLidRanges;
             if (entryRanges.Length == 0)
                 return null; // A tail with no entries can't anchor the extension
 
+            // Up to the chat's end, not the queried cid tiles' end: the cached tail tile may already span
+            // past those tiles (the server merges neighbours until a tile holds enough rows, and a
+            // collapsed conversation counts as one), and a stand-in capped there kept claiming the chat
+            // ends where the cache does - an end the list pins to and follows down once the fresh
+            // rebuild appends the real tail (#5323).
+            var targetEnd = chatLidRange.End;
             if (targetEnd > entryRanges[^1].End)
                 result[^1] = last with {
                     LidRange = new Range<long>(last.LidRange.Start, Math.Max(last.LidRange.End, targetEnd)),
                     EntryLidRanges = [..entryRanges[..^1], new Range<long>(entryRanges[^1].Start, targetEnd)],
                 };
         }
-        else if (last.LidRange.End < targetEnd)
+        else if (last.LidRange.End < Math.Min(cidTilesRange.End, chatLidRange.End))
             return null; // The query reaches below the cached span; only the fresh fetch knows that part
 
         return result;
