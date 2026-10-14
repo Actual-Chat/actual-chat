@@ -47,7 +47,11 @@ internal static class WindowConfigurator
     }
 
     private static void UpdateBackgroundState()
+    {
         // "Can the user see the window", not "is the app active", as in the AppKit app: the
         // compositor suspends a window that is minimized, fully covered or on another workspace.
-        => MauiBackgroundState.Set(_window?.IsSuspended() ?? false);
+        var isHidden = _window?.IsSuspended() ?? false;
+        MauiBackgroundState.SetIsBackground(isHidden);
+        MauiBackgroundState.SetIsHidden(isHidden);
+    }
 }

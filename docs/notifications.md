@@ -130,7 +130,7 @@ re-shows it.
   head of that list down to a value-compared `ChatNotificationTarget` (a `Notification`'s
   `ApiArray` members compare by *reference*, so handing one to a row's model would re-render
   every row on every active-set change). `ChatListItem` binds to it: its link is that
-  notification's entry rather than the chat, and its badge shows that notification's symbol.
+  notification's own URL (see below) rather than the chat, and its badge shows that notification's symbol.
   Tapping dismisses an `OnView` target (the `NavigateToUnreadReaction` pattern: a tap doesn't
   guarantee the entry ends up on screen) and the row rebinds to the next, so repeated taps
   walk the chat's notifications.
@@ -148,6 +148,35 @@ re-shows it.
 
   The badge deliberately ignores the `IsReadingTail` gate `ChatUI.GetUnreadState` applies: the
   row you just tapped into is the one that still has to show what's left.
+- **Notification URLs** — a notification about a chat has no URL of its own: it is the chat's link
+  (`/chat/<chatId>?n=<entryLid>`) with two more query parameters, built by `Links.Notification` and
+  `Links.WithNotification`:
+  - `nid` is the short notification id, `<kind>:<key>` - the id without the user id
+    (`NotificationId.ToShort`, `TryParseShort`, `ParseShort`), which is always the current user's.
+    The key is what the notification is about (a chat, an entry, a conversation), so the chat and the
+    entry also come out of the id alone (`NotificationExt.TryGetChatTarget`). A copied link carries no
+    user, so it opens the same chat for anyone; only the tab choice uses the notification.
+  - `nui` is where to show it (`NotificationUIMode`): `0` the chats UI, `1` the notifications UI, `auto`
+    or absent - what the app decides. `Auto` keeps the navbar group the user has open, which is how a
+    chat has always opened; the one place to give it a smarter rule is `ChatUI.SelectNavbarGroup`.
+
+  `ChatPage` reads both. `nui=1` selects the Notifications navbar group and `nui=0` the chats one;
+  the notification is recorded in `NotificationsPanelUI.SelectedNotificationId` when the panel is the
+  UI shown, and the panel turns it into a tab: the last one if the notification belongs on it, else
+  the closest (`ChooseTabId`), else All.
+
+  `/n/` is for notifications themselves: `/n` redirects to the first row of the All tab and
+  `/n/<short id>` to what the notification is about, once that is known (`NotificationRedirectPage`).
+  A notification about no chat has nowhere to go yet and opens the chat list.
+
+  Panel rows link to their notification (`nui=1`), so switching chats in the panel stays in it. A chat
+  row with nothing bound uses `GetChatNotificationId`, the id its message notification would have. A
+  push carries the same link with `nid` and no `nui` (`FirebaseMessagingClient`, `GetChatLink`), so
+  a tap needs no lookup and a payload from an older server, with the plain chat link, opens the chat
+  as before. Tapping the notification that is already open has no navigation to hide the panels or to
+  carry the jump, so `NavbarItem`, `ChatListItem.OnClick`, `NotificationsUI.Open` and
+  `AutoNavigationUI` do both.
+
 - **Banner rendering** — Android builds its own banner from the data message
   (`Platforms/Android/Notifications/NotificationHelper.cs`, `MessagingStyle` with
   the avatar as the sender's icon). iOS renders `aps.alert` itself, and

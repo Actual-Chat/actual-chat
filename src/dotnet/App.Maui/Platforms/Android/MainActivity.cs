@@ -44,8 +44,8 @@ namespace ActualChat.App.Maui;
     [Intent.ActionView],
     DataSchemes = ["http", "https"],
     DataHost = MauiSettings.DefaultHost, /* TODO(DF): rework dynamic intent filter configuration */
-    DataPaths = ["/"],
-    DataPathPrefixes = ["/chat/", "/place/", "/join/", "/u/", "/user/invite/"],
+    DataPaths = ["/", "/n"],
+    DataPathPrefixes = ["/chat/", "/n/", "/place/", "/join/", "/u/", "/user/invite/"],
     AutoVerify = true,
     Categories = [Intent.CategoryDefault, Intent.CategoryBrowsable])]
 public partial class MainActivity : MauiAppCompatActivity

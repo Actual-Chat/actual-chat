@@ -142,10 +142,10 @@ describe('call screen and video, narrow screen', () => {
         await expect.poll(() => isVideoCoveringScreen(caller), { timeout: 30_000 }).toBe(true);
         const videoControls = await listControls();
 
-        // assert - only the camera switch is new, after the recorder, and nothing moved
+        // assert - only the camera switch is new, left of the video toggle, and nothing moved
         expect(videoControls.filter(c => c.name !== 'btn-camera-switch')).toEqual(audioControls);
         expect(videoControls.map(c => c.name).slice(0, 3))
-            .toEqual(['btn-video-toggle', 'recorder-wrapper', 'btn-camera-switch']);
+            .toEqual(['btn-camera-switch', 'btn-video-toggle', 'recorder-wrapper']);
     }, 180_000);
 
     it('collapses on Back, with the call going on in the chat it was started from', async () => {

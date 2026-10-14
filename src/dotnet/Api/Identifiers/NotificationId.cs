@@ -21,6 +21,8 @@ public sealed partial class NotificationId : StringIdentifier, IStringIdentifier
     private static ILogger Log => _log ??= StaticLog.For<NotificationId>();
     private static readonly ILruCache<string, NotificationId> Cache = CreateCache<NotificationId>(64, 256);
 
+    private readonly string _short;
+
     [IgnoreDataMember]
     public UserId UserId { get; }
     [IgnoreDataMember]
@@ -41,7 +43,12 @@ public sealed partial class NotificationId : StringIdentifier, IStringIdentifier
         UserId = userId;
         Kind = kind;
         SimilarityKey = similarityKey;
+        _short = value[(value.IndexOf(' ') + 1)..];
     }
+
+    public string ToShort()
+        // The id without the user id: "<kind>:<similarityKey>"
+        => _short;
 
     // Equality
 
@@ -93,21 +100,45 @@ public sealed partial class NotificationId : StringIdentifier, IStringIdentifier
         if (!UserId.TryParse(s[..userIdLength], out var userId))
             return false;
 
-        var kindStart = userIdLength + 1;
-        var kindLength = s.IndexOf(':', kindStart);
+        if (!TryParseShort(s[(userIdLength + 1)..], out var kind, out var similarityKey))
+            return false;
+
+        result = new NotificationId(s, userId, kind, similarityKey);
+        result = Cache.AddOrGet(s, result);
+        return true;
+    }
+
+    public static NotificationId ParseShort(UserId userId, string? s)
+        => TryParseShort(userId, s, out var result) ? result : throw StandardError.Format<NotificationId>(s);
+
+    public static NotificationId? TryParseShort(UserId userId, string? s)
+        => TryParseShort(userId, s, out var result) ? result : null;
+
+    public static bool TryParseShort(UserId userId, string? s, [NotNullWhen(true)] out NotificationId? result)
+    {
+        result = null;
+        return !s.IsNullOrEmpty() && TryParse($"{userId} {s}", out result);
+    }
+
+    private static bool TryParseShort(string? s, out NotificationKind kind, out string similarityKey)
+    {
+        kind = default;
+        similarityKey = "";
+        if (s.IsNullOrEmpty())
+            return false;
+
+        var kindLength = s.IndexOf(':');
         if (kindLength < 0)
             return false;
 
-        var sKind = s.AsSpan(kindStart, kindLength - kindStart);
-        if (!NumberExt.TryParsePositiveInt(sKind, out var kind))
+        if (!NumberExt.TryParsePositiveInt(s.AsSpan(0, kindLength), out var iKind))
             return false;
 
-        if (kind is < 1 or >= (int)NotificationKind.Invalid)
+        if (iKind is < 1 or >= (int)NotificationKind.Invalid)
             return false;
 
-        var similarityKey = (Symbol)s[(kindLength + 1)..];
-        result = new NotificationId(s, userId, (NotificationKind)kind, similarityKey);
-        result = Cache.AddOrGet(s, result);
+        kind = (NotificationKind)iKind;
+        similarityKey = s[(kindLength + 1)..];
         return true;
     }
 }

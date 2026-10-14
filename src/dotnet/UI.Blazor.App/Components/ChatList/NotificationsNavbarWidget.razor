@@ -1,3 +1,4 @@
+@using ActualChat.Notifications
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, NotificationsNavbarWidget.Model>
 @{
@@ -35,9 +36,11 @@
             <ContentSwapDisplay/>
         } else {
             <TabPanel
+                @ref="_tabPanel"
                 Tabs="@tabs"
                 BottomHill="true"
                 TabsClass="left-panel-tabs"
+                DefaultTabId="@_settings.FilterId.Value"
                 SelectedTabIdChanged="@OnSelectedTabIdChanged"/>
             <ContentSwap
                 LayerKey="@_settings.FilterId.Value"
@@ -66,11 +69,28 @@
         [ChatListFilter.Unread, ChatListFilter.UnreadPeople, ChatListFilter.UnreadMentions];
 
     private readonly ContentSwapDirection _swapDirection = new();
+    private TabPanel? _tabPanel;
     private ChatListSettings _settings = new() { FilterId = ChatListFilter.Unread.Id };
 
     private ChatListUI ChatListUI => Hub.ChatListUI;
     private NotificationsPanelUI NotificationsPanelUI => Hub.NotificationsPanelUI;
     private NotificationsUI NotificationsUI => Hub.NotificationsUI;
+
+    protected override void OnInitialized()
+        => _settings = new ChatListSettings { FilterId = NotificationsPanelUI.SelectedTabId.Value };
+
+    protected override void OnAfterRender(bool firstRender) {
+        // A notification link opens the tab it belongs on, once per notification: leaving that tab by hand sticks
+        var m = State.Value;
+        if (m.SelectedNotificationId is not { } notificationId)
+            return;
+
+        if (NotificationsPanelUI.IsTabApplied(notificationId) || _tabPanel is null || m.TargetTabId.IsEmpty)
+            return;
+
+        NotificationsPanelUI.MarkTabApplied(notificationId);
+        _tabPanel.SelectedTabId = m.TargetTabId.Value;
+    }
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
@@ -88,10 +108,45 @@
         var reactionHistory = await NotificationsUI
             .ListHistory(NotificationsUI.ReactionsFilterId, cancellationToken)
             .ConfigureAwait(false);
-        return new(hasAll, hasPeople, hasMentions, reactedChatIds.Count > 0 || reactionHistory.Count > 0);
+        var hasReactions = reactedChatIds.Count > 0 || reactionHistory.Count > 0;
+        var selectedNotificationId = await NotificationsPanelUI.SelectedNotificationId
+            .Use(cancellationToken)
+            .ConfigureAwait(false);
+        if (selectedNotificationId is null)
+            return new(hasAll, hasPeople, hasMentions, hasReactions);
+
+        var lastTabId = await NotificationsPanelUI.SelectedTabId.Use(cancellationToken).ConfigureAwait(false);
+        // A chat-level notification is on Mentions only as far as its chat is listed there
+        var isOnMentions = hasMentions;
+        var kind = selectedNotificationId.Kind;
+        if (hasMentions
+            && kind is ActualChat.NotificationKind.Message or ActualChat.NotificationKind.Reply
+            && selectedNotificationId.TryGetChatTarget(out var chatId, out _))
+            isOnMentions = await HasChat(ChatListFilter.UnreadMentions, chatId, cancellationToken)
+                .ConfigureAwait(false);
+        var targetTabId = NotificationsPanelUI.ChooseTabId(selectedNotificationId, lastTabId, tabId
+            => tabId == ChatListFilter.Unread.Id ? hasAll
+                : tabId == ChatListFilter.UnreadPeople.Id ? hasPeople
+                : tabId == ChatListFilter.UnreadMentions.Id ? isOnMentions
+                : tabId == NotificationsUI.ReactionsFilterId && hasReactions);
+        return new(hasAll, hasPeople, hasMentions, hasReactions, selectedNotificationId, targetTabId);
     }
 
     // Private methods
+
+    private async Task<bool> HasChat(ChatListFilter filter, ChatId chatId, CancellationToken cancellationToken) {
+        var expiring = await NotificationsPanelUI.GetExpiring(filter.Id, cancellationToken).ConfigureAwait(false);
+        if (expiring.ContainsKey(chatId))
+            return true;
+
+        var settings = new ChatListSettings { FilterId = filter.Id };
+        var chats = await ChatListUI.List(null, settings, cancellationToken).ConfigureAwait(false);
+        if (chats.Any(x => x.Id == chatId))
+            return true;
+
+        var history = await NotificationsUI.ListHistory(filter.Id, cancellationToken).ConfigureAwait(false);
+        return history.Any(x => x.ChatId == chatId);
+    }
 
     private async Task<bool> HasTab(ChatListFilter filter, CancellationToken cancellationToken) {
         // A tab stays visible while it still holds recently-read chats, not only while there are unread ones.
@@ -118,6 +173,7 @@
             return;
 
         _settings = new ChatListSettings { FilterId = tabId };
+        NotificationsPanelUI.SelectTab(tabId);
     }
 
     private static int GetTabIndex(Symbol filterId) {
@@ -136,5 +192,7 @@
         bool HasAll = false,
         bool HasPeople = false,
         bool HasMentions = false,
-        bool HasReactions = false);
+        bool HasReactions = false,
+        NotificationId? SelectedNotificationId = null,
+        Symbol TargetTabId = default);
 }

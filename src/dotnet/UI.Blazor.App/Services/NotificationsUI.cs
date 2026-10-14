@@ -28,6 +28,32 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
     }
 
     [ComputeMethod]
+    public virtual async Task<LocalUrl?> GetFirstNotificationUrl(CancellationToken cancellationToken = default)
+    {
+        // What the top row of the All tab opens: its bound notification, or the chat's message-level one
+        var settings = new ChatListSettings { FilterId = ChatListFilter.Unread.Id };
+        var chats = await Hub.ChatListUI.List(null, settings, cancellationToken).ConfigureAwait(false);
+        if (chats.Count == 0) {
+            // Nothing unread: the tab may still show history rows, and the first of them is the top row
+            var history = await ListHistory(settings.FilterId, cancellationToken).ConfigureAwait(false);
+            var newest = history.Select(x => x.Newest).FirstOrDefault(x => x.NotificationId is not null);
+            return newest?.NotificationId is { } historyId
+                ? Links.Notification(historyId, newest.EntryId?.LocalId ?? 0)
+                : null;
+        }
+
+        var chatId = chats[0].Id;
+        var target = await GetNavigationTarget(chatId, true, cancellationToken).ConfigureAwait(false);
+        // A reaction waits behind unread messages, as it does on the row (see ChatListItem)
+        var unreadState = await Hub.ChatUI.GetUnreadState(chatId, cancellationToken).ConfigureAwait(false);
+        if (target is not null && !(target.Kind == NotificationKind.Reaction && unreadState.Count > 0))
+            return Links.Notification(target.Id, target.EntryId.LocalId);
+
+        var ownAccount = await Hub.AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        return Links.Notification(GetChatNotificationId(ownAccount.Id, chatId));
+    }
+
+    [ComputeMethod]
     public virtual async Task<ApiArray<NotificationHistoryGroup>> ListHistory(
         Symbol filterId, CancellationToken cancellationToken = default)
     {
@@ -147,6 +173,25 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
             .Distinct()
             .ToApiArray();
     }
+
+    public Task Open(NotificationId notificationId, ChatEntryId? entryId = null)
+    {
+        // Opening the notification the URL is already at has no navigation to hide the panels or to
+        // carry the jump, so both are done here
+        var url = Links.Notification(notificationId, entryId?.LocalId ?? 0);
+        if (Hub.History.LocalUrl != url)
+            return Hub.History.NavigateTo(url);
+
+        Hub.PanelsUI.HidePanels();
+        if (entryId is not null)
+            Hub.ChatUI.HighlightEntry(entryId, true);
+        return Task.CompletedTask;
+    }
+
+    public static NotificationId GetChatNotificationId(UserId userId, ChatId chatId)
+        // What a panel row without a bound notification opens: the id the chat's message notification
+        // would have, which leads to the chat whether or not that notification is active
+        => NotificationId.New(userId, NotificationKind.Message, chatId.Value);
 
     // Private methods
 

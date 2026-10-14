@@ -26,18 +26,17 @@
    appears or goes moves neither the recorder nor the controls before it. *@
 <div class="call-screen-toolbar call-screen-footer">
     <div class="c-side c-before">
-        @* A call's own control: the screen is also up for a chat's video with no call around it, and
-           a call being dialed has no session yet to hold the setting.
-           Shows the call's state to everyone; only who may change it gets a live button. *@
-        @if (m.CallPhase == CallPhase.Active) {
-            <HeaderButton
-                Click="@OnTranscriptionClick"
-                IsDisabled="@(!m.CanToggleTranscription)"
-                Class="@("btn-glass btn-transcription " + (m.IsTranscriptionOn ? "on" : ""))">
-                <i class="icon-voice-to-text-message text-lg"></i>
-            </HeaderButton>
-        }
         @if (isMobileOrNarrow) {
+            @if (m.IsCameraOn) {
+                <HeaderButton
+                    Click="@OnSwitchCameraClick"
+                    Class="btn-glass btn-camera-switch"
+                    data-menu="@cameraMenuRef"
+                    data-menu-trigger="@MenuTrigger.Secondary"
+                    data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
+                    <i class="icon-camera-switch text-lg"></i>
+                </HeaderButton>
+            }
             @videoToggle
         } else {
             <HeaderButton
@@ -52,19 +51,6 @@
     <div class="c-side c-after">
         @if (!isMobileOrNarrow) {
             @videoToggle
-        } else if (IsMobile || m.IsCameraOn) {
-            @* Always there on a phone, as on its call screen before; a desktop window has it with the camera *@
-            <HeaderButton
-                Click="@OnSwitchCameraClick"
-                Class="btn-glass btn-camera-switch"
-                data-menu="@cameraMenuRef"
-                data-menu-trigger="@MenuTrigger.Secondary"
-                data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
-                <i class="icon-camera-switch text-lg"></i>
-            </HeaderButton>
-        } else if (HasOutputPicker || m.CanReact) {
-            @* Holds the slot, so the controls after it stay put when the camera toggles *@
-            <div class="btn-incut"></div>
         }
         @* Absent where the platform picks the output on its own - the web, the Mac. *@
         @if (HasOutputPicker) {
@@ -90,7 +76,19 @@
                 </HeaderButton>
             }
         }
-        @if (m.CanReact) {
+        @* A call's own control: the screen is also up for a chat's video with no call around it, and
+           a call being dialed has no session yet to hold the setting.
+           Shows the call's state to everyone; only who may change it gets a live button. *@
+        @if (m.CallPhase == CallPhase.Active) {
+            <HeaderButton
+                Click="@OnTranscriptionClick"
+                IsDisabled="@(!m.CanToggleTranscription)"
+                Class="@("btn-glass btn-transcription " + (m.IsTranscriptionOn ? "on" : ""))">
+                <i class="icon-voice-to-text-message text-lg"></i>
+            </HeaderButton>
+        }
+        @* A narrow screen has it in the ⋮ menu: here a third control on a side pushes the recorder off centre *@
+        @if (m.CanReact && !isMobileOrNarrow) {
             <HeaderButton
                 Class="@("btn-glass btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
                 data-menu="@reactionsMenuRef"
@@ -114,7 +112,6 @@
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private bool HasOutputPicker => Hub.AudioFocusUI.OutputRoutes is not null;
-    private bool IsMobile => Hub.BrowserInfo.IsMobile;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
 
