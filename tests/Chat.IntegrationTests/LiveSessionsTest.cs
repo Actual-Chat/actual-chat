@@ -188,6 +188,30 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ConversationShouldStartAtTheFirstSpeechEntry()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var (chatId, _) = await tester.CreateChat(true);
+        var author = await tester.AppServices.GetRequiredService<IAuthors>().GetOwn(tester.Session, chatId, default);
+        var peerId = AuthorId.New(chatId, 777_137);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, author!.Id, null, true, true, default);
+        var firstSpeech = await backend.GetState(chatId, default);
+        firstSpeech.Should().NotBeNull();
+        await tester.CreateTextEntry(chatId, "said before the second one joined");
+
+        // act
+        await backend.OnStreamRegistered(chatId, peerId, null, true, true, default);
+
+        // assert
+        var state = await backend.GetState(chatId, default);
+        state!.OpenConversation!.StartLid.Should().Be(state.FirstSpeechLid);
+        state.OpenConversation.SummaryEndLid.Should().Be(state.FirstSpeechLid);
+    }
+
+    [Fact]
     public async Task ParticipationShouldBeReleasedWhenThePeerDisconnects()
     {
         // arrange - a real RPC client, so the server has a peer to watch
@@ -1841,7 +1865,10 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         var meta = await conversationsBackend.GetConversationRangeTile(chatId, cidTileStart, default);
 
         // assert — the pre-start conversation's exact range survives; the live range no longer swallows it
-        meta.ConversationRanges.Should().Contain(new Range<long>(e0.LocalId, e2.LocalId + 1));
+        // (when the block starts at the first speech, it starts at e0 itself and owns that range instead)
+        meta.ConversationRanges.Should().Contain(LiveSessionsBackend.MustStartFromFirstSpeech
+            ? new Range<long>(e0.LocalId, long.MaxValue)
+            : new Range<long>(e0.LocalId, e2.LocalId + 1));
     }
 
     [Fact]

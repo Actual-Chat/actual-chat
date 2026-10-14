@@ -247,11 +247,12 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var chat = await CreateSettledChat("Governor latch");
         for (var i = 0; i < 5; i++)
             await Tester.CreateTextEntry(chat.Id, $"entry {i}");
-        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        // Two peers talk; the viewer is not in the conversation
         var peerId = AuthorId.New(chat.Id, 777_090);
+        var otherPeerId = AuthorId.New(chat.Id, 777_091);
         var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
         await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, otherPeerId, null, true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         live.Should().NotBeNull();
         var v = live!.OpenConversation!.StartLid;
@@ -811,6 +812,95 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         }, TimeSpan.FromSeconds(10));
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task NavigatingToOwnNewEntryShouldKeepACollapsedLiveBlockCollapsed(bool keepsCollapsed)
+    {
+        // The block expands when the viewer joins; posting afterwards navigates to the new entry, which lands
+        // inside the open block's range and must not undo the reader's own collapse.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("post-keeps-collapse-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_136);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.OpenConversation!.StartLid;
+        for (var i = 0; i < 3; i++)
+            await Tester.CreateTextEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateLiveConversationSummary(chat.Id,
+            new LiveConversationSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                SummaryEndLid = v + 3, SummarizedEntryCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var conversation = live.OpenConversation!.ToConversation();
+        await CollapseJoinedLiveBlock(chatUI, chat.Id, conversation);
+        await chatAudioUI.SetListeningState(chat.Id, false);
+
+        // act
+        var entry = await Tester.CreateTextEntry(chat.Id, "my own post");
+        var query = new ChatDataQuery(
+            await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None),
+            -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit) {
+            Navigation = new ChatViewNavigation(entry.LocalId, false, KeepConversationsCollapsed: keepsCollapsed),
+        };
+        await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
+
+        // assert
+        chatUI.IsConversationExpanded(conversation).Should().Be(!keepsCollapsed);
+    }
+
+    [Fact]
+    public async Task NewMessagesLineShouldGoAboveACollapsedLiveBlockHoldingUnreadEntries()
+    {
+        // The card folds the summarized rows, so the line cannot come from their first unread entry.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("unread-live-block-test");
+        var peerId = AuthorId.New(chat.Id, 777_138);
+        var otherPeerId = AuthorId.New(chat.Id, 777_139);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, otherPeerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.OpenConversation!.StartLid;
+        for (var i = 0; i < 3; i++)
+            await CreateSpokenEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateLiveConversationSummary(chat.Id,
+            new LiveConversationSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                SummaryEndLid = v + 3, SummarizedEntryCount = 3, AuthorIds = [peerId, otherPeerId],
+            }, CancellationToken.None);
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        chatUI.SelectChatOnNavigation(chat.Id);
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+
+        // act
+        await TestWait.When(async ct => {
+            var items = await chatUI.GetChatItems(chat.Id, query, v - 1, ct);
+            var messages = items.Items.SelectMany(i => i.GetLeafMessages()).ToList();
+            var lineIndex = messages.FindIndex(m => m.Kind == ChatMessageKind.NewMessagesLine);
+            var cardIndex = messages.FindIndex(m => m is ConversationMessage);
+
+            // assert
+            lineIndex.Should().BeGreaterThanOrEqualTo(0);
+            cardIndex.Should().BeGreaterThan(lineIndex);
+            messages.Count(m => m.Kind == ChatMessageKind.NewMessagesLine).Should().Be(1);
+        }, TimeSpan.FromSeconds(10));
+    }
+
     [Fact]
     public async Task ToggleAfterClosedBlockDismissExpandsBlockAgain()
     {
@@ -965,9 +1055,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task LeaveInvalidatesBlockWithoutWaitingForGovernor()
+    public async Task LeaveKeepsBlockAttendedWithoutWaitingForGovernor()
     {
-        // Leaving must invalidate GetBlock directly, without relying on a later governor write.
+        // Leaving must not drop the viewer's attendance, and nothing may have to wait for a governor write.
 
         // arrange
         await Tester.SignInAsUniqueBob();
@@ -1013,9 +1103,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         using (Invalidation.Begin())
             _ = chatAudioUI.GetState(chat.Id);
 
-        // Assert immediately, without another await that would let the governor catch up.
-        computed.IsConsistent().Should().BeFalse(
-            "the block must react to leaving directly, not wait for the governor's async write");
+        // Assert immediately, without another await that would let the governor catch up: the block
+        // stays attended because the conversation remembers the viewer, not because anything latched it.
+        var afterLeave = await liveBlockUI.GetBlock(chat.Id, CancellationToken.None);
+        afterLeave.Should().Match<LiveBlock>(b => b.IsOpen && b.HasAttended);
 
         // The recomputed open block retains attendance (re-invalidate each poll to defeat the
         // non-reactive ChatAudioUI.GetState lag - see InvalidateAmIInLiveConversation).
@@ -2491,7 +2582,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         var afterRestart = await TestWait.When(async ct => {
             var block = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             block.Should().Match<LiveBlock>(b => b.IsOpen);
-            block.HasAttended.Should().BeTrue("the server remembers the viewer joined this conversation");
+            // The reopened conversation still lists the viewer; the one that started after the close is a new
+            // conversation the viewer was never in
+            block.HasAttended.Should().Be(!closesBeforeRestart,
+                "the server remembers who joined a conversation, and only that one");
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             LeafEntryLids(items).Should().Contain(typed.Select(e => e.Id.LocalId));
             return block;
@@ -2642,7 +2736,9 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             true, true, CancellationToken.None);
         var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
         var v = live!.OpenConversation!.StartLid;
-        var expectedLiveStart = entries[^1].LocalId + 1;
+        var expectedLiveStart = LiveSessionsBackend.MustStartFromFirstSpeech
+            ? entries[10].LocalId
+            : entries[^1].LocalId + 1;
         for (var i = 0; i < 10; i++)
             entries.Add(await Tester.CreateTextEntry(chat.Id, $"after-live-{i}"));
         var backend = AppHost.Services.GetRequiredService<IConversationsBackend>();

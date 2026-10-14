@@ -478,7 +478,9 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
             if (entry.IsContentStreaming || entry.HasAudio)
                 continue;
 
-            await NavigateTo(lastEntryLid, false).ConfigureAwait(false);
+            // Own new entry lands inside the open live block's range, and navigating to an entry
+            // expands the conversation holding it - posting must not undo the reader's collapse.
+            await NavigateTo(lastEntryLid, false, keepConversationsCollapsed: true).ConfigureAwait(false);
         }
     }
 

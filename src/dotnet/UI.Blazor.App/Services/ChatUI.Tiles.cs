@@ -1311,6 +1311,29 @@ public partial class ChatUI
             // conversation: the card falls back to its own regular header instead.
             var hasSplitHeader = conversation.Id == liveBlockId && materializedBlockId == null;
             var isExpanded = expandedConversations.Contains(conversation.Id);
+            // A folded conversation renders no entries, so the line can't come from its first unread entry.
+            // The live block's record ends at what the summary covers, while its card folds everything up to
+            // the governed fold end; rows past that render on their own and get their own line.
+            var foldedConversation = conversation.Id == liveBlockId && liveFoldRange.End - 1 > conversation.EndEntryLid
+                ? conversation with { EndEntryLid = liveFoldRange.End - 1 }
+                : conversation;
+            var isUnread = !isExpanded
+                && !isPrevUnread
+                && IsUnreadForReader(foldedConversation, lastReadEntryId, currentAuthorId);
+            if (isUnread) {
+                var newLineEntry = new TextEntry(ChatEntryId.New(chatId, conversation.Id.StartEntryLid));
+                var newLineMessage = new ChatEntryMessage(newLineEntry) {
+                    Kind = ChatMessageKind.NewMessagesLine,
+                    ShouldSkipKey = true,
+                    Date = date,
+                    PreviousMessage = prevMessage,
+                };
+                if (prevMessage != null)
+                    prevMessage.NextMessage = newLineMessage;
+                messages.Add(newLineMessage);
+                prevMessage = newLineMessage;
+                isPrevUnread = true;
+            }
             if (hasSplitHeader) {
                 var header = new LiveConversationHeader(conversation) {
                     Kind = ChatMessageKind.LiveConversationHeader,
@@ -1435,6 +1458,11 @@ public partial class ChatUI
             });
         }
     }
+
+    // It's internal to be accessible from tests
+    internal static bool IsUnreadForReader(Conversation conversation, long lastReadEntryId, AuthorId? readerAuthorId)
+        => conversation.EndEntryLid > lastReadEntryId
+            && !(conversation.AuthorIds is [var onlyAuthorId] && onlyAuthorId == readerAuthorId);
 
     // It's internal to be accessible from tests
     internal static List<ChatMessage> GroupExpandedConversations(
