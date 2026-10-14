@@ -56,7 +56,7 @@ public sealed partial class UsageBackfillFlow : Flow<(Moment, long)>
     private async Task<bool> ProcessEntries(ChatDbContext dbContext, CancellationToken cancellationToken)
     {
         var query = dbContext.ChatEntries
-            .Where(e => !e.IsSystemEntry && !e.IsRemoved);
+            .Where(e => e.Kind == 0 && !e.IsSystemEntry && !e.IsRemoved);
         if (!LastProcessedEntryId.IsNullOrEmpty())
             query = query.Where(e => string.Compare(e.Id, LastProcessedEntryId) > 0);
 

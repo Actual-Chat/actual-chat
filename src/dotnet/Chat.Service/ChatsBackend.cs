@@ -107,7 +107,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         var sid = chatId.Value;
-        return await dbContext.ChatEntries.Where(x => x.Id == sid)
+        return await dbContext.ChatEntries.Where(x => x.Id == sid && x.Kind == 0)
             .MaxAsync(x => (long?)x.Version, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -286,7 +286,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         var minLid = await dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value && !e.IsRemovedAndPurged)
+            .Where(e => e.ChatId == chatId.Value && !e.IsRemovedAndPurged && e.Kind == 0)
             .OrderBy(e => e.LocalId)
             .Select(e => e.LocalId)
             .FirstOrDefaultAsync(cancellationToken)
@@ -304,7 +304,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         var dbChatEntries = dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value && !e.IsRemovedAndPurged)
+            .Where(e => e.ChatId == chatId.Value && !e.IsRemovedAndPurged && e.Kind == 0)
             .Where(e => !e.IsThreadEntry);
         if (!includeRemoved)
             dbChatEntries = dbChatEntries.Where(e => !e.IsRemoved);
@@ -370,6 +370,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var idRange = idTile.Range;
         var dbEntries = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value && !e.IsRemovedAndPurged
+                && e.Kind == 0
                 && e.LocalId >= idRange.Start
                 && e.LocalId < idRange.End
                 && !e.IsThreadEntry)
@@ -625,6 +626,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var entryIds = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value
+                && e.Kind == 0
                 && e.LocalId >= range.Start
                 && e.LocalId < range.End
                 && !e.IsRemoved)
@@ -635,6 +637,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var previousEntryId = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value
+                && e.Kind == 0
                 && e.LocalId < range.Start
                 && !e.IsRemoved)
             .MaxAsync(e => (long?)e.LocalId, cancellationToken)
@@ -642,6 +645,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         var nextEntryId = await dbContext.ChatEntries
             .Where(e => e.ChatId == chatId.Value
+                && e.Kind == 0
                 && e.LocalId >= range.End
                 && !e.IsRemoved)
             .MinAsync(e => (long?)e.LocalId, cancellationToken)
@@ -716,7 +720,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         await using var _ = dbContext.ConfigureAwait(false);
 
         var sid = await dbContext.ChatEntries
-            .Where(e => e.ChatId == chatId.Value
+            .Where(e => e.ChatId == chatId.Value && e.Kind == 0
                 && !e.IsRemovedAndPurged && e.AudioId == audioStreamId)
             .Select(e => e.Id)
             .FirstOrDefaultAsync(cancellationToken)
@@ -972,7 +976,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             // The entries go in bulk below, so the tiles that cached them are invalidated by hand
             var removedMaxEntryLid = await dbContext.ChatEntries
-                .Where(e => e.ChatId == chatId.Value)
+                .Where(e => e.ChatId == chatId.Value && e.Kind == 0)
                 .MaxAsync(e => (long?)e.LocalId, cancellationToken).ConfigureAwait(false) ?? 0;
             if (removedMaxEntryLid > 0)
                 removedEntryLidRange = new Range<long>(0, removedMaxEntryLid + 1);
@@ -1446,14 +1450,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
         async Task StorePreviousAndNextEntryIds(long localEntryLid) {
             var previousEntryId = await dbContext.ChatEntries
-                .Where(c => c.ChatId == chatId.Value && !c.IsRemoved && c.LocalId < localEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.Kind == 0 && !c.IsRemoved && c.LocalId < localEntryLid)
                 .OrderByDescending(c => c.LocalId)
                 .Select(c => c.LocalId)
                 .FirstOrDefaultAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var nextEntryId = await dbContext.ChatEntries
-                .Where(c => c.ChatId == chatId.Value && !c.IsRemoved && c.LocalId > localEntryLid)
+                .Where(c => c.ChatId == chatId.Value && c.Kind == 0 && !c.IsRemoved && c.LocalId > localEntryLid)
                 .OrderBy(c => c.LocalId)
                 .Select(c => c.LocalId)
                 .FirstOrDefaultAsync(cancellationToken)
@@ -2395,7 +2399,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var sAuthorId = authorId.Value;
         var sChatId = chatId.Value;
         var authorEntryCount = await dbContext.ChatEntries
-            .Where(e => e.ChatId == sChatId && e.AuthorId == sAuthorId)
+            .Where(e => e.ChatId == sChatId && e.AuthorId == sAuthorId && e.Kind == 0)
             .Take(limit)
             .CountAsync(cancellationToken)
             .ConfigureAwait(false);
