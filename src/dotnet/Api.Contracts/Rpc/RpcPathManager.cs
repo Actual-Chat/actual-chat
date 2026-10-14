@@ -50,8 +50,10 @@ public sealed class RpcPathManager(
     // Called when the live connection to the current host can't be (re)established
     public async Task ReportFailure(string host)
     {
-        if (!IsReady)
+        if (!IsReady) {
+            Log?.LogInformation("Connection to {Host} failed while offline or idle in background, not counted", host);
             return;
+        }
 
         await Record(host, null, CancellationToken.None).ConfigureAwait(false);
         _signal.TrySetResult(Signal.Failure);
@@ -152,6 +154,10 @@ public sealed class RpcPathManager(
 
     private void SetNetwork(RpcNetworkInfo? network)
     {
+        // Only this method writes _network, from the single ReadNetwork loop
+        if (network is null && IsReady)
+            Log?.LogInformation("RPC path checks paused: offline or idle in background");
+
         bool hasNetworkChanged;
         lock (_lock) {
             Volatile.Write(ref _network, network);

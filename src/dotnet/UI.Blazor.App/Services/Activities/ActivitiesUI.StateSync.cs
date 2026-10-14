@@ -24,7 +24,7 @@ public partial class ActivitiesUI
             if (_state.Value == state)
                 continue;
 
-            Log.LogDebug("PushState: {OldState} -> {State}", _state.Value, state);
+            Log.LogInformation("App activity state: {OldState} -> {State}", _state.Value, state);
             _state.Value = state;
         }
     }
