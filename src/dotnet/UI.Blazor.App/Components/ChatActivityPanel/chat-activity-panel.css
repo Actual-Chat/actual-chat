@@ -386,6 +386,12 @@ body.narrow .chat-activity-panel.listening:after {
     @apply absolute z-10 bottom-0 inset-x-0;
     @apply h-13 w-auto;
     @apply pl-3 pr-2;
+    transition: padding-left 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* A collapsed wrapper is 0 high, so the absolute panel is drawn over the header row. Start the heads
+   right of the back button (header px-4 + w-6 button) instead of hiding the button. */
+body.narrow .layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel:not(.not-participating) {
+    @apply pl-12;
 }
 .header-activity-panel-wrapper .chat-activity-panel {
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 100%);
