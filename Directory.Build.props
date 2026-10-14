@@ -95,7 +95,7 @@
     <Features>strict</Features>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-    <MauiVersion>11.0.0-rc.1.26451.6</MauiVersion>
+    <MauiVersion>11.0.0-rc.2.26505.5</MauiVersion>
 
     <!-- Globalization: must be invariant in every executable! -->
     <InvariantGlobalization>true</InvariantGlobalization>

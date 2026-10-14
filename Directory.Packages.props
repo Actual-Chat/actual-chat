@@ -5,13 +5,13 @@
   </PropertyGroup>
   <PropertyGroup>
     <ActualLabFusionVersion>15.0.17</ActualLabFusionVersion>
-    <!-- .NET 11 is not GA yet: every Microsoft.* package below shares this build number -->
+    <!-- Runtime, ASP.NET Core, and Extensions packages share this prerelease build number. -->
     <DotNetVersion>11.0.0-rc.2.26504.105</DotNetVersion>
     <AspNetCoreVersion>$(DotNetVersion)</AspNetCoreVersion>
     <MicrosoftAspNetCoreVersion>2.3.10</MicrosoftAspNetCoreVersion> <!-- Weird, they have the second version -->
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <!-- Npgsql.EntityFrameworkCore.PostgreSQL exact-pins Microsoft.EntityFrameworkCore(.Relational),
-         so its newest build decides the EF version; rc.1.1 names the rc.1 build, which EF stays on until Npgsql ships rc.2 -->
+         so EF stays on RC1 until an RC2 provider is published -->
     <EntityFrameworkCoreVersion>11.0.0-rc.1.26425.128</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>11.0.0-rc.1.1</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>10.0.0</EntityFrameworkCoreCheckConstraintsVersion>
@@ -302,7 +302,7 @@
     <PackageVersion Include="GitHubActionsTestLogger" Version="3.0.4" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Build" Version="$(BlazorVersion)" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="11.0.100-rc.1.26425.128" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="11.0.100-rc.2.26504.105" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="$(EntityFrameworkCoreVersion)" />
     <PackageVersion Include="Microsoft.Playwright" Version="1.60.0" />

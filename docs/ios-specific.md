@@ -19,18 +19,24 @@ precompile has never actually been absent on iOS. Native AOT builds have neither
 definition; that's why they're not production yet, and why
 [CodeKeeper](./native-aot.md) coverage is the work that gets us there.
 
-## The interpreter is always on — `UseInterpreter` only gates dynamic code
+## The interpreter is always on — dynamic-code support is a separate switch
 
 One setting in `App.Maui.csproj`, and no R2R exclusion:
 
 ```xml
-<UseInterpreter>false</UseInterpreter>
+<DynamicCodeSupport>false</DynamicCodeSupport>
 ```
 
 **`UseInterpreter` does not turn the CoreCLR interpreter on or off on Apple targets.** The
-interpreter is always there, and it is the *only* code generator on iOS. All the property
-does is gate `DynamicCodeSupport`, i.e. `RuntimeFeature.IsDynamicCodeSupported`. The name
-misleads, which is why this cost us a night.
+interpreter is always there, and it is the *only* code generator on iOS.
+
+Before RC2, `UseInterpreter=false` indirectly kept `RuntimeFeature.IsDynamicCodeSupported`
+false. [macios#26468](https://github.com/dotnet/macios/pull/26468) removed that coupling for
+CoreCLR: the default is now true regardless of `UseInterpreter`. We explicitly retain
+`DynamicCodeSupport=false` to preserve the existing library paths. The runtime issue
+#130840 is now closed, but enabling dynamic code again still requires on-device validation
+of our Blazor generic-component paths. The measurements and SDK excerpts below describe
+the pre-RC2 behavior.
 
 Evidence, all from the shipped `ios-arm64` build:
 
@@ -83,7 +89,7 @@ The fault needs **both** halves, which is why it read as "the interpreter crashe
 2. the caller invoking it is R2R-compiled.
 
 `IsDynamicCodeSupported=false` removes the first half — libraries stay on their static paths
-and never build the delegate. That is why `UseInterpreter=false` fixes it while leaving the
+and never build the delegate. That is why disabling dynamic-code support avoids it while leaving the
 interpreter running, and why full R2R is fine again. The old workaround attacked the second
 half instead, by keeping `Microsoft.AspNetCore.Components.dll` out of the R2R image so the
 caller was interpreted too; that cost ~17MB and an interpreted parameter path on every

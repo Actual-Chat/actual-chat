@@ -169,7 +169,7 @@
     <PackageReference Include="libphonenumber-csharp" />
     <PackageReference Include="Microsoft.Maui.Controls" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
-    <!-- WebView.Maui rc.1 pulls Components.WebView preview.7: its blazor.webview.js breaks rc.1 <Virtualize> -->
+    <!-- MAUI RC2 still pulls WebView RC1; align blazor.webview.js with our Blazor packages. -->
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView" />
     <!-- This seems weird, but w/o this line MSBuild concludes the version is 1.0.0! -->
     <PackageReference Include="Microsoft.IO.RecyclableMemoryStream" />
@@ -398,6 +398,8 @@
        UseNativeAot=true, so this block always applies in Release. -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-android')) and '$(Configuration)' == 'Release'">
     <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
+    <AndroidLinkTool>r8</AndroidLinkTool>
+    <AndroidR8ObfuscationMode>private-members</AndroidR8ObfuscationMode>
     <!-- Trimming -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
@@ -418,11 +420,6 @@
     <_MauiPublishReadyToRunPartial>$(UsePartialR2R)</_MauiPublishReadyToRunPartial>
     <!-- -50ms to startup time: -->
     <AndroidGenerateJniMarshalMethods>true</AndroidGenerateJniMarshalMethods>
-    <!-- Must be commented out: r8/d8 is the default now, specifying them explicitly
-         triggers MSB6002: The command-line for the "R8" task is too long.
-    <AndroidDexTool>d8</AndroidDexTool>
-    <AndroidLinkTool>r8</AndroidLinkTool>
-    -->
     <!-- When true, fails with No implementation found for void crc6444c698770736d3d5.MainApplication.n_OnAppForegrounded()
     <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
     -->
@@ -485,16 +482,11 @@
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
-  <!-- Despite the name, this does NOT turn the CoreCLR interpreter on or off on Apple targets -
-       the interpreter is always present and is the only code generator there (no JIT is linked
-       into libcoreclr for ios-arm64). All this property does is gate DynamicCodeSupport, i.e.
-       RuntimeFeature.IsDynamicCodeSupported: the macios SDK aliases it to MtouchInterpreter,
-       which the linker discards outright when the runtime isn't MonoVM.
-       False keeps libraries on their static paths - which is what avoids dotnet/runtime#130840,
-       since the fault needs a library to build an open-instance delegate in the first place.
-       See docs/ios-specific.md before changing this. -->
+  <!-- RC2 no longer derives CoreCLR dynamic-code support from UseInterpreter (macios#26468).
+       Preserve our static library paths until the runtime#130840 fix is verified on device;
+       this does not disable CoreCLR's interpreter. See docs/ios-specific.md. -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
-    <UseInterpreter>false</UseInterpreter>
+    <DynamicCodeSupport>false</DynamicCodeSupport>
   </PropertyGroup>
 
   <!-- iOS: Both Debug & Release configurations -->
