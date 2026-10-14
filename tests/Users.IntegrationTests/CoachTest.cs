@@ -1,3 +1,4 @@
+using ActualChat.Audio;
 using ActualChat.Chat;
 using ActualChat.Hashing;
 using ActualChat.Queues;
@@ -68,6 +69,230 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
             ready(days[0]).Should().BeTrue();
             return days[0];
         });
+
+    [Fact(Timeout = 60_000)]
+    public async Task BaselinesShouldRemainImmutableInvalidatePersistentlyAndClearWithCoachData()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var commander = AppHost.Services.Commander();
+        var original = Entry(account.Id, GroupChatId.New(), 1, 300, 150, T0, 15, "like");
+        var recordCmd = new CoachBackend_Record(account.Id, CoachRecord.FromEntry(original), false);
+        await commander.Call(recordCmd);
+        var baselineCmd = new CoachBackend_SetBaseline(account.Id, CoachMetricKind.Fillers, "en",
+            CoachHistoryPeriod.Day, T0);
+
+        // act
+        await commander.Call(baselineCmd);
+        var baseline = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        var other = original with { Id = ChatEntryId.New(GroupChatId.New(), 1) };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(other), false));
+        var unchanged = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(new CoachBackend_Record(account.Id,
+            CoachRecord.FromEntry(original with { Version = 2, Fillers = 0 }), false));
+        var invalid = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(recordCmd);
+        var stale = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(baselineCmd);
+        var replaced = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(baselineCmd with { Period = null });
+        var cleared = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(baselineCmd);
+        await commander.Call(new CoachBackend_DeleteUserData(account.Id));
+        var deleted = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+
+        // assert
+        baseline.Should().NotBeNull();
+        baseline!.Value.Should().Be(0.05);
+        unchanged.Should().BeEquivalentTo(baseline);
+        invalid!.Value.Should().Be(baseline.Value);
+        invalid.InvalidatedAt.Should().NotBeNull();
+        stale.Should().BeEquivalentTo(invalid);
+        replaced!.Id.Should().NotBe(baseline.Id);
+        replaced.InvalidatedAt.Should().BeNull();
+        replaced.Value.Should().Be(0.025);
+        cleared.Should().BeNull();
+        deleted.Should().BeNull();
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SourceExclusionRestorationAndRemovalShouldKeepBaselinesUnavailable()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var commander = AppHost.Services.Commander();
+        var original = Entry(account.Id, GroupChatId.New(), 1, 300, 150, T0, 15, "like");
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(original), false));
+        var baselineCmd = new CoachBackend_SetBaseline(account.Id, CoachMetricKind.Fillers, "en",
+            CoachHistoryPeriod.Day, T0);
+        await commander.Call(baselineCmd);
+        var exclusionCmd = new CoachBackend_SetConversationExcluded(account.Id,
+            original.Id.ChatId, original.Id.LocalId, "en", true);
+
+        // act
+        await commander.Call(exclusionCmd);
+        var excluded = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(exclusionCmd with { IsExcluded = false });
+        var restored = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        await commander.Call(baselineCmd);
+        await commander.Call(new CoachBackend_Record(account.Id,
+            CoachRecord.FromEntry(original with { Version = 2 }), true));
+        var removed = await Backend.GetBaseline(account.Id, CoachMetricKind.Fillers, "en", default);
+        var comparison = await Coach.GetOwnBaselineComparison(tester.Session, CoachMetricKind.Fillers,
+            "en", CoachHistoryPeriod.Day, T0, default);
+
+        // assert
+        excluded!.InvalidatedAt.Should().NotBeNull();
+        restored.Should().BeEquivalentTo(excluded);
+        removed!.InvalidatedAt.Should().NotBeNull();
+        removed.Value.Should().Be(0.05);
+        comparison.Baseline.Should().BeEquivalentTo(removed);
+        comparison.Change.Should().BeNull();
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SkillHistoryShouldWeightDaysKeepRealDatesAndRefreshAfterExclusion()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var commander = AppHost.Services.Commander();
+        var first = Entry(account.Id, GroupChatId.New(), 1, 200, 100, T0, 20, "like");
+        var second = Entry(account.Id, GroupChatId.New(), 1, 1_800, 900, T0 + TimeSpan.FromDays(1), 18, "like");
+        var other = first with { Id = ChatEntryId.New(GroupChatId.New(), 1), Language = Languages.Russian };
+        foreach (var entry in new[] { first, second, other })
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(entry), false));
+
+        // act
+        var history = await Coach.GetOwnSkillHistory(tester.Session, CoachMetricKind.Fillers,
+            "en-US", CoachHistoryPeriod.Month, T0, default);
+
+        // assert
+        history.Days.Should().HaveCount(2);
+        history.Days.Select(d => d.Day).Should().Equal(UsageDay.DayOf(T0), UsageDay.DayOf(second.BeginsAt));
+        history.Value.Should().Be(0.019);
+        history.MeasuredWords.Should().Be(2_000);
+        history.Words.Should().ContainSingle().Which.Count.Should().Be(38);
+        await commander.Call(new CoachBackend_SetConversationExcluded(account.Id, first.Id.ChatId, 1, "en", true));
+        await TestWait.When(async ct => {
+            var updated = await Coach.GetOwnSkillHistory(tester.Session, CoachMetricKind.Fillers,
+                "en", CoachHistoryPeriod.Month, T0, ct);
+            updated.Days.Should().ContainSingle();
+            updated.Value.Should().Be(0.01);
+        });
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task CurrentHistoryShouldStopAtRequestTimeWithoutIncludingFutureRowsOnTheSameDay()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var now = AppHost.Services.Clocks().SystemClock.Now;
+        var commander = AppHost.Services.Commander();
+        var past = Entry(account.Id, GroupChatId.New(), 1, 200, 50, now - TimeSpan.FromMinutes(1));
+        var future = Entry(account.Id, GroupChatId.New(), 1, 1_000, 500,
+            UsageDay.DayOf(now) + TimeSpan.FromDays(1) - TimeSpan.FromTicks(1), 100, "like");
+        foreach (var entry in new[] { past, future })
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(entry), false));
+
+        // act
+        var history = await Coach.GetOwnSkillHistory(tester.Session, CoachMetricKind.Fillers,
+            "en", CoachHistoryPeriod.Month, UsageDay.DayOf(now), default);
+
+        // assert
+        history.Range.End.Should().BeGreaterThanOrEqualTo(now);
+        history.Range.End.Should().BeLessThan(UsageDay.DayOf(now) + TimeSpan.FromDays(1));
+        history.MeasuredWords.Should().Be(200);
+        history.Value.Should().Be(0);
+        var occurrences = await Coach.ListOwnSkillOccurrencesInRange(tester.Session, "like", history.Range,
+            "en", CoachMetricKind.Fillers, default);
+        occurrences.Should().BeEmpty();
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task PaceDetailsShouldClassifyExactBoundariesAndRespectLanguageAndExclusion()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var commander = AppHost.Services.Commander();
+        var samples = new[] { (85, 30_000), (86, 30_000), (13, 6_000), (12, 6_000) };
+        for (var i = 0; i < samples.Length; i++) {
+            var (words, milliseconds) = samples[i];
+            var analysis = Entry(account.Id, chatId, i + 1, words, milliseconds / 1_000d, T0) with {
+                Pace = new SpeechPaceMeasurement(1, milliseconds, new SpeechPaceAnalysis(
+                    [new SpeechPaceSegment((0, 10), (0, milliseconds), words)], words, 0, 0, 0, 0, 0)),
+            };
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(analysis), false));
+        }
+        var russian = Entry(account.Id, GroupChatId.New(), 1, 40, 15, T0, language: Languages.Russian) with {
+            Pace = new SpeechPaceMeasurement(1, 15_000, new SpeechPaceAnalysis(
+                [new SpeechPaceSegment((0, 10), (0, 15_000), 40)], 40, 0, 0, 0, 0, 0)),
+        };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(russian), false));
+        var range = new Range<Moment>(T0, T0 + TimeSpan.FromDays(1));
+
+        // act
+        var details = await Backend.GetPaceDetails(account.Id, range, "en", default);
+
+        // assert
+        details.Slow.Should().Be(130);
+        details.Fast.Should().Be(170);
+        details.Distribution.WithinMilliseconds.Should().Be(36_000);
+        details.Distribution.AboveMilliseconds.Should().Be(30_000);
+        details.Distribution.BelowMilliseconds.Should().Be(6_000);
+        details.Distribution.WithinRate.Should().Be(0.5);
+        details.Summary!.MeasuredEntries.Should().Be(4);
+        details.Summary.Durations[34].Should().Be(60_000, "170 and 172 share a bin but not a target classification");
+        details.Moments.Should().HaveCount(2);
+        await commander.Call(new CoachBackend_SetConversationExcluded(account.Id, chatId, 1, "en", true));
+        var excluded = await TestWait.When(async ct => {
+            var result = await Backend.GetPaceDetails(account.Id, range, "en", ct);
+            result.Summary.Should().BeNull();
+            return result;
+        });
+        excluded.Distribution.WithinRate.Should().BeNull();
+        excluded.Moments.Should().BeEmpty();
+    }
+
+    [Fact(Timeout = 60_000)]
+    public async Task SkillOccurrencesShouldFilterLanguageAndKind()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var commander = AppHost.Services.Commander();
+        var filler = Entry(account.Id, GroupChatId.New(), 1, 30, 15, T0, 1, "like");
+        var weak = filler with {
+            Id = ChatEntryId.New(GroupChatId.New(), 1),
+            Spans = ApiArray.New(new SpeechSpan(SpeechSpanKind.Weak, "like", 0, 4, ApiArray<string>.Empty)),
+        };
+        var russian = filler with { Id = ChatEntryId.New(GroupChatId.New(), 1), Language = Languages.Russian };
+        foreach (var analysis in new[] { filler, weak, russian })
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(analysis), false));
+
+        // act
+        var occurrences = await Backend.ListSkillOccurrences(account.Id, "like", (T0, T0 + TimeSpan.FromDays(1)),
+            20, "en", CoachMetricKind.WeakWords, default);
+
+        // assert
+        occurrences.Should().ContainSingle();
+        occurrences[0].ChatId.Should().Be(weak.Id.ChatId);
+        for (var i = 0; i < 7; i++) {
+            var analysis = Entry(account.Id, GroupChatId.New(), 1, 30, 15, T0, 1, $"word{i}");
+            await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(analysis), false));
+        }
+        var words = await Coach.ListOwnSkillWords(tester.Session, CoachWindow.AllTime,
+            "en", CoachMetricKind.Fillers, default);
+        words.Should().HaveCount(8, "detail lists are not restricted to the five summary chips");
+        var weakWords = await Coach.ListOwnSkillWords(tester.Session, CoachWindow.AllTime,
+            "en", CoachMetricKind.WeakWords, default);
+        weakWords.Should().ContainSingle().Which.Word.Should().Be("like");
+    }
 
     [Fact]
     public async Task EntryEventShouldBuildTheDay()
@@ -387,6 +612,101 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
             .Where(d => d.UserId == userId.Value && d.Day == dbDay)
             .Select(d => d.Version)
             .SingleAsync();
+    }
+
+    [Fact(Timeout = 120_000)]
+    public async Task PaceContributionShouldSurviveExclusionAndRejectStaleResurrection()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var analysis = Entry(account.Id, chatId, 1, 30, 12, T0) with {
+            Pace = new SpeechPaceMeasurement(1, 12_000, new SpeechPaceAnalysis(
+                [new SpeechPaceSegment((0, 10), (1_000, 11_000), 30)], 30, 0, 0, 0, 0, 2_000)),
+        };
+        var dbHub = AppHost.Services.GetRequiredService<DbHub<UsersDbContext>>();
+        var commander = AppHost.Services.Commander();
+
+        // act
+        await Queues.Enqueue(new CoachEntryAnalyzedEvent(analysis, false));
+        var initial = await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Pace?.MeasuredEntries == 1);
+        initial.Pace!.Durations[36].Should().Be(10_000);
+        await using (var db = await dbHub.CreateDbContext(false)) {
+            var daily = await db.CoachDays.SingleAsync(d => d.UserId == account.Id.Value);
+            daily.PaceData.Should().NotBeNull();
+            daily.Data.Should().NotContain("pace");
+        }
+        await commander.Call(new CoachBackend_SetConversationExcluded(account.Id, chatId, 1, "en", true));
+
+        // assert
+        await using (var db = await dbHub.CreateDbContext(false)) {
+            var row = await db.CoachEvents.SingleAsync(e => e.UserId == account.Id.Value);
+            row.IsExcluded.Should().BeTrue();
+            row.ToModel().Entry!.Pace.Should().BeEquivalentTo(analysis.Pace);
+            row.Payload.Should().NotContain("pace");
+        }
+        await TestWait.When(async ct => {
+            var day = UsageDay.DayOf(T0);
+            var days = await Backend.ListDays(account.Id, (day, day + TimeSpan.FromDays(1)), null, ct);
+            days.Should().BeEmpty();
+        });
+        await commander.Call(new CoachBackend_SetConversationExcluded(account.Id, chatId, 1, "en", false));
+        var restored = await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Pace?.MeasuredEntries == 1);
+        restored.Pace.Should().BeEquivalentTo(initial.Pace);
+        var edited = analysis with { Version = 2, Pace = null };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(edited), false));
+        var cleared = await WhenDay(account.Id, UsageDay.DayOf(T0), d => d.Pace is null);
+        cleared.Words.Should().Be(30);
+        var removed = analysis with { Version = 3 };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(removed), true));
+        await commander.Call(new CoachBackend_Record(account.Id,
+            CoachRecord.FromEntry(analysis with { Version = 2 }), false));
+        await using var finalDb = await dbHub.CreateDbContext(false);
+        var final = await finalDb.CoachEvents.SingleAsync(e => e.UserId == account.Id.Value);
+        final.IsRemoved.Should().BeTrue();
+        final.PaceData.Should().BeNull();
+        final.Version.Should().Be(3);
+        (await finalDb.CoachDays.CountAsync(d => d.UserId == account.Id.Value)).Should().Be(0);
+    }
+
+    [Fact(Timeout = 90_000)]
+    public async Task DailyPaceShouldReplaceMeasurementsMoveLanguagesAndRebuild()
+    {
+        // arrange
+        await using var tester = AppHost.NewWebClientTester(Out);
+        var account = await tester.SignInAsUniqueBob();
+        var chatId = GroupChatId.New();
+        var commander = AppHost.Services.Commander();
+        var day = UsageDay.DayOf(T0);
+        var original = Entry(account.Id, chatId, 1, 30, 12, T0) with {
+            Pace = new SpeechPaceMeasurement(1, 12_000, new SpeechPaceAnalysis(
+                [new SpeechPaceSegment((0, 10), (1_000, 11_000), 30)], 30, 0, 0, 0, 0, 2_000)),
+        };
+        var updated = original with {
+            Version = 2,
+            Pace = new SpeechPaceMeasurement(1, 24_000, new SpeechPaceAnalysis(
+                [new SpeechPaceSegment((0, 10), (1_000, 21_000), 30)], 30, 0, 0, 0, 0, 4_000)),
+        };
+
+        // act
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(original), false));
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(updated), false));
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(original), false));
+        var result = await WhenDay(account.Id, day, d => d.Pace?.AudioMilliseconds == 24_000);
+
+        // assert
+        result.Words.Should().Be(30);
+        result.Pace!.MeasuredEntries.Should().Be(1);
+        result.Pace.Durations.Should().ContainSingle();
+        result.Pace.Durations[18].Should().Be(20_000);
+        var russian = updated with { Version = 3, Language = Languages.Russian };
+        await commander.Call(new CoachBackend_Record(account.Id, CoachRecord.FromEntry(russian), false));
+        var moved = await WhenDay(account.Id, day, d => d.Language == "ru");
+        moved.Pace.Should().BeEquivalentTo(result.Pace);
+        await commander.Call(new CoachBackend_RebuildDays(account.Id));
+        var rebuilt = await WhenDay(account.Id, day, d => d.Language == "ru" && d.Pace?.MeasuredEntries == 1);
+        rebuilt.Pace.Should().BeEquivalentTo(result.Pace);
     }
 
     [Fact]

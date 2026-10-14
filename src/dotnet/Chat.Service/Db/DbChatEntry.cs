@@ -149,6 +149,11 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
                     HistoryChange = hc.Change,
                     HistoryPeriod = hc.Period,
                 },
+                LegacyTranscriptionChangedOption tc => new TranscriptionChangedEntry(id, Version) {
+                    TargetAuthorId = tc.AuthorId,
+                    TargetAuthorName = tc.AuthorName,
+                    IsTranscriptionOn = tc.IsOn,
+                },
                 // A row written by a later release - a rollback past it would otherwise take out
                 // every chat holding one. Same placeholder the wire format's unknown tags get.
                 _ => new UnsupportedSystemEntry(id, Version),

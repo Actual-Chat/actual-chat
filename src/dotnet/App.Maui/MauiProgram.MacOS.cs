@@ -15,7 +15,7 @@ public static partial class MauiProgram
         // The AppKit backend runs with the leanest platform service set: push notifications,
         // native auth, file saving and theming are not wired up yet, so their web/base
         // registrations stay in effect.
-        services.AddTransient<IDeviceTokenRetriever>(_ => new MacDeviceTokenRetriever());
+        services.AddTransient<IDeviceTokenRetriever>(_ => new NoDeviceTokenRetriever());
         services.AddScoped<IRecordingPermissionRequester>(c
             => new AppleRecordingPermissionRequester(c.GetRequiredService<SystemSettingsUI>()));
         services.AddScoped<INotificationsPermission>(c => new MacOSNotificationsPermission(c.AppUIHub()));

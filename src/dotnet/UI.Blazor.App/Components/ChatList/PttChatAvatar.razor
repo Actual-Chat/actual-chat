@@ -1,0 +1,54 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, PttChatAvatar.Model>
+@{
+    var (isSpeaking, isMuted) = State.Value;
+    var cls = isSpeaking ? "c-avatar speaking" : "c-avatar";
+    // Only a speaking avatar is a tap target (its mute menu); the rest let the click fall through to
+    // the panel's settings layer, so they carry no menu.
+    var menuRef = isSpeaking
+        ? MenuRef.New<PttMuteMenu>(Chat.Id.Value, isMuted ? MutedArg : "").ToString()
+        : null;
+}
+
+<div
+    class="@cls"
+    style="z-index: @ZIndex"
+    data-menu="@(isSpeaking ? menuRef : null)"
+    data-menu-trigger="@(isSpeaking ? MenuTrigger.Primary.ToString() : null)"
+    data-menu-placement="@(isSpeaking ? FloatingPosition.BottomStart.ToPositionString() : null)">
+    <ChatIcon Chat="@Chat" Size="SquareSize.Size8"/>
+    @if (isSpeaking) {
+        <i class="c-mute-badge @(isMuted ? "icon-volume-off-fill c-muted" : "icon-volume-up-fill")"></i>
+    }
+</div>
+
+@code {
+    // Second menu argument marking the chat as already muted, so the menu shows "unmute" instead of
+    // the mute durations.
+    public const string MutedArg = "muted";
+
+    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    // Ascending per item: a positioned z-index makes each avatar its own stacking context, so a later
+    // (right) one paints entirely over its left neighbour - ring included - instead of its inner image
+    // leaking over the neighbour's ring.
+    [Parameter] public int ZIndex { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = default,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var isSpeaking = await LiveStreamUI.IsAnyoneStreamingAudio(Chat.Id, cancellationToken).ConfigureAwait(false);
+        var mutedChatIds = await ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
+        return new Model(isSpeaking, mutedChatIds.Contains(Chat.Id));
+    }
+
+    public readonly record struct Model(bool IsSpeaking, bool IsMuted);
+}

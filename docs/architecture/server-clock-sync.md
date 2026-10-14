@@ -316,9 +316,17 @@ requirement:
 ```
 staleness = connectedElapsed since last accept
 effectiveTarget()     = max(targetPrecision, LinkFloorHeadroom * 0.5 * minRttEma)
-acceptablePrecision() = min(PrecisionCeiling,
-                            effectiveTarget() * (1 + staleness / StalenessRelaxTime))
+acceptablePrecision() = syncCount == 0
+    ? MaxProbeRtt                         // the first sync can't do better than the link allows
+    : effectiveTarget() * min(MaxRelaxation, 1 + staleness / StalenessRelaxTime)
 ```
+
+The first sync takes any measurable precision as a coarse step, and probes wait
+`MaxProbeRtt` until it lands (nothing is measured yet to scale a timeout from). Later
+syncs are bound by the link floor, not by a fixed ceiling: a ceiling below the floor
+rejects every sound burst on a slow link. Field evidence, 2026-10-12: a Windows client
+connected through a relay measured `GetTime` at ~445 ms against a 400 ms probe timeout,
+and sat at 0 accepts for hours.
 
 ### Staleness is the gate's third term
 
@@ -344,15 +352,16 @@ the mode from flapping when bursts land exactly on the floor.
 
 Two hard rules:
 
-- never accept precision worse than `PrecisionCeiling`
+- relaxation stops at `MaxRelaxation` (2×): the bound follows the link floor, and
+  never grows without limit
 - staleness accrues **only while connected**
 
 The second matters: if staleness accrued in wall time, a client returning from an
 hour offline would arrive fully relaxed and swallow the first sample it got —
 which is the one most likely to be reconnect-poisoned.
 
-A client stuck above the ceiling stays in `Converging`, keeps its old offset, and
-is surfaced through metrics. Visibly unsynced beats silently wrong.
+A client whose bursts stay above the bound stays in `Converging`, keeps its old
+offset, and is surfaced through metrics. Visibly unsynced beats silently wrong.
 
 ## Why drift is assumed, not measured
 
@@ -510,7 +519,8 @@ way to tell whether the 50 ms target is being met.
 | `LinkFloorHeadroom` | 1.2 | on `0.5 * minRttEma`, forms the effective target |
 | `StaleSyncFactor` | 2 | × steady interval — max age `EnsureSynced` trusts |
 | `ProbeTimeoutRttFactor` | 3 | × `minRttEma`, floors at `ProbeTimeout`, caps at `MaxProbeRtt` |
-| `PrecisionCeiling` | 250 ms | never accepted above this |
+| `PrecisionCeiling` | 250 ms | only the precision assumed before the first sync |
+| `MaxRelaxation` | 2 | cap on the staleness multiplier of the acceptable precision |
 | `AssumedDriftRate` | 50 ppm | assumption, not measured |
 | `DriftBudget` | 20 ms | of the 50 ms target |
 | `SteadyInterval` | derived, clamped to 5–30 min | ~6.7 min at the values above |
@@ -529,7 +539,7 @@ way to tell whether the 50 ms target is being met.
 | `StalenessRelaxTime` | 30 min | |
 | `ProbeTimeout` | 300–500 ms | enforced by CTS |
 | `PhysicalRttFloor` | 1 ms | below this the probe is unmeasurable |
-| `MaxProbeRtt` | 2 s | |
+| `MaxProbeRtt` | 5 s | probe timeout until the first accept, and the cap after it |
 
 ## Open questions
 

@@ -41,6 +41,10 @@
                         SwapKind="@TabContentSwap.Swipe"
                         MustPropagateDisplay="true"/>
                 }
+                else {
+                    <tab-skeleton></tab-skeleton>
+                    <chat-list-skeleton count="8"></chat-list-skeleton>
+                }
             </div>
         </div>
         @* Outside .c-panel-content: in narrow that block is translated down by the whole collapse

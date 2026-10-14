@@ -66,43 +66,6 @@ public partial class MauiWebView
         }
     }
 
-    private static bool HandleWebNavigation(MauiWebView? mauiWebView, Uri uri)
-    {
-        // AppKit twin of HandleLoading: MAUI's UrlLoading event doesn't exist on the labs
-        // BlazorWebView, so the same policy runs from a WKNavigationDelegate instead. Static
-        // and null-tolerant on purpose: an external navigation must be cancelled even when the
-        // delegate can't match the current MauiWebView - failing open here is how an in-chat
-        // link once replaced the whole app with the page it pointed at.
-        if (uri.Host == MauiSettings.LocalHost) {
-            if (mauiWebView != null) {
-                mauiWebView.LastUri = uri;
-                mauiWebView.LastLocalUri = uri;
-            }
-            return true;
-        }
-
-        if (!MauiSettings.BaseUri.IsBaseOf(uri)) {
-            if (AllowedExternalHosts.Contains(uri.Host)) {
-                if (mauiWebView != null)
-                    mauiWebView.LastUri = uri;
-                return true;
-            }
-
-            _ = ForegroundTask.Run(() => MauiBrowser.Open(uri.ToString()));
-            return false;
-        }
-
-        // If we're here, it's a host URL, so we have to re-route it to the local one
-        if (mauiWebView != null) {
-            var wasOnLocalUri = mauiWebView.IsOnLocalUri;
-            var localUri = HostToAbsoluteLocalUri(uri);
-            BeginDispatchToMainThread(
-                () => _ = mauiWebView.NavigateTo(localUri, !wasOnLocalUri),
-                allowInline: false);
-        }
-        return false;
-    }
-
     // Nested types
 
     private sealed class NavigationDelegate : WKNavigationDelegate

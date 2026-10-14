@@ -437,6 +437,42 @@ Selectors go from parent to children, top to bottom:
 .amazing-panel .c-content .btn.amazing-panel-btn { }
 ```
 
+### No utility class names in selectors
+
+A selector must not name a class that many other rules `@apply` — `.hidden`, `.flex-x`, `.rounded`
+and the like:
+
+```css
+/* Wrong: `hidden` is applied by ~190 rules */
+.share-modal .btn-share-action.hidden { display: none; }
+.emoji-modal .c-arrow:not(.hidden) { opacity: 1; }
+```
+
+Tailwind treats every rule whose selector mentions `.hidden` as a part of the `hidden` utility. For
+each rule that says `@apply hidden` it re-emits yours as well, with `.hidden` replaced by that rule's
+whole selector. One selector becomes one copy per `@apply` in the code base, the copies are valid CSS,
+and nothing in the build complains. Inside a `:has()` the copies are also expensive: `:has(.btn:not(.hidden))`
+turned into 636 selectors WebKit could not scope, and every DOM insertion re-matched the whole
+document — 0.76 ms per inserted node, seconds per chat switch (#5261).
+
+What to write instead:
+
+- **A state of your own**: a class the component owns (`.collapsed`, `.no-destination`) or a `data-`
+  attribute, set by the same code that would have set the utility. For "the container has such a
+  child", use [presence attributes](#presence-attributes).
+
+Not `[class~="hidden"]`: it matches the same elements and the build leaves it alone, but it still
+couples the rule to a utility name, and it is nothing anyone expects to read in a stylesheet.
+
+A rule that *defines* a utility is fine: a selector that is nothing but the class (`.animate-pulse`),
+and anything inside `@layer`. So is naming a class that few rules apply: `i.animate-spin` costs one
+copy of a one-line rule, and the check reports a class only from ten `@apply`s up. It counts over the
+whole code base on every build, so a rule starts failing the build the day its class crosses the line;
+the message then names the rule to rewrite.
+
+`scripts/check-css-selectors.mjs` enforces this: `npm run lint:css` is a part of `npm run lint` and
+`lint:all`, so `build:Verify` and `build:Release` run it.
+
 ### Property Ordering Within a Rule
 
 Properties are grouped by category, top to bottom. Use `@apply` for Tailwind utilities, then raw CSS below:
@@ -1018,7 +1054,7 @@ For defense-in-depth, add a MutationObserver on the element's class attribute th
 ## Document-Level Mechanisms
 
 Three mechanisms live outside the component and are opted into purely from markup. Two of them —
-presence classes and animation sync — and one of the two render-script dispatchers are driven from
+presence attributes and animation sync — and one of the two render-script dispatchers are driven from
 `mutation-processor.ts`, which owns the single `MutationObserver` over `document.body`: a callback
 there is delivered once per microtask checkpoint, after a render batch is applied and before paint, so
 it is both timelier and cheaper than polling. The other render-script dispatcher belongs to
@@ -1029,19 +1065,28 @@ the very first render, and registering when a component mounts would leave a win
 mechanism is missing. That also means there is nothing to unregister — the set of names is fixed, and
 the callbacks take everything they need as arguments rather than capturing a component or an element.
 
-### Presence classes
+### Presence attributes
 
 Replaces `container:has(descendant)`. WebKit has no descendant-direction `:has()` bits, so it re-runs a
 real match up the ancestor chain on every mutation — measured at 6-8% of WebContent's main thread
-during a call. A presence class turns that into one class toggle per actual change.
+during a call. A presence attribute turns that into one attribute toggle per actual change.
 
-Register in `app-presence-classes.ts`, never write the class in markup:
+Markup declares both ends, and `presence-tracker.ts` writes `data-has-<name>` on the container while
+at least one such child is present:
 
-```typescript
-MutationProcessor.registerPresenceClasses(
-    { container: '.list-view-layout', match: '.audio-panel-header', className: 'has-audio-panel-header' },
-);
+```razor
+<div class="c-active-chats" data-children="ptt-chats">        @* counts the children named here *@
+    <div class="ptt-chats" data-child="@(hasChats ? "ptt-chats" : null)">  @* one of them *@
 ```
+
+```css
+.c-active-chats[data-has-ptt-chats] .chat-list-fab { … }
+```
+
+A name binds to every ancestor declaring it. Components that render someone else's root take the
+declaration as a parameter: `Children` on `DialogFrame`, `ModalFrame` and `SideNav`, `Child` on
+`PageWithHeaderAndFooter` and the lists. `Button` forwards `data-child` as it is. For `body` and
+`html`, which no component renders, the names are declared in `app-presence-classes.ts`.
 
 Only **container subjects** belong here. A `:has()` whose subject is a small element (`.toggle`,
 `.checkbox`, `.navbar-item`) walks a tiny subtree and costs nothing worth replacing.

@@ -20,6 +20,7 @@ public abstract partial record ChatEntry : IForwardCompatibleUnion<ChatEntry>
             [100] = new (2, 20), // UnsupportedSystemEntry
             [101] = new (2, 20), // CallEntry
             [102] = new (2, 22), // HistoryChangedEntry
+            [103] = new (2, 22), // TranscriptionChangedEntry
         }.ToFrozenDictionary();
 
     public static bool IsSystemUnionTag(int tag)

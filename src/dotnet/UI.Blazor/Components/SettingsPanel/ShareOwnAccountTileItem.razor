@@ -8,7 +8,7 @@
         return;
 }
 
-<TileItem IsHoverable="false" Class="first-tile-item tile-item-my-account-link">
+<TileItem Class="first-tile-item tile-item-my-account-link" Click="@(() => OnCopyLinkClick(account))">
     <Icon>
         <AvatarCircle
             Avatar="@account.Avatar"
@@ -17,8 +17,12 @@
     <Content>
         @account.Name
     </Content>
+    <Caption>
+        <span class="c-account-link">@GetLinkText(account)</span>
+    </Caption>
     <Right>
-        <div class="share-actions">
+        @* The buttons keep their own actions: the rest of the tile copies the account link *@
+        <div class="share-actions" @onclick:stopPropagation="true">
             <ButtonSquare Tooltip="@L.Common_Share"
                           Class="btn-sm"
                           Click="@(() => OnShareClick(account, account.Avatar.Name))">
@@ -47,6 +51,14 @@
 
     protected override Task<AccountFull> ComputeState(CancellationToken cancellationToken)
         => AccountUI.OwnAccount.Use(cancellationToken);
+
+    private static string GetLinkText(AccountFull account)
+        => Links.User(account.AliasInfo).Value.TrimStart('/');
+
+    private async Task OnCopyLinkClick(AccountFull account) {
+        await Hub.ClipboardUI.WriteText(UrlMapper.ToAbsolute(Links.User(account.AliasInfo))).ConfigureAwait(true);
+        ToastUI.Show(L.YourAccount_LinkCopied, "icon-copy", ToastDismissDelay.Short);
+    }
 
     private void OnShareClick(AccountFull account, string name) {
         var shareUI = Services.GetRequiredService<ShareUI>();

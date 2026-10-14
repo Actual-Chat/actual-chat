@@ -555,6 +555,37 @@ public partial class StoredSettingsSerializationTest
     }
 
     [Fact]
+    public void UserAndroidSettingsUnionRoundTrip()
+    {
+        // arrange
+        var settings = new UserAndroidSettings {
+            Origin = "union-android-test",
+            RecordingStart = RecordingStartMode.DontWait,
+        };
+
+        // act
+        using var buffer = KvasSerializer.Default.Write<StoredSettings>(settings);
+        var bytes = buffer.WrittenMemory;
+        var result = KvasSerializer.Default.Read<StoredSettings>(ref bytes);
+
+        // assert
+        result.Should().BeOfType<UserAndroidSettings>();
+        var typed = (UserAndroidSettings)result!;
+        typed.Origin.Should().Be(settings.Origin);
+        typed.RecordingStart.Should().Be(RecordingStartMode.DontWait);
+    }
+
+    [Fact]
+    public void UserAndroidSettingsShouldDefaultToAuto()
+    {
+        // arrange & act
+        var settings = new UserAndroidSettings();
+
+        // assert
+        settings.RecordingStart.Should().Be(RecordingStartMode.Auto);
+    }
+
+    [Fact]
     public void LocalOnboardingSettingsReadsBlobWithRetiredPasskeyKeys()
     {
         // arrange

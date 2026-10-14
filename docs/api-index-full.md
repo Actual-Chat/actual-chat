@@ -1067,6 +1067,8 @@ Namespace `ActualChat.Localization`. Dependency-free - no UI, no server.
 - `PanelsUI` - Panel management.
 - `RightPanelMode` (enum) - What the right panel shows: Chat or Coach; persisted by `RightPanelStoredState`.
 - `DonutChart` / `BarChart` / `ChartItem` - Inline donut and bar charts with no domain knowledge.
+- `LineChart` — shared history chart using `ChartItem`, with target bands, separate reference lines, gap breaks, accessible point selection, and bounded date labels.
+- `HistogramChart` — numeric sparse-bin distribution with actual bin positions, an overlaid target range, and an explicit vertical maximum for percentage scales.
 - `PasskeyUI` - Passkey list/register/rename/delete/sign-in over `IPasskeyAuth`.
 - `PermissionHandler` (abstract class) - Permission request handling base.
 - `ReconnectUI` - RPC connection state monitoring.

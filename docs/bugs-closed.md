@@ -56,3 +56,21 @@ Reports moved out of [bugs](./bugs.md) once they were fixed, rejected, or turned
 | B27050 | Close X off-centre in the notification banner | Frol | Not a bug | Team decision: equidistant from top and right; #5127 still open for a smaller X | [B27050](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27050) |
 | B27088 | Push-to-talk banner shown in the Windows app | Alex | Not a bug | Alexey: on desktop it can stay, PTT works while the app runs | [B27088](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27088) |
 | B27092 | Text pasted from Apple Notes sends only the first line | Grigory | Fixed | ae2f09d429; #5175 closed | [B27092](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27092) |
+| B27095 | Sessions expire while the user is active or signing in | Andrey | Fixed | b10519a4fd (#5225); #5220 closed | [B27095](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27095) |
+| B26865 | Listening resumes after restart or after stopping, for about a minute | Alex | Fixed | c885d4cd39 (#5205); #5204 closed | [B26865](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26865) |
+| B26303 | Call title keeps the wrong language after toggling translation | Andrey | Fixed | 8c4f55c055 (#5236); #5228 closed | [B26303](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26303) |
+| B26633 | Chat view shows a blank screen instead of skeletons | Frol | Fixed | ff316ff66d (#5237); #5229 closed | [B26633](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26633) |
+| N1 | Notifications panel: replace the '…' menu with a Clear button | Alex | Fixed | 771c8c8a30 (#5223); #5219 closed | — (review comment) |
+| B26842 | Push-to-talk: unclear enabling UI, wrong Russian string, missing in browsers | Alex | Fixed | aab4aa3a38 (#5248); #5244 closed (Russian and Ukrainian string only) | [B26842](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26842) |
+| B27040 | Android microphone takes over a second to start recording | Alex | Fixed | 5cf36199a9 (#5210), c1d7c099c7 (#5252); #5140 closed | [B27040](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27040) |
+| B26964 | Klipy GIFs load very slowly | Andrey | Fixed | eb39bd8492 (#5207); #5206 closed | [B26964](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26964) |
+| B27078 | Voice and transcription settings open slowly after a refresh | Andrey | Fixed | 621c819371 (#5242); #5234 closed | [B27078](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27078) |
+| B27005 | Clicking a word starts the wrong playback ('trainer vs DJ') | Andrey | Fixed | 1957d53c7b (#5212); #5211 closed | [B27005](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27005) |
+| B26297 | Share button is too wide, gaps are uneven | Alex | Fixed | 160ad207bf (#5239); #5231 closed | [B26297](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26297) |
+| B26887 | macOS link missing in the download-app modal | Alex | Fixed | 122e1ef90b (#5238); #5230 closed | [B26887](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26887) |
+| B27028 | 'Real-time listening will be disabled' dialog on word click | Andrey | Fixed | 718ef4c188 (#5209); #5208 closed | [B27028](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=27028) |
+| B26510 | Historic playback cut off abruptly | Frol | Fixed (probable) | d8f2ae7437 (#5251); #5247 closed (the stream now faults instead of ending normally; not confirmed as the reported cause) | [B26510](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26510) |
+| B26344 | Stray bracket after a link in a message | Frol | Fixed | 803f7fcb06 (#5224); #5217 closed | [B26344](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26344) |
+| B26918 | Digest delivery time is not localized, and the digest didn't arrive | Alex | Fixed | f8a4df59c0 (#5254, English times on the 12-hour clock); the missing digest is explained by the 24 h activity rule | [B26918](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26918) |
+| N3 | The reconnecting overlay lets clicks through while a modal is open | Alex | Fixed | 7874ea9816 | — (review comment) |
+| N4 | Settings tabs that scroll sit a few pixels left of the others | Alex | Fixed | fcf5390dea | — (review comment) |

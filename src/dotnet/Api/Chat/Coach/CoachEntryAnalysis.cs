@@ -36,6 +36,7 @@ public sealed partial record CoachEntryAnalysis(
     [DataMember, Key(21)] public int PromptVersion { get; init; }
     [DataMember, Key(22)] public Moment? TaggedAt { get; init; }
     [DataMember, Key(23)] public HashString ContentHash { get; init; }
+    [DataMember, Key(24)] public SpeechPaceMeasurement? Pace { get; init; }
 
     // This record relies on referential equality
     public bool Equals(CoachEntryAnalysis? other) => ReferenceEquals(this, other);

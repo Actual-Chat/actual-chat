@@ -1,0 +1,52 @@
+name: Build video transcoder image
+concurrency:
+  group: "${{ github.workflow }}-${{ github.ref }}"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  # Bump when services/video-transcoder changes, then point the Cloud Run Job at the new tag
+  IMAGE_TAG: "1"
+  IMAGE: us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/video-transcoder
+
+jobs:
+  build:
+    name: Build and push image
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          lfs: false
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
+          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+
+      - name: Login to GAR
+        uses: docker/login-action@v3
+        with:
+          registry: us-central1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push '${{ env.IMAGE }}:${{ env.IMAGE_TAG }}'
+        uses: docker/build-push-action@v5
+        with:
+          context: services/video-transcoder
+          tags: ${{ env.IMAGE }}:${{ env.IMAGE_TAG }}
+          push: true

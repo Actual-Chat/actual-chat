@@ -1,3 +1,4 @@
+using ActualChat.Hashing;
 using ActualChat.Time;
 using ActualLab.Resilience;
 using ActualLab.Rpc;
@@ -42,10 +43,38 @@ public sealed partial record CoachAnalysisBackend_AnalyzeEntry(
     [property: DataMember, Key(1)] bool IsRemoved
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey, IHasTimeout
 {
+    [DataMember, Key(2)] public bool UpdatePace { get; init; }
+    [DataMember, Key(3)] public long EntryVersion { get; init; }
+    [DataMember, Key(4)] public bool CapturePace { get; init; }
+    [DataMember, Key(5)] public HashString SourceHash { get; init; }
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Id.ChatId.ShardKey;
     // The immediate path calls the LLM from this command; the default queue budget is 15 s
     TimeSpan? IHasTimeout.Timeout => TimeSpan.FromMinutes(3);
+
+    public static CoachAnalysisBackend_AnalyzeEntry New(ChatEntry entry, bool capturePace)
+        => new(entry.Id, false) {
+            UpdatePace = true,
+            EntryVersion = entry.Version,
+            CapturePace = capturePace,
+            SourceHash = GetSourceHash(entry),
+        };
+
+    public bool MatchesEntry(ChatEntry entry)
+        => EntryVersion == entry.Version || !SourceHash.IsNone && SourceHash == GetSourceHash(entry);
+
+    // Private methods
+
+    private static HashString GetSourceHash(ChatEntry entry)
+    {
+        var source = new {
+            entry.Content,
+            MediaId = entry.Audio?.MediaId,
+            TimeMap = entry.Audio?.TimeMap ?? LinearMap.Zero,
+        };
+        return SystemJsonSerializer.Default.Write(source).Hash().Blake3().ToBlake3Base64HashString();
+    }
 }
 
 /// <summary>

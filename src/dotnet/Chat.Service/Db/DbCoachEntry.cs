@@ -35,6 +35,7 @@ public class DbCoachEntry : IHasId<string>, IHasVersion<long>, IRequirementTarge
     public int? Pauses { get; set; }
     public double? PauseSeconds { get; set; }
     public string Spans { get; set; } = "[]";
+    public byte[]? PaceData { get; set; }
     public int FilledPauses { get; set; }
     public int Fillers { get; set; }
     public int WeakWords { get; set; }
@@ -76,6 +77,7 @@ public class DbCoachEntry : IHasId<string>, IHasVersion<long>, IRequirementTarge
             PromptVersion = PromptVersion,
             TaggedAt = TaggedAt is { } taggedAt ? taggedAt : null,
             ContentHash = HashString.ParseOrNone(ContentHash),
+            Pace = PaceData is null ? null : SpeechPaceMeasurement.FromBytes(PaceData),
         };
 
     public void UpdateFrom(CoachEntryAnalysis model)
@@ -109,5 +111,6 @@ public class DbCoachEntry : IHasId<string>, IHasVersion<long>, IRequirementTarge
         PromptVersion = model.PromptVersion;
         TaggedAt = model.TaggedAt is { } taggedAt ? taggedAt : null;
         ContentHash = model.ContentHash.Value;
+        PaceData = model.Pace?.ToBytes();
     }
 }

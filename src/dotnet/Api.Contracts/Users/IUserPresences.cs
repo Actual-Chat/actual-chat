@@ -24,4 +24,5 @@ public interface IUserPresences : IComputeService
 public sealed partial record UserPresences_CheckIn : ApiCommand<Unit>, INotDeduplicated
 {
     [DataMember(Order = 2), Key(2)] public required bool IsActive { get; init; }
+    [DataMember(Order = 3), Key(3)] public bool MustExtendSession { get; init; }
 }

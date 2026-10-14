@@ -26,7 +26,8 @@ public sealed partial record TranscriptDiff(
     public static TranscriptDiff New(Transcript transcript, Transcript baseTranscript)
     {
         var textDiff = StringDiff.New(transcript.Text, baseTranscript.Text);
-        var timeMapDiff = LinearMapDiff.New(transcript.TimeMap, baseTranscript.TimeMap, Transcript.TimeMapEpsilon);
+        var timeMapDiff = LinearMapDiff.New(transcript.TimeMap, baseTranscript.TimeMap,
+            new(Transcript.TimeMapEpsilon.X, 0));
         var languages = transcript.Languages.SequenceEqual(baseTranscript.Languages) ? null : transcript.Languages;
         return new TranscriptDiff(textDiff, timeMapDiff) {
             IsStable = transcript.IsStable,
@@ -53,11 +54,18 @@ public sealed partial record TranscriptDiff(
                 && IsSegmentEnd == baseTranscript.IsSegmentEnd
                 && ReferenceEquals(languages, baseTranscript.Languages)
                 ? baseTranscript
-                : baseTranscript with { IsStable = IsStable, Languages = languages, IsSegmentEnd = IsSegmentEnd };
+                : baseTranscript with {
+                    IsStable = IsStable,
+                    Languages = languages,
+                    IsSegmentEnd = IsSegmentEnd,
+                };
 
         var text = baseTranscript.Text + TextDiff;
         var timeMap = TimeMapDiff.ApplyTo(baseTranscript.TimeMap, Transcript.TimeMapEpsilon.X);
-        return new Transcript(text, timeMap, languages) { IsStable = IsStable, IsSegmentEnd = IsSegmentEnd };
+        return new Transcript(text, timeMap, languages) {
+            IsStable = IsStable,
+            IsSegmentEnd = IsSegmentEnd,
+        };
     }
 
     // Operators

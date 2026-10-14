@@ -222,8 +222,7 @@ public static class PttSession
         if (headlessHub.ChatAudioUI.IsRecording()) {
             // An Apple PTT Talk press on a killed app boots the WebView while the reply it
             // opened is still recording, and closing the mic here would cut that very reply.
-            // The WebView scope can't compete for the mic: ActiveChatsUI.FixStoredActiveChats
-            // drops a stored recording on start.
+            // The WebView scope can't compete for the mic: its active chats start empty.
             Log.LogInformation("PTT: a hot reply keeps the headless scope alive until it closes");
             using var cts = new CancellationTokenSource(HandOffHotReplyTimeout);
             var cRecordingChatId = await Computed
@@ -246,9 +245,6 @@ public static class PttSession
         if (!listeningChatIds.IsEmpty) {
             Log.LogInformation(
                 "PTT: handing {Count} listening chat(s) off to the WebView scope", listeningChatIds.Count);
-            // A SetListeningState landing before the stored active chats are read would make
-            // StoredState discard them.
-            await hub.ActiveChatsUI.WhenReady.ConfigureAwait(false);
             hub.ChatAudioUI.Enable();
             foreach (var chatId in listeningChatIds)
                 await hub.ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);

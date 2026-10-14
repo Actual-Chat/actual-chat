@@ -52,7 +52,8 @@ public sealed class ContentSecurityPolicy
             "object-src 'none'",
             "worker-src 'self' blob:",
             $"img-src 'self' {AppHosts} https://*.dicebear.com https://i.ytimg.com "
-                + "https://www.googletagmanager.com https://static.klipy.com blob: data:",
+                + "https://www.googletagmanager.com https://static.klipy.com "
+                + "https://static1.klipy.com https://static2.klipy.com blob: data:",
             $"media-src 'self' {AppSubdomains} blob: data:",
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com/css",
             "font-src 'self' https://fonts.gstatic.com/s/ubuntu/",

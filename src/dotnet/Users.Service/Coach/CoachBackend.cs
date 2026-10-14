@@ -15,7 +15,7 @@ namespace ActualChat.Users;
 /// The user side of the speech coach: an append-or-replace log of the chat-side analyses keyed by
 /// source id, day rows rebuilt from it, and the live tip decided after each entry record.
 /// </summary>
-public class CoachBackend(IServiceProvider services)
+public partial class CoachBackend(IServiceProvider services)
     : ShardedDbServiceBase<UsersDbContext>(services), ICoachBackend
 {
     // Occurrences are picked out of the latest entries, page by page, until enough are found or the
@@ -45,6 +45,30 @@ public class CoachBackend(IServiceProvider services)
             .Where(d => d.Day >= dayRange.Start && d.Day < dayRange.End)
             .Where(d => iso is null || d.Language == iso || d.Language == "")
             .ToApiArray();
+    }
+
+    public virtual async Task<ApiArray<CoachDay>> ListHistoryDays(
+        UserId userId, Range<Moment> range, string language, CancellationToken cancellationToken)
+    {
+        var days = await ListDays(userId, range, language, cancellationToken).ConfigureAwait(false);
+        var lastDay = UsageDay.DayOf(range.End);
+        if (lastDay == range.End)
+            return days;
+
+        var start = lastDay.ToDateTimeClamped();
+        var end = range.End.ToDateTimeClamped();
+        var iso = Language.GetIsoCode(language);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var rows = await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry)
+            .Where(e => !e.IsRemoved && !e.IsExcluded && e.OccurredAt >= start && e.OccurredAt < end)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var records = rows.Select(r => r.ToModel())
+            .Where(r => r.Entry?.Language is { } l && Language.GetIsoCode(l) == iso);
+        var partial = CoachDayBuilder.BuildAll(lastDay, records, Settings.Coach.MinVocabularyWords);
+        return days.Where(d => d.Day < lastDay).Concat(partial).ToApiArray();
     }
 
     // [ComputeMethod]
@@ -79,8 +103,14 @@ public class CoachBackend(IServiceProvider services)
     }
 
     // [ComputeMethod]
-    public virtual async Task<ApiArray<CoachOccurrence>> ListOccurrences(
+    public virtual Task<ApiArray<CoachOccurrence>> ListOccurrences(
         UserId userId, string word, Range<Moment> range, int limit, CancellationToken cancellationToken)
+        => ListSkillOccurrences(userId, word, range, limit, null, null, cancellationToken);
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<CoachOccurrence>> ListSkillOccurrences(
+        UserId userId, string word, Range<Moment> range, int limit,
+        string? language, CoachMetricKind? kind, CancellationToken cancellationToken)
     {
         // Every write invalidates ListAllDays, so depending on it keeps this fresh
         await ListAllDays(userId, cancellationToken).ConfigureAwait(false);
@@ -89,6 +119,7 @@ public class CoachBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
         var found = new List<CoachOccurrence>();
+        var iso = language.IsNullOrEmpty() ? null : Language.GetIsoCode(language);
         var before = end;
         var beforeSourceId = "";
         // Keyset pages: each one continues right after the last row of the previous one
@@ -107,8 +138,12 @@ public class CoachBackend(IServiceProvider services)
                 .ConfigureAwait(false);
             found.AddRange(rows
                 .Select(r => r.ToModel())
+                .Where(r => iso is null || r.Entry!.Language is { } l && Language.GetIsoCode(l) == iso)
                 .SelectMany(r => r.Entry!.Spans
                     .Where(s => s.Word == word)
+                    .Where(s => kind is null || kind == CoachMetricKind.Fillers
+                        && s.Kind is SpeechSpanKind.Filler or SpeechSpanKind.FilledPause
+                        || kind == CoachMetricKind.WeakWords && s.Kind == SpeechSpanKind.Weak)
                     .Select(s => new CoachOccurrence(r.ChatId, r.Entry.EntryLid, s.Start, s.Length, r.OccurredAt))));
             if (rows.Count < OccurrencePageSize)
                 break;
@@ -121,6 +156,33 @@ public class CoachBackend(IServiceProvider services)
             .ThenByDescending(o => o.Start)
             .Take(limit)
             .ToApiArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<CoachPaceDetails> GetPaceDetails(
+        UserId userId, Range<Moment> range, string language, CancellationToken cancellationToken)
+    {
+        await ListAllDays(userId, cancellationToken).ConfigureAwait(false);
+        var start = range.Start.ToDateTimeClamped();
+        var end = range.End.ToDateTimeClamped();
+        var iso = Language.GetIsoCode(language);
+        var band = CoachScoring.PaceRange(Settings.Coach, iso);
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+        var rows = await dbContext.CoachEvents
+            .Where(e => e.UserId == userId.Value && e.Kind == CoachRecordKind.Entry)
+            .Where(e => !e.IsRemoved && !e.IsExcluded && e.PaceData != null)
+            .Where(e => e.OccurredAt >= start && e.OccurredAt < end)
+            .OrderByDescending(e => e.OccurredAt)
+            .ThenByDescending(e => e.SourceId)
+            .Take(OccurrenceMaxRows + 1)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var records = rows.Take(OccurrenceMaxRows).Select(r => r.ToModel())
+            .Where(r => r.Entry?.Language is { } l && Language.GetIsoCode(l) == iso);
+        return CoachPaceDetails.FromRecords(records, band.Slow, band.Fast) with {
+            IsTruncated = rows.Count > OccurrenceMaxRows,
+        };
     }
 
     // [CommandHandler]
@@ -153,9 +215,13 @@ public class CoachBackend(IServiceProvider services)
                 dbEvent = new DbCoachEvent(record);
                 dbContext.Add(dbEvent);
             }
-            else if (dbEvent.IsRemoved)
+            else if (dbEvent.IsRemoved) {
+                dbEvent.Version = record.Version;
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 return;
+            }
 
+            dbEvent.Version = record.Version;
             dbEvent.MarkRemoved();
         }
         else if (dbEvent is null)
@@ -165,6 +231,7 @@ public class CoachBackend(IServiceProvider services)
         else
             dbEvent.UpdateFrom(record);
 
+        await InvalidateBaselines(dbContext, userId, [record.SourceId], cancellationToken).ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         await RebuildDay(dbContext, userId, record.Day, cancellationToken).ConfigureAwait(false);
         if (oldDay is { } movedFrom)
@@ -180,6 +247,9 @@ public class CoachBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
         await dbContext.CoachDays.Lock(userId.Value, cancellationToken).ConfigureAwait(false);
+        var baselinePrefix = BaselinePrefix(userId);
+        await dbContext.KvasEntries.Where(e => e.Key.StartsWith(baselinePrefix))
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         await dbContext.CoachEvents
             .Where(e => e.UserId == userId.Value)
             .ExecuteDeleteAsync(cancellationToken)
@@ -251,13 +321,16 @@ public class CoachBackend(IServiceProvider services)
             Language.GetIsoCode(language));
         var rowBySourceId = rows.ToDictionary(r => r.SourceId);
         var days = new HashSet<Moment>();
-        foreach (var member in members.Where(m => m.IsExcluded != isExcluded)) {
+        var changed = members.Where(m => m.IsExcluded != isExcluded).ToList();
+        foreach (var member in changed) {
             rowBySourceId[member.SourceId].UpdateFrom(member with { IsExcluded = isExcluded });
             days.Add(member.Day);
         }
         if (days.Count == 0)
             return;
 
+        await InvalidateBaselines(dbContext, userId, changed.Select(m => m.SourceId), cancellationToken)
+            .ConfigureAwait(false);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         foreach (var day in days)
             await RebuildDay(dbContext, userId, day, cancellationToken).ConfigureAwait(false);

@@ -92,6 +92,9 @@ features:
 - [Call entries](./calls/call-entries.md) — what a call leaves behind in a peer chat: the
   outcomes, which side sees what, where the outcome is recorded versus written, and why a
   finished call is drawn by the conversation card.
+- [Call metrics](./calls/call-metrics.md) — the counters and histograms every call feeds, the
+  end reasons that tell a failed connect from a lost client, the per-call log line, and
+  where the numbers are read.
 - [App updates](./app-updates.md) — how the "Update Voxt" banner learns that a
   newer build is actually published in the user's store, per app kind, and what
   that costs the release process.

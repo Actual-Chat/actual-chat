@@ -38,6 +38,7 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
                 $"{publishDir}/release_net11.0-maccatalyst_maccatalyst-arm64/*.pkg"),
             AppPlatform.Mac => ("pack-mac", $"{publishDir}/release_net11.0-macos*/*.pkg"),
             AppPlatform.Windows => ("pack-win", "artifacts/AppPackages/**/App.Maui_*_x64.msix"),
+            AppPlatform.Linux => ("pack-linux", MauiApp.GetLinuxPackagePath(settings.IsDev)),
             _ => throw new ArgumentOutOfRangeException(nameof(settings)),
         };
     }
@@ -47,7 +48,7 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
     public sealed class Settings : PlanSettings
     {
         [CommandArgument(0, "<PLATFORM>")]
-        [Description("android | ios | windows | mac (or macos)")]
+        [Description("android | ios | windows | mac (or macos) | linux")]
         public AppPlatform Platform { get; init; }
 
         [CommandOption("--prod")]
@@ -76,6 +77,9 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
                 return ValidationResult.Error("--catalyst is only supported for the macos platform.");
             if (IsUniversal && (Platform != AppPlatform.Mac || UseCatalyst))
                 return ValidationResult.Error("--universal is only wired for the macos AppKit package.");
+            if (Platform is AppPlatform.Linux && OperatingSystem.IsWindows())
+                return ValidationResult.Error(
+                    "Packing the Linux app needs Linux or macOS: the tarball carries the files' mode bits.");
             if (Platform is AppPlatform.Ios or AppPlatform.Mac && !OperatingSystem.IsMacOS())
                 return ValidationResult.Error($"Packing the {Platform} app needs macOS.");
             if (Platform is AppPlatform.Windows && !OperatingSystem.IsWindows())

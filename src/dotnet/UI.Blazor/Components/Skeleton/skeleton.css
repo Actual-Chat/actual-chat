@@ -360,7 +360,7 @@ chat-list-skeleton .message-skeleton.thread-skeleton .c-container {
     @apply bg-skeleton;
     animation: pulse 2s steps(10) infinite;
 }
-.string-skeleton.rounded {
+.string-skeleton.round-ends {
     @apply rounded-full;
 }
 .round-skeleton {

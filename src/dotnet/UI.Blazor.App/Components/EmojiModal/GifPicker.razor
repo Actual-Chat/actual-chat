@@ -13,7 +13,7 @@
                 <div class="c-gif-recent-label">@L.Emoji_Recent</div>
                 <div class="c-gif-recent-list no-scrollbar">
                     @foreach (var gif in _recentGifs) {
-                        @GifButton(gif, "c-gif-recent-item", false)
+                        @GifButton(gif, "c-gif-recent-item", false, true)
                     }
                 </div>
             </div>
@@ -25,7 +25,7 @@
                 var columnIndex = col;
                 <div @key="@columnIndex" class="c-gif-col">
                     @foreach (var gif in _columns[columnIndex]) {
-                        @GifButton(gif, "c-gif-item", true)
+                        @GifButton(gif, "c-gif-item", true, false)
                     }
                     <div @ref="_sentinelRefs[columnIndex]" class="c-gif-sentinel"></div>
                 </div>
@@ -163,8 +163,8 @@
         }
     }
 
-    private RenderFragment GifButton(GifItem gif, string cls, bool lazy) => __builder => {
-        var src = UrlMapper.GifProxyUrl(gif.PreviewUrl);
+    private RenderFragment GifButton(GifItem gif, string cls, bool lazy, bool mustUseProxy) => __builder => {
+        var src = mustUseProxy ? UrlMapper.GifProxyUrl(gif.PreviewUrl) : "";
         if (src.IsNullOrEmpty())
             src = gif.PreviewUrl;
         <button @key="gif.Slug"

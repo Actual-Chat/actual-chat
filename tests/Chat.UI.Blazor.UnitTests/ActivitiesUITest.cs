@@ -155,6 +155,7 @@ public class TestBackgroundStateTracker : BackgroundStateTracker
     private readonly MutableState<bool> _isBackgroundState;
 
     public override IState<bool> IsBackground => _isBackgroundState;
+    public override IState<bool> IsHidden => _isBackgroundState;
 
     public TestBackgroundStateTracker(IServiceProvider services)
     {

@@ -32,6 +32,7 @@ public class UserSettings(IServiceProvider services) : IUserSettings
         [nameof(UserCoachSettings)] = typeof(UserCoachSettings),
         [nameof(UserCoachWeeklyNote)] = typeof(UserCoachWeeklyNote),
         [nameof(UserCarAudioSettings)] = typeof(UserCarAudioSettings),
+        [nameof(UserAndroidSettings)] = typeof(UserAndroidSettings),
         [nameof(UserImageStyleSettings)] = typeof(UserImageStyleSettings),
         [nameof(RecentMentions)] = typeof(RecentMentions),
         [nameof(RecentGifs)] = typeof(RecentGifs),

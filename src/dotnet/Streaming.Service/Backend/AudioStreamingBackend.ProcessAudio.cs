@@ -174,13 +174,12 @@ public partial class AudioStreamingBackend
         var chatVoiceMode = await userSettingsUI
             .GetChatVoiceMode(chatId, cancellationToken)
             .ConfigureAwait(false);
-        // A live-session VoiceMode override (set by a controller via Manage) merges
-        // most-restrictive-wins with the user's per-chat VoiceMode.
+        // The live session's rules and the user's per-chat VoiceMode each only take away.
         var liveState = await LiveSessionsBackend.GetState(chatId, cancellationToken).ConfigureAwait(false);
-        var effectiveVoiceMode = (liveState?.Rules ?? SessionRules.Default).Merge(chatVoiceMode.VoiceMode);
-        var mustStreamVoice = effectiveVoiceMode.HasVoice();
-        var mustTranscribe = effectiveVoiceMode.HasText();
-        // Controller turned both voice and transcript off for the session — nothing to contribute live.
+        var sessionRules = liveState?.Rules ?? SessionRules.Default;
+        var mustStreamVoice = sessionRules.HasVoice() && chatVoiceMode.VoiceMode.HasVoice();
+        var mustTranscribe = sessionRules.HasText() && chatVoiceMode.VoiceMode.HasText();
+        // E.g. the session isn't transcribed and the user streams no voice — nothing to contribute live.
         if (!mustStreamVoice && !mustTranscribe)
             return;
 
@@ -192,6 +191,17 @@ public partial class AudioStreamingBackend
             TimeSpan.Zero,
             AudioSourceLog,
             cancellationToken);
+        // A client resending an utterance it has already drained pushes no frames. Registering such
+        // a stream takes the author's live stream away from listeners, and failing it on transcription
+        // makes the client resend it again. A producer may post a transcript with no audio, so it's exempt.
+        if (!isProducerDriven) {
+            var hasFrames = await audio.GetFrames(cancellationToken).AnyAsync(cancellationToken).ConfigureAwait(false);
+            if (!hasFrames) {
+                Log.LogWarning("ProcessAudio: stream #{StreamId} has no frames, skipping it", record.StreamId);
+                return;
+            }
+        }
+
         var openSegment = new OpenAudioSegment(0,
             record,
             audio,

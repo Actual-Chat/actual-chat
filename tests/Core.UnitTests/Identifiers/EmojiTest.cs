@@ -59,4 +59,16 @@ public class EmojiTest
         foreach (var emoji in Emojis.Legacy)
             Emojis.All.Should().NotContain(emoji);
     }
+
+    [Fact]
+    public void ScaredIsScreamingFaceWithLegacyFearfulArtwork()
+    {
+        Emojis.Scared.Symbol.Should().Be("😱");
+        Emojis.All.Should().Contain(Emojis.Scared);
+        Emojis.TryGetSvgName(Emojis.Scared).Should().Be("emoji-scared");
+
+        Emojis.Fearful.Symbol.Should().Be("😨");
+        Emojis.Legacy.Should().Contain(Emojis.Fearful);
+        Emojis.TryGetSvgName("😨").Should().Be("emoji-scared");
+    }
 }

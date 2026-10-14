@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Spectre.Console;
 
 namespace Build.Commands;
@@ -14,6 +15,11 @@ internal static class MauiApp
     private const string ProjectDir = "src/dotnet/App.Maui";
     // Windows PowerShell rather than pwsh: the Appx module is in-box there, and pwsh may not be installed
     private const string PowerShellExe = "powershell";
+    // The host's own CPU on Linux; a cross-build from macOS or Windows targets the common one
+    internal static readonly string LinuxRuntimeId =
+        OperatingSystem.IsLinux() && RuntimeInformation.OSArchitecture == Architecture.Arm64
+            ? "linux-arm64"
+            : "linux-x64";
 
     public static CommandPlan GetPlan(AppSettings settings, bool isInstalledByDefault, bool isLaunchedByDefault)
     {
@@ -33,6 +39,19 @@ internal static class MauiApp
 
             AddScript(plan, settings, mustInstall, mustLaunch);
             return plan;
+        }
+
+        if (settings.Platform == AppPlatform.Linux) {
+            if (isInstalledByDefault && !mustLaunch)
+                throw new WithoutStackException(
+                    "A Linux build has nothing to install - it runs from artifacts/ as-is."
+                    + " Use 'b app run linux' or 'b app build linux'.");
+            if (mustLaunch && !OperatingSystem.IsLinux())
+                throw new WithoutStackException(
+                    "Running the Linux app needs Linux. 'b app build linux' cross-builds it here:"
+                    + " copy the output folder to a Linux machine and start ActualChat there.");
+
+            mustInstall = false;
         }
 
         var isPackaged = settings.ResolveIsWindowsPackaged(mustInstall);
@@ -62,6 +81,19 @@ internal static class MauiApp
 
         return plan;
     }
+
+    // Protected/internal methods
+
+    // The publish folder as a tarball: it keeps the mode bits a CI artifact zip drops
+    internal static string GetLinuxPackagePath(bool isDev)
+        => Path.Combine("artifacts", "publish", "App.Maui", $"{GetAppId(isDev)}-{LinuxRuntimeId}.tar.gz");
+
+    internal static string GetLinuxPublishDir(string configuration)
+        => Path.Combine("artifacts", "publish", "App.Maui",
+            $"{configuration.ToLower()}_{TargetFrameworkPrefix}_{LinuxRuntimeId}");
+
+    internal static string GetAppId(bool isDev)
+        => isDev ? "chat.actual.dev.app" : "chat.actual.app";
 
     // Private methods
 
@@ -94,6 +126,11 @@ internal static class MauiApp
         case AppPlatform.Windows:
             if (!isPackaged)
                 args.Add("-p:WindowsPackageType=None");
+            break;
+        case AppPlatform.Linux:
+            // The GTK backend has no TFM of its own, so its target is opt-in. Self-contained,
+            // so the output folder runs on a machine without the .NET runtime.
+            args.AddRange(["-p:EnableLinuxGtk=true", "-r", LinuxRuntimeId, "--self-contained"]);
             break;
         }
 
@@ -146,7 +183,7 @@ internal static class MauiApp
                 + " if (-not $p) { throw ('Not registered: ' + $n) };"
                 + @" Start-Process ('shell:AppsFolder\' + $p + '!App')"));
             break;
-        case AppPlatform.Windows when GetArtifactPath(settings) is { } exePath:
+        case AppPlatform.Windows or AppPlatform.Linux when GetArtifactPath(settings) is { } exePath:
             plan.Add(new RunStep(exePath, []) { RequiredPath = exePath });
             break;
         }
@@ -178,6 +215,7 @@ internal static class MauiApp
             AppPlatform.Android when settings.MustUseCiBuild => AndroidCiApk.GetApkPath(GetAppId(settings)),
             AppPlatform.Android => Path.Combine(GetOutputDir(settings), $"{GetAppId(settings)}-Signed.apk"),
             AppPlatform.Windows => Path.Combine(GetOutputDir(settings), "ActualChat.exe"),
+            AppPlatform.Linux => Path.Combine(GetOutputDir(settings), "ActualChat"),
             _ => null,
         };
 
@@ -193,7 +231,7 @@ internal static class MauiApp
         => Path.GetFullPath(Path.Combine(GetOutputDir(settings), "AppX", "AppxManifest.xml"));
 
     private static string GetAppId(AppSettings settings)
-        => settings.IsDev ? "chat.actual.dev.app" : "chat.actual.app";
+        => GetAppId(settings.IsDev);
 
     private static string GetTargetFramework(AppSettings settings)
         => settings switch {
@@ -202,6 +240,7 @@ internal static class MauiApp
             { Platform: AppPlatform.Windows } => WindowsTargetFramework,
             { Platform: AppPlatform.Mac, UseCatalyst: true } => $"{TargetFrameworkPrefix}-maccatalyst",
             { Platform: AppPlatform.Mac } => $"{TargetFrameworkPrefix}-macos",
+            { Platform: AppPlatform.Linux } => TargetFrameworkPrefix,
             _ => throw new ArgumentOutOfRangeException(nameof(settings)),
         };
 
@@ -212,6 +251,8 @@ internal static class MauiApp
         var pivot = settings.ResolvedConfiguration.ToLower() + "_" + GetTargetFramework(settings);
         if (settings is { Platform: AppPlatform.Windows, MustUsePublish: true })
             pivot += "_win-x64";
+        if (settings.Platform == AppPlatform.Linux)
+            pivot += "_" + LinuxRuntimeId;
 
         return Path.Combine("artifacts", kind, "App.Maui", pivot);
     }

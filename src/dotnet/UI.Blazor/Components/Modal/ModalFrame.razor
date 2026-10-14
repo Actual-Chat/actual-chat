@@ -4,13 +4,14 @@
     var cls = $"modal-frame {Class}";
 }
 
-<ModalChrome Class="@cls">
+<ModalChrome Class="@cls" Children="@Children">
     @Header
     <ErrorBarrier Name="ModalFrame">@ChildContent</ErrorBarrier>
 </ModalChrome>
 
 @code {
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string Children { get; set; } = "";
     [Parameter] public RenderFragment ChildContent { get; set; } = null!;
     [Parameter] public RenderFragment Header { get; set; } = null!;
 }

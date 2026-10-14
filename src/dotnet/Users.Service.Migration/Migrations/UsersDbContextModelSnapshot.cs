@@ -16,7 +16,7 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261006004807_Add_MaintenanceTargets";
+    public override string LastMigrationId => "20261008092838_AddCoachDailyPace";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -283,6 +283,10 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("jsonb")
                     .HasColumnName("data");
 
+                b.Property<byte[]>("PaceData")
+                    .HasColumnType("bytea")
+                    .HasColumnName("pace_data");
+
                 b.Property<long>("Version")
                     .IsConcurrencyToken()
                     .HasColumnType("bigint")
@@ -330,6 +334,10 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                 b.Property<DateTime>("OccurredAt")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("occurred_at");
+
+                b.Property<byte[]>("PaceData")
+                    .HasColumnType("bytea")
+                    .HasColumnName("pace_data");
 
                 b.Property<string>("Payload")
                     .IsRequired()

@@ -11,4 +11,5 @@ public enum AppKind
     Ios,
     Windows,
     MacOS,
+    Linux,
 }

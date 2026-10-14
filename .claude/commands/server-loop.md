@@ -13,10 +13,12 @@ For browser-side interaction (sign-in flows, debugUI helpers, multi-Chrome
 setup), see `/debug-ui` — `server-loop` and the chrome-devtools MCP rig
 are typically running together.
 
-**If any of this work is being split across subagents, read
+**If more than one agent may need the loop, read `/shared-resources` and
 "Coordinating subagents" below before dispatching the first one.** The
 loop and the two Chromes are shared single-instance resources with no
-arbitration of their own.
+arbitration of their own: one coordinator agent owns them, and the others
+ask it for a turn. If the user told you the loop is yours, or you are the
+only agent, use it directly.
 
 **Do NOT use `/server-start`, `/server-restart`, or `/server-stop` while
 `server-loop` is running** — the loop owns the dotnet process and will
@@ -317,6 +319,39 @@ cycle. Detection is mtime-based, so a tool that *preserves* mtimes when
 writing (archive extraction, a restored backup) can hide a change — normal
 edits from any editor, git, Claude, or Docker bind mounts bump mtimes fine.
 
+## How to start it
+
+Start the loop **only on the host, in a window the user can see.** The user
+needs to see that it is running, and the loop terminal is the user's way to
+press `j`/`h`/`k`/`m` and watch it.
+
+- **Never** start it as a hidden or background process you own — not with
+  `run_in_background`, not piped, not detached. You do not need its console:
+  everything you need is in the `tmp/server-loop*.log` files.
+- **Never** start it inside Docker. An agent running in Docker uses the loop
+  that already runs on the host (see below) and, if none is running, asks the
+  user or the coordinator on the host to start one.
+- Windows (host), from the worktree whose code must be served — the loop runs
+  and builds the directory it was started in, with the full path to the
+  script:
+
+  ```powershell
+  Start-Process -FilePath cmd.exe -ArgumentList '/k', "$worktree\server-loop.cmd" -WorkingDirectory $worktree
+  ```
+
+  On macOS/Linux desktops use the same idea: open a terminal window running
+  `server-loop.cmd` / `server-loop.ps1` from that directory.
+- Check `tmp/server-loop.log` for `Step 3/3 (server-run)` and the watchdog
+  line, then a 200 from `http://localhost:7080/healthz/live`, before you rely
+  on it.
+
+The loop is bound to its directory. To move the loop to another worktree you
+stop it (end the window's process tree and confirm port 7080 is free with
+`/server-port-check`) and start a new one from the other worktree. No
+graceful shutdown is needed: when the loop is not in use, just terminate it
+and start the next one where it is needed. With several agents, that
+hand-over is the coordinator's job; see `/shared-resources`.
+
 ## Cross-environment caveat
 
 You may be running in Docker/WSL while `server-loop` runs on the host
@@ -370,9 +405,13 @@ Setup details and usage live in `/debug-ui`.
 
 `server-loop` and the two Chromes are **shared, single-instance
 resources**. Nothing in the loop or in the MCPs arbitrates access — there
-is no lease, no owner field, no per-caller isolation. So when the work is
-split across subagents, the main agent is the arbiter, and it holds that
-role for the whole session.
+is no lease, no owner field, no per-caller isolation. So when more than
+one agent may need them, access is arbitrated by a **coordinator agent**
+(queue, lease, polling the current owner): see `/shared-resources` for the
+protocol and for who starts the coordinator. The coordinator leases the **loop**
+only; Chrome is not leased, each agent works in its own tabs. The rules below say what
+collides and what a grant has to contain; the coordinator (or, in a small
+job, the main agent acting as one) is the one who issues it.
 
 **The rule:** at most one agent at a time may restart, rebundle or
 hard-restart the server, and each Chrome belongs to at most one agent at

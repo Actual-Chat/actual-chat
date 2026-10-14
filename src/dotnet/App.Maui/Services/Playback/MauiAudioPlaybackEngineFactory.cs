@@ -1,4 +1,4 @@
-#if !MACOS
+#if !MACOS && !LINUX
 using ActualChat.App.Maui.Audio;
 #endif
 using ActualChat.MediaPlayback;
