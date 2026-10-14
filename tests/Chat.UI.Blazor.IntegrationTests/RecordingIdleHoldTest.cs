@@ -53,6 +53,15 @@ public sealed class RecordingIdleHoldTest(ChatAppHostFixture fixture, ITestOutpu
         // arrange
         await Tester.SignInAsUniqueBob();
         var (chat, _) = await Tester.CreateAndGetChat(false, "recording-idle-playback");
+        // The default linger is Off, so the idle watcher would stop listening in an empty chat at once
+        var settingsUI = Tester.ScopedAppServices.GetRequiredService<UserSettingsUI>();
+        var listeningSettings = settingsUI.UserListeningSettings();
+        await listeningSettings.Update(
+            x => x with { ListeningLinger = ListeningLinger.For30Seconds }, CancellationToken.None);
+        await TestWait.When(async ct => {
+            var linger = await listeningSettings.Get(x => x.ListeningLinger, ct);
+            linger.Should().Be(ListeningLinger.For30Seconds);
+        }, Timeout);
         var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
         chatAudioUI.Enable();
         await chatAudioUI.SetListeningState(chat.Id, true);

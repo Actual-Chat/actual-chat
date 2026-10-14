@@ -54,6 +54,9 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         lock (Lock) {
             if (template != null)
                 chatState.Template = template;
+            // A block shown as closed must dismiss on the very next toggle, not after the governor's pass
+            if (liveConversation == null && chatState.Template is { HasAttended: true })
+                chatState.IsClosed = true;
             return DeriveBlock(chatState, liveConversation, hasAttended, closed);
         }
     }
