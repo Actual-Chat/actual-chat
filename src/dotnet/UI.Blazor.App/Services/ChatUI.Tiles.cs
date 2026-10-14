@@ -139,7 +139,7 @@ public partial class ChatUI
     // list, conversation tiles, and load zone. A rebuild whose meta is being refetched (typically because
     // a new entry invalidated it) renders from these instead of waiting a round-trip; UseIfReady
     // guarantees a follow-up rebuild from the fresh values.
-    private readonly ConcurrentDictionary<ChatId, List<ChatRangeTile>> _lastChatRangeTiles = new();
+    private readonly ChatRangeTileCache _rangeTileCache = new();
     private readonly ConcurrentDictionary<ChatId, Conversation[][]> _lastConversationTiles = new();
     private readonly ConcurrentDictionary<ChatId, (List<Range<long>> IdTiles, bool ShowConversations)>
         _lastLoadZones = new();
@@ -397,13 +397,14 @@ public partial class ChatUI
 
         // Fresh by construction: the view awaited GetIdRange right before calling in, so this is a cache
         // hit even on the rebuild a new entry just triggered - which is what makes the tail synthesis in
-        // UseRangeTileOrLastKnown sound.
+        // ChatRangeTileCache sound.
         var chatLidRange = await chatLidRangeTask.ConfigureAwait(false);
         var cidTilesRange = cidTiles.Count > 0
             ? new Range<long>(cidTiles[0].Range.Start, cidTiles[^1].Range.End)
             : default;
-        var lastKnownRangeTiles = UseRangeTileOrLastKnown(
-            chatId, chatRangeTilesTask, cidTilesRange, chatLidRange, isPrefetch);
+        var lastKnownRangeTiles = isPrefetch
+            ? null
+            : _rangeTileCache.UseOrLastKnown(chatId, chatRangeTilesTask, cidTilesRange, chatLidRange);
         var chatRangeTiles = lastKnownRangeTiles
             ?? (await chatRangeTilesTask.ConfigureAwait(false))
                 .OrderBy(m => m.LidRange.Start)
@@ -669,7 +670,7 @@ public partial class ChatUI
         // A stand-in list is not cached: caching it would compound the synthesis on the next rebuild,
         // and the fresh result this build is shadowing lands in the follow-up rebuild anyway.
         if (lastKnownRangeTiles == null && !isPrefetch)
-            _lastChatRangeTiles[chatId] = chatRangeTiles;
+            _rangeTileCache.Remember(chatId, chatRangeTiles);
 
         if (!isPrefetch)
             _lastLoadZones[chatId] = (idTiles, showConversations);
@@ -1653,75 +1654,6 @@ public partial class ChatUI
                 .ConfigureAwait(false);
             return await prefetchEntriesTask.ConfigureAwait(false);
         }, cancellationToken);
-
-    // Serves the last fresh range-meta list while a refetch is in flight, so a rebuild triggered by a
-    // new entry renders before the round-trip instead of after it. The tail is synthesized from
-    // chatLidRange: GetIdRange is the subscribed new-entry signal and the view just read it, so lids past
-    // the cached tail's entry ranges are known to exist before any meta describes them. A lid removed
-    // meanwhile is harmless - the synthesized ranges over-claim, and GetTile (the content source) simply
-    // doesn't return it. UseIfReady invalidates the enclosing computed when the fresh result lands, so a
-    // build made from a stand-in is always followed by one made from fresh meta.
-    private List<ChatRangeTile>? UseRangeTileOrLastKnown(
-        ChatId chatId,
-        Task<ChatRangeTile[]> freshMetaTask,
-        Range<long> cidTilesRange,
-        Range<long> chatLidRange,
-        bool isPrefetch)
-    {
-        // The first read still awaits - standing in on nothing would render an empty chat. A failed fetch
-        // also awaits: UseIfReady doesn't invalidate on failure, so standing in for one would pin the
-        // stale value with no retry trigger, while awaiting propagates the error exactly as it did before.
-        var computed = Computed.Current;
-        if (isPrefetch || computed == null || cidTilesRange.IsEmpty
-            || freshMetaTask.IsFaulted || freshMetaTask.IsCanceled
-            || !_lastChatRangeTiles.TryGetValue(chatId, out var lastKnown)
-            || lastKnown.Count == 0)
-            return null;
-
-        // UseIfReady before anything else: checking IsCompleted separately would race - a task completing
-        // between the check and the hookup would serve a stand-in that nothing ever invalidates.
-        if (freshMetaTask.UseIfReady(null!, computed) != null)
-            return null;
-
-        return ExtendLastKnownRangeTiles(lastKnown, cidTilesRange, chatLidRange);
-    }
-
-    // Internal to be reachable from tests
-    internal static List<ChatRangeTile>? ExtendLastKnownRangeTiles(
-        IReadOnlyList<ChatRangeTile> lastKnown,
-        Range<long> cidTilesRange,
-        Range<long> chatLidRange)
-    {
-        var first = lastKnown[0];
-        var last = lastKnown[^1];
-        if (first.LidRange.Start > cidTilesRange.Start && first.PreviousLidTileStart != null)
-            return null; // The query reaches above the cached span; only the fresh fetch knows that part
-
-        // Copied so the meta walk in GetChatItemsInternal can't mutate the cached list
-        var result = new List<ChatRangeTile>(lastKnown);
-        if (last.NextLidTileStart == null) {
-            // The cached list ended at the chat's tail, so every lid past its entry ranges is a new entry
-            var entryRanges = last.EntryLidRanges;
-            if (entryRanges.Length == 0)
-                return null; // A tail with no entries can't anchor the extension
-
-            // Up to the chat's end, not the queried cid tiles' end: the cached tail tile may already span
-            // past those tiles (the server merges neighbours until a tile holds enough rows, and a
-            // collapsed conversation counts as one), and a stand-in capped there kept claiming the chat
-            // ends where the cache does - an end the list pins to and follows down once the fresh
-            // rebuild appends the real tail (#5323).
-            var targetEnd = chatLidRange.End;
-            if (targetEnd > entryRanges[^1].End)
-                result[^1] = last with {
-                    LidRange = new Range<long>(last.LidRange.Start, Math.Max(last.LidRange.End, targetEnd)),
-                    EntryLidRanges = [..entryRanges[..^1], new Range<long>(entryRanges[^1].Start, targetEnd)],
-                };
-        }
-        else if (last.LidRange.End < Math.Min(cidTilesRange.End, chatLidRange.End))
-            return null; // The query reaches below the cached span; only the fresh fetch knows that part
-
-        return result;
-    }
 
     private static T? UseOrLastKnown<T>(
         ConcurrentDictionary<ChatId, T> lastKnownValues,
