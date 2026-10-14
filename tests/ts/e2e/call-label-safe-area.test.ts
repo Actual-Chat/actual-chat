@@ -84,11 +84,9 @@ describe('call participant labels on a phone', () => {
         await caller.locator(`${CALL_CONTROLS} .btn-video-toggle`).first().click();
         await caller.locator(OWN_VIDEO).first().waitFor({ state: 'visible', timeout: 30_000 });
 
-        // assert - one video
+        // assert - one video (a single tile has no grid view to switch to)
         await expectLabelsInsideSafeArea(caller, Portrait, false, 1);
-        await caller.screenshot({ path: shot('1-own-speaker') });
-        await expectLabelsInsideSafeArea(caller, Portrait, true, 1);
-        await caller.screenshot({ path: shot('2-own-grid') });
+        await caller.screenshot({ path: shot('1-own') });
 
         // act - the peer turns the camera on: the big tile is theirs now, and so is the label
         await callee.locator(`${CALL_CONTROLS} .btn-video-toggle`).first().click();

@@ -6,6 +6,8 @@ public sealed class WebBackgroundStateTracker : BackgroundStateTracker
     private readonly ComputedState<bool> _isBackgroundState;
 
     public override IState<bool> IsBackground => _isBackgroundState;
+    // A browser tab is suspendable exactly when it is hidden, so both read document.hidden
+    public override IState<bool> IsHidden => _isBackgroundState;
 
     public WebBackgroundStateTracker(IServiceProvider services)
     {

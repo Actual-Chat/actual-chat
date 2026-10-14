@@ -1,4 +1,3 @@
-using ActualChat.Maui.Services;
 using ActualChat.Notifications;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
@@ -9,7 +8,7 @@ namespace ActualChat.App.Maui;
 
 /// <summary>
 /// Routes macOS notification taps and incoming-call actions into the app, and suppresses banners
-/// while the window is on screen and active - the in-app UI covers that case.
+/// while the app is in front - the in-app UI covers that case.
 /// </summary>
 public sealed class MacOSNotificationDelegate : UNUserNotificationCenterDelegate
 {
@@ -23,11 +22,11 @@ public sealed class MacOSNotificationDelegate : UNUserNotificationCenterDelegate
         UNUserNotificationCenter center,
         UNNotification notification,
         Action<UNNotificationPresentationOptions> completionHandler)
-        // Called only while the app is active, which it stays with its window hidden or minimized
-        => completionHandler.Invoke(MauiBackgroundState.IsBackground.Value
-            ? UNNotificationPresentationOptions.Banner | UNNotificationPresentationOptions.List
-                | UNNotificationPresentationOptions.Sound
-            : UNNotificationPresentationOptions.None);
+        // Unlike iOS, macOS calls this for every notification while the app runs, in front or not
+        => completionHandler.Invoke(WindowConfigurator.IsInForeground
+            ? UNNotificationPresentationOptions.None
+            : UNNotificationPresentationOptions.Banner | UNNotificationPresentationOptions.List
+                | UNNotificationPresentationOptions.Sound);
 
     public override void DidReceiveNotificationResponse(
         UNUserNotificationCenter center,

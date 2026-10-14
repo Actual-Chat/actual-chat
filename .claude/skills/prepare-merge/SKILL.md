@@ -153,25 +153,24 @@ in step 3. After the last commit `git status --short` must be empty.
   predates the rebase, so diffing it mixes in upstream changes.
 - Show `git log --oneline origin/dev..HEAD` to the user.
 
-### 7. Confirm, then push with the remote backup
+### 7. Confirm, then push the branch
 
 Show the user the final commit list and the deleted doc files, and ask
 whether the new history is fine. Do not push anything before that
 confirmation. Once the user confirms:
 
 ```bash
-git push origin <branch-name>-bak
 git push --force-with-lease origin <branch-name>
 ```
 
-The backup goes up first — with the pre-rewrite history on origin, no
-outcome of the force-push can lose code, and anyone can check the old
-branch out from the remote. Afterwards verify the branch tracks its
-remote cleanly (`git status` shows "up to date with origin/<branch>").
+**Never push a `-bak` branch to the remote.** The backup stays local: it
+is a safety net for this machine, not something for origin to carry.
+Afterwards verify the branch tracks its remote cleanly (`git status`
+shows "up to date with origin/<branch>").
 
-Report both pushed refs and remind the user to delete the backup after
-the merge lands: `git branch -D <branch-name>-bak && git push origin
-:<branch-name>-bak`, or `/clean-bak-branches` for all merged ones at once.
+Report the pushed ref and remind the user to delete the local backup after
+the merge lands: `git branch -D <branch-name>-bak`, or `/clean-bak-branches`
+for all merged ones at once.
 
 ## Common mistakes
 
@@ -185,5 +184,6 @@ the merge lands: `git branch -D <branch-name>-bak && git push origin
 | Squashing unrelated concerns to hit a lower count | Only the plan the user picked decides how much gets folded |
 | Building a plan without offering the alternatives | Present Perfect / Medium / Min. commits and let the user choose |
 | Regrouping a history that was already correct | Perfect may well be "unchanged" — offer it as such |
-| Pushing before the user confirms the result | Ask first; then `-bak` goes up before the force-push |
+| Pushing before the user confirms the result | Ask first, then push the branch only |
+| Pushing a `-bak` branch to origin | Never: backups stay local |
 | Overwriting an existing `-bak` on a rerun | It holds the true original; leave it untouched |

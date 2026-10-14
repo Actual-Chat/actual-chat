@@ -19,7 +19,8 @@
                 <HeaderButton Class="btn-glass btn-expand" Click="@OnCollapse">
                     <i class="icon-collapse text-lg"></i>
                 </HeaderButton>
-                @if (m.HasVideo) {
+                @* A single tile has nothing to lay out; on, it stays to switch the layout back *@
+                @if (m.HasVideo && (m.TileCount > 1 || m.IsEqualLayout)) {
                     <HeaderButton
                         Class="@("btn-glass btn-layout-toggle " + (m.IsEqualLayout ? "on" : ""))"
                         StopPropagation="true"
@@ -28,7 +29,7 @@
                         <i class="icon-grid text-lg"></i>
                     </HeaderButton>
                 }
-            } else if (!isIsland) {
+            } else if (!isIsland || isInCall) {
                 <HeaderButton Class="btn-glass btn-expand" Click="@OnExpandClick">
                     <i class="icon-expand text-lg"></i>
                 </HeaderButton>
@@ -69,7 +70,7 @@
                     data-menu-trigger="Primary">
                     <i class="icon-more-vertical text-lg"></i>
                 </HeaderButton>
-            } else {
+            } else if (!isInCall) {
                 <HeaderButton
                     Class="btn-glass btn-expand"
                     StopPropagation="true"
@@ -78,7 +79,8 @@
                     <i class="icon-expand text-lg"></i>
                 </HeaderButton>
             }
-            @if (isExpanded || isInCall) {
+            @* Inline in the chat, its header already has the call's own hang-up *@
+            @if (isExpanded || (isInCall && isIsland)) {
                 <HeaderButton
                     Class="btn-glass btn-hang-up talking"
                     StopPropagation="true"
@@ -91,8 +93,9 @@
     </div>
 
     @* Pin toggle: fixes the focused (big) tile on a chosen author instead of auto-following the
-       active speaker. Only in the default (non-equal) layout with a remote tile. *@
-    @if (m.HasRemoteVideo && !m.IsEqualLayout && !isIsland) {
+       active speaker. Only in the default (non-equal) layout, and only with two remote authors or more:
+       a single one is always the one in focus. *@
+    @if (m.RemoteAuthorCount > 1 && !m.IsEqualLayout && !isIsland) {
         <div class="header-row header-row-pin">
             <HeaderButton
                 Class="@("btn-glass btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
@@ -172,7 +175,8 @@
             isFocusedHandRaised = layout.IsOwnCameraFocused
                 && await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
         return m with {
-            HasRemoteVideo = remoteStreams.Length > 0,
+            RemoteAuthorCount = remoteStreams.Select(s => s.AuthorId).Distinct().Count(),
+            TileCount = layout.TileCount,
             MemberCount = memberCount,
             FocusedAuthorId = focusedAuthorId,
             IsPinned = pinnedAuthorId is not null,
@@ -205,7 +209,8 @@
         public CallPhase? Phase { get; init; }
         public Moment? JoinedAt { get; init; }
         public bool HasVideo { get; init; }
-        public bool HasRemoteVideo { get; init; }
+        public int RemoteAuthorCount { get; init; }
+        public int TileCount { get; init; }
         public int MemberCount { get; init; }
         public bool IsEqualLayout { get; init; }
         // Author shown in the big tile right now - what the pin button pins when toggled on

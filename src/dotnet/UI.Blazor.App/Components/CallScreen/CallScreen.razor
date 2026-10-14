@@ -388,12 +388,14 @@
 
             // A navigation drops the step as Back does, but it isn't a wish to leave a call: its
             // screen holds on and takes a new step. A video nobody called in follows its chat.
+            // A history move that isn't Back is the history catching up with an older item: taking
+            // a step there adds an item that the next catch-up drops again, forever (#5271).
             var isBack = History.Uri == url;
             if (isBack)
                 _ = OnCollapseClick();
             else if (m.Phase is null)
                 CallScreensUI.SetScreenMode(chat.Id, VisualActivityPanelMode.Inline);
-            else
+            else if (stepRef.IsClosedByNavigation)
                 SyncHistoryStep(m);
         }, Log);
     }

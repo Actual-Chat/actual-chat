@@ -3,11 +3,11 @@
  *
  * Two users are on a call, and the caller's camera is on:
  *   - narrow (phone-sized viewport): the inline video stands in for the in-call island, with the
- *     call's timer and hang-up, and its expand button opens the call screen with the video on its
- *     stage, on the side that sends it and on the side that only receives it. In another chat the
- *     video floats; expanded from there, Back stays in that chat, and the call's chat takes the
- *     video back inline. With no video the island opens the same screen, with the avatar on its
- *     stage.
+ *     call's timer (the chat's activity panel has the hang-up), and its expand button opens the
+ *     call screen with the video on its stage, on the side that sends it and on the side that
+ *     only receives it. In another chat the video floats; expanded from there, Back stays in that
+ *     chat, and the call's chat takes the video back inline. With no video the island opens the
+ *     same screen, with the avatar on its stage.
  *   - wide: an active call has neither an island nor a screen of its own, so the inline video's
  *     button is the only one, and it opens the call screen with the video. In another chat the
  *     video floats as well.
@@ -43,13 +43,19 @@ const INLINE_VIDEO = '.call-screen:not(.expanded):not(.collapsed)';
 const FLOATING_VIDEO = '.call-screen.collapsed';
 const OWN_TILE = '.video-streaming-preview';
 const REMOTE_TILE = '.remote-video-container';
+const ACTIVITY_HANG_UP = '.chat-activity-panel .chat-audio-controls .c-hangup';
 
-/** Waits for the call's video in the chat, standing in for the island: with the call's timer and hang-up. */
+/**
+ * Waits for the call's video in the chat, standing in for the island: with the call's timer, and the
+ * hang-up in the chat's activity panel rather than in the video's own header.
+ */
 async function waitForInlineVideo(page: Page, tile: string) {
     await page.locator(`${INLINE_VIDEO} ${tile}`).first().waitFor({ state: 'visible', timeout: 30_000 });
-    for (const part of ['.c-call-timer', '.btn-hang-up'])
-        await page.locator(`${INLINE_VIDEO} .call-screen-header ${part}`).first()
-            .waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator(`${INLINE_VIDEO} .call-screen-header .c-call-timer`).first()
+        .waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator(ACTIVITY_HANG_UP).first().waitFor({ state: 'visible', timeout: 10_000 });
+    const hasOwnHangUp = await isShown(page, `${INLINE_VIDEO} .call-screen-header .btn-hang-up`);
+    expect(hasOwnHangUp, 'one hang-up, in the chat').toBe(false);
     expect(await isShown(page, ISLAND), 'the video stands in for the island').toBe(false);
 }
 
