@@ -90,9 +90,16 @@ public class MacOSDeviceNotifications(IServiceProvider services) : IDeviceNotifi
             if (!isNew && !isChanged)
                 continue;
 
-            var hasIcon = await Post(info).ConfigureAwait(false);
-            Log.LogDebug("Reconcile: {Action} notification for tag {Tag}, icon: {HasIcon}",
-                isChanged ? "replaced" : "created", info.Tag, hasIcon);
+            try {
+                var hasIcon = await Post(info).ConfigureAwait(false);
+                Log.LogDebug("Reconcile: {Action} notification for tag {Tag}, icon: {HasIcon}",
+                    isChanged ? "replaced" : "created", info.Tag, hasIcon);
+            }
+            catch (Exception e) {
+                // Thrown, it would restart the reconcile loop, which reseeds the baseline and drops
+                // the other new tags of this update along with this one
+                Log.LogWarning(e, "Reconcile: posting notification for tag {Tag} failed", info.Tag);
+            }
         }
 
         foreach (var staleTag in _lastContentByTag.Keys.Where(t => !activeTags.Contains(t)).ToList())

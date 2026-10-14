@@ -17,16 +17,22 @@ public sealed class MacOSNotificationDelegate : UNUserNotificationCenterDelegate
     public const string DeclineCallActionId = "decline-call";
 
     public static readonly MacOSNotificationDelegate Instance = new();
+    private static readonly ILogger Log = StaticLog.For<MacOSNotificationDelegate>();
 
     public override void WillPresentNotification(
         UNUserNotificationCenter center,
         UNNotification notification,
         Action<UNNotificationPresentationOptions> completionHandler)
+    {
         // Unlike iOS, macOS calls this for every notification while the app runs, in front or not
-        => completionHandler.Invoke(WindowConfigurator.IsInForeground
+        var isInForeground = WindowConfigurator.IsInForeground;
+        Log.LogDebug("WillPresent: {Action} banner for tag {Tag}",
+            isInForeground ? "suppressing" : "showing", notification.Request.Content.ThreadIdentifier);
+        completionHandler.Invoke(isInForeground
             ? UNNotificationPresentationOptions.None
             : UNNotificationPresentationOptions.Banner | UNNotificationPresentationOptions.List
                 | UNNotificationPresentationOptions.Sound);
+    }
 
     public override void DidReceiveNotificationResponse(
         UNUserNotificationCenter center,

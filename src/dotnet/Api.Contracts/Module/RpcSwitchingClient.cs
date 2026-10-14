@@ -93,11 +93,14 @@ public sealed class RpcSwitchingClient : RpcClient
             var probeTask = state.ProbeTask;
             state.ConnectedAt = default;
             state.ProbeTask = null;
-            if (Settings.IsBackgroundGetter?.Invoke() == true)
+            if (Settings.IsBackgroundGetter?.Invoke() == true) {
+                Log.LogInformation("Disconnected in background, skipping the client health check");
                 return;
+            }
 
             if (probeTask is not null && !await IsServerReachable(probeTask).ConfigureAwait(false)) {
                 // The server is unreachable, so this disconnect says nothing about the current client.
+                Log.LogInformation("Disconnected while the server is unreachable, not counting it against the client");
                 state.Strikes = 0;
                 return;
             }

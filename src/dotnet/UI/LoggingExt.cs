@@ -20,6 +20,8 @@ public static class LoggingExt
         "ActualChat.App.Maui.AppDelegate",
         "ActualChat.App.Maui.IosPushNotifications",
         "ActualChat.App.Maui.IosDeviceNotifications",
+        "ActualChat.App.Maui.MacOSDeviceNotifications",
+        "ActualChat.App.Maui.MacOSNotificationDelegate",
         "ActualChat.App.Maui.Services.MauiNotifications",
         "ActualChat.UI.Blazor.App.NotificationUI",
         "ActualChat.UI.Blazor.App.Services.NotificationReconciler",

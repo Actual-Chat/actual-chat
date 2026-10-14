@@ -51,15 +51,26 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
             .Capture(() => Hub.Notifications.ListActive(Hub.Session, cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         await foreach (var c in cActive.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (c.HasError)
+            if (c.HasError) {
+                Log.LogWarning(c.Error, "Active set update failed");
                 continue;
+            }
 
             // Pruning acts on absence, so it must never run on a value the server didn't send:
             // ListActive is client-cached (ComputedOptions.ClientDefault), and a client that just
             // woke up reads the disk cache first - an empty one closes every banner on the device.
+            var startedAt = CpuTimestamp.Now;
             var cSynced = await c.Synchronize(Synchronizer, cancellationToken).ConfigureAwait(false);
-            if (cSynced.HasError || !cSynced.IsSynchronized(Synchronizer))
+            if (cSynced.HasError) {
+                Log.LogWarning(cSynced.Error, "Active set update failed on synchronization");
                 continue;
+            }
+
+            if (!cSynced.IsSynchronized(Synchronizer)) {
+                Log.LogWarning("Active set update skipped: not synchronized after {Elapsed}",
+                    startedAt.Elapsed.ToShortString());
+                continue;
+            }
 
             var infos = ToInfos(cSynced.Value);
             var currentTags = infos.Select(x => x.Tag).ToHashSet();
@@ -101,7 +112,11 @@ public sealed class NotificationReconciler(AppUIHub hub) : UIWorkerBase<AppUIHub
                         .Capture(() => Hub.Notifications.ListActive(Hub.Session, cancellationToken), cancellationToken)
                         .ConfigureAwait(false);
                     cActive = await cActive.Synchronize(Synchronizer, cancellationToken).ConfigureAwait(false);
-                    if (!cActive.HasError && cActive.IsSynchronized(Synchronizer))
+                    if (cActive.HasError)
+                        Log.LogWarning(cActive.Error, "Notification reconcile on show skipped: ListActive failed");
+                    else if (!cActive.IsSynchronized(Synchronizer))
+                        Log.LogWarning("Notification reconcile on show skipped: ListActive isn't synchronized");
+                    else
                         await deviceNotifications.Reconcile(ToInfos(cActive.Value), [], cancellationToken)
                             .ConfigureAwait(false);
                 }

@@ -11,6 +11,9 @@ public class AppDelegate : MacOSMauiApplication
     // Raised for voxt-dev:// activations (see CFBundleURLTypes in Info.plist);
     // MauiWebAuthenticator completes its sign-in flow on the auth-complete callback.
     public static event Action<string>? UrlOpened;
+    private static readonly ILogger Log = StaticLog.For<AppDelegate>();
+
+    private NSObject[] _powerObservers = [];
 
     protected override MauiApp CreateMauiApp()
         => MauiProgram.CreateMauiApp();
@@ -19,6 +22,7 @@ public class AppDelegate : MacOSMauiApplication
     {
         base.DidFinishLaunching(notification);
         UNUserNotificationCenter.Current.Delegate = MacOSNotificationDelegate.Instance;
+        LogPowerEvents();
     }
 
     public override bool ApplicationShouldHandleReopen(NSApplication sender, bool hasVisibleWindows)
@@ -44,4 +48,16 @@ public class AppDelegate : MacOSMauiApplication
             if (url.AbsoluteString is { } urlString)
                 UrlOpened?.Invoke(urlString);
     }
+
+    // Private methods
+
+    private void LogPowerEvents()
+        // Banners are posted over the app's own RPC, so a gap in them has to be told apart
+        // from the Mac having been asleep
+        => _powerObservers = [
+            NSWorkspace.Notifications.ObserveWillSleep((_, _) => Log.LogInformation("System will sleep")),
+            NSWorkspace.Notifications.ObserveDidWake((_, _) => Log.LogInformation("System did wake")),
+            NSWorkspace.Notifications.ObserveScreensDidSleep((_, _) => Log.LogInformation("Screens did sleep")),
+            NSWorkspace.Notifications.ObserveScreensDidWake((_, _) => Log.LogInformation("Screens did wake")),
+        ];
 }
