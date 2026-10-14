@@ -40,9 +40,9 @@ New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 if ($Build) {
     $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
     $proj = Join-Path $repoRoot "src/dotnet/App.Maui/App.Maui.csproj"
-    dotnet publish $proj -f:net11.0-android -p:IsTracingEnabled=true -p:EmbedAssembliesIntoApk=true -c:Release
+    dotnet publish $proj -f:net11.0-android -r android-arm64 -p:IsTracingEnabled=true -p:EmbedAssembliesIntoApk=true -c:Release
     if ($LASTEXITCODE -ne 0) { throw "publish failed ($LASTEXITCODE)" }
-    $apk = Join-Path $repoRoot "artifacts/publish/App.Maui/release_net11.0-android/chat.actual.dev.app-Signed.apk"
+    $apk = Join-Path $repoRoot "artifacts/publish/App.Maui/release_net11.0-android_android-arm64/chat.actual.dev.app-Signed.apk"
     adb install -r $apk
     if ($LASTEXITCODE -ne 0) { throw "adb install failed ($LASTEXITCODE)" }
 }

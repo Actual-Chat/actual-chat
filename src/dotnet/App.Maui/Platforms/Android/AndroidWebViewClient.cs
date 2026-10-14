@@ -1,4 +1,5 @@
 ﻿using Android.Webkit;
+using Microsoft.Maui.Platform;
 using Uri = Android.Net.Uri;
 using WebView = Android.Webkit.WebView;
 
@@ -92,12 +93,25 @@ public class AndroidWebViewClient(
         return resourceResponse;
     }
 
-    public override void OnPageFinished(WebView? view, string? url)
+    public override async void OnPageFinished(WebView? view, string? url)
     {
-        if (IsDisconnected)
+        if (IsDisconnected || view == null)
             return;
 
-        Original.OnPageFinished(view, url);
+        try {
+            // Android can report completion before parser-blocking scripts have loaded; MAUI's startup is one-shot.
+            var request = new EvaluateJavaScriptAsyncRequest("document.readyState === 'complete'");
+            view.EvaluateJavaScript(request);
+            var isDocumentReady = await request.Task.ConfigureAwait(true);
+            if (IsDisconnected || isDocumentReady != "true")
+                return;
+
+            Original.OnPageFinished(view, url);
+        }
+        catch (Exception e) {
+            if (!IsDisconnected)
+                Log.LogWarning(e, "Cannot initialize the completed Android WebView page");
+        }
     }
 
     public override void DoUpdateVisitedHistory(WebView? view, string? url, bool isReload)

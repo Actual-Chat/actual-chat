@@ -30,7 +30,8 @@ for ($i = 1; $i -le $Runs; $i++) {
     adb logcat -c | Out-Null
 
     $out = adb shell am start -S -W -n "$Package/.MainActivity"
-    $total = ($out | Select-String -Pattern '^TotalTime:\s*(\d+)').Matches.Groups[1].Value
+    $totalMatch = $out | Select-String -Pattern '^TotalTime:\s*(\d+)' | Select-Object -First 1
+    $total = if ($totalMatch) { $totalMatch.Matches.Groups[1].Value } else { $null }
 
     # MarkChatListLoaded is LoadingUI.ChatListLoadTime - the number the app itself shows -
     # in seconds since process start. am start's TotalTime stops at the first frame, which
