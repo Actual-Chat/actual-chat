@@ -26,7 +26,7 @@ public interface ILiveAudioStreams : IComputeService
         CancellationToken cancellationToken);
 
     // Streams beginning at/after catchUpFrom (default = none) are served from t=0, not the live edge
-    [LegacyName("GetListeningStream_NewUnused", "2.15.9999")]
+    [LegacyName("GetListeningStream_Hidden", "2.15.9999")]
     Task<RpcStream<MuxedAudioStreamItem>> GetListeningStream(
         Session session,
         ChatId chatId,
