@@ -787,15 +787,18 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         ConversationId blockConversationId = null!;
         await TestWait.When(async ct => {
             var liveState = await liveBackend.GetState(chat.Id, ct);
             liveState.Should().BeNull();
+            var liveBlock = await liveBlockUI.GetBlock(chat.Id, ct);
+            liveBlock.Should().Match<LiveBlock>(b => !b.IsOpen,
+                "the client has to see the close before the toggle, or it toggles the open block");
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             blockConversationId = block.Conversation!.Id;
         }, TimeSpan.FromSeconds(15));
-        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         var closedBlock = await Computed.Capture(() => liveBlockUI.GetBlock(chat.Id, CancellationToken.None));
         closedBlock.Value.Should().Match<LiveBlock>(b => !b.IsOpen);
 
@@ -941,10 +944,14 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
         ConversationId blockConversationId = null!;
         await TestWait.When(async ct => {
             var liveState = await liveBackend.GetState(chat.Id, ct);
             liveState.Should().BeNull();
+            var liveBlock = await liveBlockUI.GetBlock(chat.Id, ct);
+            liveBlock.Should().Match<LiveBlock>(b => !b.IsOpen,
+                "the client has to see the close before the toggle, or it toggles the open block");
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             blockConversationId = block.Conversation!.Id;
@@ -2685,6 +2692,13 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.OnStreamRegistered(chat.Id, AuthorId.New(chat.Id, 777_442), null,
             true, true, CancellationToken.None);
         var live = (await liveBackend.GetState(chat.Id, CancellationToken.None))!;
+        // The tile reads consolidated computeds, which catch up with the start asynchronously
+        await TestWait.When(async ct => {
+            var openConversationId = await liveBackend.GetOpenLiveConversationId(chat.Id, ct);
+            openConversationId.Should().Be(live.OpenConversation!.Id);
+            var liveConversationIds = await liveBackend.ListLiveConversations(chat.Id, ct);
+            liveConversationIds.Should().Contain(live.OpenConversation!.Id);
+        }, TimeSpan.FromSeconds(10));
         var backend = AppHost.Services.GetRequiredService<IConversationsBackend>();
         var tileRange = Constants.Chat.ConversationIdTiles.GetTile(live.OpenConversation!.StartLid).Range;
         var cached = await Computed.Capture(() => backend.GetConversationRangeTile(chat.Id, tileRange.Start, default));
