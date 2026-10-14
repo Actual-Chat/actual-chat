@@ -207,7 +207,6 @@ public partial class ChatsUpgradeBackend
                 var entry = new DbChatEntry {
                     Id = id.Value,
                     ChatId = chatId.Value,
-                    Kind = 0,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
@@ -249,7 +248,6 @@ public partial class ChatsUpgradeBackend
                 var textEntry = new DbChatEntry {
                     Id = id.Value,
                     ChatId = chatId.Value,
-                    Kind = 0,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
@@ -293,7 +291,6 @@ public partial class ChatsUpgradeBackend
                 var textEntry = new DbChatEntry {
                     Id = id.Value,
                     ChatId = chatId.Value,
-                    Kind = 0,
                     LocalId = localId,
                     Version = VersionGenerator.NextVersion(),
                     BeginsAt = lastBeginsAt,
