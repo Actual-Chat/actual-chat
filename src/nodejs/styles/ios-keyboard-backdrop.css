@@ -10,9 +10,17 @@
 html.narrow[data-has-chat-footer] {
     background: var(--post-panel);
 }
-/* The chat list over it: the navbar column on the left, the content swap's list on the right */
+/* The chat list over it: the navbar's color. Chrome on Android takes its navigation bar color from
+   the canvas and falls back to white when it isn't a single color, so only iOS gets the split
+   below. */
 html.narrow[data-has-left-panel-open] {
-    background: linear-gradient(to right, var(--background-04) 50%, var(--background-02) 50%);
+    background: var(--background-04);
+}
+/* iOS: the navbar column on the left, the content swap's list on the right */
+@supports (-webkit-touch-callout: none) {
+    html.narrow[data-has-left-panel-open] {
+        background: linear-gradient(to right, var(--background-04) 50%, var(--background-02) 50%);
+    }
 }
 /* A modal: full-height and bottom-sheet frames paint their surface over everything below */
 html.narrow[data-has-modal] {
