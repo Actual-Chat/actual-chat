@@ -27,13 +27,14 @@ public sealed class GithubLinkPreviewTest(AppHostFixture fixture, ITestOutputHel
         var repo = $"acme/repo-{RandomStringGenerator.Next()}";
         var url = $"https://github.com/{repo}/pull/5168";
         var id = LinkPreview.ComposeId(url);
-        Http.SetupJson($"https://api.github.com/repos/{repo}/pulls/5168",
-            """
+        var avatarUrl = $"https://avatars.githubusercontent.com/u/{RandomStringGenerator.Next()}?v=4";
+        Http.SetupImage($"{avatarUrl}&s=96").SetupJson($"https://api.github.com/repos/{repo}/pulls/5168",
+            $$"""
             {
               "number": 5168,
               "title": "Fix the coach tip banner",
               "state": "open",
-              "user": { "login": "iqmulator" },
+              "user": { "login": "iqmulator", "avatar_url": "{{avatarUrl}}" },
               "created_at": "2026-10-08T07:12:30Z",
               "base": { "ref": "dev" },
               "head": { "ref": "fix/coach-tip-banner" },
@@ -52,7 +53,7 @@ public sealed class GithubLinkPreviewTest(AppHostFixture fixture, ITestOutputHel
         var preview = await GetEntryLinkPreview(entry.Id, id).Require();
         preview.Title.Should().Be("Fix the coach tip banner");
         preview.Description.Should().BeEmpty();
-        preview.PreviewMedia.Should().BeNull("the card is drawn from the API record, not the Open Graph image");
+        preview.PreviewMedia.Should().NotBeNull("the author's avatar is the card's picture");
         var card = preview.GithubCard;
         card.Should().NotBeNull();
         card.Kind.Should().Be(GithubLinkKind.PullRequest);
@@ -95,6 +96,7 @@ public sealed class GithubLinkPreviewTest(AppHostFixture fixture, ITestOutputHel
         // assert
         var preview = await GetEntryLinkPreview(entry.Id, id).Require();
         preview.Title.Should().Be("GitHub card images are fetched anonymously");
+        preview.PreviewMedia.Should().BeNull("the record carries no avatar");
         var card = preview.GithubCard;
         card.Should().NotBeNull();
         card.Kind.Should().Be(GithubLinkKind.Issue);

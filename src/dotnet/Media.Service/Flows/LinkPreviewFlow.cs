@@ -13,6 +13,8 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
     private ILinkPreviewsBackend LinkPreviewsBackend => field ??= Services.GetRequiredService<ILinkPreviewsBackend>();
     private Crawler Crawler => field ??= Services.GetRequiredService<Crawler>();
     private GithubLinkCards GithubLinkCards => field ??= Services.GetRequiredService<GithubLinkCards>();
+    private ImageGrabber ImageGrabber => field ??= Services.GetRequiredService<ImageGrabber>();
+    private ILogger Log => field ??= Services.LogFor(GetType());
     private ICommander Commander => field ??= Services.Commander();
 
     protected override TimeSpan ThrottlePeriod => MediaSettings.LinkPreviewUpdatePeriod;
@@ -30,6 +32,7 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
             linkPreview = linkPreview with {
                 Title = githubLink.Title,
                 Description = githubLink.Description,
+                PreviewMediaId = await GrabAvatar(githubLink.AvatarUrl, cancellationToken).ConfigureAwait(false),
                 GithubCard = githubLink.Card,
             };
         }
@@ -40,6 +43,20 @@ public sealed partial class LinkPreviewFlow : ThrottledUpdateFlow
     }
 
     // Private methods
+
+    private async Task<MediaId?> GrabAvatar(string avatarUrl, CancellationToken cancellationToken)
+    {
+        if (avatarUrl.IsNullOrEmpty())
+            return null;
+
+        try {
+            return await ImageGrabber.GetOrGrab(avatarUrl, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to grab the avatar '{AvatarUrl}' for '{Url}'", avatarUrl, Target);
+            return null;
+        }
+    }
 
     private async Task<LinkPreview> Crawl(LinkPreview? linkPreview, CancellationToken cancellationToken)
     {

@@ -272,7 +272,20 @@ body.narrow .link-preview.github-link-preview {
     @apply p-3;
 }
 .link-preview.github-link-preview .c-icon {
+    @apply relative;
     @apply h-12 w-12;
+}
+.link-preview.github-link-preview .c-avatar {
+    @apply h-full w-full;
+    @apply rounded-full overflow-hidden;
+}
+.link-preview.github-link-preview .c-icon > .c-badge {
+    @apply absolute -bottom-1 -right-1;
+    @apply flex-x items-center justify-center;
+    @apply h-5 w-5;
+    @apply rounded-full;
+    @apply bg-01;
+    @apply text-sm text-primary;
 }
 .link-preview.github-link-preview .c-info {
     @apply gap-y-1;

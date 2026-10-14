@@ -109,7 +109,17 @@ describe('github link preview', () => {
                 expect(facts).toContain(chip);
             expect(await card.locator('.c-by').innerText()).toContain(link.author);
             expect((await card.locator('.c-domain').innerText()).trim()).toBe('github.com');
-            expect(await message.locator('image-skeleton').count()).toBe(0);
+            const avatar = card.locator('.c-icon image-skeleton.c-avatar');
+            await avatar.waitFor({ state: 'visible', timeout: 30_000 });
+            await expect.poll(
+                () => avatar.evaluate(el => {
+                    const img = el.querySelector<HTMLImageElement>('img.image');
+                    return img?.complete && img.naturalWidth > 0;
+                }),
+                { timeout: 30_000 },
+            ).toBe(true);
+            await expect.poll(async () => (await card.locator('.c-icon .c-badge').boundingBox())?.width ?? 0)
+                .toBeGreaterThan(0);
 
             await card.screenshot({ path: shot(`github-link-${link.name}-wide`) });
         }, 120_000);

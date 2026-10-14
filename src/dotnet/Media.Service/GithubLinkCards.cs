@@ -15,6 +15,7 @@ public sealed class GithubLinkCards(IServiceProvider services)
 {
     public const string HttpClientName = nameof(GithubLinkCards);
     private const string ApiUrl = "https://api.github.com/repos/";
+    private const string AvatarSizeQuery = "s=96";
 
     private IServiceProvider Services { get; } = services;
     private MediaSettings Settings { get; } = services.GetRequiredService<MediaSettings>();
@@ -61,7 +62,7 @@ public sealed class GithubLinkCards(IServiceProvider services)
             Assignees = GetStrings(json["assignees"], "login"),
             Labels = GetStrings(json["labels"], "name"),
         };
-        return new GithubLink(GetString(json, "title"), "", card);
+        return new GithubLink(GetString(json, "title"), "", card, GetAvatarUrl(json["user"]));
     }
 
     private async Task<GithubLink?> GetPullRequest(GithubLinkTarget target, CancellationToken cancellationToken)
@@ -82,7 +83,7 @@ public sealed class GithubLinkCards(IServiceProvider services)
             Deletions = GetInt(json, "deletions"),
             ChangedFiles = GetInt(json, "changed_files"),
         };
-        return new GithubLink(GetString(json, "title"), "", card);
+        return new GithubLink(GetString(json, "title"), "", card, GetAvatarUrl(json["user"]));
     }
 
     private async Task<GithubLink?> GetCommit(GithubLinkTarget target, CancellationToken cancellationToken)
@@ -105,7 +106,7 @@ public sealed class GithubLinkCards(IServiceProvider services)
         };
         var message = GetString(json, "commit", "message");
         var title = message.Split('\n', 2)[0].Trim();
-        return new GithubLink(title, "", card);
+        return new GithubLink(title, "", card, GetAvatarUrl(json["author"]));
     }
 
     private async Task<GithubLink?> GetRepository(GithubLinkTarget target, CancellationToken cancellationToken)
@@ -122,7 +123,7 @@ public sealed class GithubLinkCards(IServiceProvider services)
             Language = GetString(json, "language"),
             DefaultBranch = GetString(json, "default_branch"),
         };
-        return new GithubLink(card.Repo, GetString(json, "description"), card);
+        return new GithubLink(card.Repo, GetString(json, "description"), card, GetAvatarUrl(json["owner"]));
     }
 
     private async Task<JsonNode?> GetJson(string path, CancellationToken cancellationToken)
@@ -152,6 +153,15 @@ public sealed class GithubLinkCards(IServiceProvider services)
         return await JsonNode.ParseAsync(stream, cancellationToken: cts.Token).ConfigureAwait(false);
     }
 
+    private static string GetAvatarUrl(JsonNode? user)
+    {
+        var url = GetString(user, "avatar_url");
+        if (url.IsNullOrEmpty())
+            return "";
+
+        return url + (url.Contains('?') ? "&" : "?") + AvatarSizeQuery;
+    }
+
     private static int GetInt(JsonNode? json, params ReadOnlySpan<string> path)
     {
         foreach (var key in path)
@@ -179,6 +189,6 @@ public sealed class GithubLinkCards(IServiceProvider services)
 
 /// <summary>
 /// The preview of a GitHub link: the page title, a description where the item has one (a repository),
-/// and the card.
+/// the card, and the avatar of the author - of the owner for a repository - sized for the card.
 /// </summary>
-public sealed record GithubLink(string Title, string Description, GithubLinkCard Card);
+public sealed record GithubLink(string Title, string Description, GithubLinkCard Card, string AvatarUrl);

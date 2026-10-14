@@ -13,6 +13,7 @@
         _ => ("repository", "icon-repository"),
     };
     var number = card.Kind is GithubLinkKind.PullRequest or GithubLinkKind.Issue ? $"#{card.Number}" : "";
+    var avatarUrl = GetAvatarUrl(preview.PreviewMedia);
     var hasDiff = card.Kind is GithubLinkKind.PullRequest or GithubLinkKind.Commit
         && card.Additions + card.Deletions + card.ChangedFiles > 0;
     var hasFacts = hasDiff
@@ -29,7 +30,12 @@
    target="_blank"
    data-menu="@DataMenu">
     <div class="c-icon">
-        <i class="@icon" aria-hidden="true"></i>
+        @if (!avatarUrl.IsNullOrEmpty()) {
+            <image-skeleton class="c-avatar" src="@avatarUrl"/>
+            <i class="c-badge @icon" aria-hidden="true"></i>
+        } else {
+            <i class="@icon" aria-hidden="true"></i>
+        }
     </div>
     <div class="c-info">
         @if (card.Kind != GithubLinkKind.Repository) {
@@ -84,10 +90,20 @@
 </a>
 
 @code {
+    private const int AvatarSize = 96; // the 3rem slot at 2x
+
     [Parameter, EditorRequired] public LinkPreview Preview { get; set; } = null!;
     [Parameter, EditorRequired] public GithubLinkCard Card { get; set; } = null!;
     [Parameter, EditorRequired] public Uri Uri { get; set; } = null!;
     [Parameter] public string DataMenu { get; set; } = "";
+
+    private string GetAvatarUrl(Media? media)
+    {
+        if (media?.BlobId.IsNullOrEmpty() != false)
+            return "";
+
+        return UrlMapper.ImagePreviewUrl(UrlMapper.ContentUrl(media.BlobId), AvatarSize, AvatarSize);
+    }
 
     private string GetByLine(GithubLinkCard card)
     {
