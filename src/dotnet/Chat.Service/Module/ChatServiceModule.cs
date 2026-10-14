@@ -273,7 +273,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             // DbChatEntry
             db.AddShardLocalIdGenerator<ChatDbContext, DbChatEntry, string>(
                 dbContext => dbContext.ChatEntries,
-                (e, shardKey) => e.ChatId == shardKey && e.Kind == 0,
+                (e, shardKey) => e.ChatId == shardKey,
                 e => e.LocalId);
 
             // DbAuthor
