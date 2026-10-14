@@ -36,10 +36,9 @@ body.hoverable .audio-file-attachment .c-play-btn:hover {
     @apply flex-y gap-y-1;
     @apply w-full;
     @apply p-2;
-    @apply rounded-lg;
+    @apply rounded-lg border-b border-music;
     @apply bg-music;
     @apply text-music;
-    box-shadow: 0 2px 6px var(--black-05);
 }
 .audio-attachment-subheader .c-row-main {
     @apply flex-x items-center gap-x-2;
@@ -49,8 +48,8 @@ body.hoverable .audio-file-attachment .c-play-btn:hover {
     @apply flex-none;
     @apply w-10 h-10;
     @apply rounded-full;
-    color: var(--background-music);
-    background: var(--accent-music);
+    color: var(--accent-music);
+    background: var(--border-music);
 }
 body.hoverable .audio-attachment-subheader .c-play-btn:hover {
     filter: brightness(1.1);

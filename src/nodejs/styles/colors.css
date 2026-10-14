@@ -309,7 +309,7 @@
     --warning: var(--sienna-40);
 
     /* Banners */
-    --background-banner-default: var(--gray-99);
+    --background-banner-default: var(--gray-95);
     --text-banner-default: var(--text-02);
     --border-banner-default: var(--gray-90);
     --background-banner-success: var(--emerald-99);
@@ -632,8 +632,8 @@
     --accent-replay: var(--blue-70);
     --background-music: color-mix(in srgb, var(--ash-22), var(--violet-50) 4%);
     --text-music: var(--text-02);
-    --border-music: var(--violet-30);
-    --accent-music: var(--violet-70);
+    --border-music: var(--violet-20);
+    --accent-music: var(--violet-80);
 
     /* Toasts */
     --toast-body: var(--ash-95);
@@ -876,7 +876,7 @@
     --warning: var(--sienna-40);
 
     /* Banners */
-    --background-banner-default: var(--gray-99);
+    --background-banner-default: var(--gray-95);
     --text-banner-default: var(--text-02);
     --border-banner-default: var(--gray-90);
     --background-banner-success: var(--emerald-99);
