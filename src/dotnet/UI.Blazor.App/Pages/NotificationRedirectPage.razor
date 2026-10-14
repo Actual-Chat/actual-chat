@@ -1,0 +1,25 @@
+@page "/n"
+@page "/n/{*ShortId}"
+@layout ListViewLayout
+@using ActualChat.Notifications
+@inherits ComponentBase<AppUIHub>
+
+@code {
+    [Parameter] public string? ShortId { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        // Leads to what the notification is about: the first unread one for /n, the named one for /n/<short id>
+        var url = Links.Chats;
+        if (ShortId.IsNullOrEmpty()) {
+            if (await Hub.NotificationsUI.GetFirstNotificationUrl(default) is { } firstUrl)
+                url = firstUrl;
+        }
+        else {
+            var ownAccount = await Hub.AccountUI.OwnAccount.Use();
+            var notificationId = Links.TryParseNotification(ownAccount.Id, ShortId);
+            if (notificationId is not null && notificationId.TryGetChatTarget(out _, out _))
+                url = Links.Notification(notificationId, ui: NotificationUIMode.Auto);
+        }
+        _ = History.NavigateTo(url, true);
+    }
+}

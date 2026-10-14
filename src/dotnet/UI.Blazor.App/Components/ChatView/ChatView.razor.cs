@@ -99,6 +99,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         Log.LogDebug("Created for chat #{ChatId}", Chat.Id);
         ChatSwitchTracer.Mark("ChatView.OnInitializedAsync: entered", Chat.Id);
         Nav.LocationChanged += OnLocationChanged;
+        Hub.AutoNavigationUI.NavigatedToCurrentUrl += OnNavigatedToCurrentUrl;
         try {
             var type = GetType();
             _itemVisibility = StateFactory.NewMutable(
@@ -176,6 +177,7 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         _readPositionLease.DisposeSilently();
         ChatUI.ResetReportedItemVisibility(Chat.Id);
         Nav.LocationChanged -= OnLocationChanged;
+        Hub.AutoNavigationUI.NavigatedToCurrentUrl -= OnNavigatedToCurrentUrl;
         Hub.UserActivityUI.LastPresentAt.Updated -= OnPresenceUpdated;
         RegionVisibility.IsVisible.Updated -= OnRegionVisibilityUpdated;
         _isHoverMenuDisposed = true;
@@ -403,6 +405,13 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
     {
         // Clearing the guard here is what keeps it a per-navigation one rather than a permanent
         // "this URL was handled once" - navigating back to the same ?n= URL has to work again
+        _lastNavigatedUri = "";
+        _ = NavigateToUrlFragment();
+    }
+
+    private void OnNavigatedToCurrentUrl(LocalUrl url)
+    {
+        // A tap on a push for the notification that is already open: the jump is done again
         _lastNavigatedUri = "";
         _ = NavigateToUrlFragment();
     }

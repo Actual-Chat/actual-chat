@@ -22,10 +22,11 @@
     _renderedModel = m;
     var showEnding = showAudioControls || isActiveChatList;
     var navbarItemCls = showEnding ? "visible-ending" : "";
+    var url = m.PanelUrl ?? (m.NavTarget is { } navTarget ? Links.Chat(navTarget.EntryId).Value : $"/chat/{chat.Id}");
 }
 
 <NavbarItem
-    Url="@(m.NavTarget is { } navTarget ? Links.Chat(navTarget.EntryId).Value : $"/chat/{chat.Id}")"
+    Url="@url"
     Click="@(NotificationsFilterId.IsEmpty ? default : EventCallback.Factory.Create(this, OnClick))"
     ReplaceOnPrefix="/chat/"
     IsSelected="@(m.IsSelected && listKind != ChatListKind.Active)"
@@ -288,6 +289,13 @@
         var navTarget = navTargetTask is null ? null : await navTargetTask.ConfigureAwait(false);
         if (navTarget is { Kind: ActualChat.NotificationKind.Reaction } && unreadState.Count > 0)
             navTarget = null;
+        // Every panel row opens as its notification's link, so the panel stays on the notification it shows
+        var panelNotificationId = notificationsFilterId.IsEmpty
+            ? null
+            : navTarget?.Id ?? NotificationsUI.GetChatNotificationId(AccountUI.OwnAccount.Value.Id, chatId);
+        var panelUrl = panelNotificationId is null
+            ? null
+            : Links.Notification(panelNotificationId, navTarget?.EntryId.LocalId ?? 0).Value;
 
         return new() {
             ListKind = listKind,
@@ -307,6 +315,7 @@
                 : navTarget.Kind == ActualChat.NotificationKind.Attention,
             ReactionEmoji = navTarget is null ? unreadState.ReactionEmoji : navTarget.Emoji,
             NavTarget = navTarget,
+            PanelUrl = panelUrl,
             LastTextEntry = lastEntry,
             LastTextEntryText = preview.Text,
             LastTextEntryIcons = lastTextEntryIcons,
@@ -324,6 +333,11 @@
     private void OnClick() {
         if (_renderedModel?.NavTarget is not { } navTarget)
             return;
+
+        // The notification's URL stays as it is, so tapping the one already open has no navigation to
+        // carry the jump: scrolling back to its entry is done here
+        if (History.LocalUrl.Value == _renderedModel.PanelUrl)
+            ChatUI.HighlightEntry(navTarget.EntryId, true);
 
         // OnRead kinds are left alone: a requested dismissal advances the chat's read position to
         // the notification's anchor (see NotificationsBackend.GetReadAdvances), and jumping to a
@@ -437,6 +451,7 @@
         // The notification this row is bound to in the notifications panel: the one its tap jumps
         // to and the one its badge shows. Null everywhere else, and once the chat's are all walked.
         public ChatNotificationTarget? NavTarget { get; init; }
+        public string? PanelUrl { get; init; }
         public Chat? LastThread { get; init; }
         public Author? LastThreadCreator { get; init; }
         public Moment LastBeginsAt => LastThread?.CreatedAt ?? LastTextEntry?.BeginsAt ?? Moment.EpochStart;
