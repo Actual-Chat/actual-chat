@@ -681,7 +681,7 @@ public partial class ChatAudioUI
         }
     }
 
-    private async Task StopListeningWhenIdle(ChatId chatId, CancellationToken cancellationToken)
+    internal async Task StopListeningWhenIdle(ChatId chatId, CancellationToken cancellationToken)
     {
         var serverClock = Clocks.ServerClock;
         var cpuClock = Clocks.CpuClock;
@@ -747,6 +747,9 @@ public partial class ChatAudioUI
         }
 
         async Task WhenIdle(CancellationToken ct) {
+            // ReturnDefault RPC reads can say "idle" before the server answers. The ambient
+            // synchronizer is normally None, so both initial reads and updates need an explicit one.
+            using var synchronizationScope = ComputedSynchronizer.Precise.Instance.Activate();
             var cHasActivity = await Computed
                 .Capture(() => LiveStreamUI.HasActivity(chatId, ct), ct)
                 .ConfigureAwait(false);
