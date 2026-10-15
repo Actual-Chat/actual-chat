@@ -1,3 +1,12 @@
+/* ── Header: how far the call has got, under the peer's name ── */
+
+.call-modal .c-header > .c-bottom > .c-status {
+    @apply text-caption text-03;
+}
+.call-modal .c-header > .c-bottom > .c-status.offline {
+    @apply text-warning;
+}
+
 /* ── Modal action buttons: a centered row of round buttons — Decline · Mute · Message · Accept, or Hang up ── */
 /* The second selector outweighs `body.narrow .dialog-buttons`, which would otherwise stack these
    into a column on mobile. */

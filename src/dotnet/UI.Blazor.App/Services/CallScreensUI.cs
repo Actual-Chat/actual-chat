@@ -21,6 +21,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     private int _overLockRingGeneration;
     // The screen the user brought up from its island or inline video, rather than one that came up on its own
     private ChatId? _userExpandedChatId;
+    private ConnectedCall? _connectedCall;
 
     public IState<ChatId?> MutedRingChatId => _mutedRingChatId;
 
@@ -48,10 +49,26 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             return CallView.None;
 
         var screenSize = await Hub.BrowserInfo.ScreenSize.Use(cancellationToken).ConfigureAwait(false);
+        var isNarrow = screenSize.IsNarrow();
         var flags = new CallScreenFlags(
             await _collapsedChatId.Use(cancellationToken).ConfigureAwait(false),
             await _overLockRingChatId.Use(cancellationToken).ConfigureAwait(false));
-        return DecideView(call, screenSize.IsNarrow(), flags);
+        // Only a wide screen tells a connecting call from a connected one
+        var stage = CallStage.None;
+        if (!isNarrow)
+            stage = await GetCallStage(call.ChatId, cancellationToken).ConfigureAwait(false);
+        return DecideView(call, isNarrow, flags, stage == CallStage.Connecting);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<CallStage> GetCallStage(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
+        if (call is null || call.ChatId != chatId)
+            return CallStage.None;
+
+        var connectedAt = await GetCallConnectedAt(chatId, cancellationToken).ConfigureAwait(false);
+        return DecideStage(call, connectedAt is not null);
     }
 
     [ComputeMethod]
@@ -85,16 +102,18 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
     }
 
     [ComputeMethod]
-    public virtual async Task<Moment?> GetCallJoinedAt(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<Moment?> GetCallConnectedAt(ChatId chatId, CancellationToken cancellationToken)
     {
-        // A call's timer runs once the call is on; null until my own join is known, as Accept commits
-        // the call before my audio starts.
+        // Null until both sides are on the call: Accept commits it before either side's audio starts.
+        // Latched for the call, so a peer dropping out for a beat doesn't send it back to connecting.
         var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
-        if (call is not { Phase: CallPhase.Active } || call.ChatId != chatId)
+        if (call is not { Phase: CallPhase.Active, CallId: { } callId } || call.ChatId != chatId)
             return null;
+        if (Volatile.Read(ref _connectedCall) is { } connected && connected.CallId == callId)
+            return connected.ConnectedAt;
 
         // The session itself can predate the call - a call can ring into an ongoing one - so a call timer
-        // counts from my own join, not from LiveSession.StartedAt.
+        // counts from the parties' joins, not from LiveSession.StartedAt.
         var live = await Hub.LiveSessionUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (live is null)
             return null;
@@ -104,7 +123,21 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             return null;
 
         var me = live.Members.FirstOrDefault(m => m.AuthorId == ownAuthor.Id);
-        return me is null || me.JoinedAt == default ? null : me.JoinedAt;
+        if (me is not { IsPresent: true } || me.JoinedAt == default)
+            return null;
+
+        var connectedAt = me.JoinedAt;
+        // A call to several has no one peer to wait for
+        if (call.PeerId is { } peerId) {
+            var peer = live.Members.FirstOrDefault(m => m.AuthorId == peerId);
+            if (peer is not { IsPresent: true })
+                return null;
+
+            connectedAt = Moment.Max(connectedAt, peer.JoinedAt);
+        }
+        // Published for the Volatile.Read above: compute methods run on the thread pool
+        Volatile.Write(ref _connectedCall, new ConnectedCall(callId, connectedAt));
+        return connectedAt;
     }
 
     [ComputeMethod]
@@ -115,6 +148,16 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             ? new IncomingCall(callId, callerId, call.HasVideo)
             : null;
     }
+
+    public string GetStatusText(CallStage stage)
+        => stage switch {
+            CallStage.Requesting => L.Call_Requesting,
+            CallStage.Calling => L.Call_Dialing,
+            CallStage.Ringing => L.Call_Ringing,
+            CallStage.Incoming => L.Call_IsCallingYou,
+            CallStage.Connecting => L.Call_Connecting,
+            _ => L.Call_InCall,
+        };
 
     public void OnRing(ChatId chatId, bool showOverLockScreen = false)
     {
@@ -432,4 +475,8 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
         if (state.Value == chatId)
             state.Value = null;
     }
+
+    // Nested types
+
+    private sealed record ConnectedCall(CallId CallId, Moment ConnectedAt);
 }

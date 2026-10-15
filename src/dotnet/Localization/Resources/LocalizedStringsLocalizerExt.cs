@@ -1929,6 +1929,9 @@ public static class LocalizedStringsLocalizerExt
         public string Call_IncomingVideo => l["Call_IncomingVideo"].Value;
         public string Call_Outgoing => l["Call_Outgoing"].Value;
         public string Call_InCall => l["Call_InCall"].Value;
+        public string Call_Requesting => l["Call_Requesting"].Value;
+        public string Call_Ringing => l["Call_Ringing"].Value;
+        public string Call_Connecting => l["Call_Connecting"].Value;
         public string Call_NoConnection => l["Call_NoConnection"].Value;
         public string Call_NoConnectionShort => l["Call_NoConnectionShort"].Value;
         public string Call_AudioOutputSpeaker => l["Call_AudioOutputSpeaker"].Value;

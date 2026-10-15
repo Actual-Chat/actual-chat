@@ -454,6 +454,29 @@ becomes `Active`. The caller's claim reads `Active` from the answer on, so their
 `CallUI` joins the conversation and moves the slot to `Active`. Only the client the call was
 placed from sees it at all - see "Whose call it is" above.
 
+### What the screens show
+
+The call screen, the modal and the island show a `CallStage`, which `CallScreensUI.GetCallStage`
+derives from the slot. The slot's phase stays as it is: the stage is for display only.
+
+| Stage | Shown as | When |
+|---|---|---|
+| `Requesting` | Requesting… | The caller's slot is `Dialing` and has no `CallId`: `StartCall` hasn't returned yet. |
+| `Calling` | Dialing… | The server has the call, but no device of the callee's confirmed it rings. |
+| `Ringing` | Ringing… | `UserCall.IsPeerRinging`: an invite of the call has a `Received` or `Ringing` ack. |
+| `Incoming` | is calling you… | The callee's slot is `Ringing`. |
+| `Connecting` | Connecting… | The slot is `Active`, but this user or the peer isn't `IsPresent` in the session yet. |
+| `Connected` | In call, and the timer | Both are present. |
+
+`Connecting` reads the session's members, not the server's `CallStatus`: a member turns
+present as soon as its own `SetParticipation` lands (the caller's placeholder doesn't count), while `SyncCallParticipantActivity` runs only on
+`GetCall`'s self-heal. Once connected, a call stays `Connected` on that client
+(`GetCallConnectedAt` latches it per call), so a peer dropping out for a beat doesn't bring
+"Connecting…" back. The timer counts from the later of the two joins.
+
+A wide screen hands an active call to its chat, but only once it connects: until then the
+modal (or the island, when collapsed) stays up, with the hang-up button alone.
+
 **The call's parties** are its caller and the invitees who accepted. Everything that counts
 presence for a call counts only them: someone else present in the session the call rang into
 neither holds the call open nor makes anyone busy. The same self-heal ends a call whose parties
@@ -619,8 +642,11 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
   read failed".
 - **Only one over-lock ring.** If two rings arrive together on a locked device and the search
   claims the other one, the over-lock screen the first one asked for shows nothing.
-- **`ConfirmRing` and the `OnRing` hint name no call.** Both are by chat: the ack is telemetry
-  written onto the chat's current invite, and the hint only makes `GetMyCall` re-read.
+- **`ConfirmRing` and the `OnRing` hint name no call.** Both are by chat: the ack is written
+  onto the chat's current invite, and the hint only makes `GetMyCall` re-read.
+- **A ring shown natively sends no ack.** An Android ring the native layer shows while the Blazor
+  scope is down is confirmed only once the scope comes up, so meanwhile the caller sees
+  "Dialing…" while the phone rings.
 - **The screen flags are by chat.** Over-lock, collapsed and muted are keyed by `ChatId` and
   cleared when the slot's call changes, which is what keeps them from leaking into the next call.
 - **The web OS notification has no Answer/Decline.** Clicking it just opens the chat.
@@ -638,8 +664,9 @@ A refused answer - past the grace, or after a cancel - shows the "Missed call" t
   the client ignores it all that time; `StartCall` meanwhile finds the user busy.
 - **The end doesn't say who ended it.** The outcome tells a hang-up from a ring that ran out, but
   not a hang-up from a lost connection: both reach the server as the same presence drop.
-- **"Connecting" isn't shown yet.** Between the answer and both sides' presence the caller's
-  status is `Connecting`, but neither side's screens tell it apart from a connected call.
+- **The server's own `CallStatus` lags and is read by nobody.** `SyncCallParticipantActivity`
+  promotes the invites and `CallerActiveAt` only on `GetCall`'s self-heal, up to `SelfHealDelay`
+  after both sides are present; the screens derive `Connecting` from the session instead.
 
 ## Related
 

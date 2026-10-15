@@ -25,6 +25,13 @@
             <span class="call-text">@CallText</span>
             <AuthorName AuthorId="@Author.Id" Class="text-02 text-title-500" ShowDetailsOnClick="false"/>
         </div>
+        @* A ring says it all in its title *@
+        @if (Stage is not (CallStage.None or CallStage.Incoming)) {
+            <CallStatus
+                Text="@Hub.CallScreensUI.GetStatusText(Stage)"
+                IsAnswered="@(Stage is CallStage.Connecting or CallStage.Connected)"
+                IsInProgress="@Stage.IsInProgress()"/>
+        }
     </div>
 </div>
 
@@ -32,6 +39,7 @@
     [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter, EditorRequired] public Author Author { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwn { get; set; }
+    [Parameter] public CallStage Stage { get; set; }
     [Parameter] public EventCallback OnCollapse { get; set; }
 
     private string CallText => IsOwn ? L.Call_OutgoingTo : L.Call_IncomingFrom;

@@ -277,6 +277,60 @@ public class CallScreensUIDecisionsTest
         screen!.Call.Should().BeNull("the video being watched isn't the call's until it is answered");
     }
 
+    [Theory]
+    [InlineData(CallRole.Caller, false, CallViewKind.Modal)]
+    [InlineData(CallRole.Caller, true, CallViewKind.Collapsed)]
+    [InlineData(CallRole.Callee, false, CallViewKind.Modal)]
+    [InlineData(CallRole.Callee, true, CallViewKind.Collapsed)]
+    public void ConnectingCallShouldStayOnWideScreen(CallRole origin, bool isCollapsed, CallViewKind expected)
+    {
+        // arrange
+        var call = Call(origin, CallPhase.Active);
+        var flags = isCollapsed ? Flags(collapsed: ChatA) : default;
+
+        // act
+        var view = CallScreensUI.DecideView(call, isNarrow: false, flags, isConnecting: true);
+
+        // assert
+        view.Kind.Should().Be(expected, "a wide screen gives the call to its chat only once it connects");
+    }
+
+    [Fact]
+    public void ConnectingCallShouldKeepFullScreenOnNarrowScreen()
+    {
+        // act
+        var view = CallScreensUI.DecideView(Call(CallRole.Callee, CallPhase.Active), true, default, true);
+
+        // assert
+        view.Kind.Should().Be(CallViewKind.FullScreen);
+    }
+
+    [Theory]
+    [InlineData(CallRole.Caller, CallPhase.Dialing, false, false, false, CallStage.Requesting)]
+    [InlineData(CallRole.Caller, CallPhase.Dialing, true, false, false, CallStage.Calling)]
+    [InlineData(CallRole.Caller, CallPhase.Dialing, true, true, false, CallStage.Ringing)]
+    [InlineData(CallRole.Callee, CallPhase.Ringing, true, false, false, CallStage.Incoming)]
+    [InlineData(CallRole.Caller, CallPhase.Active, true, false, false, CallStage.Connecting)]
+    [InlineData(CallRole.Caller, CallPhase.Active, true, false, true, CallStage.Connected)]
+    [InlineData(CallRole.Callee, CallPhase.Active, true, false, false, CallStage.Connecting)]
+    [InlineData(CallRole.Callee, CallPhase.Active, true, false, true, CallStage.Connected)]
+    public void StageShouldFollowCallProgress(
+        CallRole origin, CallPhase phase, bool hasCallId,
+        bool isPeerRinging, bool isConnected, CallStage expected)
+    {
+        // arrange
+        var call = Call(origin, phase) with {
+            CallId = hasCallId ? CallId.New(ChatA, "1") : null,
+            IsPeerRinging = isPeerRinging,
+        };
+
+        // act
+        var stage = CallScreensUI.DecideStage(call, isConnected);
+
+        // assert
+        stage.Should().Be(expected);
+    }
+
     private static CallView Decide(ActiveCall? call, bool isNarrow, CallScreenFlags flags = default)
         => CallScreensUI.DecideView(call, isNarrow, flags);
 

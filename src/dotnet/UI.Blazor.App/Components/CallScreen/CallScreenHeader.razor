@@ -146,7 +146,7 @@
             return Model.None;
 
         var phase = screen.Call?.Phase;
-        var joinedAt = await CallScreensUI.GetCallJoinedAt(chatId, cancellationToken).ConfigureAwait(false);
+        var joinedAt = await CallScreensUI.GetCallConnectedAt(chatId, cancellationToken).ConfigureAwait(false);
         var isEqualLayout = await CallScreensUI.IsEqualLayout(cancellationToken).ConfigureAwait(false);
         var m = new Model {
             Mode = screen.Mode,

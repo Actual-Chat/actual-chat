@@ -36,6 +36,20 @@ public class CallUIDecisionsTest
     }
 
     [Fact]
+    public void PeerRingingShouldReachTheSlot()
+    {
+        // arrange
+        var held = Call(CallRole.Caller, CallPhase.Dialing) with { CallId = Call1 };
+        var myCall = MyCall(ChatA, CallRole.Caller, CallPhase.Dialing, Call1) with { IsPeerRinging = true };
+
+        // act
+        var call = CallUI.Reconcile(held, myCall, NoGestures);
+
+        // assert
+        call!.IsPeerRinging.Should().BeTrue("the caller's screen tells a ringing peer from an unreached one");
+    }
+
+    [Fact]
     public void NoCallShouldNotDropACallStillBeingPlaced()
     {
         // arrange — a StartCall resent over a server restart took 14 s to land (#5115)
