@@ -248,7 +248,9 @@ public partial class Chats(IServiceProvider services) : IChats
         if (!await CanRead(session, chatId, cancellationToken).ConfigureAwait(false))
             return null;
 
-        var news = await Backend.GetLegacyNews(chatId, cancellationToken).ConfigureAwait(false);
+        // The real last entry, unfiltered: a v2.20+ client tolerates every union tag, so a call (or any
+        // newer kind) shows in the chat list. Pre-2.20 clients are routed to GetLegacyNews by LegacyName.
+        var news = await Backend.GetNews(chatId, cancellationToken).ConfigureAwait(false);
         return news?.ToSlim();
     }
 

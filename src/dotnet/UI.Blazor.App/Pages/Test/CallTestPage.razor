@@ -444,4 +444,16 @@
             </div>
         </div>
     </div>
+
+    @* 6. Call system messages (real components) *@
+    <div class="c-section">
+        <div class="c-section-title">6. Call system messages</div>
+        <div class="c-section-note">
+            The REAL <code>CallMessageView</code> card and the REAL <code>SystemEntryMarkupBuilder</code> preview
+            (the line shown in the chat list and notifications), for every <code>CallOutcome</code> × role.
+            Entries are synthetic — no server, no call flow. <code>UI</code> = current language,
+            <code>en</code> = the English base shipped in the Api package.
+        </div>
+        <CallSystemMessagesCatalog/>
+    </div>
 </div>

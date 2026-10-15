@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " menelepon. Tidak dijawab.",
   "SystemEntry_CallDeclined": " menelepon. Ditolak.",
   "SystemEntry_CallCanceled": " menelepon. Dibatalkan.",
+  "SystemEntry_CallBusy": " menelepon. Sibuk.",
   "SystemEntry_CallEnded": " menelepon.",
   "SystemEntry_HistoryWiped": " menghapus riwayat obrolan.",
   "SystemEntry_HistoryWipedPeriod_Format": " menghapus riwayat obrolan {0} terakhir.",
@@ -1873,6 +1874,9 @@
   "Call_Entry_NoAnswer": "Tidak dijawab",
   "Call_Entry_Busy": "Sedang sibuk",
   "Call_Entry_TapToCallBack": "Ketuk untuk menelepon balik",
+  "Call_Entry_DeclinedShort": "Ditolak",
+  "Call_Entry_CanceledShort": "Dibatalkan",
+  "Call_Entry_YouDeclined": "Anda menolak",
 
   "LiveConversation_TranslatedVoice": "Suara terjemahan",
 

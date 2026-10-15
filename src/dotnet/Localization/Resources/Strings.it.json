@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " ha chiamato. Nessuna risposta.",
   "SystemEntry_CallDeclined": " ha chiamato. Rifiutata.",
   "SystemEntry_CallCanceled": " ha chiamato. Annullata.",
+  "SystemEntry_CallBusy": " ha chiamato. Occupato.",
   "SystemEntry_CallEnded": " ha chiamato.",
   "SystemEntry_HistoryWiped": " ha cancellato la cronologia della chat.",
   "SystemEntry_HistoryWipedPeriod_Format": " ha cancellato la cronologia della chat degli ultimi {0}.",
@@ -1873,6 +1874,9 @@
   "Call_Entry_NoAnswer": "Nessuna risposta",
   "Call_Entry_Busy": "Occupato",
   "Call_Entry_TapToCallBack": "Tocca per richiamare",
+  "Call_Entry_DeclinedShort": "Rifiutata",
+  "Call_Entry_CanceledShort": "Annullata",
+  "Call_Entry_YouDeclined": "Hai rifiutato",
 
   "LiveConversation_TranslatedVoice": "Voce tradotta",
 

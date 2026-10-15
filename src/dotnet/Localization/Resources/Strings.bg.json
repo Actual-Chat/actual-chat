@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " се обади. Няма отговор.",
   "SystemEntry_CallDeclined": " се обади. Отхвърлено.",
   "SystemEntry_CallCanceled": " се обади. Отменено.",
+  "SystemEntry_CallBusy": " се обади. Заето.",
   "SystemEntry_CallEnded": " се обади.",
   "SystemEntry_HistoryWiped": " изтри историята на чата.",
   "SystemEntry_HistoryWipedPeriod_Format": " изтри историята на чата за последните {0}.",
@@ -1873,6 +1874,9 @@
   "Call_Entry_NoAnswer": "Няма отговор",
   "Call_Entry_Busy": "Заето",
   "Call_Entry_TapToCallBack": "Докоснете, за да презвъните",
+  "Call_Entry_DeclinedShort": "Отхвърлено",
+  "Call_Entry_CanceledShort": "Отменено",
+  "Call_Entry_YouDeclined": "Вие отхвърлихте",
 
   "LiveConversation_TranslatedVoice": "Преведен глас",
 

@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " 拨打了电话。无人接听。",
   "SystemEntry_CallDeclined": " 拨打了电话。已拒接。",
   "SystemEntry_CallCanceled": " 拨打了电话。已取消。",
+  "SystemEntry_CallBusy": " 拨打了电话。忙线。",
   "SystemEntry_CallEnded": " 拨打了电话。",
   "SystemEntry_HistoryWiped": " 清除了聊天记录。",
   "SystemEntry_HistoryWipedPeriod_Format": " 清除了最近 {0} 的聊天记录。",
@@ -1873,6 +1874,9 @@
   "Call_Entry_NoAnswer": "无人接听",
   "Call_Entry_Busy": "忙线中",
   "Call_Entry_TapToCallBack": "点按回拨",
+  "Call_Entry_DeclinedShort": "已拒接",
+  "Call_Entry_CanceledShort": "已取消",
+  "Call_Entry_YouDeclined": "你已拒接",
 
   "LiveConversation_TranslatedVoice": "翻译语音",
 

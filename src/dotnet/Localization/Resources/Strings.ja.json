@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " さんが発信しました。応答がありませんでした。",
   "SystemEntry_CallDeclined": " さんが発信しました。拒否されました。",
   "SystemEntry_CallCanceled": " さんが発信しました。キャンセルされました。",
+  "SystemEntry_CallBusy": " さんが発信しました。話し中でした。",
   "SystemEntry_CallEnded": " さんが発信しました。",
   "SystemEntry_HistoryWiped": " さんがチャット履歴を消去しました。",
   "SystemEntry_HistoryWipedPeriod_Format": " さんが過去 {0} のチャット履歴を消去しました。",
@@ -1873,6 +1874,9 @@
   "Call_Entry_NoAnswer": "応答なし",
   "Call_Entry_Busy": "通話中",
   "Call_Entry_TapToCallBack": "タップして折り返す",
+  "Call_Entry_DeclinedShort": "拒否",
+  "Call_Entry_CanceledShort": "キャンセル",
+  "Call_Entry_YouDeclined": "拒否しました",
 
   "LiveConversation_TranslatedVoice": "翻訳音声",
 

@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " đã gọi. Không trả lời.",
   "SystemEntry_CallDeclined": " đã gọi. Đã từ chối.",
   "SystemEntry_CallCanceled": " đã gọi. Đã hủy.",
+  "SystemEntry_CallBusy": " đã gọi. Máy bận.",
   "SystemEntry_CallEnded": " đã gọi.",
   "SystemEntry_HistoryWiped": " đã xóa lịch sử trò chuyện.",
   "SystemEntry_HistoryWipedPeriod_Format": " đã xóa lịch sử trò chuyện trong {0} qua.",
@@ -1873,6 +1874,9 @@
   "Call_Entry_NoAnswer": "Không trả lời",
   "Call_Entry_Busy": "Máy bận",
   "Call_Entry_TapToCallBack": "Nhấn để gọi lại",
+  "Call_Entry_DeclinedShort": "Đã từ chối",
+  "Call_Entry_CanceledShort": "Đã hủy",
+  "Call_Entry_YouDeclined": "Bạn đã từ chối",
 
   "LiveConversation_TranslatedVoice": "Giọng nói đã dịch",
 

@@ -523,6 +523,7 @@
   "SystemEntry_CallNoAnswer": " called. No answer.",
   "SystemEntry_CallDeclined": " called. Declined.",
   "SystemEntry_CallCanceled": " called. Canceled.",
+  "SystemEntry_CallBusy": " called. Busy.",
   "SystemEntry_CallEnded": " called.",
   "SystemEntry_HistoryWiped": " wiped the chat history.",
   "SystemEntry_HistoryWipedPeriod_Format": " wiped the last {0} of chat history.",
@@ -2206,6 +2207,9 @@
   "Call_Entry_NoAnswer": "No answer",
   "Call_Entry_Busy": "Busy",
   "Call_Entry_TapToCallBack": "Tap to call back",
+  "Call_Entry_DeclinedShort": "Declined",
+  "Call_Entry_CanceledShort": "Canceled",
+  "Call_Entry_YouDeclined": "You declined",
 
   // The label on a live-session card when the speaker's voice is replaced by a spoken translation.
   "LiveConversation_TranslatedVoice": "Translated voice",

@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " zavolal(a). Bez odpovědi.",
   "SystemEntry_CallDeclined": " zavolal(a). Odmítnuto.",
   "SystemEntry_CallCanceled": " zavolal(a). Zrušeno.",
+  "SystemEntry_CallBusy": " zavolal(a). Obsazeno.",
   "SystemEntry_CallEnded": " zavolal(a).",
   "SystemEntry_HistoryWiped": " vymazal(a) historii chatu.",
   "SystemEntry_HistoryWipedPeriod_Format": " vymazal(a) historii chatu za posledních {0}.",
@@ -1873,6 +1874,9 @@
   "Call_Entry_NoAnswer": "Bez odpovědi",
   "Call_Entry_Busy": "Obsazeno",
   "Call_Entry_TapToCallBack": "Klepněte pro zpětné volání",
+  "Call_Entry_DeclinedShort": "Odmítnuto",
+  "Call_Entry_CanceledShort": "Zrušeno",
+  "Call_Entry_YouDeclined": "Odmítli jste",
 
   "LiveConversation_TranslatedVoice": "Přeložený hlas",
 

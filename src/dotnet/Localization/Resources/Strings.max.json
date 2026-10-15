@@ -523,6 +523,7 @@
   "SystemEntry_CallNoAnswer": " さんが発信しました。応答がありませんでした。",
   "SystemEntry_CallDeclined": " さんが発信しました。拒否されました。",
   "SystemEntry_CallCanceled": " さんが発信しました。キャンセルされました。",
+  "SystemEntry_CallBusy": "님이 전화를 걸었습니다. 통화 중이었습니다.",
   "SystemEntry_CallEnded": "님이 전화를 걸었습니다.",
   "SystemEntry_HistoryWiped": " さんがチャット履歴を消去しました。",
   "SystemEntry_HistoryWipedPeriod_Format": " a effacé l’historique de la discussion des {0} derniers.",
@@ -2206,6 +2207,9 @@
   "Call_Entry_NoAnswer": "Nessuna risposta",
   "Call_Entry_Busy": "Sedang sibuk",
   "Call_Entry_TapToCallBack": "Toque para retornar a chamada",
+  "Call_Entry_DeclinedShort": "Отхвърлено",
+  "Call_Entry_CanceledShort": "Abgebrochen",
+  "Call_Entry_YouDeclined": "Von Ihnen abgelehnt",
 
   // The label on a live-session card when the speaker's voice is replaced by a spoken translation.
   "LiveConversation_TranslatedVoice": "Переведённый голос",

@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " hat angerufen. Keine Antwort.",
   "SystemEntry_CallDeclined": " hat angerufen. Abgelehnt.",
   "SystemEntry_CallCanceled": " hat angerufen. Abgebrochen.",
+  "SystemEntry_CallBusy": " hat angerufen. Besetzt.",
   "SystemEntry_CallEnded": " hat angerufen.",
   "SystemEntry_HistoryWiped": " hat den Chatverlauf gelöscht.",
   "SystemEntry_HistoryWipedPeriod_Format": " hat den Chatverlauf der letzten {0} gelöscht.",
@@ -1874,6 +1875,9 @@
   "Call_Entry_NoAnswer": "Keine Antwort",
   "Call_Entry_Busy": "Besetzt",
   "Call_Entry_TapToCallBack": "Tippen Sie, um zurückzurufen",
+  "Call_Entry_DeclinedShort": "Abgelehnt",
+  "Call_Entry_CanceledShort": "Abgebrochen",
+  "Call_Entry_YouDeclined": "Von Ihnen abgelehnt",
 
   "LiveConversation_TranslatedVoice": "Übersetzte Stimme",
 

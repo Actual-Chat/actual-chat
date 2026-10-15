@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " zadzwonił(a). Brak odpowiedzi.",
   "SystemEntry_CallDeclined": " zadzwonił(a). Odrzucone.",
   "SystemEntry_CallCanceled": " zadzwonił(a). Anulowane.",
+  "SystemEntry_CallBusy": " zadzwonił(a). Zajęte.",
   "SystemEntry_CallEnded": " zadzwonił(a).",
   "SystemEntry_HistoryWiped": " wyczyścił(a) historię czatu.",
   "SystemEntry_HistoryWipedPeriod_Format": " wyczyścił(a) historię czatu z ostatnich {0}.",
@@ -1873,6 +1874,9 @@
   "Call_Entry_NoAnswer": "Brak odpowiedzi",
   "Call_Entry_Busy": "Zajęte",
   "Call_Entry_TapToCallBack": "Dotknij, aby oddzwonić",
+  "Call_Entry_DeclinedShort": "Odrzucone",
+  "Call_Entry_CanceledShort": "Anulowane",
+  "Call_Entry_YouDeclined": "Odrzuciłeś",
 
   "LiveConversation_TranslatedVoice": "Przetłumaczony głos",
 
