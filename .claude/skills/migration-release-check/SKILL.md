@@ -2,8 +2,8 @@
 name: migration-release-check
 description: |
   Review the EF Core migrations a release (or a PR) carries against how Voxt is
-  deployed: a rolling update, with the migration pod and the app pods starting
-  at the same time. Use before cutting a release branch, before merging a PR
+  deployed: a rolling update whose new pods wait for the migration Job, while old
+  pods keep serving. Use before cutting a release branch, before merging a PR
   that adds a migration, or when the user says "check the migrations", "are the
   migrations safe to ship", "expand/contract check", "/migration-release-check".
   Reports risks; never blocks, edits or runs anything on prod.
@@ -29,10 +29,21 @@ Background and the incident behind it: `tmp/s/2026-10-15-expand-contract-migrati
 
 Deploy facts the checks rely on — verify them on every run (step 5), they drift:
 
-- The **migration pod** (`actual-chat-migration`, `Dockerfile` target `migrations-app`)
-  and the **app pods** are created together; the Deployment does not wait for the
-  migration. App pods also migrate on start (`DbInitializer.MigrateDb`), serialized
-  by EF's migration lock, so whichever takes the lock first runs the migration.
+- Migrations run in a **Job** `actual-chat-migration-<version>` (`Dockerfile` target
+  `migrations-app`, Flux HelmRelease `actual-chat-migration`, `backoffLimit: 1`).
+  The app pods start with it, but their init container `actual-chat-migration-wait`
+  (`k8s-wait-for job actual-chat-migration-`, `NAME_SUFFIX=<version>`) holds them
+  until the Job **completes** — so a Job that reports success lets them in whatever
+  happened inside (dev 2026-10-14: the Chat migration failed, the entrypoint went
+  on, the last bundle's exit code made the Job Complete). With
+  `SKIP_WAIT_NOT_FOUND=true` the wait is skipped if the Job does not exist yet, and
+  Flux does not order the HelmRelease before the Deployment.
+- App pods also migrate on start (`DbInitializer.MigrateDb`), serialized by EF's
+  migration lock: whatever the Job left pending, or all of it when the wait was
+  skipped, runs on the app path.
+- A failed Job keeps the new pods in `Init` and the rollout stops. With
+  `maxUnavailable: 1` one old pod is already gone by then, so the app runs at
+  reduced capacity until someone steps in.
 - **Each migration is its own transaction** (EF Core 10+; EF 9 ran all pending
   migrations in one, EF 10 reverted that — "Breaking changes in EF Core 9",
   dotnet/efcore#34439; checked on EF 11 rc.1 on 2026-10-15: one `Began`/`Committed`
@@ -42,14 +53,14 @@ Deploy facts the checks rely on — verify them on every run (step 5), they drif
   exhaust the DB's pool. Locks of consecutive migrations do **not** add up —
   queries get through between them. A failed migration rolls back **alone**: the
   ones before it stay applied, so the database is left between two releases.
-  (The `NOTE(AY)` in `DbInitializer.MigrateDb` says otherwise; it dates from EF 9.)
 - Command timeouts: **30 s** on the app path (`DbInitializer.CommandTimeout`),
   **300 s** in the migration pod (`Command Timeout=300` in `entrypoint.sh`).
 - The rollout mixes versions. **Old code meets the new schema** from the moment
   the migration commits until the last old pod is gone (dev 2026-10-15: ~2 min,
   324 `column ... does not exist`). **New code meets the old schema** if the
-  migration is slow or failed and the app starts anyway (#5331; dev 2026-10-14:
-  3 h of `null value in column "duration"`).
+  migration failed and the app started anyway (dev 2026-10-14: 3 h of
+  `null value in column "duration"`). Since #5331 a failed migration fails the Job
+  (`set -e`) and stops an app pod (exit code 2) — step 5 checks that this still holds.
 - EF selects every mapped column in every query, so a column the old model maps
   breaks *all* reads of that entity once it is dropped — not just the code that
   used the property.
@@ -221,7 +232,8 @@ Report each as OK / not OK; these decide whether a slow or failed migration
 stays a stopped deploy or becomes an outage.
 
 ```bash
-gh issue view 5331 --repo Actual-Chat/actual-chat --json state --jq .state   # server starts after a failed migration
+# an initializer failure must reach Program (#5331): WorkerBase.Run() swallows exceptions
+grep -nE ':\s*WorkerBase|WorkerBase\[\]' src/dotnet/App.Server/AppHost.cs src/dotnet/App.Server/Initializers/*.cs  # expect nothing
 grep -n 'set -e' Dockerfile                                                   # entrypoint stops on the first failure
 grep -n 'CommandTimeout' src/dotnet/Db/DbInitializer.cs
 # every entrypoint call has a bundle and vice versa; any output line is a mismatch
@@ -229,6 +241,18 @@ comm -3 \
   <(grep -oE 'bundle (--context [A-Za-z]+ )?--output \./artifacts/[A-Za-z.]+' Dockerfile | sed 's|.*artifacts/|./|' | sort) \
   <(grep -oE '^\./[A-Za-z.]+\.Migration\.exe' Dockerfile | sort)
 ```
+
+The wait for the Job lives in the cluster, not in this repo. Read it from the dev
+cluster when `kubectl` is set up (read-only; prod is not reachable from here, so
+say the prod setup is assumed to match):
+
+```bash
+kubectl get deploy actual-chat-app -o jsonpath='{.spec.strategy}{"\n"}{range .spec.template.spec.initContainers[*]}{.name} {.args} {.env}{"\n"}{end}' \
+  | grep -E 'rollingUpdate|migration-wait'
+```
+
+Expect `actual-chat-migration-wait` with `job actual-chat-migration-`; report
+`SKIP_WAIT_NOT_FOUND` and `maxUnavailable` as they are.
 
 ### 6. Report
 
