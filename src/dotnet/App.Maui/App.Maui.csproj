@@ -400,6 +400,7 @@
     <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
     <AndroidLinkTool>r8</AndroidLinkTool>
     <AndroidR8ObfuscationMode>private-members</AndroidR8ObfuscationMode>
+    <MSBuildWarningsAsErrors>$(MSBuildWarningsAsErrors);XA4304</MSBuildWarningsAsErrors>
     <!-- Trimming -->
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>

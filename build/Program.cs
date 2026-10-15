@@ -423,6 +423,7 @@ internal static class Program
                     "-maxCpuCount",
                     "-nodeReuse:false",
                     "-f net11.0-android",
+                    "-r android-arm64",
                     @"/p:TargetFrameworks=\""net11.0-android;net11.0\""", // otherwise needs maui-ios etc
                     $"/p:AndroidSigningKeyPass={signingKeyPass} /p:AndroidSigningStorePass={signingStorePass}",
                     hasAndroidSdkDirectory ? $"/p:AndroidSdkDirectory={androidSdkDirectory}" : "",
