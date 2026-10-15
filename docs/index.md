@@ -109,7 +109,7 @@ features:
   verification, retry/disable rules, and the settings walkthrough.
 - [Integrations: notification history](./integrations/notifications-api.md) — the
   per-user log of addressed notifications, `INotifications.ListHistory`, the
-  `list_notifications` MCP tool, and cursor polling.
+  and the MCP tools that list, await and dismiss active notifications.
 - [Integrations: streaming writes](./integrations/streaming-writes.md) — opening a
   message and filling it in over time, the MCP start/append/finish tools and the
   offset contract, `IChats.StreamEntry`, and a worked LLM example.

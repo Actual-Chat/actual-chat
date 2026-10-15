@@ -26,7 +26,7 @@ driven by the iOS app-icon badge never updating while backgrounded.
 | `FirebaseMessagingClient` | `Notifications.Service/FirebaseMessagingClient.cs` (`IFirebaseMessagingClient`) | Sends FCM pushes; every push carries `aps.badge`; silent-push path for dismissals. |
 | `MentionReminderFlow` | `Notifications.Service/Flows/MentionReminderFlow.cs` | Re-reminder for unread mentions. |
 | Persistence | `Notifications.Service/Db/DbUserNotifications.cs` | One row per user (`Data` blob = committed `UserNotificationInfo`). No Redis. |
-| History | `Notifications.Service/Db/DbNotificationHistoryItem.cs`, `NotificationHistoryPruner.cs` | Append-only per-user log of addressed notifications (`NotificationHistory` table), fed by `UserNotifiedEvent`, read by `INotifications.ListHistory` and the `list_notifications` MCP tool, pruned after 30 days. See [integrations/notifications-api.md](./integrations/notifications-api.md). |
+| History | `Notifications.Service/Db/DbNotificationHistoryItem.cs`, `NotificationHistoryPruner.cs` | Append-only per-user log of addressed notifications (`NotificationHistory` table), fed by `UserNotifiedEvent`, read by `INotifications.ListHistory`, pruned after 30 days. See [integrations/notifications-api.md](./integrations/notifications-api.md). |
 
 Data model (`src/dotnet/Api/Notifications/`): `Notification` is a MessagePack
 `[Union]` (one concrete record per `NotificationKind` — Message, Reply,

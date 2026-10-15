@@ -1,17 +1,17 @@
 ---
 title: "Integrations: notification history"
-description: The per-user notification log, its read API and the MCP tool, for agents that poll instead of receiving web hooks.
+description: The per-user notification log, its read API and the MCP tools for active notifications.
 ---
 
 # Integrations: notification history
 
-An agent that talks to Voxt through the MCP server needs to know when it was
-addressed: mentioned, replied to, reacted to, pinged. The active notification
-set (`INotifications.ListActive`) cannot answer that — it is the converged set
-of banners on the user's devices, and a banner is gone the moment the chat is
-read on any device. The notification history is the log behind it. The in-app
-notifications panel's history section (the dimmed rows under each tab's divider)
-is backed by the same log.
+The active notification set (`INotifications.ListActive`) is the converged set of
+banners on the user's devices, and a banner is gone the moment the chat is read on
+any device. The notification history is the log behind it: it keeps what was
+addressed to the user - mentioned, replied to, reacted to, pinged - after the
+active set dropped it. The in-app notifications panel's history section (the dimmed
+rows under each tab's divider) is backed by the log. Agents use the active set
+through the [MCP tools](#mcp-tools) below.
 
 ## What is logged
 
@@ -81,43 +81,48 @@ Several reactions on the same entry coalesce into one notification, so they shar
 one `NotificationId` — the in-app panel hides all of them while any is still in
 the active set.
 
-## MCP tool: `list_notifications`
+## MCP tools
 
-| Parameter | Type | Default | Meaning |
-|---|---|---|---|
-| `kinds` | `string[]` | all | Any of the `kind` values above, case-insensitive; an unrecognized name, or a kind that exists but is never logged (`message`, `speechstarted`), is an error |
-| `afterSeq` | `long` | none | Cursor, see below |
-| `limit` | `int` | 64 | Capped at 256 |
-| `newestFirst` | `bool` | false | Newest first |
+The MCP server exposes the **active** set, not the history: an agent consumes
+notifications as they arrive and dismisses them. A mention disappears from the set
+once its chat is read, on any device. The history log stays behind
+`INotifications.ListHistory` for the in-app panel.
 
-Result:
+| Tool | Does |
+|---|---|
+| `list_notifications` | The active notifications and their `version`. Optional `chatId` or `placeId` limits the set; a contact is its peer chat, so pass the peer chat id. |
+| `wait_for_notifications` | Blocks until the set differs from `version`, then returns the new set. Same optional `chatId` / `placeId`. `timeoutSeconds` defaults to 30, capped at 55. |
+| `dismiss_notification` | Dismisses one notification by `id`. |
+| `dismiss_all_notifications` | Dismisses all of them. |
+
+Result of the first two:
 
 ```json
 {
   "items": [{
-    "seq": 1234, "kind": "mention", "at": 1758470400000,
+    "id": "…", "kind": "mention", "at": 1758470400000,
     "chatId": "…", "entryId": 42, "authorId": "…",
     "title": "Dima mentioned you in Review Requests", "text": "…",
     "message": { /* ExternalMessage, or null */ }
   }],
-  "nextAfterSeq": 1234
+  "version": "9f2c4a1b7e30d5a8"
 }
 ```
 
-`message` is the anchored message in the same `ExternalMessage` shape
-`list_messages` and the web hook `notification` event use, re-resolved through
-the caller's session at read time — a chat the caller has since left yields
-`null`, as does a removed entry.
+`message` is the anchored message in the same `ExternalMessage` shape `list_messages`
+and the web hook `notification` event use, re-resolved through the caller's session
+at read time - `null` for a chat the caller has left or a removed entry.
 
-**Polling.** Persist `nextAfterSeq` and pass it back as `afterSeq` on the next
-call: each call then returns only what is new. When a page comes back empty,
-`nextAfterSeq` is `null` — keep the cursor you already have rather than
-overwriting it with `null`, since an absent `afterSeq` restarts the walk from
-the beginning. Walk oldest-first for this; `newestFirst` is for "what happened
-lately", where `afterSeq` continues towards older rows. Very rarely a poll can
-miss a row written concurrently with it — a row becomes visible at commit,
-after its `seq` was assigned — so a client that must not miss anything re-reads
-a short window behind its cursor.
+`version` is a hash of the returned set (ids, versions, send times, titles and
+texts). Equal versions mean an equal set.
 
-Web hooks ([`web-hooks.md`](./web-hooks.md)) push the same events; the history
-is for agents that would rather poll.
+**Waiting.** Keep the `version` of the last set you processed and pass it to
+`wait_for_notifications`; the call returns when the set differs. On a timeout it returns
+the unchanged set and the same `version` - call again. The server holds no per-client
+state, so a broken connection is resumed by calling again with the saved `version`
+(an empty or stale one returns the current set at once). The wait runs on the
+compute method `INotifications.ListActive`, so it wakes on invalidation rather than polling.
+Changes outside the `chatId` / `placeId` scope wake it too, but leave the filtered version
+unchanged, so the call keeps waiting.
+
+Web hooks ([`web-hooks.md`](./web-hooks.md)) push the same events.
