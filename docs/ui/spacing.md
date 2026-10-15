@@ -101,7 +101,7 @@ The rules that fall out of this:
    }
    /* no footer → the body is last, so it owns the bottom inset */
    .modal-frame:not(:has(.dialog-footer)) .dialog-body {
-       padding-bottom: calc(1rem + var(--safe-area-bottom));
+       padding-bottom: calc(var(--modal-pad) + var(--safe-area-bottom));
    }
    ```
 
