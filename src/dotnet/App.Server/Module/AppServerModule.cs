@@ -426,6 +426,7 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             // gcloud exporter doesn't support some of metrics yet:
             // - https://github.com/open-telemetry/opentelemetry-collector-contrib/discussions/2948
             .AddProcessInstrumentation()
+            .AddRuntimeInstrumentation()
             .AddMeter(RpcInstruments.Meter.Name) // ActualLab.Rpc
             .AddMeter(CommanderInstruments.Meter.Name) // ActualLab.Commander
             .AddMeter(FusionInstruments.Meter.Name) // ActualLab.Fusion
