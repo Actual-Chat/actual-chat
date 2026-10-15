@@ -48,7 +48,9 @@
     }
     </Body>
     <Buttons>
-        <Button Class="btn-modal" Click="@(_ => Modal.Close())">@cancelText</Button>
+        @if (!ModalModel.MustHideCancel) {
+            <Button Class="btn-modal" Click="@(_ => Modal.Close())">@cancelText</Button>
+        }
         <Button Class="@btnCls" Click="OnConfirm">@btnText</Button>
         @* Stacked, the footer is column-reverse, so the alternative sits on top - it's the way out we recommend *@
         @if (hasAlt) {
@@ -75,6 +77,7 @@
         public string Title { get; init; } = "";
         public string ConfirmButtonText { get; init; } = "";
         public string CancelButtonText { get; init; } = "";
+        public bool MustHideCancel { get; init; }
         // Renders a third button - an escape from the choice rather than a second way to take it.
         // It stacks the footer, since three buttons don't fit a row. Requires AltButtonText too.
         public Action? Alt { get; init; }

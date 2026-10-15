@@ -24,7 +24,7 @@
     } else if (m.HasReachedPeerMessageLimit) {
         <div class="chat-footer readonly">
             <div class="c-content">
-                <span>@L.ChatFooter_WaitForContact</span>
+                <span class="c-wait-for-contact" @onclick="OnWaitForContact">@L.ChatFooter_WaitForContact</span>
                 @if (m.IsRecording) {
                     <RecorderToggle Chat="@chat" Compact="true"/>
                 }
@@ -102,6 +102,13 @@
 
     private void OnJoinPlace(Place place)
         => _ = ChatUI.JoinPlace(place.Id);
+
+    private Task OnWaitForContact()
+        => ModalUI.Show(new ConfirmModal.Model(false, L.ChatFooter_WaitForContactDetails, () => { }) {
+            Title = L.ChatFooter_WaitForContact,
+            ConfirmButtonText = L.Common_OK,
+            MustHideCancel = true,
+        });
 
     private Task OnUnblock() {
         if (Model?.PeerContactId is not { } contactId)
