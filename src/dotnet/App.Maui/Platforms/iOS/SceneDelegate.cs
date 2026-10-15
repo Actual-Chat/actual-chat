@@ -24,10 +24,12 @@ public sealed class SceneDelegate : MauiUISceneDelegate
                 rootView.BackgroundColor = backgroundColor;
         }
 
-        foreach (var userActivity in connectionOptions.UserActivities)
-            ContinueUserActivity(scene, userActivity);
-        if (connectionOptions.UrlContexts.Count > 0)
-            OpenUrl(scene, connectionOptions.UrlContexts);
+        // The Xcode 27 bindings hand out null here on a plain launch, not an empty set.
+        if (connectionOptions.UserActivities is { } userActivities)
+            foreach (var userActivity in userActivities)
+                ContinueUserActivity(scene, userActivity);
+        if (connectionOptions.UrlContexts is { Count: > 0 } urlContexts)
+            OpenUrl(scene, urlContexts);
     }
 
     public override bool ContinueUserActivity(UIScene scene, NSUserActivity userActivity)
