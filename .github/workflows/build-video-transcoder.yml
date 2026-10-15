@@ -10,8 +10,8 @@ permissions:
   id-token: write
 
 env:
-  # Bump when services/video-transcoder changes, then point the Cloud Run Job at the new tag
-  IMAGE_TAG: "1"
+  # Bump when services/video-transcoder changes, then point the Cloud Run service at the new tag
+  IMAGE_TAG: "2"
   IMAGE: us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/video-transcoder
 
 jobs:
