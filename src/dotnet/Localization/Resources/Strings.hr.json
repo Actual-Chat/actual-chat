@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " je nazvao. Nema odgovora.",
   "SystemEntry_CallDeclined": " je nazvao. Odbijeno.",
   "SystemEntry_CallCanceled": " je nazvao. Otkazano.",
+  "SystemEntry_CallBusy": " je nazvao. Zauzeto.",
   "SystemEntry_CallEnded": " je nazvao.",
   "SystemEntry_HistoryWiped": " je obrisao historiju chata.",
   "SystemEntry_HistoryWipedPeriod_Format": " je obrisao historiju chata za posljednjih {0}.",
@@ -1888,6 +1889,9 @@
   "Call_Entry_NoAnswer": "Nema odgovora",
   "Call_Entry_Busy": "Zauzeto",
   "Call_Entry_TapToCallBack": "Dodirnite za povratni poziv",
+  "Call_Entry_DeclinedShort": "Odbijeno",
+  "Call_Entry_CanceledShort": "Otkazano",
+  "Call_Entry_YouDeclined": "Odbili ste",
 
   "LiveConversation_TranslatedVoice": "Prevedeni glas",
 

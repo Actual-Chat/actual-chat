@@ -1,0 +1,94 @@
+@namespace ActualChat.UI.Blazor.App.Pages
+@using ActualChat.Chat
+@using ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Services
+
+@* Every call outcome rendered twice - once as the caller sees it, once as the callee - through the real
+   CallMessageView card and the real SystemEntryMarkupBuilder preview (the text shown in the chat list and
+   notifications). Entries are synthetic: no server, no call flow. *@
+<div class="call-sys-catalog flex-y gap-y-6">
+    @foreach (var outcome in _outcomes) {
+        <div class="flex-y gap-y-2">
+            <div class="text-title-1 text-01">@outcome.ToString()</div>
+            <div class="flex-x flex-wrap gap-4">
+                @foreach (var isCaller in _roles) {
+                    var entry = _entries[(outcome, isCaller)];
+                    <div class="flex-y gap-y-1 w-96">
+                        <div class="text-sm text-03">@(isCaller ? "You called" : "They called you")</div>
+                        <CallMessageView ChatContext="@_ctx" Entry="@entry"/>
+                        <div class="c-preview flex-y gap-y-0.5 px-2 pt-1 text-sm">
+                            <div class="flex-x gap-x-2">
+                                <span class="w-10 text-03">UI</span>
+                                <span class="text-02">
+                                    <CascadingValue Value="@entry" IsFixed="true">
+                                        <MarkupView Markup="@_uiPreviews[(outcome, isCaller)]"/>
+                                    </CascadingValue>
+                                </span>
+                            </div>
+                            <div class="flex-x gap-x-2">
+                                <span class="w-10 text-03">en</span>
+                                <span class="text-02">
+                                    <CascadingValue Value="@entry" IsFixed="true">
+                                        <MarkupView Markup="@_enPreviews[(outcome, isCaller)]"/>
+                                    </CascadingValue>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private static readonly CallOutcome[] _outcomes = [
+        CallOutcome.Ended,
+        CallOutcome.NoAnswer,
+        CallOutcome.Declined,
+        CallOutcome.Canceled,
+        CallOutcome.Busy,
+        CallOutcome.None,
+    ];
+    private static readonly bool[] _roles = [true, false];
+
+    private ChatContext _ctx = null!;
+    private readonly Dictionary<(CallOutcome, bool), CallEntry> _entries = new();
+    private readonly Dictionary<(CallOutcome, bool), Markup> _uiPreviews = new();
+    private readonly Dictionary<(CallOutcome, bool), Markup> _enPreviews = new();
+
+    [Inject] private AppUIHub Hub { get; init; } = null!;
+    [Inject] private SystemEntryMarkupBuilder SysBuilder { get; init; } = null!;
+
+    protected override void OnInitialized() {
+        var user1 = UserId.New();
+        var user2 = UserId.New();
+        ChatId chatId = PeerChatId.New(user1, user2);
+        var ownAuthorId = AuthorId.New(chatId, 1L);
+        var peerAuthorId = AuthorId.New(chatId, 2L);
+        var rules = new AuthorRules(chatId,
+            new AuthorFull(user1, ownAuthorId),
+            null,
+            ChatPermissions.Read | ChatPermissions.Write | ChatPermissions.WriteAudio);
+        var chat = new Chat(chatId) { Title = "Romeo Yellow", Rules = rules };
+        _ctx = new ChatContext(Hub, chat);
+
+        var now = Hub.Clocks.SystemClock.Now;
+        var localId = 1L;
+        foreach (var outcome in _outcomes)
+            foreach (var isCaller in _roles) {
+                var callerId = isCaller ? ownAuthorId : peerAuthorId;
+                var entry = new CallEntry(ChatEntryId.New(chatId, localId++)) {
+                    AuthorId = callerId,
+                    CallerId = callerId,
+                    CallerName = isCaller ? "Alex Green" : "Romeo Yellow",
+                    Outcome = outcome,
+                    BeginsAt = now,
+                    EndsAt = outcome == CallOutcome.Ended ? now + TimeSpan.FromSeconds(102) : null,
+                };
+                _entries[(outcome, isCaller)] = entry;
+                _uiPreviews[(outcome, isCaller)] = SysBuilder.Build(entry);
+                _enPreviews[(outcome, isCaller)] = SystemEntryMarkupBuilder.Default.Build(entry);
+            }
+    }
+}

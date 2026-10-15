@@ -21,19 +21,20 @@ public static class CallCardFormat
 
     public static (string Icon, string Title, string? Hint, bool IsCallBack) Get(
         CallOutcome outcome, bool isCaller, IStringLocalizer l)
-        // Three glyphs, drawn from the design: the arrow carries the direction (there is no separate
-        // direction mark in the card), and the cross is reserved for a call its own caller dropped.
+        // The title carries the direction - Outgoing for the caller, Incoming or Missed for the callee -
+        // and the hint says what became of the call; the view folds the time or the duration into it.
+        // The arrow glyph marks the direction, the cross a declined call.
         => outcome switch {
             CallOutcome.NoAnswer when isCaller =>
                 ("icon-call-arrow-out", l.Call_Entry_Outgoing, l.Call_Entry_NoAnswer, false),
             CallOutcome.NoAnswer =>
                 ("icon-call-arrow-in", l.Call_Entry_Missed, l.Call_Entry_TapToCallBack, true),
             CallOutcome.Declined when isCaller =>
-                ("icon-call-arrow-out", l.Call_Entry_Declined, null, false),
+                ("icon-call-cross", l.Call_Entry_Outgoing, l.Call_Entry_DeclinedShort, false),
             CallOutcome.Declined =>
-                ("icon-call-arrow-in", l.Call_Entry_Declined, null, false),
+                ("icon-call-cross", l.Call_Entry_Declined, l.Call_Entry_YouDeclined, false),
             CallOutcome.Canceled when isCaller =>
-                ("icon-call-cross", l.Call_Entry_Canceled, null, false),
+                ("icon-call-arrow-out", l.Call_Entry_Outgoing, l.Call_Entry_CanceledShort, false),
             CallOutcome.Canceled =>
                 ("icon-call-arrow-in", l.Call_Entry_Missed, l.Call_Entry_TapToCallBack, true),
             // The callee never saw this one ring - it reads to them exactly like a missed call.

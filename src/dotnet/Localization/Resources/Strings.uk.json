@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": ": дзвінок без відповіді.",
   "SystemEntry_CallDeclined": ": дзвінок відхилено.",
   "SystemEntry_CallCanceled": ": дзвінок скасовано.",
+  "SystemEntry_CallBusy": ": дзвінок, зайнято.",
   "SystemEntry_CallEnded": ": дзвінок.",
   "SystemEntry_HistoryWiped": ": всю історію чату видалено.",
   "SystemEntry_HistoryWipedPeriod_Format": ": видалено історію чату за останні {0}.",
@@ -1888,6 +1889,9 @@
   "Call_Entry_NoAnswer": "Немає відповіді",
   "Call_Entry_Busy": "Зайнято",
   "Call_Entry_TapToCallBack": "Натисніть, щоб передзвонити",
+  "Call_Entry_DeclinedShort": "Відхилено",
+  "Call_Entry_CanceledShort": "Скасовано",
+  "Call_Entry_YouDeclined": "Ви відхилили",
 
   "LiveConversation_TranslatedVoice": "Перекладений голос",
 

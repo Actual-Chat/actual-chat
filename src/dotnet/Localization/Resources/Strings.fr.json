@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " a appelé. Sans réponse.",
   "SystemEntry_CallDeclined": " a appelé. Refusé.",
   "SystemEntry_CallCanceled": " a appelé. Annulé.",
+  "SystemEntry_CallBusy": " a appelé. Occupé.",
   "SystemEntry_CallEnded": " a appelé.",
   "SystemEntry_HistoryWiped": " a effacé l’historique de la discussion.",
   "SystemEntry_HistoryWipedPeriod_Format": " a effacé l’historique de la discussion des {0} derniers.",
@@ -1888,6 +1889,9 @@
   "Call_Entry_NoAnswer": "Sans réponse",
   "Call_Entry_Busy": "Occupé",
   "Call_Entry_TapToCallBack": "Appuyez pour rappeler",
+  "Call_Entry_DeclinedShort": "Refusé",
+  "Call_Entry_CanceledShort": "Annulé",
+  "Call_Entry_YouDeclined": "Vous avez refusé",
 
   "LiveConversation_TranslatedVoice": "Voix traduite",
 

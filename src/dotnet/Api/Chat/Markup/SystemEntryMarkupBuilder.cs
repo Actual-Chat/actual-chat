@@ -62,6 +62,7 @@ public class SystemEntryMarkupBuilder
                 CallOutcome.NoAnswer => " called. No answer.",
                 CallOutcome.Declined => " called. Declined.",
                 CallOutcome.Canceled => " called. Canceled.",
+                CallOutcome.Busy => " called. Busy.",
                 _ => " called.",
             }));
     }

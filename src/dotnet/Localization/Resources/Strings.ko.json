@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": "님이 전화를 걸었습니다. 응답이 없습니다.",
   "SystemEntry_CallDeclined": "님이 전화를 걸었습니다. 거절되었습니다.",
   "SystemEntry_CallCanceled": "님이 전화를 걸었습니다. 취소되었습니다.",
+  "SystemEntry_CallBusy": "님이 전화를 걸었습니다. 통화 중이었습니다.",
   "SystemEntry_CallEnded": "님이 전화를 걸었습니다.",
   "SystemEntry_HistoryWiped": "님이 채팅 기록을 삭제했습니다.",
   "SystemEntry_HistoryWipedPeriod_Format": "님이 최근 {0}의 채팅 기록을 삭제했습니다.",
@@ -1888,6 +1889,9 @@
   "Call_Entry_NoAnswer": "응답 없음",
   "Call_Entry_Busy": "통화 중",
   "Call_Entry_TapToCallBack": "탭하여 다시 전화하기",
+  "Call_Entry_DeclinedShort": "거절됨",
+  "Call_Entry_CanceledShort": "취소됨",
+  "Call_Entry_YouDeclined": "거절함",
 
   "LiveConversation_TranslatedVoice": "번역 음성",
 

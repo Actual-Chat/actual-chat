@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": ": звонок без ответа.",
   "SystemEntry_CallDeclined": ": звонок отклонён.",
   "SystemEntry_CallCanceled": ": звонок отменён.",
+  "SystemEntry_CallBusy": ": звонок, занято.",
   "SystemEntry_CallEnded": ": звонок.",
   "SystemEntry_HistoryWiped": ": вся история чата удалена.",
   "SystemEntry_HistoryWipedPeriod_Format": ": удалена история чата за последние {0}.",
@@ -1888,6 +1889,9 @@
   "Call_Entry_NoAnswer": "Нет ответа",
   "Call_Entry_Busy": "Занято",
   "Call_Entry_TapToCallBack": "Нажмите, чтобы перезвонить",
+  "Call_Entry_DeclinedShort": "Отклонён",
+  "Call_Entry_CanceledShort": "Отменён",
+  "Call_Entry_YouDeclined": "Вы отклонили",
 
   "LiveConversation_TranslatedVoice": "Переведённый голос",
 

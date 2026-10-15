@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " ligou. Sem resposta.",
   "SystemEntry_CallDeclined": " ligou. Recusada.",
   "SystemEntry_CallCanceled": " ligou. Cancelada.",
+  "SystemEntry_CallBusy": " ligou. Ocupado.",
   "SystemEntry_CallEnded": " ligou.",
   "SystemEntry_HistoryWiped": " apagou o histórico do chat.",
   "SystemEntry_HistoryWipedPeriod_Format": " apagou o histórico do chat das últimas {0}.",
@@ -1888,6 +1889,9 @@
   "Call_Entry_NoAnswer": "Sem resposta",
   "Call_Entry_Busy": "Ocupado",
   "Call_Entry_TapToCallBack": "Toque para retornar a chamada",
+  "Call_Entry_DeclinedShort": "Recusada",
+  "Call_Entry_CanceledShort": "Cancelada",
+  "Call_Entry_YouDeclined": "Você recusou",
 
   "LiveConversation_TranslatedVoice": "Voz traduzida",
 

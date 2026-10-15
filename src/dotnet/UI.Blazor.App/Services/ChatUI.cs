@@ -3,6 +3,7 @@ using ActualChat.Kvas;
 using ActualChat.Localization;
 using ActualChat.Notifications;
 using ActualChat.Pooling;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Events;
 using ActualChat.UI.Blazor.Diagnostics;
 using ActualChat.UI.Blazor.Services;
@@ -202,6 +203,16 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             return ChatPreview.None;
         if (lastTextEntry.IsContentStreaming)
             return new ChatPreview { Text = Constants.Messages.RecordingSkeleton };
+
+        // A call reads as its card's title - "Missed call", "Outgoing call" - not the verbose caller
+        // mention the generic markup builder emits; the chat's own name already says who it's with.
+        if (lastTextEntry is CallEntry callEntry) {
+            var callChat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            var isCaller = callChat?.Rules.Author?.Id == callEntry.CallerId;
+            var (_, title, hint, isCallBack) = CallCardFormat.Get(callEntry.Outcome, isCaller, L);
+            var text = !isCallBack && hint is not null ? $"{title} · {hint}" : title;
+            return new ChatPreview { Text = text };
+        }
 
         if (lastTextEntry.IsThreadStart) {
             var threadChatId = lastTextEntry.ChatId.CreateThreadId(lastTextEntry.LocalId);

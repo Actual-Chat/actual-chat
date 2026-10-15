@@ -45,6 +45,7 @@ public sealed class LocalizedSystemEntryMarkupBuilder(IServiceProvider services)
                 CallOutcome.NoAnswer => L.SystemEntry_CallNoAnswer,
                 CallOutcome.Declined => L.SystemEntry_CallDeclined,
                 CallOutcome.Canceled => L.SystemEntry_CallCanceled,
+                CallOutcome.Busy => L.SystemEntry_CallBusy,
                 _ => L.SystemEntry_CallEnded,
             }));
     }

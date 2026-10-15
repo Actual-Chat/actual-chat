@@ -468,6 +468,7 @@ public static class LocalizedStringsLocalizerExt
         public string SystemEntry_CallNoAnswer => l["SystemEntry_CallNoAnswer"].Value;
         public string SystemEntry_CallDeclined => l["SystemEntry_CallDeclined"].Value;
         public string SystemEntry_CallCanceled => l["SystemEntry_CallCanceled"].Value;
+        public string SystemEntry_CallBusy => l["SystemEntry_CallBusy"].Value;
         public string SystemEntry_CallEnded => l["SystemEntry_CallEnded"].Value;
         public string SystemEntry_HistoryWiped => l["SystemEntry_HistoryWiped"].Value;
         public string SystemEntry_HistoryWipedPeriod_Format(object arg0)
@@ -1969,6 +1970,9 @@ public static class LocalizedStringsLocalizerExt
         public string Call_Entry_NoAnswer => l["Call_Entry_NoAnswer"].Value;
         public string Call_Entry_Busy => l["Call_Entry_Busy"].Value;
         public string Call_Entry_TapToCallBack => l["Call_Entry_TapToCallBack"].Value;
+        public string Call_Entry_DeclinedShort => l["Call_Entry_DeclinedShort"].Value;
+        public string Call_Entry_CanceledShort => l["Call_Entry_CanceledShort"].Value;
+        public string Call_Entry_YouDeclined => l["Call_Entry_YouDeclined"].Value;
         public string Call_Join => l["Call_Join"].Value;
         public string Call_JoinMuted => l["Call_JoinMuted"].Value;
         public string Call_ShareScreen => l["Call_ShareScreen"].Value;

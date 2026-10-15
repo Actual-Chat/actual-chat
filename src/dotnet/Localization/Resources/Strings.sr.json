@@ -431,6 +431,7 @@
   "SystemEntry_CallNoAnswer": " је назвао. Нема одговора.",
   "SystemEntry_CallDeclined": " је назвао. Одбијено.",
   "SystemEntry_CallCanceled": " је назвао. Отказано.",
+  "SystemEntry_CallBusy": " је назвао. Заузето.",
   "SystemEntry_CallEnded": " је назвао.",
   "SystemEntry_HistoryWiped": " је обрисао хисторију чета.",
   "SystemEntry_HistoryWipedPeriod_Format": " је обрисао хисторију чета за посљедњих {0}.",
@@ -1888,6 +1889,9 @@
   "Call_Entry_NoAnswer": "Нема одговора",
   "Call_Entry_Busy": "Заузето",
   "Call_Entry_TapToCallBack": "Додирните за повратни позив",
+  "Call_Entry_DeclinedShort": "Одбијено",
+  "Call_Entry_CanceledShort": "Отказано",
+  "Call_Entry_YouDeclined": "Одбили сте",
 
   "LiveConversation_TranslatedVoice": "Преведени глас",
 
