@@ -111,8 +111,8 @@ public abstract class DbInitializer<
             return;
         }
 
-        // NOTE(AY): We apply migrations one-by-one here, coz EF9+ applies all of them in a single transaction,
-        // and such a behavior doesn't allow WhenEarlierMigrationsCompleted to detect the completion properly.
+        // NOTE(AY): We apply migrations one-by-one here, coz EF9 applied all of them in a single transaction,
+        // which hid each one's completion from WhenEarlierMigrationsCompleted. EF10+ commits each on its own again.
         Log.LogInformation("MigrateDb '{DatabaseName}': applying {Count} migration(s):", dbName, migrations.Count);
         foreach (var migration in migrations) {
             Log.LogInformation("- MigrateDb '{DatabaseName}': applying '{Migration}'", dbName, migration);
