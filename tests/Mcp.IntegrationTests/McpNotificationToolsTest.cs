@@ -1,5 +1,3 @@
-using ActualChat.Notifications;
-using ActualChat.Queues;
 using ActualChat.Testing.Host;
 
 namespace ActualChat.Mcp.IntegrationTests;
@@ -17,7 +15,7 @@ public class McpNotificationToolsTest(McpCollection.AppHostFixture fixture, ITes
         var alice = await Tester.SignInAsUniqueAlice();
         var aliceKey = await IssueApiKey("alice");
         await Tester.SignInAsUniqueBob();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Notification history");
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Active notifications");
         var aliceAuthor = await Tester.InviteToChat(chatId, alice.Id);
         await using var client = await CreateClientWithRawKey(aliceKey);
 
@@ -25,70 +23,112 @@ public class McpNotificationToolsTest(McpCollection.AppHostFixture fixture, ITes
         var entry = await Tester.CreateTextEntry(chatId, $"hi @a:{aliceAuthor.Id}");
 
         // assert
-        McpListNotificationsResult mentions = null!;
+        McpListNotificationsResult active = null!;
         await TestWait.WhenPolled(async () => {
-            mentions = await CallTool<McpListNotificationsResult>(client, "list_notifications",
-                new { kinds = new[] { "mention" } });
-            mentions.Items.Should().ContainSingle();
+            active = await CallTool<McpListNotificationsResult>(client, "list_notifications");
+            active.Items.Should().Contain(x => x.Kind == "mention");
         }, WaitTimeout);
-        var item = mentions.Items.Single();
-        item.Kind.Should().Be("mention");
+        var item = active.Items.Single(x => x.Kind == "mention");
         item.ChatId.Should().Be(chatId.Value);
         item.EntryId.Should().Be(entry.LocalId);
         item.AuthorId.Should().Be(entry.AuthorId.Value);
         item.Message.Should().NotBeNull("the anchored message is re-resolved through the caller's session");
         item.Message!.Text.Should().Contain("hi");
-        mentions.NextAfterSeq.Should().Be(item.Seq);
+        active.Version.Should().NotBeNullOrEmpty();
 
-        var reactions = await CallTool<McpListNotificationsResult>(client, "list_notifications",
-            new { kinds = new[] { "reaction" } });
-        reactions.Items.Should().BeEmpty("the kind filter excludes the mention");
-        reactions.NextAfterSeq.Should().BeNull();
-
-        var nothingNew = await CallTool<McpListNotificationsResult>(client, "list_notifications",
-            new { afterSeq = mentions.NextAfterSeq });
-        nothingNew.Items.Should().BeEmpty("the cursor skips what the caller has already seen");
+        var (otherChatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Another chat");
+        var otherChat = await CallTool<McpListNotificationsResult>(client, "list_notifications",
+            new { chatId = otherChatId.Value });
+        otherChat.Items.Should().BeEmpty("the chat filter excludes the mention");
     }
 
     [Fact]
-    public async Task UnknownKindShouldBeAnError()
+    public async Task WaitShouldReturnWhenANotificationArrives()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var aliceKey = await IssueApiKey("alice");
+        await Tester.SignInAsUniqueBob();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Wait for notifications");
+        var aliceAuthor = await Tester.InviteToChat(chatId, alice.Id);
+        await using var client = await CreateClientWithRawKey(aliceKey);
+        var before = await CallTool<McpListNotificationsResult>(client, "list_notifications");
+
+        // act
+        var waitTask = CallTool<McpListNotificationsResult>(client, "wait_for_notifications",
+            new { version = before.Version, timeoutSeconds = 30 });
+        await Tester.CreateTextEntry(chatId, $"ping @a:{aliceAuthor.Id}");
+        var after = await waitTask.WaitAsync(WaitTimeout);
+
+        // assert
+        after.Version.Should().NotBe(before.Version);
+        after.Items.Should().Contain(x => x.Kind == "mention");
+    }
+
+    [Fact]
+    public async Task WaitShouldReturnTheSameVersionOnTimeout()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var client = await CreateClient();
+        var before = await CallTool<McpListNotificationsResult>(client, "list_notifications");
+
+        // act
+        var after = await CallTool<McpListNotificationsResult>(client, "wait_for_notifications",
+            new { version = before.Version, timeoutSeconds = 1 });
+
+        // assert
+        after.Version.Should().Be(before.Version);
+    }
+
+    [Fact]
+    public async Task DismissShouldRemoveNotifications()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var aliceKey = await IssueApiKey("alice");
+        await Tester.SignInAsUniqueBob();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Dismiss notifications");
+        var aliceAuthor = await Tester.InviteToChat(chatId, alice.Id);
+        await using var client = await CreateClientWithRawKey(aliceKey);
+        await Tester.CreateTextEntry(chatId, $"one @a:{aliceAuthor.Id}");
+        await Tester.CreateTextEntry(chatId, $"two @a:{aliceAuthor.Id}");
+        McpListNotificationsResult active = null!;
+        await TestWait.WhenPolled(async () => {
+            active = await CallTool<McpListNotificationsResult>(client, "list_notifications");
+            active.Items.Count(x => x.Kind == "mention").Should().Be(2);
+        }, WaitTimeout);
+
+        // act
+        await CallTool(client, "dismiss_notification", new { id = active.Items.First(x => x.Kind == "mention").Id });
+
+        // assert
+        await TestWait.WhenPolled(async () => {
+            var afterOne = await CallTool<McpListNotificationsResult>(client, "list_notifications");
+            afterOne.Items.Count(x => x.Kind == "mention").Should().Be(1);
+        }, WaitTimeout);
+
+        // act
+        await CallTool(client, "dismiss_all_notifications");
+
+        // assert
+        await TestWait.WhenPolled(async () => {
+            var afterAll = await CallTool<McpListNotificationsResult>(client, "list_notifications");
+            afterAll.Items.Should().BeEmpty();
+        }, WaitTimeout);
+    }
+
+    [Fact]
+    public async Task InvalidChatIdShouldBeAnError()
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
         var client = await CreateClient();
 
         // act
-        var error = await CallToolExpectingError(client, "list_notifications", new { kinds = new[] { "bogus" } });
-        var unlogged = await CallToolExpectingError(client, "list_notifications",
-            new { kinds = new[] { "message" } });
+        var error = await CallToolExpectingError(client, "list_notifications", new { chatId = "!!!" });
 
         // assert
-        error.Should().Contain("bogus");
-        unlogged.Should().Contain("message", "a kind that exists but is never logged is rejected by name");
-    }
-
-    [Fact]
-    public async Task MessageWithoutAccessShouldBeNull()
-    {
-        // arrange - a mention anchored at a private chat the caller is not a member of yields no message body
-        var alice = await Tester.SignInAsUniqueAlice();
-        var aliceKey = await IssueApiKey("alice");
-        await Tester.SignInAsUniqueBob();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Not Alice's chat");
-        var entry = await Tester.CreateTextEntry(chatId, "private");
-        var mention = MentionNotification.New(alice.Id, entry.Id, entry.AuthorId) with {
-            SentAt = Clocks.SystemClock.Now, Title = "Chat", Text = "@you",
-        };
-        await Queues.Enqueue(new UserNotifiedEvent(mention));
-        await using var client = await CreateClientWithRawKey(aliceKey);
-
-        // act & assert
-        await TestWait.WhenPolled(async () => {
-            var result = await CallTool<McpListNotificationsResult>(client, "list_notifications", new { });
-            var item = result.Items.Should().ContainSingle().Subject;
-            item.Text.Should().Be("@you");
-            item.EntryId.Should().Be(entry.LocalId);
-            item.Message.Should().BeNull("the caller cannot read the chat the row anchors at");
-        }, WaitTimeout);
+        error.Should().Contain("chatId");
     }
 }

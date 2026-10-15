@@ -25,7 +25,7 @@ public class McpToolSchemaTest(McpCollection.AppHostFixture fixture, ITestOutput
         "get_me", "list_avatars", "create_avatar", "update_avatar", "set_default_avatar",
         "list_conversations", "get_conversation",
         "search_messages", "search_contacts",
-        "list_notifications",
+        "list_notifications", "wait_for_notifications", "dismiss_notification", "dismiss_all_notifications",
         "get_database_schema", "run_sql_query",
     ];
 

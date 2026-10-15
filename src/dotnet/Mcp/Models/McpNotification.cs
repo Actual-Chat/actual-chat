@@ -3,7 +3,7 @@ using ActualChat.External;
 namespace ActualChat.Mcp;
 
 public sealed record McpNotification(
-    long Seq,
+    string Id,
     string Kind,
     long At,
     string? ChatId,
@@ -13,4 +13,4 @@ public sealed record McpNotification(
     string Text,
     ExternalMessage? Message);
 
-public sealed record McpListNotificationsResult(McpNotification[] Items, long? NextAfterSeq);
+public sealed record McpListNotificationsResult(McpNotification[] Items, string Version);
