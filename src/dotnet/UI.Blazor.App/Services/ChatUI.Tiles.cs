@@ -111,6 +111,11 @@ public partial class ChatUI
     private const int LoadLimitUnit = 20;
     // Mirrors VirtualList.ExpandMultiplier = 2, so the load zone is 1 viewport + 2 x 2 viewports.
     private const double VirtualListLoadZoneSize = 5;
+    // A range tile is one fixed span, so a tail made of collapsed conversations can hold only a few rows.
+    // The build walks to the previous tile until the loaded ones hold enough rows - a bit above the
+    // largest InitialLoadLimit / 2 - and a prefetch that stops short leaves that walk uncached.
+    private const int PrefetchMinRowCount = 80;
+    private const int PrefetchMaxPreviousRangeTiles = 4;
     // VirtualListStatistics.DefaultItemSize (48) is tuned for uniform lists; measured chat rows average
     // ~82px. This sits deliberately below that: under-estimating row height over-fetches a little, while
     // over-estimating it would under-fill the load zone and cost the follow-up query we're avoiding.
@@ -258,9 +263,7 @@ public partial class ChatUI
                 .Where(r => r.Start >= 0)
                 .ToList();
             var cidTiles = GetCidTiles(loadZone);
-            var metaTask = cidTiles
-                .Select(t => Chats.GetChatRangeTile(Session, chatId, t.Range.Start, cancellationToken))
-                .Collect(ApiConstants.Concurrency.High, cancellationToken);
+            var metaTask = PrefetchRangeTiles(chatId, cidTiles, cancellationToken);
             var conversationTilesTask = cidTiles
                 .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
                 .Collect(ApiConstants.Concurrency.High, cancellationToken);
@@ -1624,6 +1627,37 @@ public partial class ChatUI
             .GetCoveringTiles(lidRange.Expand(LoadLimit))
             .Where(t => t.Start >= 0)
             .ToList();
+
+    internal static async Task<List<ChatRangeTile>> AddPreviousRangeTiles(
+        IEnumerable<ChatRangeTile> rangeTiles,
+        Func<long, Task<ChatRangeTile>> getRangeTile)
+    {
+        var result = rangeTiles.OrderBy(m => m.LidRange.Start).ToList();
+        var rowCount = result.Sum(m => m.MinCount);
+        for (var i = 0; i < PrefetchMaxPreviousRangeTiles && rowCount < PrefetchMinRowCount; i++) {
+            if (result.Count == 0 || result[0].PreviousLidTileStart is not { } previousStart)
+                break;
+
+            var previous = await getRangeTile(previousStart).ConfigureAwait(false);
+            result.Insert(0, previous);
+            rowCount += previous.MinCount;
+        }
+        return result;
+    }
+
+    private async Task<List<ChatRangeTile>> PrefetchRangeTiles(
+        ChatId chatId,
+        List<Tile<long>> cidTiles,
+        CancellationToken cancellationToken)
+    {
+        var rangeTiles = await cidTiles
+            .Select(t => Chats.GetChatRangeTile(Session, chatId, t.Range.Start, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+        return await AddPreviousRangeTiles(rangeTiles,
+                start => Chats.GetChatRangeTile(Session, chatId, start, cancellationToken))
+            .ConfigureAwait(false);
+    }
 
     private Task<ChatTile[]> PrefetchLoadZone(
         ChatId chatId,
