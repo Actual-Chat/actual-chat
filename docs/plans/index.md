@@ -13,6 +13,17 @@ candidate tasks. A plan is removed from here once its work ships.
 
 Recently added, larger efforts — in progress or next up.
 
+### Place and chat invites
+
+[Place and chat invites](./place-invites.md) — inviting someone outside your
+contacts into a private place doesn't work: "Share" copies a plain link a
+non-member can't use, and a join link to a private place chat is refused. One
+path for everyone who follows a link: a public target joins at once, a private
+one queues a join request that the owner or a moderator approves on the People
+or Members tab; an owner's invite link stays pre-approved. Every join and leave
+goes into a server-side membership journal, shown filtered to owners and
+moderators.
+
 ### Object maintenance and identifier foundations
 
 [Object maintenance](./object-maintenance.md) — shared content IDs and 32-bit shard
