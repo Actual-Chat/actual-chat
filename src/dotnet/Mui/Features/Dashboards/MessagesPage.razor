@@ -12,13 +12,13 @@
 
 @code {
     private const string UserEntries =
-        "from chat_entries where kind = 0 and not is_system_entry and not is_imported"
+        "from chat_entries where not is_system_entry and not is_imported"
         + " and begins_at >= {from} and begins_at < {to}";
 
     private static readonly IReadOnlyList<MuiMetric> Metrics = [
         new("text_messages", "Text messages",
             "select count(*) " + UserEntries + " and coalesce(audio_id, '') = ''",
-            Description: "Messages typed by users: chat_entries rows of kind 0 (text) that are neither system nor "
+            Description: "Messages typed by users: chat_entries rows that are neither system nor "
                 + "imported and have no audio_id, with begins_at in the window."),
         new("voice_messages", "Voice messages",
             "select count(*) " + UserEntries + " and coalesce(audio_id, '') <> ''",
@@ -26,10 +26,10 @@
                 + "Speech is split into entries by pauses, so this is the number of spoken phrases, "
                 + "not of recordings."),
         new("voice_minutes", "Voice minutes",
-            "select round((coalesce(sum(duration), 0) / 60)::numeric, 1) " + UserEntries
-            + " and coalesce(audio_id, '') <> ''",
-            Description: "Total speech time of voice messages, in minutes: the sum of chat_entries.duration "
-                + "(seconds, the length of the entry's audio) over the voice messages of the window."),
+            "select round((coalesce(sum(extract(epoch from ends_at - begins_at)), 0) / 60)::numeric, 1) "
+            + UserEntries + " and coalesce(audio_id, '') <> ''",
+            Description: "Total speech time of voice messages, in minutes: the sum of ends_at - begins_at "
+                + "over the voice messages of the window. Entries without ends_at count as zero."),
         new("active_authors", "Active authors",
             "select count(distinct author_id) " + UserEntries,
             Description: "Distinct author_id among text and voice messages of the window. An author is a "
