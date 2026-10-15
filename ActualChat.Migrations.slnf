@@ -4,6 +4,7 @@
     "projects": [
       "src\\dotnet\\Chat.Service.Migration\\Chat.Service.Migration.csproj",
       "src\\dotnet\\Contacts.Service.Migration\\Contacts.Service.Migration.csproj",
+      "src\\dotnet\\Flows.Service.Migration\\Flows.Service.Migration.csproj",
       "src\\dotnet\\Invite.Service.Migration\\Invite.Service.Migration.csproj",
       "src\\dotnet\\Media.Service.Migration\\Media.Service.Migration.csproj",
       "src\\dotnet\\MLSearch.Service.Migration\\MLSearch.Service.Migration.csproj",
