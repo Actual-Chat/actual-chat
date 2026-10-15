@@ -63,7 +63,8 @@ public static class LoremIpsum
         ("bash", ["echo hello", "ls -la", "git status"]),
     ];
 
-    // Every block kind once, in a random order, then random ones: whatever the length, the text keeps mixing
+    // Every block kind once, in a random order, then the random ones in shuffled rounds of one of each: whatever
+    // the length, the text keeps mixing - independent picks would now and then leave a long run of a few kinds
     private static readonly Func<string>[] GuaranteedBlocks = [
         () => HeaderBlock(1), () => HeaderBlock(2), () => HeaderBlock(3),
         AllInlineBlock, ListBlock, () => QuoteBlock(true), TableBlock, CodeBlock, DividerBlock,
@@ -85,7 +86,8 @@ public static class LoremIpsum
         foreach (var block in GuaranteedBlocks.OrderBy(_ => Random.Shared.Next()))
             sb.Append(block.Invoke()).Append("\n\n");
         while (sb.Length < length)
-            sb.Append(Pick(RandomBlocks).Invoke()).Append("\n\n");
+            foreach (var block in RandomBlocks.OrderBy(_ => Random.Shared.Next()))
+                sb.Append(block.Invoke()).Append("\n\n");
 
         var text = sb.ToString(0, length);
         return mustIncludeReset ? InsertReset(text) : text;
