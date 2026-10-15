@@ -132,12 +132,14 @@ public partial class LiveSessionsBackend
                 // changes: RegisteredAt is refreshed by every heartbeat, so it can't double as JoinedAt.
                 var now = Clocks.SystemClock.Now;
                 var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
+                // A placeholder's join is the server's guess at the answer: the client joins only now.
                 var info = existing is null
                     ? new ParticipationInfo(kind, now, JoinedAt: now)
                     : existing with {
                         Kind = kind,
                         RegisteredAt = now,
-                        JoinedAt = existing.JoinedAt != default ? existing.JoinedAt : now,
+                        JoinedAt = existing.JoinedAt != default && !existing.IsPlaceholder ? existing.JoinedAt : now,
+                        IsPlaceholder = false,
                     };
                 await _redisParticipants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
                 // The participants hash refreshes its own TTL on write, but the session state key only
@@ -390,13 +392,13 @@ public partial class LiveSessionsBackend
         InvalidateState(chatId);
     }
 
-    private async Task EnsureParticipant(ChatId chatId, AuthorId authorId)
+    private async Task EnsureParticipant(ChatId chatId, AuthorId authorId, bool isPlaceholder = false)
     {
         var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
         // Preserve the client's real kind — a trailing utterance must not flip a now-listening author back to Record.
         var info = existing is null
-            ? new ParticipationInfo(ParticipationKind.Record, now, JoinedAt: now)
+            ? new ParticipationInfo(ParticipationKind.Record, now, JoinedAt: now, IsPlaceholder: isPlaceholder)
             : existing with { RegisteredAt = now };
         await _redisParticipants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
         InvalidateListParticipants(chatId);

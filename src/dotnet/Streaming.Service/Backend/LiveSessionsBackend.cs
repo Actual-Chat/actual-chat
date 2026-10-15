@@ -211,7 +211,7 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
                 continue;
 
             var m = For(authorId);
-            var isRecorder = IsFreshRecorder(info, cutoff);
+            var isRecorder = !info.IsPlaceholder && IsFreshRecorder(info, cutoff);
             var isListener = info.Kind == ParticipationKind.AudioListen && info.RegisteredAt >= cutoff;
             byAuthor[authorId] = m with {
                 IsMicOpen = m.IsMicOpen || isRecorder,
@@ -481,5 +481,8 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
         [property: DataMember(Order = 1), Key(1)] Moment RegisteredAt,
         [property: DataMember(Order = 2), Key(2)] bool MicMuted = false,
         [property: DataMember(Order = 3), Key(3)] Moment JoinedAt = default,
-        [property: DataMember(Order = 4), Key(4)] Moment? HandRaisedAt = null);
+        [property: DataMember(Order = 4), Key(4)] Moment? HandRaisedAt = null,
+        // Registered by the server for a call's caller at the answer, before their client joins: fresh for the
+        // call's checks, but no presence to show until the client's own SetParticipation replaces it.
+        [property: DataMember(Order = 5), Key(5)] bool IsPlaceholder = false);
 }
