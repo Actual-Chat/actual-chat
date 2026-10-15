@@ -645,7 +645,8 @@ public class TranslationUITest(TranslationAppHostFixture fixture, ITestOutputHel
     private async Task<ChatId> CreateChat(CancellationToken cancellationToken)
     {
         var (chatId, _) = await BobTester.CreateChat(true, cancellationToken: cancellationToken);
-        await AliceTester.JoinChat(chatId, Symbol.Empty, false);
+        await AppHost.Services.WaitForOpeningEntry(chatId);
+        await AliceTester.EnsureJoinedAndSettled(chatId);
         return chatId;
     }
 
