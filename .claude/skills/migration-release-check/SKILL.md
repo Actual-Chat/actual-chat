@@ -33,9 +33,16 @@ Deploy facts the checks rely on — verify them on every run (step 5), they drif
   and the **app pods** are created together; the Deployment does not wait for the
   migration. App pods also migrate on start (`DbInitializer.MigrateDb`), serialized
   by EF's migration lock, so whichever takes the lock first runs the migration.
-- A migration is **one transaction**. `DropColumn`, `AlterColumn`, `CreateIndex`,
-  `DropIndex` hold `ACCESS EXCLUSIVE` on the table until it commits: every read
-  and write of that table waits, and queued waiters can exhaust the DB's pool.
+- **Each migration is its own transaction** (EF Core 10+; EF 9 ran all pending
+  migrations in one, EF 10 reverted that — "Breaking changes in EF Core 9",
+  dotnet/efcore#34439; checked on EF 11 rc.1 on 2026-10-15: one `Began`/`Committed`
+  pair per migration). Within a migration, `DropColumn`, `AlterColumn`,
+  `CreateIndex`, `DropIndex` hold `ACCESS EXCLUSIVE` on the table until it
+  commits: every read and write of that table waits, and queued waiters can
+  exhaust the DB's pool. Locks of consecutive migrations do **not** add up —
+  queries get through between them. A failed migration rolls back **alone**: the
+  ones before it stay applied, so the database is left between two releases.
+  (The `NOTE(AY)` in `DbInitializer.MigrateDb` says otherwise; it dates from EF 9.)
 - Command timeouts: **30 s** on the app path (`DbInitializer.CommandTimeout`),
   **300 s** in the migration pod (`Command Timeout=300` in `entrypoint.sh`).
 - The rollout mixes versions. **Old code meets the new schema** from the moment
@@ -97,6 +104,29 @@ git show origin/dev:<file> | awk '/override void Up/,/override void Down/' \
 Then read `Up()` itself for every migration that has anything beyond
 `CreateTable`, nullable `AddColumn` or `CreateIndex` on a new table.
 
+Look across the migrations too, not only inside each: an index or column
+**created by one migration and dropped by a later one in the same range** is
+built under a lock on prod for nothing (v2.22: `Add_ChatCleanup` builds
+`ix_chat_entries_chat_id_kind_is_removed_removed_at` on `chat_entries`,
+`RemoveUnusedChatEntryColumns` drops it). Dev already ran both, so the fix is
+usually just to count the extra lock time — but say it.
+
+Candidates — a name that appears in `Up()` of more than one migration of the
+same service:
+
+```bash
+for f in <the migrations>; do
+  git show origin/dev:$f | awk '/override void Up/,/override void Down/' \
+    | grep -oE '^\s*name: "[^"]+"' | grep -oE '"[^"]+"' | sort -u \
+    | sed "s|^|$(echo $f | cut -d/ -f3) |; s|\$| $(basename $f .cs)|"
+done | awk '{k=$1" "$2; n[k]++; m[k]=m[k]" "$3} END{for(k in n) if(n[k]>1) print k":"m[k]}'
+```
+
+Expect noise: `Users.Service.Migration` holds two contexts (users, oauth), so
+every framework column shows up twice there, and the same column name can live
+in two tables (`pace_data`). Open each candidate and keep only a real
+create-then-drop of the same object.
+
 ### 3. Classify every operation
 
 | Operation | Old code on new schema | New code on old schema | Lock |
@@ -129,6 +159,14 @@ finds no use; otherwise **departs**, and the report names the window it opens.
 Framework-owned tables (`_operations`, `_events`, `__EFMigrationsHistory`) count
 too: old and new framework versions both write them on every command.
 
+When the migration comes with a **framework upgrade** (Fusion, EF — the same
+migration name in every service, e.g. `Fusion15_DeferredInvalidation`), the
+schema is the smaller question. Ask first whether pods on the old and the new
+framework can run side by side at all (RPC protocol, operation log format,
+invalidation). If they cannot, no expand/contract makes the rollout safe — only
+a rollout that never mixes versions does. The report states this as an open
+question for whoever made the upgrade; it does not guess the answer.
+
 ### 4. Data and size
 
 For every table touched by a lock-holding operation or a `Sql(...)`:
@@ -159,9 +197,18 @@ and without a lock: `CREATE UNIQUE INDEX CONCURRENTLY tmp_measure ... ;` then
 Dev migration timing, when dev applied it:
 
 ```bash
-gcloud logging read 'resource.labels.container_name="actual-chat-migration" AND textPayload:"<MigrationName>"' \
-  --project=actual-chat-app-dev --freshness=30d --format='value(timestamp,textPayload)' --order=asc | head
+timeout 120 gcloud logging read 'resource.labels.container_name="actual-chat-migration" AND textPayload:"<MigrationName>"' \
+  --project=actual-chat-app-dev --freshness=30d --format='value(timestamp,resource.labels.pod_name,textPayload)' --order=asc | head
 ```
+
+Keep the container filter: without it the query scans every pod's log for 30
+days and does not finish in two minutes. Several names can go into one query
+with `OR`.
+
+**A migration that never shows up here was applied by an app pod**, not by the
+migration pod — that is the case for any database whose bundle the image does
+not build (step 5). On prod it then runs under the app's 30 s command timeout;
+say so next to that migration.
 
 That gives the start. For the end, read the same pod's log from that timestamp
 (`resource.labels.pod_name="<pod>" AND timestamp>="<start>"`, add
