@@ -22,7 +22,8 @@ path for everyone who follows a link: a public target joins at once, a private
 one queues a join request that the owner or a moderator approves on the People
 or Members tab; an owner's invite link stays pre-approved. Every join and leave
 goes into a server-side membership journal, shown filtered to owners and
-moderators.
+moderators. Stage 1 is broken into tasks in its
+[implementation plan](./place-invites-stage1.md).
 
 ### Object maintenance and identifier foundations
 

@@ -220,6 +220,8 @@ ones before it.
 Stage 2: the journal view for owners and moderators, and the revoke-and-exclude
 dialog.
 
+Stage 1 tasks: [implementation plan](./place-invites-stage1.md).
+
 ## Reuse
 
 - `DbInvite`, `InvitesBackend`, `ChatInviteSettings` grants: the invite link.
