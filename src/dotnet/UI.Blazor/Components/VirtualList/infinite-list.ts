@@ -121,7 +121,9 @@ const PositionGuardOverscrollQuietMs = 500;
 // A viewport with no content on it is legal while a query can still fill it - that is how reading
 // further back starts - so the blank is a fault only once this many checks have gone by without one.
 const OffContentChecks = 3;
-const DriftWarnThresholdPx = 8;
+// The DOM running ahead of the model by this much puts the model's end out of a pin's reach: the
+// scroll limit stops where the model ends, EdgeEpsilon short of where the content does.
+const DriftWarnThresholdPx = EdgeEpsilon;
 const ContentOverflowThresholdPx = 2;
 const DefaultItemHeight = 48;
 
@@ -2470,6 +2472,16 @@ export class InfiniteList extends VirtualList {
         if (base < 0)
             return;
 
+        // A height the model has not taken, or has taken but not laid out, is a relayout in flight, not
+        // a drift: an item that just grew by its grouping padding moves everything below it until then.
+        for (let i = 0; i < this.items.length; i++) {
+            const item = this.items[i];
+            const modelHeight = Math.max(0, item.height) + this.rowGap;
+            if (Math.abs(item.ref.getBoundingClientRect().height - item.height) > 0.5
+                || Math.abs(this.offsets[i + 1] - this.offsets[i] - modelHeight) > 0.5)
+                return;
+        }
+
         const baseTop = this.items[base].ref.getBoundingClientRect().top;
         let worstKey = '';
         let worstDrift = 0;
@@ -2486,7 +2498,7 @@ export class InfiniteList extends VirtualList {
             }
         }
         this.checkContentOverflow(reason);
-        if (Math.abs(worstDrift) <= DriftWarnThresholdPx)
+        if (Math.abs(worstDrift) < DriftWarnThresholdPx)
             return;
 
         warnLog?.log(
