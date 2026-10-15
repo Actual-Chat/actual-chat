@@ -115,6 +115,7 @@ RUN dotnet build ActualChat.Migrations.slnf --no-restore -nodeReuse:false
 RUN mkdir -p /src/artifacts \
  && ./ef-migrations.cmd Chat.Service bundle --output ./artifacts/Chat.Service.Migration.exe \
  && ./ef-migrations.cmd Contacts.Service bundle --output ./artifacts/Contacts.Service.Migration.exe \
+ && ./ef-migrations.cmd Flows.Service bundle --output ./artifacts/Flows.Service.Migration.exe \
  && ./ef-migrations.cmd Invite.Service bundle --output ./artifacts/Invite.Service.Migration.exe \
  && ./ef-migrations.cmd Media.Service bundle --output ./artifacts/Media.Service.Migration.exe \
  && ./ef-migrations.cmd MLSearch.Service bundle --output ./artifacts/MLSearch.Service.Migration.exe \
@@ -127,6 +128,9 @@ FROM runtime AS migrations-app
 COPY --from=migrations-build /src/artifacts/*.Migration.exe /migrations/
 COPY <<"EOF" /migrations/entrypoint.sh
 #!/bin/bash
+# The first failed migration must fail the pod, not be hidden by the exit code of the last bundle
+set -e
+
 ./Chat.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}chat;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
 
 ./Contacts.Service.Migration.exe --connection "Host=$HOST;Database=ac_${INSTANCE}contacts;Port=$PORT;User Id=$USER;Password=$PASSWORD;Enlist=false;Minimum Pool Size=1;Maximum Pool Size=100;Connection Idle Lifetime=30;Max Auto Prepare=8;Include Error Detail=True;Command Timeout=300"
