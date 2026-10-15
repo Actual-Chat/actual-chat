@@ -438,7 +438,8 @@ public sealed class AppServerModule(IServiceProvider moduleServices)
             .AddMeter(AppUIInstruments.Meter.Name)
             .AddMeter(MLSearchInstruments.Meter.Name)
             .AddMeter(StreamingInstruments.Meter.Name)
-            .AddOtlpExporter(cfg => {
+            .AddOtlpExporter((cfg, readerOptions) => {
+                readerOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds = 10_000;
                 cfg.ExportProcessorType = ExportProcessorType.Batch;
                 cfg.BatchExportProcessorOptions = new BatchExportActivityProcessorOptions {
                     ExporterTimeoutMilliseconds = 10_000,
