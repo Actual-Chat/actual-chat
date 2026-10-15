@@ -382,8 +382,9 @@ its DOM moves there - and back out when the slot goes.
   down; the one exception is a ring that ends before the slot ever held it, whose flags
   `EndRing` clears itself, since there is no release to do it.
 
-`ConfirmRing` is telemetry only. The server stores it on the invite (`CallInvite.Ack`) and
-changes nothing else - the arbitration it used to feed now happens before the ring is sent.
+`ConfirmRing` arbitrates nothing - that now happens before the ring is sent. The server stores
+it on the invite (`CallInvite.Ack`), where it feeds the ring-delivery metrics and the caller's
+"Ringing…" (see [What the screens show](#what-the-screens-show)).
 
 **Ringtone.** On Android it is the native `IncomingCallRinger`, reached through
 `AndroidIncomingCallsBridge`, playing the system default ringtone. When no audio is live, the

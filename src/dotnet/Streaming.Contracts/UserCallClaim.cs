@@ -32,6 +32,9 @@ public sealed partial record UserCallClaim
     public CallId CallId { get; init; } = null!;
     [DataMember(Order = 10), Key(10)]
     public CallOutcome Outcome { get; init; }
+    // Never stored: like Phase, it is read off the call each time the claim is.
+    [DataMember(Order = 11), Key(11)]
+    public bool IsPeerRinging { get; init; }
 
     public UserCall ToUserCall()
         => new() {
@@ -42,5 +45,6 @@ public sealed partial record UserCallClaim
             HasVideo = HasVideo,
             CallId = CallId,
             Outcome = Outcome,
+            IsPeerRinging = IsPeerRinging,
         };
 }
