@@ -36,7 +36,7 @@ public sealed partial record Chat(
     [DataMember, Key(9)] public bool AllowAnonymousAuthors { get; init; }
     [DataMember, Key(10)] public MediaId? MediaId { get; init; }
     [DataMember, Key(13)] public Symbol SystemTag { get; init; }
-    [DataMember, Key(14)] public bool IsArchived { get; init; }
+    [DataMember, Key(14)] public bool IsFrozen { get; init; }
     [DataMember, Key(15)] public string Description { get; init; } = "";
     [DataMember, Key(16)] public AliasId? AliasId { get; init; }
     [DataMember, Key(17)] public bool? IsSummarized { get; init; }
@@ -91,7 +91,7 @@ public sealed partial record ChatDiff : RecordDiff
     [DataMember] public MediaId? MediaId { get; init; }
     [DataMember] public Symbol? SystemTag { get; init; }
     [DataMember] public PlaceId? PlaceId { get; init; }
-    [DataMember] public bool? IsArchived { get; init; }
+    [DataMember] public bool? IsFrozen { get; init; }
     [DataMember] public string? Description { get; init; }
     [DataMember] public AliasId? AliasId { get; init; }
     [DataMember] public Option<bool?> IsSummarized { get; init; }

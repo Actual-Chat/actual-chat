@@ -488,20 +488,33 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     public Task MarkAsUnread(ChatId chatId)
         => SetMarkedUnread(chatId, true);
 
-    // Chat: leave, archive, delete
+    // Chat: leave, freeze, delete
 
     public void LeaveChat(Chat.Chat chat)
         => _ = LeaveChatInternal(chat);
 
-    public void ArchiveChat(Chat.Chat chat)
+    public void FreezeChat(Chat.Chat chat)
     {
-        var warning = L.Chat_ArchiveWarning_Format(chat.Title);
+        var warning = L.Chat_FreezeWarning_Format(chat.Title);
         _ = ModalUI.Show(new ConfirmModal.Model(true,
             warning,
-            () => _ = ArchiveChatInternal(chat.Id)) {
-            Title = L.Chat_ArchiveTitle,
-            ConfirmButtonText = L.Chat_Archive
+            () => _ = FreezeChatInternal(chat.Id)) {
+            Title = L.Chat_FreezeTitle,
+            ConfirmButtonText = L.Chat_Freeze
         });
+    }
+
+    public async Task UnfreezeChat(ChatId chatId)
+    {
+        var unfreezeCommand = new Chats_Change {
+            Session = Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff {
+                IsFrozen = false
+            }),
+        };
+        await UICommander.Run(unfreezeCommand).ConfigureAwait(true);
     }
 
     public void DeleteChat(Chat.Chat chat)
@@ -1130,7 +1143,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // A chat without an Owner can never be managed again, so the last one either hands it over or deletes it.
         var authorIds = await Authors.ListAuthorIds(Session, chat.Id, default).ConfigureAwait(true);
         var hasOtherMembers = authorIds.Any(c => c != authorId);
-        // An archived chat keeps Owner but loses Invite and EditMembers, so the way out isn't always open
+        // A frozen chat keeps Owner but loses Invite and EditMembers, so the way out isn't always open
         var altButtonText = "";
         Action? alt = null;
         if (hasOtherMembers && EditMembersUI.CanEditMembers(chat)) {
@@ -1152,7 +1165,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 true);
         }
         // Both last-owner questions tell the user to hand the chat over, so without that button they'd
-        // promise what this modal can't do - an archived chat has deleting as its only way out.
+        // promise what this modal can't do - a frozen chat has deleting as its only way out.
         var question = alt == null
             ? L.LeaveConfirm_DeleteChatForAllQuestion
             : hasOtherMembers
@@ -1320,17 +1333,17 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             NavbarUI.SelectGroup(NavbarGroupIds.Chats, true);
     }
 
-    private async Task ArchiveChatInternal(ChatId chatId)
+    private async Task FreezeChatInternal(ChatId chatId)
     {
-        var archiveCommand = new Chats_Change {
+        var freezeCommand = new Chats_Change {
             Session = Session,
             ChatId = chatId,
             ExpectedVersion = null,
             Change = Change.Update(new ChatDiff {
-                IsArchived = true
+                IsFrozen = true
             }),
         };
-        await UICommander.Call(archiveCommand).ConfigureAwait(true);
+        await UICommander.Call(freezeCommand).ConfigureAwait(true);
     }
 
     private async Task NavigateToVisibleChat(PlaceId? preferredPlaceId, ChatId leftChatId)

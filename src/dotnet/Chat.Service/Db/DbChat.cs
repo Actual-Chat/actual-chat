@@ -30,7 +30,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     // Permissions & Rules
     public bool IsPublic { get; set; }
-    public bool IsArchived { get; set; }
+    public bool IsFrozen { get; set; }
     public bool AllowGuestAuthors { get; set; }
     public bool AllowAnonymousAuthors { get; set; }
     public string? SystemTag { get; set; }
@@ -63,7 +63,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
                 ? null
                 : UserId.Parse(TemplatedForUserId),
             IsPublic = IsPublic,
-            IsArchived = IsArchived,
+            IsFrozen = IsFrozen,
             AllowGuestAuthors = AllowGuestAuthors,
             AllowAnonymousAuthors = AllowAnonymousAuthors,
             SystemTag = SystemTag.IsNullOrEmpty()
@@ -92,7 +92,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         TemplateId = model.TemplateId?.Value;
         TemplatedForUserId = model.TemplatedForUserId?.Value;
         IsPublic = model.IsPublic;
-        IsArchived = model.IsArchived;
+        IsFrozen = model.IsFrozen;
         AllowGuestAuthors = model.AllowGuestAuthors;
         AllowAnonymousAuthors = model.AllowAnonymousAuthors;
         SystemTag = model.SystemTag.IsEmpty

@@ -2095,10 +2095,12 @@
   "Pin_MessagePinned": "メッセージを固定しました",
   "Pin_MessageUnpinned": "メッセージの固定を解除しました",
 
-  // Archiving a chat.
-  "Chat_ArchiveTitle": "Lưu trữ cuộc trò chuyện",
-  "Chat_Archive": "Архивировать",
-  "Chat_ArchiveWarning_Format": "Anda akan mengarsipkan obrolan “{0}”. Tidak ada yang bisa mengaksesnya kecuali pemilik, yang tetap bisa membukanya lewat tautan langsung.",
+  // Freezing a chat: it stays readable for owners, but nobody can write to it or join it.
+  // Chat_Unfreeze* is the chat settings entry that lifts it.
+  "Chat_FreezeTitle": "Đóng băng cuộc trò chuyện",
+  "Chat_Freeze": "Заморозити",
+  "Chat_FreezeWarning_Format": "Anda akan membekukan obrolan “{0}”. Tidak ada yang bisa mengaksesnya kecuali pemilik, yang tetap bisa membukanya lewat tautan langsung.",
+  "Chat_UnfreezeTitle": "Sohbetin dondurulmasını kaldırın",
 
   // The chat type picker in the new-chat modal and in chat settings; each *Hint is the grey
   // line under its option, and the *Thread variants are the same three options for a thread.

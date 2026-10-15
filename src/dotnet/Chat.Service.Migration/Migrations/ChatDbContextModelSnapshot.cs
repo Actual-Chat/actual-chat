@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261014091148_RemoveUnusedChatEntryColumns";
+    public override string LastMigrationId => "20261015090936_RenameChatIsArchivedToIsFrozen";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -181,9 +181,9 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("text")
                     .HasColumnName("description");
 
-                b.Property<bool>("IsArchived")
+                b.Property<bool>("IsFrozen")
                     .HasColumnType("boolean")
-                    .HasColumnName("is_archived");
+                    .HasColumnName("is_frozen");
 
                 b.Property<bool>("IsPlaceRootChat")
                     .HasColumnType("boolean")

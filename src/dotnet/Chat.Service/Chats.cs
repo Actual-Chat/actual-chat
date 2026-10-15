@@ -454,7 +454,7 @@ public partial class Chats(IServiceProvider services) : IChats
                 || chatDiff.TemplateId.HasValue
                 || chatDiff.TemplatedForUserId.HasValue
                 || chatDiff.Kind.HasValue
-                || chatDiff.IsArchived.HasValue
+                || chatDiff.IsFrozen.HasValue
                 || chatDiff.MediaId is not null
                 || chatDiff.SystemTag.HasValue
                 || chatDiff.AliasId is not null
@@ -490,7 +490,7 @@ public partial class Chats(IServiceProvider services) : IChats
             chatDiff.Description.RequireNull("Description");
             chatDiff.MediaId.RequireNull("MediaId");
             chatDiff.AliasId.RequireNull("AliasId");
-            chatDiff.IsArchived.HasValue.RequireFalse("IsArchived");
+            chatDiff.IsFrozen.HasValue.RequireFalse("IsFrozen");
             chatDiff.IsPublic.HasValue.RequireFalse("IsPublic");
             chatDiff.IsTemplate.HasValue.RequireFalse("IsTemplate");
             chatDiff.TemplateId.HasValue.RequireFalse("TemplateId");
@@ -1345,16 +1345,16 @@ public partial class Chats(IServiceProvider services) : IChats
         var publishContactsCmd = new ContactsBackend_PublishCopiedChat(newChatId);
         await Commander.Call(publishContactsCmd, true, cancellationToken).ConfigureAwait(false);
 
-        if (sourceChat is { IsArchived: false }) {
-            var archiveChatCmd = new Chats_Change {
+        if (sourceChat is { IsFrozen: false }) {
+            var freezeChatCmd = new Chats_Change {
                 Session = session,
                 ChatId = sourceChat.Id,
                 ExpectedVersion = null,
                 Change = Change.Update(new ChatDiff {
-                    IsArchived = true,
+                    IsFrozen = true,
                 }),
             };
-            await Commander.Call(archiveChatCmd, true, cancellationToken).ConfigureAwait(false);
+            await Commander.Call(freezeChatCmd, true, cancellationToken).ConfigureAwait(false);
         }
 
         if (chatCopyState != null && !chatCopyState.IsPublished) {

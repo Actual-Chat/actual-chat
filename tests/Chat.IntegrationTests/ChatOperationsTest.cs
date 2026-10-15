@@ -730,7 +730,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
             ChatId = chatId,
             ExpectedVersion = null,
             Change = Change.Update(new ChatDiff {
-                IsArchived = true
+                IsFrozen = true
             }),
         };
         await commander.Call(archiveChatCommand);
@@ -741,7 +741,7 @@ public class ChatOperationsTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await TestWait.When(async ct => {
             chat = await chats.Get(session, chatId, ct);
             chat.Should().NotBeNull();
-            chat!.IsArchived.Should().BeTrue();
+            chat!.IsFrozen.Should().BeTrue();
             chat.Rules.CanRead().Should().BeTrue();
             chat.Rules.CanWrite().Should().BeFalse();
         });

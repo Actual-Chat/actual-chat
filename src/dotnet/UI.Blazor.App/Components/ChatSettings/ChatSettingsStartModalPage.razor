@@ -111,23 +111,29 @@
             }
 
             <ChatImportSettings ChatId="@ChatId" Started="@(() => Context.Close())"/>
-
-            @if (m is { IsOwner: true, Chat: not null } && !_isPlaceWelcomeChat) {
-                <TileItem Class="item-archive-chat item-danger" Click="@(() => OnArchiveChatClick(m.Chat))">
-                    <Icon><i class="icon-history"></i></Icon>
-                    <Content>@L.Chat_ArchiveTitle</Content>
-                </TileItem>
-
-                <TileItem Class="item-danger" Click="@(() => OnDeleteChatClick(m.Chat))">
-                    <Icon><i class="icon-trash02"></i></Icon>
-                    <Content>@L.LeaveConfirm_DeleteChatTitle</Content>
-                </TileItem>
-            }
         }
         else if (m.CanRemoveThread) {
             <TileItem Class="item-danger" Click="@(() => OnDeleteThreadClick(m.Chat))">
                 <Icon><i class="icon-trash02"></i></Icon>
                 <Content>@L.LeaveConfirm_DeleteThreadTitle</Content>
+            </TileItem>
+        }
+        @if (m is { IsOwner: true, Chat: not null } && !_isPlaceWelcomeChat) {
+            @if (m.Chat.IsFrozen) {
+                <TileItem Click="@(() => OnUnfreezeChatClick(m.Chat))">
+                    <Icon><i class="icon-history"></i></Icon>
+                    <Content>@L.Chat_UnfreezeTitle</Content>
+                </TileItem>
+            } else {
+                <TileItem Class="item-freeze-chat item-danger" Click="@(() => OnFreezeChatClick(m.Chat))">
+                    <Icon><i class="icon-history"></i></Icon>
+                    <Content>@L.Chat_FreezeTitle</Content>
+                </TileItem>
+            }
+
+            <TileItem Class="item-danger" Click="@(() => OnDeleteChatClick(m.Chat))">
+                <Icon><i class="icon-trash02"></i></Icon>
+                <Content>@L.LeaveConfirm_DeleteChatTitle</Content>
             </TileItem>
         }
     </div>
@@ -306,8 +312,11 @@
     private void OnDeleteThreadClick(Chat chat)
         => ChatUI.DeleteThread(chat);
 
-    private void OnArchiveChatClick(Chat chat)
-        => ChatUI.ArchiveChat(chat);
+    private void OnUnfreezeChatClick(Chat chat)
+        => _ = ChatUI.UnfreezeChat(chat.Id);
+
+    private void OnFreezeChatClick(Chat chat)
+        => ChatUI.FreezeChat(chat);
 
     private async Task OnSubmit() {
         if (_formRef == null)

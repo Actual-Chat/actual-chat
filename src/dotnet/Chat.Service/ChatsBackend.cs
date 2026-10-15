@@ -207,7 +207,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (chat == null)
                 return AuthorRules.None(chatId);
 
-            if (chat.IsArchived) {
+            if (chat.IsFrozen) {
                 if (!chatRules.IsOwner())
                     return AuthorRules.None(chatId);
 
@@ -216,7 +216,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     | ChatPermissions.Invite
                     | ChatPermissions.EditMembers;
                 return chatRules with {
-                    Permissions = chatRules.Permissions & ~permissionsToExclude // Do not allow to write/join on archived chat
+                    Permissions = chatRules.Permissions & ~permissionsToExclude // Do not allow to write/join on frozen chat
                 };
             }
         }
@@ -862,8 +862,8 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             else if (chatKind != ChatKind.Peer)
                 throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.Kind.");
 
-            if (update.IsArchived.HasValue)
-                throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.IsArchived.");
+            if (update.IsFrozen.HasValue)
+                throw new ArgumentOutOfRangeException(nameof(command), "Invalid Change.IsFrozen.");
 
             if (update.IsSummarized.IsNone || !update.IsSummarized.Value.HasValue) {
                 var unsupportedSystemChats = new HashSet<Symbol> {

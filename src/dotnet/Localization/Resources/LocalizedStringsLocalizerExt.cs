@@ -1861,9 +1861,10 @@ public static class LocalizedStringsLocalizerExt
         public string Replay_ConfirmText => l["Replay_ConfirmText"].Value;
         public string Pin_MessagePinned => l["Pin_MessagePinned"].Value;
         public string Pin_MessageUnpinned => l["Pin_MessageUnpinned"].Value;
-        public string Chat_ArchiveTitle => l["Chat_ArchiveTitle"].Value;
-        public string Chat_Archive => l["Chat_Archive"].Value;
-        public string Chat_ArchiveWarning_Format(object arg0) => l["Chat_ArchiveWarning_Format", arg0].Value;
+        public string Chat_FreezeTitle => l["Chat_FreezeTitle"].Value;
+        public string Chat_Freeze => l["Chat_Freeze"].Value;
+        public string Chat_FreezeWarning_Format(object arg0) => l["Chat_FreezeWarning_Format", arg0].Value;
+        public string Chat_UnfreezeTitle => l["Chat_UnfreezeTitle"].Value;
         public string Chat_PublicChat => l["Chat_PublicChat"].Value;
         public string Chat_PlaceChat => l["Chat_PlaceChat"].Value;
         public string Chat_PublicChatHint => l["Chat_PublicChatHint"].Value;

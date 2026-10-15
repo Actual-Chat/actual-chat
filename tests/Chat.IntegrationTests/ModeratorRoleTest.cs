@@ -251,7 +251,7 @@ public class ModeratorRoleTest(ChatCollection.AppHostFixture fixture, ITestOutpu
             Session = Moderator.Session,
             ChatId = chatId,
             ExpectedVersion = null,
-            Change = Change.Update(new ChatDiff { IsArchived = true }),
+            Change = Change.Update(new ChatDiff { IsFrozen = true }),
         });
         var summarize = () => Moderator.Commander.Call(new Chats_Change {
             Session = Moderator.Session,
