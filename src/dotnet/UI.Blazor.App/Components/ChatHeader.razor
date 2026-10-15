@@ -4,6 +4,7 @@
     var chat = Chat;
     var isThread = chat?.Id.IsThread() ?? false;
     var showBackBtn = isThread || ScreenSize.IsNarrow();
+    var centerCls = chat?.Kind == ChatKind.Peer ? "chat-header-center peer-chat" : "chat-header-center";
 }
 
 @if (m.HasSelection) {
@@ -19,7 +20,7 @@
             <i class="icon-arrow-left"></i>
         </HeaderButton>
     }
-    <div class="chat-header-center" role="button" tabindex="0" @onclick="@OnToggleRightPanelClick">
+    <div class="@centerCls" role="button" tabindex="0" @onclick="@OnToggleRightPanelClick">
         @if (chat is not null) {
             <ChatIcon Chat="@chat"/>
             <div class="chat-header-title">
