@@ -2574,6 +2574,10 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             ? "after restart: session=<null>"
             : $"after restart: session=v={restarted.OpenConversation!.StartLid}, isQuiet={restarted.IsQuiet}, "
                 + $"authors={restarted.AuthorIds.Count}, end={restarted.OpenConversation!.SummaryEndLid}");
+        // Without the forced close the summary flow, woken as the session goes quiet, still races the restart
+        var isReopened = restarted?.OpenConversation?.Id == live.OpenConversation!.Id;
+        if (closesBeforeRestart)
+            isReopened.Should().BeFalse();
         var spoken = new List<ChatEntry>();
         for (var i = 0; i < 3; i++)
             spoken.Add(await CreateSpokenEntry(chat.Id, $"second-{i}"));
@@ -2591,7 +2595,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             block.Should().Match<LiveBlock>(b => b.IsOpen);
             // The reopened conversation still lists the viewer; the one that started after the close is a new
             // conversation the viewer was never in
-            block.HasAttended.Should().Be(!closesBeforeRestart,
+            block.HasAttended.Should().Be(isReopened,
                 "the server remembers who joined a conversation, and only that one");
             var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
             LeafEntryLids(items).Should().Contain(typed.Select(e => e.Id.LocalId));
@@ -2708,8 +2712,15 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
 
         // act
         await liveBackend.UpdateLiveConversationSummary(chat.Id, new LiveConversationSummary {
-            Title = "Growing", Description = "d", Summary = "s", SummaryEndLid = last.LocalId + 1, SummarizedEntryCount = 10,
+            Title = "Growing", Description = "d", Summary = "s",
+            SummaryEndLid = last.LocalId + 1, SummarizedEntryCount = 10,
         }, CancellationToken.None);
+        // The update reaches the tile's dependencies through the consolidated computeds, i.e. asynchronously:
+        // the tile is checked only once they show it, or a stray dependency could invalidate it after the check
+        await TestWait.When(async ct => {
+            var conversation = await liveBackend.GetLiveConversation(live.OpenConversation!.Id, ct);
+            conversation!.Title.Should().Be("Growing");
+        }, TimeSpan.FromSeconds(10));
 
         // assert
         cached.Value.ConversationRanges.Single(r => r.Start == live.OpenConversation!.StartLid)
