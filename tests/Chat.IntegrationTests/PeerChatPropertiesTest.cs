@@ -92,7 +92,7 @@ public class PeerChatPropertiesTest(ChatCollection.AppHostFixture fixture, ITest
                 Session = aliceTester.Session,
                 ChatId = peerChatId,
                 ExpectedVersion = null,
-                Change = Change.Update(new ChatDiff { IsArchived = true }),
+                Change = Change.Update(new ChatDiff { IsFrozen = true }),
             },
             cancellationToken);
         var remove = () => aliceTester.Commander.Call(

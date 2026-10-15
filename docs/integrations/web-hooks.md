@@ -45,7 +45,7 @@ is the flag name in dotted lower case, exactly as sent on the wire:
 | `reaction.added` / `reaction.removed` | A reaction is added or removed | chat, place, personal |
 | `member.joined` / `member.left` | An author joins or leaves the chat | chat, place, personal |
 | `chat.updated` | Title, description, picture, or public/private visibility changes | chat, place, personal |
-| `chat.created` / `chat.archived` | A chat of the place is created or archived | place |
+| `chat.created` / `chat.archived` | A chat of the place is created or frozen (the event keeps its `chat.archived` name; the chat-wide "archive" is now called freezing) | place |
 | `place.updated` | The place's title, description, or picture changes | place |
 | `place.member.joined` / `place.member.left` | Someone joins or leaves the place | place |
 | `notification` | Anything that would otherwise have pushed to your devices (a personal hook needs "My notifications" subscribed) | personal |

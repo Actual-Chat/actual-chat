@@ -134,7 +134,7 @@ public class WebHookInboundEndpointTest(ChatCollection.AppHostFixture fixture, I
             Session = Alice.Session,
             ChatId = chatId,
             ExpectedVersion = null,
-            Change = Change.Update(new ChatDiff { IsArchived = true }),
+            Change = Change.Update(new ChatDiff { IsFrozen = true }),
         });
         using var http = AppHost.NewHttpClient();
 

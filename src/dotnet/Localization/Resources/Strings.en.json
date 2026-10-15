@@ -2094,10 +2094,12 @@
   "Pin_MessagePinned": "Message pinned",
   "Pin_MessageUnpinned": "Message unpinned",
 
-  // Archiving a chat.
-  "Chat_ArchiveTitle": "Archive chat",
-  "Chat_Archive": "Archive",
-  "Chat_ArchiveWarning_Format": "You are going to archive chat '{0}'. Nobody will be able to access it except owners, who can still access it with direct link.",
+  // Freezing a chat: it stays readable for owners, but nobody can write to it or join it.
+  // Chat_Unfreeze* is the chat settings entry that lifts it.
+  "Chat_FreezeTitle": "Freeze chat",
+  "Chat_Freeze": "Freeze",
+  "Chat_FreezeWarning_Format": "You are going to freeze chat '{0}'. Nobody will be able to access it except owners, who can still access it with direct link.",
+  "Chat_UnfreezeTitle": "Unfreeze chat",
 
   // The chat type picker in the new-chat modal and in chat settings; each *Hint is the grey
   // line under its option, and the *Thread variants are the same three options for a thread.

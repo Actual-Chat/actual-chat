@@ -46,7 +46,7 @@ public static class ChatExt
             || diff.AllowGuestAuthors.HasValue
             || diff.AllowAnonymousAuthors.HasValue
             || diff.SystemTag.HasValue
-            || diff.IsArchived.HasValue
+            || diff.IsFrozen.HasValue
             || diff.IsSummarized.HasValue
             || diff.PttEnabledAt.HasValue
             || diff.IsPttPaused.HasValue

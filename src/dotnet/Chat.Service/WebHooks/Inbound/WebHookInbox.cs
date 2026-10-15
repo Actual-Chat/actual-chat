@@ -18,7 +18,7 @@ public sealed record InboundResult(
 public sealed class WebHookInbox(IServiceProvider services)
 {
     private const string TestMessageFormat = "Test message from {0}";
-    // Disabled, archived, deleted and retired all read the same from the outside
+    // Disabled, frozen, deleted and retired all read the same from the outside
     private const string GoneError = "This web hook is no longer available.";
     // Also used by the endpoint when something escapes this class entirely
     internal const string UnavailableError = "Temporarily unavailable, retry later.";
@@ -113,7 +113,7 @@ public sealed class WebHookInbox(IServiceProvider services)
             return new InboundResult(410, GoneError);
 
         var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
-        if (chat is null || chat.IsArchived)
+        if (chat is null || chat.IsFrozen)
             return new InboundResult(410, GoneError);
 
         var (markup, imageUrls) = SlackCardFolder.Fold(payload);
