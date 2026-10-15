@@ -21,6 +21,15 @@
         </div>
     } else if (m.IsBlockedByPeer) {
         <ReadOnlyChatFooter Text="@L.ChatFooter_BlockedByUser"/>
+    } else if (m.HasReachedPeerMessageLimit) {
+        <div class="chat-footer readonly">
+            <div class="c-content">
+                <span>@L.ChatFooter_WaitForContact</span>
+                @if (m.IsRecording) {
+                    <RecorderToggle Chat="@chat" Compact="true"/>
+                }
+            </div>
+        </div>
     } else {
         @if (m.CanPost) {
             <ChatMessageEditor @key="@chat.Id.Value"/>

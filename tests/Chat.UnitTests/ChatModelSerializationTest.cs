@@ -160,11 +160,16 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     public void AuthorRules_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");
-        var rules = new AuthorRules(chatId, null, null, ChatPermissions.Write);
+        var rules = new AuthorRules(chatId, null, null, ChatPermissions.Write) {
+            IsPeerContactPending = true,
+            HasReachedPeerMessageLimit = true,
+        };
 
         var s = rules.PassThroughSerializers(Out);
         s.ChatId.Should().Be(rules.ChatId);
         s.Permissions.Should().Be(rules.Permissions);
+        s.IsPeerContactPending.Should().BeTrue();
+        s.HasReachedPeerMessageLimit.Should().BeTrue();
         s.Author.Should().BeNull();
         s.Account.Should().BeNull();
     }

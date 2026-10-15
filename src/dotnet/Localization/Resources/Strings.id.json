@@ -462,6 +462,7 @@
   "ChatFooter_ReadOnly": "Obrolan hanya bisa dibaca",
   "ChatFooter_YouBlockedUser": "Anda memblokir pengguna ini.",
   "ChatFooter_Unblock": "Buka blokir",
+  "ChatFooter_WaitForContact": "Anda telah mengirim perkenalan. Tunggu pengguna ini menambahkan Anda sebagai kontak atau membalas sebelum mengirim pesan lagi.",
   "ChatFooter_BlockedByUser": "Pengguna ini memblokir Anda.",
   "ChatFooter_ToPostOrTalk": "Untuk mengirim pesan atau berbicara,",
   "ChatFooter_JoinChat": "Gabung ke obrolan ini",

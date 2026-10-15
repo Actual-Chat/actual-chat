@@ -159,6 +159,9 @@ public partial class AudioStreamingBackend
         var rules = await Chats.GetRules(session, chatId, cancellationToken).ConfigureAwait(false);
         rules.Require(ChatPermissions.Write);
         rules.Require(ChatPermissions.WriteAudio);
+        if (rules.HasReachedPeerMessageLimit)
+            throw StandardError.Constraint(
+                "Wait for this user to add you to their contacts or reply before sending more messages.");
 
         var languages = await GetTranscriptionLanguage(record, cancellationToken).ConfigureAwait(false);
         // A producer knows what language it speaks; the speaker's own settings are only a guess

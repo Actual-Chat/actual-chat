@@ -868,9 +868,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [EventHandler]
-    public virtual async Task OnChatEntryChangedEvent(ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
+    public virtual async Task OnChatEntryChangedEvent(
+        ChatEntryChangedEvent eventCommand, CancellationToken cancellationToken)
     {
-        var (entry, author, changeKind, _) = eventCommand;
+        var (entry, author, changeKind, oldEntry) = eventCommand;
         if (changeKind == ChangeKind.Remove || entry.IsSystemEntry)
             return;
 
@@ -880,6 +881,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (!chatId.IsThread(out var threadChatId)) {
             var contactId = ContactId.NewAny(userId, chatId);
             var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
+            var isNewMessage = changeKind is ChangeKind.Create || oldEntry?.IsContentStreaming == true;
+            if (isNewMessage && chatId is PeerChatId && !contact.IsRegular && !contact.IsBlocked) {
+                var storeCommand = new ContactsBackend_Change(
+                    contactId, null, Change.Create(contact with { State = ContactState.Regular }));
+                await Commander.Call(storeCommand, true, cancellationToken).ConfigureAwait(false);
+            }
+
             var now = Clocks.SystemClock.Now;
             if (now - contact.TouchedAt < Constants.Contacts.MinTouchInterval)
                 return;

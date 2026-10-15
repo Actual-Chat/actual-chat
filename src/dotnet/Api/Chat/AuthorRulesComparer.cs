@@ -19,10 +19,13 @@ public sealed class AuthorRulesComparer : IEqualityComparer<AuthorRules>
 
         return x.ChatId == y.ChatId
             && x.Permissions == y.Permissions
+            && x.IsPeerContactPending == y.IsPeerContactPending
+            && x.HasReachedPeerMessageLimit == y.HasReachedPeerMessageLimit
             && ReferenceEquals(x.Author, y.Author)
             && ReferenceEquals(x.Account, y.Account);
     }
 
     public int GetHashCode(AuthorRules obj)
-        => HashCode.Combine(obj.ChatId, obj.Permissions, obj.Author, obj.Account);
+        => HashCode.Combine(obj.ChatId, obj.Permissions, obj.Author, obj.Account,
+            obj.IsPeerContactPending, obj.HasReachedPeerMessageLimit);
 }

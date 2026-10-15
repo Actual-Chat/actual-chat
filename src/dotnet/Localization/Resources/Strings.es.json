@@ -462,6 +462,7 @@
   "ChatFooter_ReadOnly": "Chat de solo lectura",
   "ChatFooter_YouBlockedUser": "Has bloqueado a este usuario.",
   "ChatFooter_Unblock": "Desbloquear",
+  "ChatFooter_WaitForContact": "Ya te has presentado. Espera a que este usuario te añada a sus contactos o responda antes de enviar más mensajes.",
   "ChatFooter_BlockedByUser": "Este usuario te ha bloqueado.",
   "ChatFooter_ToPostOrTalk": "Para escribir o hablar,",
   "ChatFooter_JoinChat": "Unirse a este chat",

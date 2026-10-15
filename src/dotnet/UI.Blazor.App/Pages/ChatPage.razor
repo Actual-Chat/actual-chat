@@ -292,11 +292,15 @@
             }
         }
 
+        var isRecording = chat.Rules.HasReachedPeerMessageLimit
+            && await Hub.ChatAudioUI.GetRecordingChatId().ConfigureAwait(false) == chatId;
         return new() {
             Place = place,
             PeerId = otherUserId,
             IsGuest = account.IsGuestOrNull(),
             CanPost = canPost,
+            HasReachedPeerMessageLimit = chat.Rules.HasReachedPeerMessageLimit,
+            IsRecording = isRecording,
             CanJoin = canJoin,
             ShouldJoinPlaceFirst = shouldJoinPlaceFirst,
             HasMultipleAvatars = hasMultipleAvatars,
@@ -467,6 +471,8 @@
         public bool IsGuest { get; init; }
         public bool HasMultipleAvatars { get; init; }
         public bool CanPost { get; init; }
+        public bool HasReachedPeerMessageLimit { get; init; }
+        public bool IsRecording { get; init; }
         public bool CanJoin { get; init; }
         public bool CanJoinWithGuestAccount { get; init; }
         public bool CanJoinAnonymously { get; init; }

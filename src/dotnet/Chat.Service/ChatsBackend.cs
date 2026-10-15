@@ -2075,22 +2075,32 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             return new(chatId, author, account, (ChatPermissions.SeeMembers | ChatPermissions.Join).AddImplied());
         }
 
-        var permissions = (ChatPermissions.Write | ChatPermissions.SeeMembers | ChatPermissions.Join | ChatPermissions.EditProperties).AddImplied();
+        var permissions = (ChatPermissions.Write | ChatPermissions.SeeMembers
+            | ChatPermissions.Join | ChatPermissions.EditProperties).AddImplied();
 
-        // Strip stream + upload capabilities if the recipient hasn't explicitly stored
-        // the caller's contact. A recipient reply stores this contact automatically.
-        // The message-count cap on creates is enforced separately in Chats.OnUpsertEntry.
         var peerUserId = otherUserId!;
         var peerContactId = ContactId.NewUser(peerUserId, account.Id);
         var peerContact = await ContactsBackend.Get(peerUserId, peerContactId, cancellationToken).ConfigureAwait(false);
-        if (!peerContact.IsRegular)
-            permissions &= ~(ChatPermissions.Upload
-                | ChatPermissions.WriteAudio
-                | ChatPermissions.WriteVideo
-                | ChatPermissions.ReadAudio
-                | ChatPermissions.ReadVideo);
+        var isPeerContactPending = !peerContact.IsRegular;
+        var hasReachedPeerMessageLimit = false;
+        if (isPeerContactPending) {
+            permissions &= ~(ChatPermissions.Upload | ChatPermissions.WriteVideo | ChatPermissions.ReadVideo);
+            if (peerContact.IsBlocked)
+                permissions &= ~(ChatPermissions.WriteAudio | ChatPermissions.ReadAudio);
 
-        return new(chatId, author, account, permissions);
+            var firstAuthors = await GetFirstEntryAuthors(
+                chatId, Constants.Chat.NonContactPeerMessageLimit, true, cancellationToken).ConfigureAwait(false);
+            var ownAuthor = author ?? await AuthorsBackend
+                .GetByUserId(chatId, account.Id, RequestedAuthorKind.Default, cancellationToken)
+                .ConfigureAwait(false);
+            hasReachedPeerMessageLimit = firstAuthors.Count == 1 && ownAuthor is not null
+                && firstAuthors.Contains(ownAuthor.Id);
+        }
+
+        return new(chatId, author, account, permissions) {
+            IsPeerContactPending = isPeerContactPending,
+            HasReachedPeerMessageLimit = hasReachedPeerMessageLimit,
+        };
     }
 
     private async Task<AuthorRules> GetRulesRaw(

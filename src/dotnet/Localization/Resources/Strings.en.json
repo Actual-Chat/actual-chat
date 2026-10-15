@@ -557,6 +557,7 @@
   "ChatFooter_ReadOnly": "This chat is read-only",
   "ChatFooter_YouBlockedUser": "You blocked this user.",
   "ChatFooter_Unblock": "Unblock",
+  "ChatFooter_WaitForContact": "You’ve sent your introduction. Wait for this user to add you as a contact or reply before sending more messages.",
   "ChatFooter_BlockedByUser": "This user has blocked you.",
   "ChatFooter_ToPostOrTalk": "To post or talk,",
   "ChatFooter_JoinChat": "Join this chat",
