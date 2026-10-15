@@ -5,7 +5,7 @@ namespace ActualChat.Chat.UI.Blazor.UnitTests;
 public sealed class ChatRangeTileStandInTest
 {
     private static readonly ChatId TestChatId = ChatId.Parse("the-actual-one");
-    // The server merged the next cid tile into the cached tail tile: the collapsed conversation counts
+    // An older server merged the next cid tile into the cached tail tile: the collapsed conversation counts
     // as one row, so the tile at 1280 held too few of them. The chat has grown by 40 entries since.
     private static readonly Range<long> Conversation = new(2162, 2851);
     private static readonly ChatRangeTile CachedTail
