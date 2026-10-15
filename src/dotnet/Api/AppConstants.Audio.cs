@@ -79,7 +79,7 @@ partial record AppConstants
             public int MaxBufferedFrames { get; init; } = 50;
             // Pre-skip / codec delay measured in samples — default for system encoder
             // when it doesn't report its own.
-            public int DefaultPreSkip { get; init; } = 312;
+            public int DefaultPreSkip { get; init; } = Constants.Audio.OpusPreSkip;
             // Voice-start pre-roll - bounded ring of recent encoder-frame-equivalent
             // PCM kept while voice activity is inactive; prepended to the first
             // encoded frame on voice start so leading consonants survive.

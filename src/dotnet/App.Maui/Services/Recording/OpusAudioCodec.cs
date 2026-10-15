@@ -17,6 +17,8 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
         AllowSynchronousContinuations = true,
     };
 
+    public int EncoderPreSkip => Constants.Audio.OpusPreSkip;
+
     public IAsyncEnumerable<IMemoryOwner<byte>> Encode(
         IAsyncEnumerable<IMemoryOwner<float>> lpcmFrames,
         CancellationToken cancellationToken = default)
