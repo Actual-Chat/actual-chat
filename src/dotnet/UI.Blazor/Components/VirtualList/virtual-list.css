@@ -192,8 +192,7 @@ body.app-ready .virtual-list > .c-wrapper > ul.c-virtual-container {
    everything above it by that much on every toggle. The inset absorbs the padding, so the header
    still reaches the top edge when pinned instead of hanging 16px below it. */
 .virtual-list > .c-wrapper > ul.c-virtual-container .item[data-has-conversation-header] {
-    @apply sticky z-20 pt-4;
-    top: -17px;
+    @apply sticky z-20 pt-4 -top-4;
 }
 
 .virtual-list .skeleton-container {

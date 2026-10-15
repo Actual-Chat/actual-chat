@@ -288,6 +288,13 @@ offsets[n]        one row-gap past the last item, so chainEnd = chainStart + off
 `offsets` is a prefix sum of measured item heights. Rendering is then a pure function of the model:
 item `i` sits at `chainStart + offsets[i]`, inside a container placed at `chainStart`.
 
+The heights are the items' border boxes, and nothing else in the container is measured — so every
+pixel the chain occupies has to be inside an item. A margin, on an item or on a group wrapper around
+items, is outside every measured box: the model ends short of the DOM by that much, and since the end
+limit is the model's, the view can no longer reach the content's end and the end pin never derives
+(an 8px group margin on the live call block did exactly that — #5336). A gap between blocks is the
+first item's padding; `checkModelDrift` warns about a drift of `EdgeEpsilon` or more when debug is on.
+
 The consequence that matters: **the rendered window can be moved anywhere in the scroll space without
 anything on screen moving, and without the browser having an opinion about it.** Loading history does
 not push content down and does not trigger a correction; it changes `chainStart` and the container's
