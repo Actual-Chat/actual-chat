@@ -51,6 +51,8 @@
     [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
     [Parameter, EditorRequired] public bool UsePlaceChatListSettings { get; set; } = true;
     [Parameter] public ChatListSettings? Settings { get; set; }
+    // The archive is listed by archival time, in pages of ArchiveIndexTiles, and has no settings
+    [Parameter] public bool IsArchive { get; set; }
     // Non-empty only in the notifications panel, where a row binds to one notification at a time
     [Parameter] public Symbol NotificationsFilterId { get; set; }
 
@@ -58,11 +60,12 @@
         PlaceId? placeId,
         bool usePlaceChatListSettings,
         ChatListSettings? settings,
-        Symbol notificationsFilterId = default)
+        Symbol notificationsFilterId = default,
+        bool isArchive = false)
         // Every call site must @key the list with this: its item keys are list positions, so any parameter
         // change re-points every one of them at a different chat, and the component has to be re-created.
         => $"{placeId?.Value}|{usePlaceChatListSettings}|{settings?.FilterId.Value}|{settings?.Order}"
-            + $"|{notificationsFilterId.Value}";
+            + $"|{notificationsFilterId.Value}|{isArchive}";
 
     protected override void OnInitialized() {
         DebugLog?.LogDebug("OnInitialized: {List}", ChatListKind.All);
@@ -74,7 +77,7 @@
         // Failing loudly rather than re-reading the parameters: nothing here can repair the rendered
         // list, whose keys still mean positions in the previous one, so a missing or wrong @key has to
         // reach the developer instead of quietly showing the wrong chats.
-        var key = GetKey(PlaceId, UsePlaceChatListSettings, Settings, NotificationsFilterId);
+        var key = GetKey(PlaceId, UsePlaceChatListSettings, Settings, NotificationsFilterId, IsArchive);
         if (_lastKey is null) {
             _lastKey = key;
             Volatile.Write(ref _restoreChatId, ChatListUI.PullScrollAnchor(key));

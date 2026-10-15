@@ -1,0 +1,14 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits Menu<AppUIHub>
+
+<div class="sort-menu">
+    <div class="c-title">
+        @L.ChatList_SortBy
+    </div>
+    <Divider/>
+    @* The archive has a single, fixed order, so this entry only states it *@
+    <MenuEntry
+        Icon="icon-sort-by-recent"
+        Text="@L.ChatList_SortByArchivedAt">
+    </MenuEntry>
+</div>

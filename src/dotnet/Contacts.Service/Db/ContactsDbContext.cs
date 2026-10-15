@@ -8,6 +8,7 @@ namespace ActualChat.Contacts.Db;
 public class ContactsDbContext(DbContextOptions<ContactsDbContext> options) : DbContextBase(options)
 {
     public DbSet<DbContact> Contacts { get; protected set; } = null!;
+    public DbSet<DbArchivedContact> ArchivedContacts { get; protected set; } = null!;
     public DbSet<DbExternalContact> ExternalContacts { get; protected set; } = null!;
     public DbSet<DbExternalContactsHash> ExternalContactsHashes { get; protected set; } = null!;
     public DbSet<DbExternalContactLink> ExternalContactLinks { get; protected set; } = null!;
@@ -34,6 +35,13 @@ public class ContactsDbContext(DbContextOptions<ContactsDbContext> options) : Db
         contact.Property(e => e.UserId).UseCollation("C");
         contact.Property(c => c.ChatId).UseCollation("C");
         contact.Property(c => c.PlaceId).UseCollation("C");
+
+        var archivedContact = model.Entity<DbArchivedContact>();
+        archivedContact.Property(e => e.Id).UseCollation("C");
+        archivedContact.Property(e => e.OwnerId).UseCollation("C");
+        archivedContact.Property(e => e.UserId).UseCollation("C");
+        archivedContact.Property(c => c.ChatId).UseCollation("C");
+        archivedContact.Property(c => c.PlaceId).UseCollation("C");
 
         var externalContact = model.Entity<DbExternalContact>();
         externalContact.Property(e => e.Id).UseCollation("C");

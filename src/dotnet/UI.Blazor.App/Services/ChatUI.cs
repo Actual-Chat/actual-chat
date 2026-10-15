@@ -504,6 +504,28 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         });
     }
 
+    public void ArchiveChat(Chat.Chat chat)
+        => _ = ModalUI.Show(new ArchiveChatModal.Model(chat));
+
+    public async Task Archive(ChatId chatId, bool mustDisableNotifications)
+    {
+        var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(true);
+        var archiveCommand = new Contacts_Archive { Session = Session, Id = contact.Id };
+        var result = await UICommander.Run(archiveCommand).ConfigureAwait(true);
+        if (result.HasError || !mustDisableNotifications)
+            return;
+
+        await UICommander.RunLocal(ct => UserSettingsUI.ChatUserSettings(chatId)
+            .Update(x => x with { NotificationMode = ChatNotificationMode.Muted }, ct)).ConfigureAwait(true);
+    }
+
+    public async Task Unarchive(ChatId chatId)
+    {
+        var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(true);
+        var unarchiveCommand = new Contacts_Unarchive { Session = Session, Id = contact.Id };
+        await UICommander.Run(unarchiveCommand).ConfigureAwait(true);
+    }
+
     public async Task UnfreezeChat(ChatId chatId)
     {
         var unfreezeCommand = new Chats_Change {

@@ -1,0 +1,22 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+
+@if (State.Value) {
+    <div class="c-archive-empty">@L.ChatList_ArchiveEmpty</div>
+}
+
+@code {
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var count = await Hub.ChatListUI.GetArchivedCount(PlaceId, cancellationToken).ConfigureAwait(false);
+        return count == 0;
+    }
+}

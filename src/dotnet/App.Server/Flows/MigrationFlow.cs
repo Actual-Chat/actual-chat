@@ -1,4 +1,5 @@
 using ActualChat.Chat.Flows;
+using ActualChat.Contacts.Flows;
 using ActualChat.Flows;
 using ActualChat.Users.Flows;
 
@@ -24,6 +25,7 @@ public partial class MigrationFlow : Flow<Unit>, IMasterFlow
             await Apply<UsageBackfillFlow>(
                 dependsOn: [typeof(ChatEntryEndsAtFixupFlow)]).ConfigureAwait(false);
             await Apply<UsageContactsBackfillFlow>().ConfigureAwait(false);
+            await Apply<BlockedContactsMigrationFlow>().ConfigureAwait(false);
             await Apply<HeicAttachmentRepairFlow>(minDataVersion: 2).ConfigureAwait(false);
         }
         catch (DependencyNotMetException e) {

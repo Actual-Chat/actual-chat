@@ -16,7 +16,7 @@ partial class ContactsDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261005020119_Fusion15_DeferredInvalidation";
+    public override string LastMigrationId => "20261015090928_AddArchivedContacts";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -26,6 +26,82 @@ partial class ContactsDbContextModelSnapshot : ModelSnapshot
             .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
         NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+        modelBuilder.Entity("ActualChat.Contacts.Db.DbArchivedContact", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id")
+                    .UseCollation("C");
+
+                b.Property<DateTime>("ArchivedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("archived_at");
+
+                b.Property<string>("ChatId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("chat_id")
+                    .UseCollation("C");
+
+                b.Property<string>("ExternalContactName")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("external_contact_name");
+
+                b.Property<bool>("IsBlocked")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_blocked");
+
+                b.Property<bool>("IsPinned")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_pinned");
+
+                b.Property<string>("OwnerId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("owner_id")
+                    .UseCollation("C");
+
+                b.Property<string>("PeerContactName")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("peer_contact_name");
+
+                b.Property<string>("PlaceId")
+                    .HasColumnType("text")
+                    .HasColumnName("place_id")
+                    .UseCollation("C");
+
+                b.Property<int>("State")
+                    .HasColumnType("integer")
+                    .HasColumnName("state");
+
+                b.Property<DateTime>("TouchedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("touched_at");
+
+                b.Property<string>("UserId")
+                    .HasColumnType("text")
+                    .HasColumnName("user_id")
+                    .UseCollation("C");
+
+                b.Property<long>("Version")
+                    .IsConcurrencyToken()
+                    .HasColumnType("bigint")
+                    .HasColumnName("version");
+
+                b.HasKey("Id")
+                    .HasName("pk_archived_contacts");
+
+                b.HasIndex("OwnerId", "IsBlocked")
+                    .HasDatabaseName("ix_archived_contacts_owner_id_is_blocked");
+
+                b.HasIndex("OwnerId", "PlaceId", "ArchivedAt")
+                    .HasDatabaseName("ix_archived_contacts_owner_id_place_id_archived_at");
+
+                b.ToTable("archived_contacts");
+            });
 
         modelBuilder.Entity("ActualChat.Contacts.Db.DbContact", b =>
             {

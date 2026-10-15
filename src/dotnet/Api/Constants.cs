@@ -233,6 +233,7 @@ public static partial class Constants
     public static class Contacts
     {
         public static readonly int MinLoadLimit = 20;
+        public static readonly TileLayer<int> ArchiveIndexTiles = TileLayers.Int20;
         public static readonly TimeSpan MinTouchInterval =  TimeSpan.FromSeconds(10);
     }
 

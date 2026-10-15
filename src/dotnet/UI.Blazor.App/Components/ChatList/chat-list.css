@@ -719,3 +719,6 @@ body.hoverable .navbar-item:hover .navbar-item-content > .c-container > .c-descr
 .find-contacts-text > p + p {
     @apply mt-2;
 }
+.navbar-chats .c-archive-empty {
+    @apply px-4 py-6 text-center text-sm text-secondary;
+}

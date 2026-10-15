@@ -231,6 +231,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             .ConfigureAwait(false);
         var chatById = chatResults.Select(x => x.ValueOrDefault)
             .SkipNullItems()
+            .Where(c => !c.Contact.IsArchived)
             .ToDictionary(c => c.Id);
 
         DebugLog?.LogDebug(
@@ -365,6 +366,53 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
 
         DebugLog?.LogDebug("GetTile: <- {PlaceId}, {Indexes}", placeId, indexTile);
         return new VirtualListTile<ChatListItemModel>(longRange, result);
+    }
+
+    [ComputeMethod]
+    public virtual Task<int> GetArchivedCount(PlaceId? placeId, CancellationToken cancellationToken)
+        => Contacts.GetArchivedCount(Session, placeId, cancellationToken);
+
+    [ComputeMethod]
+    public virtual async Task<VirtualListTile<ChatListItemModel>> GetArchivedTile(
+        PlaceId? placeId, Tile<int> indexTile, CancellationToken cancellationToken)
+    {
+        // The archive has a fixed order, so unlike GetTile there is nothing to sort or group here
+        var contactIds = await Contacts.ListArchivedIds(Session, placeId, indexTile, cancellationToken)
+            .ConfigureAwait(false);
+        var chatInfos = (await contactIds
+            .Select(x => ChatUI.Get(x.ChatId, cancellationToken))
+            .CollectResults(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false)
+            ).Select(x => x.ValueOrDefault)
+            .SkipNullItems()
+            .ToList();
+        var items = chatInfos
+            .Select((chatInfo, i) => new ChatListItemModel(
+                indexTile.Start + i, chatInfo.Chat, false, indexTile.Start + i == 0))
+            .ToList();
+        return new VirtualListTile<ChatListItemModel>(indexTile.Range.AsLongRange(), items);
+    }
+
+    [ComputeMethod(InvalidationDelay = 0.6)]
+    public virtual async Task<Trimmed<int>> GetArchivedUnreadChatCount(
+        PlaceId? placeId, CancellationToken cancellationToken = default)
+    {
+        // Archived chats aren't loaded for this: a notification of a chat that is archived is all it takes
+        var chatIds = await NotificationsUI.ListUnreadChatIds(cancellationToken).ConfigureAwait(false);
+        var contactResults = await chatIds
+            .Where(chatId => IsInPlace(chatId, placeId))
+            .Select(chatId => Contacts.GetForChat(Session, chatId, cancellationToken))
+            .CollectResults(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+        var count = contactResults.Count(x => x.ValueOrDefault is { IsArchived: true, IsBlocked: false });
+        return new Trimmed<int>(
+            Math.Min(count, ChatInfoExt.MaxUnreadChatCount),
+            ChatInfoExt.MaxUnreadChatCount);
+
+        static bool IsInPlace(ChatId chatId, PlaceId? placeId)
+            => placeId is null
+                ? chatId is not PlaceChatId
+                : chatId is PlaceChatId placeChatId && placeChatId.PlaceId == placeId;
     }
 
     public ValueTask Pin(ChatId chatId) => SetPinState(chatId, true);
@@ -524,7 +572,8 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         var selectedChat = selectedChatId is null
             ? null
             : await ChatUI.Get(selectedChatId, cancellationToken).ConfigureAwait(false);
-        if (selectedChat != null)
+        // An archived chat stays out of the regular lists even while it is selected
+        if (selectedChat != null && !selectedChat.Contact.IsArchived)
             chatById = new Dictionary<ChatId, ChatInfo>(chatById) {
                 [selectedChat.Id] = selectedChat,
             };

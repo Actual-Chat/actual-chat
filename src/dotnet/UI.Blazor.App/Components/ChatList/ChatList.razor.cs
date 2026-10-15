@@ -24,6 +24,10 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
     {
         var placeId = PlaceId;
         var usePlaceChatListSettings = UsePlaceChatListSettings;
+        var isArchive = IsArchive;
+        var tileLayer = isArchive ? Constants.Contacts.ArchiveIndexTiles : ChatListUI.IndexTiles;
+        var tileSize = tileLayer.TileSize;
+        var loadLimit = isArchive ? tileSize * 3 : ChatListUI.LoadLimit;
         var settings = Settings;
         var notificationsFilterId = NotificationsFilterId;
         var visibility = _visibility;
@@ -32,7 +36,13 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         ChatListSettings chatListSettings;
         Task<int> chatIndexTask;
         ChatId? chatId;
-        if (usePlaceChatListSettings) {
+        if (isArchive) {
+            // The archive has a fixed order by archival time, so no settings apply
+            chatListSettings = new ChatListSettings();
+            chatId = null;
+            chatIndexTask = Task.FromResult(-1);
+        }
+        else if (usePlaceChatListSettings) {
             var placeChatListSettings = ChatListUI.GetPlaceChatListSettings(placeId);
             chatListSettings = await placeChatListSettings.Get(cancellationToken).ConfigureAwait(false);
             // Only the very first build centers the list on the selected chat and scrolls to it, so it
@@ -51,12 +61,16 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
             chatIndexTask = Task.FromResult(-1);
         }
 
-        var chatCountTask = ChatListUI.GetCount(placeId, chatListSettings, cancellationToken);
+        var chatCountTask = isArchive
+            ? ChatListUI.GetArchivedCount(placeId, cancellationToken)
+            : ChatListUI.GetCount(placeId, chatListSettings, cancellationToken);
         // The notifications panel lists chats with its own settings, and no banner
-        var mustShowInviteFriendsBannerTask = usePlaceChatListSettings
+        var mustShowInviteFriendsBannerTask = usePlaceChatListSettings && !isArchive
             ? ChatListUI.MustShowInviteFriendsBanner(placeId, chatListSettings, cancellationToken)
             : Task.FromResult(false);
-        var separatorIndexesTask = ChatListUI.GetSeparatorIndexes(placeId, chatListSettings, cancellationToken);
+        var separatorIndexesTask = isArchive
+            ? Task.FromResult<IReadOnlyList<int>>([])
+            : ChatListUI.GetSeparatorIndexes(placeId, chatListSettings, cancellationToken);
         var chatIndex = await chatIndexTask.ConfigureAwait(false);
         var chatCount = await chatCountTask.ConfigureAwait(false);
         // The notifications panel shows the tab's history under its active rows - one small block,
@@ -80,7 +94,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         var restoreChatId = isFirstRender
             ? Volatile.Read(ref _restoreChatId)
             : null;
-        var restoreIndexTask = restoreChatId is null
+        var restoreIndexTask = restoreChatId is null || isArchive
             ? Task.FromResult(-1)
             : ChatListUI.IndexOf(placeId, restoreChatId, chatListSettings, cancellationToken);
         var restoreIndex = await restoreIndexTask.ConfigureAwait(false);
@@ -90,12 +104,12 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         var range = (hasQuery, isFirstRender) switch {
             // No query, no data -> initial load
             (false, true) => new Range<int>(
-                initialIndex - ChatListUI.LoadLimit,
-                initialIndex + ChatListUI.LoadLimit),
+                initialIndex - loadLimit,
+                initialIndex + loadLimit),
             // No query, but there is old data -> retaining visual position
             (false, false) => new Range<int>(
-                minVisibleIndex - (ChatListUI.TileSize * 2),
-                maxVisibleIndex + (ChatListUI.TileSize * 2)),
+                minVisibleIndex - (tileSize * 2),
+                maxVisibleIndex + (tileSize * 2)),
             // Query is there, so data is irrelevant
             _ => query.KeyRange.ToIntRange().Move(query.MoveRange),
         };
@@ -103,17 +117,18 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
         // Fit to existing chat count
         range = range
             .IntersectWith(new Range<int>(0, chatCount))
-            .ExpandToTiles(ChatListUI.IndexTiles);
+            .ExpandToTiles(tileLayer);
         // Expand and fit again if too small
-        if (range.Size() < ChatListUI.LoadLimit)
-            range = range.Expand(ChatListUI.TileSize)
+        if (range.Size() < loadLimit)
+            range = range.Expand(tileSize)
                 .IntersectWith(new Range<int>(0, chatCount))
-                .ExpandToTiles(ChatListUI.IndexTiles);
-        var indexTiles = ChatListUI.IndexTiles.GetCoveringTiles(range);
+                .ExpandToTiles(tileLayer);
+        var indexTiles = tileLayer.GetCoveringTiles(range);
         var resultItems = new List<ChatListItemModel>();
         foreach (var indexTile in indexTiles) {
-            var tile = await ChatListUI
-                .GetTile(placeId, indexTile, chatListSettings, cancellationToken)
+            var tile = await (isArchive
+                    ? ChatListUI.GetArchivedTile(placeId, indexTile, cancellationToken)
+                    : ChatListUI.GetTile(placeId, indexTile, chatListSettings, cancellationToken))
                 .ConfigureAwait(false);
             if (tile.Items.Count != 0)
                 resultItems.AddRange(tile.Items);

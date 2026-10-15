@@ -1,0 +1,28 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits FusionComponentBase<AppUIHub>
+@{
+    var chatId = ChatState.Id;
+    // The announcements chat and place roots stay in the list: the list adds them on its own
+    if (chatId == Constants.Chat.AnnouncementsChatId || chatId is PlaceChatId { IsRoot: true })
+        return;
+}
+
+@if (ChatState.Contact.IsArchived) {
+    <MenuEntry
+        Icon="icon-refresh"
+        Text="@L.ChatMenu_Unarchive"
+        Click="@(() => _ = ChatUI.Unarchive(chatId))">
+    </MenuEntry>
+} else {
+    <MenuEntry
+        Icon="icon-archive"
+        Text="@L.ChatMenu_Archive"
+        Click="@(() => ChatUI.ArchiveChat(ChatState.Chat))">
+    </MenuEntry>
+}
+
+@code {
+    private ChatUI ChatUI => Hub.ChatUI;
+
+    [CascadingParameter] public ChatState ChatState { get; set; } = null!;
+}

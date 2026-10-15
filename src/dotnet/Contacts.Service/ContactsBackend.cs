@@ -21,11 +21,16 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     private IAccountsBackend AccountsBackend => field ??= Services.GetRequiredService<IAccountsBackend>();
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
-    private IExternalContactsBackend ExternalContactsBackend => field ??= Services.GetRequiredService<IExternalContactsBackend>();
-    private IDbEntityResolver<string, DbContact> DbContactResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
+    private IExternalContactsBackend ExternalContactsBackend
+        => field ??= Services.GetRequiredService<IExternalContactsBackend>();
+    private IDbEntityResolver<string, DbContact> DbContactResolver
+        => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbContact>>();
+    private IDbEntityResolver<string, DbArchivedContact> DbArchivedContactResolver
+        => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbArchivedContact>>();
     private IMeshLocks GreetLocks => field ??= Services.MeshLocks().WithKeyPrefix(nameof(GreetLocks));
     public RedisDb<ContactsDbContext> RedisDb => field ??= Services.GetRequiredService<RedisDb<ContactsDbContext>>();
-    private IDbEntityResolver<string, DbThreadContact> DbThreadContactResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbThreadContact>>();
+    private IDbEntityResolver<string, DbThreadContact> DbThreadContactResolver
+        => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbThreadContact>>();
 
     // [ComputeMethod]
     public virtual async Task<Contact> Get(UserId ownerId, ContactId contactId, CancellationToken cancellationToken)
@@ -35,8 +40,17 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         ArgumentOutOfRangeException.ThrowIfNotEqual(ownerId, contactId.OwnerId);
 
         var dbContact = await DbContactResolver.Get(contactId.Value, cancellationToken).ConfigureAwait(false);
-        var contact = dbContact?.ToModel()
-            ?? new Contact(contactId); // A fake contact
+        // Blocked contacts live in the archive; a blocked row left here awaits BlockedContactsMigrationFlow
+        if (dbContact is { State: ContactState.Blocked })
+            dbContact = null;
+
+        var contact = dbContact?.ToModel();
+        if (contact is null) {
+            var dbArchivedContact = await DbArchivedContactResolver.Get(contactId.Value, cancellationToken)
+                .ConfigureAwait(false);
+            contact = dbArchivedContact?.ToModel()
+                ?? new Contact(contactId); // A fake contact
+        }
 
         var chatId = contact.ChatId;
         if (chatId is PeerChatId peerChatId) {
@@ -124,8 +138,17 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         else {
             // Add all public chats from this place
             await PseudoPlaceContact(placeId).ConfigureAwait(false);
-            var publicChatIds = await ChatsBackend.GetPublicChatIdsFor(placeId, cancellationToken).ConfigureAwait(false);
+            var publicChatIds = await ChatsBackend
+                .GetPublicChatIdsFor(placeId, cancellationToken)
+                .ConfigureAwait(false);
             var addedChatIds = contactIds.Select(c => c.ChatId).ToHashSet();
+            // An archived public chat stays out of the list too
+            var sArchivedChatIds = await dbContext.ArchivedContacts
+                .Where(a => a.OwnerId == ownerId.Value && a.PlaceId == sPlaceId)
+                .Select(a => a.ChatId)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            addedChatIds.UnionWith(sArchivedChatIds.Select(ChatId.Parse));
             var missingChatIds = publicChatIds.Where(c => !addedChatIds.Contains(c)).ToList();
             if (missingChatIds.Count != 0) {
                 var contactsToAdd = missingChatIds.Select(c => ContactId.NewAny(ownerId, c)).ToList();
@@ -150,10 +173,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         await using var _ = dbContext.ConfigureAwait(false);
 
         var idPrefix = ownerId.Value + ' ';
-        var sContactIds = await dbContext.Contacts
+        var sContactIds = await dbContext.ArchivedContacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
-            .Where(a => a.State == ContactState.Blocked)
-            .OrderByDescending(a => a.TouchedAt)
+            .Where(a => a.IsBlocked)
+            .OrderByDescending(a => a.ArchivedAt)
             .Select(a => a.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -169,8 +192,50 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return false;
 
         var contactId = ContactId.NewUser(ownerId, otherUserId);
-        var dbContact = await DbContactResolver.Get(contactId.Value, cancellationToken).ConfigureAwait(false);
-        return dbContact?.State == ContactState.Blocked;
+        var dbArchivedContact = await DbArchivedContactResolver.Get(contactId.Value, cancellationToken)
+            .ConfigureAwait(false);
+        return dbArchivedContact?.IsBlocked == true;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<int> GetArchivedCount(
+        UserId ownerId, PlaceId? placeId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ownerId);
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sPlaceId = placeId?.Id.Value.NullIfEmpty();
+        return await dbContext.ArchivedContacts
+            .Where(a => a.OwnerId == ownerId.Value && a.PlaceId == sPlaceId && !a.IsBlocked)
+            .CountAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ContactId[]> ListArchivedIds(
+        UserId ownerId, PlaceId? placeId, Tile<int> indexTile, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(ownerId);
+
+        // Any change of the archive resets the count, and so every tile
+        await GetArchivedCount(ownerId, placeId, cancellationToken).ConfigureAwait(false);
+
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var sPlaceId = placeId?.Id.Value.NullIfEmpty();
+        var sContactIds = await dbContext.ArchivedContacts
+            .Where(a => a.OwnerId == ownerId.Value && a.PlaceId == sPlaceId && !a.IsBlocked)
+            .OrderByDescending(a => a.ArchivedAt)
+            .ThenBy(a => a.Id)
+            .Skip(indexTile.Start)
+            .Take(indexTile.End - indexTile.Start)
+            .Select(a => a.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return sContactIds.Select(ContactId.Parse).ToArray();
     }
 
     // [ComputeMethod]
@@ -292,7 +357,27 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // Not a [ComputeMethod]!
-    public async Task<Contact[]> ListChangedPlaceContacts(ChangedContactsQuery query, CancellationToken cancellationToken)
+    public async Task<Contact[]> ListBlockedForMigration(
+        string? lastId, int limit, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var query = dbContext.Contacts.Where(x => x.State == ContactState.Blocked);
+        if (!lastId.IsNullOrEmpty())
+            query = query.Where(x => string.Compare(x.Id, lastId) > 0);
+
+        var dbContacts = await query
+            .OrderBy(x => x.Id)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbContacts.Select(x => x.ToModel()).ToArray();
+    }
+
+    // Not a [ComputeMethod]!
+    public async Task<Contact[]> ListChangedPlaceContacts(
+        ChangedContactsQuery query, CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
@@ -337,10 +422,21 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
             .ConfigureAwait(false);
         var existing = dbContact?.ToModel();
+        var dbArchivedContact = dbContact is null
+            ? await dbContext.ArchivedContacts
+                .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
+                .ConfigureAwait(false)
+            : null;
 
         if (change.IsCreate(out var contact)) {
             if (contact.State == ContactState.Blocked)
                 throw StandardError.Constraint("Blocking is managed by the SetIsBlocked command.");
+
+            if (dbArchivedContact != null) {
+                // Archived contacts are brought back by Unarchive only
+                return dbArchivedContact.ToModel();
+            }
+
             if (dbContact != null) {
                 var existingContact = existing.Require();
                 // The only state change Create can cause is reviving a Temporary contact to Regular
@@ -380,17 +476,49 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             dbContext.Add(dbContact);
         }
         else if (change.IsUpdate(out contact)) {
+            if (dbArchivedContact != null) {
+                // Archiving and blocking own the rest of an archived contact
+                dbArchivedContact.RequireVersion(expectedVersion);
+                dbArchivedContact.PeerContactName = contact.PeerContactName;
+                dbArchivedContact.ExternalContactName = contact.ExternalContactName;
+                dbArchivedContact.IsPinned = contact.IsPinned;
+                dbArchivedContact.Version = VersionGenerator.NextVersion(dbArchivedContact.Version);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                DeferArchiveInvalidation(ownerId, id);
+                return dbArchivedContact.ToModel();
+            }
+
             dbContact.RequireVersion(expectedVersion);
+            // Blocking is owned by the SetIsBlocked command, which keeps blocked contacts in the archive
+            var state = contact.State == ContactState.Blocked ? existing!.State : contact.State;
             contact = contact with {
                 Version = VersionGenerator.NextVersion(dbContact.Version),
+                State = state,
             };
             dbContact.UpdateFrom(contact);
         }
         else { // Remove
+            if (dbContact == null) {
+                if (dbArchivedContact == null) {
+                    if (expectedVersion != null)
+                        dbContact.RequireVersion(expectedVersion);
+
+                    return null;
+                }
+
+                if (expectedVersion != null)
+                    dbArchivedContact.RequireVersion(expectedVersion);
+                var removedContact = dbArchivedContact.ToModel();
+                dbContext.Remove(dbArchivedContact);
+                await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                DeferArchiveInvalidation(ownerId, id);
+                // It's not in the contact list, so the event has no old contact: nothing but the index cares
+                context.Operation.AddEvent(new ContactChangedEvent(removedContact, null, ChangeKind.Remove));
+                return removedContact;
+            }
+
             if (expectedVersion != null)
                 dbContact.RequireVersion(expectedVersion);
-            if (dbContact == null)
-                return null;
 
             dbContext.Remove(dbContact);
         }
@@ -462,31 +590,109 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         if (id.ChatId is not PeerChatId)
             throw StandardError.Constraint("Only peer contacts can be blocked.");
 
-        var ownerId = id.OwnerId;
         if (isBlocked) {
-            // Ensure a Regular contact exists (create it or promote a Temporary one), then block it.
-            // Both child commands share this command's transaction and the advisory lock OnChange takes,
-            // so a concurrent contact creation can't slip between the two steps.
-            var contact = await Commander
-                .Call(new ContactsBackend_Change(id, null, Change.Create(new Contact(id) { State = ContactState.Regular })),
-                    false, cancellationToken)
-                .ConfigureAwait(false);
-            if (contact!.IsBlocked)
-                return;
-
-            var blockChange = Change.Update(contact with { State = ContactState.Blocked });
-            await Commander.Call(new ContactsBackend_Change(id, contact.Version, blockChange), false, cancellationToken)
-                .ConfigureAwait(false);
+            await ArchiveContact(id, true, cancellationToken).ConfigureAwait(false);
+            return;
         }
-        else {
-            var contact = await Get(ownerId, id, cancellationToken).ConfigureAwait(false);
-            if (!contact.IsBlocked)
-                return;
 
-            var unblockChange = Change.Update(contact with { State = ContactState.Regular });
-            await Commander.Call(new ContactsBackend_Change(id, contact.Version, unblockChange), false, cancellationToken)
-                .ConfigureAwait(false);
+        // Unblocking leaves the contact archived: it is brought back by Unarchive only
+        var ownerId = id.OwnerId;
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        await dbContext.Contacts.Lock(id, cancellationToken).ConfigureAwait(false);
+        var dbArchivedContact = await dbContext.ArchivedContacts
+            .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbArchivedContact is not { IsBlocked: true })
+            return;
+
+        dbArchivedContact.IsBlocked = false;
+        dbArchivedContact.Version = VersionGenerator.NextVersion(dbArchivedContact.Version);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        DeferArchiveInvalidation(ownerId, id);
+    }
+
+    // [CommandHandler]
+    public virtual Task OnArchive(ContactsBackend_Archive command, CancellationToken cancellationToken)
+        => ArchiveContact(command.Id, false, cancellationToken);
+
+    // [CommandHandler]
+    public virtual async Task OnUnarchive(ContactsBackend_Unarchive command, CancellationToken cancellationToken)
+    {
+        var id = command.Id;
+        id.Require();
+
+        var ownerId = id.OwnerId;
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        await dbContext.Contacts.Lock(id, cancellationToken).ConfigureAwait(false);
+        var dbArchivedContact = await dbContext.ArchivedContacts
+            .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbArchivedContact == null)
+            return;
+        if (dbArchivedContact.IsBlocked)
+            throw StandardError.Constraint("Unblock the contact to unarchive it.");
+
+        var dbContact = await dbContext.Contacts
+            .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+        Contact? restoredContact = null;
+        if (dbContact == null) {
+            // The contact goes to the top of the list, as if it was just touched
+            restoredContact = dbArchivedContact.ToModel() with {
+                Version = VersionGenerator.NextVersion(dbArchivedContact.Version),
+                TouchedAt = Clocks.SystemClock.Now,
+                ArchivedAt = null,
+            };
+            dbContext.Add(new DbContact(restoredContact));
         }
+        dbContext.Remove(dbArchivedContact);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        DeferArchiveInvalidation(ownerId, id);
+        if (restoredContact != null) {
+            var context = CommandContext.GetCurrent();
+            context.Operation.AddEvent(new ContactChangedEvent(restoredContact, null, ChangeKind.Create));
+        }
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnMigrateBlocked(
+        ContactsBackend_MigrateBlocked command, CancellationToken cancellationToken)
+    {
+        var id = command.Id;
+        id.Require();
+
+        var ownerId = id.OwnerId;
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        await dbContext.Contacts.Lock(id, cancellationToken).ConfigureAwait(false);
+        var dbContact = await dbContext.Contacts
+            .FirstOrDefaultAsync(c => c.Id == id.Value && c.State == ContactState.Blocked, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbContact == null)
+            return;
+
+        var dbArchivedContact = await dbContext.ArchivedContacts
+            .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbArchivedContact == null) {
+            var version = VersionGenerator.NextVersion(dbContact.Version);
+            dbContext.Add(new DbArchivedContact(dbContact.ToModel(), Clocks.SystemClock.Now, version));
+        }
+        else if (!dbArchivedContact.IsBlocked) {
+            dbArchivedContact.IsBlocked = true;
+            dbArchivedContact.Version = VersionGenerator.NextVersion(dbArchivedContact.Version);
+        }
+        dbContext.Remove(dbContact);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        DeferArchiveInvalidation(ownerId, id);
+        // A blocked contact is not a friend, so only the search index has something to drop
+        var context = CommandContext.GetCurrent();
+        context.Operation.AddEvent(new ContactChangedEvent(dbContact.ToModel(), null, ChangeKind.Remove));
     }
 
     // [CommandHandler]
@@ -503,12 +709,22 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             .Where(a => a.Id.StartsWith(idPrefix)) // This is faster than index-based approach
             .ExecuteDeleteAsync(cancellationToken)
             .ConfigureAwait(false);
+        await dbContext.ArchivedContacts
+            .Where(a => a.Id.StartsWith(idPrefix))
+            .ExecuteDeleteAsync(cancellationToken)
+            .ConfigureAwait(false);
 
         var contactIds = await dbContext.Contacts
             .Where(a => a.UserId == userId.Value)
             .Select(c => c.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+        var archivedContactIds = await dbContext.ArchivedContacts
+            .Where(a => a.UserId == userId.Value)
+            .Select(c => c.Id)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        contactIds.AddRange(archivedContactIds);
 
         foreach (var contactId in contactIds) {
             var removeCommand = new ContactsBackend_Change(
@@ -548,8 +764,25 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
                 .ExecuteDeleteAsync(cancellationToken)
                 .ConfigureAwait(false);
 
+            var archivedIds = await dbContext.ArchivedContacts
+                .Where(c => c.ChatId == chatId.Value)
+                .Select(c => c.Id)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (archivedIds.Count != 0)
+                await dbContext.ArchivedContacts
+                    .Where(c => c.ChatId == chatId.Value)
+                    .ExecuteDeleteAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            Invalidation.Defer(() => _ = PseudoChatContact(chatId));
+            Invalidation.Defer(() => {
+                _ = PseudoChatContact(chatId);
+                foreach (var archivedId in archivedIds) {
+                    var archivedContactId = ContactId.Parse(archivedId);
+                    InvalidateArchive(archivedContactId.OwnerId, archivedContactId);
+                }
+            });
         }
     }
 
@@ -972,6 +1205,85 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
 
     private static string ToRedisKey(UserId userId)
         => $"{RedisKeyPrefix}{userId.Value}";
+
+    private async Task ArchiveContact(ContactId id, bool isBlocked, CancellationToken cancellationToken)
+    {
+        id.Require();
+        var ownerId = id.OwnerId;
+        var chatId = id.ChatId;
+        if (chatId is PlaceChatId { IsRoot: true } || Constants.Chat.SystemChatIds.Contains(chatId))
+            throw StandardError.Constraint("This chat can't be archived.");
+
+        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
+        await using var __ = dbContext.ConfigureAwait(false);
+
+        await dbContext.Contacts.Lock(id, cancellationToken).ConfigureAwait(false);
+        var dbArchivedContact = await dbContext.ArchivedContacts
+            .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+        if (dbArchivedContact != null) {
+            if (!isBlocked || dbArchivedContact.IsBlocked)
+                return;
+
+            dbArchivedContact.IsBlocked = true;
+            dbArchivedContact.Version = VersionGenerator.NextVersion(dbArchivedContact.Version);
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            DeferArchiveInvalidation(ownerId, id);
+            return;
+        }
+
+        var dbContact = await dbContext.Contacts
+            .FirstOrDefaultAsync(c => c.Id == id.Value, cancellationToken)
+            .ConfigureAwait(false);
+        var existing = dbContact?.ToModel();
+        var contact = existing;
+        if (contact == null) {
+            var userId = chatId is PeerChatId peerChatId ? peerChatId.UserIds.OtherThan(ownerId) : null;
+            if (ownerId.IsGuest && userId != null)
+                throw StandardError.Constraint("You must sign-in to chat with another user.");
+            if (userId?.IsGuest == true)
+                throw StandardError.Constraint("You can't chat with unauthenticated user.");
+
+            contact = new Contact(id) { UserId = userId, State = ContactState.Regular };
+        }
+        if (isBlocked)
+            contact = contact with { State = ContactState.Blocked };
+
+        var version = VersionGenerator.NextVersion(dbContact?.Version ?? 0);
+        dbContext.Add(new DbArchivedContact(contact, Clocks.SystemClock.Now, version));
+        if (dbContact != null)
+            dbContext.Remove(dbContact);
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        DeferArchiveInvalidation(ownerId, id);
+        if (existing != null) {
+            // The contact leaves the contact list, which is what the event consumers track
+            var context = CommandContext.GetCurrent();
+            context.Operation.AddEvent(new ContactChangedEvent(contact, existing, ChangeKind.Remove));
+        }
+    }
+
+    private void DeferArchiveInvalidation(UserId ownerId, ContactId id)
+        => Invalidation.Defer(() => InvalidateArchive(ownerId, id));
+
+    private void InvalidateArchive(UserId ownerId, ContactId id)
+    {
+        var chatId = id.ChatId;
+        var placeId = (chatId as PlaceChatId)?.PlaceId;
+        _ = Get(ownerId, id, default);
+        _ = ListIds(ownerId, placeId, default);
+        _ = GetArchivedCount(ownerId, placeId, default);
+        if (chatId is not PeerChatId peerChatId)
+            return;
+
+        _ = ListBlockedIds(ownerId, default);
+        var otherUserId = peerChatId.AnotherUserIdOrNull(ownerId);
+        if (otherUserId is null)
+            return;
+
+        _ = IsBlocked(ownerId, otherUserId, default);
+        // Other side's IsBlockedByPeer depends on ownerId's IsBlocked
+        _ = Get(otherUserId, ContactId.NewUser(otherUserId, ownerId), default);
+    }
 
     private async Task EnsureThreadContactExits(UserId userId, ThreadChatId chatId, CancellationToken cancellationToken)
     {
