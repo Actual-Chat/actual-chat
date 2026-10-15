@@ -13,7 +13,11 @@
         @* Hanging up is left to the chat underneath: the whole island only expands the call screen back. *@
         <div class="c-in-call" @onclick="@OnExpandClick">
             <i class="icon-phone text-xl"></i>
-            <CallStatus Text="@L.Call_InCall" IsAnswered="@true" IsShort="@true"/>
+            <CallStatus
+                Text="@CallScreensUI.GetStatusText(m.Stage)"
+                IsAnswered="@true"
+                IsShort="@true"
+                IsInProgress="@m.Stage.IsInProgress()"/>
             @if (m.JoinedAt is { } joinedAt) {
                 <span>·</span>
                 <LiveDuration Class="c-timer" StartedAt="@joinedAt"/>
@@ -68,8 +72,10 @@
             if (await IsVideoShown(call.ChatId, cancellationToken).ConfigureAwait(false))
                 return ComputedModel.None;
 
-            var joinedAt = await CallScreensUI.GetCallJoinedAt(call.ChatId, cancellationToken).ConfigureAwait(false);
-            return new ComputedModel { ChatId = call.ChatId, IsInCall = true, JoinedAt = joinedAt };
+            var chatId = call.ChatId;
+            var joinedAt = await CallScreensUI.GetCallConnectedAt(chatId, cancellationToken).ConfigureAwait(false);
+            var stage = await CallScreensUI.GetCallStage(chatId, cancellationToken).ConfigureAwait(false);
+            return new ComputedModel { ChatId = chatId, IsInCall = true, Stage = stage, JoinedAt = joinedAt };
         }
 
         if (await CallScreensUI.GetCallPeerId(cancellationToken).ConfigureAwait(false) is not { } peerId)
@@ -130,6 +136,7 @@
         public AuthorId PeerId { get; init; }
         public bool IsIncoming { get; init; }
         public bool IsInCall { get; init; }
+        public CallStage Stage { get; init; }
         public Moment? JoinedAt { get; init; }
     }
 }

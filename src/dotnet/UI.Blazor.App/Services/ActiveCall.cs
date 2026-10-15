@@ -15,7 +15,8 @@ public sealed record ActiveCall(
     CallPhase Phase,
     AuthorId? PeerId,
     bool HasVideo,
-    CallId? CallId = null)
+    CallId? CallId = null,
+    bool IsPeerRinging = false)
 {
     // An unknown id matches any call in the chat: it is what the slot holds until the server answers.
     public bool IsCall(ChatId chatId, CallId? callId)
@@ -24,6 +25,10 @@ public sealed record ActiveCall(
     public bool IsSameCall([NotNullWhen(true)] ActiveCall? other)
         => other is not null && IsCall(other.ChatId, other.CallId);
 }
+
+// How far the call has got, as its screens tell it. Requesting: the server hasn't named the call yet;
+// Calling: no callee's device confirmed it rings; Connecting: answered, but not both sides are on it.
+public enum CallStage { None, Requesting, Calling, Ringing, Incoming, Connecting, Connected }
 
 public enum CallViewKind { None, Modal, FullScreen, Collapsed }
 

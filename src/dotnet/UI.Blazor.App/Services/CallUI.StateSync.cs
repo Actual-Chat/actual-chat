@@ -57,7 +57,8 @@ public partial class CallUI
             return held is not null && held.CallId == myCall.CallId && !isPending ? null : held;
 
         var server = new ActiveCall(
-            myCall.ChatId, myCall.Role, myCall.Phase, myCall.PeerId, myCall.HasVideo, myCall.CallId);
+            myCall.ChatId, myCall.Role, myCall.Phase, myCall.PeerId, myCall.HasVideo, myCall.CallId,
+            myCall.IsPeerRinging);
         // Another call: the server arbitrated, and whatever the slot held is over or never was.
         if (held is null || !held.IsCall(server.ChatId, server.CallId))
             return server;

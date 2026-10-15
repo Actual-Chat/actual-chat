@@ -3,7 +3,8 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class CallScreensUI
 {
-    internal static CallView DecideView(ActiveCall? call, bool isNarrow, CallScreenFlags flags)
+    internal static CallView DecideView(
+        ActiveCall? call, bool isNarrow, CallScreenFlags flags, bool isConnecting = false)
     {
         if (call is null)
             return CallView.None;
@@ -20,12 +21,23 @@ public partial class CallScreensUI
             CallPhase.Dialing when isCollapsed => CallViewKind.Collapsed,
             CallPhase.Dialing => isNarrow ? CallViewKind.FullScreen : CallViewKind.Modal,
             // A wide screen keeps an active call in its chat, so there's no full-screen view for the island
-            // to lead back to.
+            // to lead back to - but the call goes there only once it connects.
+            _ when !isNarrow && isConnecting => isCollapsed ? CallViewKind.Collapsed : CallViewKind.Modal,
             _ when !isNarrow => CallViewKind.None,
             _ => isCollapsed ? CallViewKind.Collapsed : CallViewKind.FullScreen,
         };
         return new CallView(call, kind, false);
     }
+
+    internal static CallStage DecideStage(ActiveCall call, bool isConnected)
+        => call switch {
+            { Phase: CallPhase.Ringing } => CallStage.Incoming,
+            { Phase: CallPhase.Dialing, CallId: null } => CallStage.Requesting,
+            { Phase: CallPhase.Dialing, IsPeerRinging: true } => CallStage.Ringing,
+            { Phase: CallPhase.Dialing } => CallStage.Calling,
+            { Phase: CallPhase.Active } => isConnected ? CallStage.Connected : CallStage.Connecting,
+            _ => CallStage.None,
+        };
 
     internal static CallScreenState? DecideScreen(
         CallView view, ChatId? watchingChatId, VisualActivityPanelMode watchingMode)

@@ -46,11 +46,12 @@ public partial class CallScreensUI
     [ComputeMethod]
     protected virtual async Task<bool> MustNoticeOffline(CancellationToken cancellationToken)
     {
-        // The call screen and the island say it themselves, unless video takes their place; an answered call
-        // kept in its chat has no screen at all.
+        // The call screen, the island and a connecting call's modal say it themselves, unless video takes
+        // their place; an answered call kept in its chat has no screen at all.
         var view = await GetCallView(cancellationToken).ConfigureAwait(false);
         var screen = await GetScreen(cancellationToken).ConfigureAwait(false);
-        if (view.Kind is CallViewKind.FullScreen or CallViewKind.Collapsed && screen is not { HasVideo: true })
+        var isOwnScreen = view.Kind is CallViewKind.FullScreen or CallViewKind.Collapsed or CallViewKind.Modal;
+        if (isOwnScreen && screen is not { HasVideo: true })
             return false;
 
         return view.Call is { Phase: CallPhase.Active }

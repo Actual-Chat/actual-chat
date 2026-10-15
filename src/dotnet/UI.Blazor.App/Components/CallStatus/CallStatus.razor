@@ -5,7 +5,14 @@
 }
 
 <span class="c-status @(isOffline ? "offline" : "")">
-    @(isOffline ? (IsShort ? L.Call_NoConnectionShort : L.Call_NoConnection) : Text)
+    @if (isOffline) {
+        @(IsShort ? L.Call_NoConnectionShort : L.Call_NoConnection)
+    } else if (IsInProgress) {
+        @* The catalog's own ellipsis gives way to the animated one *@
+        @Text.TrimEnd('…', '.')<AnimatedEllipsis/>
+    } else {
+        @Text
+    }
 </span>
 
 @code {
@@ -13,6 +20,7 @@
     [Parameter] public bool IsAnswered { get; set; }
     // The island's pill has no room for "you can't be heard" on a phone.
     [Parameter] public bool IsShort { get; set; }
+    [Parameter] public bool IsInProgress { get; set; }
 
     protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),

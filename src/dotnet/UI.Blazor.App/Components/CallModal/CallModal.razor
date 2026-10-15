@@ -26,7 +26,8 @@
     <Header>
         <CallModalHeader
             Author="author"
-            IsOwn="@(!m.IsIncoming)"
+            IsOwn="@(!m.IsCallee)"
+            Stage="@m.Stage"
             OnCollapse="@OnCollapseClick"/>
     </Header>
     <Buttons>
@@ -80,9 +81,13 @@
             return ComputedModel.None;
 
         var mutedChatId = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
+        var stage = await CallScreensUI.GetCallStage(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             Author = author,
-            IsIncoming = call.Role == CallRole.Callee,
+            Stage = stage,
+            // An answered ring stays here until it connects, with nothing left to answer
+            IsCallee = call.Role == CallRole.Callee,
+            IsIncoming = call is { Role: CallRole.Callee, Phase: CallPhase.Ringing },
             HasVideo = call.HasVideo,
             IsMuted = mutedChatId == chatId,
         };
@@ -144,7 +149,7 @@
 
     private string Title(ComputedModel m)
         => m switch {
-            { IsIncoming: false } => L.Call_Outgoing,
+            { IsCallee: false } => L.Call_Outgoing,
             { HasVideo: true } => L.Call_IncomingVideo,
             _ => L.Call_Incoming,
         };
@@ -155,6 +160,8 @@
         public static readonly ComputedModel None = new();
 
         public Author? Author { get; init; }
+        public CallStage Stage { get; init; }
+        public bool IsCallee { get; init; }
         public bool IsIncoming { get; init; }
         public bool HasVideo { get; init; }
         public bool IsMuted { get; init; }

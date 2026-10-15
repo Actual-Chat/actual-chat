@@ -109,7 +109,10 @@
                             <div class="c-name">
                                 <span class="c-name-text">@chat.Title</span>
                             </div>
-                            <CallStatus Text="@StatusText(m)" IsAnswered="@(m.Phase == CallPhase.Active)"/>
+                            <CallStatus
+                                Text="@CallScreensUI.GetStatusText(m.Stage)"
+                                IsAnswered="@(m.Phase == CallPhase.Active)"
+                                IsInProgress="@m.Stage.IsInProgress()"/>
                             @if (m.JoinedAt is { } joinedAt) {
                                 <div class="c-timer"><LiveDuration StartedAt="@joinedAt"/></div>
                             }
@@ -293,13 +296,20 @@
 
         var phase = screen.Call?.Phase;
         DebugLog?.LogInformation("CALL_TRACE: CallScreen.ComputeState #{ChatId} → {Phase}", chatId, phase);
-        var m = new Model { Chat = chat, Mode = screen.Mode, Phase = phase, IsOverLock = screen.IsOverLock };
+        var stage = await CallScreensUI.GetCallStage(chatId, cancellationToken).ConfigureAwait(false);
+        var m = new Model {
+            Chat = chat,
+            Mode = screen.Mode,
+            Phase = phase,
+            Stage = stage,
+            IsOverLock = screen.IsOverLock,
+        };
         if (phase == CallPhase.Ringing) {
             var mutedChatId = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
             return m with { IsRingMuted = mutedChatId == chatId };
         }
 
-        var joinedAt = await CallScreensUI.GetCallJoinedAt(chatId, cancellationToken).ConfigureAwait(false);
+        var joinedAt = await CallScreensUI.GetCallConnectedAt(chatId, cancellationToken).ConfigureAwait(false);
         var isEqualLayout = await CallScreensUI.IsEqualLayout(cancellationToken).ConfigureAwait(false);
         var isChatVisible = await ChatVideoUI.GetIsVideoPanelChatVisible(cancellationToken).ConfigureAwait(false);
         return m with {
@@ -442,13 +452,6 @@
             ? CameraUI.SelectCamera(@event.DeviceId)
             : Task.CompletedTask;
 
-    private string StatusText(Model m)
-        => m.Phase switch {
-            CallPhase.Ringing => L.Call_IsCallingYou,
-            CallPhase.Dialing => L.Call_Dialing,
-            _ => L.Call_InCall,
-        };
-
     // Nested types
 
     public sealed record Model {
@@ -457,6 +460,7 @@
         public VisualActivityPanelMode Mode { get; init; }
         // Null for the video of a chat nobody called in
         public CallPhase? Phase { get; init; }
+        public CallStage Stage { get; init; }
         // False when this is the narrow-layout foreground screen rather than the real over-lock one.
         public bool IsOverLock { get; init; }
         public bool IsRingMuted { get; init; }
