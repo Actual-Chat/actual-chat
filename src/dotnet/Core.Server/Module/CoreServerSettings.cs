@@ -12,6 +12,8 @@ public sealed class CoreServerSettings
     public string GoogleProjectId { get; set; } = "";
     public string GoogleRegionId { get; set; } = "us-central1";
     public bool UseGoogleTranscoder { get; set; }
+    // The Cloud Run service transcoding what Transcoder can't take; when empty, the app pod transcodes it
+    public string TranscodeServiceUrl { get; set; } = "";
     // ISO country codes (";" or ","), or "*" for every country; empty serves nobody
     public string RpcProbeCountries { get; set; } = "";
     // Keys of the relays that vouch for client IPs: "kz1=key1;kz1=key2;tr1=key3". Empty trusts no relay.

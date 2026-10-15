@@ -63,13 +63,19 @@ public sealed class CoreServerModule(IServiceProvider moduleServices)
             services.AddSingleton<IBlobStorages>(_ => new GoogleCloudBlobStorages(storageBucket));
 
         // Video upload processor
-        if (Settings.UseGoogleTranscoder && !storageBucket.IsNullOrEmpty())
+        if (Settings.UseGoogleTranscoder && !storageBucket.IsNullOrEmpty()) {
+            // A request lasts as long as the transcode, so the client's own timeout is off
+            services.AddHttpClient(GoogleCloudVideoUploadProcessor.HttpClientName,
+                c => c.Timeout = System.Threading.Timeout.InfiniteTimeSpan);
             services.AddSingleton<IUploadProcessor>(c => new GoogleCloudVideoUploadProcessor(
                 StorageClient.Create(),
+                c.HttpClientFactory(),
                 storageBucket,
                 Settings.GoogleProjectId,
                 Settings.GoogleRegionId,
+                Settings.TranscodeServiceUrl,
                 c.LogFor<GoogleCloudVideoUploadProcessor>()));
+        }
         else
             services.AddSingleton<IUploadProcessor, LocalVideoUploadProcessor>();
         services.AddSingleton<IMediaProcessor, MediaProcessor>();

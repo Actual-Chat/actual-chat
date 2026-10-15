@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using ActualLab.Generators;
 using FFMpegCore;
 using Google.Api.Gax.ResourceNames;
@@ -11,19 +13,29 @@ namespace ActualChat.Uploads;
 
 public sealed class GoogleCloudVideoUploadProcessor(
     StorageClient storageClient,
+    IHttpClientFactory httpClientFactory,
     string bucket,
     string projectId,
     string regionId,
+    string transcodeServiceUrl,
     ILogger<GoogleCloudVideoUploadProcessor> log)
     : IUploadProcessor
 {
+    public const string HttpClientName = "video-transcoder";
+
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan FastPollInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan FastPollPeriod = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan JobStartupDuration = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan JobTimeout = TimeSpan.FromMinutes(14);
+    // A cold start measured on dev: ~3.6s
+    private static readonly TimeSpan ServiceStartupDuration = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ServiceTimeout = TimeSpan.FromMinutes(30);
     private static readonly TimeSpan SignedUrlExpiry = TimeSpan.FromHours(1);
     private static readonly TimeSpan MaxLocalTranscodeDuration = TimeSpan.FromMinutes(10);
+    // The service keeps its output in memory until the upload
+    private static readonly TimeSpan MaxServiceTranscodeDuration = TimeSpan.FromMinutes(60);
+    private const string OutputContentType = "video/mp4";
 
     // ffprobe codec names of the input codecs Transcoder lists as supported:
     // https://docs.cloud.google.com/transcoder/docs/concepts/supported-input-and-output-formats
@@ -33,9 +45,11 @@ public sealed class GoogleCloudVideoUploadProcessor(
     };
 
     private StorageClient StorageClient { get; } = storageClient;
+    private IHttpClientFactory HttpClientFactory { get; } = httpClientFactory;
     private string Bucket { get; } = bucket;
     private string ProjectId { get; } = projectId;
     private string RegionId { get; } = regionId;
+    private string TranscodeServiceUrl { get; } = transcodeServiceUrl;
     private ILogger Log { get; } = log;
 
     public bool Supports(string contentType, MediaKind mediaKind)
@@ -121,9 +135,9 @@ public sealed class GoogleCloudVideoUploadProcessor(
             var transcodedVideo = mediaInfo?.PrimaryVideoStream;
             var isTranscodable = transcodedVideo is null || CanTranscode(transcodedVideo);
             if (conversion is VideoConversion.Remux || !isTranscodable) {
-                Log.LogInformation("Converting '{FileName}' locally: {Conversion}, codec '{Codec}'",
+                Log.LogInformation("Converting '{FileName}' without Transcoder: {Conversion}, codec '{Codec}'",
                     upload.FileName, conversion, transcodedVideo?.CodecName);
-                return await ProcessLocally(original, signedUrl, mediaInfo, conversion, progress, cancellationToken)
+                return await Convert(original, signedUrl, mediaInfo, conversion, progress, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -151,8 +165,8 @@ public sealed class GoogleCloudVideoUploadProcessor(
                     stepSw.ElapsedMilliseconds, jobName);
 
                 // Save state BEFORE polling so we can resume after a restart
-                await WriteState(stateObjectName, jobName, outputPrefix, size, duration, cancellationToken)
-                    .ConfigureAwait(false);
+                var state = new TranscoderState(jobName, outputPrefix, size.Width, size.Height, duration.TotalSeconds);
+                await WriteState(stateObjectName, state, cancellationToken).ConfigureAwait(false);
             }
 
             // 4. Poll for completion
@@ -163,38 +177,22 @@ public sealed class GoogleCloudVideoUploadProcessor(
                 stepSw.ElapsedMilliseconds, job.State, job.Name);
 
             if (job.State is Job.Types.ProcessingState.Failed) {
-                Log.LogError("Transcoder job '{JobName}' failed, converting '{FileName}' locally: {Error}",
+                Log.LogError("Transcoder job '{JobName}' failed, converting '{FileName}' without it: {Error}",
                     job.Name, upload.FileName, job.Error);
                 _ = DeleteState(stateObjectName);
-                // The local transcode starts over, and so does its progress
-                return await ProcessLocally(original, signedUrl, mediaInfo, conversion, progress, cancellationToken)
+                // The conversion starts over, and so does its progress
+                return await Convert(original, signedUrl, mediaInfo, conversion, progress, cancellationToken)
                     .ConfigureAwait(false);
             }
 
             progress?.Report(95);
 
             // 5. Build result
-            var outputObjectName = outputPrefix + "output.mp4";
-            var outputLength = await GetObjectLength(outputObjectName, cancellationToken).ConfigureAwait(false);
-            progress?.Report(98);
-
+            var result = await GetTranscodedFile(original, size, outputPrefix, stateObjectName, cancellationToken)
+                .ConfigureAwait(false);
             Log.LogDebug("Total video processing completed in {Elapsed:N0}ms for '{FileName}'",
                 totalSw.ElapsedMilliseconds, upload.FileName);
-            return new ProcessedFile(
-                new UploadedBlobFile(
-                    upload.FileName.ChangeExtension(".mp4"),
-                    "video/mp4",
-                    outputLength,
-                    outputObjectName,
-                    () => OpenGcsObject(outputObjectName)),
-                size,
-                snapshot) {
-                Duration = duration,
-                OnDispose = () => {
-                    _ = CleanupGcsOutput(outputPrefix);
-                    _ = DeleteState(stateObjectName);
-                },
-            };
+            return result;
         }
         catch (Exception e) {
             Log.LogError(e, "Cloud transcoding failed for '{File}' after {Elapsed:N0}ms",
@@ -209,6 +207,151 @@ public sealed class GoogleCloudVideoUploadProcessor(
         => TranscoderInputCodecs.Contains(videoStream.CodecName);
 
     // Private methods
+
+    private Task<ProcessedFile> Convert(
+        ProcessedFile original,
+        string signedUrl,
+        IMediaAnalysis? mediaInfo,
+        VideoConversion conversion,
+        IProgress<double>? progress,
+        CancellationToken cancellationToken)
+        => conversion is VideoConversion.Transcode && !TranscodeServiceUrl.IsNullOrEmpty()
+            ? TranscodeInService(original, signedUrl, mediaInfo, progress, cancellationToken)
+            : ProcessLocally(original, signedUrl, mediaInfo, conversion, progress, cancellationToken);
+
+    private async Task<ProcessedFile> TranscodeInService(
+        ProcessedFile original,
+        string signedUrl,
+        IMediaAnalysis? mediaInfo,
+        IProgress<double>? progress,
+        CancellationToken cancellationToken)
+    {
+        var fileName = original.File.FileName;
+        if (original.Duration > MaxServiceTranscodeDuration) {
+            Log.LogWarning("'{FileName}' is too long to transcode ({Duration}), keeping the original",
+                fileName, original.Duration);
+            return original;
+        }
+
+        // Nothing is saved to resume from: the service stops transcoding once the request is gone
+        var outputPrefix = $"transcode-output/{RandomStringGenerator.Default.Next()}/";
+        var sw = Stopwatch.StartNew();
+        try {
+            mediaInfo ??= await FFProbe.AnalyseAsync(new Uri(signedUrl), cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            var (arguments, size) = UploadProcessorHelper.GetTranscodeArguments(mediaInfo);
+            var outputUrl = await GenerateSignedWriteUrl(GetOutputObjectName(outputPrefix)).ConfigureAwait(false);
+            var request = new TranscodeRequest(signedUrl, outputUrl, arguments);
+            var response = await RequestTranscode(
+                    request, original.Duration ?? TimeSpan.Zero, progress, cancellationToken)
+                .ConfigureAwait(false);
+            Log.LogInformation(
+                "Transcode service converted '{FileName}' in {Elapsed:N0}ms: "
+                + "ffmpeg {TranscodeMillis:N0}ms, upload of {Size:N0} bytes {UploadMillis:N0}ms",
+                fileName, sw.ElapsedMilliseconds, response.TranscodeMillis, response.Size, response.UploadMillis);
+            progress?.Report(95);
+            return await GetTranscodedFile(original, size, outputPrefix, null, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (Exception e) when (!cancellationToken.IsCancellationRequested) {
+            Log.LogError(e,
+                "Could not transcode '{FileName}' in the service after {Elapsed:N0}ms, keeping the original",
+                fileName, sw.ElapsedMilliseconds);
+            _ = CleanupGcsOutput(outputPrefix);
+            return original;
+        }
+    }
+
+    private async Task<TranscodeResponse> RequestTranscode(
+        TranscodeRequest transcodeRequest,
+        TimeSpan videoDuration,
+        IProgress<double>? progress,
+        CancellationToken cancellationToken)
+    {
+        // The service accepts only internal traffic, and only from callers holding run.invoker on it
+        var credential = await GoogleCredential.GetApplicationDefaultAsync().ConfigureAwait(false);
+        var oidcToken = await credential
+            .GetOidcTokenAsync(OidcTokenOptions.FromTargetAudience(TranscodeServiceUrl), cancellationToken)
+            .ConfigureAwait(false);
+        var idToken = await oidcToken.GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
+
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(ServiceTimeout);
+        using var httpClient = HttpClientFactory.CreateClient(HttpClientName);
+        using var request = new HttpRequestMessage(HttpMethod.Post, TranscodeServiceUrl) {
+            Content = JsonContent.Create(transcodeRequest),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", idToken);
+        var responseTask = httpClient.SendAsync(request, cts.Token);
+
+        // ~4.3x realtime measured for 1080p on 8 vCPUs; 0.3x leaves headroom
+        var expectedDuration = (ServiceStartupDuration + (videoDuration * 0.3))
+            .Clamp(ServiceStartupDuration, ServiceTimeout);
+        var stopwatch = Stopwatch.StartNew();
+        while (true) {
+            var completedTask = await Task
+                .WhenAny(responseTask, Task.Delay(FastPollInterval, CancellationToken.None))
+                .ConfigureAwait(false);
+            if (completedTask == responseTask)
+                break;
+
+            ReportEstimatedProgress(progress, stopwatch.Elapsed / expectedDuration);
+        }
+
+        using var response = await responseTask.ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode) {
+            var error = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            throw StandardError.External(
+                $"The transcode service answered {(int)response.StatusCode} {response.StatusCode}: {error}");
+        }
+
+        var result = await response.Content
+            .ReadFromJsonAsync<TranscodeResponse>(cancellationToken)
+            .ConfigureAwait(false);
+        return result ?? throw StandardError.External("The transcode service answered with no result.");
+    }
+
+    private async Task<string> GenerateSignedWriteUrl(string objectName)
+    {
+        var credential = await GoogleCredential.GetApplicationDefaultAsync().ConfigureAwait(false);
+        var urlSigner = UrlSigner.FromCredential(credential);
+        var contentHeaders = new Dictionary<string, IEnumerable<string>> {
+            ["Content-Type"] = [OutputContentType],
+        };
+        var template = UrlSigner.RequestTemplate
+            .FromBucket(Bucket)
+            .WithObjectName(objectName)
+            .WithHttpMethod(HttpMethod.Put)
+            .WithContentHeaders(contentHeaders);
+        return await urlSigner
+            .SignAsync(template, UrlSigner.Options.FromDuration(SignedUrlExpiry), CancellationToken.None)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<ProcessedFile> GetTranscodedFile(
+        ProcessedFile original,
+        Size2D size,
+        string outputPrefix,
+        string? stateObjectName,
+        CancellationToken cancellationToken)
+    {
+        var outputObjectName = GetOutputObjectName(outputPrefix);
+        var outputLength = await GetObjectLength(outputObjectName, cancellationToken).ConfigureAwait(false);
+        var file = new UploadedBlobFile(
+            original.File.FileName.ChangeExtension(".mp4"),
+            OutputContentType,
+            outputLength,
+            outputObjectName,
+            () => OpenGcsObject(outputObjectName));
+        return new ProcessedFile(file, size, original.Thumbnail) {
+            Duration = original.Duration,
+            OnDispose = () => {
+                _ = CleanupGcsOutput(outputPrefix);
+                if (stateObjectName is not null)
+                    _ = DeleteState(stateObjectName);
+            },
+        };
+    }
 
     private async Task<ProcessedFile> ProcessLocally(
         ProcessedFile original,
@@ -338,12 +481,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
             case Job.Types.ProcessingState.Failed:
                 return job;
             case Job.Types.ProcessingState.Running:
-                // Transcoder reports no progress, so it's estimated from the elapsed time:
-                // 20% → ~84% when the expected time is up → ~92% at twice that, never above 94%
-                if (progress is not null) {
-                    var elapsedFraction = stopwatch.Elapsed / expectedJobDuration;
-                    progress.Report(20 + (74 * (1 - Math.Exp(-2 * elapsedFraction))));
-                }
+                ReportEstimatedProgress(progress, stopwatch.Elapsed / expectedJobDuration);
                 break;
             }
         }
@@ -407,12 +545,8 @@ public sealed class GoogleCloudVideoUploadProcessor(
         }
     }
 
-    private async Task WriteState(
-        string stateObjectName, string jobName, string outputPrefix,
-        Size2D size, TimeSpan duration,
-        CancellationToken cancellationToken)
+    private async Task WriteState(string stateObjectName, TranscoderState state, CancellationToken cancellationToken)
     {
-        var state = new TranscoderState(jobName, outputPrefix, size.Width, size.Height, duration.TotalSeconds);
         var stream = MemoryStreamManager.Default.GetStream();
         await using (stream.ConfigureAwait(false)) {
             await JsonSerializer
@@ -423,7 +557,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
                 .UploadObjectAsync(Bucket, stateObjectName, "application/json", stream,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-            Log.LogDebug("Saved transcoder state '{StateObject}': job '{JobName}'", stateObjectName, jobName);
+            Log.LogDebug("Saved transcoder state '{StateObject}': job '{JobName}'", stateObjectName, state.JobName);
         }
     }
 
@@ -440,6 +574,11 @@ public sealed class GoogleCloudVideoUploadProcessor(
         }
     }
 
+    private static void ReportEstimatedProgress(IProgress<double>? progress, double elapsedFraction)
+        // Neither Transcoder nor the service reports progress, so it's estimated from the elapsed time:
+        // 20% → ~84% when the expected time is up → ~92% at twice that, never above 94%
+        => progress?.Report(20 + (74 * (1 - Math.Exp(-2 * elapsedFraction))));
+
     private static int EstimateVideoBitrate(Size2D size, double frameRate)
     {
         // Estimate a reasonable bitrate based on resolution and frame rate.
@@ -453,6 +592,9 @@ public sealed class GoogleCloudVideoUploadProcessor(
     private static string GetStateObjectName(string blobPath)
         => $"transcode-state/{blobPath}.json";
 
+    private static string GetOutputObjectName(string outputPrefix)
+        => outputPrefix + "output.mp4";
+
     // Nested types
 
     private sealed record TranscoderState(
@@ -461,4 +603,10 @@ public sealed class GoogleCloudVideoUploadProcessor(
         int VideoWidth,
         int VideoHeight,
         double Duration);
+
+    // The JSON of services/video-transcoder/main.go
+
+    private sealed record TranscodeRequest(string InputUrl, string OutputUrl, string[] Arguments);
+
+    private sealed record TranscodeResponse(long Size, long TranscodeMillis, long UploadMillis);
 }
