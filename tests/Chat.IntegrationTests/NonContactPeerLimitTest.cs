@@ -8,7 +8,7 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
-    public async Task RulesShouldStripContentFlagsForNonContactPeer()
+    public async Task RulesShouldAllowVoiceIntroductionsForNonContactPeer()
     {
         // arrange
         var appHost = AppHost;
@@ -26,9 +26,11 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         rules.CanRead().Should().BeTrue();
         rules.CanWrite().Should().BeTrue();
         rules.CanUpload().Should().BeFalse();
-        rules.CanWriteAudio().Should().BeFalse();
+        rules.CanWriteAudio().Should().BeTrue();
         rules.CanWriteVideo().Should().BeFalse();
-        rules.CanReadAudio().Should().BeFalse();
+        rules.CanReadAudio().Should().BeTrue();
+        rules.IsPeerContactPending.Should().BeTrue();
+        rules.HasReachedPeerMessageLimit.Should().BeFalse();
         rules.CanReadVideo().Should().BeFalse();
     }
 
@@ -154,7 +156,8 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         // uses and the dependency TestWait.When retries on - a lone command captures none.
         await TestWait.When(async ct => {
             var peerChat = await aliceTester.Chats.Get(aliceTester.Session, peerChatId, ct);
-            peerChat!.Rules.Has(ChatPermissions.WriteAudio).Should().BeTrue();
+            peerChat!.Rules.IsPeerContactPending.Should().BeFalse();
+            peerChat.Rules.HasReachedPeerMessageLimit.Should().BeFalse();
 
             var entry = await aliceTester.CreateTextEntry(peerChatId, "post-reply message");
             entry.Content.Should().Be("post-reply message");
@@ -212,7 +215,8 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         // The rules read is the cap check's gate - see the sibling test.
         await TestWait.When(async ct => {
             var peerChat = await aliceTester.Chats.Get(aliceTester.Session, peerChatId, ct);
-            peerChat!.Rules.Has(ChatPermissions.WriteAudio).Should().BeTrue();
+            peerChat!.Rules.IsPeerContactPending.Should().BeFalse();
+            peerChat.Rules.HasReachedPeerMessageLimit.Should().BeFalse();
 
             var entry = await aliceTester.CreateTextEntry(peerChatId, "post-add message");
             entry.Content.Should().Be("post-add message");

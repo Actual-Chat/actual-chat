@@ -57,7 +57,12 @@ rules.Require(ChatPermissions.Write);
 rules.Require(ChatPermissions.WriteAudio);
 ```
 
-Same pattern as video. No additional voice-specific permission today.
+Non-contact peer chats retain audio permissions so a sender can introduce themselves by voice.
+Text and voice share `Constants.Chat.NonContactPeerMessageLimit` (two messages). Rules expose
+`IsPeerContactPending` and `HasReachedPeerMessageLimit`; new streams are rejected at the limit,
+and entry creation enforces the shared cap under a database lock. A recipient reply (including a
+finalized voice reply) or adding the sender as a contact lifts the restriction. Calls, video,
+and uploads remain gated separately until acceptance.
 
 ### 2. Clock-skew check (`MaxBeginsAtDrift = 5 s`)
 

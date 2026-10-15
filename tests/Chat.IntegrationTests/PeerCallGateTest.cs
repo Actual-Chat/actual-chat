@@ -61,7 +61,7 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
         // The reply stores the contact via an event, so wait for the call gate to lift.
         await TestWait.When(async ct => {
             var chat = await chats.Get(bobTester.Session, chatId, ct);
-            chat!.Rules.CanWriteAudio().Should().BeTrue();
+            chat!.Rules.IsPeerContactPending.Should().BeFalse();
         }, TimeSpan.FromSeconds(10));
 
         // act + assert — the call now goes through.
@@ -86,7 +86,7 @@ public class PeerCallGateTest(ChatCollection.AppHostFixture fixture, ITestOutput
         var liveSessions = bobTester.AppServices.GetRequiredService<ILiveSessions>();
         await TestWait.When(async ct => {
             var chat = await chats.Get(bobTester.Session, chatId, ct);
-            chat!.Rules.CanWriteAudio().Should().BeTrue();
+            chat!.Rules.IsPeerContactPending.Should().BeFalse();
         }, TimeSpan.FromSeconds(10));
 
         // act — Alice blocks Bob; the block strips his call permission again.

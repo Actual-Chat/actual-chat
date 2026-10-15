@@ -504,6 +504,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatFooter_ReadOnly => l["ChatFooter_ReadOnly"].Value;
         public string ChatFooter_YouBlockedUser => l["ChatFooter_YouBlockedUser"].Value;
         public string ChatFooter_Unblock => l["ChatFooter_Unblock"].Value;
+        public string ChatFooter_WaitForContact => l["ChatFooter_WaitForContact"].Value;
         public string ChatFooter_BlockedByUser => l["ChatFooter_BlockedByUser"].Value;
         public string ChatFooter_ToPostOrTalk => l["ChatFooter_ToPostOrTalk"].Value;
         public string ChatFooter_JoinChat => l["ChatFooter_JoinChat"].Value;

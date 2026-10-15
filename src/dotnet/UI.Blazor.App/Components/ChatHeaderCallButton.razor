@@ -31,12 +31,10 @@
 
         var chatId = Chat.Id;
         var activity = await ChatActivityUI.GetCallActivity(chatId, cancellationToken).ConfigureAwait(false);
-        // Mirror the server's peer-call gate: a peer call is allowed only while the audio-stream
-        // permission is granted (the recipient added the caller or replied, and neither side blocked).
         var canCall = true;
         if (chatId.Kind == ChatKind.Peer) {
             var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-            canCall = chat?.Rules.CanWriteAudio() ?? false;
+            canCall = chat is not null && chat.Rules.CanWriteAudio() && !chat.Rules.IsPeerContactPending;
         }
         // A dialing call counts as busy: the ring is already ours, and offering the button again would
         // re-notify every invitee and extend the ring window.

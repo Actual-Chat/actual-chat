@@ -462,6 +462,7 @@
   "ChatFooter_ReadOnly": "चैट केवल पढ़ने के लिए है",
   "ChatFooter_YouBlockedUser": "आपने इस उपयोगकर्ता को ब्लॉक किया है।",
   "ChatFooter_Unblock": "अनब्लॉक करें",
+  "ChatFooter_WaitForContact": "आपने अपना परिचय भेज दिया है। और संदेश भेजने से पहले इस उपयोगकर्ता के आपको संपर्कों में जोड़ने या जवाब देने की प्रतीक्षा करें।",
   "ChatFooter_BlockedByUser": "इस उपयोगकर्ता ने आपको ब्लॉक किया है।",
   "ChatFooter_ToPostOrTalk": "लिखने या बोलने के लिए,",
   "ChatFooter_JoinChat": "इस चैट में शामिल हों",

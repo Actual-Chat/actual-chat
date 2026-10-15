@@ -16,6 +16,9 @@ public sealed partial record AuthorRules(
         (AuthorRules? a) => a?.ChatId is not null,
         new(() => StandardError.NotFound<AuthorRules>()));
 
+    [DataMember, Key(4)] public bool IsPeerContactPending { get; init; }
+    [DataMember, Key(5)] public bool HasReachedPeerMessageLimit { get; init; }
+
     public static AuthorRules None(ChatId chatId) => new(chatId, null, null);
 
     public bool CanRead() => Permissions.Has(ChatPermissions.Read);

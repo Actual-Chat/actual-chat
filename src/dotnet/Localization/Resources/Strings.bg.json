@@ -462,6 +462,7 @@
   "ChatFooter_ReadOnly": "Чатът е само за четене",
   "ChatFooter_YouBlockedUser": "Блокирахте този потребител.",
   "ChatFooter_Unblock": "Отблокирайте",
+  "ChatFooter_WaitForContact": "Изпратихте представянето си. Изчакайте този потребител да ви добави в контактите си или да отговори, преди да изпращате още съобщения.",
   "ChatFooter_BlockedByUser": "Този потребител ви е блокирал.",
   "ChatFooter_ToPostOrTalk": "За да пишете или говорите,",
   "ChatFooter_JoinChat": "Присъединете се към този чат",

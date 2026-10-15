@@ -187,6 +187,70 @@ public sealed class ExternalAudioTranscriptStreamTest(AppHostFixture fixture, IT
         entry.Content.Should().Be("Only this");
     }
 
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task NonContactIntroductionsShouldShareMessageLimit(bool firstIsVoice, bool secondIsVoice)
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        await using var bobTester = AppHost.NewWebClientTester(Out);
+        var bob = await bobTester.SignInAsUniqueBob();
+        var chatId = PeerChatId.New(alice.Id, bob.Id);
+        var ogg = await File.ReadAllBytesAsync(
+            (new FilePath(Environment.CurrentDirectory) & "data" & "soniox-tts-sample.opus").Value);
+
+        // act
+        foreach (var isVoice in new[] { firstIsVoice, secondIsVoice }) {
+            if (isVoice) {
+                var entry = await Tester.Chats.StreamVoice(
+                    Tester.Session, chatId, null, Languages.English,
+                    new RpcStream<VoiceStreamPart>(Parts(ogg)), CancellationToken.None);
+                entry.Should().NotBeNull();
+                entry!.HasAudio.Should().BeTrue();
+            }
+            else
+                await Tester.CreateTextEntry(chatId, "Hello");
+        }
+
+        // assert
+        await TestWait.When(async ct => {
+            var rules = await Tester.Chats.GetRules(Tester.Session, chatId, ct);
+            rules.IsPeerContactPending.Should().BeTrue();
+            rules.HasReachedPeerMessageLimit.Should().BeTrue();
+            rules.CanUpload().Should().BeFalse();
+            rules.CanWriteVideo().Should().BeFalse();
+        });
+        var sendText = () => Tester.CreateTextEntry(chatId, "One too many");
+        await sendText.Should().ThrowAsync<InvalidOperationException>().WithMessage("You can send up to*");
+        var startVoice = () => Tester.Chats.StartVoiceStream(
+            Tester.Session, chatId, null, Languages.English, CancellationToken.None);
+        await startVoice.Should().ThrowAsync<InvalidOperationException>().WithMessage("Wait for this user*");
+        var backend = AppHost.Services.GetRequiredService<IAudioStreamingBackend>();
+        var streamId = StreamId.New(AppHost.Services.MeshWatcher().ThisNode.Ref);
+        var record = new AudioRecord(
+            streamId, Tester.Session, chatId, CpuClock.Instance.Now.EpochOffset.TotalSeconds, null);
+        var pushVoice = async () => await backend.ProcessAudioWithTranscript(
+            record, 0,
+            new RpcStream<AudioFrame>(await ReadFrames()),
+            new RpcStream<ExternalTranscriptChunk>(AsyncEnumerable.Empty<ExternalTranscriptChunk>()),
+            null, CancellationToken.None);
+        await pushVoice.Should().ThrowAsync<InvalidOperationException>().WithMessage("Wait for this user*");
+
+        var reply = await bobTester.Chats.StreamVoice(
+            bobTester.Session, chatId, null, Languages.English,
+            new RpcStream<VoiceStreamPart>(Parts(ogg)), CancellationToken.None);
+        reply.Should().NotBeNull();
+        await TestWait.When(async ct => {
+            var rules = await Tester.Chats.GetRules(Tester.Session, chatId, ct);
+            rules.IsPeerContactPending.Should().BeFalse("a voice reply accepts the conversation too");
+            rules.HasReachedPeerMessageLimit.Should().BeFalse();
+        });
+        var afterReply = await Tester.CreateTextEntry(chatId, "Thanks for replying");
+        afterReply.Content.Should().Be("Thanks for replying");
+    }
+
     // Private methods
 
     private async Task<(IAudioStreamingBackend, IChatsBackend, AudioRecord)> NewRecording()

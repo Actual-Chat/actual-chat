@@ -462,6 +462,7 @@
   "ChatFooter_ReadOnly": "Chat ist schreibgeschützt",
   "ChatFooter_YouBlockedUser": "Sie haben diesen Nutzer blockiert.",
   "ChatFooter_Unblock": "Freigeben",
+  "ChatFooter_WaitForContact": "Du hast dich vorgestellt. Warte, bis dich dieser Nutzer als Kontakt hinzufügt oder antwortet, bevor du weitere Nachrichten sendest.",
   "ChatFooter_BlockedByUser": "Dieser Nutzer hat Sie blockiert.",
   "ChatFooter_ToPostOrTalk": "Zum Schreiben und Sprechen",
   "ChatFooter_JoinChat": "Diesem Chat beitreten",

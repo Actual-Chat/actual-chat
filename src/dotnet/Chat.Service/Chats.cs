@@ -643,6 +643,10 @@ public partial class Chats(IServiceProvider services) : IChats
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(ChatPermissions.Write);
         chat.Rules.Permissions.Require(ChatPermissions.WriteAudio);
+        if (chat.Rules.HasReachedPeerMessageLimit)
+            throw StandardError.Constraint(
+                "Wait for this user to add you to their contacts or reply before sending more messages.");
+
         await MaintenancesBackend.RequireAvailable(chatId, cancellationToken).ConfigureAwait(false);
 
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
@@ -774,19 +778,10 @@ public partial class Chats(IServiceProvider services) : IChats
             textEntry = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
         }
         else { // Create
-            // In peer chats, when the caller isn't in the recipient's contacts and
-            // the recipient hasn't replied, ChatPermissions.WriteAudio (and other
-            // content-type flags) are stripped. Use that as the cheap signal to
-            // enforce the creation cap. Edits remain unaffected since this branch
-            // only runs on create.
-            if (chatId is PeerChatId && !chat.Rules.Has(ChatPermissions.WriteAudio)) {
-                var hasReachedLimit = await HasReachedNonContactPeerLimit(chatId, author.Id, cancellationToken)
-                    .ConfigureAwait(false);
-                if (hasReachedLimit)
-                    throw StandardError.Constraint(
-                        $"You can send up to {Constants.Chat.NonContactPeerMessageLimit} messages until "
-                        + "this user adds you to their contacts or replies.");
-            }
+            if (chat.Rules.HasReachedPeerMessageLimit)
+                throw StandardError.Constraint(
+                    $"You can send up to {Constants.Chat.NonContactPeerMessageLimit} messages until "
+                    + "this user adds you to their contacts or replies.");
 
             var commandResult = await TryHandleAdminCommand(session, chatId, author, text, cancellationToken)
                 .ConfigureAwait(false);
@@ -1624,7 +1619,7 @@ public partial class Chats(IServiceProvider services) : IChats
             if (hasAttachments && !destinationChat.Rules.CanUpload())
                 throw StandardError.Constraint(
                     "Files can be sent only after this user adds you to their contacts or replies.");
-            if (destinationChatId is PeerChatId && !destinationChat.Rules.CanWriteAudio()) {
+            if (destinationChat.Rules.IsPeerContactPending) {
                 var hasRoom = await HasRoomUnderNonContactPeerLimit(destinationChatId, entryCount, cancellationToken)
                     .ConfigureAwait(false);
                 if (!hasRoom)
@@ -1649,18 +1644,6 @@ public partial class Chats(IServiceProvider services) : IChats
             .GetFirstEntryAuthors(chatId, maxExistingCount + 1, true, cancellationToken)
             .ConfigureAwait(false);
         return firstAuthors.Count == 0;
-    }
-
-    private async Task<bool> HasReachedNonContactPeerLimit(
-        ChatId chatId,
-        AuthorId authorId,
-        CancellationToken cancellationToken)
-    {
-        var messageLimit = Constants.Chat.NonContactPeerMessageLimit;
-        var firstAuthors = await Backend
-            .GetFirstEntryAuthors(chatId, messageLimit, true, cancellationToken)
-            .ConfigureAwait(false);
-        return firstAuthors.Count == 1 && firstAuthors.Contains(authorId);
     }
 
     private async Task EnsureOwnPeerContactStored(

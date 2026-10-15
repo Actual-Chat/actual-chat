@@ -557,6 +557,7 @@
   "ChatFooter_ReadOnly": "Чат доступний лише для читання",
   "ChatFooter_YouBlockedUser": "Вы заблокировали этого пользователя.",
   "ChatFooter_Unblock": "Разблокировать",
+  "ChatFooter_WaitForContact": "Изпратихте представянето си. Изчакайте този потребител да ви добави в контактите си или да отговори, преди да изпращате още съобщения.",
   "ChatFooter_BlockedByUser": "このユーザーにブロックされています。",
   "ChatFooter_ToPostOrTalk": "Untuk mengirim pesan atau berbicara,",
   "ChatFooter_JoinChat": "Присъединете се към този чат",
