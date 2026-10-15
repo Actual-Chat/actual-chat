@@ -379,9 +379,10 @@ public partial class AudioStreamingBackend
                 // One voice must not overlap itself: the author's previous dub in this language
                 // may still be draining in its mix after its source ended.
                 await previousDubTask.SilentAwait(false);
-                var voiceId = await GetSpeakerVoice(dubStreamId, cancellationToken).ConfigureAwait(false);
-                latencyTrace?.OnVoice(voiceId);
-                var options = new SpeechSynthesisOptions(language, voiceId) {
+                var voiceOptions = await GetSpeakerSynthesisOptions(dubStreamId, language, cancellationToken)
+                    .ConfigureAwait(false);
+                latencyTrace?.OnVoice(voiceOptions.VoiceId);
+                var options = voiceOptions with {
                     Listener = latencyTrace,
                     Speed = speed,
                 };
@@ -434,15 +435,16 @@ public partial class AudioStreamingBackend
         return previousDubTask;
     }
 
-    private Task<string?> GetSpeakerVoice(StreamId dubStreamId, CancellationToken cancellationToken)
+    private Task<SpeechSynthesisOptions> GetSpeakerSynthesisOptions(
+        StreamId dubStreamId, Language language, CancellationToken cancellationToken)
     {
         // Read once per dub: a voice change applies from the speaker's next utterance
         var baseStreamId = dubStreamId.BaseStreamId;
         if (!_authorIdByStream.TryGetValue(baseStreamId, out var authorId)
             || !_chatIdByStream.TryGetValue(baseStreamId, out var chatId))
-            return Task.FromResult<string?>(null);
+            return Task.FromResult(new SpeechSynthesisOptions(language));
 
-        return SpeakerVoices.Get(chatId, authorId, cancellationToken);
+        return SpeakerVoices.GetSynthesisOptions(chatId, authorId, language, cancellationToken);
     }
 
     private string? GetDubChainKey(StreamId dubStreamId)

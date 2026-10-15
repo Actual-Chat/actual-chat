@@ -107,7 +107,10 @@ public sealed class ReplayDubs(IServiceProvider services)
         if (translation == null || translation.MatchesOriginal(entry.Content))
             return null;
 
-        var voiceId = await SpeakerVoices.Get(entry.ChatId, entry.AuthorId, cancellationToken).ConfigureAwait(false);
+        var options = await SpeakerVoices
+            .GetSynthesisOptions(entry.ChatId, entry.AuthorId, language, cancellationToken)
+            .ConfigureAwait(false);
+        var voiceId = options.VoiceId;
         if (translation.HasValidDub(voiceId ?? "")) {
             var existing = await MediaBackend.Get(translation.DubMediaId, cancellationToken).ConfigureAwait(false);
             if (existing != null)
@@ -125,7 +128,6 @@ public sealed class ReplayDubs(IServiceProvider services)
         await _synthesisLimiter.WaitAsync(cancellationToken).ConfigureAwait(false);
         workCts.CancelAfter(Constants.Audio.ReplayDubSynthesisTimeout);
         try {
-            var options = new SpeechSynthesisOptions(language, voiceId);
             synthesized = await Synthesizer.Synthesize(text, options, cancellationToken).ConfigureAwait(false);
             // An AudioSource memoizes its frames, so every GetFrames replays them from the start:
             // the waiting callers play the dub as it's spoken while the saver stores the same frames

@@ -54,6 +54,9 @@ public sealed class VoicePool(IServiceProvider services)
                 Start(userId, ct => Release(voice, ct));
             return null;
         }
+        if (_inFlight.ContainsKey(userId))
+            return null;
+
         if (voice is { Status: UserVoiceStatus.Failed, FailedUntil: { } failedUntil } && failedUntil > now) {
             Log.LogDebug("Acquire: {UserId}'s clone failed recently, no retry before {FailedUntil}",
                 userId, failedUntil);
@@ -83,6 +86,26 @@ public sealed class VoicePool(IServiceProvider services)
             Log.LogDebug("Acquire: {UserId}'s clone is already being made", userId);
         return null;
     }
+
+    public void Recover(UserId userId, string missingVoiceId)
+        => Start(userId, async ct => {
+            var voice = await UserVoicesBackend.Get(userId, ct).ConfigureAwait(false);
+            if (voice is not { Status: UserVoiceStatus.Ready } || voice.SonioxVoiceId != missingVoiceId)
+                return;
+
+            var settings = await ServerKvasBackend.ForUser(userId)
+                .UserLanguageSettings()
+                .Get(ct)
+                .ConfigureAwait(false);
+            var diff = new UserVoiceDiff {
+                Status = UserVoiceStatus.None,
+                SonioxVoiceId = "",
+                ModifiedAt = Clocks.SystemClock.Now,
+            };
+            voice = await Update(userId, voice, diff, ct).ConfigureAwait(false);
+            if (settings.IsOwnVoiceEnabled)
+                await MakeClone(userId, voice, settings, ct).ConfigureAwait(false);
+        });
 
     public async Task<bool> Release(UserVoice voice, CancellationToken cancellationToken)
     {
