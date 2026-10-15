@@ -3,9 +3,9 @@ namespace ActualChat.App.Server.Initializers;
 /// <summary>
 /// Orchestrates all <see cref="IDbInitializer"/> instances to initialize database schema and data.
 /// </summary>
-public class AggregateDbInitializer(IServiceProvider services): WorkerBase
+public sealed class AggregateDbInitializer(IServiceProvider services)
 {
-    protected override async Task OnRun(CancellationToken cancellationToken)
+    public async Task Run(CancellationToken cancellationToken)
     {
         var hostInfo = services.HostInfo();
         if (hostInfo.HasRole(HostRole.OneApiServer) && !hostInfo.HasRole(HostRole.OneServer))
