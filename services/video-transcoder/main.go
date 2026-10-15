@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,8 +15,16 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"os/signal"
+	"sync/atomic"
+	"syscall"
 	"time"
 )
+
+// Cloud Run sends SIGTERM and kills the instance 10 seconds later
+const shutdownTimeout = 9 * time.Second
+
+var servedCount, activeCount atomic.Int64
 
 const outputContentType = "video/mp4"
 
@@ -41,11 +50,37 @@ func main() {
 		Handler:           http.HandlerFunc(handle),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+	startedAt := time.Now()
+	stopped := make(chan struct{})
+	go func() {
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, syscall.SIGTERM, os.Interrupt)
+		received := <-signals
+		log.Printf("%v after %v up: %d requests served, %d in flight",
+			received, time.Since(startedAt).Round(time.Second), servedCount.Load(), activeCount.Load())
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("stopped with %d requests still in flight: %v", activeCount.Load(), err)
+		} else {
+			log.Printf("stopped")
+		}
+		close(stopped)
+	}()
+
 	log.Printf("listening on %s", server.Addr)
-	log.Fatal(server.ListenAndServe())
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
+	<-stopped
 }
 
 func handle(w http.ResponseWriter, r *http.Request) {
+	activeCount.Add(1)
+	defer func() {
+		activeCount.Add(-1)
+		servedCount.Add(1)
+	}()
 	switch r.Method {
 	case http.MethodGet:
 		version, err := exec.CommandContext(r.Context(), "ffmpeg", "-hide_banner", "-version").Output()
