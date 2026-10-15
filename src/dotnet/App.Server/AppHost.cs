@@ -35,14 +35,13 @@ public partial class AppHost : SafeAsyncDisposableBase
 
     public async Task RunInitializers(CancellationToken cancellationToken = default)
     {
+        // Not WorkerBase: its Run() swallows exceptions, and a failed migration must stop the host
         var meshLocks = Services.MeshLocks().WithKeyPrefix($"{nameof(AppHost)}");
-        var initializers = new WorkerBase[] {
-            new AggregateDbInitializer(Services),
-            new AggregateModuleInitializer(Services),
-        };
+        var dbInitializer = new AggregateDbInitializer(Services);
+        var moduleInitializer = new AggregateModuleInitializer(Services);
         await meshLocks
             .LockAndRun(nameof(RunInitializers),
-                ct => Task.WhenAll(initializers.Select(x => x.Run(ct))),
+                ct => Task.WhenAll(dbInitializer.Run(ct), moduleInitializer.Run(ct)),
                 cancellationToken
             ).ConfigureAwait(false);
     }
