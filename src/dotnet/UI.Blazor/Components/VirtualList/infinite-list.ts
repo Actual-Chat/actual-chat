@@ -265,6 +265,7 @@ export class InfiniteList extends VirtualList {
     private lastFollowTop: number | null = null;
     private pendingJump: Jump | null = null;
     private isAwaitingStability = false;
+    private isAwaitingPinDerivation = false;
     private isAwaitingJump = false;
     private isInitiallyPlaced = false;
     private isApplyingRender = false;
@@ -1049,7 +1050,12 @@ export class InfiniteList extends VirtualList {
             this.isInitiallyPlaced = true;
             this.setPinnedEdge(this.defaultEdge);
             this.repinEdge('initial');
+            return;
         }
+
+        // A render can bring an edge to a view already flush with it - the window learning it holds the
+        // last item, a tail collapsing under the fold - and nothing scrolls, so no scroll re-derives the pin.
+        this.derivePinnedEdgeWhenStable();
     }
 
     // The key this render will jump to, if any. Landing on the newest item isn't one: that resolves to
@@ -1105,7 +1111,8 @@ export class InfiniteList extends VirtualList {
 
     // Re-derived from geometry, and only from a user scroll or a settled list: a render that appends to
     // a pinned list moves the edge away by construction, so re-deriving there would drop the pin exactly
-    // when it is needed.
+    // when it is needed. A free list is the exception - re-deriving can only pin it - and gets it from
+    // derivePinnedEdgeWhenStable once it is at rest.
     private updatePinnedEdge(): void {
         if (!this.isContainerRevealed)
             return;
@@ -1344,6 +1351,23 @@ export class InfiniteList extends VirtualList {
             // write has landed, rather than dropping it.
             this.clampOrRetry();
             this.checkModelDrift('settled');
+        });
+    }
+
+    // The pin a scroll would have derived, for a view that reached an edge without one. Deferred to a
+    // stable list, where the edge is where the model says and nothing is scrolling.
+    private derivePinnedEdgeWhenStable(): void {
+        if (this.isAwaitingPinDerivation)
+            return;
+
+        this.isAwaitingPinDerivation = true;
+        void this.stability.whenStable().then(() => {
+            this.isAwaitingPinDerivation = false;
+            if (this.isDisposed || this.pinnedEdge != null)
+                return;
+
+            this.updatePinnedEdge();
+            this.repinEdge('derived');
         });
     }
 
@@ -1827,6 +1851,8 @@ export class InfiniteList extends VirtualList {
             this.repinEdge('scroll-settled');
         else if (!this.stability.isAnimating)
             this.updatePinnedEdge();
+        else
+            this.derivePinnedEdgeWhenStable();
         this.updateVisibilityThrottled();
         this.updateViewportThrottled();
         this.repinIfStrandedDebounced();

@@ -134,6 +134,80 @@ describe('VirtualList', () => {
         expect(result).toEqual({ pinnedOnArrival: 1, pinnedAtSettle: 1 });
     });
 
+    it('should pin when a render makes the end known under a view already flush with it', async () => {
+        // arrange - the tail is not loaded yet, and the view is placed at the loaded end by the list itself
+        const result = await page.evaluate(async () => {
+            const fixture = ListTest.createList();
+            await ListTest.nextFrame();
+            const indexRef = fixture.root.querySelector<HTMLElement>('.render-index')!;
+            const stateRef = fixture.root.querySelector('.render-state')!;
+            const render = async (renderIndex: number, hasVeryLastItem: boolean) => {
+                indexRef.dataset.renderIndex = String(renderIndex);
+                stateRef.textContent = JSON.stringify({
+                    ...fixture.initial, renderIndex, hasVeryLastItem, scrollToKey: null,
+                });
+                await ListTest.nextFrame();
+                await ListTest.nextFrame();
+            };
+            await render(1, false);
+            fixture.navigate('15');
+            await new Promise(resolve => setTimeout(resolve, 400));
+            fixture.list['setScrollOffset'](fixture.list['measureEdgeTarget'](1));
+            await new Promise(resolve => setTimeout(resolve, 400));
+            const before = {
+                pinnedEdge: fixture.list['pinnedEdge'],
+                distance: fixture.list['distanceToEndEdge'](),
+                hasVeryLastItem: fixture.list['renderState'].hasVeryLastItem,
+            };
+
+            // act - the render that reports the end loaded, with nothing else changing
+            await render(2, true);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const after = {
+                pinnedEdge: fixture.list['pinnedEdge'],
+                distance: fixture.list['distanceToEndEdge'](),
+                hasVeryLastItem: fixture.list['renderState'].hasVeryLastItem,
+                isStickyEnd: fixture.root.hasAttribute('data-sticky-end'),
+            };
+            fixture.list.dispose();
+            return { before, after };
+        });
+
+        // assert
+        expect(result.before.hasVeryLastItem).toBe(false);
+        expect(Math.abs(result.before.distance!)).toBeLessThanOrEqual(1);
+        expect(result.after).toMatchObject({ pinnedEdge: 1, hasVeryLastItem: true, isStickyEnd: true });
+    });
+
+    it('should pin once a height hold ends after the list placed itself at the end', async () => {
+        // arrange - the view is free, and a height animation is in flight when it is placed at the end
+        const result = await page.evaluate(async () => {
+            const fixture = ListTest.createList();
+            await ListTest.nextFrame();
+            fixture.navigate('15');
+            await new Promise(resolve => setTimeout(resolve, 400));
+            fixture.list['stability'].holdAnimation('delayed-height', 1200);
+
+            // act - a correction of the list's own carries the view to the end, and the scroll settles
+            // while the animation is still held
+            fixture.list['setScrollOffset'](fixture.list['measureEdgeTarget'](1));
+            await new Promise(resolve => setTimeout(resolve, 600));
+            const whileAnimating = fixture.list['pinnedEdge'];
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const result = {
+                whileAnimating,
+                pinnedEdge: fixture.list['pinnedEdge'],
+                distance: fixture.list['distanceToEndEdge'](),
+            };
+            fixture.list.dispose();
+            return result;
+        });
+
+        // assert
+        expect(Math.abs(result.distance!)).toBeLessThanOrEqual(1);
+        expect(result.pinnedEdge).toBe(1);
+    });
+
     it('should retain pending navigation across a programmatic scroll correction', async () => {
         // arrange
         const target = await page.evaluate(async () => {
