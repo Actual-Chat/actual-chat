@@ -102,4 +102,42 @@ public sealed class VideoUploadHelperTest
         // assert
         result.Should().Be(expected);
     }
+
+    [Theory]
+    [InlineData(1920, 1080, "aac", "-c:a copy", null, 1920, 1080)]
+    [InlineData(1920, 1080, null, "-c:a copy", null, 1920, 1080)]
+    [InlineData(3840, 2160, "opus", "-c:a aac", "-vf scale=1920:1080", 1920, 1080)]
+    [InlineData(2160, 3840, "opus", "-c:a aac", "-vf scale=1080:1920", 1080, 1920)]
+    public void GetTranscodeArgumentsShouldScaleToFullHdAndConvertAudioToAac(
+        int width,
+        int height,
+        string? audioCodec,
+        string expectedAudio,
+        string? expectedFilter,
+        int expectedWidth,
+        int expectedHeight)
+    {
+        // arrange
+        var videoStream = new VideoStream { CodecName = "av1", Width = width, Height = height };
+        var audioStream = audioCodec is null ? null : new AudioStream { CodecName = audioCodec };
+        var mediaInfo = new Mock<IMediaAnalysis>(MockBehavior.Strict);
+        mediaInfo.SetupGet(x => x.PrimaryVideoStream).Returns(videoStream);
+        mediaInfo.SetupGet(x => x.PrimaryAudioStream).Returns(audioStream);
+        mediaInfo.SetupGet(x => x.Format).Returns(new FFMpegCore.MediaFormat());
+
+        // act
+        var (arguments, size) = UploadProcessorHelper.GetTranscodeArguments(mediaInfo.Object);
+
+        // assert
+        var joined = string.Join(' ', arguments);
+        joined.Should().StartWith("-c:v libx264 -preset veryfast -pix_fmt yuv420p -movflags +faststart");
+        joined.Should().Contain(expectedAudio);
+        if (expectedFilter is null)
+            joined.Should().NotContain("-vf");
+        else
+            joined.Should().EndWith(expectedFilter);
+        arguments.Should().NotContain(a => a.Contains(' '),
+            "the transcode job gets the arguments as a list, with no shell to split them");
+        size.Should().Be(new Size2D(expectedWidth, expectedHeight));
+    }
 }

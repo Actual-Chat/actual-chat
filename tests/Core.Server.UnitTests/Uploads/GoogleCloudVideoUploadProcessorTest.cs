@@ -11,12 +11,15 @@ public sealed class GoogleCloudVideoUploadProcessorTest
     public GoogleCloudVideoUploadProcessorTest()
     {
         var storageClient = new Mock<StorageClient>(MockBehavior.Strict);
+        var httpClientFactory = new Mock<IHttpClientFactory>(MockBehavior.Strict);
         var logger = new Mock<ILogger<GoogleCloudVideoUploadProcessor>>(MockBehavior.Loose);
         _processor = new GoogleCloudVideoUploadProcessor(
             storageClient.Object,
+            httpClientFactory.Object,
             "test-bucket",
             "test-project",
             "us-central1",
+            "",
             logger.Object);
     }
 

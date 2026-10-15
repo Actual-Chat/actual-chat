@@ -2,7 +2,6 @@ using System.Net.Mime;
 using ActualLab.Generators;
 using ActualLab.IO;
 using FFMpegCore;
-using FFMpegCore.Enums;
 using MediaFormat = FFMpegCore.MediaFormat;
 namespace ActualChat.Uploads;
 
@@ -42,6 +41,24 @@ public static class UploadProcessorHelper
             }
         }
         return await Transcode(createInput, fileName, mediaInfo, progress, cancellationToken).ConfigureAwait(false);
+    }
+
+    public static (string[] Arguments, Size2D Size) GetTranscodeArguments(IMediaAnalysis mediaInfo)
+    {
+        // These are ffmpeg's output options, also passed as is to the transcode job's container,
+        // so none of them may contain a space.
+        // yuv420p: AV1 and HEVC sources are often 10-bit, and browsers don't play 10-bit H.264
+        List<string> arguments = [
+            "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+        ];
+        var mustCopyAudio = mediaInfo.PrimaryAudioStream is null or { CodecName: "aac" };
+        arguments.AddRange(["-c:a", mustCopyAudio ? "copy" : "aac"]);
+        var (size, _, _) = AnalyzeVideo(mediaInfo);
+        if (ExceedsFullHd(size)) {
+            size = ScaleToFullHd(size);
+            arguments.AddRange(["-vf", $"scale={size.Width}:{size.Height}"]);
+        }
+        return ([.. arguments], size);
     }
 
     public static T EnsureMp4Extension<T>(T file) where T : UploadedFile
@@ -156,27 +173,13 @@ public static class UploadProcessorHelper
         IProgress<double>? progress,
         CancellationToken cancellationToken)
     {
-        var (size, duration, _) = AnalyzeVideo(mediaInfo);
-        var mustScale = ExceedsFullHd(size);
-        if (mustScale)
-            size = ScaleToFullHd(size);
-        var mustCopyAudio = mediaInfo.PrimaryAudioStream is null or { CodecName: "aac" };
+        var (_, duration, _) = AnalyzeVideo(mediaInfo);
+        var (transcodeArguments, size) = GetTranscodeArguments(mediaInfo);
         var outputPath = NewConvertedFilePath(fileName);
         var arguments = createInput()
-            .OutputToFile(outputPath, true, options => {
-                // yuv420p: AV1 and HEVC sources are often 10-bit, and browsers don't play 10-bit H.264
-                options.WithVideoCodec(VideoCodec.LibX264)
-                    .WithSpeedPreset(Speed.VeryFast)
-                    .ForcePixelFormat("yuv420p")
-                    .UsingThreads(TranscodeThreadCount)
-                    .WithFastStart();
-                if (mustCopyAudio)
-                    options.CopyChannel(FFMpegCore.Enums.Channel.Audio);
-                else
-                    options.WithAudioCodec(AudioCodec.Aac);
-                if (mustScale)
-                    options.WithVideoFilters(vf => vf.Scale(size.Width, size.Height));
-            })
+            .OutputToFile(outputPath, true, options => options
+                .WithCustomArgument(string.Join(' ', transcodeArguments))
+                .UsingThreads(TranscodeThreadCount))
             .CancellableThrough(cancellationToken);
         // Percentages are computed against the duration, so a video without one reports none
         if (progress is not null && duration > TimeSpan.Zero)
