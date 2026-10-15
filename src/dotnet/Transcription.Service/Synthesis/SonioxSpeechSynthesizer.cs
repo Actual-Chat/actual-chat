@@ -27,7 +27,7 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
         SpeechSynthesisOptions options,
         ChannelWriter<byte[]> pcm,
         CancellationToken cancellationToken = default)
-        => new SonioxTtsClient(Services).Run(
+        => NewClient(options).Run(
             streamId, options.Language.ToSoniox(), GetVoice(options), options.Speed, text, pcm,
             options.Listener, cancellationToken);
 
@@ -36,7 +36,7 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
         SpeechSynthesisOptions options,
         CancellationToken cancellationToken = default)
         => Task.FromResult(SpeechSynthesizerExt.ToAudioSource(
-            (ChannelWriter<AudioFrame> output, CancellationToken ct) => new SonioxTtsClient(Services).Generate(
+            (ChannelWriter<AudioFrame> output, CancellationToken ct) => NewClient(options).Generate(
                 options.Language.ToSoniox(), GetVoice(options), text, output, ct),
             Clocks, Log, cancellationToken));
 
@@ -44,7 +44,7 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
         string text,
         SpeechSynthesisOptions options,
         CancellationToken cancellationToken = default)
-        => new SonioxTtsClient(Services)
+        => NewClient(options)
             .GenerateMp3(options.Language.ToSoniox(), GetVoice(options), text, cancellationToken);
 
     public async Task<ApiArray<DubVoice>> ListVoices(CancellationToken cancellationToken = default)
@@ -66,6 +66,12 @@ public sealed class SonioxSpeechSynthesizer(IServiceProvider services) : ISpeech
     }
 
     // Private methods
+
+    private SonioxTtsClient NewClient(SpeechSynthesisOptions options)
+        => new(Services) {
+            FallbackVoice = Settings.SonioxTtsVoice,
+            OnVoiceNotFound = options.OnVoiceNotFound,
+        };
 
     private string GetVoice(SpeechSynthesisOptions options)
         => options.VoiceId.NullIfEmpty() ?? Settings.SonioxTtsVoice;

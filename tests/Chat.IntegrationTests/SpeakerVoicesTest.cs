@@ -27,15 +27,16 @@ public class SpeakerVoicesTest(
         var ct = CancellationToken.None;
 
         // act
-        var whileCloning = await SpeakerVoices.Get(chatId, entry.AuthorId, ct);
+        var whileCloning = await SpeakerVoices.GetSynthesisOptions(chatId, entry.AuthorId, Languages.English, ct);
         var cloneVoiceId = await Pool.AcquireSettled(account.Id, ct);
-        var voiceId = await SpeakerVoices.Get(chatId, entry.AuthorId, ct);
+        var options = await SpeakerVoices.GetSynthesisOptions(chatId, entry.AuthorId, Languages.English, ct);
 
         // assert
         cloneVoiceId.Should().NotBeNullOrEmpty();
-        whileCloning.Should().NotBeNullOrEmpty("the stock voice speaks while the clone is made");
-        whileCloning.Should().NotBe(cloneVoiceId);
-        voiceId.Should().Be(cloneVoiceId, "an opted-in, acquirable speaker is dubbed with their clone");
+        whileCloning.VoiceId.Should().NotBeNullOrEmpty("the stock voice speaks while the clone is made");
+        whileCloning.VoiceId.Should().NotBe(cloneVoiceId);
+        options.VoiceId.Should().Be(cloneVoiceId, "an opted-in, acquirable speaker is dubbed with their clone");
+        options.OnVoiceNotFound.Should().NotBeNull();
     }
 
     [Fact(Timeout = 60_000)]
@@ -49,12 +50,13 @@ public class SpeakerVoicesTest(
         var userVoices = AppHost.Services.GetRequiredService<IUserVoicesBackend>();
 
         // act
-        var voiceId = await SpeakerVoices.Get(chatId, entry.AuthorId, ct);
+        var options = await SpeakerVoices.GetSynthesisOptions(chatId, entry.AuthorId, Languages.English, ct);
 
         // assert
         var record = await userVoices.Get(account.Id, ct);
         record.Should().BeNull("a speaker who never opted in is never handed to the pool");
-        voiceId.Should().NotBeNull("an author's stock voice still resolves via DubVoiceAccents");
+        options.VoiceId.Should().NotBeNull("an author's stock voice still resolves via DubVoiceAccents");
+        options.OnVoiceNotFound.Should().BeNull();
     }
 
     [Fact(Timeout = 60_000)]
@@ -71,11 +73,11 @@ public class SpeakerVoicesTest(
             await Tester.OptInOwnVoice(chatId, Languages.Russian);
 
             // act
-            var voiceId = await SpeakerVoices.Get(chatId, entry.AuthorId, ct);
+            var options = await SpeakerVoices.GetSynthesisOptions(chatId, entry.AuthorId, Languages.English, ct);
             await Pool.WhenSettled();
 
             // assert
-            voiceId.Should().NotBeNullOrEmpty("an author's stock voice still resolves via DubVoiceAccents");
+            options.VoiceId.Should().NotBeNullOrEmpty("an author's stock voice still resolves via DubVoiceAccents");
             var record = await userVoices.Get(account.Id, ct);
             (record?.Status ?? UserVoiceStatus.None).Should().Be(UserVoiceStatus.None,
                 "a full pool never hands out a clone");

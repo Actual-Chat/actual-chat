@@ -416,6 +416,164 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
             .Should().ThrowAsync<WebSocketException>();
     }
 
+    [Theory(Timeout = 15_000)]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MissingVoiceShouldRetryUnspokenChunksWithDefaultVoice(bool rejectOnOpen)
+    {
+        // arrange
+        var soniox = new FakeSoniox { RejectedVoice = "missing-clone", RejectOnOpen = rejectOnOpen };
+        var missingVoices = new List<string>();
+        var client = NewClient(soniox, Long, missingVoices.Add);
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        text.Writer.TryWrite("First.");
+        text.Writer.TryWrite("Second.");
+        text.Writer.Complete();
+
+        // act
+        await client.Run("s", "en", "missing-clone", null, text.Reader, pcm.Writer, null, CancellationToken.None);
+        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        audio.Select(TextOf).Should().Equal("First.", "Second.");
+        missingVoices.Should().Equal("missing-clone");
+        soniox.RequestedVoices.Should().Equal("missing-clone", "Adrian", "Adrian");
+    }
+
+    [Fact(Timeout = 15_000)]
+    public async Task MissingPreopenedVoiceShouldRecoverBeforeAnyTextArrives()
+    {
+        // arrange
+        var soniox = new FakeSoniox { RejectedVoice = "missing-clone", RejectOnOpen = true };
+        var whenMissing = TaskCompletionSourceExt.New();
+        var client = NewClient(soniox, Long, _ => whenMissing.TrySetResult());
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+
+        // act
+        var run = client.Run("s", "en", "missing-clone", null, text.Reader, pcm.Writer, null, CancellationToken.None);
+        await whenMissing.Task;
+        text.Writer.TryWrite("Hello.");
+        text.Writer.Complete();
+        await run;
+        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        audio.Select(TextOf).Should().Equal("Hello.");
+        soniox.RequestedVoices.Should().Equal("missing-clone", "Adrian");
+    }
+
+    [Fact(Timeout = 15_000)]
+    public async Task MissingVoiceAfterSpeechShouldNotRepeatEarlierChunks()
+    {
+        // arrange
+        var soniox = new FakeSoniox { RejectedVoice = "missing-clone", RejectAfterTextCount = 2 };
+        var client = NewClient(soniox, Long);
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        text.Writer.TryWrite("Already spoken.");
+        text.Writer.TryWrite("Retry this.");
+        text.Writer.TryWrite("Keep the default.");
+        text.Writer.Complete();
+
+        // act
+        await client.Run("s", "en", "missing-clone", null, text.Reader, pcm.Writer, null, CancellationToken.None);
+        var audio = await pcm.Reader.ReadAllAsync().ToListAsync();
+
+        // assert
+        audio.Select(TextOf).Should().Equal("Already spoken.", "Retry this.", "Keep the default.");
+        soniox.RequestedVoices.Should().Equal("missing-clone", "missing-clone", "Adrian", "Adrian");
+    }
+
+    [Fact(Timeout = 15_000)]
+    public async Task GenerateShouldNotRetryAFailingDefaultVoiceAgain()
+    {
+        // arrange
+        var requests = 0;
+        var missingVoices = new List<string>();
+        var client = NewClient(_ => {
+            requests++;
+            return new HttpResponseMessage(HttpStatusCode.NotFound) {
+                Content = new StringContent("""{"error_code":404,"error_type":"voice_not_found"}"""),
+            };
+        }, missingVoices.Add);
+        var output = Channel.CreateUnbounded<AudioFrame>();
+
+        // act
+        var generate = client.Generate("en", "missing-clone", "Hello.", output.Writer, CancellationToken.None);
+
+        // assert
+        await FluentActions.Awaiting(() => generate).Should().ThrowAsync<ExternalError>();
+        requests.Should().Be(2);
+        missingVoices.Should().Equal("missing-clone");
+        await FluentActions.Awaiting(() => output.Reader.ReadAllAsync().ToListAsync().AsTask())
+            .Should().ThrowAsync<ExternalError>();
+    }
+
+    [Fact(Timeout = 15_000)]
+    public async Task MissingDefaultVoiceShouldFailWithoutRetryingAgain()
+    {
+        // arrange
+        var soniox = new FakeSoniox { RejectEveryVoice = true };
+        var missingVoices = new List<string>();
+        var client = NewClient(soniox, Long, missingVoices.Add);
+        var text = Channel.CreateUnbounded<string>();
+        var pcm = Channel.CreateUnbounded<byte[]>();
+        text.Writer.TryWrite("Hello.");
+        text.Writer.Complete();
+
+        // act
+        var run = client.Run("s", "en", "missing-clone", null, text.Reader, pcm.Writer, null, CancellationToken.None);
+
+        // assert
+        await FluentActions.Awaiting(() => run).Should().ThrowAsync<ExternalError>().WithMessage("*voice_not_found*");
+        soniox.RequestedVoices.Should().Equal("missing-clone", "Adrian");
+        missingVoices.Should().Equal("missing-clone");
+        await FluentActions.Awaiting(() => pcm.Reader.ReadAllAsync().ToListAsync().AsTask())
+            .Should().ThrowAsync<ExternalError>();
+    }
+
+    [Theory(Timeout = 15_000)]
+    [InlineData("voice_not_found", true)]
+    [InlineData("not_found", false)]
+    public async Task GenerateShouldRetryOnlyMissingVoiceErrors(string errorType, bool shouldRetry)
+    {
+        // arrange
+        var requestedVoices = new List<string>();
+        var missingVoices = new List<string>();
+        var client = NewClient(request => {
+            var body = JsonDocument.Parse(request.Content!.ReadAsStringAsync().Result).RootElement;
+            var voice = body.GetProperty("voice").GetString()!;
+            requestedVoices.Add(voice);
+            return voice == "Adrian"
+                ? new HttpResponseMessage(HttpStatusCode.OK) {
+                    Content = new ByteArrayContent(OggOpusTestStream.Write(3)),
+                }
+                : new HttpResponseMessage(HttpStatusCode.NotFound) {
+                    Content = new StringContent($$"""{"error_code":404,"error_type":"{{errorType}}"}"""),
+                };
+        }, missingVoices.Add);
+        var output = Channel.CreateUnbounded<AudioFrame>();
+
+        // act
+        var generate = client.Generate("en", "missing-clone", "Hello.", output.Writer, CancellationToken.None);
+
+        // assert
+        if (shouldRetry) {
+            await generate;
+            var frames = await output.Reader.ReadAllAsync().ToListAsync();
+            frames.Should().HaveCount(3);
+            requestedVoices.Should().Equal("missing-clone", "Adrian");
+            missingVoices.Should().Equal("missing-clone");
+        }
+        else {
+            await FluentActions.Awaiting(() => generate).Should().ThrowAsync<ExternalError>();
+            requestedVoices.Should().Equal("missing-clone");
+            missingVoices.Should().BeEmpty();
+        }
+    }
+
     // Private methods
 
     // Writing the last chunk and ending the text are two steps: had the chunk's stream terminated in between,
@@ -429,25 +587,32 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         terminatedRelease.SetResult();
     }
 
-    private SonioxTtsClient NewClient(FakeSoniox soniox, TimeSpan idleFlush)
+    private SonioxTtsClient NewClient(
+        FakeSoniox soniox, TimeSpan idleFlush, Action<string>? onVoiceNotFound = null)
     {
         var services = new ServiceCollection()
             .AddSingleton(new CoreServerSettings { SonioxKey = "test" })
             .AddTestLogging(Out);
         return new SonioxTtsClient(services.BuildServiceProvider()) {
+            FallbackVoice = "Adrian",
+            OnVoiceNotFound = onVoiceNotFound,
             IdleFlush = idleFlush,
             WebSocketFactory = soniox.Connect,
         };
     }
 
-    private SonioxTtsClient NewClient(Func<HttpRequestMessage, HttpResponseMessage> respond)
+    private SonioxTtsClient NewClient(
+        Func<HttpRequestMessage, HttpResponseMessage> respond, Action<string>? onVoiceNotFound = null)
     {
         var services = new ServiceCollection()
             .AddSingleton(new CoreServerSettings { SonioxKey = "test" })
             .AddTestLogging(Out);
         services.AddHttpClient(SonioxTtsClient.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(() => new RespondingHandler(respond));
-        return new SonioxTtsClient(services.BuildServiceProvider());
+        return new SonioxTtsClient(services.BuildServiceProvider()) {
+            FallbackVoice = "Adrian",
+            OnVoiceNotFound = onVoiceNotFound,
+        };
     }
 
     // The fake speaks a chunk as its text padded with zeros to the PCM size
@@ -491,6 +656,11 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         private readonly List<(bool IsFromClient, string Summary)> _traffic = new();
         private readonly Dictionary<string, int> _streamConnections = new();
 
+        public string? RejectedVoice { get; init; }
+        public bool RejectEveryVoice { get; init; }
+        public bool RejectOnOpen { get; init; }
+        public int RejectAfterTextCount { get; init; }
+        public List<string> RequestedVoices { get; } = new();
         public int KillAfterTextCount { get; init; }
         public int DropAfterTextCount { get; init; }
         public bool DropEveryConnection { get; init; }
@@ -546,6 +716,7 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
         private async Task Serve(FakeWebSocket webSocket, int connectionIndex, bool mayFail)
         {
             var textCount = 0;
+            var voices = new Dictionary<string, string>();
             await foreach (var json in webSocket.Sent.Reader.ReadAllAsync()) {
                 var message = JsonDocument.Parse(json).RootElement;
                 var streamId = message.GetProperty("stream_id").GetString()!;
@@ -557,7 +728,12 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                         : $"config {streamId}");
                     lock (_streamConnections)
                         _streamConnections[streamId] = connectionIndex;
+                    var voice = message.GetProperty("voice").GetString()!;
+                    voices[streamId] = voice;
+                    RequestedVoices.Add(voice);
                     OnStreamOpened();
+                    if (RejectOnOpen && (RejectEveryVoice || voice == RejectedVoice))
+                        Reject(webSocket, streamId);
                     continue;
                 }
 
@@ -568,6 +744,12 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                     (_, true) => $"text+end {streamId} '{text}'",
                     (_, false) => $"text {streamId} '{text}'",
                 });
+                if ((RejectEveryVoice || voices[streamId] == RejectedVoice)
+                    && textCount + 1 >= RejectAfterTextCount) {
+                    if (!RejectOnOpen)
+                        Reject(webSocket, streamId);
+                    continue;
+                }
                 if (text.Length > 0) {
                     textCount++;
                     lock (_streamsWithText)
@@ -597,6 +779,10 @@ public sealed class SonioxTtsClientTest(ITestOutputHelper @out) : TestBase(@out)
                 }
             }
         }
+
+        private static void Reject(FakeWebSocket webSocket, string streamId)
+            => webSocket.Incoming.Writer.TryWrite(
+                $$"""{"stream_id":"{{streamId}}","error_code":404,"error_type":"voice_not_found"}""");
 
         private void WriteAudio(FakeWebSocket webSocket, string streamId, byte[] audio)
         {

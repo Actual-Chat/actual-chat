@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Net.Sockets;
@@ -44,6 +45,7 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private TtsStream? _stream;
     private Task<string?>? _readTask;
     private int _frameCount;
+    private bool _hasUsedFallback;
 
     private IServiceProvider Services { get; } = services;
     private CoreServerSettings CoreServerSettings { get; } = services.GetRequiredService<CoreServerSettings>();
@@ -52,6 +54,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     private ILogger Log { get; } = services.LogFor<SonioxTtsClient>();
     private Moment Now => Clocks.CpuClock.Now;
 
+    public string? FallbackVoice { get; init; }
+    public Action<string>? OnVoiceNotFound { get; init; }
     public int StreamCount { get; private set; }
 
     // Test hooks
@@ -338,8 +342,18 @@ public sealed class SonioxTtsClient(IServiceProvider services)
 
         Log.LogWarning("Soniox TTS #{StreamId}: ended with error {ErrorCode} ({ErrorType}): {ErrorMessage}",
             stream.Id, errorCode, response.ErrorType, response.ErrorMessage);
-        if (errorCode == StreamKilledErrorCode)
+        if (errorCode == StreamKilledErrorCode) {
             _chunkToResend = stream.UnspokenChunk;
+            return;
+        }
+        if (errorCode == 404 && response.ErrorType == "voice_not_found"
+            && TryUseFallback(_run!.Voice)) {
+            _run = _run with { Voice = FallbackVoice! };
+            _chunkToResend = stream.UnspokenText;
+            return;
+        }
+
+        throw StandardError.External($"Soniox TTS error {errorCode} ({response.ErrorType}): {response.ErrorMessage}");
     }
 
     private async Task OnConnectionLost()
@@ -483,7 +497,33 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 .ConfigureAwait(false);
     }
 
-    private static async Task GeneratePart(
+    private bool TryUseFallback(string voice)
+    {
+        if (_hasUsedFallback || FallbackVoice.IsNullOrEmpty() || voice == FallbackVoice)
+            return false;
+
+        _hasUsedFallback = true;
+        Log.LogWarning("Soniox voice {VoiceId} is missing, retrying with {FallbackVoice}", voice, FallbackVoice);
+        try {
+            OnVoiceNotFound?.Invoke(voice);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Failed to report missing Soniox voice {VoiceId}", voice);
+        }
+        return true;
+    }
+
+    private static bool IsVoiceNotFound(string body)
+    {
+        try {
+            return JsonSerializer.Deserialize<SonioxTtsResponse>(body, JsonOptions)?.ErrorType == "voice_not_found";
+        }
+        catch (JsonException) {
+            return false;
+        }
+    }
+
+    private async Task GeneratePart(
         HttpClient httpClient,
         string language,
         string voice,
@@ -494,6 +534,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
     {
         // Soniox streams the audio back at about the pace it's spoken, so TtsChunkTimeout bounds the
         // wait for the next piece of the body rather than the whole request
+        if (_hasUsedFallback)
+            voice = FallbackVoice!;
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         cts.CancelAfter(TtsChunkTimeout);
         try {
@@ -513,6 +555,15 @@ public sealed class SonioxTtsClient(IServiceProvider services)
                 .ConfigureAwait(false);
             if (!response.IsSuccessStatusCode) {
                 var body = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
+                if (response.StatusCode == HttpStatusCode.NotFound
+                    && IsVoiceNotFound(body)
+                    && TryUseFallback(voice)) {
+                    await GeneratePart(
+                            httpClient, language, FallbackVoice!, part, audioFormat, onChunk, cancellationToken)
+                        .ConfigureAwait(false);
+                    return;
+                }
+
                 throw StandardError.External($"Soniox TTS returned {(int)response.StatusCode}: {body}");
             }
             await using var stream = await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false);
@@ -628,7 +679,8 @@ public sealed class SonioxTtsClient(IServiceProvider services)
         // The chunk a killed stream never spoke: null once any audio came back (an ended chunk is
         // spoken in one go), and for a resent chunk, so a stream that keeps dying can't loop.
         // Read once WhenTerminated has completed, which orders it after the reader's writes.
-        public string? UnspokenChunk => _hasAudio || _isResent ? null : _chunk;
+        public string? UnspokenChunk => _isResent ? null : UnspokenText;
+        public string? UnspokenText => _hasAudio ? null : _chunk;
 
         public void OnChunkSent(string chunk, bool isResent, Moment now)
         {
