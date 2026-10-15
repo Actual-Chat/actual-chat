@@ -61,11 +61,10 @@ public sealed class ChatRangeTileCache
             if (entryRanges.Length == 0)
                 return null; // A tail with no entries can't anchor the extension
 
-            // Up to the chat's end, not the queried cid tiles' end: the cached tail tile may already span
-            // past those tiles (the server merges neighbours until a tile holds enough rows, and a
-            // collapsed conversation counts as one), and a stand-in capped there kept claiming the chat
-            // ends where the cache does - an end the list pins to and follows down once the fresh
-            // rebuild appends the real tail (#5323).
+            // Up to the chat's end, not the queried cid tiles' end: a stand-in capped there kept claiming
+            // the chat ends where the cache does - an end the list pins to and follows down once the fresh
+            // rebuild appends the real tail (#5323). The cached tail tile may also span past the queried
+            // tiles when an older server merged neighbours into it.
             var targetEnd = chatLidRange.End;
             if (targetEnd > entryRanges[^1].End)
                 result[^1] = last with {

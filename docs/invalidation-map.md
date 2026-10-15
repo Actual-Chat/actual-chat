@@ -513,10 +513,12 @@ rather than consolidating.
 
 3. **Ordering-sensitive dependency registration.** A cache-hit compute call
    registers its dependency *synchronously, before any await*. `GetChatRangeTile`
-   was recently restructured so the "next tile" tasks are only started once the
-   previous side hasn't already satisfied the request (`ChatsBackend.cs:452-461`) —
-   otherwise the result depended on the warm tail tile, which invalidates on every
-   message. This class of bug is invisible in a static graph; it needs a read of
+   depends only on its own tile's `GetEntryRangeTile` and
+   `ConversationsBackend.GetConversationRangeTile`; it never pulls neighbor tiles
+   in, so a result never depends on the warm tail tile (which invalidates on every
+   message) unless it is the tail tile itself. Keep it that way: a result that spans
+   several tiles also overlaps its neighbors' results, which broke the chat view
+   (#5377). This class of bug is invisible in a static graph; it needs a read of
    the actual control flow.
 
 4. **Tile granularity.** `InvalidateTiles` invalidates only the entry tile (5 entries)

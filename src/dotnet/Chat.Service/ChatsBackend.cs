@@ -435,11 +435,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         Range<long> chatLidRange;
         using (Computed.BeginIsolation())
             chatLidRange = await GetLidRange(chatId, false, cancellationToken).ConfigureAwait(false);
-        var startLid = tile.Start;
-        var endLid = tile.End;
-        var entryLidRanges = new List<Range<long>>();
-        var conversationRanges = new List<Range<long>>();
-        var minCount = 0;
         var entryRangeTileTask = GetEntryRangeTile(chatId, start, cancellationToken);
         var conversationRangeTileTask = ConversationsBackend
             .GetConversationRangeTile(chatId, start, cancellationToken);
@@ -448,105 +443,15 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var entryRangeTile = await entryRangeTileTask.ConfigureAwait(false);
         var conversationRangeTile = (await conversationRangeTileTask.ConfigureAwait(false))
             .ToFinite(chatLidRange.End, tile.Range);
-        entryLidRanges.AddRange(entryRangeTile.EntryLidRange);
-        conversationRanges.AddRange(conversationRangeTile.ConversationRanges);
-        minCount += EstimateMinimumCount(entryRangeTile, conversationRangeTile);
-        var hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(startLid, endLid).Contains(chatLidRange);
-
-        var previousEntryRangeTile = entryRangeTile;
-        var previousConversationRangeTile = conversationRangeTile;
-        var nextEntryRangeTile = entryRangeTile;
-        var nextConversationRangeTile = conversationRangeTile;
-        long previousId;
-        long nextId;
-        while (!hasFulfilled) {
-            previousId = Math.Max(previousEntryRangeTile?.PreviousEntryLid ?? 0,
-                (previousConversationRangeTile?.PreviousConversationRange?.End ?? 1) - 1);
-            nextId = Math.Min(nextEntryRangeTile?.NextEntryLid ?? long.MaxValue,
-                nextConversationRangeTile?.NextConversationRange?.Start ?? long.MaxValue);
-            if (previousId == 0 && nextId == long.MaxValue)
-                break;
-
-            var previousTile = ConversationIdTiles.GetTile(previousId);
-            var nextTile = ConversationIdTiles.GetTile(nextId);
-
-            // Starting tasks
-            var previousEntryRangeTileTask = previousId != 0
-                ? GetEntryRangeTile(chatId, previousTile.Start, cancellationToken)
-                : null;
-            var previousConversationRangeTileTask = previousId != 0
-                ? ConversationsBackend.GetConversationRangeTile(chatId, previousTile.Start, cancellationToken)
-                : null;
-            previousEntryRangeTile = previousEntryRangeTileTask != null
-                ? await previousEntryRangeTileTask.ConfigureAwait(false)
-                : null;
-            previousConversationRangeTile = previousConversationRangeTileTask is not null
-                ? (await previousConversationRangeTileTask.ConfigureAwait(false)).ToFinite(chatLidRange.End, previousTile.Range)
-                : null;
-
-            if (previousEntryRangeTile is not null && previousConversationRangeTile is not null) {
-                startLid = previousTile.Start;
-                entryLidRanges = [..previousEntryRangeTile.EntryLidRange, ..entryLidRanges];
-                conversationRanges = [..previousConversationRangeTile.ConversationRanges, ..conversationRanges];
-                minCount += EstimateMinimumCount(previousEntryRangeTile, previousConversationRangeTile);
-                hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(startLid, endLid).Contains(chatLidRange);
-                if (hasFulfilled)
-                    break;
-            }
-            else
-                startLid = ConversationIdTiles.GetTile(chatLidRange.Start).Start;
-
-            // Started only once the previous side hasn't already fulfilled: a compute-method call that hits
-            // cache registers its dependency synchronously, before any await, so issuing these alongside the
-            // previous side made the result depend on the next tile even on the paths that break before
-            // using it - and that tile is usually the warm tail, which invalidates on every new message.
-            var nextEntryRangeTileTask = nextId != long.MaxValue
-                ? GetEntryRangeTile(chatId, nextTile.Start, cancellationToken)
-                : null;
-            var nextConversationRangeTileTask = nextId != long.MaxValue
-                ? ConversationsBackend.GetConversationRangeTile(chatId, nextTile.Start, cancellationToken)
-                : null;
-            nextEntryRangeTile = nextEntryRangeTileTask is not null
-                ? await nextEntryRangeTileTask.ConfigureAwait(false)
-                : null;
-            nextConversationRangeTile = nextConversationRangeTileTask is not null
-                ? (await nextConversationRangeTileTask.ConfigureAwait(false)).ToFinite(chatLidRange.End, nextTile.Range)
-                : null;
-            if (nextEntryRangeTile is null || nextConversationRangeTile is null) {
-                endLid = chatLidRange.End;
-                continue;
-            }
-
-            endLid = nextTile.End;
-            entryLidRanges.AddRange(nextEntryRangeTile.EntryLidRange);
-            conversationRanges.AddRange(nextConversationRangeTile.ConversationRanges);
-            minCount += EstimateMinimumCount(nextEntryRangeTile, nextConversationRangeTile);
-            hasFulfilled = minCount >= Constants.Chat.MinChatPageMapSize || new Range<long>(startLid, endLid).Contains(chatLidRange);
-        }
-
-        previousId = Math.Max(previousEntryRangeTile?.PreviousEntryLid ?? 0,
-            (previousConversationRangeTile?.PreviousConversationRange?.End ?? 1) - 1);
-        nextId = Math.Min(nextEntryRangeTile?.NextEntryLid ?? long.MaxValue,
-            nextConversationRangeTile?.NextConversationRange?.Start ?? long.MaxValue);
-        entryLidRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
-        conversationRanges.Sort((a, b) => a.Start.CompareTo(b.Start));
-
-        // Merge adjacent entryIdRanges into a new collection
-        // to avoid duplicates and reduce the number of ranges
-        var mergedEntryIdRanges = entryLidRanges
-            .MergeAdjacentRanges()
-            .ToList();
-
-        // Deduplicate conversationRanges by Start into a new collection
-        var mergedConversationRanges = conversationRanges
-            .EnsureMonotonic()
-            .ToList();
-
+        var previousId = Math.Max(entryRangeTile.PreviousEntryLid ?? 0,
+            (conversationRangeTile.PreviousConversationRange?.End ?? 1) - 1);
+        var nextId = Math.Min(entryRangeTile.NextEntryLid ?? long.MaxValue,
+            conversationRangeTile.NextConversationRange?.Start ?? long.MaxValue);
         return new ChatRangeTile(
-            new Range<long>(startLid, endLid),
-            mergedEntryIdRanges.EnsureMonotonic().ToArray(),
-            mergedConversationRanges.EnsureMonotonic().ToArray(),
-            minCount,
+            tile.Range,
+            entryRangeTile.EntryLidRange,
+            conversationRangeTile.ConversationRanges,
+            EstimateMinimumCount(entryRangeTile, conversationRangeTile),
             previousId == 0 ? null : ConversationIdTiles.GetTile(previousId).Start,
             nextId == long.MaxValue ? null : ConversationIdTiles.GetTile(nextId).Start);
 
