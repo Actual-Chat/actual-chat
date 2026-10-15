@@ -94,7 +94,6 @@ public static partial class Constants
         public const int NonContactPeerMessageLimit = 2;
         public const int ReactionFirstAuthorIdsLimit = 10;
         public const int MaxSearchFilterLength = 100;
-        public const int MinChatPageMapSize = 100;
         // Below this an image suggestion would be a guess, and a letter avatar beats a guess. The
         // client owns the threshold: it is the one watching the chat grow past it.
         public const int MinImageSuggestionEntries = 5;
