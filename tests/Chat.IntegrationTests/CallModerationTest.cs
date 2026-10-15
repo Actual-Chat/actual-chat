@@ -420,8 +420,9 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await backend.StartCall(chatId, ownerAuthor.Id, invitees, false, default);
         await backend.AcceptCall(chatId, moderatorAuthor.Id, default);
         await backend.AcceptCall(chatId, memberAuthor.Id, default);
-        // AcceptCall no longer registers the invitee's own presence - that now comes only from a real
-        // stream, so it has to be simulated here for the two to actually count as call participants.
+        // Presence comes only from a client's own stream - the invitees' always, and the caller's too, since
+        // AcceptCall registers the caller as a placeholder - so all three have to be simulated here.
+        await backend.SetParticipation(chatId, ownerAuthor.Id, ParticipationKind.Record, true, default);
         await backend.SetParticipation(chatId, moderatorAuthor.Id, ParticipationKind.Record, true, default);
         await backend.SetParticipation(chatId, memberAuthor.Id, ParticipationKind.Record, true, default);
         return new CallSetup(chatId, ownerAuthor.Id, moderatorAuthor.Id, memberAuthor.Id);

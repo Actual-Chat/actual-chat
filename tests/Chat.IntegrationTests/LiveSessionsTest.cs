@@ -3015,6 +3015,36 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task CallerShouldNotBePresentUntilTheirClientJoins()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        var answeredSession = await backend.Get(chatId, default);
+        var answered = answeredSession!.Members.Single(m => m.AuthorId == bobAuthor.Id);
+
+        // act
+        await backend.SetParticipation(chatId, bobAuthor.Id, ParticipationKind.AudioListen, true, default);
+        var joinedSession = await backend.Get(chatId, default);
+        var joined = joinedSession!.Members.Single(m => m.AuthorId == bobAuthor.Id);
+
+        // assert
+        answered.IsPresent.Should().BeFalse("the server registered Bob at the answer, before his client heard of it");
+        joined.IsListening.Should().BeTrue();
+        joined.IsMicOpen.Should().BeFalse("the placeholder's Record kind is gone with it");
+        joined.JoinedAt.Should().BeGreaterThanOrEqualTo(answered.JoinedAt, "the join is the client's own, not the answer's");
+    }
+
+    [Fact]
     public async Task ConfirmRingIsANoOpOnceAlreadyResponded()
     {
         // arrange

@@ -680,8 +680,9 @@ public partial class LiveSessionsBackend
             };
             await _redisStates.Set(chatId.Value, state).ConfigureAwait(false);
             // The caller is present from the answer; the invitee only once their client listens or records,
-            // which is what lets EnforceCallConnectGrace tell "accepted" from "connected".
-            await EnsureParticipant(chatId, call.CallerId).ConfigureAwait(false);
+            // which is what lets EnforceCallConnectGrace tell "accepted" from "connected". The caller's own
+            // client hasn't heard of the answer yet, so to the members it isn't there until it joins.
+            await EnsureParticipant(chatId, call.CallerId, isPlaceholder: true).ConfigureAwait(false);
             InvalidateState(chatId);
         }
     }

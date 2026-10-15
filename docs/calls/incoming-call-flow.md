@@ -431,7 +431,10 @@ On the server, `AcceptCall`:
   gives the call its session (`JoinSession`):
   - with no session in the chat it starts one of `Kind = Call`, `SessionStartedAt = now`,
     `VisibleStartLid` at the chat's end and the caller and the invitee in `AuthorIds`, and
-    registers the caller as present - their client joins only on hearing of the answer;
+    registers the caller as present - their client joins only on hearing of the answer. The
+    registration is a placeholder (`ParticipationInfo.IsPlaceholder`): fresh for the call's own
+    checks, but it shows the caller in `Members` as not present until their client's first
+    `SetParticipation` replaces it, with the join time of that moment;
   - with a session already going it joins that one and changes nothing in it (see
     [A call into an ongoing session](#a-call-into-an-ongoing-session)).
 
