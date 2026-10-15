@@ -5,7 +5,9 @@
  * no room for a React button. The reactions start as the six quick emojis plus
  * a chevron; the chevron expands it to the whole picker, and an emoji from there (💩 - never in the
  * old preset) floats over Alice's video panel. Once on a wide viewport, once on a phone-sized one,
- * with a screenshot of each menu state.
+ * with a screenshot of each menu state. The expanded picker has to stay inside the window: the menu
+ * is positioned when it opens with the quick row, and the picker that replaced it used to grow down
+ * past the bottom edge (#5337).
  *
  * Prerequisites:
  * - Server running (server-loop / run-watch), locally: hands and reactions are incomplete UI, which
@@ -110,6 +112,7 @@ describe('call reactions picker', () => {
         expect(await allEmojis.count()).toBeGreaterThan(QUICK_EMOJI_COUNT);
         await waitForMenuShown(menu);
         await bob.screenshot({ path: shot(`${layout}-2-full-picker`) });
+        await expectMenuInsideViewport(bob, menu, layout);
 
         // act - an emoji that was never in the old preset
         const picked = allEmojis.filter({ has: bob.locator(`img[alt="${PICKED_EMOJI_TITLE}"]`) }).first();
@@ -124,6 +127,19 @@ describe('call reactions picker', () => {
         await alice.screenshot({ path: shot(`${layout}-3-reaction-on-other-side`) });
     }
 });
+
+/** The whole menu box is on screen, and on a wide layout above the footer button it opened from. */
+async function expectMenuInsideViewport(page: Page, menu: Locator, layout: 'wide' | 'narrow') {
+    const geometry = await menu.evaluate(el => {
+        const box = (el.closest('.ac-menu') ?? el).getBoundingClientRect();
+        const trigger = document.querySelector('.call-screen-footer .btn-react')?.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom, viewportHeight: window.innerHeight, triggerTop: trigger?.top };
+    });
+    expect(geometry.top, 'menu top').toBeGreaterThanOrEqual(0);
+    expect(geometry.bottom, 'menu bottom').toBeLessThanOrEqual(geometry.viewportHeight);
+    if (layout === 'wide')
+        expect(geometry.bottom, 'menu bottom vs. the React button').toBeLessThanOrEqual(geometry.triggerTop!);
+}
 
 /** The menu fades in over 200ms and its emojis are SVG images that arrive one by one, so a screenshot
  *  taken as soon as the entries exist shows a ghost of the menu, or a menu with holes in it. */

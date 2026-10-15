@@ -40,6 +40,7 @@ interface Menu {
     position: Vector2D | null;
     historyStepId: string | null;
     menuElement: HTMLElement | null;
+    resizeObserver: ResizeObserver | null;
     focused: boolean;
     selection: MenuSelection | null;
 }
@@ -152,8 +153,12 @@ export class MenuHost implements Disposable {
             await delayAsync(this.hoverMenuDelayMs);
         }
 
-        menu.menuElement = document.getElementById(menu.id);
+        const menuElement = document.getElementById(menu.id);
+        const isNewElement = menuElement !== menu.menuElement;
+        menu.menuElement = menuElement;
         await this.position(menu);
+        if (isNewElement)
+            this.observeResize(menu);
         this.focusFirstItem(menu);
     }
 
@@ -180,6 +185,7 @@ export class MenuHost implements Disposable {
             position: position,
             historyStepId: null,
             menuElement: null,
+            resizeObserver: null,
             focused: false,
             selection: null,
         };
@@ -235,11 +241,43 @@ export class MenuHost implements Disposable {
 
         const restoreFocus = menu.menuElement?.contains(document.activeElement) ?? false;
         this.menu = null;
+        menu.resizeObserver?.disconnect();
+        menu.resizeObserver = null;
         // Hide (un-render) it
         void this.blazorRef.invokeMethodAsync('OnHideRequest', menu.id);
         this.removeMessageMark(this.currentMenuRef);
         if (restoreFocus && menu.triggerElement.isConnected)
             menu.triggerElement.focus({ preventScroll: true });
+    }
+
+    /**
+     * Blazor asks to position a menu after the menu component renders, not after a child of it does -
+     * the call reactions' quick row expanding into the whole picker is such a child render - and a
+     * top-placed menu that grew after it was positioned ran down past the viewport's bottom edge.
+     */
+    private observeResize(menu: Menu): void {
+        menu.resizeObserver?.disconnect();
+        menu.resizeObserver = null;
+        const menuElement = menu.menuElement;
+        if (!menuElement)
+            return;
+
+        // offsetWidth/Height: the layout size, unlike the bounding rect the show animation scales
+        let lastWidth = menuElement.offsetWidth;
+        let lastHeight = menuElement.offsetHeight;
+        menu.resizeObserver = new ResizeObserver(() => {
+            if (this.menu !== menu)
+                return;
+
+            const { offsetWidth, offsetHeight } = menuElement;
+            if (offsetWidth === lastWidth && offsetHeight === lastHeight)
+                return;
+
+            lastWidth = offsetWidth;
+            lastHeight = offsetHeight;
+            void this.position(menu);
+        });
+        menu.resizeObserver.observe(menuElement);
     }
 
     private focusFirstItem(menu: Menu): void {
