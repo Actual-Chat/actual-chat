@@ -146,9 +146,22 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
     private async Task<List<LiveConversation>> ListClosedLiveConversations(
         ChatId chatId, CancellationToken cancellationToken)
     {
+        // The open conversation is skipped before it's read: its summary changes on every pass of the
+        // summary flow, and a dependency on it would invalidate the range tiles each time
+        var openId = await LiveSessionsBackend
+            .GetOpenLiveConversationId(chatId, cancellationToken)
+            .ConfigureAwait(false);
+        var ids = await LiveSessionsBackend
+            .ListLiveConversations(chatId, cancellationToken)
+            .ConfigureAwait(false);
         var result = new List<LiveConversation>();
-        foreach (var id in await LiveSessionsBackend.ListLiveConversations(chatId, cancellationToken).ConfigureAwait(false)) {
-            var conversation = await LiveSessionsBackend.GetLiveConversation(id, cancellationToken).ConfigureAwait(false);
+        foreach (var id in ids) {
+            if (id == openId)
+                continue;
+
+            var conversation = await LiveSessionsBackend
+                .GetLiveConversation(id, cancellationToken)
+                .ConfigureAwait(false);
             if (conversation is { IsOpen: false })
                 result.Add(conversation);
         }
