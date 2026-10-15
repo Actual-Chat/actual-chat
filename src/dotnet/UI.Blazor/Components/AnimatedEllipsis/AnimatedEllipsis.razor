@@ -1,0 +1,8 @@
+@namespace ActualChat.UI.Blazor.Components
+
+@* A code block: markup whitespace between the dots would show in the text the status reads as *@
+<span class="animated-ellipsis" aria-hidden="true">@{
+    for (var i = 0; i < 3; i++) {
+        <span class="animated-ellipsis-dot">.</span>
+    }
+}</span>

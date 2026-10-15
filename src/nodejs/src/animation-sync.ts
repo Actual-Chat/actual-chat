@@ -65,6 +65,7 @@ const animationClasses = new Set<string>([
     'connecting-spinner',       // spin
     'c-live-dot',               // pulseLiveDot
     'c-title-inner',            // c-title-marquee
+    'animated-ellipsis-dot',    // animated-ellipsis-dot-*
     // Skeletons + unread dots
     'animate-pulse',
     'animated-skeleton',
