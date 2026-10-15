@@ -2101,6 +2101,26 @@
   "Chat_FreezeWarning_Format": "Anda akan membekukan obrolan “{0}”. Tidak ada yang bisa mengaksesnya kecuali pemilik, yang tetap bisa membukanya lewat tautan langsung.",
   "Chat_UnfreezeTitle": "Sohbetin dondurulmasını kaldırın",
 
+  // Archiving a chat moves it out of the chat list into the Archive tab; ChatMenu_* are the chat menu entries.
+  // ArchiveChat_* is the confirmation modal, which offers to turn the chat's notifications off.
+  "ChatMenu_Archive": "Архивировать",
+  "ChatMenu_Unarchive": "Ripristina dall'archivio",
+  "ArchiveChat_Title": "Lưu trữ cuộc trò chuyện",
+  "ArchiveChat_Text_Format": "Obrolan “{0}” akan keluar dari daftar obrolan Anda. Anda bisa menemukannya di tab Arsip.",
+  "ArchiveChat_DisableNotifications": "Benachrichtigungen für diesen Chat ausschalten",
+
+  // The Archive tab of the chat list. It is always sorted by archival time, so the sort button turns into
+  // the SortByArchivedAt caption.
+  "ChatList_TabArchive": "アーカイブ",
+  "ChatList_SortByArchivedAt": "Berdasarkan waktu pengarsipan",
+  "ChatList_ArchiveEmpty": "Rien n'est archivé pour le moment",
+
+  // The banner above a frozen chat suggests archiving it; NotNow hides it for a week.
+  // ArchivedBanner_Text is the banner above a chat that sits in the archive.
+  "FrozenBanner_Text": "Cuộc trò chuyện này đang bị đóng băng. Hãy lưu trữ để gỡ nó khỏi danh sách trò chuyện.",
+  "FrozenBanner_NotNow": "今はしない",
+  "ArchivedBanner_Text": "Cuộc trò chuyện này đã được lưu trữ và không hiện trong danh sách trò chuyện.",
+
   // The chat type picker in the new-chat modal and in chat settings; each *Hint is the grey
   // line under its option, and the *Thread variants are the same three options for a thread.
   "Chat_PublicChat": "Cuộc trò chuyện công khai",

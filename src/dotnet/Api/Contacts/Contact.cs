@@ -26,6 +26,8 @@ public sealed partial record Contact(
     [DataMember, Key(10)] public ContactState State { get; init; }
     // Populated on backend on reads for peer contacts
     [DataMember, Key(11)] public bool IsBlockedByPeer { get; init; }
+    // Populated on backend on reads: set for a contact that lives in the archive, not in the contact list
+    [DataMember, Key(12)] public Moment? ArchivedAt { get; init; }
 
     // Computed
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
@@ -36,6 +38,8 @@ public sealed partial record Contact(
     public ChatId ChatId => Id.ChatId;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsRegular => State == ContactState.Regular;
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public bool IsArchived => ArchivedAt is not null;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public bool IsBlocked => State == ContactState.Blocked;
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

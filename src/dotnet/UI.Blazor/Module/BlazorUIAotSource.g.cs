@@ -80,6 +80,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.FormBlock>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.FormButtons>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.HeaderButton>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.HistogramChart>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Hotkey>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.ImageMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Internal.FocusTrap>();
@@ -89,6 +90,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.Label>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LeftLine>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LeftPanelSkeleton>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LineChart>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LiveDuration>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LiveTimeDeltaSeconds>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.LiveTimeDeltaText>();
@@ -232,6 +234,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.AddToContactsBanner+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.AlertMentionedButton+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.AlertMentionedMenuEntry+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.ArchiveTabUnreadCount+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.AttachmentItemBase+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.AudioAttachmentSubHeader+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.AudioFileAttachment+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -287,6 +290,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.CoachProgressTab+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.CoachRecentTab+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.CoachSettingsPage+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.CoachSkillDetail+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.CoachSkillsTab+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.CollapsedCallView+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.ConversationHeaderView+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -355,6 +359,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PlaceSettingsOwnerModalPage+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PlaceSettingsStartModalPage+ComputedModel, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PttAnswerWindowSettings+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
+        CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PttChatAvatar+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PttHushDurationSettings+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PttMutedBanner+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
         CodeKeeper.Keep("ActualLab.Fusion.Blazor.ComputedStateComponent+CreateDefaultStateOptionsFactory`1[[ActualChat.UI.Blazor.App.Components.PttReplyWindowSettings+Model, ActualChat.UI.Blazor.App]], ActualLab.Fusion.Blazor");
@@ -653,6 +658,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.FormBlock), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.FormButtons), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.HeaderButton), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.HistogramChart), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.Hotkey), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.ImageMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.Internal.FocusTrap), AotTypeKind.Component),
@@ -662,6 +668,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.Label), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LeftLine), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LeftPanelSkeleton), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.LineChart), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LiveDuration), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LiveTimeDeltaSeconds), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.LiveTimeDeltaText), AotTypeKind.Component),

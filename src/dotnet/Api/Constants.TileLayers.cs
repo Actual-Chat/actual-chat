@@ -7,5 +7,6 @@ public static partial class Constants
         public static readonly TileLayer<long> Long5 = new(0L, 5L);
         public static readonly TileLayer<long> Long1280 = new(0L, 1280L);
         public static readonly TileLayer<int> Int5 = new(0, 5);
+        public static readonly TileLayer<int> Int20 = new(0, 20);
     }
 }

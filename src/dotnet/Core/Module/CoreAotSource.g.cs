@@ -22,6 +22,9 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.Kvas.IServerKvas>();
         CodeKeeper.Keep<global::ActualChat.Kvas.IServerSettings>();
         CodeKeeper.KeepSerializable<global::ActualChat.ApiCommand>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Audio.SpeechPaceAnalysis>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Audio.SpeechPaceDistribution>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Audio.SpeechPaceSegment>();
         CodeKeeper.KeepSerializable<global::ActualChat.ContentRef>();
         CodeKeeper.KeepSerializable<global::ActualChat.Hashing.HashString>();
         CodeKeeper.KeepSerializable<global::ActualChat.Hosting.HostRole>();
@@ -70,6 +73,18 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ApiCommand<global::System.Reactive.Unit>>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ApiCommand<global::System.Reactive.Unit>>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ApiCommand<global::System.Reactive.Unit>>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceAnalysis>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceAnalysis>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceAnalysis>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceDistribution>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceDistribution>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceDistribution>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceSegment>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceSegment>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceSegment>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceSegment[]>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceSegment[]>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Audio.SpeechPaceSegment[]>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ContentRef>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ContentRef>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.ContentRef>>>>();
@@ -237,7 +252,11 @@ internal partial class CoreAotSource : IAotSource
         CodeKeeper.Keep("ActualLab.Text.Internal.SymbolMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("ActualLab.Time.Internal.MomentMessagePackFormatter, ActualLab.Core");
         CodeKeeper.Keep("MessagePack.Formatters.ActualChat_ApiCommandFormatter1, MessagePack.Resolvers.DynamicObjectResolver");
-        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter2, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Audio_SpeechPaceAnalysisFormatter2, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Audio_SpeechPaceDistributionFormatter4, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Audio_SpeechPaceSegmentFormatter3, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ActualChat_Media_Size2DFormatter5, MessagePack.Resolvers.DynamicObjectResolver");
+        CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Audio.SpeechPaceSegment, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[ActualChat.Search.SearchMatchPart, ActualChat.Core]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.Type, System.Private.CoreLib]], MessagePack");
         CodeKeeper.Keep("MessagePack.Formatters.ArrayFormatter`1[[System.ValueTuple`2[[System.String, System.Private.CoreLib],[System.Byte[], System.Private.CoreLib]], System.Private.CoreLib]], MessagePack");
@@ -287,6 +306,9 @@ internal partial class CoreAotSource : IAotSource
             (typeof(global::ActualChat.Kvas.IServerKvas), AotTypeKind.Api),
             (typeof(global::ActualChat.Kvas.IServerSettings), AotTypeKind.Api),
             (typeof(global::ActualChat.ApiCommand), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Audio.SpeechPaceAnalysis), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Audio.SpeechPaceDistribution), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Audio.SpeechPaceSegment), AotTypeKind.Serializable),
             (typeof(global::ActualChat.ContentRef), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Hashing.HashString), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Hosting.HostRole), AotTypeKind.Serializable),

@@ -94,6 +94,38 @@ public class Contacts(IServiceProvider services) : IContacts
         return contactIds;
     }
 
+    // [ComputeMethod]
+    public virtual async Task<int> GetArchivedCount(
+        Session session,
+        PlaceId? placeId,
+        CancellationToken cancellationToken)
+    {
+        var ownerId = await GetArchiveOwnerId(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (ownerId is null)
+            return 0;
+
+        return await Backend.GetArchivedCount(ownerId, placeId, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ContactId[]> ListArchivedIds(
+        Session session,
+        PlaceId? placeId,
+        Tile<int> indexTile,
+        CancellationToken cancellationToken)
+    {
+        // Only the tiles of the layer: any other range would be a cache entry of its own per caller
+        var tileLayer = Constants.Contacts.ArchiveIndexTiles;
+        if (indexTile.Start < 0 || !tileLayer.GetTile(indexTile.Start).Range.Equals(indexTile.Range))
+            throw StandardError.Constraint("Invalid archive tile.");
+
+        var ownerId = await GetArchiveOwnerId(session, placeId, cancellationToken).ConfigureAwait(false);
+        if (ownerId is null)
+            return [];
+
+        return await Backend.ListArchivedIds(ownerId, placeId, indexTile, cancellationToken).ConfigureAwait(false);
+    }
+
     // [CommandHandler]
     public virtual async Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken)
     {
@@ -146,6 +178,28 @@ public class Contacts(IServiceProvider services) : IContacts
         await Commander.Call(setIsBlockedCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
+    // [CommandHandler]
+    public virtual async Task OnArchive(Contacts_Archive command, CancellationToken cancellationToken)
+    {
+        var id = command.Id;
+        id.Require();
+        await RequireOwn(command.Session, id, cancellationToken).ConfigureAwait(false);
+
+        var archiveCommand = new ContactsBackend_Archive(id);
+        await Commander.Call(archiveCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnUnarchive(Contacts_Unarchive command, CancellationToken cancellationToken)
+    {
+        var id = command.Id;
+        id.Require();
+        await RequireOwn(command.Session, id, cancellationToken).ConfigureAwait(false);
+
+        var unarchiveCommand = new ContactsBackend_Unarchive(id);
+        await Commander.Call(unarchiveCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
     // Protected methods
 
     [ComputeMethod]
@@ -181,6 +235,26 @@ public class Contacts(IServiceProvider services) : IContacts
                 state = ContactState.Regular;
             return state == contact.State ? contact : contact with { State = state };
         }
+    }
+
+    private async Task<UserId?> GetArchiveOwnerId(
+        Session session, PlaceId? placeId, CancellationToken cancellationToken)
+    {
+        if (placeId is not null) {
+            var place = await Places.Get(session, placeId, cancellationToken).ConfigureAwait(false);
+            if (place?.Rules.CanRead() != true)
+                return null;
+        }
+
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        return account.Id;
+    }
+
+    private async Task RequireOwn(Session session, ContactId id, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        if (id.OwnerId != account.Id)
+            throw Unauthorized();
     }
 
     private static Exception Unauthorized()

@@ -15,6 +15,8 @@
                                        ChatListFilter="@filter"/>
                                } else if (id == ThreadsTabId) {
                                    <ThreadListTabUnreadCount PlaceId="@PlaceId"/>
+                               } else if (id == ArchiveTabId) {
+                                   <ArchiveTabUnreadCount PlaceId="@PlaceId"/>
                                }
                            </text>,
         };
@@ -22,6 +24,7 @@
     var tabs = ChatListFilter.All.Select(x => NewTab(x.Id.Value, GetFilterTitle(x), x)).ToList();
     if (isThreadsSupported)
         tabs.Add(NewTab(ThreadsTabId, L.ChatList_TabThreads, null));
+    tabs.Add(NewTab(ArchiveTabId, L.ChatList_TabArchive, null));
 }
 
 <div class="c-container">
@@ -35,7 +38,17 @@
                 AutoSelectInitialTab="false"
                 SelectedTabIdChanged="@OnSelectedTabIdChanged">
                 <AdditionalButton>
-                    <ChatListSortButton PlaceChatListSettings="@_placeChatListSettings"/>
+                    @if (_mustShowArchive) {
+                        <ButtonRound
+                            Class="chat-list-sort-btn btn-xs btn-transparent unhovered"
+                            data-menu="@(MenuRef.New<ChatListArchiveSortMenu>())"
+                            data-menu-trigger="@MenuTrigger.Primary"
+                            data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
+                            <i class="icon-sort-by-recent text-2xl"></i>
+                        </ButtonRound>
+                    } else {
+                        <ChatListSortButton PlaceChatListSettings="@_placeChatListSettings"/>
+                    }
                 </AdditionalButton>
             </TabPanel>
         }
@@ -48,7 +61,14 @@
             MustPropagateDisplay="true"
             IsEnabled="@(_tabPanel?.IsUserSelection == true)">
             <ChildContent>
-                @if (_mustShowThreadsList) {
+                @if (_mustShowArchive) {
+                    <ArchiveEmptyHint @key="@PlaceId" PlaceId="@PlaceId"/>
+                    <ChatList
+                        @key="@ChatList.GetKey(PlaceId, false, null, default, true)"
+                        PlaceId="@PlaceId"
+                        UsePlaceChatListSettings="@false"
+                        IsArchive="@true"/>
+                } else if (_mustShowThreadsList) {
                     <ThreadList PlaceId="@PlaceId" />
                 } else {
                     <ChatList @key="@ChatList.GetKey(PlaceId, true, null)" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
@@ -65,12 +85,14 @@
 
 @code {
     private const string ThreadsTabId = "threads";
+    private const string ArchiveTabId = "archive";
 
     private readonly ContentSwapDirection _swapDirection = new();
     private string _selectedTabId = "";
     private int _swapIndex;
     private TabPanel? _tabPanel;
     private bool _mustShowThreadsList;
+    private bool _mustShowArchive;
     private PlaceChatListSettings? _placeChatListSettings;
     private string? _tabPanelSelectedTabId;
 
@@ -109,7 +131,8 @@
             _swapIndex++;
         _selectedTabId = tabId;
         _mustShowThreadsList = tabId == ThreadsTabId;
-        if (!_mustShowThreadsList) { // Show ChatList
+        _mustShowArchive = tabId == ArchiveTabId;
+        if (!_mustShowThreadsList && !_mustShowArchive) { // Show ChatList
             var filterId = tabId;
             _placeChatListSettings?.SetFilter(filterId);
         }
@@ -122,6 +145,8 @@
 
     private static int GetTabIndex(string tabId) {
         // The Threads tab is rendered after every filter, so it is the one index past them
+        if (tabId == ArchiveTabId)
+            return ChatListFilter.All.Length + 1;
         if (tabId == ThreadsTabId)
             return ChatListFilter.All.Length;
 

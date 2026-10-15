@@ -174,6 +174,20 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
             .ToApiArray();
     }
 
+    [ComputeMethod]
+    public virtual async Task<ApiArray<ChatId>> ListUnreadChatIds(CancellationToken cancellationToken = default)
+    {
+        // The chats that have an active message-level notification, i.e. something the user hasn't looked at
+        var active = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        return active
+            .OfType<ChatNotification>()
+            .Where(x => x.Kind is NotificationKind.Message or NotificationKind.Reply
+                or NotificationKind.Mention or NotificationKind.Attention)
+            .Select(x => x.ChatId)
+            .Distinct()
+            .ToApiArray();
+    }
+
     public Task Open(NotificationId notificationId, ChatEntryId? entryId = null)
     {
         // Opening the notification the URL is already at has no navigation to hide the panels or to

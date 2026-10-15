@@ -2101,6 +2101,26 @@
   "Chat_FreezeWarning_Format": "You are going to freeze chat '{0}'. Nobody will be able to access it except owners, who can still access it with direct link.",
   "Chat_UnfreezeTitle": "Unfreeze chat",
 
+  // Archiving a chat moves it out of the chat list into the Archive tab; ChatMenu_* are the chat menu entries.
+  // ArchiveChat_* is the confirmation modal, which offers to turn the chat's notifications off.
+  "ChatMenu_Archive": "Archive",
+  "ChatMenu_Unarchive": "Unarchive",
+  "ArchiveChat_Title": "Archive chat",
+  "ArchiveChat_Text_Format": "'{0}' will leave your chat list. You'll find it in the Archive tab.",
+  "ArchiveChat_DisableNotifications": "Turn off notifications for this chat",
+
+  // The Archive tab of the chat list. It is always sorted by archival time, so the sort button turns into
+  // the SortByArchivedAt caption.
+  "ChatList_TabArchive": "Archive",
+  "ChatList_SortByArchivedAt": "By archival time",
+  "ChatList_ArchiveEmpty": "Nothing archived yet",
+
+  // The banner above a frozen chat suggests archiving it; NotNow hides it for a week.
+  // ArchivedBanner_Text is the banner above a chat that sits in the archive.
+  "FrozenBanner_Text": "This chat is frozen. Archive it to take it out of your chat list.",
+  "FrozenBanner_NotNow": "Not now",
+  "ArchivedBanner_Text": "This chat is archived and stays out of your chat list.",
+
   // The chat type picker in the new-chat modal and in chat settings; each *Hint is the grey
   // line under its option, and the *Thread variants are the same three options for a thread.
   "Chat_PublicChat": "Public chat",

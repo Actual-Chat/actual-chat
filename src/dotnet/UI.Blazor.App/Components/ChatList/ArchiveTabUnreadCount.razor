@@ -1,0 +1,38 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedRenderStateComponent<AppUIHub, ArchiveTabUnreadCount.Model>
+@{
+    var m = State.Value;
+    if (m.Count <= 0)
+        return;
+}
+
+<div class="c-badge" data-child="badge">
+    <UnreadCount Value="@m.Count" NotificationMode="@ChatNotificationMode.Default"/>
+</div>
+
+@code {
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = new(),
+                UpdateDelayer = FixedDelayer.Get(0.1),
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var count = await ChatListUI.GetArchivedUnreadChatCount(PlaceId, cancellationToken).ConfigureAwait(false);
+        return new(count);
+    }
+
+    protected override void OnInitialized()
+        // Same as ChatListTabUnreadCount: it renders nothing but the model
+        => StateEqualityComparer = EqualityComparer<Model>.Default;
+
+    // Nested types
+
+    public sealed record Model(Trimmed<int> Count = default);
+}

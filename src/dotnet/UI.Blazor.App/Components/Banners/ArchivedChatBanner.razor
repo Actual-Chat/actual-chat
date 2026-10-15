@@ -1,0 +1,29 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+
+<Banner IsVisible="@State.Value">
+    <Body>
+        @L.ArchivedBanner_Text
+    </Body>
+    <Buttons>
+        <BannerButton Click="@(() => Hub.ChatUI.Unarchive(Chat.Id))">@L.ChatMenu_Unarchive</BannerButton>
+    </Buttons>
+</Banner>
+
+@code {
+    private Chat Chat => ChatContext.Chat;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var contact = await Hub.Contacts.GetForChat(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+        return contact is { IsArchived: true, IsBlocked: false };
+    }
+}

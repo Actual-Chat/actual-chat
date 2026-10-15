@@ -1,0 +1,65 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Kvas
+@using System.Globalization
+@inherits ComputedStateComponent<AppUIHub, bool>
+
+<Banner IsVisible="@State.Value" ShowDismissButton="true" Dismiss="@OnDismiss">
+    <Body>
+        @L.FrozenBanner_Text
+    </Body>
+    <Buttons>
+        <BannerButton Primary="false" Click="@OnDismiss">@L.FrozenBanner_NotNow</BannerButton>
+        <BannerButton Click="@OnArchiveClick">@L.ChatMenu_Archive</BannerButton>
+    </Buttons>
+</Banner>
+
+@code {
+    private static readonly TimeSpan ReminderPeriod = TimeSpan.FromDays(7);
+
+    private Chat Chat => ChatContext.Chat;
+
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
+        if (!chat.IsFrozen)
+            return false;
+
+        var contact = await Hub.Contacts.GetForChat(Session, chat.Id, cancellationToken).ConfigureAwait(false);
+        if (contact is null or { IsArchived: true })
+            return false;
+
+        var sDismissedAt = await LocalSettings.Get<string>(GetDismissKey(chat.Id), cancellationToken)
+            .ConfigureAwait(false);
+        if (!DateTime.TryParse(sDismissedAt, null, DateTimeStyles.RoundtripKind, out var dismissedAt))
+            return true;
+
+        var remindIn = dismissedAt.ToMoment() + ReminderPeriod - Clocks.SystemClock.Now;
+        if (remindIn <= TimeSpan.Zero)
+            return true;
+
+        // The reminder comes back on its own once the week is over
+        Computed.GetCurrent().Invalidate(remindIn + TimeSpan.FromMilliseconds(250), false);
+        return false;
+    }
+
+    private async Task OnDismiss() {
+        var sDismissedAt = Clocks.SystemClock.Now.ToDateTimeClamped().ToString("O");
+        await LocalSettings.Set(GetDismissKey(Chat.Id), sDismissedAt, CancellationToken.None)
+            .ConfigureAwait(true);
+        State.Invalidate();
+    }
+
+    private void OnArchiveClick()
+        => Hub.ChatUI.ArchiveChat(Chat);
+
+    private static string GetDismissKey(ChatId chatId)
+        => $"FrozenChatBanner/DismissedAt/{chatId}";
+}

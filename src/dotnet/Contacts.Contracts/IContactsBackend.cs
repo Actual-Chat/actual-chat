@@ -22,6 +22,11 @@ public interface IContactsBackend : IComputeService, IBackendService
     [ComputeMethod]
     Task<bool> IsBlocked(UserId ownerId, UserId otherUserId, CancellationToken cancellationToken);
     [ComputeMethod]
+    Task<int> GetArchivedCount(UserId ownerId, PlaceId? placeId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<ContactId[]> ListArchivedIds(
+        UserId ownerId, PlaceId? placeId, Tile<int> indexTile, CancellationToken cancellationToken);
+    [ComputeMethod]
     Task<PlaceId[]> ListPlaceIds(UserId ownerId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ThreadContact?> GetThreadContact(UserId ownerId, ContactId contactId, CancellationToken cancellationToken);
@@ -33,6 +38,7 @@ public interface IContactsBackend : IComputeService, IBackendService
     // Non-compute methods
     Task<Contact[]> ListChangedPeerContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
     Task<Contact[]> ListChangedPlaceContacts(ChangedContactsQuery query, CancellationToken cancellationToken);
+    Task<Contact[]> ListBlockedForMigration(string? lastId, int limit, CancellationToken cancellationToken);
 
     // Commands
 
@@ -42,6 +48,12 @@ public interface IContactsBackend : IComputeService, IBackendService
     Task OnTouch(ContactsBackend_Touch command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnSetIsBlocked(ContactsBackend_SetIsBlocked command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnArchive(ContactsBackend_Archive command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnUnarchive(ContactsBackend_Unarchive command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnMigrateBlocked(ContactsBackend_MigrateBlocked command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemoveAccount(ContactsBackend_RemoveAccount command, CancellationToken cancellationToken);
     [CommandHandler]
@@ -207,6 +219,45 @@ public sealed partial record ContactsBackend_ChangeThreadContact(
     [property: DataMember, Key(1)] long? ExpectedVersion,
     [property: DataMember, Key(2)] Change<ThreadContact> Change
 ) : ICommand<ThreadContact?>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => Id.ShardKey;
+}
+
+/// <summary>
+/// Command to move a contact from the contact list to the archive.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_Archive(
+    [property: DataMember, Key(0)] ContactId Id
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => Id.ShardKey;
+}
+
+/// <summary>
+/// Command to move a contact from the archive back to the contact list.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_Unarchive(
+    [property: DataMember, Key(0)] ContactId Id
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
+{
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public ShardKey ShardKey => Id.ShardKey;
+}
+
+/// <summary>
+/// Command to move a contact blocked in the contact list into the archive, as a blocked archived contact.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record ContactsBackend_MigrateBlocked(
+    [property: DataMember, Key(0)] ContactId Id
+) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Id.ShardKey;

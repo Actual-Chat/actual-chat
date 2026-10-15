@@ -1,4 +1,5 @@
 using ActualChat.Contacts.Db;
+using ActualChat.Contacts.Flows;
 using ActualChat.Db.Module;
 using ActualChat.Redis.Module;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,10 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices)
         services.AddSingleton<ContactLinker>()
             .AddHostedService(c => c.GetRequiredService<ContactLinker>());
 
+        // Flows
+        services.AddFlows()
+            .Add<BlockedContactsMigrationFlow>();
+
         // Redis
         var redisModule = Host.GetModule<RedisModule>();
         redisModule.AddRedisDb<ContactsDbContext>(services);
@@ -43,6 +48,7 @@ public sealed class ContactsServiceModule(IServiceProvider moduleServices)
         dbModule.AddDbContextServices<ContactsDbContext>(services, db => {
             // Overriding / adding extra DbAuthentication services
             db.AddEntityResolver<string, DbContact>();
+            db.AddEntityResolver<string, DbArchivedContact>();
 
             // DbExternalContact
             db.AddEntityResolver<string, DbExternalContactsHash>();
