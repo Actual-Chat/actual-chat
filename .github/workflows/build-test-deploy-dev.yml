@@ -1320,7 +1320,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.aab
-          path: D:\AC\artifacts\publish\App.Maui\release_net11.0-android\${{env.AAB_FILE_NAME}}
+          path: D:\AC\artifacts\publish\App.Maui\release_net11.0-android_android-arm64\${{env.AAB_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10
@@ -1329,7 +1329,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ needs.calc-pkg-params.outputs.APP_ID }}.${{ steps.nbgv.outputs.SemVer2 }}.apk
-          path: D:\AC\artifacts\publish\App.Maui\release_net11.0-android\${{env.APK_FILE_NAME}}
+          path: D:\AC\artifacts\publish\App.Maui\release_net11.0-android_android-arm64\${{env.APK_FILE_NAME}}
           if-no-files-found: error
           compression-level: 0
           retention-days: 10

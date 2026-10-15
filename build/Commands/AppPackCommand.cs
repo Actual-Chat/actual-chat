@@ -32,7 +32,8 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
         const string publishDir = "artifacts/publish/App.Maui";
         var appId = settings.IsDev ? "chat.actual.dev.app" : "chat.actual.app";
         return settings.Platform switch {
-            AppPlatform.Android => ("pack-android", $"{publishDir}/release_net11.0-android/{appId}-Signed.aab"),
+            AppPlatform.Android => ("pack-android",
+                $"{publishDir}/release_net11.0-android_android-arm64/{appId}-Signed.aab"),
             AppPlatform.Ios => ("pack-ios", $"{publishDir}/release_net11.0-ios_ios-arm64/ActualChat.ipa"),
             AppPlatform.Mac when settings.UseCatalyst => ("pack-maccatalyst",
                 $"{publishDir}/release_net11.0-maccatalyst_maccatalyst-arm64/*.pkg"),

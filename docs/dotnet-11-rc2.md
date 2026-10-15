@@ -135,9 +135,9 @@ Using the same build command as the baseline:
 These builds report XA4304 for a missing generated
 `proguard_project_references.cfg`. The RC2 SDK looks under a nested
 `android-arm64/` intermediate directory, but `UseArtifactsOutput` places the
-inner build's generated file in a sibling RID-suffixed directory. The CI
-multi-RID invocation still needs this path mismatch addressed before release.
-Do not suppress the warning or supply an empty file: it contains JNI keep rules.
+inner build's generated file in a sibling RID-suffixed directory. This caused
+the CI startup regression addressed below. Do not suppress the warning or
+supply an empty file: it contains JNI keep rules.
 
 A subsequent build with an explicit `-r android-arm64` correctly consumes the
 generated rules and has no XA4304 warning. That device-test candidate reports
@@ -145,7 +145,7 @@ generated rules and has no XA4304 warning. That device-test candidate reports
 10,844,508 bytes. These figures are not a controlled comparison to the earlier
 baseline because this invocation also includes the previously missing rules.
 
-Device-test build command (debug-key signing, dev flavor):
+Historical device-test build command (machine debug key, not suitable for auth tests):
 
 ```sh
 dotnet build src/dotnet/App.Maui/App.Maui.csproj -c Release -f net11.0-android \
@@ -179,6 +179,51 @@ This is not a complete functional pass: the visible UI remains a blank purple
 screen, and Firebase rejects the local Android client configuration. WebView
 rendering, auth/passkeys, push delivery, audio, and background controls still need
 validation. The packages have not been uploaded to Play Console.
+
+### Explicit ARM64 packaging
+
+The Play-distributed dev build `2.22.576-alpha-g73fad4bd84` crashed in
+`MainApplication.onCreate` with a missing
+`androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(int)` method.
+Its CI build emitted XA4304 for the missing generated reference rules. The
+explicit-RID local builds had consumed those rules, masking the CI difference.
+
+Android packages ship only ARM64. The canonical `pack-android` target now
+publishes with `-r android-arm64`, avoiding the SDK's faulty outer-build path
+rather than overriding its internal targets. `b app pack android`, CI artifact
+uploads, and the tracing install script use the RID-suffixed output directory:
+`artifacts/publish/App.Maui/release_net11.0-android_android-arm64/`.
+
+Release builds promote XA4304 to an error, so missing ProGuard configuration
+cannot silently produce another unsafe package. No blanket AndroidX keep is
+restored, and the obfuscation mode is unchanged. No custom JNI path-discovery
+targets are needed.
+
+Build the dev package through the same entry point CI uses:
+
+```sh
+./run-build.cmd pack-android --configuration Release --is-dev-maui true
+```
+
+For a direct publish, always specify the runtime:
+
+```sh
+dotnet publish src/dotnet/App.Maui/App.Maui.csproj -c Release \
+  -f net11.0-android -r android-arm64
+```
+
+The canonical Release dev packaging command passed locally with no XA4304;
+its AAB and APK use the directory above. APK DEX inspection confirms
+`setDefaultNightMode(I)V` is present. An injected XA4304 warning fails the
+Release project as expected. AAB R8 metadata reports **27.36% obfuscation,
+60.08% optimization, and 64.29% shrinking**, with 10,844,584 DEX bytes.
+
+Windows CI and Play-distributed device validation remain outstanding; the
+installed Play-signed app was not replaced or uninstalled. Local auth tests
+must use the registered repository dev key, not `AndroidKeyStore=false`:
+the machine debug certificate is not in DEV's Digital Asset Links. The canonical
+pack target rebuilds TypeScript; a direct `dotnet publish` does not, so run
+`npm run build:Release` first when publishing manually.
 
 ## Sources
 
