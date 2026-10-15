@@ -1,0 +1,37 @@
+/* The dots fill in one by one and start over: 1.2 s, a 300 ms step each, on the AnimationSync grid. */
+
+/* Inline-block with inline dots, so they sit on the text's baseline. No layout containment: it takes the
+   baseline away, and the box then aligns by its bottom edge, a few pixels above the text. */
+.animated-ellipsis {
+    @apply inline-block;
+    contain: paint style;
+}
+.animated-ellipsis .animated-ellipsis-dot {
+    will-change: opacity;
+    animation: animated-ellipsis-dot-1 1.2s steps(1, end) infinite;
+}
+.animated-ellipsis .animated-ellipsis-dot:nth-child(2) {
+    animation-name: animated-ellipsis-dot-2;
+}
+.animated-ellipsis .animated-ellipsis-dot:nth-child(3) {
+    animation-name: animated-ellipsis-dot-3;
+}
+
+@keyframes animated-ellipsis-dot-1 {
+    0% { opacity: 0; }
+    25%, 100% { opacity: 1; }
+}
+@keyframes animated-ellipsis-dot-2 {
+    0%, 25% { opacity: 0; }
+    50%, 100% { opacity: 1; }
+}
+@keyframes animated-ellipsis-dot-3 {
+    0%, 50% { opacity: 0; }
+    75%, 100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animated-ellipsis .animated-ellipsis-dot {
+        animation: none;
+    }
+}
