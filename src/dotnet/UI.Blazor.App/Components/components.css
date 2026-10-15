@@ -129,6 +129,22 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
 body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.listening)) .chat-header-center {
     @apply pr-16;
 }
+/* Collapsed, the activity panel overlays the header row; the author heads run right from pl-12.
+   Push the title just past them. The reserve is fixed per chat kind, not per live speaker count, so
+   the title never shifts as people join or leave - a group tops out at 3 heads. */
+body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.not-participating)) .chat-header-center {
+    @apply pl-18;
+}
+/* A peer chat shows at most 2 heads, so it needs less room than a group's 3 - stop past the 2nd head. */
+body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.not-participating)) .chat-header-center.peer-chat {
+    @apply pl-13;
+}
+/* The speaker heads stand in for the chat icon here. It's already visually hidden (.hideable), but its
+   box still pushes the title an avatar-width further right - collapse the box so the title lands right
+   after the reserve. max-w-0 animates via the .hideable max-width transition, matching the heads. */
+body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.not-participating)) .chat-header-center > .hideable {
+    @apply max-w-0;
+}
 .chat-header-center > .chat-header-title {
     @apply flex-1 flex-y items-start justify-center;
     @apply select-none;
