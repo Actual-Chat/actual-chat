@@ -50,12 +50,12 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
             return call;
 
         var computed = Computed.GetCurrent();
-        var phase = await GetPhase(call, cancellationToken).ConfigureAwait(false);
-        if (phase is { } p) {
+        var current = await GetCurrent(call, cancellationToken).ConfigureAwait(false);
+        if (current is not null) {
             // Nothing rewrites a claim once its call connects (#4766)
             await SafeRefresh(userId).ConfigureAwait(false);
             computed.Invalidate(ClaimSelfHeal);
-            return call with { Phase = p };
+            return current;
         }
 
         // The call that justified this claim is gone without its end reaching the claim (a host died
@@ -75,7 +75,7 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
             if (existing is not null
                 && existing.Phase != CallPhase.Ended
                 && existing.CallId != call.CallId
-                && await GetPhase(existing, cancellationToken).ConfigureAwait(false) is not null)
+                && await GetCurrent(existing, cancellationToken).ConfigureAwait(false) is not null)
                 return false;
 
             await _userCalls
@@ -107,22 +107,22 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
 
     // Private methods
 
-    // Null when the chat's call no longer backs the claim. The phase stored with the claim is only its
-    // initial one, and holds only for ClaimGrace, before the call exists.
-    private async Task<CallPhase?> GetPhase(UserCallClaim call, CancellationToken cancellationToken)
+    private async Task<UserCallClaim?> GetCurrent(UserCallClaim call, CancellationToken cancellationToken)
     {
+        // Null when the chat's call no longer backs the claim. The phase stored with the claim is only its
+        // initial one, and holds only for ClaimGrace, before the call exists.
         var liveCall = await LiveSessionsBackend.GetCall(call.ChatId, cancellationToken).ConfigureAwait(false);
         var live = liveCall is null
             ? null
             : await LiveSessionsBackend.Get(call.ChatId, cancellationToken).ConfigureAwait(false);
-        var invites = liveCall is null || call.Role != CallRole.Callee
+        var invites = liveCall is null
             ? default
             : await LiveSessionsBackend.ListInvites(call.ChatId, cancellationToken).ConfigureAwait(false);
         var phase = GetPhase(call, liveCall, live, invites);
-        if (phase is null && Clocks.SystemClock.Now - call.SinceAt < ClaimGrace)
-            return call.Phase;
+        if (phase is null)
+            return Clocks.SystemClock.Now - call.SinceAt < ClaimGrace ? call : null;
 
-        return phase;
+        return call with { Phase = phase.Value, IsPeerRinging = IsPeerRinging(phase.Value, invites) };
     }
 
     internal static CallPhase? GetPhase(
@@ -202,4 +202,7 @@ public class CallsBackend : ShardedComputeServiceBase, ICallsBackend
         using (Invalidation.Begin())
             _ = GetUserCall(userId, default);
     }
+
+    private static bool IsPeerRinging(CallPhase phase, ApiArray<CallInvite> invites)
+        => phase == CallPhase.Dialing && invites.Any(i => i.Ack is RingAck.Received or RingAck.Ringing);
 }

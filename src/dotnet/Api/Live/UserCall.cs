@@ -28,4 +28,7 @@ public sealed partial record UserCall
     // How the call ended, once it has: None when the server only knows it is gone.
     [DataMember(Order = 10), Key(10)]
     public CallOutcome Outcome { get; init; }
+    // A dialing call that a callee's device confirmed it rings
+    [DataMember(Order = 11), Key(11)]
+    public bool IsPeerRinging { get; init; }
 }

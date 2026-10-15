@@ -2984,6 +2984,37 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task ConfirmRingShouldTellTheCallerThePeerRings()
+    {
+        // arrange
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var callsBackend = bob.AppServices.GetRequiredService<ICallsBackend>();
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        var unconfirmed = await callsBackend.GetUserCall(bobAuthor.UserId, default);
+
+        // act
+        await backend.ConfirmRing(chatId, aliceAuthor.Id, RingAck.Ringing, default);
+        var confirmed = await callsBackend.GetUserCall(bobAuthor.UserId, default);
+        await backend.AcceptCall(chatId, aliceAuthor.Id, default);
+        var answered = await callsBackend.GetUserCall(bobAuthor.UserId, default);
+
+        // assert
+        unconfirmed!.IsPeerRinging.Should().BeFalse("no device of Alice's said it rings yet");
+        confirmed!.Phase.Should().Be(CallPhase.Dialing);
+        confirmed.IsPeerRinging.Should().BeTrue();
+        confirmed.ToUserCall().IsPeerRinging.Should().BeTrue("the caller's client reads it off UserCall");
+        answered!.IsPeerRinging.Should().BeFalse("an answered call rings nowhere");
+    }
+
+    [Fact]
     public async Task ConfirmRingIsANoOpOnceAlreadyResponded()
     {
         // arrange
