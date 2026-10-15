@@ -11,6 +11,10 @@ public partial class _20261014091148_RemoveUnusedChatEntryColumns : Migration
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
+        // Legacy audio entries (kind != 0) share local_id values with text entries, so they must go
+        // before the unique (chat_id, local_id) index is created and before the kind column is dropped.
+        migrationBuilder.Sql("DELETE FROM chat_entries WHERE kind <> 0;");
+
         migrationBuilder.DropIndex(
             name: "IX_chat_entries_audio_id",
             table: "chat_entries");
