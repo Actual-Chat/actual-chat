@@ -101,7 +101,7 @@ body.narrow .modal-frame.modal-sm {
    bottom inset drops the safe-area term to avoid a double gap. The footer already does (above); a body that is
    the last region does it here. */
 body.narrow .modal-frame.modal-sm:not(.full-bleed):not(:has(.dialog-footer)) .dialog-body {
-    padding-bottom: 1rem;
+    padding-bottom: var(--modal-pad);
 }
 
 .narrow .narrow-view__modal__position-bottom {
@@ -300,9 +300,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 .dialog-body .form-block {
     @apply p-0;
 }
-/* With no footer the body is the last region, so it owns the bottom inset. */
+/* With no footer the body is the last region, so it owns the bottom inset: its own pad plus the safe area. */
 .modal-frame:not(:has(.dialog-footer)) .dialog-body {
-    padding-bottom: calc(1rem + var(--safe-area-bottom));
+    padding-bottom: calc(var(--modal-pad) + var(--safe-area-bottom));
 }
 
 /* The footer owns the modal's bottom inset (incl. safe area); the frame yields it.
@@ -319,7 +319,9 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     padding-bottom: calc(1rem + var(--safe-area-bottom));
 }
 /* A centered wide dialog never reaches the screen edge, so its bottom inset has no safe-area term */
-body.wide .modal-overlay:not(.modal-overlay-fullscreen) .modal-frame:not(:has(.dialog-footer)) .dialog-body,
+body.wide .modal-overlay:not(.modal-overlay-fullscreen) .modal-frame:not(:has(.dialog-footer)) .dialog-body {
+    padding-bottom: var(--modal-pad);
+}
 body.wide .modal-overlay:not(.modal-overlay-fullscreen) .dialog-footer {
     padding-bottom: 1rem;
 }
