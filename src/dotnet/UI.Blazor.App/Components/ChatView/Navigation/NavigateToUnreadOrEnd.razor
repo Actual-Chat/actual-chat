@@ -25,6 +25,8 @@
 </div>
 
 @code {
+    private static readonly TimeSpan ShowDelay = TimeSpan.FromMilliseconds(150);
+
     private ShowHideAnimator _animator = null!;
     private Moment _lastClickAt;
 
@@ -38,7 +40,7 @@
     [CascadingParameter] public RegionVisibility RegionVisibility { get; set; } = null!;
 
     protected override void OnInitialized()
-        => _animator = new (this, TimeSpan.FromMilliseconds(300));
+        => _animator = new (this, TimeSpan.FromMilliseconds(150));
 
     public override ValueTask DisposeAsync() {
         _animator.Dispose();
@@ -66,31 +68,33 @@
 
         await chatView.WhenInitialized.ConfigureAwait(false);
         var itemVisibility = await chatView.ItemVisibility.Use(cancellationToken).ConfigureAwait(false);
-        if (itemVisibility.IsEndAnchorVisible)
+        if (IsAtEnd(itemVisibility))
             return Model.Invisible;
 
-        // Delay showing the button on the very first render
-        if (oldState is null) {
-            await chatView.ReadPosition.Computed.WhenSynchronized(cancellationToken).ConfigureAwait(false);
-            var timeout = itemVisibility == ChatViewItemVisibility.Empty
-                ? TimeSpan.FromSeconds(1)
-                : TimeSpan.FromSeconds(0.5);
-            await Task.Delay(timeout, cancellationToken).ConfigureAwait(false);
+        // The list hasn't reported its visibility yet, so there is nothing to decide on
+        if (itemVisibility.IsEmpty)
+            return oldState ?? Model.Invisible;
+
+        // Hiding is instant, showing waits briefly: right after your own message the list is
+        // not at the end for a moment, until it scrolls to the new item
+        if (oldState is not { IsVisible: true }) {
+            await Task.Delay(ShowDelay, cancellationToken).ConfigureAwait(false);
             itemVisibility = chatView.ItemVisibility.Value;
-            if (itemVisibility.IsEndAnchorVisible)
+            if (IsAtEnd(itemVisibility))
                 return Model.Invisible;
-        }
-        else if (!chatView.ItemVisibility.Value.IsEndAnchorVisible) {
-            await Task.Delay(TimeSpan.FromSeconds(0.5), cancellationToken).ConfigureAwait(false);
-            itemVisibility = chatView.ItemVisibility.Value;
-            if (itemVisibility.IsEndAnchorVisible)
-                return Model.Invisible;
+            if (itemVisibility.IsEmpty)
+                return oldState ?? Model.Invisible;
         }
 
         var readEntryLid = await chatView.ShownReadEntryLid.Use(cancellationToken).ConfigureAwait(false);
         var canScrollToUnread = readEntryLid < lastEntryId && readEntryLid > itemVisibility.MaxMessageLid;
         var unreadCount = await ChatUI.GetUnreadCount(chatId, cancellationToken).ConfigureAwait(false);
         return new(true, lastEntryId, canScrollToUnread ? readEntryLid : null, unreadCount);
+
+        bool IsAtEnd(ChatViewItemVisibility v)
+            // None of these signals is enough alone: the anchor is off-screen while the list catches up
+            // with a new item, and the last entry may not be in the list yet while it is pinned to the end
+            => v.IsEndAnchorVisible || v.IsPinnedToEnd || v.MaxEntryLid >= lastEntryId;
 
         async ValueTask<long> GetLastTextEntryLid(CancellationToken cancellationToken1) {
             var chatNews = await Chats.GetNews(Session, chatId, cancellationToken1).ConfigureAwait(false);
