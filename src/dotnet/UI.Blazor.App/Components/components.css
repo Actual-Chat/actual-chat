@@ -99,6 +99,11 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply text-02;
     @apply cursor-default;
 }
+.chat-footer.readonly .c-wait-for-contact {
+    @apply flex-1 self-stretch flex justify-center items-center;
+    @apply px-4 text-center;
+    @apply cursor-pointer;
+}
 /* Its span and button are inline-level, so centring the text centres every line - a flex row here
    would swallow the trailing nbsp the prefix carries for spacing. */
 .join-footer {

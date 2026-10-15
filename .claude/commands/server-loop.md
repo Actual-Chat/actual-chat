@@ -339,6 +339,10 @@ press `j`/`h`/`k`/`m` and watch it.
   Start-Process -FilePath cmd.exe -ArgumentList '/k', "$worktree\server-loop.cmd" -WorkingDirectory $worktree
   ```
 
+  Use exactly this form, with the full path. A bare `server-loop.cmd` fails
+  in the new window with "is not recognized as an internal or external
+  command", and nothing is written to `tmp/server-loop.log`.
+
   On macOS/Linux desktops use the same idea: open a terminal window running
   `server-loop.cmd` / `server-loop.ps1` from that directory.
 - Check `tmp/server-loop.log` for `Step 3/3 (server-run)` and the watchdog
