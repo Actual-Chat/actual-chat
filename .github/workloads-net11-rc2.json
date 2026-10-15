@@ -1,0 +1,20 @@
+{
+  "microsoft.net.workload.emscripten.current": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.emscripten.net6": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.emscripten.net7": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.emscripten.net8": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.emscripten.net9": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.emscripten.net10": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.sdk.android": "37.2.0-rc.2.84/11.0.100-rc.2",
+  "microsoft.net.sdk.ios": "27.0.12212-net11-rc.2/11.0.100-rc.2",
+  "microsoft.net.sdk.maccatalyst": "27.0.12212-net11-rc.2/11.0.100-rc.2",
+  "microsoft.net.sdk.macos": "27.0.12212-net11-rc.2/11.0.100-rc.2",
+  "microsoft.net.sdk.maui": "11.0.0-rc.2.26505.5/11.0.100-rc.2",
+  "microsoft.net.sdk.tvos": "27.0.12212-net11-rc.2/11.0.100-rc.2",
+  "microsoft.net.workload.mono.toolchain.current": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.mono.toolchain.net6": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.mono.toolchain.net7": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.mono.toolchain.net8": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.mono.toolchain.net9": "11.0.100-rc.2.26504.105/11.0.100-rc.2",
+  "microsoft.net.workload.mono.toolchain.net10": "11.0.100-rc.2.26504.105/11.0.100-rc.2"
+}

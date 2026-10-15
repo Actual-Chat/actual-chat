@@ -4,15 +4,15 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>15.0.12</ActualLabFusionVersion>
+    <ActualLabFusionVersion>15.0.17</ActualLabFusionVersion>
     <!-- .NET 11 is not GA yet: every Microsoft.* package below shares this build number -->
-    <DotNetVersion>11.0.0-rc.1.26425.128</DotNetVersion>
+    <DotNetVersion>11.0.0-rc.2.26504.105</DotNetVersion>
     <AspNetCoreVersion>$(DotNetVersion)</AspNetCoreVersion>
     <MicrosoftAspNetCoreVersion>2.3.10</MicrosoftAspNetCoreVersion> <!-- Weird, they have the second version -->
     <BlazorVersion>$(AspNetCoreVersion)</BlazorVersion>
     <!-- Npgsql.EntityFrameworkCore.PostgreSQL exact-pins Microsoft.EntityFrameworkCore(.Relational),
-         so its newest build decides the EF version; rc.1.1 names the same build as DotNetVersion -->
-    <EntityFrameworkCoreVersion>$(DotNetVersion)</EntityFrameworkCoreVersion>
+         so its newest build decides the EF version; rc.1.1 names the rc.1 build, which EF stays on until Npgsql ships rc.2 -->
+    <EntityFrameworkCoreVersion>11.0.0-rc.1.26425.128</EntityFrameworkCoreVersion>
     <EntityFrameworkCoreNpgsqlVersion>11.0.0-rc.1.1</EntityFrameworkCoreNpgsqlVersion>
     <EntityFrameworkCoreCheckConstraintsVersion>10.0.0</EntityFrameworkCoreCheckConstraintsVersion>
     <EntityFrameworkCoreInMemoryVersion>$(EntityFrameworkCoreVersion)</EntityFrameworkCoreInMemoryVersion>
@@ -28,7 +28,7 @@
     <OpenTelemetryInstrumentationAspNetCoreVersion>1.15.1</OpenTelemetryInstrumentationAspNetCoreVersion>
     <SentryVersion>5.14.1</SentryVersion>
     <MemoryPackVersion>1.21.4</MemoryPackVersion>
-    <MessagePackVersion>3.1.8</MessagePackVersion>
+    <MessagePackVersion>3.1.12</MessagePackVersion>
     <SemanticKernelVersion>1.76.0</SemanticKernelVersion>
     <XamarinAndroidLifecycle>2.11.0.1</XamarinAndroidLifecycle>
   </PropertyGroup>
