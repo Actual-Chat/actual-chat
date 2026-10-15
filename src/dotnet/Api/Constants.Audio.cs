@@ -64,6 +64,9 @@ public static partial class Constants
         public const float ProjectionMediaGain = 3.2f;
         public const int RecordingSampleRate = 16000;
         public const int PlaybackSampleRate = 48000;
+        // Opus counts pre-skip in 48 kHz samples whatever the encoder's rate is - not derived from our rates.
+        // 312 = 6.5 ms: GetLookahead reports 104 samples at our 16 kHz encoder rate, 104 * 48 / 16.
+        public const int OpusPreSkip = 312;
 
         // Streaming / channel sizing
         public const int StreamingChannelCapacity = 1024;

@@ -500,15 +500,16 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
             var frameStream = BuildFrames(cancellationToken).SuppressCancellation(cancellationToken);
             try {
-                Log.LogInformation("PushAudio: starting for chat #{ChatId}, offset={Offset:F1}s",
-                    chatId, sourceStartOffsetSeconds);
+                var callPreSkip = sentFrameCount == 0 ? preSkip : 0; // A retry continues mid-stream
+                Log.LogInformation("PushAudio: starting for chat #{ChatId}, offset={Offset:F1}s, preSkip={PreSkip}",
+                    chatId, sourceStartOffsetSeconds, callPreSkip);
                 var rpcStream = RpcStream.New(frameStream);
                 await LiveAudioStreams.PushStream(
                     session,
                     chatId.Value,
                     repliedChatEntryId?.Value,
                     sourceStartOffsetSeconds,
-                    preSkip,
+                    callPreSkip,
                     rpcStream,
                     cancellationToken).ConfigureAwait(false);
                 if (packetReader.Completion.IsCompleted) {
@@ -587,9 +588,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
         var stream = StreamChannelOptions.NewChannel<IMemoryOwner<byte>>();
 
-        // TODO(AK): Specify PreSkip
         var sendTask = SendAudio(
-            chatId, repliedChatEntryId, 0, firstFrameSourceCapturedAt,
+            chatId, repliedChatEntryId, AudioCodec.EncoderPreSkip, firstFrameSourceCapturedAt,
             stream, _whenSendDrained, cancellationToken);
         _sendTask = sendTask;
         _whenSendDrained = Task.WhenAny(stream.Reader.Completion, sendTask);

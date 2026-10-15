@@ -66,6 +66,7 @@ internal sealed class WindowsAudioPlaybackEngine(
         var audioSource = (AudioSource)source;
         // Initialize pre-skip samples to drop from the beginning of decoded PCM
         _remainingPreSkip = audioSource.Format.PreSkip;
+        Log.LogInformation("Play: id={Id}, preSkip={PreSkip}", info.TrackId, _remainingPreSkip);
         _packetBuffer.SetTargetDuration(GetEncodedBufferDuration(info.TargetBufferSize));
 
         // Configure Float32 mono PCM at our sample rate

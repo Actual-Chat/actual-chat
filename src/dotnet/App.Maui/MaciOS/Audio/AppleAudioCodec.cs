@@ -10,6 +10,9 @@ public sealed class AppleAudioCodec(AppUIHub hub) : IAudioCodec
 {
     private ILogger Log => field ??= hub.Services.LogFor(GetType());
 
+    // The delay of ActualLab.Opus.MaciOS's encoder isn't known, so nothing is skipped
+    public int EncoderPreSkip => 0;
+
     public async IAsyncEnumerable<IMemoryOwner<byte>> Encode(
         IAsyncEnumerable<IMemoryOwner<float>> lpcmFrames,
         [EnumeratorCancellation]
