@@ -152,7 +152,7 @@ The only exception is when `/server-loop` is running - in this case you should t
 
 **Running the server (direct)**: Use `/server-start`, `/server-restart`, `/server-stop`. Use `--watch` flag for auto-reload.
 
-**Shared resources (the server loop, Chrome)**: `/server-loop` is yours to use — and to start, on the host, in a visible window, never in Docker — when the user says so or when you are the only agent. If more than one agent may need it, one coordinator agent owns it and the others queue through it; see the `/shared-resources` skill for the protocol and for who starts the coordinator.
+**Shared resources (the server loop, Chrome)**: `/server-loop` is yours to use — and to start, on the host, in a visible window, never in Docker (read `/server-loop` → "How to start it" first: it needs the full path to the script, and a bare `server-loop.cmd` fails) — when the user says so or when you are the only agent. If more than one agent may need it, one coordinator agent owns it and the others queue through it; see the `/shared-resources` skill for the protocol and for who starts the coordinator.
 
 ## The `voxt-*` MCP servers talk to PRODUCTION
 
@@ -573,6 +573,31 @@ ai wt feature1   # Creates ActualLab.Fusion-feature1 if it doesn't exist and run
 ```
 
 The worktree is created using `git worktree add` from the main project directory.
+
+**Removing worktrees**: `ai rwt <suffix>` (or `ai wt rm <suffix>`) removes the worktree,
+its branch, and its ports/hosts/nginx config. When git cannot delete the folder (a process
+still writes into it), `rwt` deletes it itself.
+
+**`wt` subcommands**: `ls`/`list`, `rm`/`remove` and `prune` are reserved words after
+`wt`, so they cannot be worktree suffixes.
+
+```
+ai wt ls            # the project's worktrees, with dead worktree folders flagged
+ai wt rm <suffix>   # same as ai rwt <suffix>
+ai wt prune         # remove the dead folders marked `leftovers`
+ai wt prune --all   # remove every dead folder
+```
+
+**Dead worktree folders**: a `<project>-*` sibling folder that git no longer knows as a
+worktree — left by an interrupted removal, or re-created by an IDE saving its settings.
+`ai wt ls` marks each as one of:
+
+- `leftovers` — only IDE/OS/build leftovers (`.idea`, `.DS_Store`, `node_modules`, …)
+- `checkout` — a full tree whose `.git` file points at worktree metadata that is gone
+- `partial` — no `.git`, but other files remain
+
+`prune` asks for confirmation; `--yes` skips it. Git cannot tell whether a `checkout` or
+`partial` folder holds unsaved work, so look before using `--all`.
 
 # `roslynk` MCP (optional)
 
