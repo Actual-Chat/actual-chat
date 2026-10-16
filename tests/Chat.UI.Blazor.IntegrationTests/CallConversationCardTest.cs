@@ -66,6 +66,47 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
     }
 
     [Fact]
+    public async Task AnEndedCallsEntryShouldStayHiddenWhileItsCardIsStillOpen()
+    {
+        // The call's end writes its entry before the session closes into the card, and until then the open
+        // card's range stops at its last summary - short of an entry that follows a message of the call.
+
+        // arrange
+        var (chatId, bobAuthor, aliceAuthor) = await NewPeerChat();
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.StartCall(
+            chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, CancellationToken.None);
+        await liveBackend.AcceptCall(chatId, aliceAuthor.Id, CancellationToken.None);
+        var connected = await liveBackend.GetState(chatId, CancellationToken.None);
+        var liveConversationId = connected!.OpenConversation!.Id;
+        await Tester.CreateTextEntry(chatId, "hi");
+        var callEntryDiff = new ChatEntryDiff {
+            Kind = ChatEntryKind.Call,
+            AuthorId = Constants.User.Walle.GetWalleAuthorId(chatId),
+            BeginsAt = connected.StartedAt!.Value,
+            EndsAt = Moment.Now,
+            CallerId = bobAuthor.Id,
+            Outcome = CallOutcome.Ended,
+            ConversationId = liveConversationId,
+        };
+        var writeEntry = new ChatsBackend_ChangeEntry(ChatEntryId.New(chatId, 0), null, Change.Create(callEntryDiff));
+        var callEntry = await AppHost.Services.Commander().Call(writeEntry, true, CancellationToken.None);
+
+        // act
+        var messages = await GetMessages(chatId);
+
+        // assert
+        messages.OfType<ChatEntryMessage>().Should().Contain(m => m.Entry.Content == "hi",
+            "the open card must be expanded here, or the entry would be hidden by its fold, not by its card");
+        var stillConnected = await liveBackend.GetState(chatId, CancellationToken.None);
+        stillConnected!.OpenConversation!.ToConversation().EntryLidRange.Contains(callEntry.LocalId).Should().BeFalse(
+            "the open card's own range must miss the entry, or the range check alone would hide it");
+        messages.OfType<ChatEntryMessage>()
+            .Should().NotContain(m => m.Kind == ChatMessageKind.None && m.Entry is CallEntry,
+                "the card already shows the call; the entry flashed in as a second one");
+    }
+
+    [Fact]
     public async Task AChatWithoutSummariesShouldStillDrawAnEndedCallsCard()
     {
         // arrange

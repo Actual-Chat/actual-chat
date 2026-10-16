@@ -1254,8 +1254,11 @@ public partial class ChatUI
                     // Gated on the card actually being there: the entry is written before the
                     // conversation is materialized, and nothing retries a materialization that threw,
                     // so an unguarded skip would drop a finished call out of the chat for good.
-                    var isDrawnByItsCard = entry is CallEntry { Outcome: CallOutcome.Ended }
-                        && conversations.Any(c => c.IsCall && c.EntryLidRange.Contains(entry.LocalId));
+                    // The entry names the call's live block, whose range stops short of it while open. A card
+                    // from a context start has another id, but by then its range covers the entry.
+                    var isDrawnByItsCard = entry is CallEntry { Outcome: CallOutcome.Ended } callEntry
+                        && conversations.Any(c => c.IsCall
+                            && (c.Id == callEntry.ConversationId || c.EntryLidRange.Contains(entry.LocalId)));
                     if (!isDrawnByItsCard) {
                         var message = new ChatEntryMessage(entry) {
                             Date = date,

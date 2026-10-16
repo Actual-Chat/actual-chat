@@ -199,13 +199,16 @@ public partial class LiveSessionsBackend
                 if (chatId.Kind == ChatKind.Peer) {
                     // A call that rang into an ongoing session has no card of its own to gather its last words
                     // in, so its entry, visible there, has to come after them - see WriteCallEntryAfterTail.
-                    var isInOngoingSession = call.IsAnswered
-                        && await SafeGetState(chatId).ConfigureAwait(false) is { IsCall: false };
-                    if (isInOngoingSession)
+                    var state = await SafeGetState(chatId).ConfigureAwait(false);
+                    if (call.IsAnswered && state is { IsCall: false })
                         _ = WriteCallEntryAfterTail(call, inviteeIds, partyIds, outcome, endedAt);
-                    else
-                        await WriteCallEntry(call, inviteeIds, outcome, endedAt, CancellationToken.None)
+                    else {
+                        // The entry names the call's live block, so a client can tell the call is drawn by it
+                        // while the block's range has yet to reach the entry.
+                        var conversationId = call.IsAnswered ? state?.OpenConversation?.Id : null;
+                        await WriteCallEntry(call, inviteeIds, outcome, endedAt, conversationId, CancellationToken.None)
                             .ConfigureAwait(false);
+                    }
                 }
             }
             finally {
@@ -400,7 +403,7 @@ public partial class LiveSessionsBackend
                     .SilentAwait(false);
             }
             await Task.Delay(CallTailDelay).ConfigureAwait(false);
-            await WriteCallEntry(call, invitees, outcome, endedAt, CancellationToken.None).ConfigureAwait(false);
+            await WriteCallEntry(call, invitees, outcome, endedAt, null, CancellationToken.None).ConfigureAwait(false);
         }, Log, $"Writing the entry of call #{call.Id} failed");
 
     private async Task WriteCallEntry(
@@ -408,6 +411,7 @@ public partial class LiveSessionsBackend
         IReadOnlyList<AuthorId> invitees,
         CallOutcome outcome,
         Moment endedAt,
+        ConversationId? conversationId,
         CancellationToken cancellationToken)
     {
         if (outcome == CallOutcome.None)
@@ -432,6 +436,7 @@ public partial class LiveSessionsBackend
                 Outcome = outcome,
                 InviteeIds = invitees.ToApiArray(),
                 HasVideo = call.HasVideo,
+                ConversationId = conversationId,
             }));
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

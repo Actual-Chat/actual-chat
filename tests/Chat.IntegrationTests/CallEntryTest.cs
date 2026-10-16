@@ -34,6 +34,7 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         entries[0].CallerName.Should().Be(caller!.Avatar.Name);
         entries[0].InviteeIds.Should().Equal(alice.Id);
         entries[0].HasVideo.Should().BeFalse();
+        entries[0].ConversationId.Should().BeNull("a call that never connected has no card to point at");
     }
 
     [Fact]
@@ -153,8 +154,11 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         entries[0].CallerId.Should().Be(bob.Id);
         entries[0].HasVideo.Should().BeTrue();
 
-        var conversation = await conversations.Get(connected!.OpenConversation!.ToMaterializedConversation().Id, default);
+        var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
+        var conversation = await conversations.Get(conversationId, default);
         conversation.Should().NotBeNull();
+        entries[0].ConversationId.Should().Be(connected.OpenConversation.Id,
+            "a client finds the call's live block by this id");
         conversation!.IsCall.Should().BeTrue();
         // Nothing was said, so there is nothing to expand into: the card is the whole of it.
         conversation.MessageCount.Should().Be(0);
