@@ -4,6 +4,10 @@
 @inherits ComputedStateComponent<AppUIHub, CoachSettingsPage.Model>
 @{
     var m = State.Value;
+    // Model.None has coaching off, so rendering it would flash the switched-off layout
+    if (ReferenceEquals(m, Model.None))
+        return;
+
     var s = m.Settings;
     var labels = Labels;
     var minutes = (int)s.TipInterval.TotalMinutes;
