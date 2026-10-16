@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Records the iOS startup profile on the Mac. Run it there: /mibc-update drives it over ssh.
 #
-#   [BRANCH=dev] [EXPECT_SHA=<sha>] [CLEAN=1] record-ios-startup-profile.sh build
+#   [BRANCH=dev] [EXPECT_SHA=<sha>] [CLEAN=1] [BASELINE=1] record-ios-startup-profile.sh build
 #                                                  sync to origin/$BRANCH (fails unless it is EXPECT_SHA), build Release with the diagnostic port
 #   record-ios-startup-profile.sh install          install the build on the iPhone
 #   record-ios-startup-profile.sh record [HH:MM:SS]  launch suspended, trace while someone drives the app
@@ -75,16 +75,40 @@ build() {
     npm run build:Release
     security unlock-keychain -p "$(cat ~/.ac-signing/keychain-password)" ~/Library/Keychains/ac-signing.keychain-db
 
+    # BASELINE=1 builds with none of our startup profiles as crossgen2 input. The trace lists what
+    # ran interpreted, so only a build that does not already root the old profiles yields a
+    # complete one rather than a delta over them.
+    local targets=$ROOT/tmp/dev-signing.targets
+    if [ -n "$BASELINE" ]; then
+        targets=$WORK/baseline.targets
+        local profiling=$ROOT/src/dotnet/App.Maui/_Profiling
+        cat > "$targets" <<TARGETS
+<Project>
+  <Import Project="$ROOT/tmp/dev-signing.targets"/>
+  <ItemGroup>
+    <PublishReadyToRunPgoFiles Remove="$profiling/merged.mibc;$profiling/aothelper.mibc;$profiling/ios.mibc"/>
+  </ItemGroup>
+</Project>
+TARGETS
+        rm -rf artifacts/out/R2R
+    fi
+
     echo "=== build: Release / net11.0-ios / ios-arm64, diagnostic port on and suspended"
     (cd src/dotnet/App.Maui && dotnet build -noLogo -maxCpuCount -nodeReuse:false \
         -f net11.0-ios -p:RuntimeIdentifier=ios-arm64 -c Release -p:IsDevMaui=true \
         -p:ArchiveOnBuild=false \
         -p:EnableDiagnostics=true -p:DiagnosticAddress=127.0.0.1 -p:DiagnosticPort=9000 \
         -p:DiagnosticListenMode=listen -p:DiagnosticSuspend=true \
-        -p:CustomAfterMicrosoftCommonTargets=$ROOT/tmp/dev-signing.targets)
+        -p:CustomAfterMicrosoftCommonTargets=$targets)
 
     grep -q 'DOTNET_DiagnosticPorts' artifacts/out/linker-cache/main.arm64.mm \
         || { echo "!!! the diagnostic port is not in the bundle"; exit 1; }
+    if [ -n "$BASELINE" ] && grep -rl --include='*.rsp' '_Profiling' artifacts/out > /dev/null 2>&1; then
+        echo "!!! BASELINE build still passes a _Profiling mibc to crossgen2:"
+        grep -rl --include='*.rsp' '_Profiling' artifacts/out
+        exit 1
+    fi
+    echo "compiled methods: $(grep -c MethodWithGCInfo artifacts/out/R2R/ActualChat.r2r.map.csv 2>/dev/null)"
     echo "=== BUILD OK"
 }
 
