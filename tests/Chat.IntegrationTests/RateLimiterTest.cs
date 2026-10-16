@@ -32,21 +32,25 @@ public class RateLimiterTest(ChatCollection.AppHostFixture fixture, ITestOutputH
         }
     }
 
-    [FlakyFact("AY: Time dependent", 3)]
+    [Fact]
     public async Task TokenBucketShouldAllowUpToItsLimit()
     {
         // arrange
         var key = $"rate_limit:test:{Ulid.NewUlid()}";
-        var rateLimiter = NewTokenBucketRateLimiter(new TokenBucketBudget(300, TimeSpan.FromSeconds(10)));
+        // 3 permits a second, far less than a call costs: the bucket refills per whole second of Redis time,
+        // so a loop that crosses a second boundary gets a second's worth back before the denied call (#4651)
+        var rateLimiter = NewTokenBucketRateLimiter(new TokenBucketBudget(300, TimeSpan.FromSeconds(100)));
         try {
             // act & assert
             for (var i = 0; i < 10; i++) {
                 var retryDelay = await rateLimiter.Check(key, 30);
                 retryDelay.Should().BeNull();
             }
-            (await rateLimiter.Check(key, 30)).Should().NotBeNull();
+            var deniedRetryDelay = await rateLimiter.Check(key, 30);
+            deniedRetryDelay.Should().NotBeNull();
             await Task.Delay(2000);
-            (await rateLimiter.Check(key, 30)).Should().BeNull();
+            var refilledRetryDelay = await rateLimiter.Check(key, 3);
+            refilledRetryDelay.Should().BeNull();
         }
         finally {
             await rateLimiter.DeleteKey(key);
