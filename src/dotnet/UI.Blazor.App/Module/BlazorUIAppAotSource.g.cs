@@ -399,6 +399,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PhoneVerificationModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PhotoTroubleshooterModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PicCropModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfo>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoMembersTab>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoPage>();
@@ -1305,6 +1306,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PhoneVerificationModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PhotoTroubleshooterModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PicCropModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfo), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoMembersTab), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceInfo.PlaceInfoPage), AotTypeKind.Component),

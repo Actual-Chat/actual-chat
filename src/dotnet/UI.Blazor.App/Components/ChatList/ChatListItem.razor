@@ -37,10 +37,14 @@
     @attributes="@attributes">
     <ChildContent>
         <div class="c-container">
-            <ChatIcon Chat="@chat" ShowPresence="@true"/>
+            @if (m.Invitation?.Place is { } invitationPlace) {
+                <PlaceIcon Place="@invitationPlace"/>
+            } else {
+                <ChatIcon Chat="@chat" ShowPresence="@true"/>
+            }
             <div class="c-description">
                 <span class="c-chat-title">
-                    <span>@(m.Invitation?.PlaceTitle ?? chat.Title)</span>
+                    <span>@(m.Invitation?.Place?.Title ?? chat.Title)</span>
                     <span class="c-incut"></span>
                     @if (lastTextEntry != null && !showEnding) {
                         @Hub.MarkupHelpers.LastEntryTime(m.LastBeginsAt)

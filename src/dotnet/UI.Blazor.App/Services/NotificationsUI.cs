@@ -198,19 +198,20 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
         var result = new List<ChatInvitationState>();
         foreach (var invitation in active.OfType<InvitationNotification>()) {
             var chatId = invitation.ChatId;
-            string? placeTitle = null;
+            Place? place = null;
             if (chatId is PlaceChatId { IsRoot: true } rootChatId) {
+                var placeId = rootChatId.PlaceId;
+                place = await Hub.Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
                 var welcomeChatId = await Hub.Places
-                    .GetWelcomeChatId(Session, rootChatId.PlaceId, cancellationToken)
+                    .GetWelcomeChatId(Session, placeId, cancellationToken)
                     .ConfigureAwait(false);
-                if (welcomeChatId is null)
+                if (place is null || welcomeChatId is null)
                     continue;
 
                 chatId = welcomeChatId;
-                placeTitle = invitation.Title;
             }
             var state = new ChatInvitationState(invitation.Id, chatId, invitation.Text, invitation.SentAt) {
-                PlaceTitle = placeTitle,
+                Place = place,
             };
             result.Add(state);
         }
@@ -265,10 +266,10 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
 
 public readonly record struct ChatReactionState(Emoji? Emoji, Moment SentAt);
 
-// ChatId is the chat the invitation is shown on, which for a place is its welcome chat - titled by the place
+// ChatId is the chat the invitation is shown on, which for a place is its welcome chat - shown as the place
 public sealed record ChatInvitationState(NotificationId Id, ChatId ChatId, string Text, Moment SentAt)
 {
-    public string? PlaceTitle { get; init; }
+    public Place? Place { get; init; }
 }
 
 /// <summary>

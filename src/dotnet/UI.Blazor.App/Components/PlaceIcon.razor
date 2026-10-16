@@ -1,0 +1,17 @@
+@using ActualChat.Media
+@inherits FusionComponentBase<AppUIHub>
+
+<div class="hideable">
+    <Pic
+        Title="@Place.Title"
+        Picture="@Place.Picture.ToPicture()"
+        ImageSkeletonClass="image-cover"
+        Size="@Size"
+        AvatarKind="@AvatarKind.Marble"
+        AvatarKey="@Place.Id.Value"/>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Place Place { get; set; } = null!;
+    [Parameter] public SquareSize Size { get; set; } = SquareSize.Size10;
+}

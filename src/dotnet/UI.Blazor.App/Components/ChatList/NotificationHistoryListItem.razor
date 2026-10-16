@@ -1,7 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedRenderStateComponent<AppUIHub, Chat?>
+@inherits ComputedRenderStateComponent<AppUIHub, NotificationHistoryListItem.Model>
 @{
-    var isInitial = State.IsInitial(out var chat);
+    var isInitial = State.IsInitial(out var m);
+    var chat = m.Chat;
     var newest = Group.Newest;
     var link = newest.NotificationId is { } notificationId
         ? Links.Notification(notificationId, newest.EntryId?.LocalId ?? 0)
@@ -19,10 +20,14 @@
     Class="c-history">
     <ChildContent>
         <div class="c-container">
-            <ChatIcon Chat="@chat" ShowPresence="false"/>
+            @if (m.Place is { } place) {
+                <PlaceIcon Place="@place"/>
+            } else {
+                <ChatIcon Chat="@chat" ShowPresence="false"/>
+            }
             <div class="c-description">
                 <span class="c-chat-title">
-                    <span>@(chat?.Title ?? newest.Title)</span>
+                    <span>@(m.Place?.Title ?? chat?.Title ?? newest.Title)</span>
                     <span class="c-incut"></span>
                     <LiveTimeDeltaText Class="c-timestamp" Moment="@newest.SentAt"/>
                 </span>
@@ -42,17 +47,33 @@
 
 @code {
     private IChats Chats => Hub.Chats;
+    private IPlaces Places => Hub.Places;
 
     [Parameter, EditorRequired] public NotificationHistoryGroup Group { get; set; } = null!;
 
-    protected override ComputedState<Chat?>.Options GetStateOptions()
+    protected override ComputedState<Model>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<Chat?>.Options {
-                InitialValue = null,
+            static t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
                 UpdateDelayer = FixedDelayer.Get(0.1),
                 Category = GetStateCategory(t),
             });
 
-    protected override Task<Chat?> ComputeState(CancellationToken cancellationToken)
-        => Chats.Get(Session, Group.ChatId, cancellationToken);
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        // A place invitation is about the place's root chat, so its row stands for the place
+        var chatId = Group.ChatId;
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chatId is not PlaceChatId { IsRoot: true } rootChatId)
+            return new Model(chat);
+
+        var place = await Places.Get(Session, rootChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+        return new Model(chat, place);
+    }
+
+    // Nested types
+
+    public sealed record Model(Chat? Chat, Place? Place = null)
+    {
+        public static readonly Model None = new((Chat?)null);
+    }
 }
