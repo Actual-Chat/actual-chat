@@ -50,6 +50,9 @@
         => Links.Invite(LinkFormat, invite.Id);
 
     private string GetCaption(Invite invite) {
+        if (!invite.Name.IsNullOrEmpty())
+            return invite.Name;
+
         switch (invite) {
             case ChatInvite:
             case PlaceInvite:

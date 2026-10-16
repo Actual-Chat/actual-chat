@@ -103,7 +103,10 @@ public class Invites(IServiceProvider services) : IInvites
         var invite = command.Invite;
         var account = await AssertCanGenerate(session, invite, cancellationToken).ConfigureAwait(false);
 
-        invite = command.Invite with { CreatedBy = account.Id.Value };
+        invite = command.Invite with {
+            CreatedBy = account.Id.Value,
+            Name = invite.Name.Trim().Truncate(Constants.Invites.MaxNameLength),
+        };
         var generateCommand = new InvitesBackend_Generate(invite);
         return await Commander.Call(generateCommand, true, cancellationToken).ConfigureAwait(false);
     }

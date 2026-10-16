@@ -16,7 +16,7 @@ partial class InviteDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261005020122_Fusion15_DeferredInvalidation";
+    public override string LastMigrationId => "20261016091937_Add_InviteName";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -52,6 +52,11 @@ partial class InviteDbContextModelSnapshot : ModelSnapshot
                 b.Property<DateTime>("ExpiresOn")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("expires_on");
+
+                b.Property<string>("Name")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("name");
 
                 b.Property<int>("Remaining")
                     .HasColumnType("integer")

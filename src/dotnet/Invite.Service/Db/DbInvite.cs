@@ -29,6 +29,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public string SearchKey { get; set; } = "";
     public int Remaining { get; set; }
     public string CreatedBy { get; set; } = "";
+    public string Name { get; set; } = "";
 
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -57,6 +58,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
             ExpiresOn = ExpiresOn,
             CreatedAt = CreatedAt,
             CreatedBy = CreatedBy,
+            Name = Name,
         };
     }
 
@@ -72,6 +74,7 @@ public class DbInvite : IHasId<string>, IHasVersion<long>, IRequirementTarget
         ExpiresOn = model.ExpiresOn;
         CreatedAt = model.CreatedAt;
         CreatedBy = model.CreatedBy;
+        Name = model.Name;
 
         SearchKey = model.GetSearchKey();
         DetailsJson = LegacyDetailsSerializer.Write(ToLegacyDetails(model));

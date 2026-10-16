@@ -178,6 +178,8 @@ public static partial class Constants
 
     public static class Invites
     {
+        public const int MaxNameLength = 100;
+
         public static class Defaults
         {
             public static readonly int ChatRemaining = 10_000;

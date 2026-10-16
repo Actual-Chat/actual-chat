@@ -26,6 +26,23 @@ public class InviteDetailsSerializationTest(ITestOutputHelper @out) : TestBase(@
     }
 
     [Fact]
+    public void InviteNameShouldPassThroughSerializers()
+    {
+        // arrange
+        ActualChat.Invite.Invite invite = new ChatInvite("invite-3", 1) {
+            ChatId = ChatId.Parse("r5IbjdG7Cq"),
+            Name = "Conference",
+        };
+
+        // act
+        var s = invite.PassThroughModernSerializers(Out);
+
+        // assert
+        s.Name.Should().Be("Conference");
+        s.Mask().Name.Should().BeEmpty("a masked invite goes to whoever uses it, not to its owner");
+    }
+
+    [Fact]
     public void PlaceInvite_Basic()
     {
         var placeId = PlaceId.New();

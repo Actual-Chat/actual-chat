@@ -28,6 +28,7 @@ public abstract partial record Invite(
     [DataMember, Key(3)] public Moment CreatedAt { get; init; }
     [DataMember, Key(4)] public Moment ExpiresOn { get; init; }
     [DataMember, Key(5)] public int Remaining { get; init; }
+    [DataMember, Key(6)] public string Name { get; init; } = "";
 
     public abstract string GetSearchKey();
 
@@ -71,5 +72,6 @@ public abstract partial record Invite(
             CreatedBy = "",
             ExpiresOn = default,
             Remaining = 0,
+            Name = "",
         };
 }
