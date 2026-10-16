@@ -21,8 +21,8 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
     [Fact]
     public async Task AnEndedCallShouldProduceOneCardNotTwo()
     {
-        // Collapsed, the fold already hides the entry for an unrelated reason; expanding puts it back
-        // into the per-entry loop, where only the tile-builder skip keeps it from rendering twice.
+        // Collapsed, the fold already hides the entry for an unrelated reason; expanded, it is back in the
+        // per-entry loop, where only the tile-builder skip keeps it from rendering twice.
 
         // arrange
         var bob = await Tester.SignInAsUniqueBob();
@@ -39,30 +39,57 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
             chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, CancellationToken.None);
         await liveBackend.AcceptCall(chatId, aliceAuthor.Id, CancellationToken.None);
         var connected = await liveBackend.GetState(chatId, CancellationToken.None);
+        // A message short of the summary gate is what makes the card expanded by default
+        await Tester.CreateTextEntry(chatId, "hi");
         await liveBackend.SetParticipation(
             chatId, aliceAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.SetParticipation(
             chatId, bobAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
 
         var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
-        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
-        chatUI.ToggleExpandConversation(conversationId);
-        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
-        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
-        var items = await chatUI.GetChatItems(chatId, query, 0, CancellationToken.None);
-        var messages = items.Items.SelectMany(i => i.GetLeafMessages()).ToList();
+        var messages = await GetMessages(chatId);
 
         // assert
         var hasSplitFooter = messages.OfType<ConversationFooter>().Any(f => f.Conversation!.Id == conversationId);
         hasSplitFooter.Should().BeTrue(
-            "the toggle must have actually expanded the conversation - collapsed, the fold hides the " +
-            "entry for an unrelated reason and both assertions below would pass vacuously");
+            "the conversation must render expanded - collapsed, the fold hides the entry for an " +
+            "unrelated reason and both assertions below would pass vacuously");
         var hasEndedCallEntryAsMessage = messages.OfType<ChatEntryMessage>()
             .Any(m => m.Kind == ChatMessageKind.None && m.Entry is CallEntry { Outcome: CallOutcome.Ended });
         hasEndedCallEntryAsMessage.Should().BeFalse(
             "the entry only anchors the card in the lid range; the conversation item is the card");
         var hasCallConversation = messages.Any(m => m.Conversation is { IsCall: true });
         hasCallConversation.Should().BeTrue("a finished call must leave a conversation card behind");
+    }
+
+    [Fact]
+    public async Task ACallThatLeftNoMessagesShouldNotExpand()
+    {
+        // Joining expands the live block through an override, which the card it turns into inherits
+
+        // arrange
+        var (chatId, bobAuthor, aliceAuthor) = await NewPeerChat();
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.StartCall(
+            chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, CancellationToken.None);
+        await liveBackend.AcceptCall(chatId, aliceAuthor.Id, CancellationToken.None);
+        var connected = await liveBackend.GetState(chatId, CancellationToken.None);
+        await liveBackend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(
+            chatId, bobAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
+        var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+
+        // act
+        chatUI.ToggleExpandConversation(conversationId);
+        var messages = await GetMessages(chatId);
+
+        // assert
+        messages.Should().Contain(m => m.Conversation != null && m.Conversation.Id == conversationId,
+            "the card itself must still be there");
+        messages.OfType<ConversationFooter>().Should().NotContain(f => f.Conversation!.Id == conversationId,
+            "there is nothing between a message-less call's header and footer to expand into");
     }
 
     [Fact]
