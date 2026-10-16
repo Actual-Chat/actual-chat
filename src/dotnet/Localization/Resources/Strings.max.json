@@ -1746,6 +1746,8 @@
   "Notification_ThreadCreated_Format": "スレッド「{0}」が作成されました",
   "Notification_AttentionRequested_Format": "{0} さんが注目を求めています",
   "Notification_Reaction_Format": "{1} mesajına {0}",
+  "Notification_JoinRequests": "{0} нових захтјева за придруживање",
+  "Notification_JoinRequestApproved": "शामिल होने का आपका अनुरोध स्वीकार कर लिया गया",
 
   // Emails composed on the server, in the recipient's UI language: the sign-in / verification
   // code mail (EmailCode_*) and the daily digest of unread chats (EmailDigest_*). A *Subject*

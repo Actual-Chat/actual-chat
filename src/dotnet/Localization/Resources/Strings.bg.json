@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Нишката „{0}“ беше създадена",
   "Notification_AttentionRequested_Format": "{0} поиска внимание",
   "Notification_Reaction_Format": "{0} на {1}",
+  "Notification_JoinRequests": "{0} нова заявка за присъединяване|{0} нови заявки за присъединяване",
+  "Notification_JoinRequestApproved": "Заявката ви за присъединяване е одобрена",
   "EmailCode_SignInSubject_Format": "{0}: код за вход",
   "EmailCode_VerifySubject_Format": "{0}: потвърждаване на имейл",
   "EmailCode_Title": "Вашият код за потвърждаване на имейл",

@@ -62,6 +62,16 @@ public sealed record VoiceChatStartedNotificationContent(IReadOnlyList<string> A
         => NotificationHelper.GetVoiceChatStartedText(AuthorNames, l);
 }
 
+public sealed record JoinRequestsNotificationContent(int PendingCount) : NotificationContent
+{
+    public override string Render(IStringLocalizer l) => l.Notification_JoinRequests(PendingCount, PendingCount);
+}
+
+public sealed record JoinRequestApprovedNotificationContent : NotificationContent
+{
+    public override string Render(IStringLocalizer l) => l.Notification_JoinRequestApproved;
+}
+
 public sealed record IncomingCallNotificationContent(bool HasVideo) : NotificationContent
 {
     public override string Render(IStringLocalizer l)

@@ -91,7 +91,8 @@ public static class NotificationExt
         entryLid = 0;
         var key = notificationId.SimilarityKey;
         switch (notificationId.Kind) {
-        case NotificationKind.Message or NotificationKind.Reply or NotificationKind.Invitation:
+        case NotificationKind.Message or NotificationKind.Reply or NotificationKind.Invitation
+            or NotificationKind.JoinRequest:
             chatId = ChatId.TryParse(key);
             break;
         case NotificationKind.Mention or NotificationKind.Reaction

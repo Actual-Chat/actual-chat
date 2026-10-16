@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Utworzono wątek „{0}”",
   "Notification_AttentionRequested_Format": "{0} prosi o uwagę",
   "Notification_Reaction_Format": "{0} na {1}",
+  "Notification_JoinRequests": "{0} nowa prośba o dołączenie|{0} nowe prośby o dołączenie|{0} nowych próśb o dołączenie",
+  "Notification_JoinRequestApproved": "Twoja prośba o dołączenie została zaakceptowana",
   "EmailCode_SignInSubject_Format": "{0}: kod logowania",
   "EmailCode_VerifySubject_Format": "{0}: weryfikacja adresu e-mail",
   "EmailCode_Title": "Twój kod weryfikacyjny adresu e-mail",

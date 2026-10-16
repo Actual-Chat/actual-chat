@@ -1514,6 +1514,8 @@
   "Notification_ThreadCreated_Format": "'{0}' konusu oluşturuldu",
   "Notification_AttentionRequested_Format": "{0} dikkatinizi rica ediyor",
   "Notification_Reaction_Format": "{1} mesajına {0}",
+  "Notification_JoinRequests": "{0} yeni katılma isteği",
+  "Notification_JoinRequestApproved": "Katılma isteğiniz onaylandı",
   "EmailCode_SignInSubject_Format": "{0}: giriş kodu",
   "EmailCode_VerifySubject_Format": "{0}: e-posta doğrulama",
   "EmailCode_Title": "E-posta doğrulama kodunuz",

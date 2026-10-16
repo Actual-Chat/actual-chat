@@ -26,6 +26,7 @@ public sealed partial record NotificationHistoryItem(
             or NotificationKind.Attention
             or NotificationKind.Thread
             or NotificationKind.Invitation
+            or NotificationKind.JoinRequest
             or NotificationKind.Conversation
             or NotificationKind.IncomingCall;
 }

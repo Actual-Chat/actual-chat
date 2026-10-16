@@ -77,6 +77,8 @@ public interface INotificationsBackend : IComputeService, IBackendService
     Task OnSignedOut(UserSignedOutEvent eventCommand, CancellationToken cancellationToken);
     [EventHandler]
     Task OnUserNotifiedEvent(UserNotifiedEvent eventCommand, CancellationToken cancellationToken);
+    [EventHandler]
+    Task OnJoinRequestChangedEvent(JoinRequestChangedEvent eventCommand, CancellationToken cancellationToken);
 }
 
 /// <summary>

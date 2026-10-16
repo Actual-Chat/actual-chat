@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Se ha creado el hilo '{0}'",
   "Notification_AttentionRequested_Format": "{0} pide atención",
   "Notification_Reaction_Format": "{0} a {1}",
+  "Notification_JoinRequests": "{0} nueva solicitud para unirse|{0} nuevas solicitudes para unirse",
+  "Notification_JoinRequestApproved": "Tu solicitud para unirte fue aprobada",
   "EmailCode_SignInSubject_Format": "{0}: código de inicio de sesión",
   "EmailCode_VerifySubject_Format": "{0}: verificación de correo",
   "EmailCode_Title": "Tu código de verificación de correo",

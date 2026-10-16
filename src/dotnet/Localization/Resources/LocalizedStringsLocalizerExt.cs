@@ -1573,6 +1573,11 @@ public static class LocalizedStringsLocalizerExt
             => l["Notification_ThreadCreated_Format", arg0].Value;
         public string Notification_AttentionRequested_Format(object arg0)
             => l["Notification_AttentionRequested_Format", arg0].Value;
+
+        public string Notification_JoinRequests(long count, object arg0)
+            => l.Plural("Notification_JoinRequests", count, arg0);
+
+        public string Notification_JoinRequestApproved => l["Notification_JoinRequestApproved"].Value;
         public string Notification_Reaction_Format(object arg0, object arg1)
             => l["Notification_Reaction_Format", arg0, arg1].Value;
         public string EmailCode_SignInSubject_Format(object arg0)

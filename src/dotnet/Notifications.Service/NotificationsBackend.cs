@@ -37,6 +37,8 @@ public class NotificationsBackend(IServiceProvider services)
     private IAuthorsBackend AuthorsBackend { get; } = services.GetRequiredService<IAuthorsBackend>();
     private IAccountsBackend AccountsBackend { get; } = services.GetRequiredService<IAccountsBackend>();
     private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
+    private IRolesBackend RolesBackend { get; } = services.GetRequiredService<IRolesBackend>();
+    private IJoinRequestsBackend JoinRequestsBackend { get; } = services.GetRequiredService<IJoinRequestsBackend>();
     private IConversationsBackend ConversationsBackend { get; } = services.GetRequiredService<IConversationsBackend>();
     private Streaming.ILiveSessionsBackend LiveSessionsBackend { get; }
         = services.GetRequiredService<Streaming.ILiveSessionsBackend>();
@@ -912,6 +914,25 @@ public class NotificationsBackend(IServiceProvider services)
             .ConfigureAwait(false);
     }
 
+    [EventHandler]
+    public virtual async Task OnJoinRequestChangedEvent(
+        JoinRequestChangedEvent eventCommand, CancellationToken cancellationToken)
+    {
+        var (request, oldRequest) = eventCommand;
+        var chatId = request.ChatId;
+        var chat = await ChatsBackend.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null)
+            return;
+
+        var isPendingBefore = oldRequest?.Status == JoinRequestStatus.Pending;
+        var isPending = request.Status == JoinRequestStatus.Pending;
+        if (isPendingBefore != isPending)
+            await NotifyJoinRequestDeciders(chat, cancellationToken).ConfigureAwait(false);
+        // Rejection, withdrawal and expiry stay silent for the requester
+        if (request.Status == JoinRequestStatus.Approved && oldRequest is { IsOpen: true })
+            await NotifyJoinRequestApproved(chat, request.UserId, cancellationToken).ConfigureAwait(false);
+    }
+
     // Protected/internal methods
 
     internal static IReadOnlyList<Device> SelectVoipCallDevices(IReadOnlyList<Device> devices)
@@ -937,6 +958,65 @@ public class NotificationsBackend(IServiceProvider services)
     }
 
     // Private methods
+
+    private async Task NotifyJoinRequestDeciders(Chat.Chat chat, CancellationToken cancellationToken)
+    {
+        // Owners and moderators share one notification per chat: re-sent with the new count while
+        // requests remain, dismissed for all of them by its deterministic id once none is left
+        var chatId = chat.Id;
+        var ownerIds = await RolesBackend
+            .ListSystemRoleAuthorIds(ChatsBackend, chatId, SystemRole.Owner, cancellationToken)
+            .ConfigureAwait(false);
+        var moderatorIds = await RolesBackend
+            .ListSystemRoleAuthorIds(ChatsBackend, chatId, SystemRole.Moderator, cancellationToken)
+            .ConfigureAwait(false);
+        var deciderIds = await AuthorsBackend
+            .ListUserIds(chatId, [..ownerIds, ..moderatorIds], RequestedAuthorKind.Default, cancellationToken)
+            .ConfigureAwait(false);
+        var pending = await JoinRequestsBackend.ListPending(chatId, cancellationToken).ConfigureAwait(false);
+        if (pending.Count == 0) {
+            foreach (var userId in deciderIds.Distinct()) {
+                var notificationId = JoinRequestNotification.NewId(userId, chatId);
+                await Queues
+                    .Enqueue(new NotificationsBackend_Dismiss(notificationId), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            return;
+        }
+
+        var localizers = await GetLocalizers(deciderIds.Distinct().ToList(), cancellationToken).ConfigureAwait(false);
+        var textByUserId = ComposeContentByUserId(localizers, new JoinRequestsNotificationContent(pending.Count));
+        var titleByUserId = ComposeTitleByUserId(localizers, chat);
+        var iconUrl = UrlMapper.IconUrl(chat.GetIconQuery(null, AvatarQuery.SupportedSizes[^1], true));
+        var now = Clocks.CoarseSystemClock.Now;
+        foreach (var (userId, _) in localizers) {
+            var title = titleByUserId?[userId] ?? chat.Title;
+            var notification = JoinRequestNotification.New(userId, chatId, pending.Count) with {
+                Title = title,
+                GroupTitle = title,
+                Text = textByUserId[userId],
+                IconUrl = iconUrl,
+                SentAt = now,
+            };
+            await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken)
+                .ConfigureAwait(false);
+        }
+    }
+
+    private async Task NotifyJoinRequestApproved(Chat.Chat chat, UserId userId, CancellationToken cancellationToken)
+    {
+        var localizer = await UserLocalizers.Get(userId, cancellationToken).ConfigureAwait(false);
+        var title = chat.SystemDefaultTitle is null ? chat.Title : localizer.LocalizeTitle(chat).Title;
+        var notification = InvitationNotification.New(userId, chat.Id) with {
+            Title = title,
+            GroupTitle = title,
+            Text = new JoinRequestApprovedNotificationContent().Render(localizer),
+            IconUrl = UrlMapper.IconUrl(chat.GetIconQuery(null, AvatarQuery.SupportedSizes[^1], true)),
+            SentAt = Clocks.CoarseSystemClock.Now,
+        };
+        await Queues.Enqueue(new NotificationsBackend_Notify(notification), cancellationToken)
+            .ConfigureAwait(false);
+    }
 
     private async ValueTask<bool> IsChatUnderMaintenance(ChatId? chatId, CancellationToken cancellationToken)
     {

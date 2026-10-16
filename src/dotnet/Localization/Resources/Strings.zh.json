@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "话题“{0}”已创建",
   "Notification_AttentionRequested_Format": "{0} 请求大家注意",
   "Notification_Reaction_Format": "{0} 回应 {1}",
+  "Notification_JoinRequests": "{0} 条新的加入申请",
+  "Notification_JoinRequestApproved": "你的加入申请已获批准",
   "EmailCode_SignInSubject_Format": "{0}：登录验证码",
   "EmailCode_VerifySubject_Format": "{0}：邮箱验证",
   "EmailCode_Title": "您的邮箱验证码",

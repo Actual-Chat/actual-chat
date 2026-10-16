@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "थ्रेड '{0}' बनाया गया",
   "Notification_AttentionRequested_Format": "{0} ने ध्यान देने का अनुरोध किया",
   "Notification_Reaction_Format": "{1} पर {0}",
+  "Notification_JoinRequests": "शामिल होने का {0} नया अनुरोध|शामिल होने के {0} नए अनुरोध",
+  "Notification_JoinRequestApproved": "शामिल होने का आपका अनुरोध स्वीकार कर लिया गया",
   "EmailCode_SignInSubject_Format": "{0}: साइन-इन कोड",
   "EmailCode_VerifySubject_Format": "{0}: ईमेल सत्यापन",
   "EmailCode_Title": "आपका ईमेल सत्यापन कोड",

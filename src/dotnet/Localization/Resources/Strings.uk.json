@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Створено тред «{0}»",
   "Notification_AttentionRequested_Format": "{0} просить уваги",
   "Notification_Reaction_Format": "{0} на {1}",
+  "Notification_JoinRequests": "{0} нова заявка на вступ|{0} нові заявки на вступ|{0} нових заявок на вступ",
+  "Notification_JoinRequestApproved": "Вашу заявку на вступ схвалено",
   "EmailCode_SignInSubject_Format": "{0}: код для входу",
   "EmailCode_VerifySubject_Format": "{0}: підтвердження електронної пошти",
   "EmailCode_Title": "Ваш код підтвердження електронної пошти",

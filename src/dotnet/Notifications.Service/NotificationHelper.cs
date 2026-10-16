@@ -11,7 +11,7 @@ public static class NotificationHelper
         => kind switch {
             NotificationKind.Attention or NotificationKind.IncomingCall => NotificationImportance.Ringer,
             NotificationKind.Mention or NotificationKind.Reply or NotificationKind.Invitation
-                => NotificationImportance.Important,
+                or NotificationKind.JoinRequest => NotificationImportance.Important,
             _ => NotificationImportance.Ordinary,
         };
 

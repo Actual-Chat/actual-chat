@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "O tópico '{0}' foi criado",
   "Notification_AttentionRequested_Format": "{0} pede atenção",
   "Notification_Reaction_Format": "{0} a {1}",
+  "Notification_JoinRequests": "{0} novo pedido de entrada|{0} novos pedidos de entrada",
+  "Notification_JoinRequestApproved": "Seu pedido de entrada foi aprovado",
   "EmailCode_SignInSubject_Format": "{0}: código de acesso",
   "EmailCode_VerifySubject_Format": "{0}: verificação de e-mail",
   "EmailCode_Title": "Seu código de verificação de e-mail",

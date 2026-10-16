@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Đã tạo chủ đề '{0}'",
   "Notification_AttentionRequested_Format": "{0} cần mọi người chú ý",
   "Notification_Reaction_Format": "{0} cho {1}",
+  "Notification_JoinRequests": "{0} yêu cầu tham gia mới",
+  "Notification_JoinRequestApproved": "Yêu cầu tham gia của bạn đã được chấp nhận",
   "EmailCode_SignInSubject_Format": "{0}: mã đăng nhập",
   "EmailCode_VerifySubject_Format": "{0}: xác minh email",
   "EmailCode_Title": "Mã xác minh email của bạn",

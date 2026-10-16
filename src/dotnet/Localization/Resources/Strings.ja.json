@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "スレッド「{0}」が作成されました",
   "Notification_AttentionRequested_Format": "{0} さんが注目を求めています",
   "Notification_Reaction_Format": "{1} に {0}",
+  "Notification_JoinRequests": "新しい参加リクエスト {0} 件",
+  "Notification_JoinRequestApproved": "参加リクエストが承認されました",
   "EmailCode_SignInSubject_Format": "{0}: ログインコード",
   "EmailCode_VerifySubject_Format": "{0}: メールの確認",
   "EmailCode_Title": "メール確認コード",

@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Vlákno „{0}“ bylo vytvořeno",
   "Notification_AttentionRequested_Format": "{0} žádá o pozornost",
   "Notification_Reaction_Format": "{0} na {1}",
+  "Notification_JoinRequests": "{0} nová žádost o připojení|{0} nové žádosti o připojení|{0} nových žádostí o připojení",
+  "Notification_JoinRequestApproved": "Vaše žádost o připojení byla schválena",
   "EmailCode_SignInSubject_Format": "{0}: přihlašovací kód",
   "EmailCode_VerifySubject_Format": "{0}: ověření e-mailu",
   "EmailCode_Title": "Váš kód pro ověření e-mailu",

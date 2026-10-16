@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Il thread '{0}' è stato creato",
   "Notification_AttentionRequested_Format": "{0} chiede attenzione",
   "Notification_Reaction_Format": "{0} a {1}",
+  "Notification_JoinRequests": "{0} nuova richiesta di accesso|{0} nuove richieste di accesso",
+  "Notification_JoinRequestApproved": "La tua richiesta di accesso è stata approvata",
   "EmailCode_SignInSubject_Format": "{0}: codice di accesso",
   "EmailCode_VerifySubject_Format": "{0}: verifica dell'email",
   "EmailCode_Title": "Il tuo codice di verifica dell'email",

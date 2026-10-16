@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Nit „{0}“ je kreirana",
   "Notification_AttentionRequested_Format": "{0} traži pažnju",
   "Notification_Reaction_Format": "{0} na {1}",
+  "Notification_JoinRequests": "{0} novi zahtjev za pridruživanje|{0} nova zahtjeva za pridruživanje|{0} novih zahtjeva za pridruživanje",
+  "Notification_JoinRequestApproved": "Vaš zahtjev za pridruživanje je odobren",
   "EmailCode_SignInSubject_Format": "{0}: kod za prijavu",
   "EmailCode_VerifySubject_Format": "{0}: potvrda emaila",
   "EmailCode_Title": "Vaš kod za potvrdu emaila",

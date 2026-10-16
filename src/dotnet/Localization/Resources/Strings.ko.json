@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "'{0}' 스레드가 생성되었습니다",
   "Notification_AttentionRequested_Format": "{0}님이 주목을 요청했습니다",
   "Notification_Reaction_Format": "{1}에 {0}",
+  "Notification_JoinRequests": "새 참여 요청 {0}건",
+  "Notification_JoinRequestApproved": "참여 요청이 승인되었습니다",
   "EmailCode_SignInSubject_Format": "{0}: 로그인 코드",
   "EmailCode_VerifySubject_Format": "{0}: 이메일 인증",
   "EmailCode_Title": "이메일 인증 코드",

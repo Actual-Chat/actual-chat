@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Utas “{0}” telah dibuat",
   "Notification_AttentionRequested_Format": "{0} meminta perhatian",
   "Notification_Reaction_Format": "{0} untuk {1}",
+  "Notification_JoinRequests": "{0} permintaan bergabung baru",
+  "Notification_JoinRequestApproved": "Permintaan bergabung Anda disetujui",
   "EmailCode_SignInSubject_Format": "{0}: kode masuk",
   "EmailCode_VerifySubject_Format": "{0}: verifikasi email",
   "EmailCode_Title": "Kode verifikasi email Anda",

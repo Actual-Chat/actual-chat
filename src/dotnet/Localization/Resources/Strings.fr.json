@@ -1507,6 +1507,8 @@
   "Notification_ThreadCreated_Format": "Le fil '{0}' a été créé",
   "Notification_AttentionRequested_Format": "{0} demande de l'attention",
   "Notification_Reaction_Format": "{0} à {1}",
+  "Notification_JoinRequests": "{0} nouvelle demande d'adhésion|{0} nouvelles demandes d'adhésion",
+  "Notification_JoinRequestApproved": "Votre demande d'adhésion a été acceptée",
   "EmailCode_SignInSubject_Format": "{0} : code de connexion",
   "EmailCode_VerifySubject_Format": "{0} : vérification de l'e-mail",
   "EmailCode_Title": "Votre code de vérification de l'e-mail",

@@ -1508,6 +1508,8 @@
   "Notification_ThreadCreated_Format": "Thread '{0}' wurde erstellt",
   "Notification_AttentionRequested_Format": "{0} bittet um Aufmerksamkeit",
   "Notification_Reaction_Format": "{0} auf {1}",
+  "Notification_JoinRequests": "{0} neue Beitrittsanfrage|{0} neue Beitrittsanfragen",
+  "Notification_JoinRequestApproved": "Ihre Beitrittsanfrage wurde angenommen",
   "EmailCode_SignInSubject_Format": "{0}: Anmeldecode",
   "EmailCode_VerifySubject_Format": "{0}: E-Mail-Bestätigung",
   "EmailCode_Title": "Ihr E-Mail-Bestätigungscode",

@@ -1746,6 +1746,8 @@
   "Notification_ThreadCreated_Format": "Thread '{0}' has been created",
   "Notification_AttentionRequested_Format": "{0} asks for attention",
   "Notification_Reaction_Format": "{0} to {1}",
+  "Notification_JoinRequests": "{0} new request to join|{0} new requests to join",
+  "Notification_JoinRequestApproved": "Your request to join was approved",
 
   // Emails composed on the server, in the recipient's UI language: the sign-in / verification
   // code mail (EmailCode_*) and the daily digest of unread chats (EmailDigest_*). A *Subject*
