@@ -33,14 +33,31 @@ public static class StringAssertionsExt
             params object[] becauseArgs)
         {
             var text = assertions.Subject;
-            var words = text.SplitIntoWords().Select(Canonicalize).ToList();
-            var expectedWords = expected.SplitIntoWords().Select(Canonicalize).ToList();
-            var intersectingWords = expectedWords.Intersect(words, StringComparer.OrdinalIgnoreCase).ToHashSet();
-            var similarity = (double)intersectingWords.Count / Math.Max(words.Count, expectedWords.Count);
+            var similarity = GetSimilarity(text, expected);
             assertions.CurrentAssertionChain.BecauseOf(because, becauseArgs)
                 .ForCondition(similarity >= minSimilarity)
                 .FailWith(
                     "Expected text {0} to be similar to {1} with min similarity {2} but actual similarity is {3}{reason}",
+                    text,
+                    expected,
+                    minSimilarity,
+                    similarity);
+            return new AndConstraint<TAssertions>((TAssertions)assertions);
+        }
+
+        public AndConstraint<TAssertions> BeSimilarToAny(
+            IReadOnlyCollection<string> expected,
+            double minSimilarity,
+            [StringSyntax(StringSyntaxAttribute.CompositeFormat)] string because = "",
+            params object[] becauseArgs)
+        {
+            var text = assertions.Subject;
+            var similarity = expected.Max(x => GetSimilarity(text, x));
+            assertions.CurrentAssertionChain.BecauseOf(because, becauseArgs)
+                .ForCondition(similarity >= minSimilarity)
+                .FailWith(
+                    "Expected text {0} to be similar to any of {1} with min similarity {2}"
+                    + " but max similarity is {3}{reason}",
                     text,
                     expected,
                     minSimilarity,
@@ -90,6 +107,14 @@ public static class StringAssertionsExt
                     text, unexpected, found);
             return new AndConstraint<TAssertions>((TAssertions)assertions);
         }
+    }
+
+    private static double GetSimilarity(string text, string expected)
+    {
+        var words = text.SplitIntoWords().Select(Canonicalize).ToList();
+        var expectedWords = expected.SplitIntoWords().Select(Canonicalize).ToList();
+        var intersectingWords = expectedWords.Intersect(words, StringComparer.OrdinalIgnoreCase).ToHashSet();
+        return (double)intersectingWords.Count / Math.Max(words.Count, expectedWords.Count);
     }
 
     private static string Canonicalize(string text)
