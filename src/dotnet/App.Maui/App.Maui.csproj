@@ -483,13 +483,6 @@
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
-  <!-- RC2 no longer derives CoreCLR dynamic-code support from UseInterpreter (macios#26468).
-       Preserve our static library paths until the runtime#130840 fix is verified on device;
-       this does not disable CoreCLR's interpreter. See docs/ios-specific.md. -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
-    <DynamicCodeSupport>false</DynamicCodeSupport>
-  </PropertyGroup>
-
   <!-- iOS: Both Debug & Release configurations -->
   <PropertyGroup Condition="$(TargetFramework.Contains('-ios'))">
     <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
