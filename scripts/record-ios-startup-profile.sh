@@ -12,7 +12,7 @@
 # /mibc-update. See docs/ios-specific.md -> Measuring what runs interpreted.
 
 set -e
-export DEVELOPER_DIR=/Applications/Xcode-26.6.0.app/Contents/Developer
+export DEVELOPER_DIR=${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}
 export PATH="$HOME/.dotnet:$HOME/.dotnet/tools:$PATH"
 
 UDID=${IOS_UDID:-00008110-000405C426F1801E}
