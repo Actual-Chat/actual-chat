@@ -10,7 +10,7 @@ public class RpcRelayAttestationTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void LineFromTheRelayScriptShouldVerify()
     {
-        // arrange: produced by src/nginx/relay/relay.js
+        // arrange: signed by the relay's own script, not by RpcRelayAttestation.Sign
         const string line = "v1|kz1|172.17.0.1|1791875347|7AG09jf6P9DkeFNagu08vayEeqOkrmfCb6umvrbva10";
         var issuedAt = DateTimeOffset.FromUnixTimeSeconds(1791875347);
 
