@@ -118,10 +118,21 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
     {
         using var releaser = await OperationLock.Lock(CancellationToken.None).ConfigureAwait(false);
         releaser.MarkLockedLocally();
-        if (_lastAudioFocusHolder is null)
+        var holder = _lastAudioFocusHolder;
+        if (holder is null)
             return;
 
-        Log.LogInformation("Renewing the held audio focus ({Mode})", _lastAudioFocusHolder.Mode);
+        if (holder.IsSuspended) {
+            // Another app holds the focus: denied - a phone call - the renew wipes the pending
+            // restores, and granted it takes the focus back. The recover runs it instead.
+            holder.DeferRenewal();
+            if (holder.IsSuspended || !holder.TryTakeDeferredRenewal()) {
+                Log.LogInformation("Renewing the held audio focus ({Mode}) once it recovers", holder.Mode);
+                return;
+            }
+        }
+
+        Log.LogInformation("Renewing the held audio focus ({Mode})", holder.Mode);
         await RenewAudioFocus(null).ConfigureAwait(false);
     }
 
@@ -159,21 +170,35 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
         };
         audioFocusHandle.FocusRecover += () => {
             holder.Suspend(false);
-            // Taken and cleared, because they were only ever added: the Nth recover replayed every
-            // restore from all N cycles, racing StartReplay against itself and growing unbounded
-            // over a long session. The snapshot also keeps this off the live list, which these
-            // callbacks touch from the Android main thread while other threads mutate it.
-            AudioFocusRestoreHandler[] handlers;
-            lock (_restoreAudioFocusHandlers) {
-                handlers = [.. _restoreAudioFocusHandlers];
-                _restoreAudioFocusHandlers.Clear();
+            if (!holder.TryTakeDeferredRenewal()) {
+                RunRestoreHandlers();
+                return;
             }
-            foreach (var handler in handlers) {
-                handler.Invoke();
-            }
+
+            // Restored after the renewal, so a resumed replay starts on the route it asked for
+            _ = BackgroundTask.Run(async () => {
+                await RenewHeldFocus().ConfigureAwait(false);
+                RunRestoreHandlers();
+            }, Log, "Failed to renew the audio focus on recover", Hub.StopToken);
         };
         _lastAudioFocusHolder = holder;
         return holder;
+    }
+
+    private void RunRestoreHandlers()
+    {
+        // Taken and cleared, because they were only ever added: the Nth recover replayed every
+        // restore from all N cycles, racing StartReplay against itself and growing unbounded
+        // over a long session. The snapshot also keeps this off the live list, which these
+        // callbacks touch from the Android main thread while other threads mutate it.
+        AudioFocusRestoreHandler[] handlers;
+        lock (_restoreAudioFocusHandlers) {
+            handlers = [.. _restoreAudioFocusHandlers];
+            _restoreAudioFocusHandlers.Clear();
+        }
+        foreach (var handler in handlers) {
+            handler.Invoke();
+        }
     }
 
     private void InvokeLostFocus(AudioFocusHolder? holder, bool mayRecover, bool canDuck)
@@ -220,6 +245,9 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 
     private sealed class AudioFocusHolder(AudioFocusMode mode, MauiAudioFocusHandle handle)
     {
+        // Interlocked on both sides, so a renew and a recover racing each other can't both miss it
+        private int _isRenewalDeferred;
+
         public AudioFocusMode Mode => mode;
         public bool IsSuspended { get; private set; }
         public MauiAudioFocusHandle Handle => handle;
@@ -227,6 +255,12 @@ public abstract class MauiAudioFocusUI(AppUIHub hub) : AudioFocusUI
 
         public void Suspend(bool isSuspended)
             => IsSuspended = isSuspended;
+
+        public void DeferRenewal()
+            => Interlocked.Exchange(ref _isRenewalDeferred, 1);
+
+        public bool TryTakeDeferredRenewal()
+            => Interlocked.Exchange(ref _isRenewalDeferred, 0) != 0;
     }
 
     private sealed class Scope(MauiAudioFocusUI owner, AudioFocusRequester requester) : AudioFocusScope
