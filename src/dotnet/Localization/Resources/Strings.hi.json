@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " ने इतिहास रखने की अवधि बंद कर दी।",
   "SystemEntry_TranscriptionTurnedOn": " ने ट्रांसक्रिप्शन चालू किया।",
   "SystemEntry_TranscriptionTurnedOff": " ने ट्रांसक्रिप्शन बंद किया।",
+  "SystemEntry_HandRaised": " ने हाथ उठाया।",
+  "SystemEntry_HandLowered": " ने हाथ नीचे किया।",
 
   "ChatMaintenance_Mode": "रखरखाव मोड",
   "ChatImport_Start": "आयात शुरू करें",

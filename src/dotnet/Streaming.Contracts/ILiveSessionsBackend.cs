@@ -67,8 +67,9 @@ public interface ILiveSessionsBackend : IComputeService, IBackendService
         bool muted,
         CancellationToken cancellationToken);
     Task SetHost(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken);
-    Task SetHandRaised(ChatId chatId, AuthorId authorId, bool isRaised, CancellationToken cancellationToken);
-    Task LowerAllHands(ChatId chatId, CancellationToken cancellationToken);
+    // Both tell which hands actually moved: of two identical requests racing each other, one gets nothing
+    Task<bool> SetHandRaised(ChatId chatId, AuthorId authorId, bool isRaised, CancellationToken cancellationToken);
+    Task<ApiArray<AuthorId>> LowerAllHands(ChatId chatId, CancellationToken cancellationToken);
     Task UpdateLiveConversationSummary(
         ChatId chatId,
         LiveConversationSummary summary,

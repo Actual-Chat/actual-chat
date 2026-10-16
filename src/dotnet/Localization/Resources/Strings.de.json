@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " hat die Aufbewahrungsfrist des Verlaufs deaktiviert.",
   "SystemEntry_TranscriptionTurnedOn": " hat die Transkription aktiviert.",
   "SystemEntry_TranscriptionTurnedOff": " hat die Transkription deaktiviert.",
+  "SystemEntry_HandRaised": " hat die Hand gehoben.",
+  "SystemEntry_HandLowered": " hat die Hand gesenkt.",
 
   "ChatMaintenance_Mode": "Wartungsmodus",
   "ChatImport_Start": "Import starten",

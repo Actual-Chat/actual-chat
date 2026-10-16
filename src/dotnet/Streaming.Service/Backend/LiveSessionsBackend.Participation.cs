@@ -272,7 +272,7 @@ public partial class LiveSessionsBackend
         InvalidateState(chatId);
     }
 
-    public virtual async Task SetHandRaised(
+    public virtual async Task<bool> SetHandRaised(
         ChatId chatId,
         AuthorId authorId,
         bool isRaised,
@@ -283,26 +283,28 @@ public partial class LiveSessionsBackend
 
         var existing = await SafeGetParticipant(chatId, authorId).ConfigureAwait(false);
         if (existing is null || (existing.HandRaisedAt is not null) == isRaised)
-            return;
+            return false;
 
         if (isRaised) {
             // A hand is a LiveSession member's state, so it exists only where Get returns a session
             var state = await SafeGetState(chatId).ConfigureAwait(false);
             if (state is not { StartedAt: not null })
-                return;
+                return false;
         }
 
         var info = existing with { HandRaisedAt = isRaised ? Clocks.SystemClock.Now : null };
         await _redisParticipants.Set(chatId.Value, authorId.Value, info).ConfigureAwait(false);
         InvalidateGet(chatId);
+        return true;
     }
 
-    public virtual async Task LowerAllHands(ChatId chatId, CancellationToken cancellationToken)
+    public virtual async Task<ApiArray<AuthorId>> LowerAllHands(ChatId chatId, CancellationToken cancellationToken)
     {
         using var _ = Computed.BeginIsolation();
         using var lockHolder = await _changeLocks.Lock(chatId, cancellationToken).ConfigureAwait(false);
 
         var participants = await SafeGetHashMap(chatId).ConfigureAwait(false);
+        var lowered = new List<AuthorId>();
         foreach (var (authorIdValue, info) in participants) {
             if (info?.HandRaisedAt is null)
                 continue;
@@ -310,8 +312,10 @@ public partial class LiveSessionsBackend
             await _redisParticipants
                 .Set(chatId.Value, authorIdValue, info with { HandRaisedAt = null })
                 .ConfigureAwait(false);
+            lowered.Add(AuthorId.Parse(authorIdValue));
         }
         InvalidateGet(chatId);
+        return lowered.ToApiArray();
     }
 
     // Legacy methods

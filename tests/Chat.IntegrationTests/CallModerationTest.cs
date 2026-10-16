@@ -323,6 +323,49 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
     }
 
     [Fact]
+    public async Task RaisingAndLoweringAHandShouldPostSystemEntries()
+    {
+        // arrange
+        var call = await ArrangeCall();
+        var maxLid = await ChatsBackend(Owner).GetMaxLid(call.ChatId, false, default);
+
+        // act - the second raise changes nothing, so it leaves no entry
+        await LiveSessions(Member).SetHandRaised(Member.Session, call.ChatId, call.MemberAuthorId, true, default);
+        await LiveSessions(Member).SetHandRaised(Member.Session, call.ChatId, call.MemberAuthorId, true, default);
+        await LiveSessions(Owner).SetHandRaised(Owner.Session, call.ChatId, call.MemberAuthorId, false, default);
+
+        // assert
+        var entries = await WhenSystemEntries<HandRaisedEntry>(call.ChatId, maxLid + 1, 2);
+        entries.Select(x => x.IsHandRaised).Should().Equal([true, false],
+            "a hand going up and down is announced, each move once");
+        entries.Should().OnlyContain(x => x.TargetAuthorId == call.MemberAuthorId,
+            "the entry names whose hand moved, not who moved it");
+    }
+
+    [Fact]
+    public async Task LoweringAllHandsShouldPostASystemEntryPerHand()
+    {
+        // arrange
+        var call = await ArrangeCall();
+        await LiveSessions(Member).SetHandRaised(Member.Session, call.ChatId, call.MemberAuthorId, true, default);
+        await LiveSessions(Moderator)
+            .SetHandRaised(Moderator.Session, call.ChatId, call.ModeratorAuthorId, true, default);
+        await WhenHandRaised(call.ChatId, call.MemberAuthorId);
+        await WhenHandRaised(call.ChatId, call.ModeratorAuthorId);
+        var maxLid = await ChatsBackend(Owner).GetMaxLid(call.ChatId, false, default);
+
+        // act
+        await LiveSessions(Owner).LowerAllHands(Owner.Session, call.ChatId, default);
+        await LiveSessions(Owner).LowerAllHands(Owner.Session, call.ChatId, default);
+
+        // assert - the second call finds no hand up, so it leaves no entry
+        var entries = await WhenSystemEntries<HandRaisedEntry>(call.ChatId, maxLid + 1, 2);
+        entries.Should().OnlyContain(x => !x.IsHandRaised);
+        entries.Select(x => x.TargetAuthorId).Should()
+            .BeEquivalentTo([call.MemberAuthorId, call.ModeratorAuthorId]);
+    }
+
+    [Fact]
     public async Task ChangingTranscriptionShouldPostSystemEntries()
     {
         // arrange
@@ -336,7 +379,7 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await LiveSessions(Owner).SetRules(Owner.Session, call.ChatId, rules.WithText(true), default);
 
         // assert
-        var entries = await WhenTranscriptionChangedEntries(call.ChatId, maxLid + 1, 2);
+        var entries = await WhenSystemEntries<TranscriptionChangedEntry>(call.ChatId, maxLid + 1, 2);
         entries.Select(x => x.IsTranscriptionOn).Should().Equal([false, true],
             "only a transcription flip is announced, and each flip once");
         entries.Should().OnlyContain(x => x.TargetAuthorId == call.OwnerAuthorId);
@@ -358,7 +401,7 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var state = await Backend(Owner).GetState(chatId, default);
         state!.Rules.HasText().Should().BeFalse();
         await memberTurnsVideoOff.Should().ThrowAsync<Exception>();
-        var entries = await WhenTranscriptionChangedEntries(chatId, maxLid + 1, 1);
+        var entries = await WhenSystemEntries<TranscriptionChangedEntry>(chatId, maxLid + 1, 1);
         entries[0].IsTranscriptionOn.Should().BeFalse();
     }
 
@@ -379,7 +422,7 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         await Task.WhenAll(requests);
 
         // assert - an entry is written before its request completes, so none is still on its way
-        var entries = await WhenTranscriptionChangedEntries(chatId, maxLid + 1, 1);
+        var entries = await WhenSystemEntries<TranscriptionChangedEntry>(chatId, maxLid + 1, 1);
         entries[0].IsTranscriptionOn.Should().BeFalse();
     }
 
@@ -465,17 +508,17 @@ public class CallModerationTest(ChatCollection.AppHostFixture fixture, ITestOutp
         }, callerFilePath: callerFilePath, callerLine: callerLine);
     }
 
-    private Task<List<TranscriptionChangedEntry>> WhenTranscriptionChangedEntries(
-        ChatId chatId, long minLid, int expectedCount)
+    private Task<List<TEntry>> WhenSystemEntries<TEntry>(ChatId chatId, long minLid, int expectedCount)
+        where TEntry : SystemEntry
     {
         var chatsBackend = ChatsBackend(Owner);
         return TestWait.WhenPolled(async () => {
             var maxLid = await chatsBackend.GetMaxLid(chatId, false, default);
-            var found = new List<TranscriptionChangedEntry>();
+            var found = new List<TEntry>();
             for (var lid = minLid; lid <= maxLid; lid++) {
                 var entry = await chatsBackend.GetEntry(ChatEntryId.New(chatId, lid), default);
-                if (entry is TranscriptionChangedEntry transcriptionChanged)
-                    found.Add(transcriptionChanged);
+                if (entry is TEntry match)
+                    found.Add(match);
             }
             found.Should().HaveCount(expectedCount);
             return found;

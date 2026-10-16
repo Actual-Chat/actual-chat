@@ -263,7 +263,12 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             authority.RequireManage();
         }
 
-        await Backend.SetHandRaised(chatId, targetAuthorId, isRaised, cancellationToken).ConfigureAwait(false);
+        // TODO: let's discuss what's better - return hasChanged or newValue
+        var hasChanged = await Backend.SetHandRaised(chatId, targetAuthorId, isRaised, cancellationToken)
+            .ConfigureAwait(false);
+        if (hasChanged)
+            await PostHandRaisedEntry(session, chatId, targetAuthorId, isRaised, cancellationToken)
+                .ConfigureAwait(false);
     }
 
     public async Task LowerAllHands(Session session, ChatId chatId, CancellationToken cancellationToken)
@@ -271,7 +276,9 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         RequireNotPeerChatForHands(chatId);
         var authority = await GetCallAuthority(session, chatId, cancellationToken).ConfigureAwait(false);
         authority.RequireManage();
-        await Backend.LowerAllHands(chatId, cancellationToken).ConfigureAwait(false);
+        var loweredAuthorIds = await Backend.LowerAllHands(chatId, cancellationToken).ConfigureAwait(false);
+        foreach (var authorId in loweredAuthorIds)
+            await PostHandRaisedEntry(session, chatId, authorId, false, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<CallId> StartCall(
@@ -502,6 +509,25 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
                 TargetAuthorId = authorId,
                 TargetAuthorName = authorName.NullIfEmpty() ?? MentionMarkup.NotAvailableName,
                 IsTranscriptionOn = isTranscriptionOn,
+            }));
+        await Commander.Call(changeEntryCmd, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task PostHandRaisedEntry(
+        Session session, ChatId chatId, AuthorId authorId, bool isRaised, CancellationToken cancellationToken)
+    {
+        var author = await Authors.Get(session, chatId, authorId, cancellationToken).ConfigureAwait(false);
+        var targetAuthorId = author is null || author.IsAnonymous ? null : author.Id;
+        var authorName = targetAuthorId is null ? "" : author?.Avatar.Name ?? "";
+        var changeEntryCmd = new ChatsBackend_ChangeEntry(
+            ChatEntryId.New(chatId, 0),
+            null,
+            Change.Create(new ChatEntryDiff {
+                Kind = ChatEntryKind.HandRaised,
+                AuthorId = Bots.GetWalleId(chatId),
+                TargetAuthorId = targetAuthorId,
+                TargetAuthorName = authorName.NullIfEmpty() ?? MentionMarkup.NotAvailableName,
+                IsHandRaised = isRaised,
             }));
         await Commander.Call(changeEntryCmd, true, cancellationToken).ConfigureAwait(false);
     }

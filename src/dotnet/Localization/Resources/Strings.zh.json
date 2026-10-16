@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " 关闭了聊天记录保留期限。",
   "SystemEntry_TranscriptionTurnedOn": " 开启了转写。",
   "SystemEntry_TranscriptionTurnedOff": " 关闭了转写。",
+  "SystemEntry_HandRaised": " 举手了。",
+  "SystemEntry_HandLowered": " 放下了手。",
 
   "ChatMaintenance_Mode": "维护模式",
   "ChatImport_Start": "开始导入",

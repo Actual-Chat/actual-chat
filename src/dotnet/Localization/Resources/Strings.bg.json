@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " изключи срока за съхранение на историята.",
   "SystemEntry_TranscriptionTurnedOn": " включи транскрипцията.",
   "SystemEntry_TranscriptionTurnedOff": " изключи транскрипцията.",
+  "SystemEntry_HandRaised": " вдигна ръка.",
+  "SystemEntry_HandLowered": " свали ръка.",
 
   "ChatMaintenance_Mode": "Режим на поддръжка",
   "ChatImport_Start": "Започни импортиране",

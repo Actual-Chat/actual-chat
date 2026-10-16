@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " さんが履歴の保存期間を無効にしました。",
   "SystemEntry_TranscriptionTurnedOn": " さんが文字起こしをオンにしました。",
   "SystemEntry_TranscriptionTurnedOff": " さんが文字起こしをオフにしました。",
+  "SystemEntry_HandRaised": " さんが手を挙げました。",
+  "SystemEntry_HandLowered": " さんが手を下ろしました。",
 
   "ChatMaintenance_Mode": "メンテナンスモード",
   "ChatImport_Start": "インポートを開始",
