@@ -75,18 +75,22 @@ build() {
     npm run build:Release
     security unlock-keychain -p "$(cat ~/.ac-signing/keychain-password)" ~/Library/Keychains/ac-signing.keychain-db
 
-    # BASELINE=1 builds with none of our startup profiles as crossgen2 input. The trace lists what
+    # BASELINE=1 builds with none of our startup profiles as crossgen2 input (BASELINE=aothelper: only the
+    # static aothelper.mibc stays). The trace lists what
     # ran interpreted, so only a build that does not already root the old profiles yields a
     # complete one rather than a delta over them.
     local targets=$ROOT/tmp/dev-signing.targets
     if [ -n "$BASELINE" ]; then
         targets=$WORK/baseline.targets
         local profiling=$ROOT/src/dotnet/App.Maui/_Profiling
+        # BASELINE=aothelper keeps the static profile: the app does not run without it
+        local remove="$profiling/merged.mibc;$profiling/ios.mibc"
+        [ "$BASELINE" = aothelper ] || remove="$remove;$profiling/aothelper.mibc"
         cat > "$targets" <<TARGETS
 <Project>
   <Import Project="$ROOT/tmp/dev-signing.targets"/>
   <ItemGroup>
-    <PublishReadyToRunPgoFiles Remove="$profiling/merged.mibc;$profiling/aothelper.mibc;$profiling/ios.mibc"/>
+    <PublishReadyToRunPgoFiles Remove="$remove"/>
   </ItemGroup>
 </Project>
 TARGETS
