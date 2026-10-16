@@ -334,13 +334,13 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
                 let startIndex = queue.length - speechFrameCount - 1;
                 while (startIndex >= minStartIndex) {
                     const gain = gains[startIndex];
-                    if (gain < speechGain/2)
+                    if (gain < speechGain/3)
                         break;
 
                     startIndex--;
                 }
                 let framesToShift = startIndex >= minStartIndex
-                    ? startIndex - 1
+                    ? startIndex
                     : minStartIndex;
                 framesToShift = clamp(framesToShift, minStartIndex, queue.length - speechFrameCount);
                 debugLog?.log(`processQueue(in): gains: `, gains, framesToShift, speechFrameCount);
