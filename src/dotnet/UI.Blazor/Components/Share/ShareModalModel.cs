@@ -21,9 +21,15 @@ public interface IShareModalSelector;
 
 public sealed record ShareWithPlaceMembersOnly(PlaceId PlaceId) : IShareModalSelector
 {
-    public static ShareWithPlaceMembersOnly? GetFor(Chat.Chat chat)
-        // The plain link of such a chat leads nowhere for anyone outside its Place
-        => chat is { Id: PlaceChatId placeChatId, IsPublic: false, JoinRequestAccess: JoinRequestAccess.PlaceMembers }
-            ? new ShareWithPlaceMembersOnly(placeChatId.PlaceId)
-            : null;
+    public static ShareWithPlaceMembersOnly? GetFor(Chat.Chat chat, Place? place)
+    {
+        // The plain link of such a chat leads nowhere for anyone outside its Place:
+        // outsiders get the stricter of the chat's and the Place's access, as JoinRequests.GetTarget does
+        if (chat is not { Id: PlaceChatId placeChatId, IsPublic: false } || place is null || place.IsPublic)
+            return null;
+
+        var outsiderAccess = chat.JoinRequestAccess.Min(place.JoinRequestAccess);
+        return outsiderAccess.Allows(isSignedIn: true, isPlaceMember: false) ? null
+            : new ShareWithPlaceMembersOnly(placeChatId.PlaceId);
+    }
 }

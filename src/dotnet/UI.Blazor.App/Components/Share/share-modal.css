@@ -8,7 +8,14 @@
 .share-modal .form-block {
     @apply overflow-y-hidden;
 }
+/* The contact list below takes the remaining height and scrolls; the invite links keep theirs */
+.share-modal .form-block.share-modal-invite-links {
+    @apply flex-none;
+    @apply overflow-visible;
+    @apply px-4 pt-2;
+}
 .share-modal-invite-links-warning {
+    @apply flex-none;
     @apply px-4 pb-3;
     @apply text-caption text-03;
 }

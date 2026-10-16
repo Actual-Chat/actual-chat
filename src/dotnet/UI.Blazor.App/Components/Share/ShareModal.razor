@@ -20,7 +20,7 @@
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
     @if (ModalModel.InviteChatId is { } inviteChatId) {
-        <InviteLinksSection ChatId="@inviteChatId" Class="first"/>
+        <InviteLinksSection ChatId="@inviteChatId" Class="first share-modal-invite-links"/>
         <div class="share-modal-invite-links-warning">@L.Share_InviteLinksWarning</div>
     }
     @if (_selectorKind != SelectorKind.None) {

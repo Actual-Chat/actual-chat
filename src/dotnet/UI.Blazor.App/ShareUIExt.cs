@@ -117,7 +117,7 @@ public static class ShareUIExt
             l.MessageMenu_ShareLink,
             targetTitle,
             new (text, Links.Chat(chat.Id)),
-            ShareWithPlaceMembersOnly.GetFor(chat),
+            ShareWithPlaceMembersOnly.GetFor(chat, place),
             imageUrl,
             l.Share_NeedsApproval) {
             InviteChatId = inviteChatId,
