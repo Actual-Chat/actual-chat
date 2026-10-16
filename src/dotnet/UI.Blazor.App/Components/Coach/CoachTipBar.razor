@@ -64,7 +64,7 @@
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     // Seconds the card stays before it dismisses itself, the way a toast does but longer
-    [Parameter] public double AutoDismissDelay { get; set; } = 30;
+    [Parameter] public double AutoDismissDelay { get; set; } = 10;
 
     protected override ComputedState<UserCoachTip?>.Options GetStateOptions()
         => new() { UpdateDelayer = FixedDelayer.NextTick, Category = GetStateCategory(GetType()) };
