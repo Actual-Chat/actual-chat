@@ -69,6 +69,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.DubVoice>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.EmojiMention>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.FileItem>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.HandRaisedEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.HashtagMarkup>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.HeaderMarkup>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.HistoryChangedEntry>();
@@ -540,6 +541,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.FileItem>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.FileItem>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.FileItem>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.HandRaisedEntry>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.HandRaisedEntry>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.HandRaisedEntry>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.HashtagMarkup>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.HashtagMarkup>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.HashtagMarkup>>>>();
@@ -2385,6 +2389,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+DubVoiceFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+EmojiMentionFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+FileItemFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+HandRaisedEntryFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+HashtagMarkupFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+HeaderMarkupFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+HistoryChangeKindFormatter, ActualChat.Api");
@@ -2711,6 +2716,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Chat.DubVoice), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.EmojiMention), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.FileItem), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.HandRaisedEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.HashtagMarkup), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.HeaderMarkup), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.HistoryChangedEntry), AotTypeKind.Serializable),

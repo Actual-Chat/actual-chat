@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " geçmiş saklama süresini kapattı.",
   "SystemEntry_TranscriptionTurnedOn": " deşifreyi açtı.",
   "SystemEntry_TranscriptionTurnedOff": " deşifreyi kapattı.",
+  "SystemEntry_HandRaised": " el kaldırdı.",
+  "SystemEntry_HandLowered": " elini indirdi.",
 
   "ChatMaintenance_Mode": "Bakım modu",
   "ChatImport_Start": "İçe aktarmayı başlat",

@@ -478,6 +478,8 @@ public static class LocalizedStringsLocalizerExt
         public string SystemEntry_RetentionTurnedOff => l["SystemEntry_RetentionTurnedOff"].Value;
         public string SystemEntry_TranscriptionTurnedOn => l["SystemEntry_TranscriptionTurnedOn"].Value;
         public string SystemEntry_TranscriptionTurnedOff => l["SystemEntry_TranscriptionTurnedOff"].Value;
+        public string SystemEntry_HandRaised => l["SystemEntry_HandRaised"].Value;
+        public string SystemEntry_HandLowered => l["SystemEntry_HandLowered"].Value;
 
         public string ChatMaintenance_Mode => l["ChatMaintenance_Mode"].Value;
         public string ChatImport_Start => l["ChatImport_Start"].Value;

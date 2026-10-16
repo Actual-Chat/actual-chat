@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " ha disattivato la conservazione della cronologia.",
   "SystemEntry_TranscriptionTurnedOn": " ha attivato la trascrizione.",
   "SystemEntry_TranscriptionTurnedOff": " ha disattivato la trascrizione.",
+  "SystemEntry_HandRaised": " ha alzato la mano.",
+  "SystemEntry_HandLowered": " ha abbassato la mano.",
 
   "ChatMaintenance_Mode": "Modalità manutenzione",
   "ChatImport_Start": "Avvia importazione",

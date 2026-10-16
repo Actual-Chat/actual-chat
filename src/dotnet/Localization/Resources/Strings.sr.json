@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " је искључио чување хисторије.",
   "SystemEntry_TranscriptionTurnedOn": " је укључио транскрипцију.",
   "SystemEntry_TranscriptionTurnedOff": " је искључио транскрипцију.",
+  "SystemEntry_HandRaised": " је подигао руку.",
+  "SystemEntry_HandLowered": " је спустио руку.",
 
   "ChatMaintenance_Mode": "Режим одржавања",
   "ChatImport_Start": "Покрени увоз",

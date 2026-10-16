@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": "님이 기록 보관 기간을 해제했습니다.",
   "SystemEntry_TranscriptionTurnedOn": "님이 받아쓰기를 켰습니다.",
   "SystemEntry_TranscriptionTurnedOff": "님이 받아쓰기를 껐습니다.",
+  "SystemEntry_HandRaised": "님이 손을 들었습니다.",
+  "SystemEntry_HandLowered": "님이 손을 내렸습니다.",
 
   "ChatMaintenance_Mode": "유지보수 모드",
   "ChatImport_Start": "가져오기 시작",

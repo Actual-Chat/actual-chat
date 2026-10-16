@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " đã tắt thời hạn lưu lịch sử.",
   "SystemEntry_TranscriptionTurnedOn": " đã bật chuyển lời nói thành văn bản.",
   "SystemEntry_TranscriptionTurnedOff": " đã tắt chuyển lời nói thành văn bản.",
+  "SystemEntry_HandRaised": " đã giơ tay.",
+  "SystemEntry_HandLowered": " đã hạ tay.",
 
   "ChatMaintenance_Mode": "Chế độ bảo trì",
   "ChatImport_Start": "Bắt đầu nhập",

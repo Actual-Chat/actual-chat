@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": " menonaktifkan masa simpan riwayat.",
   "SystemEntry_TranscriptionTurnedOn": " mengaktifkan transkripsi.",
   "SystemEntry_TranscriptionTurnedOff": " menonaktifkan transkripsi.",
+  "SystemEntry_HandRaised": " mengangkat tangan.",
+  "SystemEntry_HandLowered": " menurunkan tangan.",
 
   "ChatMaintenance_Mode": "Mode pemeliharaan",
   "ChatImport_Start": "Mulai impor",

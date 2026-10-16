@@ -531,6 +531,8 @@
   "SystemEntry_RetentionTurnedOff": " a désactivé la durée de conservation de l’historique.",
   "SystemEntry_TranscriptionTurnedOn": " さんが文字起こしをオンにしました。",
   "SystemEntry_TranscriptionTurnedOff": " さんが文字起こしをオフにしました。",
+  "SystemEntry_HandRaised": " さんが手を挙げました。",
+  "SystemEntry_HandLowered": " さんが手を下ろしました。",
 
   // The bar that replaces the message editor when you cannot post: a read-only chat, a block in
   // either direction, or a chat you have not joined yet. Most of these are fragments wrapped

@@ -439,6 +439,8 @@
   "SystemEntry_RetentionTurnedOff": ": строк зберігання історії вимкнено.",
   "SystemEntry_TranscriptionTurnedOn": ": транскрипцію ввімкнено.",
   "SystemEntry_TranscriptionTurnedOff": ": транскрипцію вимкнено.",
+  "SystemEntry_HandRaised": " піднімає руку.",
+  "SystemEntry_HandLowered": " опускає руку.",
 
   "ChatMaintenance_Mode": "Режим обслуговування",
   "ChatImport_Start": "Почати імпорт",

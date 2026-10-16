@@ -43,6 +43,12 @@ public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryO
         init => Option ??= value;
     }
 
+    [DataMember]
+    public LegacyHandRaisedOption? HandRaised {
+        get => Option as LegacyHandRaisedOption;
+        init => Option ??= value;
+    }
+
     public static implicit operator LegacySystemEntry(LegacySystemEntryOption option)
         => new() { Option = option };
 
@@ -67,6 +73,9 @@ public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryO
         TranscriptionChangedEntry tc => new LegacySystemEntry {
             Option = new LegacyTranscriptionChangedOption(
                 tc.TargetAuthorId, tc.TargetAuthorName, tc.IsTranscriptionOn),
+        },
+        HandRaisedEntry hr => new LegacySystemEntry {
+            Option = new LegacyHandRaisedOption(hr.TargetAuthorId, hr.TargetAuthorName, hr.IsHandRaised),
         },
         _ => null,
     };
@@ -156,5 +165,21 @@ public sealed partial record LegacyTranscriptionChangedOption : LegacySystemEntr
         AuthorId = authorId;
         AuthorName = authorName;
         IsOn = isOn;
+    }
+}
+
+[DataContract]
+public sealed partial record LegacyHandRaisedOption : LegacySystemEntryOption
+{
+    [DataMember] public AuthorId? AuthorId { get; init; }
+    [DataMember] public string AuthorName { get; init; } = "";
+    [DataMember] public bool IsRaised { get; init; }
+
+    [JsonConstructor, Newtonsoft.Json.JsonConstructor]
+    public LegacyHandRaisedOption(AuthorId? authorId, string authorName, bool isRaised)
+    {
+        AuthorId = authorId;
+        AuthorName = authorName;
+        IsRaised = isRaised;
     }
 }

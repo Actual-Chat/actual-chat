@@ -156,6 +156,12 @@ public class SystemEntryLocalizationTest
                 TargetAuthorName = AuthorName,
                 IsTranscriptionOn = isTranscriptionOn,
             };
+        foreach (var isHandRaised in new[] { true, false })
+            yield return new HandRaisedEntry {
+                TargetAuthorId = authorId,
+                TargetAuthorName = AuthorName,
+                IsHandRaised = isHandRaised,
+            };
     }
 
     private static SystemEntryMarkupBuilder NewBuilder(Language language)
