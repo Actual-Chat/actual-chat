@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "«{0}» в {1}",
   "Share_TextNamed_Format": "{0} в {1}",
   "Share_ThreadText_Format": "Тред «{0}» в {1}: {2}",
+  "Share_NeedsApproval": "Вступление одобряет владелец или модератор",
+  "Share_InviteLinksWarning": "Впускает без одобрения: делитесь только с теми, кого готовы принять",
   "Account_RegisterTitle": "Создать аккаунт?",
   "Account_RegisterText_Format": "Мы не нашли аккаунт для {0}. Зарегистрировать новый?",
   "Account_RegisterThisAccount": "этого аккаунта",

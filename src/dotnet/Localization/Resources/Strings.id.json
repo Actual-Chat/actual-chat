@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "\"{0}\" di {1}",
   "Share_TextNamed_Format": "{0} di {1}",
   "Share_ThreadText_Format": "Utas \"{0}\" di {1}: {2}",
+  "Share_NeedsApproval": "Bergabung perlu persetujuan pemilik atau moderator",
+  "Share_InviteLinksWarning": "Bergabung tanpa persetujuan: bagikan hanya kepada orang yang siap Anda terima",
   "Account_RegisterTitle": "Daftar akun?",
   "Account_RegisterText_Format": "Kami tidak menemukan akun untuk {0}. Ingin mendaftarkan yang baru?",
   "Account_RegisterThisAccount": "akun ini",

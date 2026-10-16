@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "{1}의 \"{0}\"",
   "Share_TextNamed_Format": "{1}의 {0}",
   "Share_ThreadText_Format": "{1}의 스레드 \"{0}\": {2}",
+  "Share_NeedsApproval": "참여하려면 소유자나 모더레이터의 승인이 필요합니다",
+  "Share_InviteLinksWarning": "승인 없이 참여합니다. 받아들일 사람에게만 공유하세요",
   "Account_RegisterTitle": "계정 등록?",
   "Account_RegisterText_Format": "{0}에 해당하는 계정을 찾지 못했습니다. 새로 등록할까요?",
   "Account_RegisterThisAccount": "이 계정",

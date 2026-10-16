@@ -1,0 +1,97 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Invite
+@inherits ComputedStateComponent<AppUIHub, InviteLinksSection.Model>
+@{
+    var m = State.Value;
+    if (!m.CanInvite)
+        return;
+}
+
+<FormBlock Title="@L.Invite_ManageLinks" Class="@Class">
+    @if (m.Invites.Count > 0) {
+        <InviteList
+            Invites="m.Invites"
+            LinkFormat="@InviteLinkFormat.PrivateChat"
+            NewInviteId="@_newInviteId"
+            AllowRevoke="true"/>
+    }
+    <Button
+        IsDisabled="@(m.Invites.Count >= MaxInviteCount)"
+        Click="OnNewInviteClick"
+        Class="btn-modal h-10 btn-w-full">
+        <Icon><i class="icon-plus text-xl"></i></Icon>
+        <Title>@L.Invite_NewPrivateLink</Title>
+    </Button>
+</FormBlock>
+
+@code {
+    private const int MaxInviteCount = 5;
+    private Symbol _newInviteId = Symbol.Empty;
+
+    private IChats Chats => Hub.Chats;
+    private IPlaces Places => Hub.Places;
+    private IInvites Invites => Hub.Invites;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+    [Parameter] public string Class { get; set; } = "first last";
+
+    // Protected methods
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = ChatId;
+        var session = Session;
+        var inviteService = Invites;
+        var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
+        Invite[] invites;
+        // A Place root chat stands for its Place
+        if (chatId is PlaceChatId { IsRoot: true } placeChatId) {
+            var place = await Places.Get(session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+            if (place is null || place.IsPublic || !place.Rules.CanInvite())
+                return Model.None;
+
+            invites = await inviteService.ListPlaceInvites(session, place.Id, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        else {
+            var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+            if (chat is null || chat.IsPublic || !chat.CanInvite())
+                return Model.None;
+
+            invites = await inviteService.ListChatInvites(session, chatId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+        var activeInvites = invites
+            .Where(c => c.ExpiresOn > threshold)
+            .OrderByDescending(c => c.ExpiresOn)
+            .ToList();
+        return new Model(true, activeInvites);
+    }
+
+    // Private methods
+
+    private async Task OnNewInviteClick() {
+        Invite invite = ChatId is PlaceChatId { IsRoot: true } placeChatId
+            ? PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, placeChatId.PlaceId)
+            : ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, ChatId);
+        var command = new Invites_Generate { Session = Session, Invite = invite };
+        var uiActionResult = await UICommander.Run(command).ConfigureAwait(true);
+        if (uiActionResult.HasError)
+            return;
+
+        _newInviteId = uiActionResult.Value.Id;
+    }
+
+    // Nested types
+
+    public sealed record Model(bool CanInvite, List<Invite> Invites)
+    {
+        public static readonly Model None = new(false, []);
+    }
+}

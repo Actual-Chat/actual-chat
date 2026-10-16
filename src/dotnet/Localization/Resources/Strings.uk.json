@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "«{0}» у {1}",
   "Share_TextNamed_Format": "{0} у {1}",
   "Share_ThreadText_Format": "Тред «{0}» у {1}: {2}",
+  "Share_NeedsApproval": "Вступ схвалює власник або модератор",
+  "Share_InviteLinksWarning": "Впускає без схвалення: діліться лише з тими, кого готові прийняти",
   "Account_RegisterTitle": "Створити акаунт?",
   "Account_RegisterText_Format": "Ми не знайшли обліковий запис для {0}. Зареєструвати новий?",
   "Account_RegisterThisAccount": "цього облікового запису",

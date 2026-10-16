@@ -2272,6 +2272,8 @@
   "Share_TextTitled_Format": "{1} üzerinde \"{0}\"",
   "Share_TextNamed_Format": "{1} üzerinde {0}",
   "Share_ThreadText_Format": "{1} üzerindeki \"{0}\" konusu: {2}",
+  "Share_NeedsApproval": "Ein Beitritt muss von einem Eigentümer oder Moderator angenommen werden",
+  "Share_InviteLinksWarning": "Присъединява без одобрение: споделяйте само с хора, които сте готови да приемете",
 
   // Shown when someone signs in with an identity that has no account yet.
   "Account_RegisterTitle": "Hesap oluşturulsun mu?",

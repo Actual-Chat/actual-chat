@@ -88,12 +88,12 @@
                     ? chat.Title
                     : string.Concat(place.Title, "/", chat.Title);
                 var text = L.Share_TextTitled_Format(targetTitle, CoreConstants.AppName);
-                var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
+                // An invite link works outside the Place too: there it files a Place request
                 var shareModel = new ShareModalModel(
                     ShareKind.ChatInvite, L.MessageMenu_ShareLink, targetTitle,
                     new(text, link),
-                    shareModalSelectorPrefs,
-                    Caption: L.Chat_PrivateChat);
+                    null,
+                    Caption: L.Share_InviteLinksWarning);
                 _ = ShareUI.Share(shareModel);
                 return;
             }
@@ -108,7 +108,7 @@
                     ShareKind.PlaceInvite, L.MessageMenu_ShareLink, place.Title,
                     new(text, link),
                     null,
-                    Caption: L.Place_PrivatePlace);
+                    Caption: L.Share_InviteLinksWarning);
                 _ = ShareUI.Share(shareModel);
                 return;
             }

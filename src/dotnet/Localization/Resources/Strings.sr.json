@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "„{0}“ на {1}",
   "Share_TextNamed_Format": "{0} на {1}",
   "Share_ThreadText_Format": "Нит „{0}“ на {1}: {2}",
+  "Share_NeedsApproval": "За придруживање је потребно одобрење власника или модератора",
+  "Share_InviteLinksWarning": "Придружује без одобрења: делите само с људима које сте спремни примити",
   "Account_RegisterTitle": "Регистровати налог?",
   "Account_RegisterText_Format": "Нисмо пронашли рачун за {0}. Желите ли регистровати нови?",
   "Account_RegisterThisAccount": "овај рачун",

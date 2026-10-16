@@ -6,11 +6,9 @@ namespace ActualChat.UI.Blazor.App.Components;
 
 public partial class EditChatTypeModalPage
 {
-    private const int MaxInviteCount = 5;
     private Form? _formRef;
     private FormModel? _form;
     private EditContext? _editContext;
-    private Symbol _newInviteId = Symbol.Empty;
     private DialogButtonInfo _submitButtonInfo = null!;
     private bool _isAdmin;
     private PlaceId? _placeId;
@@ -24,7 +22,6 @@ public partial class EditChatTypeModalPage
 
     private IChats Chats => Hub.Chats;
     private IPlaces Places => Hub.Places;
-    private IInvites Invites => Hub.Invites;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
     [CascadingParameter] public Modal Modal { get; set; } = null!;
@@ -98,36 +95,13 @@ public partial class EditChatTypeModalPage
         if (chat == null || !chat.Rules.IsOwner())
             return new ComputedModel { Chat = chat };
 
-        List<Invite.Invite> activeInvites;
-        if (chat.CanInvite()) {
-            var invites = await Invites.ListChatInvites(Session, chatId, cancellationToken).ConfigureAwait(false);
-            var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
-            activeInvites = invites
-                .Where(c => c.ExpiresOn > threshold)
-                .OrderByDescending(c => c.ExpiresOn)
-                .ToList();
-        }
-        else
-            activeInvites = [];
         var allowEditIsTemplate = await Features.Get<Features_EnableTemplateChatUI>(cancellationToken);
         var isPublic = chat.IsPublic;
         return new () {
             Chat = chat,
-            Invites = activeInvites,
             AllowEditIsTemplate = allowEditIsTemplate,
             IsPublic = isPublic,
         };
-    }
-
-    private async Task OnNewInviteClick()
-    {
-        ActualChat.Invite.Invite invite = ChatInvite.New(Constants.Invites.Defaults.ChatRemaining, ChatId);
-        var uiActionResult = await UICommander.Run(new Invites_Generate {
-            Session = Session,
-            Invite = invite,
-        }).ConfigureAwait(false);
-        invite = uiActionResult.Value;
-        _newInviteId = invite.Id;
     }
 
     private async Task OnSubmit()
@@ -232,7 +206,6 @@ public partial class EditChatTypeModalPage
     public sealed record ComputedModel
     {
         public Chat.Chat? Chat { get; init; }
-        public List<Invite.Invite> Invites { get; init; } = [];
         public bool AllowEditIsTemplate { get; init; }
         public bool IsPublic { get; init; }
     }

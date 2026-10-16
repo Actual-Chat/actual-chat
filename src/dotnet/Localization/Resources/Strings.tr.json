@@ -1929,6 +1929,8 @@
   "Share_TextTitled_Format": "{1} üzerinde \"{0}\"",
   "Share_TextNamed_Format": "{1} üzerinde {0}",
   "Share_ThreadText_Format": "{1} üzerindeki \"{0}\" konusu: {2}",
+  "Share_NeedsApproval": "Katılmak için bir sahibin ya da moderatörün onayı gerekir",
+  "Share_InviteLinksWarning": "Onaysız katılım sağlar: yalnızca kabul etmeye hazır olduğunuz kişilerle paylaşın",
   "Account_RegisterTitle": "Hesap oluşturulsun mu?",
   "Account_RegisterText_Format": "{0} için hesap bulamadık. Yeni bir tane oluşturmak ister misiniz?",
   "Account_RegisterThisAccount": "bu hesap",

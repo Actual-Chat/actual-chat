@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "« {0} » sur {1}",
   "Share_TextNamed_Format": "{0} sur {1}",
   "Share_ThreadText_Format": "Fil « {0} » sur {1} : {2}",
+  "Share_NeedsApproval": "Pour rejoindre, il faut l'accord d'un propriétaire ou d'un modérateur",
+  "Share_InviteLinksWarning": "Fait rejoindre sans accord : ne le partagez qu'avec ceux que vous voulez admettre",
   "Account_RegisterTitle": "Créer un compte ?",
   "Account_RegisterText_Format": "Nous n'avons pas trouvé de compte pour {0}. Voulez-vous en créer un nouveau ?",
   "Account_RegisterThisAccount": "ce compte",

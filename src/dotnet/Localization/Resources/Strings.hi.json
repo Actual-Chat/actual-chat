@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "{1} पर \"{0}\"",
   "Share_TextNamed_Format": "{1} पर {0}",
   "Share_ThreadText_Format": "{1} पर थ्रेड \"{0}\": {2}",
+  "Share_NeedsApproval": "शामिल होने के लिए किसी मालिक या मॉडरेटर की स्वीकृति चाहिए",
+  "Share_InviteLinksWarning": "बिना स्वीकृति के शामिल करता है: केवल उन्हीं से साझा करें जिन्हें आप जोड़ना चाहते हैं",
   "Account_RegisterTitle": "खाता बनाएँ?",
   "Account_RegisterText_Format": "हमें {0} के लिए कोई खाता नहीं मिला। क्या आप नया पंजीकृत करना चाहेंगे?",
   "Account_RegisterThisAccount": "इस खाते",

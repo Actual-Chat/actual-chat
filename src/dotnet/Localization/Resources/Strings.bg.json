@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "„{0}“ в {1}",
   "Share_TextNamed_Format": "{0} в {1}",
   "Share_ThreadText_Format": "Тема „{0}“ в {1}: {2}",
+  "Share_NeedsApproval": "За присъединяване е нужно одобрение от собственик или модератор",
+  "Share_InviteLinksWarning": "Присъединява без одобрение: споделяйте само с хора, които сте готови да приемете",
   "Account_RegisterTitle": "Регистрация?",
   "Account_RegisterText_Format": "Не намерихме профил за {0}. Искате ли да регистрирате нов?",
   "Account_RegisterThisAccount": "този профил",

@@ -29,17 +29,16 @@
                         >@L.ChatWelcome_ShareContact_Suffix</span></div>
                     break;
                 default:
-                    var welcomeText = m.ShareModel is not null
+                    var welcomeText = m.ShareModel?.Request.HasLink() is true
                         ? L.ChatWelcome_ShareLink
                         : L.ChatWelcome_Default;
                     <div class="c-content">@welcomeText</div>
                     break;
             }
 
-            @if (m.ShareModel is { } shareModel) {
-                var link = shareModel.Request.Link.GetValueOrDefault();
-                var linkKind = link.IsPrivateChatInvite()
-                    ? L.ChatWelcome_PrivateJoinLink
+            @if (m.ShareModel is { } shareModel && shareModel.Request.HasLink(out var link)) {
+                var linkKind = shareModel.IsApprovalNeeded
+                    ? L.Share_NeedsApproval
                     : L.ChatWelcome_PublicLink;
                 var copyText = shareModel.Request.GetShareLink(UrlMapper);
                 <div class="chat-link">

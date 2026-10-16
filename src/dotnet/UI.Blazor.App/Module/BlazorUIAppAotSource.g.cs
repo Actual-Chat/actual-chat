@@ -261,6 +261,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ImageQualitySelector>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IncomingShareModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.InviteFriendsBanner>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.InviteLinksSection>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppLocationGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinLanding>();
@@ -1162,6 +1163,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ImageQualitySelector), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IncomingShareModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.InviteFriendsBanner), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.InviteLinksSection), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppLocationGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.JoinLanding), AotTypeKind.Component),

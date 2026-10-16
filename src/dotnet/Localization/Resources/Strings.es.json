@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "«{0}» en {1}",
   "Share_TextNamed_Format": "{0} en {1}",
   "Share_ThreadText_Format": "Hilo «{0}» en {1}: {2}",
+  "Share_NeedsApproval": "Para unirse hace falta la aprobación de un propietario o un moderador",
+  "Share_InviteLinksWarning": "Une sin aprobación: compártelo solo con quien estés dispuesto a admitir",
   "Account_RegisterTitle": "¿Crear cuenta?",
   "Account_RegisterText_Format": "No encontramos una cuenta para {0}. ¿Quieres registrar una nueva?",
   "Account_RegisterThisAccount": "esta cuenta",

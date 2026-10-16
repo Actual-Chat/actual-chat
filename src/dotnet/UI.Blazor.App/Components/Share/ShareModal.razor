@@ -19,38 +19,46 @@
     Caption="@ModalModel.Caption"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
-    <FormBlock Class="with-contact-list">
-        @if (_selectorKind == SelectorKind.Contact) {
-            <ContactSelector
-                @ref="@_contactSelectorRef"
-                SearchQuery="_searchQuery"
-                ChatListPreOrder="@ChatListPreOrder.ChatList"
-                RequiredPermissions="@(ModalModel.Request.HasMedia() ? ChatPermissions.Upload : default)"
-                Changed="@StateHasChanged">
-                <SearchBox
-                    Placeholder="@L.Share_WhoToShareWith"
-                    MaxLength="@Constants.Chat.MaxSearchFilterLength"
-                    TextChanged="@OnFilter"/>
-                <ContactSelectorPlacePicker/>
-                <ContactSelectorListView/>
-            </ContactSelector>
-        }
-        else if (_selectorKind == SelectorKind.Members) {
-            <MemberSelector
-                @ref="_memberSelectorRef"
-                ListSource="@_memberListSource"
-                SearchBoxPlaceholder="@L.Share_WhoToShareWith"
-                Changed="@(() => StateHasChanged())" />
-        }
-    </FormBlock>
+    @if (ModalModel.InviteChatId is { } inviteChatId) {
+        <InviteLinksSection ChatId="@inviteChatId" Class="first"/>
+        <div class="share-modal-invite-links-warning">@L.Share_InviteLinksWarning</div>
+    }
+    @if (_selectorKind != SelectorKind.None) {
+        <FormBlock Class="with-contact-list">
+            @if (_selectorKind == SelectorKind.Contact) {
+                <ContactSelector
+                    @ref="@_contactSelectorRef"
+                    SearchQuery="_searchQuery"
+                    ChatListPreOrder="@ChatListPreOrder.ChatList"
+                    RequiredPermissions="@(ModalModel.Request.HasMedia() ? ChatPermissions.Upload : default)"
+                    Changed="@StateHasChanged">
+                    <SearchBox
+                        Placeholder="@L.Share_WhoToShareWith"
+                        MaxLength="@Constants.Chat.MaxSearchFilterLength"
+                        TextChanged="@OnFilter"/>
+                    <ContactSelectorPlacePicker/>
+                    <ContactSelectorListView/>
+                </ContactSelector>
+            }
+            else {
+                <MemberSelector
+                    @ref="_memberSelectorRef"
+                    ListSource="@_memberListSource"
+                    SearchBoxPlaceholder="@L.Share_WhoToShareWith"
+                    Changed="@(() => StateHasChanged())" />
+            }
+        </FormBlock>
+    }
     </Body>
     <Footer>
-        <EmbeddedMessageEditor
-            Text="@_comment"
-            IsTransparent="@true"
-            Placeholder="@L.Share_AddComment"
-            PlaceholderIcon="icon-message-ellipse"
-            TextChanged="OnCommentChanged" />
+        @if (_selectorKind != SelectorKind.None) {
+            <EmbeddedMessageEditor
+                Text="@_comment"
+                IsTransparent="@true"
+                Placeholder="@L.Share_AddComment"
+                PlaceholderIcon="icon-message-ellipse"
+                TextChanged="OnCommentChanged" />
+        }
     </Footer>
     <Buttons>
         @if (canSend) {
@@ -89,12 +97,16 @@
 
     protected override void OnInitialized() {
         _comment = ModalModel.Request.Text;
-        // A private place's invite is for its members only, so it has no business outside the app
+        // A link only Place members can follow has no business outside the app
         _mustShowActions = ModalModel.Request.HasAnyLink()
             && ModalModel.SelectorPrefs is not ShareWithPlaceMembersOnly;
         if (ModalModel.SelectorPrefs is ShareWithPlaceMembersOnly selector) {
             _memberListSource = new PlaceMemberListSource(Hub, selector.PlaceId, [OwnAccount.Id]);
             _selectorKind = SelectorKind.Members;
+        }
+        else if (!ModalModel.Request.HasAnyLink() && !ModalModel.Request.HasMedia()) {
+            // Only invite links to share, and each of them has its own Share button
+            _selectorKind = SelectorKind.None;
         }
     }
 
@@ -128,5 +140,5 @@
     private void OnCommentChanged(string text)
         => _comment = text;
 
-    private enum SelectorKind { Contact, Members }
+    private enum SelectorKind { None, Contact, Members }
 }

@@ -8,6 +8,10 @@
 .share-modal .form-block {
     @apply overflow-y-hidden;
 }
+.share-modal-invite-links-warning {
+    @apply px-4 pb-3;
+    @apply text-caption text-03;
+}
 .narrow .share-modal .contact-selector-list {
     @apply pb-0;
 }

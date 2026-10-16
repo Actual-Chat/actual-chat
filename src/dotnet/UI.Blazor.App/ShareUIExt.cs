@@ -1,4 +1,3 @@
-using ActualChat.Invite;
 using ActualChat.Localization;
 using ActualChat.UI.Blazor.Services;
 
@@ -103,21 +102,27 @@ public static class ShareUIExt
                 l.Chat_PublicChat);
         }
 
-        var invites = services.GetRequiredService<IInvites>();
-        var invite = await invites.GetOrGenerateChatInvite(session, chat.Id, cancellationToken)
-            .ConfigureAwait(false);
-        if (invite == null)
-            return null;
+        // A private chat's own address files a join request, so it is shared only where requests are on
+        var inviteChatId = chat.CanInvite() ? chat.Id : null;
+        if (chat.JoinRequestAccess == JoinRequestAccess.Off)
+            return inviteChatId is null ? null
+                : new ShareModalModel(
+                    ShareKind.ChatInvite, l.MessageMenu_ShareLink, targetTitle,
+                    new (text), null, imageUrl, l.Chat_PrivateChat) {
+                    InviteChatId = inviteChatId,
+                };
 
-        var shareModalSelectorPrefs = ShareWithPlaceMembersOnly.GetFor(chat, place);
         return new ShareModalModel(
-            ShareKind.ChatInvite,
+            ShareKind.Chat,
             l.MessageMenu_ShareLink,
             targetTitle,
-            new (text, Links.Invite(InviteLinkFormat.PrivateChat, invite.Id)),
-            shareModalSelectorPrefs,
+            new (text, Links.Chat(chat.Id)),
+            ShareWithPlaceMembersOnly.GetFor(chat),
             imageUrl,
-            l.Chat_PrivateChat);
+            l.Share_NeedsApproval) {
+            InviteChatId = inviteChatId,
+            IsApprovalNeeded = true,
+        };
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(
@@ -150,19 +155,26 @@ public static class ShareUIExt
                 l.Place_PublicPlace);
         }
 
-        var invites = services.GetRequiredService<IInvites>();
-        var invite = await invites.GetOrGeneratePlaceInvite(session, place.Id, cancellationToken).ConfigureAwait(false);
-        if (invite == null)
-            return null;
+        var inviteChatId = place.Rules.CanInvite() ? place.Id.RootChatId : null;
+        if (place.JoinRequestAccess == JoinRequestAccess.Off)
+            return inviteChatId is null ? null
+                : new ShareModalModel(
+                    ShareKind.PlaceInvite, l.MessageMenu_ShareLink, place.Title,
+                    new(text), null, imageUrl, l.Place_PrivatePlace) {
+                    InviteChatId = inviteChatId,
+                };
 
         return new ShareModalModel(
-            ShareKind.PlaceInvite,
+            ShareKind.Place,
             l.MessageMenu_ShareLink,
             place.Title,
-            new(text, Links.Invite(InviteLinkFormat.PrivatePlace, invite.Id)),
+            new(text, Links.PlaceInfo(place.Id)),
             null,
             imageUrl,
-            l.Place_PrivatePlace);
+            l.Share_NeedsApproval) {
+            InviteChatId = inviteChatId,
+            IsApprovalNeeded = true,
+        };
     }
 
     public static async ValueTask<ShareModalModel?> GetModel(

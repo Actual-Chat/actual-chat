@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "„{0}“ na {1}",
   "Share_TextNamed_Format": "{0} na {1}",
   "Share_ThreadText_Format": "Nit „{0}“ na {1}: {2}",
+  "Share_NeedsApproval": "Za pridruživanje je potrebno odobrenje vlasnika ili moderatora",
+  "Share_InviteLinksWarning": "Pridružuje bez odobrenja: dijelite samo s ljudima koje ste spremni primiti",
   "Account_RegisterTitle": "Registrirati nalog?",
   "Account_RegisterText_Format": "Nismo pronašli račun za {0}. Želite li registrirati novi?",
   "Account_RegisterThisAccount": "ovaj račun",

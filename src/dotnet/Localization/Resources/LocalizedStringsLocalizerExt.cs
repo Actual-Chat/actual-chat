@@ -2016,6 +2016,9 @@ public static class LocalizedStringsLocalizerExt
         public string Share_TextNamed_Format(object arg0, object arg1) => l["Share_TextNamed_Format", arg0, arg1].Value;
         public string Share_ThreadText_Format(object arg0, object arg1, object arg2)
             => l["Share_ThreadText_Format", arg0, arg1, arg2].Value;
+
+        public string Share_NeedsApproval => l["Share_NeedsApproval"].Value;
+        public string Share_InviteLinksWarning => l["Share_InviteLinksWarning"].Value;
         public string Account_RegisterTitle => l["Account_RegisterTitle"].Value;
         public string Account_RegisterText_Format(object arg0) => l["Account_RegisterText_Format", arg0].Value;
         public string Account_RegisterThisAccount => l["Account_RegisterThisAccount"].Value;

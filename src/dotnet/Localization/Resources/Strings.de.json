@@ -1923,6 +1923,8 @@
   "Share_TextTitled_Format": "„{0}“ auf {1}",
   "Share_TextNamed_Format": "{0} auf {1}",
   "Share_ThreadText_Format": "Thread „{0}“ auf {1}: {2}",
+  "Share_NeedsApproval": "Ein Beitritt muss von einem Eigentümer oder Moderator angenommen werden",
+  "Share_InviteLinksWarning": "Tritt ohne Zustimmung bei: teilen Sie ihn nur mit Leuten, die Sie aufnehmen möchten",
   "Account_RegisterTitle": "Konto erstellen?",
   "Account_RegisterText_Format": "Wir haben kein Konto für {0} gefunden. Möchten Sie ein neues registrieren?",
   "Account_RegisterThisAccount": "dieses Konto",

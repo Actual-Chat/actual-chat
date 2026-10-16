@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "{1} の「{0}」",
   "Share_TextNamed_Format": "{1} の {0}",
   "Share_ThreadText_Format": "{1} のスレッド「{0}」: {2}",
+  "Share_NeedsApproval": "参加にはオーナーまたはモデレーターの承認が必要です",
+  "Share_InviteLinksWarning": "承認なしで参加できます。受け入れてよい人にだけ共有してください",
   "Account_RegisterTitle": "アカウント登録？",
   "Account_RegisterText_Format": "{0} のアカウントが見つかりませんでした。新しく登録しますか?",
   "Account_RegisterThisAccount": "このアカウント",

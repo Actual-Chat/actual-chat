@@ -17,7 +17,6 @@
 </FormBlock>
 
 @code {
-    // TODO: need invite links for private places (for Alexey K)
     private RenderFragment RenderShareActions => @<ShareActions Model="@(_shareModel!)" ScanHandler="@OnQrScanned"/>;
 
     private DialogButtonInfo _submitButtonInfo = null!;
@@ -41,11 +40,13 @@
 
         _submitButtonInfo = DialogButtonInfo.CreateSubmitButton(L.Common_Add, OnAdd);
         _submitButtonInfo.CanExecute = false;
-        if (Context.Model is ChatId chatId)
+        // The stand-in models keep the share row there from the first frame, until the real one arrives
+        if (Context.Model is ChatId chatId) {
             _backend = new NewChatMemberSelector(Hub, chatId);
-        else if (Context.Model is PlaceId placeId) {
+            _shareModel = new ShareModalModel(
+                ShareKind.Chat, L.MessageMenu_ShareLink, "", new ShareRequest(Links.Chat(chatId)), null);
+        } else if (Context.Model is PlaceId placeId) {
             _backend = new NewPlaceMemberSelector(Hub, placeId);
-            // Stands in until the place's own model arrives: the row is there from the first frame
             _shareModel = new ShareModalModel(
                 ShareKind.Place, L.Share_Place, "", new ShareRequest(Links.PlaceInfo(placeId)), null);
         } else
@@ -61,8 +62,8 @@
             ChatId chatId => await Hub.ShareUI.GetModel(chatId, DisposeToken),
             _ => null,
         };
-        if (shareModel is not null)
-            _shareModel = shareModel;
+        // No link (e.g. join requests are off) leaves no row: the stand-in must not outlive that answer
+        _shareModel = shareModel?.Request.HasLink() is true ?shareModel : null;
     }
 
     public void Dispose()

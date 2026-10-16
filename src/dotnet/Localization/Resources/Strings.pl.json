@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "„{0}” w {1}",
   "Share_TextNamed_Format": "{0} w {1}",
   "Share_ThreadText_Format": "Wątek „{0}” w {1}: {2}",
+  "Share_NeedsApproval": "Dołączenie wymaga zgody właściciela lub moderatora",
+  "Share_InviteLinksWarning": "Dołącza bez zgody: udostępniaj tylko osobom, które chcesz wpuścić",
   "Account_RegisterTitle": "Zarejestrować konto?",
   "Account_RegisterText_Format": "Nie znaleźliśmy konta dla {0}. Chcesz zarejestrować nowe?",
   "Account_RegisterThisAccount": "to konto",

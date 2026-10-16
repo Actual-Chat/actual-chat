@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "{1} 上的“{0}”",
   "Share_TextNamed_Format": "{1} 上的 {0}",
   "Share_ThreadText_Format": "{1} 上的话题“{0}”：{2}",
+  "Share_NeedsApproval": "加入需经所有者或版主批准",
+  "Share_InviteLinksWarning": "无需批准即可加入：只分享给你愿意接纳的人",
   "Account_RegisterTitle": "注册账号？",
   "Account_RegisterText_Format": "我们没有找到与 {0} 关联的账户。要注册一个新账户吗？",
   "Account_RegisterThisAccount": "该账户",

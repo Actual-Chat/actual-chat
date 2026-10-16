@@ -1922,6 +1922,8 @@
   "Share_TextTitled_Format": "\"{0}\" trên {1}",
   "Share_TextNamed_Format": "{0} trên {1}",
   "Share_ThreadText_Format": "Chủ đề \"{0}\" trên {1}: {2}",
+  "Share_NeedsApproval": "Cần chủ sở hữu hoặc người kiểm duyệt chấp thuận để tham gia",
+  "Share_InviteLinksWarning": "Tham gia không cần chấp thuận: chỉ chia sẻ với người bạn sẵn sàng cho vào",
   "Account_RegisterTitle": "Tạo tài khoản?",
   "Account_RegisterText_Format": "Chúng tôi không tìm thấy tài khoản cho {0}. Bạn có muốn đăng ký mới?",
   "Account_RegisterThisAccount": "tài khoản này",

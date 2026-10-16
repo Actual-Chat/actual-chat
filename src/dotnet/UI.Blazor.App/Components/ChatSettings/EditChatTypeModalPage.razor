@@ -115,20 +115,8 @@
             IsPlaceChat="@isPlaceChat"
             @bind-Value="_form.JoinRequestAccess"/>
     }
-    @if (!_form.IsPublic && m.Chat.CanInvite()) {
-        <FormBlock Title="@L.Invite_ManageLinks" Class="first last">
-            @if (m.Invites.Count > 0) {
-                <InviteList
-                    Invites="m.Invites"
-                    LinkFormat="@InviteLinkFormat.PrivateChat"
-                    NewInviteId="@_newInviteId"
-                    AllowRevoke="true"/>
-            }
-            <Button IsDisabled="@(m.Invites.Count >= MaxInviteCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
-                <Icon><i class="icon-plus text-xl"></i></Icon>
-                <Title>@L.Invite_NewPrivateLink</Title>
-            </Button>
-        </FormBlock>
+    @if (!_form.IsPublic) {
+        <InviteLinksSection ChatId="@m.Chat.Id"/>
     }
 
     @if (showGuestsToggle || showAnonymousToggle || showTemplateToggle) {

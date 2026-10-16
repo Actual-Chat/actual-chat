@@ -2272,6 +2272,8 @@
   "Share_TextTitled_Format": "\"{0}\" on {1}",
   "Share_TextNamed_Format": "{0} on {1}",
   "Share_ThreadText_Format": "Thread \"{0}\" on {1}: {2}",
+  "Share_NeedsApproval": "Joining needs approval by an owner or a moderator",
+  "Share_InviteLinksWarning": "Joins without approval: share only with people you're ready to let in",
 
   // Shown when someone signs in with an identity that has no account yet.
   "Account_RegisterTitle": "Register account?",

@@ -95,37 +95,22 @@
             Id="@_form.JoinRequestAccessFormId"
             @bind-Value="_form.JoinRequestAccess"/>
     }
-    @if (!_form.IsPublic && m.Place.Rules.CanInvite()) {
-        <FormBlock Title="@L.Invite_ManageLinks" Class="first last">
-            @if (m.Invites.Count > 0) {
-                <InviteList
-                    Invites="m.Invites"
-                    LinkFormat="@InviteLinkFormat.PrivateChat"
-                    NewInviteId="@_newInviteId"
-                    AllowRevoke="true"/>
-            }
-            <Button IsDisabled="@(m.Invites.Count >= MaxInviteCount)" Click="OnNewInviteClick" Class="btn-modal h-10 btn-w-full">
-                <Icon><i class="icon-plus text-xl"></i></Icon>
-                <Title>@L.Invite_NewPrivateLink</Title>
-            </Button>
-        </FormBlock>
+    @if (!_form.IsPublic) {
+        <InviteLinksSection ChatId="@PlaceId.RootChatId"/>
     }
 </Form>
 
 
 @code {
-    private const int MaxInviteCount = 5;
     private Form?_formRef;
     private FormModel? _form;
     private EditContext? _editContext;
-    private Symbol _newInviteId = Symbol.Empty;
     private DialogButtonInfo _submitButtonInfo = null!;
     private ElementReference _aliasTextBoxRef;
     private string _copyAliasFormatString = "";
     private Action<ElementReference> _aliasTextBoxRefSetter = null!;
 
     private IPlaces Places => Hub.Places;
-    private IInvites Invites => Hub.Invites;
 
     [CascadingParameter] public DiveInModalPageContext Context { get; set; } = null!;
 
@@ -169,25 +154,11 @@
         if (!place.Rules.CanEditProperties())
             return new() { Place = place };
 
-        var invites = await Invites.ListPlaceInvites(Session, placeId, cancellationToken);
-        var threshold = Clocks.SystemClock.Now - TimeSpan.FromDays(3);
-        var activeInvites = invites
-            .Where(c => c.ExpiresOn > threshold)
-            .OrderByDescending(c => c.ExpiresOn)
-            .ToList();
         var isPublic = place.IsPublic;
         return new() {
             Place = place,
-            Invites = activeInvites,
             IsPublic = isPublic,
         };
-    }
-
-    private async Task OnNewInviteClick() {
-        Invite invite = PlaceInvite.New(Constants.Invites.Defaults.PlaceRemaining, PlaceId);
-        var uiActionResult = await UICommander.Run(new Invites_Generate { Session = Session, Invite = invite });
-        invite = uiActionResult.Value;
-        _newInviteId = invite.Id;
     }
 
     private async Task OnSubmit() {
@@ -258,7 +229,6 @@
 
     public sealed record ComputedModel {
         public Place? Place { get; init; }
-        public List<Invite> Invites { get; init; } = [];
         public bool IsPublic { get; init; }
     }
 }
