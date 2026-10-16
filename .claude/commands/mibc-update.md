@@ -1,24 +1,29 @@
 ---
 allowed-tools: Bash, Read, Edit
-description: Re-record the startup profiles that drive partial ReadyToRun and regenerate android.mibc, android-notif.mibc, windows.mibc and merged.mibc. Takes [android|android-notif|windows|all], default all.
+description: Refresh the .mibc profiles in App.Maui/_Profiling - aothelper.mibc (with the AOT helper .g.cs files), android.mibc, android-notif.mibc, windows.mibc and merged.mibc. Takes [aothelper|android|android-notif|windows|all], default all.
 ---
 
-# /mibc-update — refresh the startup profiles
+# /mibc-update — refresh the profiles
 
-Maintains four files in `src/dotnet/App.Maui/_Profiling/`: `android.mibc`,
-`android-notif.mibc`, `windows.mibc`, and `merged.mibc` — the union, and the only one the
-builds actually compile against.
+Maintains five files in `src/dotnet/App.Maui/_Profiling/`: `aothelper.mibc` (static, from
+`App.AotHelper`; used by iOS / Mac Catalyst Release), `android.mibc`, `android-notif.mibc`,
+`windows.mibc`, and `merged.mibc` — the union of the three recorded ones, and the only one
+Android and Windows builds compile against.
 
-`$ARGUMENTS` selects what to re-record:
+`$ARGUMENTS` selects what to refresh:
 
-| Argument | Re-records |
+| Argument | Refreshes |
 |---|---|
+| `aothelper` | the `*AotSource.g.cs` files and `aothelper.mibc`, via `/aot-helpers-update mibc` |
 | `android` | `android.mibc` |
 | `android-notif` | `android-notif.mibc` — needs a push sent by hand, see below |
 | `windows` | `windows.mibc` |
-| `all` *(default, and what empty means)* | `android` + `windows` |
+| `all` *(default, and what empty means)* | `aothelper`, then `android` + `windows` |
 
 Anything else — stop and say what the valid values are; don't guess.
+
+**Order in `all`:** `aothelper` runs first. It rewrites the `.g.cs` files that the Android and
+Windows publishes compile, so recording against the old ones would profile a stale build.
 
 **`all` deliberately excludes `android-notif`.** That capture can't be automated end to end:
 it needs someone to send the device a push at the right moment. The file is a kept artifact
@@ -58,6 +63,17 @@ minutes for `all`.
 
 Run in order. Each `dotnet publish` takes several minutes — run it in the background and wait
 for completion rather than polling.
+
+### AOT helper — skip unless `$ARGUMENTS` is `aothelper` or `all`
+
+Follow [`/aot-helpers-update`](./aot-helpers-update.md) with `mibc` (don't ask which mode):
+
+```bash
+./update-aot-helpers.cmd
+```
+
+This takes a minute or two, not the tens of minutes of the recordings. Both the `.g.cs` files
+and `aothelper.mibc` are rewritten.
 
 ### Android — skip unless `$ARGUMENTS` is `android` or `all`
 
@@ -200,6 +216,7 @@ other build to finish, then re-record.
 
 ## Reporting
 
-Give the user method counts for all three files with before/after deltas, which platform
-halves were re-recorded, and any traces that were dropped. If runs were lost, say how many
+Give the user method counts for all three recorded files with before/after deltas, which
+platform halves were re-recorded, whether `aothelper.mibc` and the `.g.cs` files changed, and
+any traces that were dropped. If runs were lost, say how many
 rather than quietly merging fewer.
