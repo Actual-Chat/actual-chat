@@ -13,6 +13,9 @@ internal static class MauiApp
     private const string TargetFrameworkPrefix = "net11.0";
     private const string WindowsTargetFramework = $"{TargetFrameworkPrefix}-windows10.0.22621.0";
     private const string ProjectDir = "src/dotnet/App.Maui";
+    // A publish without -r goes through a per-RID inner build that never writes
+    // proguard_project_references.cfg, and App.Maui.csproj makes XA4304 an error
+    private const string AndroidRuntimeId = "android-arm64";
     // Windows PowerShell rather than pwsh: the Appx module is in-box there, and pwsh may not be installed
     private const string PowerShellExe = "powershell";
     // The host's own CPU on Linux; a cross-build from macOS or Windows targets the common one
@@ -120,6 +123,8 @@ internal static class MauiApp
             args.Add("-p:UseNativeAot=true");
         switch (settings.Platform) {
         case AppPlatform.Android:
+            if (settings.MustUsePublish)
+                args.AddRange(["-r", AndroidRuntimeId]);
             if (!settings.IsDev)
                 AddAndroidSigning(plan, args);
             break;
@@ -251,6 +256,8 @@ internal static class MauiApp
         var pivot = settings.ResolvedConfiguration.ToLower() + "_" + GetTargetFramework(settings);
         if (settings is { Platform: AppPlatform.Windows, MustUsePublish: true })
             pivot += "_win-x64";
+        if (settings is { Platform: AppPlatform.Android, MustUsePublish: true })
+            pivot += "_" + AndroidRuntimeId;
         if (settings.Platform == AppPlatform.Linux)
             pivot += "_" + LinuxRuntimeId;
 
