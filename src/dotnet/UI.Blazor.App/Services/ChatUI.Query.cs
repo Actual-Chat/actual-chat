@@ -15,7 +15,6 @@ public partial class ChatUI
     {
         conversationView = TruncateMaterializedRanges(conversationView,
             chatRangeTiles.SelectMany(m => m.ConversationRanges).Concat(blocks.Select(b => b.EntryLidRange)));
-        var showConversations = conversationView.ShowConversations;
         var hiddenLiveTailRange = conversationView.HiddenLiveTailRange;
         var liveBlockId = conversationView.LiveBlockConversationId;
         var liveBlockFoldRange = conversationView.LiveFoldRange;
@@ -51,12 +50,9 @@ public partial class ChatUI
             excludedRanges.Add(hiddenTailToExclude);
         excludedRanges = excludedRanges.OrderBy(r => r.Start).EnsureMonotonic().ToList();
 
-        var merged = showConversations
-            ? entryIdRanges
-                .Merge(excludedRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
-                .ToList()
-            : entryIdRanges
-                .Select(idRange => (idRange, new Range<long>(0, 0)));
+        var merged = entryIdRanges
+            .Merge(excludedRanges, (ce, co) => ce.IntersectWith(co).IsEmpty ? (int)(ce.Start - co.Start) : 0)
+            .ToList();
 
         var resultIdRanges = new List<Range<long>>();
 
@@ -135,13 +131,11 @@ public partial class ChatUI
             startEntryLid = Math.Min(startEntryLid, visibleLidRange.Start);
             endEntryLid = Math.Max(endEntryLid, visibleLidRange.End);
         }
-        if (showConversations) {
-            var range = ExpandToCollapsedBlocks(new(startEntryLid, endEntryLid), collapsedBlocks);
-            startEntryLid = range.Start;
-            endEntryLid = range.End;
-            hasFulfilledStart &= !hasPreviousIdTile || startEntryLid >= chatRangeTiles[0].LidRange.Start;
-            hasFulfilledEnd &= !hasNextIdTile || endEntryLid < chatRangeTiles[^1].LidRange.End;
-        }
+        var range = ExpandToCollapsedBlocks(new(startEntryLid, endEntryLid), collapsedBlocks);
+        startEntryLid = range.Start;
+        endEntryLid = range.End;
+        hasFulfilledStart &= !hasPreviousIdTile || startEntryLid >= chatRangeTiles[0].LidRange.Start;
+        hasFulfilledEnd &= !hasNextIdTile || endEntryLid < chatRangeTiles[^1].LidRange.End;
 
         idTiles1 = resultIdRanges
             .SkipWhile(r => r.End <= startEntryLid)

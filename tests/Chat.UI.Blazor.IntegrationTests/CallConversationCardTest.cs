@@ -66,6 +66,75 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
     }
 
     [Fact]
+    public async Task AChatWithoutSummariesShouldStillDrawAnEndedCallsCard()
+    {
+        // arrange
+        var (chatId, bobAuthor, aliceAuthor) = await NewPeerChat();
+        // A peer chat is only a row once something is written to it
+        await Tester.CreateTextEntry(chatId, "hello");
+        var turnSummariesOff = new Chats_Change {
+            Session = Tester.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { IsSummarized = false }),
+        };
+        await Tester.Commander.Call(turnSummariesOff, CancellationToken.None);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+
+        // act
+        await liveBackend.StartCall(
+            chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, CancellationToken.None);
+        await liveBackend.AcceptCall(chatId, aliceAuthor.Id, CancellationToken.None);
+        await liveBackend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(
+            chatId, bobAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
+
+        // assert
+        var chat = await Tester.Chats.Get(Tester.Session, chatId, CancellationToken.None);
+        chat!.IsSummarized.Should().BeFalse();
+        var messages = await GetMessages(chatId);
+        messages.Any(m => m.Conversation is { IsCall: true }).Should().BeTrue(
+            "the card is all a finished call leaves behind in a chat without summaries");
+        messages.OfType<ChatEntryMessage>()
+            .Should().NotContain(m => m.Kind == ChatMessageKind.None && m.Entry is CallEntry,
+                "the card already shows the call");
+    }
+
+    [Fact]
+    public async Task AChatWithoutSummariesShouldKeepAnOldConversationsMessagesInPlace()
+    {
+        // arrange
+        var (chatId, _, _) = await NewPeerChat();
+        var first = await Tester.CreateTextEntry(chatId, "said while summaries were on");
+        var last = await Tester.CreateTextEntry(chatId, "and this too");
+        var old = new Conversation(ConversationId.New(chatId, first.LocalId), 1) {
+            Title = "Old", Description = "d", Summary = "s", MessageCount = 2,
+            EndEntryLid = last.LocalId,
+            StartsAt = first.BeginsAt, EndsAt = last.BeginsAt,
+            IsExpandedByDefault = false,
+        };
+        var materialize = new ConversationBackend_Materialize(old);
+        await Tester.Commander.Call(materialize, CancellationToken.None);
+        var turnSummariesOff = new Chats_Change {
+            Session = Tester.Session,
+            ChatId = chatId,
+            ExpectedVersion = null,
+            Change = Change.Update(new ChatDiff { IsSummarized = false }),
+        };
+        await Tester.Commander.Call(turnSummariesOff, CancellationToken.None);
+
+        // act
+        var messages = await GetMessages(chatId);
+
+        // assert
+        messages.Should().NotContain(m => m.Conversation != null && m.Conversation.Id == old.Id,
+            "a chat without summaries draws only its calls' cards");
+        messages.OfType<ChatEntryMessage>().Select(m => m.Entry.LocalId)
+            .Should().Contain([first.LocalId, last.LocalId], "the old conversation must not fold its messages");
+    }
+
+    [Fact]
     public async Task MaterializedCallConversationShouldSpanRealTalkTime()
     {
         // Before this fix StartsAt/EndsAt both fell back to defaults that never differ for a
@@ -103,5 +172,28 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
                 "the span must be talk time from connect, not ring time from StartedAt");
         (conversation.EndsAt >= beforeHangup).Should().BeTrue(
             "EndsAt must be the close moment, not stuck at StartsAt or a LastSummaryAt a call never writes");
+    }
+
+    // Private methods
+
+    private async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewPeerChat()
+    {
+        var bob = await Tester.SignInAsUniqueBob();
+        var alice = await Tester.SignInAsUniqueAlice();
+        await Tester.SignIn(bob);
+        var chatId = (ChatId)PeerChatId.New(bob.Id, alice.Id);
+        var authors = AppHost.Services.GetRequiredService<IAuthorsBackend>();
+        var bobAuthor = await authors.EnsureJoined(chatId, bob.Id, CancellationToken.None);
+        var aliceAuthor = await authors.EnsureJoined(chatId, alice.Id, CancellationToken.None);
+        return (chatId, bobAuthor, aliceAuthor);
+    }
+
+    private async Task<List<ChatMessage>> GetMessages(ChatId chatId)
+    {
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        var items = await chatUI.GetChatItems(chatId, query, 0, CancellationToken.None);
+        return items.Items.SelectMany(i => i.GetLeafMessages()).ToList();
     }
 }
