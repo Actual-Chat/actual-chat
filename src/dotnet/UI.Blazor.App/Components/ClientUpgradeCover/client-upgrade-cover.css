@@ -28,5 +28,5 @@
     @apply px-0 md:px-4 py-4;
 }
 .client-upgrade-cover > .c-content > .c-button .btn {
-    @apply min-w-full;
+    @apply min-w-full min-h-12 md:min-h-10;
 }
