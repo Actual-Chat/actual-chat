@@ -15,7 +15,8 @@
     var hasFocusedHand = isExpanded && m.IsFocusedHandRaised;
 }
 
-<div class="call-screen-toolbar call-screen-header">
+@* Expanded, the screen covers every window-drag region of the page, so its header becomes one *@
+<div class="call-screen-toolbar call-screen-header" data-window-drag="@(isExpanded ? "" : null)">
     <div class="header-row">
         <div class="c-left">
             @if (isExpanded) {
