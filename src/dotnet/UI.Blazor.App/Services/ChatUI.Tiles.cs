@@ -554,7 +554,18 @@ public partial class ChatUI
             }
         }
 
-        expandedConversations = defaultExpanded.SymmetricExcept(overrides).Union(autoExpanded);
+        // A finished call that left no messages has nothing to expand into, whatever the join's expansion
+        // said; its card renders under the live block's id while that block lives
+        var emptyCallIds = conversationTiles.SelectMany(t => t)
+            .Where(c => c.IsCall && c.MessageCount == 0 && c.Id != liveConversation?.Id)
+            .Select(c => c.Id)
+            .ToHashSet();
+        if (materializedBlockId is { } emptyCallId && emptyCallIds.Contains(emptyCallId)
+            && liveBlockId is { } renderId)
+            emptyCallIds.Add(renderId);
+        expandedConversations = defaultExpanded.SymmetricExcept(overrides)
+            .Union(autoExpanded)
+            .Except(emptyCallIds);
         // A prefetch is a speculative background load nothing renders, so it must not consume the
         // one-shot "just changed" signal - the rebuild that does render would then never widen its
         // window to the affected conversation, and the entries it just revealed would never load.
