@@ -34,9 +34,12 @@ Before RC2, `UseInterpreter=false` indirectly kept `RuntimeFeature.IsDynamicCode
 false. [macios#26468](https://github.com/dotnet/macios/pull/26468) removed that coupling for
 CoreCLR: the default is now true regardless of `UseInterpreter`. We explicitly retain
 `DynamicCodeSupport=false` to preserve the existing library paths. The runtime issue
-#130840 is now closed, but enabling dynamic code again still requires on-device validation
-of our Blazor generic-component paths. The measurements and SDK excerpts below describe
-the pre-RC2 behavior.
+#130840 is closed, **but it still reproduces on .NET 11 RC2** (`11.0.0-rc.2.26504.105`):
+on 2026-10-15 a Release build with the property removed painted the UI and then froze, and
+the crash report had the signature described below — `0x8BADF00D` with
+`CID_VirtualOpenDelegateDispatchWorker` on the main thread. Keep the property until a later
+runtime is validated on device. The measurements and SDK excerpts below describe the
+pre-RC2 behavior.
 
 Evidence, all from the shipped `ios-arm64` build:
 
