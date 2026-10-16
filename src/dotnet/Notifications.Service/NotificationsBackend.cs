@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using ActualChat.Concurrency;
 using ActualChat.Contacts;
 using ActualChat.Db;
 using ActualChat.Flows;
@@ -9,6 +10,7 @@ using ActualChat.Notifications.Module;
 using ActualChat.Queues;
 using ActualLab.Diagnostics;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
@@ -58,6 +60,8 @@ public class NotificationsBackend(IServiceProvider services)
     private IQueues Queues { get; } = services.Queues();
     private UrlMapper UrlMapper { get; } = services.UrlMapper();
     private CancellationToken StopToken { get; } = services.GetService<IHostApplicationLifetime>().StopToken();
+    private MonotonicVersionGenerator HistorySeqGenerator { get; }
+        = new(services.GetRequiredService<VersionGenerator<long>>());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.Notifications);
 
     // [ComputeMethod]
@@ -863,7 +867,8 @@ public class NotificationsBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var item = new DbNotificationHistoryItem(notification, VersionGenerator.NextVersion(), Clocks.SystemClock.Now);
+        var item = new DbNotificationHistoryItem(
+            notification, HistorySeqGenerator.NextVersion(), Clocks.SystemClock.Now);
         dbContext.NotificationHistory.Add(item);
         try {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

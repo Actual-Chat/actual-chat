@@ -29,6 +29,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `HashEncoding` (enum) - Specifies the encoding for hash output.
 - `HashInput` - Input for hash computation.
 - `MonotonicUlid` (static class) - Ulids that sort in the order they were made within the process.
+- `MonotonicVersionGenerator` (`ActualChat.Concurrency`) - Wraps a `VersionGenerator<long>` so its versions are unique within the process; use it for clock-based `Seq` columns.
 - `HashOutput` (struct) - Output of a hash computation.
 - `InternalError` - Exception for internal application errors.
 - `IRateLimiter<TKey>`, `IRateLimiter<TKey, TBudget>` - Rate limiter contracts (`ActualChat.Resilience`).
