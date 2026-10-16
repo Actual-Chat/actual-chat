@@ -208,6 +208,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
     [DataMember] public CallOutcome? Outcome { get; init; }
     [DataMember] public ApiArray<AuthorId>? InviteeIds { get; init; }
     [DataMember] public bool? HasVideo { get; init; }
+    [DataMember] public ConversationId? ConversationId { get; init; }
     [DataMember] public HistoryChangeKind? HistoryChange { get; init; }
     [DataMember] public Option<TimeSpan?> HistoryPeriod { get; init; }
     [DataMember] public bool? IsTranscriptionOn { get; init; }
@@ -259,6 +260,7 @@ public sealed partial record ChatEntryDiff() : RecordDiff, ISanitized
             Outcome = call.Outcome;
             InviteeIds = call.InviteeIds;
             HasVideo = call.HasVideo;
+            ConversationId = call.ConversationId;
             break;
         case HistoryChangedEntry hc:
             TargetAuthorId = hc.TargetAuthorId;

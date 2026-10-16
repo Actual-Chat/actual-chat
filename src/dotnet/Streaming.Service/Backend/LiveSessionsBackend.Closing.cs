@@ -148,6 +148,7 @@ public partial class LiveSessionsBackend
             LiveCall? call;
             List<CallInvite> invites;
             HashSet<AuthorId> partyIds;
+            TaskCompletionSource whenEndedSource;
             // Dropping the call's key is the atomic claim that picks one closer out of the several that can
             // decide a call is over at once. It shares _changeLocks with every write of the key - outside it
             // a straddling read-modify-write puts the key back and the call is recorded twice - and the call
@@ -167,23 +168,26 @@ public partial class LiveSessionsBackend
                 invites = inviteMap.Values.SkipNullItems().ToList();
                 if (!await _redisCalls.Remove(chatId.Value).ConfigureAwait(false))
                     return;
+
+                whenEndedSource = TaskCompletionSourceExt.New();
+                _callEndTasks[chatId] = whenEndedSource.Task;
             }
 
-            var inviteeIds = invites.Select(i => i.InviteeId).ToList();
-            var endedAt = Clocks.SystemClock.Now;
-            // An answered call is Ended whichever button ended it - CancelCall is also how a caller hangs
-            // up - so the outcome recorded during the ring only decides a call that was never answered.
-            var outcome = call.IsAnswered ? CallOutcome.Ended : call.Outcome;
-            CallMeters.RecordEnded(call, outcome, reason, endedAt, invites, partyIds.Count);
-            // The one line per call that has every number the meters aggregate away.
-            Log.LogInformation(
-                "Call #{CallId} ended: {Outcome} ({Reason}), {ChatKind} chat, video={HasVideo}, "
-                + "invitees={InviteeCount}, parties={PartyCount}, answered in {AnswerDelay}, lasted {Duration}",
-                call.Id, outcome, reason, chatId.Kind, call.HasVideo,
-                invites.Count, partyIds.Count,
-                (call.AnsweredAt - call.StartedAt)?.ToShortString() ?? "-",
-                (endedAt - (call.AnsweredAt ?? call.StartedAt)).ToShortString());
             try {
+                var inviteeIds = invites.Select(i => i.InviteeId).ToList();
+                var endedAt = Clocks.SystemClock.Now;
+                // An answered call is Ended whichever button ended it - CancelCall is also how a caller hangs
+                // up - so the outcome recorded during the ring only decides a call that was never answered.
+                var outcome = call.IsAnswered ? CallOutcome.Ended : call.Outcome;
+                CallMeters.RecordEnded(call, outcome, reason, endedAt, invites, partyIds.Count);
+                // The one line per call that has every number the meters aggregate away.
+                Log.LogInformation(
+                    "Call #{CallId} ended: {Outcome} ({Reason}), {ChatKind} chat, video={HasVideo}, "
+                    + "invitees={InviteeCount}, parties={PartyCount}, answered in {AnswerDelay}, lasted {Duration}",
+                    call.Id, outcome, reason, chatId.Kind, call.HasVideo,
+                    invites.Count, partyIds.Count,
+                    (call.AnsweredAt - call.StartedAt)?.ToShortString() ?? "-",
+                    (endedAt - (call.AnsweredAt ?? call.StartedAt)).ToShortString());
                 // Everything below runs with CancellationToken.None for the same reason the teardown in the
                 // finally does: the claim above is once-or-never, so a token revoked mid-way would leave the
                 // call with no trace at all, and nothing retries it.
@@ -195,13 +199,16 @@ public partial class LiveSessionsBackend
                 if (chatId.Kind == ChatKind.Peer) {
                     // A call that rang into an ongoing session has no card of its own to gather its last words
                     // in, so its entry, visible there, has to come after them - see WriteCallEntryAfterTail.
-                    var isInOngoingSession = call.IsAnswered
-                        && await SafeGetState(chatId).ConfigureAwait(false) is { IsCall: false };
-                    if (isInOngoingSession)
+                    var state = await SafeGetState(chatId).ConfigureAwait(false);
+                    if (call.IsAnswered && state is { IsCall: false })
                         _ = WriteCallEntryAfterTail(call, inviteeIds, partyIds, outcome, endedAt);
-                    else
-                        await WriteCallEntry(call, inviteeIds, outcome, endedAt, CancellationToken.None)
+                    else {
+                        // The entry names the call's live block, so a client can tell the call is drawn by it
+                        // while the block's range has yet to reach the entry.
+                        var conversationId = call.IsAnswered ? state?.OpenConversation?.Id : null;
+                        await WriteCallEntry(call, inviteeIds, outcome, endedAt, conversationId, CancellationToken.None)
                             .ConfigureAwait(false);
+                    }
                 }
             }
             finally {
@@ -215,6 +222,8 @@ public partial class LiveSessionsBackend
                     // Swallowed so a teardown failure doesn't replace whatever the body threw.
                     Log.LogWarning(e, "EndCall: teardown failed for chat #{ChatId}", chatId);
                 }
+                _callEndTasks.TryRemove(new(chatId, whenEndedSource.Task));
+                whenEndedSource.TrySetResult();
             }
             // The session goes on without the call, by the rule every session closes by: once nobody records.
             // The parties' clients stop their media on the call's end - in a peer chat both of them - so that
@@ -262,19 +271,27 @@ public partial class LiveSessionsBackend
 
     private async Task CloseCallSession(ChatId chatId)
     {
-        // A call's session outlives its call and closes as an ambient one would - once nobody records - but
-        // its block stays the call's card, which needs no summary to be kept.
-        using var _ = Computed.BeginIsolation();
-        using var lockHolder = await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false);
-        if (await SafeGetState(chatId).ConfigureAwait(false) is not { IsCall: true } state)
-            return;
-        if (await SafeGetCall(chatId).ConfigureAwait(false) is not null)
-            return;
-        if (await IsSessionLive(chatId).ConfigureAwait(false))
-            return;
+        // A call's session closes once nobody records, and its block stays the call's card. A call's end
+        // that has yet to write its entry is waited out - outside the lock, which that end's teardown takes.
+        while (true) {
+            if (_callEndTasks.TryGetValue(chatId, out var callEndTask))
+                await callEndTask.ConfigureAwait(false);
 
-        await MaterializeCallSession(state).ConfigureAwait(false);
-        await RemoveSession(chatId).ConfigureAwait(false);
+            using var _ = Computed.BeginIsolation();
+            using var lockHolder = await _changeLocks.Lock(chatId, CancellationToken.None).ConfigureAwait(false);
+            if (_callEndTasks.ContainsKey(chatId))
+                continue;
+            if (await SafeGetState(chatId).ConfigureAwait(false) is not { IsCall: true } state)
+                return;
+            if (await SafeGetCall(chatId).ConfigureAwait(false) is not null)
+                return;
+            if (await IsSessionLive(chatId).ConfigureAwait(false))
+                return;
+
+            await MaterializeCallSession(state).ConfigureAwait(false);
+            await RemoveSession(chatId).ConfigureAwait(false);
+            return;
+        }
     }
 
     // Backstop close: the grace elapsed without an explicit leave (a crashed/stale client). Vanishes
@@ -386,7 +403,7 @@ public partial class LiveSessionsBackend
                     .SilentAwait(false);
             }
             await Task.Delay(CallTailDelay).ConfigureAwait(false);
-            await WriteCallEntry(call, invitees, outcome, endedAt, CancellationToken.None).ConfigureAwait(false);
+            await WriteCallEntry(call, invitees, outcome, endedAt, null, CancellationToken.None).ConfigureAwait(false);
         }, Log, $"Writing the entry of call #{call.Id} failed");
 
     private async Task WriteCallEntry(
@@ -394,6 +411,7 @@ public partial class LiveSessionsBackend
         IReadOnlyList<AuthorId> invitees,
         CallOutcome outcome,
         Moment endedAt,
+        ConversationId? conversationId,
         CancellationToken cancellationToken)
     {
         if (outcome == CallOutcome.None)
@@ -418,6 +436,7 @@ public partial class LiveSessionsBackend
                 Outcome = outcome,
                 InviteeIds = invitees.ToApiArray(),
                 HasVideo = call.HasVideo,
+                ConversationId = conversationId,
             }));
         await Commander.Call(command, true, cancellationToken).ConfigureAwait(false);
     }

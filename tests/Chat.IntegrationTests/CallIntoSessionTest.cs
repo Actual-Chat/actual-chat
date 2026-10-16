@@ -78,6 +78,7 @@ public sealed class CallIntoSessionTest(ChatCollection.AppHostFixture fixture, I
             entry.Outcome.Should().Be(CallOutcome.Ended);
             entry.EndsAt.Should().NotBeNull("an answered call's entry spans its talk time");
             entry.EndsAt!.Value.Should().BeGreaterThanOrEqualTo(entry.BeginsAt);
+            entry.ConversationId.Should().BeNull("the session it rang into isn't the call's card");
         }, TimeSpan.FromSeconds(20));
     }
 

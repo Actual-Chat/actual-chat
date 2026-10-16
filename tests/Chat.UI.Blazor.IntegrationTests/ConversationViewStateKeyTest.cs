@@ -15,7 +15,7 @@ public sealed class ConversationViewStateKeyTest
         // arrange
         var id = ConversationId.New(ChatId.Parse("the-actual-one"), 100);
         var conversation = new Conversation(id) { EndEntryLid = 119 };
-        var state = new ConversationViewState(true, ImmutableHashSet.Create(id), default, id, default, null);
+        var state = new ConversationViewState(false, ImmutableHashSet.Create(id), default, id, default, null);
         var dissolving = state with { DissolvingConversation = conversation };
 
         // act
@@ -42,8 +42,8 @@ public sealed class ConversationViewStateKeyTest
         IImmutableSet<ConversationId> setB = ImmutableHashSet.Create(expanded);
 
         // act
-        var a = new ConversationViewState(true, setA, new Range<long>(1, 5), expanded, new Range<long>(1, 5), null);
-        var b = new ConversationViewState(true, setB, new Range<long>(1, 5), expanded, new Range<long>(1, 5), null);
+        var a = new ConversationViewState(false, setA, new Range<long>(1, 5), expanded, new Range<long>(1, 5), null);
+        var b = new ConversationViewState(false, setB, new Range<long>(1, 5), expanded, new Range<long>(1, 5), null);
 
         // assert
         setA.Should().NotBeSameAs(setB, "distinct instances are required or this test is vacuous");
@@ -58,7 +58,7 @@ public sealed class ConversationViewStateKeyTest
         var chatId = ChatId.Parse("the-actual-one");
         var liveBlockId = ConversationId.New(chatId, 9000);
         var state = new ConversationViewState(
-            true,
+            false,
             ImmutableHashSet<ConversationId>.Empty,
             new Range<long>(9100, long.MaxValue),
             liveBlockId,

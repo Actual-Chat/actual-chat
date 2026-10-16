@@ -147,6 +147,44 @@ public sealed class ChatBlockProjectionTest
     }
 
     [Fact]
+    public void CallsOnlyViewShouldDrawOnlyTheCallsCards()
+    {
+        // arrange
+        var conversation = NewConversation(50, 99);
+        var call = NewConversation(100, 149) with { CallerId = AuthorId.New(TestChatId, 1) };
+        var view = NewView() with { IsCallsOnly = true };
+
+        // act
+        var blocks = ChatUI.BuildChatBlocks(TestChatId, [conversation.EntryLidRange, call.EntryLidRange],
+            [conversation, call], view, null, default);
+
+        // assert
+        blocks.Should().ContainSingle().Which.Id.Should().Be(call.Id);
+    }
+
+    [Fact]
+    public void CallsOnlyViewShouldKeepTheLiveBlockAsItMaterializes()
+    {
+        // The record a block materializes into need not carry the call's shape yet; dropped, the block
+        // would lose its card at the very moment it turns into one.
+
+        // arrange
+        var materialized = NewConversation(100, 149);
+        var view = NewView() with {
+            IsCallsOnly = true,
+            LiveBlockConversationId = materialized.Id,
+            MaterializedBlockId = materialized.Id,
+        };
+
+        // act
+        var blocks = ChatUI.BuildChatBlocks(TestChatId, [materialized.EntryLidRange],
+            [materialized], view, null, materialized.EntryLidRange);
+
+        // assert
+        blocks.Should().ContainSingle().Which.Id.Should().Be(materialized.Id);
+    }
+
+    [Fact]
     public void MissingLiveRecordShouldStillReserveTheOpenEndedTail()
     {
         var earlier = NewConversation(50, 199);
@@ -300,7 +338,7 @@ public sealed class ChatBlockProjectionTest
     // Private methods
 
     private static ConversationViewState NewView()
-        => new(true, ImmutableHashSet<ConversationId>.Empty, default, null, default, null);
+        => new(false, ImmutableHashSet<ConversationId>.Empty, default, null, default, null);
 
     private static Conversation NewConversation(long start, long end)
         => new(ConversationId.New(TestChatId, start)) {

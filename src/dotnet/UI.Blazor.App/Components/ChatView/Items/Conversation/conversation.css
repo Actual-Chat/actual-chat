@@ -172,6 +172,12 @@ body.hoverable .c-lc-showmore:hover {
 .conversation-header .bg-wrapper {
     background: linear-gradient(179deg, var(--conversation-gradient-01) -129.46%, var(--conversation-gradient-02) 79.26%);
 }
+/* A title with nothing under it (a call with no messages): the header's min-height and bottom padding
+   would otherwise leave an empty band above the footer. */
+.conversation-message .c-details > .c-summary:only-child
+    > .conversation-header-short:only-child .bg-wrapper {
+    @apply min-h-0 pb-1;
+}
 .conversation-header-short .c-title,
 .conversation-header .c-title {
     @apply flex-1;

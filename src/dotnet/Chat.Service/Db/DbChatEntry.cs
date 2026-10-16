@@ -121,6 +121,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
                     Outcome = c.Outcome,
                     InviteeIds = c.InviteeIds.ToApiArray(),
                     HasVideo = c.HasVideo,
+                    ConversationId = c.ConversationId,
                 },
                 LegacyHistoryChangedOption hc => new HistoryChangedEntry(id, Version) {
                     TargetAuthorId = hc.AuthorId,

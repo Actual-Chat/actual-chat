@@ -17,7 +17,8 @@ public record ChatItems(
 }
 
 public sealed record ConversationViewState(
-    bool ShowConversations,
+    // A chat without summaries still draws its calls' cards: the card is all a call leaves behind there
+    bool IsCallsOnly,
     IImmutableSet<ConversationId> ExpandedConversations,
     Range<long> HiddenLiveTailRange,
     ConversationId? LiveBlockConversationId,
@@ -38,7 +39,7 @@ public sealed record ConversationViewState(
         if (ReferenceEquals(this, other))
             return true;
 
-        return ShowConversations == other.ShowConversations
+        return IsCallsOnly == other.IsCallsOnly
             && HiddenLiveTailRange == other.HiddenLiveTailRange
             && LiveBlockConversationId == other.LiveBlockConversationId
             && LiveFoldRange == other.LiveFoldRange
@@ -74,7 +75,7 @@ public sealed record ConversationViewState(
 
     public override int GetHashCode()
     {
-        var hash = HashCode.Combine(ShowConversations,
+        var hash = HashCode.Combine(IsCallsOnly,
             HiddenLiveTailRange,
             LiveBlockConversationId,
             LiveFoldRange,
@@ -146,8 +147,7 @@ public partial class ChatUI
     // guarantees a follow-up rebuild from the fresh values.
     private readonly ChatRangeTileCache _rangeTileCache = new();
     private readonly ConcurrentDictionary<ChatId, Conversation[][]> _lastConversationTiles = new();
-    private readonly ConcurrentDictionary<ChatId, (List<Range<long>> IdTiles, bool ShowConversations)>
-        _lastLoadZones = new();
+    private readonly ConcurrentDictionary<ChatId, List<Range<long>>> _lastLoadZones = new();
 
     public int HalfLoadLimit => BrowserInfo.IsMobile ? LoadLimitUnit : LoadLimitUnit * 2; // 20 for mobile
     public int LoadLimit => BrowserInfo.IsMobile ? LoadLimitUnit * 2 : LoadLimitUnit * 4; // 40 for mobile
@@ -196,7 +196,7 @@ public partial class ChatUI
             // The anchor is read from the cached ChatInfo rather than awaited, because on a cold chat
             // awaiting GetIdRange + GetOwn is a round trip of its own - and it measured 77-81ms there,
             // which pushed the warm requests past the click they were meant to arrive before.
-            var (lidRange, readEntryLid, showConversations) = GetPrefetchAnchor(chatId);
+            var (lidRange, readEntryLid) = GetPrefetchAnchor(chatId);
             if (lidRange is null && entryLid <= 0) {
                 var chat = await chatTask.ConfigureAwait(false);
                 if (chat == null)
@@ -204,14 +204,11 @@ public partial class ChatUI
 
                 lidRange = await chatLidRangeTask.ConfigureAwait(false);
                 readEntryLid = (await readPositionTask.ConfigureAwait(false)).EntryLid;
-                showConversations = chat.IsSummarized ?? false;
                 ChatSwitchTracer.Mark("ChatUI.Prefetch: anchor awaited (ChatInfo miss)", $"lid={readEntryLid}");
             }
             else if (lidRange is null) {
                 // An entry-anchored prefetch skips the await entirely - a searched-for message is often in
-                // a chat the list never rendered, and the lid is all the tile maths needs. Summarization
-                // is on by default, so assuming it costs at most a few unused conversation tiles.
-                showConversations = true;
+                // a chat the list never rendered, and the lid is all the tile maths needs.
                 ChatSwitchTracer.Mark("ChatUI.Prefetch: entry anchor, no ChatInfo", $"entryLid={entryLid}");
             }
             else
@@ -267,7 +264,7 @@ public partial class ChatUI
             var conversationTilesTask = cidTiles
                 .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
                 .Collect(ApiConstants.Concurrency.High, cancellationToken);
-            var loadZoneTask = PrefetchLoadZone(chatId, idTiles, showConversations, cancellationToken);
+            var loadZoneTask = PrefetchLoadZone(chatId, idTiles, cancellationToken);
             pending.Add(metaTask);
             pending.Add(conversationTilesTask);
             pending.Add(loadZoneTask);
@@ -328,10 +325,6 @@ public partial class ChatUI
             .Select(cidTile
                 => Chats.GetChatRangeTile(Session, chatId, cidTile.Range.Start, cancellationToken))
             .Collect(cancellationToken);
-        // Issued here rather than under the showConversations check below, which needs chat + liveConversation
-        // and so could only run a round later. Summarization is on by default, so showConversations is nearly
-        // always true; for the rare chat without conversations this tile set comes back empty and then only
-        // invalidates if summarization is turned on - so the unconditional dependency costs ~nothing.
         var conversationTilesTask = cidTiles
             .Select(t => Conversations.GetTile(Session, chatId, t.Range, cancellationToken))
             .Collect(cancellationToken);
@@ -345,11 +338,10 @@ public partial class ChatUI
         // stale zone can't register dependencies; the dependency-registering pass below joins the same
         // in-flight computations.
         if (!isPrefetch && !chatRangeTilesTask.IsCompleted
-            && _lastLoadZones.TryGetValue(chatId, out var lastLoadZone)) {
-            var (lastIdTiles, lastShowConversations) = lastLoadZone;
+            && _lastLoadZones.TryGetValue(chatId, out var lastIdTiles)) {
             using (Computed.BeginIsolation())
                 _ = BackgroundTask.Run(
-                    () => PrefetchLoadZone(chatId, lastIdTiles, lastShowConversations, cancellationToken),
+                    () => PrefetchLoadZone(chatId, lastIdTiles, cancellationToken),
                     Log, "Speculative load-zone prefetch failed.", cancellationToken);
         }
 
@@ -416,8 +408,7 @@ public partial class ChatUI
                 .ToList();
 
         var dissolvingConversation = closedBlock?.DissolvingConversation;
-        var showConversations = (chat.IsSummarized ?? false)
-            || liveConversation != null || dissolvingConversation != null;
+        var isCallsOnly = !(chat.IsSummarized ?? false);
 
         // Effective expansion = each conversation's IsExpandedByDefault flipped by a local override, so
         // expandedConversations below is the resolved "render expanded" set, not the raw override set.
@@ -429,195 +420,211 @@ public partial class ChatUI
             ?? await conversationTilesTask.ConfigureAwait(false);
         if (conversationTilesTask.IsCompletedSuccessfully)
             _lastConversationTiles[chatId] = conversationTilesTask.Result;
-        if (showConversations) {
-            // Fold the loaded tiles' IsExpandedByDefault into the persistent cache (loaded tiles are
-            // authoritative), then resolve defaultExpanded from the cache - so a conversation whose tile
-            // isn't currently loaded keeps its last-known state instead of silently collapsing.
-            // Write-once: the flag is server-derived (words < MinConversationWords) and flips to false
-            // when a summary lands, which would invert the effective state of every conversation that
-            // has no override - an auto-collapse nobody asked for.
-            foreach (var c in conversationTiles.SelectMany(t => t))
-                _knownConversationDefaultExpanded.TryAdd(c.Id, c.IsExpandedByDefault);
-            // Latched before the snapshot below, which the join branch's override decision reads: seeded
-            // elsewhere in between (the fold governor reads the same latch), the decision and the next
-            // build's resolution would disagree, and the block would collapse itself one build later.
-            if (amInLiveConversation && liveConversation is { } joinedLiveConversation)
-                _knownConversationDefaultExpanded.TryAdd(joinedLiveConversation.Id, false);
-            defaultExpanded = _knownConversationDefaultExpanded
-                .Where(kv => kv.Value)
-                .Select(kv => kv.Key)
-                .ToImmutableHashSet();
+        // Fold the loaded tiles' IsExpandedByDefault into the persistent cache (loaded tiles are
+        // authoritative), then resolve defaultExpanded from the cache - so a conversation whose tile
+        // isn't currently loaded keeps its last-known state instead of silently collapsing.
+        // Write-once: the flag is server-derived (words < MinConversationWords) and flips to false
+        // when a summary lands, which would invert the effective state of every conversation that
+        // has no override - an auto-collapse nobody asked for.
+        foreach (var c in conversationTiles.SelectMany(t => t))
+            _knownConversationDefaultExpanded.TryAdd(c.Id, c.IsExpandedByDefault);
+        // Latched before the snapshot below, which the join branch's override decision reads: seeded
+        // elsewhere in between (the fold governor reads the same latch), the decision and the next
+        // build's resolution would disagree, and the block would collapse itself one build later.
+        if (amInLiveConversation && liveConversation is { } joinedLiveConversation)
+            _knownConversationDefaultExpanded.TryAdd(joinedLiveConversation.Id, false);
+        defaultExpanded = _knownConversationDefaultExpanded
+            .Where(kv => kv.Value)
+            .Select(kv => kv.Key)
+            .ToImmutableHashSet();
+        // Neither navigation nor auto-expansion acts on a conversation that isn't drawn. One with no
+        // record loaded yet may still be a call, so it stays.
+        var hiddenConversationIds = conversationTiles.SelectMany(t => t)
+            .Where(c => !IsShown(c, isCallsOnly, liveBlockId, materializedBlockId))
+            .Select(c => c.Id)
+            .ToHashSet();
+        var shownConversationRanges = chatRangeTiles
+            .SelectMany(m => m.ConversationRanges)
+            .Where(r => !hiddenConversationIds.Contains(ConversationId.New(chatId, r.Start)))
+            .ToList();
 
-            if (dataQuery.Navigation is { ShouldRestoreViewPosition: false, KeepConversationsCollapsed: false }) {
-                var conversationRanges = NormalizeBlockRanges(
-                    chatRangeTiles.SelectMany(rm => rm.ConversationRanges), liveBlockId, materializedBlockId)
-                    .ToList();
-                var navigateToId = dataQuery.Navigation.EntryLid;
-                var index = conversationRanges.AsSpan()
-                    .BinarySearch(r => r.Contains(navigateToId) || r.Start > navigateToId);
-                if (index >= 0) {
-                    var conversationRange = conversationRanges[index];
-                    if (conversationRange.Contains(navigateToId)) {
-                        // Ensure the navigated-to conversation is effective-expanded (flip its override if not).
-                        var conversationId = ConversationId.New(chatId, conversationRange.Start);
-                        // The override below is premised on this default, so latch it now: a tile landing
-                        // later with a different one would invert the very expansion this just arranged.
-                        _knownConversationDefaultExpanded.TryAdd(conversationId, false);
-                        // The same read-modify-write as ToggleExpandConversation, so under the same lock
-                        lock (Lock) {
-                            var overrides0 = ConversationExpansionOverrides.Value;
-                            var isOverridden = overrides0.Contains(conversationId);
-                            // An auto-expanded conversation already renders expanded, and stacking an override
-                            // on it would break the "auto set implies no override" invariant the toggle relies on.
-                            var isExpanded = (defaultExpanded.Contains(conversationId) ^ isOverridden)
-                                || _autoExpandedConversations.Value.Contains(conversationId);
-                            if (!isExpanded) {
-                                var newOverrides = isOverridden
-                                    ? overrides0.Remove(conversationId)
-                                    : overrides0.Add(conversationId);
-                                SetExpansion(_conversationExpansionOverrides, newOverrides);
-                                _lastExpansions[chatId] = GetLastExpansions(chatId) with {
-                                    Overrides = newOverrides,
-                                };
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Joining expands the live block if it was collapsed, and that is the only automatic move
-            // made to it - nothing collapses it again, so a reader's own collapse sticks. Recorded per
-            // block id, not per chat: the id jumps every time the session starts a new block, and the
-            // new one starts collapsed. Recorded only once there is a block to act on, so a join that
-            // lands before the block exists is picked up by the first render that has one.
-            if (!isPrefetch) {
-                if (!amInLiveConversation)
-                    _autoExpandedLiveBlock.TryRemove(chatId, out _);
-                else if (liveConversation is { } joinedConversation
-                    && (!_autoExpandedLiveBlock.TryGetValue(chatId, out var autoExpandedId)
-                        || autoExpandedId != joinedConversation.Id)) {
-                    _autoExpandedLiveBlock[chatId] = joinedConversation.Id;
-                    _knownConversationDefaultExpanded.TryAdd(joinedConversation.Id, false);
+        if (dataQuery.Navigation is { ShouldRestoreViewPosition: false, KeepConversationsCollapsed: false }) {
+            var conversationRanges = NormalizeBlockRanges(shownConversationRanges, liveBlockId, materializedBlockId)
+                .ToList();
+            var navigateToId = dataQuery.Navigation.EntryLid;
+            var index = conversationRanges.AsSpan()
+                .BinarySearch(r => r.Contains(navigateToId) || r.Start > navigateToId);
+            if (index >= 0) {
+                var conversationRange = conversationRanges[index];
+                if (conversationRange.Contains(navigateToId)) {
+                    // Ensure the navigated-to conversation is effective-expanded (flip its override if not).
+                    var conversationId = ConversationId.New(chatId, conversationRange.Start);
+                    // The override below is premised on this default, so latch it now: a tile landing
+                    // later with a different one would invert the very expansion this just arranged.
+                    _knownConversationDefaultExpanded.TryAdd(conversationId, false);
+                    // The same read-modify-write as ToggleExpandConversation, so under the same lock
                     lock (Lock) {
-                        var joinOverrides = ConversationExpansionOverrides.Value;
-                        var isJoinedExpanded = defaultExpanded.Contains(joinedConversation.Id)
-                            ^ joinOverrides.Contains(joinedConversation.Id);
-                        if (!isJoinedExpanded) {
-                            // The chat's last-expansions snapshot is deliberately not updated: the diff below
-                            // is what widens the load window, and the rows this expand reveals need it.
-                            SetExpansion(_conversationExpansionOverrides, joinOverrides.Contains(joinedConversation.Id)
-                                ? joinOverrides.Remove(joinedConversation.Id)
-                                : joinOverrides.Add(joinedConversation.Id));
+                        var overrides0 = ConversationExpansionOverrides.Value;
+                        var isOverridden = overrides0.Contains(conversationId);
+                        // An auto-expanded conversation already renders expanded, and stacking an override
+                        // on it would break the "auto set implies no override" invariant the toggle relies on.
+                        var isExpanded = (defaultExpanded.Contains(conversationId) ^ isOverridden)
+                            || _autoExpandedConversations.Value.Contains(conversationId);
+                        if (!isExpanded) {
+                            var newOverrides = isOverridden
+                                ? overrides0.Remove(conversationId)
+                                : overrides0.Add(conversationId);
+                            SetExpansion(_conversationExpansionOverrides, newOverrides);
+                            _lastExpansions[chatId] = GetLastExpansions(chatId) with {
+                                Overrides = newOverrides,
+                            };
                         }
                     }
                 }
             }
+        }
 
-            var overrides = await ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(false);
-            var autoExpanded = await AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
-            // Acquired without Lock - what decides whether this build may act on the result is the
-            // chat-id + epoch pair re-checked under Lock below, not which visit the set came from.
-            var witnessedLids = Volatile.Read(ref _witnessedLids);
-            if (!isPrefetch && witnessedLids != null) {
-                var newAutoExpansions = GetNewAutoExpansions(
-                    chatId: chatId,
-                    conversationRanges: chatRangeTiles
-                        .SelectMany(m => m.ConversationRanges)
-                        .EnsureMonotonic(),
-                    defaultExpanded: defaultExpanded,
-                    overrides: overrides,
-                    autoExpanded: autoExpanded,
-                    isSuppressed: id => _suppressedAutoExpansions.ContainsKey(id),
-                    witnessedLids: witnessedLids,
-                    liveBlockId: liveBlockId,
-                    materializedBlockId: materializedBlockId);
-                if (newAutoExpansions.Count > 0) {
-                    // Re-read under the lock and re-check suppression: a concurrent collapse gesture
-                    // suppresses before it removes, so filtering on the fresh suppression set is what
-                    // keeps this union from resurrecting an id the user just collapsed.
-                    lock (Lock) {
-                        // ClearAutoExpansionState bumps the epoch under this same lock, so a build that
-                        // began in an earlier visit cannot resurrect that visit's auto-expansions - not
-                        // even when the user left and came back to this very chat.
-                        if (_selectedChatId.Value == chatId
-                            && autoExpansionEpoch == Volatile.Read(ref _autoExpansionEpoch)) {
-                            var updated = _autoExpandedConversations.Value.Union(
-                                newAutoExpansions.Where(id => !_suppressedAutoExpansions.ContainsKey(id)));
-                            // A gesture-path removal is lock-free by design and can race this union, so
-                            // suppress-before-remove makes subtracting suppressed ids here the self-heal.
-                            var lostRemovals = updated
-                                .Where(id => _suppressedAutoExpansions.ContainsKey(id))
-                                .ToList();
-                            if (lostRemovals.Count > 0)
-                                updated = updated.Except(lostRemovals);
-                            autoExpanded = updated;
-                            SetExpansion(_autoExpandedConversations, updated);
-                        }
-                    }
-                }
-            }
-
-            expandedConversations = defaultExpanded.SymmetricExcept(overrides).Union(autoExpanded);
-            // A prefetch is a speculative background load nothing renders, so it must not consume the
-            // one-shot "just changed" signal - the rebuild that does render would then never widen its
-            // window to the affected conversation, and the entries it just revealed would never load.
-            // The auto set is watched alongside the overrides because auto-expansion and the toggle's
-            // auto-collapse branch never touch the overrides at all.
-            if (!isPrefetch) {
-                List<ConversationId> changedIds;
-                // Two builds may overlap (a chat switch, or the pre-render call the list abandons), and the
-                // diff is a one-shot signal: an update lost here leaves an expanded conversation blank
+        // Joining expands the live block if it was collapsed, and that is the only automatic move
+        // made to it - nothing collapses it again, so a reader's own collapse sticks. Recorded per
+        // block id, not per chat: the id jumps every time the session starts a new block, and the
+        // new one starts collapsed. Recorded only once there is a block to act on, so a join that
+        // lands before the block exists is picked up by the first render that has one.
+        if (!isPrefetch) {
+            if (!amInLiveConversation)
+                _autoExpandedLiveBlock.TryRemove(chatId, out _);
+            else if (liveConversation is { } joinedConversation
+                && (!_autoExpandedLiveBlock.TryGetValue(chatId, out var autoExpandedId)
+                    || autoExpandedId != joinedConversation.Id)) {
+                _autoExpandedLiveBlock[chatId] = joinedConversation.Id;
+                _knownConversationDefaultExpanded.TryAdd(joinedConversation.Id, false);
                 lock (Lock) {
-                    var lastExpansions = GetLastExpansions(chatId);
-                    // Every chat switch wipes the auto set, so an earlier visit's snapshot would report that wipe
-                    // as a collapse and widen the window on return - for rows ExpandToCollapsedBlocks loads anyway.
-                    var lastAutoExpanded = lastExpansions.AutoExpansionEpoch == autoExpansionEpoch
-                        ? lastExpansions.AutoExpanded
-                        : ImmutableHashSet<ConversationId>.Empty;
-                    changedIds = GetChangedExpansions(
-                        chatId, overrides, autoExpanded, lastExpansions.Overrides, lastAutoExpanded);
-                    _lastExpansions[chatId] = new ExpansionSnapshot(overrides, autoExpanded, autoExpansionEpoch);
+                    var joinOverrides = ConversationExpansionOverrides.Value;
+                    var isJoinedExpanded = defaultExpanded.Contains(joinedConversation.Id)
+                        ^ joinOverrides.Contains(joinedConversation.Id);
+                    if (!isJoinedExpanded) {
+                        // The chat's last-expansions snapshot is deliberately not updated: the diff below
+                        // is what widens the load window, and the rows this expand reveals need it.
+                        SetExpansion(_conversationExpansionOverrides, joinOverrides.Contains(joinedConversation.Id)
+                            ? joinOverrides.Remove(joinedConversation.Id)
+                            : joinOverrides.Add(joinedConversation.Id));
+                    }
                 }
-                if (changedIds.FirstOrDefault() is { } toggledId)
-                    // Extend the data query to cover the toggled conversation's entries. It must extend,
-                    // not replace: a conversation's start sits above everything it contains, so collapsing
-                    // the one you're reading at the chat's tail would otherwise re-centre the window
-                    // ~HalfLoadLimit rows past that start and unload the tail - dropping the very-last
-                    // item, and with it the End sticky edge the view was pinned to.
-                    dataQuery = dataQuery with {
-                        ExistingLidRange = dataQuery.ExistingLidRange
-                            .MinMaxWith(EntryIdTiles.GetTile(toggledId.StartEntryLid).Range),
-                        StartOffset = -HalfLoadLimit,
-                        EndOffset = HalfLoadLimit,
-                    };
             }
+        }
 
-            // The tail is hidden exactly while the card stands in for it - i.e. while the block renders
-            // collapsed, which is the same test the fold uses. Keyed on whether the viewer had joined
-            // instead, a joined viewer could not collapse the block at all: nothing left the screen.
-            if (liveBlockId is { } blockId && liveConversation is { } liveConvTail)
-                // Whether the viewer left or not: a live session hides by how its block renders, so
-                // leaving changes nothing here.
-                hiddenLiveTailRange = expandedConversations.Contains(blockId)
-                    ? default
-                    : new Range<long>(
-                        liveBlockFoldRange.IsEmpty
-                            ? liveConvTail.Id.StartEntryLid
-                            : Math.Min(liveConvTail.EndEntryLid + 1, liveBlockFoldRange.End),
-                        long.MaxValue);
-            else if (liveBlockId is { } closedBlockId && expandedConversations.Contains(closedBlockId))
-                hiddenLiveTailRange = default;
-            // A block collapsed at close keeps hiding its spoken tail; one expanded at close absorbs it. The
-            // range ends at the block's own end: what is spoken after the close is not part of the block.
-            // The summary end alone is not enough: a call's record reaches past it.
-            else if (liveBlockId is { } collapsedBlockId && closedBlock is { IsDissolving: false }) {
-                var blockEnd = closedBlock.EndLid;
-                var record = conversationTiles.SelectMany(t => t).FirstOrDefault(c => c.Id == closedBlock.MaterializedId);
-                if (record != null)
-                    blockEnd = Math.Max(blockEnd, record.EntryLidRange.End);
-                var tailStart = liveBlockFoldRange.IsEmpty ? collapsedBlockId.StartEntryLid : liveBlockFoldRange.End;
-                hiddenLiveTailRange = new Range<long>(Math.Min(tailStart, blockEnd), blockEnd);
+        var overrides = await ConversationExpansionOverrides.Use(cancellationToken).ConfigureAwait(false);
+        var autoExpanded = await AutoExpandedConversations.Use(cancellationToken).ConfigureAwait(false);
+        // Acquired without Lock - what decides whether this build may act on the result is the
+        // chat-id + epoch pair re-checked under Lock below, not which visit the set came from.
+        var witnessedLids = Volatile.Read(ref _witnessedLids);
+        if (!isPrefetch && witnessedLids != null) {
+            var newAutoExpansions = GetNewAutoExpansions(
+                chatId: chatId,
+                conversationRanges: shownConversationRanges.EnsureMonotonic(),
+                defaultExpanded: defaultExpanded,
+                overrides: overrides,
+                autoExpanded: autoExpanded,
+                isSuppressed: id => _suppressedAutoExpansions.ContainsKey(id),
+                witnessedLids: witnessedLids,
+                liveBlockId: liveBlockId,
+                materializedBlockId: materializedBlockId);
+            if (newAutoExpansions.Count > 0) {
+                // Re-read under the lock and re-check suppression: a concurrent collapse gesture
+                // suppresses before it removes, so filtering on the fresh suppression set is what
+                // keeps this union from resurrecting an id the user just collapsed.
+                lock (Lock) {
+                    // ClearAutoExpansionState bumps the epoch under this same lock, so a build that
+                    // began in an earlier visit cannot resurrect that visit's auto-expansions - not
+                    // even when the user left and came back to this very chat.
+                    if (_selectedChatId.Value == chatId
+                        && autoExpansionEpoch == Volatile.Read(ref _autoExpansionEpoch)) {
+                        var updated = _autoExpandedConversations.Value.Union(
+                            newAutoExpansions.Where(id => !_suppressedAutoExpansions.ContainsKey(id)));
+                        // A gesture-path removal is lock-free by design and can race this union, so
+                        // suppress-before-remove makes subtracting suppressed ids here the self-heal.
+                        var lostRemovals = updated
+                            .Where(id => _suppressedAutoExpansions.ContainsKey(id))
+                            .ToList();
+                        if (lostRemovals.Count > 0)
+                            updated = updated.Except(lostRemovals);
+                        autoExpanded = updated;
+                        SetExpansion(_autoExpandedConversations, updated);
+                    }
+                }
             }
+        }
+
+        // A finished call that left no messages has nothing to expand into, whatever the join's expansion
+        // said; its card renders under the live block's id while that block lives
+        var emptyCallIds = conversationTiles.SelectMany(t => t)
+            .Where(c => c.IsCall && c.MessageCount == 0 && c.Id != liveConversation?.Id)
+            .Select(c => c.Id)
+            .ToHashSet();
+        if (materializedBlockId is { } emptyCallId && emptyCallIds.Contains(emptyCallId)
+            && liveBlockId is { } renderId)
+            emptyCallIds.Add(renderId);
+        expandedConversations = defaultExpanded.SymmetricExcept(overrides)
+            .Union(autoExpanded)
+            .Except(emptyCallIds);
+        // A prefetch is a speculative background load nothing renders, so it must not consume the
+        // one-shot "just changed" signal - the rebuild that does render would then never widen its
+        // window to the affected conversation, and the entries it just revealed would never load.
+        // The auto set is watched alongside the overrides because auto-expansion and the toggle's
+        // auto-collapse branch never touch the overrides at all.
+        if (!isPrefetch) {
+            List<ConversationId> changedIds;
+            // Two builds may overlap (a chat switch, or the pre-render call the list abandons), and the
+            // diff is a one-shot signal: an update lost here leaves an expanded conversation blank
+            lock (Lock) {
+                var lastExpansions = GetLastExpansions(chatId);
+                // Every chat switch wipes the auto set, so an earlier visit's snapshot would report that wipe
+                // as a collapse and widen the window on return - for rows ExpandToCollapsedBlocks loads anyway.
+                var lastAutoExpanded = lastExpansions.AutoExpansionEpoch == autoExpansionEpoch
+                    ? lastExpansions.AutoExpanded
+                    : ImmutableHashSet<ConversationId>.Empty;
+                changedIds = GetChangedExpansions(
+                    chatId, overrides, autoExpanded, lastExpansions.Overrides, lastAutoExpanded);
+                _lastExpansions[chatId] = new ExpansionSnapshot(overrides, autoExpanded, autoExpansionEpoch);
+            }
+            if (changedIds.FirstOrDefault() is { } toggledId)
+                // Extend the data query to cover the toggled conversation's entries. It must extend,
+                // not replace: a conversation's start sits above everything it contains, so collapsing
+                // the one you're reading at the chat's tail would otherwise re-centre the window
+                // ~HalfLoadLimit rows past that start and unload the tail - dropping the very-last
+                // item, and with it the End sticky edge the view was pinned to.
+                dataQuery = dataQuery with {
+                    ExistingLidRange = dataQuery.ExistingLidRange
+                        .MinMaxWith(EntryIdTiles.GetTile(toggledId.StartEntryLid).Range),
+                    StartOffset = -HalfLoadLimit,
+                    EndOffset = HalfLoadLimit,
+                };
+        }
+
+        // The tail is hidden exactly while the card stands in for it - i.e. while the block renders
+        // collapsed, which is the same test the fold uses. Keyed on whether the viewer had joined
+        // instead, a joined viewer could not collapse the block at all: nothing left the screen.
+        if (liveBlockId is { } blockId && liveConversation is { } liveConvTail)
+            // Whether the viewer left or not: a live session hides by how its block renders, so
+            // leaving changes nothing here.
+            hiddenLiveTailRange = expandedConversations.Contains(blockId)
+                ? default
+                : new Range<long>(
+                    liveBlockFoldRange.IsEmpty
+                        ? liveConvTail.Id.StartEntryLid
+                        : Math.Min(liveConvTail.EndEntryLid + 1, liveBlockFoldRange.End),
+                    long.MaxValue);
+        else if (liveBlockId is { } closedBlockId && expandedConversations.Contains(closedBlockId))
+            hiddenLiveTailRange = default;
+        // A block collapsed at close keeps hiding its spoken tail; one expanded at close absorbs it. The
+        // range ends at the block's own end: what is spoken after the close is not part of the block.
+        // The summary end alone is not enough: a call's record reaches past it.
+        else if (liveBlockId is { } collapsedBlockId && closedBlock is { IsDissolving: false }) {
+            var blockEnd = closedBlock.EndLid;
+            var record = conversationTiles.SelectMany(t => t).FirstOrDefault(c => c.Id == closedBlock.MaterializedId);
+            if (record != null)
+                blockEnd = Math.Max(blockEnd, record.EntryLidRange.End);
+            var tailStart = liveBlockFoldRange.IsEmpty ? collapsedBlockId.StartEntryLid : liveBlockFoldRange.End;
+            hiddenLiveTailRange = new Range<long>(Math.Min(tailStart, blockEnd), blockEnd);
         }
 
         if (chatRangeTiles.Count == 0)
@@ -625,7 +632,7 @@ public partial class ChatUI
 
         var metaAt = CpuTimestamp.Now;
         var conversationView = new ConversationViewState(
-            showConversations, expandedConversations, hiddenLiveTailRange,
+            isCallsOnly, expandedConversations, hiddenLiveTailRange,
             liveBlockId, liveBlockFoldRange, materializedBlockId) {
             DissolvingConversation = dissolvingConversation,
         };
@@ -676,8 +683,8 @@ public partial class ChatUI
             _rangeTileCache.Remember(chatId, chatRangeTiles);
 
         if (!isPrefetch)
-            _lastLoadZones[chatId] = (idTiles, showConversations);
-        await PrefetchLoadZone(chatId, idTiles, showConversations, cancellationToken).ConfigureAwait(false);
+            _lastLoadZones[chatId] = idTiles;
+        await PrefetchLoadZone(chatId, idTiles, cancellationToken).ConfigureAwait(false);
         var loadAt = CpuTimestamp.Now;
 
         var chatSendingMessages = Hub.SendingMessages.GetSendingMessages(chatId);
@@ -992,7 +999,7 @@ public partial class ChatUI
         if (lidRange.IsEmptyOrNegative)
             throw new ArgumentOutOfRangeException(nameof(lidRange));
 
-        var (showConversations, expandedConversations, hiddenLiveTailRange,
+        var (_, expandedConversations, hiddenLiveTailRange,
             liveBlockId, liveFoldRange, materializedBlockId) = conversationView;
 
         var chatSendingMessages = chatSendingMessagesWrapper.Value;
@@ -1000,38 +1007,34 @@ public partial class ChatUI
         var requestedIdRange = prevMessage == null
             ? lidRange.MoveStart(-EntryIdTiles.TileSize)
             : lidRange;
-        var idRangesToSkip = Array.Empty<Range<long>>();
-        var conversations = Array.Empty<Conversation>();
         var alreadyAddedConversationHeaders = new HashSet<ConversationId>();
-        if (showConversations) {
-            var cidTile = ConversationIdTiles.GetTile(lidRange.Start);
-            var conversationTile = await Conversations
-                .GetTile(Session, chatId, cidTile.Range, cancellationToken)
-                .ConfigureAwait(false);
-            conversations = ResolveBlockAliases(conversationTile, conversationView);
-            conversationView = TruncateMaterializedRanges(conversationView, conversations.Select(c => c.EntryLidRange));
-            liveFoldRange = conversationView.LiveFoldRange;
-            hiddenLiveTailRange = conversationView.HiddenLiveTailRange;
-            var ranges = NormalizeBlockRanges(
-                conversations.Select(c => c.EntryLidRange), liveBlockId, materializedBlockId);
-            var normalized = ConversationRangeTile.NewNormalized(chatId, requestedIdRange, ranges);
-            conversations = normalized.ApplyTo(conversations, requestedIdRange);
-            var isFoldingLiveBlock = liveBlockId is { } foldingBlockId
-                && (materializedBlockId == null || !expandedConversations.Contains(foldingBlockId));
-            idRangesToSkip = conversations
-                .Where(c => (c.Id == liveBlockId && isFoldingLiveBlock) || !expandedConversations.Contains(c.Id))
-                .Select(c => c.Id == liveBlockId ? liveFoldRange : c.EntryLidRange)
-                .Where(r => !r.IsEmpty)
-                .ToArray();
-            // The live conversation's own persisted EntryLidRange is server-tracked (EndEntryLid-based),
-            // so it can be narrower than the governed fold range once the boundary has advanced past
-            // un-summarised rows (§4) - this tile then carries no matching Conversation to substitute
-            // above, and the fold would never apply. Add it explicitly so folding is never limited by
-            // how far the persisted conversation record itself currently reaches.
-            if (liveBlockId is { } liveBlockConversationId && isFoldingLiveBlock
-                && !liveFoldRange.IsEmpty && conversations.All(c => c.Id != liveBlockConversationId))
-                idRangesToSkip = [..idRangesToSkip, liveFoldRange];
-        }
+        var cidTile = ConversationIdTiles.GetTile(lidRange.Start);
+        var conversationTile = await Conversations
+            .GetTile(Session, chatId, cidTile.Range, cancellationToken)
+            .ConfigureAwait(false);
+        var conversations = ResolveBlockAliases(SelectShown(conversationTile, conversationView), conversationView);
+        conversationView = TruncateMaterializedRanges(conversationView, conversations.Select(c => c.EntryLidRange));
+        liveFoldRange = conversationView.LiveFoldRange;
+        hiddenLiveTailRange = conversationView.HiddenLiveTailRange;
+        var ranges = NormalizeBlockRanges(
+            conversations.Select(c => c.EntryLidRange), liveBlockId, materializedBlockId);
+        var normalized = ConversationRangeTile.NewNormalized(chatId, requestedIdRange, ranges);
+        conversations = normalized.ApplyTo(conversations, requestedIdRange);
+        var isFoldingLiveBlock = liveBlockId is { } foldingBlockId
+            && (materializedBlockId == null || !expandedConversations.Contains(foldingBlockId));
+        var idRangesToSkip = conversations
+            .Where(c => (c.Id == liveBlockId && isFoldingLiveBlock) || !expandedConversations.Contains(c.Id))
+            .Select(c => c.Id == liveBlockId ? liveFoldRange : c.EntryLidRange)
+            .Where(r => !r.IsEmpty)
+            .ToArray();
+        // The live conversation's own persisted EntryLidRange is server-tracked (EndEntryLid-based),
+        // so it can be narrower than the governed fold range once the boundary has advanced past
+        // un-summarised rows (§4) - this tile then carries no matching Conversation to substitute
+        // above, and the fold would never apply. Add it explicitly so folding is never limited by
+        // how far the persisted conversation record itself currently reaches.
+        if (liveBlockId is { } liveBlockConversationId && isFoldingLiveBlock
+            && !liveFoldRange.IsEmpty && conversations.All(c => c.Id != liveBlockConversationId))
+            idRangesToSkip = [..idRangesToSkip, liveFoldRange];
         // hiddenLiveTailRange deliberately stays out of idRangesToSkip: it must not drop whole tiles,
         // because what it hides is interleaved with typed messages that have to stay visible. It's
         // applied per entry below instead.
@@ -1262,8 +1265,11 @@ public partial class ChatUI
                     // Gated on the card actually being there: the entry is written before the
                     // conversation is materialized, and nothing retries a materialization that threw,
                     // so an unguarded skip would drop a finished call out of the chat for good.
-                    var isDrawnByItsCard = entry is CallEntry { Outcome: CallOutcome.Ended }
-                        && conversations.Any(c => c.IsCall && c.EntryLidRange.Contains(entry.LocalId));
+                    // The entry names the call's live block, whose range stops short of it while open. A card
+                    // from a context start has another id, but by then its range covers the entry.
+                    var isDrawnByItsCard = entry is CallEntry { Outcome: CallOutcome.Ended } callEntry
+                        && conversations.Any(c => c.IsCall
+                            && (c.Id == callEntry.ConversationId || c.EntryLidRange.Contains(entry.LocalId)));
                     if (!isDrawnByItsCard) {
                         var message = new ChatEntryMessage(entry) {
                             Date = date,
@@ -1601,7 +1607,7 @@ public partial class ChatUI
     private static void RecordPhase(long elapsedMs, string phase)
         => GetChatItemsDuration.Record(elapsedMs, new KeyValuePair<string, object?>("phase", phase));
 
-    private (Range<long>? LidRange, long ReadEntryLid, bool ShowConversations) GetPrefetchAnchor(ChatId chatId)
+    private (Range<long>? LidRange, long ReadEntryLid) GetPrefetchAnchor(ChatId chatId)
     {
         // NOTE: GetExisting rather than a call - this must not start a computation it would then await.
         // Computing is the one state to reject, because reading its Output throws; an invalidated value
@@ -1613,11 +1619,11 @@ public partial class ChatUI
             || cChatInfo.IsComputing()
             || !cChatInfo.IsValue(out var chatInfo)
             || chatInfo?.News is not { } news)
-            return (null, 0, false);
+            return (null, 0);
 
         // A single-author chat reports long.MaxValue as "fully read"; the tail branch handles it
         var readEntryLid = chatInfo.ReadEntryLid == long.MaxValue ? 0 : chatInfo.ReadEntryLid;
-        return (news.TextEntryLidRange, readEntryLid, chatInfo.Chat.IsSummarized ?? false);
+        return (news.TextEntryLidRange, readEntryLid);
     }
 
     private List<Tile<long>> GetCidTiles(Range<long> lidRange)
@@ -1662,7 +1668,6 @@ public partial class ChatUI
     private Task<ChatTile[]> PrefetchLoadZone(
         ChatId chatId,
         List<Range<long>> idTiles,
-        bool showConversations,
         CancellationToken cancellationToken)
         => Task.Run(async () => {
             // GetTile widens its request by one tile for the first tile (prevMessage == null, so it
@@ -1676,13 +1681,11 @@ public partial class ChatUI
                 .EnsureMonotonic()
                 .Select(r => Chats.GetTile(Session, chatId, r, cancellationToken))
                 .Collect(ApiConstants.Concurrency.High, cancellationToken);
-            var prefetchConversationsTask = showConversations
-                ? idTiles
-                    .Select(r => ConversationIdTiles.GetTile(r.Start).Range)
-                    .EnsureMonotonic()
-                    .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
-                    .Collect(ApiConstants.Concurrency.High, cancellationToken)
-                : Task.CompletedTask;
+            var prefetchConversationsTask = idTiles
+                .Select(r => ConversationIdTiles.GetTile(r.Start).Range)
+                .EnsureMonotonic()
+                .Select(r => Conversations.GetTile(Session, chatId, r, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken);
             var prefetchChatInfoTask = PrefetchChatInfo(chatId, cancellationToken);
             await Task.WhenAll(prefetchEntriesTask, prefetchConversationsTask, prefetchChatInfoTask)
                 .ConfigureAwait(false);
