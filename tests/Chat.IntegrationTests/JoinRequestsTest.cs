@@ -1,4 +1,7 @@
+using ActualChat.Chat.Db;
 using ActualChat.Testing.Host;
+using ActualLab.Fusion.EntityFramework;
+using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat.IntegrationTests;
 
@@ -242,6 +245,38 @@ public sealed class JoinRequestsTest(ChatCollection.AppHostFixture fixture, ITes
         outsiderPlaceTarget.Should().BeNull("PlaceMembers hides the chat from outsiders");
         memberPlaceTarget!.State.Should().Be(JoinTargetState.CanRequest);
         memberPlaceTarget.AlsoRequestsPlace.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ExpiredRequestShouldLetUserAskAgain()
+    {
+        // arrange
+        await Owner.SignInAsUniqueBob();
+        await Outsider.SignInAsUniqueAlice();
+        var (chatId, _) = await Owner.CreateChat(false);
+        var request = await Submit(Outsider, chatId);
+        var dbHub = Owner.AppServices.GetRequiredService<DbHub<ChatDbContext>>();
+        await using (var db = await dbHub.CreateDbContext(true)) {
+            await db.JoinRequests
+                .Where(r => r.Id == request.Id.Value)
+                .ExecuteUpdateAsync(s => s.SetProperty(r => r.ExpiresAt, DateTime.UtcNow.AddDays(-1)));
+        }
+        var backend = Owner.AppServices.GetRequiredService<IJoinRequestsBackend>();
+        using (Invalidation.Begin())
+            _ = backend.GetLatest(chatId, request.UserId, default);
+
+        // act
+        var expired = await backend.ListExpired(default, 100, default);
+        var target = await GetTarget(Outsider, chatId);
+        var newRequest = await Submit(Outsider, chatId);
+
+        // assert
+        expired.Should().Contain(r => r.Id == request.Id);
+        target!.State.Should().Be(JoinTargetState.CanRequest, "an expired request can be filed again");
+        newRequest.Id.Should().NotBe(request.Id);
+        newRequest.Status.Should().Be(JoinRequestStatus.Pending);
+        var closed = await backend.Get(chatId, request.Id, default);
+        closed!.Status.Should().Be(JoinRequestStatus.Expired);
     }
 
     [Fact]

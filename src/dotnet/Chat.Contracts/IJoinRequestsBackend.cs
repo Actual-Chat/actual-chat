@@ -1,3 +1,4 @@
+using ActualChat.Sharding;
 using ActualLab.Rpc;
 
 namespace ActualChat.Chat;
@@ -13,6 +14,10 @@ public interface IJoinRequestsBackend : IComputeService, IBackendService
     Task<JoinRequest?> GetLatest(ChatId chatId, UserId userId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ApiArray<JoinRequest>> ListPending(ChatId chatId, CancellationToken cancellationToken);
+
+    // Non-compute methods
+
+    Task<ApiArray<JoinRequest>> ListExpired(ThisNodeRef nodeRef, int limit, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task<JoinRequest> OnCreate(JoinRequestsBackend_Create command, CancellationToken cancellationToken);

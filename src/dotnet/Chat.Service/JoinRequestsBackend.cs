@@ -67,6 +67,24 @@ public class JoinRequestsBackend(IServiceProvider services)
         return requests;
     }
 
+    // Not a [ComputeMethod]
+    public virtual async Task<ApiArray<JoinRequest>> ListExpired(
+        ThisNodeRef nodeRef, int limit, CancellationToken cancellationToken)
+    {
+        var now = Clocks.SystemClock.Now.ToDateTime();
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbRequests = await dbContext.JoinRequests
+            .Where(r => r.Status == JoinRequestStatus.Pending || r.Status == JoinRequestStatus.AwaitingPlace)
+            .Where(r => r.ExpiresAt <= now)
+            .OrderBy(r => r.ExpiresAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbRequests.Select(r => r.ToModel()).ToApiArray();
+    }
+
     // [CommandHandler]
     public virtual async Task<JoinRequest> OnCreate(
         JoinRequestsBackend_Create command, CancellationToken cancellationToken)

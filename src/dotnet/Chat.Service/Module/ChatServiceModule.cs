@@ -252,6 +252,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             .Add<CallTailFlow>()
             .Add<ClosedLiveConversationFlow>()
             .Add<TranslationCleanupFlow>()
+            .Add<JoinRequestExpiryFlow>()
             .Add<WebHookDeliveryFlow>();
         if (Settings.IsChatContentItemIndexingEnabled)
             flows
