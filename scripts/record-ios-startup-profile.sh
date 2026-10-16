@@ -5,7 +5,7 @@
 #                                                  sync to origin/$BRANCH (fails unless it is EXPECT_SHA), build Release with the diagnostic port
 #   record-ios-startup-profile.sh install          install the build on the iPhone
 #   record-ios-startup-profile.sh record [HH:MM:SS]  launch suspended, trace while someone drives the app
-#   record-ios-startup-profile.sh convert          .nettrace -> ios.mibc
+#   record-ios-startup-profile.sh convert          every tmp/ios-profile/*.nettrace -> one ios.mibc
 #
 # The trace lists the methods that ran interpreted on the build it was recorded on. The result is
 # only the new recording; whether to merge the old ios.mibc into it is decided afterwards, see
@@ -95,7 +95,7 @@ install() {
 
 record() {
     local duration=${1:-00:02:00}
-    rm -f "$WORK/ios.nettrace"
+    local trace="$WORK/ios-$(date +%H%M%S).nettrace"
     pkill -f dotnet-dsrouter || true
     pkill -f dotnet-trace || true
     sleep 1
@@ -112,17 +112,22 @@ record() {
     date "+start %H:%M:%S"
     dotnet-trace collect -p $dsr \
         --providers "Microsoft-Windows-DotNETRuntime:0x1C000080018:5" \
-        --buffersize 512 --duration $duration -o "$WORK/ios.nettrace"
+        --buffersize 512 --duration $duration -o "$trace"
     date "+end   %H:%M:%S"
     pkill -f dotnet-dsrouter || true
-    ls -la "$WORK/ios.nettrace"
+    ls -la "$trace"
 }
 
 convert() {
-    dotnet tools/dotnet-pgo/dotnet-pgo.dll create-mibc --trace "$WORK/ios.nettrace" --output "$WORK/ios.mibc" \
-        --compressed --reference "artifacts/out/R2R/*.dll"
-    dotnet tools/dotnet-pgo/dotnet-pgo.dll dump -i "$WORK/ios.mibc" -o "$WORK/dump.txt" | grep '# Methods:'
-    echo "=== result: $WORK/ios.mibc"
+    local pgo=(dotnet tools/dotnet-pgo/dotnet-pgo.dll)
+    local parts=() trace
+    for trace in "$WORK"/*.nettrace; do
+        "${pgo[@]}" create-mibc --trace "$trace" --output "${trace%.nettrace}.mibc" --compressed             --reference "artifacts/out/R2R/*.dll"
+        parts+=(-i "${trace%.nettrace}.mibc")
+    done
+    "${pgo[@]}" merge "${parts[@]}" -o "$WORK/ios.mibc" --compressed
+    "${pgo[@]}" dump -i "$WORK/ios.mibc" -o "$WORK/dump.txt" | grep '# Methods:'
+    echo "=== result: $WORK/ios.mibc, merged from $(( ${#parts[@]} / 2 )) trace(s)"
 }
 
 case "$1" in
