@@ -183,24 +183,10 @@ public sealed class ChatBlockQueryTest
         isFulfilled.Should().BeFalse("normalization reaches metadata not loaded by the original query");
     }
 
-    [Fact]
-    public void DisabledConversationsShouldKeepOrdinarySelection()
-    {
-        // arrange
-        var block = new Range<long>(100, 200);
-        var view = NewView() with { ShowConversations = false };
-
-        // act
-        var tiles = Select(new(new(130, 139), 0, 0), NewMeta([block], [block]), view, [block]);
-
-        // assert
-        tiles.Should().Equal(new Range<long>(130, 135), new Range<long>(135, 140));
-    }
-
     // Private methods
 
     private static ConversationViewState NewView()
-        => new(true, ImmutableHashSet<ConversationId>.Empty, default, null, default, null);
+        => new(false, ImmutableHashSet<ConversationId>.Empty, default, null, default, null);
 
     private static ChatRangeTile NewMeta(Range<long>[] entries, Range<long>[] conversations)
         => new(new(0, 1280), entries, conversations, 0, null, null);

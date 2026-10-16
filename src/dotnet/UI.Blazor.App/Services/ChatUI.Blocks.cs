@@ -64,10 +64,9 @@ public partial class ChatUI
     {
         // Resolves ownership before bounding open-ended coverage for rendering. Missing records still reserve
         // ownership but do not produce cards.
-        if (!view.ShowConversations)
-            return [];
-
-        var byId = conversations.OfType<Conversation>().DistinctBy(c => c.Id).ToDictionary(c => c.Id);
+        var byId = SelectShown(conversations.OfType<Conversation>(), view)
+            .DistinctBy(c => c.Id)
+            .ToDictionary(c => c.Id);
         var blocks = new List<ChatBlock>();
         foreach (var range in ranges) {
             var id = ConversationId.New(chatId, range.Start);
@@ -114,6 +113,20 @@ public partial class ChatUI
         }
     }
 
+    internal static IEnumerable<Conversation> SelectShown(
+        IEnumerable<Conversation> conversations, ConversationViewState view)
+        => conversations.Where(c => IsShown(
+            c, view.IsCallsOnly, view.LiveBlockConversationId, view.MaterializedBlockId));
+
+    internal static bool IsShown(
+        Conversation conversation,
+        bool isCallsOnly,
+        ConversationId? liveBlockId,
+        ConversationId? materializedBlockId)
+        // A chat that stopped summarizing keeps its old conversations, which no longer fold its entries
+        => !isCallsOnly || conversation.IsCall
+            || conversation.Id == liveBlockId || conversation.Id == materializedBlockId;
+
     // Private methods
 
     private async Task<List<ChatBlock>> GetChatBlocks(
@@ -125,9 +138,6 @@ public partial class ChatUI
         Range<long> liveBlockRange,
         CancellationToken cancellationToken)
     {
-        if (!view.ShowConversations)
-            return [];
-
         var ranges = rangeTiles.SelectMany(m => m.ConversationRanges).EnsureMonotonic().ToList();
         var ids = ranges.Select(r => ConversationId.New(chatId, r.Start)).ToList();
         if (view.MaterializedBlockId is { } materializedId)

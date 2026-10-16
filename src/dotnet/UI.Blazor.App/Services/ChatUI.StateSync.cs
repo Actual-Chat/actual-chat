@@ -382,7 +382,7 @@ public partial class ChatUI
         // pointer-down prefetch ever warmed it - so a chat with its whole tail cached still couldn't
         // open offline. Same for what the tail shows around its text: authors, reactions, pins.
         var metaTask = PrefetchRangeTiles(chatId, GetCidTiles(tailRange), cancellationToken);
-        var tilesTask = PrefetchLoadZone(chatId, idTiles, chat.Chat.IsSummarized ?? false, cancellationToken);
+        var tilesTask = PrefetchLoadZone(chatId, idTiles, cancellationToken);
         var pinnedTask = PrefetchPinnedEntries(chatId, cancellationToken);
         await Task.WhenAll(metaTask, tilesTask, pinnedTask).ConfigureAwait(false);
         var tiles = await tilesTask.ConfigureAwait(false);

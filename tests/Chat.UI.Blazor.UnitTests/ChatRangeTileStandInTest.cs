@@ -32,7 +32,7 @@ public sealed class ChatRangeTileStandInTest
         // arrange
         var tiles = ChatRangeTileCache.StandIn([CachedTail], QueriedCidTiles, ChatLidRange)!;
         var view = new ConversationViewState(
-            true, ImmutableHashSet<ConversationId>.Empty, default, null, default, null);
+            false, ImmutableHashSet<ConversationId>.Empty, default, null, default, null);
         var conversationId = ConversationId.New(TestChatId, Conversation.Start);
         var blocks = new ChatBlock[] {
             new(new(conversationId) { EndEntryLid = Conversation.End - 1 }, Conversation, Moment.EpochStart),
