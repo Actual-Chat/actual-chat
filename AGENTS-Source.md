@@ -160,6 +160,23 @@ The only exception is when `/server-loop` is running - in this case you should t
 
 For local test data, drive the local UI instead — see *Seed local test data* in `/debug-ui`.
 
+## Private conversations stay private
+
+Never publish anything learned from a private conversation without the developer's explicit
+approval for that specific content.
+
+- **Private sources:** Voxt peer and private group chats (including what the `voxt-*` MCP tools
+  read), Slack and other messengers, email, calendar, meeting notes, and anything the developer
+  pastes from them.
+- **Publishing:** GitHub issues, PR titles and descriptions, issue/PR comments and reviews, commit
+  messages, code comments, checked-in docs, posts to team or public chats, and published artifacts
+  or documents.
+- **Before publishing:** show the exact text that would go out and who it came from, then wait for
+  a yes. Approval covers only that text, in that place.
+- **Not covered:** facts you verified yourself from code, configs, logs or live systems. Cite those
+  as your own findings, not as "X said".
+- **Keeping notes:** local notes and memory files are fine; they are not publishing.
+
 ## When work on a task starts
 
 Every task maps to one GitHub issue on the org's Team project board. Run the
