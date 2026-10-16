@@ -40,7 +40,7 @@
             <ChatIcon Chat="@chat" ShowPresence="@true"/>
             <div class="c-description">
                 <span class="c-chat-title">
-                    <span>@chat.Title</span>
+                    <span>@(m.Invitation?.PlaceTitle ?? chat.Title)</span>
                     <span class="c-incut"></span>
                     @if (lastTextEntry != null && !showEnding) {
                         @Hub.MarkupHelpers.LastEntryTime(m.LastBeginsAt)

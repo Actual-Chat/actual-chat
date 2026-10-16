@@ -198,6 +198,7 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
         var result = new List<ChatInvitationState>();
         foreach (var invitation in active.OfType<InvitationNotification>()) {
             var chatId = invitation.ChatId;
+            string? placeTitle = null;
             if (chatId is PlaceChatId { IsRoot: true } rootChatId) {
                 var welcomeChatId = await Hub.Places
                     .GetWelcomeChatId(Session, rootChatId.PlaceId, cancellationToken)
@@ -206,8 +207,12 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
                     continue;
 
                 chatId = welcomeChatId;
+                placeTitle = invitation.Title;
             }
-            result.Add(new ChatInvitationState(invitation.Id, chatId, invitation.Text, invitation.SentAt));
+            var state = new ChatInvitationState(invitation.Id, chatId, invitation.Text, invitation.SentAt) {
+                PlaceTitle = placeTitle,
+            };
+            result.Add(state);
         }
         return result.ToApiArray();
     }
@@ -260,8 +265,11 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
 
 public readonly record struct ChatReactionState(Emoji? Emoji, Moment SentAt);
 
-// ChatId is the chat the invitation is shown on, which for a place is its welcome chat
-public sealed record ChatInvitationState(NotificationId Id, ChatId ChatId, string Text, Moment SentAt);
+// ChatId is the chat the invitation is shown on, which for a place is its welcome chat - titled by the place
+public sealed record ChatInvitationState(NotificationId Id, ChatId ChatId, string Text, Moment SentAt)
+{
+    public string? PlaceTitle { get; init; }
+}
 
 /// <summary>
 /// The notification a notifications-panel row is bound to: enough of it to link, badge and

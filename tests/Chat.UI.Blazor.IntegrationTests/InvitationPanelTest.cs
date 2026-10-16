@@ -70,6 +70,7 @@ public sealed class InvitationPanelTest(ChatAppHostFixture fixture, ITestOutputH
         await TestWait.When(async ct => {
             var invitation = await hub.NotificationsUI.GetInvitation(welcomeChatId, ct);
             invitation.Should().NotBeNull("a place invitation is shown on its welcome chat");
+            invitation!.PlaceTitle.Should().Be(place.Title, "the row stands for the place, not its welcome chat");
             var chats = await hub.ChatListUI.List(null, settings, ct);
             chats.Select(x => x.Id).Should().Contain(welcomeChatId);
         });
