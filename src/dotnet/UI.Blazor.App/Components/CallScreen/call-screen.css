@@ -915,8 +915,10 @@ body.show-fps-overlay .video-fps:empty {
 }
 
 /* Participant label and raised hand: one bottom-left row, so a hidden label leaves the hand in its place */
+/* right-1 bounds the caption to the tile, so a long name ellipsizes instead of
+   overflowing past the tile's right edge and getting clipped by overflow:hidden */
 .call-screen .video-track-player .video-tile-caption {
-    @apply absolute bottom-1 left-1 z-10;
+    @apply absolute bottom-1 left-1 right-1 z-10;
     @apply flex items-center gap-1;
     @apply pointer-events-none;
 }
@@ -924,14 +926,17 @@ body.show-fps-overlay .video-fps:empty {
 .call-screen.expanded:not(.layout-equal) .video-track-player.item-focused .video-tile-caption {
     bottom: calc(var(--vp-safe-bottom) + 0.25rem);
     left: calc(var(--vp-safe-left) + 0.25rem);
+    right: calc(var(--vp-safe-right) + 0.25rem);
 }
 .call-screen .video-track-player .video-participant-label {
     @apply flex items-center gap-1;
+    @apply min-w-0;
     @apply px-1.5 py-0.5 rounded-lg;
     @apply text-sm text-white;
     background: rgba(0, 0, 0, 0.5);
 }
 .call-screen .video-track-player .video-participant-label > span {
+    @apply min-w-0;
     @apply overflow-hidden whitespace-nowrap;
     max-width: 16ch;
     text-overflow: ellipsis;
