@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.UI.Blazor.Services;
 using Application = Microsoft.Maui.Controls.Application;
 
@@ -14,7 +15,12 @@ public class App(IServiceProvider services) : Application
     protected override Window CreateWindow(IActivationState? activationState)
     {
         var window = new Window(new MainPage());
-        window.Destroying += (_, _) => FlushSentryData();
+        window.Destroying += (_, _) => {
+            // Raised ahead of the handler teardown that takes the Blazor scope with it, on every
+            // platform's quit path; the platforms whose quit may skip it hook their own event too.
+            MauiAppExit.LeaveLiveSessions();
+            FlushSentryData();
+        };
         window.Title =
             MauiSettings.UseLocalhost
                 ? $"{CoreConstants.AppName} (Local)"

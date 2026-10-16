@@ -1,5 +1,6 @@
 using ActualChat.App.Maui.Activities;
 using ActualChat.App.Maui.Audio;
+using ActualChat.App.Maui.Services;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI;
 using ActualChat.UI.App.Services;
@@ -54,21 +55,25 @@ public static partial class MauiProgram
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
-        => events.AddiOS(ios => ios.FinishedLaunching((app, options) => {
-            // Prevents null ref for Windows+iPhone, see:
-            // - https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
+        => events.AddiOS(ios => ios
+            .FinishedLaunching((app, options) => {
+                // Prevents null ref for Windows+iPhone, see:
+                // - https://github.com/xamarin/GoogleApisForiOSComponents/issues/577
 
 #if !HOTRESTART
-            CrossFirebase.Initialize();
-            var isDataCollectionEnabled = MauiPreferences.IsDataCollectionEnabled == true;
-            CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
-            FirebaseCloudMessagingImplementation.Initialize();
-            IosPtt.Initialize();
+                CrossFirebase.Initialize();
+                var isDataCollectionEnabled = MauiPreferences.IsDataCollectionEnabled == true;
+                CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
+                FirebaseCloudMessagingImplementation.Initialize();
+                IosPtt.Initialize();
 #if IS_DEV_MAUI
-            // Calls are dev-only: prod entitlements and App Review are a separate task.
-            IosVoipPushes.Instance.Initialize();
+                // Calls are dev-only: prod entitlements and App Review are a separate task.
+                IosVoipPushes.Instance.Initialize();
 #endif
 #endif
-            return false;
-        }));
+                return false;
+            })
+            // Swiping the app away while a call keeps it running: a suspended app gets no such call, and
+            // sends no leave either way, so the server's disconnect grace is what ends its call then.
+            .WillTerminate(_ => MauiAppExit.LeaveLiveSessions()));
 }
