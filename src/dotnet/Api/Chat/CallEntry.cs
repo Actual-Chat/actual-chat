@@ -23,6 +23,7 @@ public sealed partial record CallEntry : SystemEntry
     [DataMember, Key(22)] public CallOutcome Outcome { get; init; }
     [DataMember, Key(23)] public ApiArray<AuthorId> InviteeIds { get; init; }
     [DataMember, Key(24)] public bool HasVideo { get; init; }
+    [DataMember, Key(25)] public ConversationId? ConversationId { get; init; }
 
     public CallEntry() : base((ChatEntryId)null!) { }
 

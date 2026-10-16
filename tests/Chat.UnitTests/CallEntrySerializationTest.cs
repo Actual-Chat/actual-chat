@@ -15,6 +15,7 @@ public class CallEntrySerializationTest
             Outcome = CallOutcome.NoAnswer,
             InviteeIds = new[] { invitee }.ToApiArray(),
             HasVideo = true,
+            ConversationId = ConversationId.New(chatId, 5),
         };
 
         // act
@@ -29,6 +30,7 @@ public class CallEntrySerializationTest
         call.Outcome.Should().Be(CallOutcome.NoAnswer);
         call.InviteeIds.Should().Equal(invitee);
         call.HasVideo.Should().BeTrue();
+        call.ConversationId.Should().Be(ConversationId.New(chatId, 5));
     }
 
     [Fact]
@@ -70,6 +72,7 @@ public class CallEntrySerializationTest
             Outcome = CallOutcome.Ended,
             InviteeIds = new[] { AuthorId.New(chatId, 2) }.ToApiArray(),
             HasVideo = true,
+            ConversationId = ConversationId.New(chatId, 5),
         };
 
         // act
@@ -82,5 +85,28 @@ public class CallEntrySerializationTest
         option.CallerName.Should().Be("John");
         option.Outcome.Should().Be(CallOutcome.Ended);
         option.HasVideo.Should().BeTrue();
+        option.ConversationId.Should().Be(ConversationId.New(chatId, 5));
+    }
+
+    [Fact]
+    public void CallEntryWrittenBeforeItNamedItsCardShouldReadWithoutOne()
+    {
+        // arrange
+        var chatId = ChatId.Parse("052w3sgrad");
+        var entry = new CallEntry(ChatEntryId.New(chatId, 7)) {
+            CallerId = AuthorId.New(chatId, 1),
+            Outcome = CallOutcome.Ended,
+        };
+        var json = Serializers.SystemJson.Write(LegacySystemEntry.From(entry)!);
+        var oldJson = json.Replace(",\"ConversationId\":null", "");
+
+        // act
+        var back = Serializers.SystemJson.Read<LegacySystemEntry>(oldJson);
+
+        // assert
+        oldJson.Should().NotContain("ConversationId");
+        var option = back.Option.Should().BeOfType<LegacyCallOption>().Subject;
+        option.Outcome.Should().Be(CallOutcome.Ended);
+        option.ConversationId.Should().BeNull();
     }
 }

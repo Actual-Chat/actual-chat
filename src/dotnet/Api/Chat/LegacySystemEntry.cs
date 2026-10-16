@@ -64,7 +64,7 @@ public sealed partial record LegacySystemEntry : IUnionRecord<LegacySystemEntryO
         },
         CallEntry c => new LegacySystemEntry {
             Option = new LegacyCallOption(
-                c.CallerId, c.CallerName, c.Outcome, c.InviteeIds.ToArray(), c.HasVideo),
+                c.CallerId, c.CallerName, c.Outcome, c.InviteeIds.ToArray(), c.HasVideo, c.ConversationId),
         },
         HistoryChangedEntry hc => new LegacySystemEntry {
             Option = new LegacyHistoryChangedOption(
@@ -121,16 +121,23 @@ public sealed partial record LegacyCallOption : LegacySystemEntryOption
     [DataMember] public CallOutcome Outcome { get; init; }
     [DataMember] public AuthorId[] InviteeIds { get; init; } = [];
     [DataMember] public bool HasVideo { get; init; }
+    [DataMember] public ConversationId? ConversationId { get; init; }
 
     [JsonConstructor, Newtonsoft.Json.JsonConstructor]
     public LegacyCallOption(
-        AuthorId callerId, string callerName, CallOutcome outcome, AuthorId[] inviteeIds, bool hasVideo)
+        AuthorId callerId,
+        string callerName,
+        CallOutcome outcome,
+        AuthorId[] inviteeIds,
+        bool hasVideo,
+        ConversationId? conversationId = null)
     {
         CallerId = callerId;
         CallerName = callerName;
         Outcome = outcome;
         InviteeIds = inviteeIds;
         HasVideo = hasVideo;
+        ConversationId = conversationId;
     }
 }
 
