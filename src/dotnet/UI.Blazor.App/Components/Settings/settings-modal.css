@@ -117,6 +117,17 @@ body.narrow .close-settings-btn {
     @apply underline;
     @apply cursor-pointer;
 }
+/* When auto-start is available the disable reason is empty, yet TileItem still renders an
+   empty .ti-caption - which trips its two-line, top-aligned layout and lifts the icon, label
+   and toggle off centre. Re-centre the row while the reason is empty; a filled reason keeps
+   the normal title-over-caption layout. */
+.settings-tab .app-settings .auto-start:has(.disable-reason:empty) {
+    @apply items-center;
+}
+.settings-tab .app-settings .auto-start:has(.disable-reason:empty) > .ti-left,
+.settings-tab .app-settings .auto-start:has(.disable-reason:empty) > .ti-right {
+    @apply self-center;
+}
 
 /* ── Theme & Render Mode ── */
 
