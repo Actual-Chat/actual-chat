@@ -1828,6 +1828,15 @@ public static class LocalizedStringsLocalizerExt
         public string JoinRequest_NotMember => l["JoinRequest_NotMember"].Value;
         public string JoinRequest_Text => l["JoinRequest_Text"].Value;
         public string JoinRequest_Send => l["JoinRequest_Send"].Value;
+        public string JoinRequestAccess_Title => l["JoinRequestAccess_Title"].Value;
+        public string JoinRequestAccess_Off => l["JoinRequestAccess_Off"].Value;
+        public string JoinRequestAccess_OffHint => l["JoinRequestAccess_OffHint"].Value;
+        public string JoinRequestAccess_PlaceMembers => l["JoinRequestAccess_PlaceMembers"].Value;
+        public string JoinRequestAccess_PlaceMembersHint => l["JoinRequestAccess_PlaceMembersHint"].Value;
+        public string JoinRequestAccess_SignedIn => l["JoinRequestAccess_SignedIn"].Value;
+        public string JoinRequestAccess_SignedInHint => l["JoinRequestAccess_SignedInHint"].Value;
+        public string JoinRequestAccess_Anyone => l["JoinRequestAccess_Anyone"].Value;
+        public string JoinRequestAccess_AnyoneHint => l["JoinRequestAccess_AnyoneHint"].Value;
         public string Stepper_StepCompleted => l["Stepper_StepCompleted"].Value;
         public string MediaInfo_Title => l["MediaInfo_Title"].Value;
         public string MediaInfo_FileName => l["MediaInfo_FileName"].Value;

@@ -95,6 +95,8 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             place = new Place(placeId) {
                 CreatedAt = Clocks.SystemClock.Now,
             };
+            if (update.IsPublic != true && update.JoinRequestAccess is null)
+                update = update with { JoinRequestAccess = Constants.Chat.DefaultJoinRequestAccess };
             place = ApplyDiff(place, update);
             dbPlace = new DbPlace(place);
 
@@ -173,8 +175,13 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
             // Validation
             if (newPlace.Title.IsNullOrEmpty())
                 throw StandardError.Constraint("Place title cannot be empty.");
+            if (newPlace.JoinRequestAccess == JoinRequestAccess.PlaceMembers)
+                throw StandardError.Constraint("A Place can't limit join requests to its own members.");
 
-            return newPlace;
+            // A public Place needs no requests, and becoming private again shouldn't expose it
+            return newPlace.IsPublic
+                ? newPlace with { JoinRequestAccess = JoinRequestAccess.Off }
+                : newPlace;
         }
 
         async Task RemoveMedia(string mediaSid)
@@ -214,6 +221,7 @@ public class PlacesBackend(IServiceProvider services) : DbServiceBase<ChatDbCont
                 Title = place.Title,
                 Kind = ChatKind.Place,
                 MediaId = place.MediaId,
+                JoinRequestAccess = place.JoinRequestAccess,
             };
     }
 }

@@ -2050,6 +2050,17 @@
   "JoinRequest_NotMember": "まだメンバーではありません",
   "JoinRequest_Text": "Изпратете заявка за присъединяване — администраторите ще преценят добавянето ви в Мястото",
   "JoinRequest_Send": "Envoyer la demande",
+
+  // Settings of a private chat or Place: who, following its plain link, may see its title and ask to join. Everyone else sees "not found".
+  "JoinRequestAccess_Title": "कौन शामिल होने का अनुरोध कर सकता है",
+  "JoinRequestAccess_Off": "任何人都不行",
+  "JoinRequestAccess_OffHint": "Hinein kommt man nur über einen Einladungslink oder wenn ein Eigentümer einen hinzufügt",
+  "JoinRequestAccess_PlaceMembers": "Членове на Мястото",
+  "JoinRequestAccess_PlaceMembersHint": "Членовете на Мястото могат да отворят линка и да поискат присъединяване",
+  "JoinRequestAccess_SignedIn": "Chiunque abbia effettuato l'accesso",
+  "JoinRequestAccess_SignedInHint": "Будь-хто, хто увійшов в акаунт, може відкрити посилання, побачити назву й попросити про вступ",
+  "JoinRequestAccess_Anyone": "Toute personne disposant du lien",
+  "JoinRequestAccess_AnyoneHint": "名前と画像はアカウントがなくても見えます。参加のリクエストにはアカウントが必要です",
   "Stepper_StepCompleted": "Questo passaggio è già stato completato!",
 
   // The info sheet of the media viewer; these labels keep their trailing colon.

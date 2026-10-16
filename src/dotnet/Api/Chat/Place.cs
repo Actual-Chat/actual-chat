@@ -19,6 +19,7 @@ public sealed partial record Place(
     [DataMember, Key(6)] public MediaId? BackgroundMediaId { get; init; }
     [DataMember, Key(7)] public string Description { get; init; } = "";
     [DataMember, Key(11)] public AliasId? AliasId { get; init; }
+    [DataMember, Key(12)] public JoinRequestAccess JoinRequestAccess { get; init; }
 
     // Populated only on front-end
     [DataMember, Key(8)] public PlaceRules Rules { get; init; } = null!;
@@ -42,4 +43,5 @@ public sealed partial record PlaceDiff : RecordDiff
     [DataMember] public MediaId? BackgroundMediaId { get; init; }
     [DataMember] public string? Description { get; init; }
     [DataMember] public AliasId? AliasId { get; init; }
+    [DataMember] public JoinRequestAccess? JoinRequestAccess { get; init; }
 }

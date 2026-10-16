@@ -782,6 +782,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             chat = new Chat(chatId.Require()) {
                 CreatedAt = Clocks.SystemClock.Now,
             };
+            // A Place root chat takes its value from the Place; system and templated chats get none
+            var mustDefaultJoinRequestAccess = update is { IsPublic: not true, JoinRequestAccess: null }
+                && chatId is GroupChatId or PlaceChatId { IsRoot: false }
+                && update.SystemTag is null
+                && !update.TemplateId.HasValue;
+            if (mustDefaultJoinRequestAccess)
+                update = update with { JoinRequestAccess = Constants.Chat.DefaultJoinRequestAccess };
             chat = ApplyDiff(chat, update);
             dbChat = new DbChat(chat);
             if (!dbChat.SystemTag.IsNullOrEmpty()
@@ -987,6 +994,14 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
 
             if (newChat.IsPttPaused && newChat.PttEnabledAt is null)
                 throw StandardError.Constraint("Push-to-talk must be enabled before it can be paused.");
+
+            var isPlaceChat = newChat.Id is PlaceChatId { IsRoot: false };
+            if (newChat.JoinRequestAccess == JoinRequestAccess.PlaceMembers && !isPlaceChat)
+                throw StandardError.Constraint("Only a chat in a Place can limit join requests to Place members.");
+
+            // A public chat needs no requests, and becoming private again shouldn't expose it
+            if (newChat.IsPublic)
+                newChat = newChat with { JoinRequestAccess = JoinRequestAccess.Off };
 
             // Validation
             switch (newChat.Kind) {

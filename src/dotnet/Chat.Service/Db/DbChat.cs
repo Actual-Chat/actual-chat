@@ -37,6 +37,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
     public bool IsPlaceRootChat { get; set; }
     public bool? IsSummarized { get; set; }
     public TimeSpan? RetentionPeriod { get; set; }
+    public JoinRequestAccess JoinRequestAccess { get; set; }
 
     public bool IsPttPaused { get; set; }
 
@@ -75,6 +76,7 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
             RetentionPeriod = RetentionPeriod,
             PttEnabledAt = PttEnabledAt is { } pttEnabledAt ? new Moment(pttEnabledAt) : null,
             IsPttPaused = IsPttPaused,
+            JoinRequestAccess = JoinRequestAccess,
         };
 
     public void UpdateFrom(Chat model)
@@ -106,5 +108,6 @@ public class DbChat : IHasId<string>, IHasVersion<long>, IRequirementTarget
         RetentionPeriod = model.RetentionPeriod;
         PttEnabledAt = model.PttEnabledAt?.ToDateTime();
         IsPttPaused = model.IsPttPaused;
+        JoinRequestAccess = model.JoinRequestAccess;
     }
 }

@@ -25,6 +25,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     // Permissions & Rules
     public bool IsPublic { get; set; }
+    public JoinRequestAccess JoinRequestAccess { get; set; }
 
     public DateTime CreatedAt {
         get => field.DefaultKind(DateTimeKind.Utc);
@@ -40,6 +41,7 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
             MediaId = ActualChat.MediaId.ParseNullable(MediaId),
             BackgroundMediaId = ActualChat.MediaId.ParseNullable(BackgroundMediaId),
             AliasId = ActualChat.AliasId.ParseNullable(AliasId),
+            JoinRequestAccess = JoinRequestAccess,
         };
 
     public void UpdateFrom(Place model)
@@ -57,5 +59,6 @@ public class DbPlace : IHasId<string>, IHasVersion<long>, IRequirementTarget
         MediaId = model.MediaId?.Value ?? "";
         BackgroundMediaId = model.BackgroundMediaId?.Value ?? "";
         AliasId = model.AliasId?.NormalizedValue ?? "";
+        JoinRequestAccess = model.JoinRequestAccess;
     }
 }

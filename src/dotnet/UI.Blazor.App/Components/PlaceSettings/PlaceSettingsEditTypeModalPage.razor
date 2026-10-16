@@ -89,7 +89,13 @@
                 </Content>
             </TileItem>
         </FormBlock>
-    } else if (m.Place.Rules.CanInvite()) {
+    }
+    @if (!_form.IsPublic) {
+        <JoinRequestAccessPicker
+            Id="@_form.JoinRequestAccessFormId"
+            @bind-Value="_form.JoinRequestAccess"/>
+    }
+    @if (!_form.IsPublic && m.Place.Rules.CanInvite()) {
         <FormBlock Title="@L.Invite_ManageLinks" Class="first last">
             @if (m.Invites.Count > 0) {
                 <InviteList
@@ -143,6 +149,7 @@
             IsPublic = place.IsPublic,
             AliasId = place.AliasId?.Value ?? "",
             CurrentAliasId = place.AliasId?.Value ?? "",
+            JoinRequestAccess = place.JoinRequestAccess,
         };
         _editContext = new EditContext(_form);
         _editContext.OnFieldChanged += (_, e) => {
@@ -197,6 +204,7 @@
             AliasId = _form!.IsPublic
                 ? AliasId.ParseNullable(_form.AliasId)
                 : null,
+            JoinRequestAccess = _form.IsPublic ? JoinRequestAccess.Off : _form.JoinRequestAccess,
         };
         var command = new Places_Change {
             Session = Session,
@@ -225,6 +233,7 @@
     public sealed class FormModel {
         public string AliasId { get; set; } = "";
         public bool IsPublic { get; set; }
+        public JoinRequestAccess JoinRequestAccess { get; set; }
 
         public string CurrentAliasId { get; set; } = "";
         [AliasId]
@@ -235,6 +244,7 @@
         public string IsPublicFormId { get; }
         public string IsPublicTrueFormId { get; }
         public string IsPublicFalseFormId { get; }
+        public string JoinRequestAccessFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator) {
             FormId = componentIdGenerator.Next("new-chat-form");
@@ -242,6 +252,7 @@
             IsPublicFormId = $"{FormId}-is-public";
             IsPublicTrueFormId = IsPublicFormId + "-true";
             IsPublicFalseFormId = IsPublicFormId + "-false";
+            JoinRequestAccessFormId = $"{FormId}-join-request-access";
         }
     }
 

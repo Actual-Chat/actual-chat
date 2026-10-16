@@ -73,6 +73,7 @@ public partial class EditChatTypeModalPage
             IsTemplate = chat.IsTemplate,
             AllowGuestAuthors = chat.AllowGuestAuthors,
             AllowAnonymousAuthors = chat.AllowAnonymousAuthors,
+            JoinRequestAccess = chat.JoinRequestAccess,
         };
         if (_place is not null && !_place.Rules.CanApplyPublicChatType())
             _form.IsPublic = false;
@@ -149,6 +150,7 @@ public partial class EditChatTypeModalPage
             AliasId = _form!.IsPublic ? AliasId.ParseNullable(_form.AliasId) : null,
             AllowGuestAuthors = !isPlaceChat && _form.AllowGuestAuthors,
             AllowAnonymousAuthors = !isPlaceChat && _form.AllowAnonymousAuthors,
+            JoinRequestAccess = _form.IsPublic ? JoinRequestAccess.Off : _form.JoinRequestAccess,
         };
         var command = new Chats_Change {
             Session = Session,
@@ -196,6 +198,7 @@ public partial class EditChatTypeModalPage
         public bool IsTemplate { get; set; }
         public bool AllowGuestAuthors { get; set; }
         public bool AllowAnonymousAuthors { get; set; }
+        public JoinRequestAccess JoinRequestAccess { get; set; }
 
         public string CurrentAliasId { get; set; } = "";
         [AliasId]
@@ -209,6 +212,7 @@ public partial class EditChatTypeModalPage
         public string IsTemplateFormId { get; }
         public string AllowGuestAuthorsFormId { get; }
         public string AllowAnonymousAuthorsFormId { get; }
+        public string JoinRequestAccessFormId { get; }
 
         public FormModel(ComponentIdGenerator componentIdGenerator)
         {
@@ -220,6 +224,7 @@ public partial class EditChatTypeModalPage
             IsTemplateFormId = $"{FormId}-is-template";
             AllowGuestAuthorsFormId = $"{FormId}-allows-guests";
             AllowAnonymousAuthorsFormId = $"{FormId}-allows-anonymous";
+            JoinRequestAccessFormId = $"{FormId}-join-request-access";
         }
     }
 

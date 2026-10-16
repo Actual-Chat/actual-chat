@@ -99,6 +99,8 @@ public static partial class Constants
         public const int NonContactPeerMessageLimit = 2;
         public const int ReactionFirstAuthorIdsLimit = 10;
         public const int MaxSearchFilterLength = 100;
+        // Existing private chats and Places keep Off: their owners never agreed to show the title
+        public const JoinRequestAccess DefaultJoinRequestAccess = JoinRequestAccess.SignedIn;
         // Below this an image suggestion would be a guess, and a letter avatar beats a guess. The
         // client owns the threshold: it is the one watching the chat grow past it.
         public const int MinImageSuggestionEntries = 5;

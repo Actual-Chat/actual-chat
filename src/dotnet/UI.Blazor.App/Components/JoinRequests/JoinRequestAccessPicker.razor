@@ -1,0 +1,46 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using System.Linq.Expressions
+@using ActualChat.Chat
+@inherits ComponentBase<AppUIHub>
+
+<FormBlock Title="@L.JoinRequestAccess_Title" Class="with-input-radio">
+    <InputRadioGroup
+        TValue="JoinRequestAccess"
+        Name="@Id"
+        Value="@Value"
+        ValueChanged="@ValueChanged"
+        ValueExpression="@ValueExpression">
+        @foreach (var (access, label, hint) in GetItems()) {
+            var itemId = $"{Id}-{access}";
+            <TileItem
+                Class="@(Value == access ? "clickable selected" : "clickable")"
+                Click="@(() => ValueChanged.InvokeAsync(access))">
+                <Icon>
+                    <FormRadio TValue="JoinRequestAccess" Id="@itemId" Name="@Id" Value="@access"/>
+                </Icon>
+                <Content>
+                    <Label InputId="@itemId" Text="@label"></Label>
+                </Content>
+                <Caption>@hint</Caption>
+            </TileItem>
+        }
+    </InputRadioGroup>
+</FormBlock>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter] public JoinRequestAccess Value { get; set; }
+    [Parameter] public EventCallback<JoinRequestAccess> ValueChanged { get; set; }
+    [Parameter] public Expression<Func<JoinRequestAccess>>? ValueExpression { get; set; }
+    [Parameter] public bool IsPlaceChat { get; set; }
+
+    private IEnumerable<(JoinRequestAccess Access, string Label, string Hint)> GetItems()
+    {
+        yield return (JoinRequestAccess.Off, L.JoinRequestAccess_Off, L.JoinRequestAccess_OffHint);
+        if (IsPlaceChat)
+            yield return (JoinRequestAccess.PlaceMembers,
+                L.JoinRequestAccess_PlaceMembers, L.JoinRequestAccess_PlaceMembersHint);
+        yield return (JoinRequestAccess.SignedIn, L.JoinRequestAccess_SignedIn, L.JoinRequestAccess_SignedInHint);
+        yield return (JoinRequestAccess.Anyone, L.JoinRequestAccess_Anyone, L.JoinRequestAccess_AnyoneHint);
+    }
+}

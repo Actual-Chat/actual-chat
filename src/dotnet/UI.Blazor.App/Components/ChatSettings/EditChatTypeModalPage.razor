@@ -108,7 +108,14 @@
                 </TileItem>
             }
         </FormBlock>
-    } else if (m.Chat.CanInvite()) {
+    }
+    @if (!_form.IsPublic) {
+        <JoinRequestAccessPicker
+            Id="@_form.JoinRequestAccessFormId"
+            IsPlaceChat="@isPlaceChat"
+            @bind-Value="_form.JoinRequestAccess"/>
+    }
+    @if (!_form.IsPublic && m.Chat.CanInvite()) {
         <FormBlock Title="@L.Invite_ManageLinks" Class="first last">
             @if (m.Invites.Count > 0) {
                 <InviteList

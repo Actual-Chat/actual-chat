@@ -2050,6 +2050,17 @@
   "JoinRequest_NotMember": "Not member yet",
   "JoinRequest_Text": "Send a join request and admins will consider you for addition to the Place",
   "JoinRequest_Send": "Send Request",
+
+  // Settings of a private chat or Place: who, following its plain link, may see its title and ask to join. Everyone else sees "not found".
+  "JoinRequestAccess_Title": "Who can ask to join",
+  "JoinRequestAccess_Off": "No one",
+  "JoinRequestAccess_OffHint": "People get in only through an invite link or when added by an owner",
+  "JoinRequestAccess_PlaceMembers": "Place members",
+  "JoinRequestAccess_PlaceMembersHint": "Members of the Place can open the link and ask to join",
+  "JoinRequestAccess_SignedIn": "Anyone signed in",
+  "JoinRequestAccess_SignedInHint": "Anyone signed in can open the link, see the title and ask to join",
+  "JoinRequestAccess_Anyone": "Anyone with the link",
+  "JoinRequestAccess_AnyoneHint": "The title and picture are visible even without an account; asking to join needs one",
   "Stepper_StepCompleted": "This step is already completed!",
 
   // The info sheet of the media viewer; these labels keep their trailing colon.

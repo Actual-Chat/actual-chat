@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261016084252_Add_MembershipEvents";
+    public override string LastMigrationId => "20261016092747_Add_JoinRequestAccess";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -204,6 +204,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<bool>("IsTemplate")
                     .HasColumnType("boolean")
                     .HasColumnName("is_template");
+
+                b.Property<int>("JoinRequestAccess")
+                    .HasColumnType("integer")
+                    .HasColumnName("join_request_access");
 
                 b.Property<int>("Kind")
                     .HasColumnType("integer")
@@ -1324,6 +1328,10 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 b.Property<bool>("IsPublic")
                     .HasColumnType("boolean")
                     .HasColumnName("is_public");
+
+                b.Property<int>("JoinRequestAccess")
+                    .HasColumnType("integer")
+                    .HasColumnName("join_request_access");
 
                 b.Property<string>("MediaId")
                     .IsRequired()
