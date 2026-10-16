@@ -247,6 +247,7 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
 /* A left-aligned row of chat avatars that overlap by 0.5rem. */
 .ptt-chats .c-preview {
     @apply flex-x items-center;
+    @apply pl-2;
     @apply pointer-events-none;
 }
 /* Avatars overlap; later ones paint on top (like the activity panel), so the first/left one sits
