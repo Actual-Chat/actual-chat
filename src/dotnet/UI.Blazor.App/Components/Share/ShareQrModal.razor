@@ -29,7 +29,11 @@
                     url="@(ModalModel.AbsoluteUrl ?? UrlMapper.ToAbsolute(ModalModel.Link))"
                     image="@ModalModel.ImageUrl"></qr-code>
             </div>
-            <div class="c-hint">@L.ShareQr_Hint_Format(CoreConstants.AppName)</div>
+            <div class="c-hint">
+                @(ModalModel.IsContact
+                    ? L.ShareQr_Hint_Format(CoreConstants.AppName)
+                    : L.ShareQr_LinkHint_Format(CoreConstants.AppName))
+            </div>
         }
     </Body>
 </DialogFrame>

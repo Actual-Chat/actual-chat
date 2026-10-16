@@ -9,4 +9,5 @@ public sealed record ShareQrModalModel(
 {
     // Overrides the encoded URL when set - lets an off-origin link with no LocalUrl form still yield a QR
     public string? AbsoluteUrl { get; init; }
+    public bool IsContact { get; init; } = true;
 }

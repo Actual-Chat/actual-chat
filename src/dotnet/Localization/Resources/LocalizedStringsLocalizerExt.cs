@@ -402,6 +402,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatList_FindContactsVerifyPhone_Format(object arg0) => l["ChatList_FindContactsVerifyPhone_Format", arg0].Value;
         public string ShareQr_Show => l["ShareQr_Show"].Value;
         public string ShareQr_Hint_Format(object arg0) => l["ShareQr_Hint_Format", arg0].Value;
+        public string ShareQr_LinkHint_Format(object arg0) => l["ShareQr_LinkHint_Format", arg0].Value;
         public string ShareQr_TabShow => l["ShareQr_TabShow"].Value;
         public string ShareQr_TabScan => l["ShareQr_TabScan"].Value;
         public string ShareQr_ScanHint => l["ShareQr_ScanHint"].Value;

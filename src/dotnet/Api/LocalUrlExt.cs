@@ -35,6 +35,9 @@ public static partial class LocalUrlExt
     public static bool IsChat(this LocalUrl url)
         => url.Value.StartsWith("/chat/");
 
+    public static bool IsPlaceInfo(this LocalUrl url)
+        => url.Value.StartsWith("/place/");
+
     public static bool IsNotificationRoot(this LocalUrl url)
         => url.Value == "/n";
     public static bool IsNotification(this LocalUrl url)

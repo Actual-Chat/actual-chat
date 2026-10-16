@@ -17,6 +17,7 @@
             @L.Place_SelectPlace
         </div>
     } else if (m.JoinTarget is { } joinTarget) {
+        <MainHeader>@joinTarget.Title</MainHeader>
         <JoinLanding Target="@joinTarget"/>
     } else {
         <ChatNotFound ShowSignIn="@false" Target="@ChatNotFound.TargetKind.Place" />

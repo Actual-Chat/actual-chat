@@ -57,6 +57,7 @@
             Model.ImageUrl,
             ScanHandler) {
             AbsoluteUrl = Model.Request.HasExternalLink() ? Model.Request.GetShareLink(UrlMapper) : null,
+            IsContact = Model.Kind == ShareKind.Contact,
         });
     }
 }

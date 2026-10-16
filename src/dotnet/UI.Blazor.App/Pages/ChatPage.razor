@@ -32,7 +32,7 @@
         </CascadingValue>
     } else if (route?.ChatId is not null) {
         <CascadingValue Value="@chatContext">
-            <ChatHeader NoChatTitle="@L.Unavailable_Chat"/>
+            <ChatHeader NoChatTitle="@(m?.JoinTarget?.Title.NullIfEmpty() ?? L.Unavailable_Chat)"/>
         </CascadingValue>
     } else {
         <ChatHeaderSkeleton/>
