@@ -90,6 +90,8 @@ public static partial class Constants
         public static readonly TimeSpan ImportStartSettleDelay = TimeSpan.FromSeconds(10);
         public static readonly TimeSpan MinRetentionPeriod = TimeSpan.FromMinutes(10);
         public static readonly TimeSpan MaxRetentionPeriod = TimeSpan.FromDays(36500);
+        public static readonly TimeSpan JoinRequestLifespan = TimeSpan.FromDays(30);
+        public static readonly TimeSpan JoinRequestRejectionPause = TimeSpan.FromDays(7);
         // An Ogg Opus utterance at ~32 kbps; well above any plausible single message
         public const int MaxVoiceStreamAudioBytes = 16 * 1024 * 1024;
         public const int MaxVoiceStreamChunkBytes = 1024 * 1024;

@@ -26,6 +26,28 @@ public static class AuthorsBackendExt
             return author;
         }
 
+        public async Task<AuthorFull> Admit(
+            ChatId chatId,
+            UserId userId,
+            MembershipChange change,
+            CancellationToken cancellationToken)
+        {
+            // Unlike EnsureJoined, works for Place chats too: a non-root one needs the Place membership first
+            var author = await authorsBackend
+                .GetByUserId(chatId, userId, RequestedAuthorKind.Default, cancellationToken)
+                .ConfigureAwait(false);
+            if (author is { HasLeft: false })
+                return author;
+
+            var command = new AuthorsBackend_Upsert(
+                chatId, author?.Id, author is null ? userId : null, author?.Version,
+                new AuthorDiff { HasLeft = false }) {
+                Change = change,
+            };
+            var commander = authorsBackend.GetCommander();
+            return await commander.Call(command, true, cancellationToken).ConfigureAwait(false);
+        }
+
         public Task<UserId[]> ListPlaceUserIds(
             PlaceId placeId,
             CancellationToken cancellationToken)

@@ -69,6 +69,10 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
         rpcHost.AddApi<IImageSuggestions, ImageSuggestions>();
         rpcHost.AddBackend<IChatImageSuggestionsBackend, ChatImageSuggestionsBackend>();
 
+        // Join requests
+        rpcHost.AddApi<IJoinRequests, JoinRequests>();
+        rpcHost.AddBackend<IJoinRequestsBackend, JoinRequestsBackend>();
+
         // Shared locations
         rpcHost.AddApi<ISharedLocations, SharedLocations>();
         rpcHost.AddBackend<ISharedLocationsBackend, SharedLocationsBackend>();

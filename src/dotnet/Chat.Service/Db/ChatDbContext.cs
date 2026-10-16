@@ -33,6 +33,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
     public DbSet<DbMembershipEvent> MembershipEvents { get; protected set; } = null!;
+    public DbSet<DbJoinRequest> JoinRequests { get; protected set; } = null!;
 
     public DbSet<DbWebHook> WebHooks { get; protected set; } = null!;
     public DbSet<DbWebHookDelivery> WebHookDeliveries { get; protected set; } = null!;
@@ -142,6 +143,19 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         membershipEvent.Property(e => e.ActorId).UseCollation("C");
         membershipEvent.Property(e => e.InviteId).UseCollation("C");
         membershipEvent.Property(e => e.RequestId).UseCollation("C");
+
+        var joinRequest = model.Entity<DbJoinRequest>();
+        joinRequest.Property(e => e.Id).UseCollation("C");
+        joinRequest.Property(e => e.ChatId).UseCollation("C");
+        joinRequest.Property(e => e.UserId).UseCollation("C");
+        joinRequest.Property(e => e.ParentId).UseCollation("C");
+        joinRequest.Property(e => e.InviteId).UseCollation("C");
+        joinRequest.Property(e => e.DecidedBy).UseCollation("C");
+        // One open request per user and chat: Pending (0) or AwaitingPlace (5)
+        joinRequest.HasIndex(e => new { e.ChatId, e.UserId })
+            .IsUnique()
+            .HasFilter("\"status\" IN (0, 5)")
+            .HasDatabaseName("ix_join_requests_chat_id_user_id_open");
 
         var chatCopyState = model.Entity<DbChatCopyState>();
         chatCopyState.Property(e => e.Id).UseCollation("C");

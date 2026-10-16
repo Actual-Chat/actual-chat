@@ -29,8 +29,19 @@ public sealed class DbMembershipEvent : IHasId<string>
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public static string NewId()
-        => IdGenerator.Next();
+    public static DbMembershipEvent New(
+        ChatId chatId, UserId userId, AuthorId? authorId,
+        MembershipEventKind kind, MembershipChange change, Moment now)
+    {
+        var model = new MembershipEvent(IdGenerator.Next(), chatId, userId, kind, change.Method) {
+            AuthorId = authorId,
+            ActorId = change.ActorId,
+            InviteId = change.InviteId,
+            RequestId = change.RequestId,
+            CreatedAt = now,
+        };
+        return new DbMembershipEvent(model);
+    }
 
     public DbMembershipEvent() { }
     public DbMembershipEvent(MembershipEvent model) => UpdateFrom(model);

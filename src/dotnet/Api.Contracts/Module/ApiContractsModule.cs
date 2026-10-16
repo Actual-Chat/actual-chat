@@ -47,6 +47,7 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IChatCoach>();
         fusion.AddClient<IImageSuggestions>();
         fusion.AddClient<ISharedLocations>();
+        fusion.AddClient<IJoinRequests>();
         fusion.AddClient<IWebHooks>();
         fusion.AddClient<IPlaces>();
         fusion.AddClient<ITranslations>();

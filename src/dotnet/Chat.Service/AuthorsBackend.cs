@@ -470,8 +470,9 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
                 dbContext.Authors.Add(new DbAuthor(newAuthor));
                 if (!newAuthor.HasLeft) {
                     var copyChange = new MembershipChange(MembershipMethod.CopyChat);
-                    var membershipEvent = NewMembershipEvent(newAuthor, MembershipEventKind.Joined, copyChange);
-                    dbContext.MembershipEvents.Add(new DbMembershipEvent(membershipEvent));
+                    var dbEvent = DbMembershipEvent.New(newChatId, newAuthor.UserId, newAuthor.Id,
+                        MembershipEventKind.Joined, copyChange, Clocks.SystemClock.Now);
+                    dbContext.MembershipEvents.Add(dbEvent);
                 }
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
@@ -689,23 +690,16 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
             return;
 
         var kind = dbAuthor.HasLeft ? MembershipEventKind.Left : MembershipEventKind.Joined;
-        var membershipEvent = NewMembershipEvent(dbAuthor.ToModel(), kind, change);
-        dbContext.MembershipEvents.Add(new DbMembershipEvent(membershipEvent));
+        var author = dbAuthor.ToModel();
+        var dbEvent = DbMembershipEvent.New(
+            author.ChatId, author.UserId, author.Id, kind, change, Clocks.SystemClock.Now);
+        dbContext.MembershipEvents.Add(dbEvent);
         await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private MembershipEvent NewMembershipEvent(
-        AuthorFull author, MembershipEventKind kind, MembershipChange change)
-        => new(DbMembershipEvent.NewId(), author.ChatId, author.UserId, kind, change.Method) {
-            AuthorId = author.Id,
-            ActorId = change.ActorId,
-            InviteId = change.InviteId,
-            RequestId = change.RequestId,
-            CreatedAt = Clocks.SystemClock.Now,
-        };
-
     // Bots live below Sherlock (-2); Wall-E is -1 and has no row
-    private static async Task<long> NextBotLocalId(ChatDbContext dbContext, ChatId chatId, CancellationToken cancellationToken)
+    private static async Task<long> NextBotLocalId(
+        ChatDbContext dbContext, ChatId chatId, CancellationToken cancellationToken)
     {
         var minLocalId = await dbContext.Authors
             .Where(a => a.ChatId == chatId.Value && a.LocalId < 0)

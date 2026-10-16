@@ -42,6 +42,36 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     }
 
     [Fact]
+    public void JoinRequestCommandsShouldPassThroughSerializers()
+    {
+        // arrange
+        var request = new JoinRequest(JoinRequestId.New(), 1) {
+            ChatId = TestChatId,
+            UserId = TestUserId,
+            Status = JoinRequestStatus.AwaitingPlace,
+            ParentId = JoinRequestId.New(),
+            InviteId = "invite-1",
+            CreatedAt = Moment.Now,
+        };
+        var createCmd = new JoinRequestsBackend_Create(TestChatId, TestUserId, request.ParentId) {
+            InviteId = "invite-1",
+        };
+        var changeCmd = new JoinRequestsBackend_ChangeStatus(
+            TestChatId, request.Id, JoinRequestStatus.Approved, TestUserId);
+        var changedEvent = new JoinRequestChangedEvent(request with { Status = JoinRequestStatus.Pending }, request);
+
+        // act
+        var passThrough = () => {
+            createCmd.AssertPassesThroughSerializers();
+            changeCmd.AssertPassesThroughSerializers();
+            changedEvent.AssertPassesThroughSerializers();
+        };
+
+        // assert
+        passThrough.Should().NotThrow();
+    }
+
+    [Fact]
     public void MembershipEventShouldPassThroughSerializers()
     {
         // arrange

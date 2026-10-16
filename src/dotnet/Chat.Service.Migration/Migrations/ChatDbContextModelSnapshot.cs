@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261016092747_Add_JoinRequestAccess";
+    public override string LastMigrationId => "20261016100322_Add_JoinRequests";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1197,6 +1197,88 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 NpgsqlIndexBuilderExtensions.IncludeProperties(index0, new[] { "EndEntryLid" });
 
                 b.ToTable("conversations");
+            });
+
+        modelBuilder.Entity("ActualChat.Chat.Db.DbJoinRequest", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id")
+                    .UseCollation("C");
+
+                b.Property<string>("ChatId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("chat_id")
+                    .UseCollation("C");
+
+                b.Property<DateTime>("CreatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at");
+
+                b.Property<DateTime?>("DecidedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("decided_at");
+
+                b.Property<string>("DecidedBy")
+                    .HasColumnType("text")
+                    .HasColumnName("decided_by")
+                    .UseCollation("C");
+
+                b.Property<DateTime>("ExpiresAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("expires_at");
+
+                b.Property<string>("InviteId")
+                    .HasColumnType("text")
+                    .HasColumnName("invite_id")
+                    .UseCollation("C");
+
+                b.Property<string>("ParentId")
+                    .HasColumnType("text")
+                    .HasColumnName("parent_id")
+                    .UseCollation("C");
+
+                b.Property<int>("Status")
+                    .HasColumnType("integer")
+                    .HasColumnName("status");
+
+                b.Property<string>("UserId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("user_id")
+                    .UseCollation("C");
+
+                b.Property<long>("Version")
+                    .IsConcurrencyToken()
+                    .HasColumnType("bigint")
+                    .HasColumnName("version");
+
+                b.Property<bool>("WasExcluded")
+                    .HasColumnType("boolean")
+                    .HasColumnName("was_excluded");
+
+                b.HasKey("Id")
+                    .HasName("pk_join_requests");
+
+                b.HasIndex("ParentId")
+                    .HasDatabaseName("ix_join_requests_parent_id");
+
+                b.HasIndex("ChatId", "Status")
+                    .HasDatabaseName("ix_join_requests_chat_id_status");
+
+                b.HasIndex("ChatId", "UserId")
+                    .IsUnique()
+                    .HasDatabaseName("ix_join_requests_chat_id_user_id_open")
+                    .HasFilter("\"status\" IN (0, 5)");
+
+                b.HasIndex("Status", "ExpiresAt")
+                    .HasDatabaseName("ix_join_requests_status_expires_at");
+
+                b.HasIndex("UserId", "ChatId")
+                    .HasDatabaseName("ix_join_requests_user_id_chat_id");
+
+                b.ToTable("join_requests");
             });
 
         modelBuilder.Entity("ActualChat.Chat.Db.DbMembershipEvent", b =>
