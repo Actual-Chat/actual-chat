@@ -150,7 +150,8 @@ convert() {
     local pgo=(dotnet tools/dotnet-pgo/dotnet-pgo.dll)
     local parts=() trace
     for trace in "$WORK"/*.nettrace; do
-        "${pgo[@]}" create-mibc --trace "$trace" --output "${trace%.nettrace}.mibc" --compressed             --reference "artifacts/out/R2R/*.dll"
+        echo "=== $trace"
+        "${pgo[@]}" create-mibc --trace "$trace" --output "${trace%.nettrace}.mibc" --compressed             --reference "artifacts/out/R2R/*.dll" 2>&1 | grep -i "lost events" || echo "lost events: none"
         parts+=(-i "${trace%.nettrace}.mibc")
     done
     "${pgo[@]}" merge "${parts[@]}" -o "$WORK/ios.mibc" --compressed
