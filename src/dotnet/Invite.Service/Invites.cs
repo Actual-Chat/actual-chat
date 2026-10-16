@@ -12,6 +12,9 @@ public class Invites(IServiceProvider services) : IInvites
     private IChats Chats => field ??= Services.GetRequiredService<IChats>();
     private IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
     private IAccounts Accounts => field ??= Services.GetRequiredService<IAccounts>();
+    private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
+    private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
+    private IServerKvasBackend ServerKvasBackend => field ??= Services.GetRequiredService<IServerKvasBackend>();
     private ICommander Commander { get; } = services.Commander();
     private MomentClockSet Clocks => field ??= Services.GetRequiredService<MomentClockSet>();
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -124,6 +127,8 @@ public class Invites(IServiceProvider services) : IInvites
 
             var useCommand = new InvitesBackend_Use(command.Session, command.InviteId);
             var invite = await Commander.Call(useCommand, true, cancellationToken).ConfigureAwait(false);
+            if (command.Join)
+                await JoinByInvite(account.Id, invite, cancellationToken).ConfigureAwait(false);
             return invite.Mask();
         }
         catch (Exception e) {
@@ -146,6 +151,79 @@ public class Invites(IServiceProvider services) : IInvites
         _ = await AssertCanRevoke(session, invite, cancellationToken).ConfigureAwait(false);
         var revokeCommand = new InvitesBackend_Revoke(session, invite.Id);
         await Commander.Call(revokeCommand, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // Private methods
+
+    private async Task JoinByInvite(UserId userId, Invite invite, CancellationToken cancellationToken)
+    {
+        // The grant InvitesBackend_Use has just written reaches the chat rules asynchronously,
+        // so Authors_Join could still refuse here: the invite is already checked, so admit directly
+        switch (invite) {
+        case PlaceInvite placeInvite:
+            await Admit(placeInvite.PlaceId.RootChatId, userId, invite, cancellationToken).ConfigureAwait(false);
+            return;
+        case ChatInvite { ChatId: PlaceChatId { IsRoot: false } placeChatId } chatInvite: {
+            var rootChatId = placeChatId.PlaceId.RootChatId;
+            var placeAuthor = await AuthorsBackend
+                .GetByUserId(rootChatId, userId, RequestedAuthorKind.Default, cancellationToken)
+                .ConfigureAwait(false);
+            if (placeAuthor is not { HasLeft: false }) {
+                var canEnterPlace = await CanEnterPlace(chatInvite, rootChatId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!canEnterPlace) {
+                    await RequestPlaceForChat(rootChatId, chatInvite, userId, cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+
+                await Admit(rootChatId, userId, invite, cancellationToken).ConfigureAwait(false);
+            }
+            var chat = await ChatsBackend.Get(chatInvite.ChatId, cancellationToken).Require().ConfigureAwait(false);
+            // A public chat of the Place comes with the Place membership
+            if (!chat.IsPublic)
+                await Admit(chatInvite.ChatId, userId, invite, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+        case ChatInvite chatInvite:
+            await Admit(chatInvite.ChatId, userId, invite, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+    }
+
+    private async Task<bool> CanEnterPlace(ChatInvite invite, ChatId rootChatId, CancellationToken cancellationToken)
+    {
+        // The same rule InvitesBackend_Use grants the Place by
+        var rootChat = await ChatsBackend.Get(rootChatId, cancellationToken).Require().ConfigureAwait(false);
+        if (rootChat.IsPublic)
+            return true;
+
+        var creatorRules = await ChatsBackend
+            .GetRules(rootChatId, UserId.Parse(invite.CreatedBy), cancellationToken)
+            .ConfigureAwait(false);
+        return creatorRules.IsOwner();
+    }
+
+    private async Task Admit(ChatId chatId, UserId userId, Invite invite, CancellationToken cancellationToken)
+    {
+        var change = new MembershipChange(MembershipMethod.InviteLink, userId) { InviteId = invite.Id };
+        await AuthorsBackend.Admit(chatId, userId, change, cancellationToken).ConfigureAwait(false);
+        // Membership supersedes the invite grant, as in Authors_Join
+        await ServerKvasBackend.ForUser(userId)
+            .Set(ChatInviteSettings.GetKey(chatId), null, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task RequestPlaceForChat(
+        ChatId rootChatId, ChatInvite chatInvite, UserId userId, CancellationToken cancellationToken)
+    {
+        // The invite pre-approves the chat only: the Place is asked for, and the chat request carries
+        // the invite, so the user enters the chat as soon as the Place lets them in
+        var placeRequestCmd = new JoinRequestsBackend_Create(rootChatId, userId);
+        var placeRequest = await Commander.Call(placeRequestCmd, cancellationToken).ConfigureAwait(false);
+        var chatRequestCmd = new JoinRequestsBackend_Create(chatInvite.ChatId, userId, placeRequest.Id) {
+            InviteId = chatInvite.Id,
+        };
+        await Commander.Call(chatRequestCmd, cancellationToken).ConfigureAwait(false);
     }
 
     // Assertions

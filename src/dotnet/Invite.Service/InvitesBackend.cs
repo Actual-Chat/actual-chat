@@ -167,10 +167,17 @@ public class InvitesBackend(IServiceProvider services)
                     .ConfigureAwait(false);
                 if (chat is { IsPublic: true })
                     await OnUseForPlace(placeId).ConfigureAwait(false);
-                else if (placeRules.IsMember())
+                else {
+                    // A Place owner's link lets the user into the Place too; anyone else's only
+                    // pre-approves the chat, and the Place is asked for by a join request
+                    var creatorId = UserId.Parse(invite.CreatedBy);
+                    var creatorPlaceRules = await ChatsBackend
+                        .GetRules(placeId.RootChatId, creatorId, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (!placeRules.IsMember() && creatorPlaceRules.IsOwner())
+                        await OnUseForPlace(placeId).ConfigureAwait(false);
                     await OnUseForChat(chatId).ConfigureAwait(false);
-                else
-                    throw StandardError.Constraint("Only place members can use this code.");
+                }
             }
             else
                 await OnUseForChat(chatId).ConfigureAwait(false);

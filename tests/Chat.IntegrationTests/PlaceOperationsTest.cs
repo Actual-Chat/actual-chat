@@ -370,10 +370,11 @@ public class PlaceOperationsTest(PlaceCollection.AppHostFixture fixture, ITestOu
     }
 
     [Theory]
-    [InlineData(false, false, false)] // NotPossibleToActivateInviteLinkToPrivateChatOnPrivatePlaceIfYouAreNotMemberOfThePlace
-    [InlineData(true, false, true)] // PossibleToActivateInviteLinkToPublicChatOnPrivatePlaceEvenIfYouAreNotMemberOfThePlace
+    [InlineData(false, false, true)] // A Place owner's link to a private chat lets a non-member into the Place too
+    [InlineData(true, false, true)] // A link to a public chat of a private Place works for a non-member
     [InlineData(false, true, true)] // PossibleToActivateInviteLinkToPrivateChatOnPrivatePlaceIfYouAreMemberOfThePlace
-    public async Task ActivateInviteLinkToPrivatePlaceChat(bool isPublicChat, bool addToPlaceMembers, bool shouldSucceed)
+    public async Task ActivateInviteLinkToPrivatePlaceChat(
+        bool isPublicChat, bool addToPlaceMembers, bool shouldSucceed)
     {
         await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;

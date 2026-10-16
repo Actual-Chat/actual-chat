@@ -1,4 +1,5 @@
 using ActualChat.Chat.Db;
+using ActualChat.Invite;
 using ActualChat.Testing.Host;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
@@ -277,6 +278,72 @@ public sealed class JoinRequestsTest(ChatCollection.AppHostFixture fixture, ITes
         newRequest.Status.Should().Be(JoinRequestStatus.Pending);
         var closed = await backend.Get(chatId, request.Id, default);
         closed!.Status.Should().Be(JoinRequestStatus.Expired);
+    }
+
+    [Fact]
+    public async Task InviteWithJoinShouldMakeMemberAtOnce()
+    {
+        // arrange
+        await Owner.SignInAsUniqueBob();
+        var outsiderAccount = await Outsider.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await Owner.CreateChat(false);
+        var useCmd = new Invites_Use { Session = Outsider.Session, InviteId = inviteId, Join = true };
+
+        // act
+        await Outsider.Commander.Call(useCmd);
+
+        // assert
+        await Outsider.AssertJoined(chatId);
+        var authorsBackend = Owner.AppServices.GetRequiredService<IAuthorsBackend>();
+        var events = await authorsBackend.ListMembershipEvents(chatId, default);
+        events.Should().ContainSingle(e => e.UserId == outsiderAccount.Id)
+            .Which.Should().Match<MembershipEvent>(e =>
+                e.Method == MembershipMethod.InviteLink && e.InviteId == inviteId);
+    }
+
+    [Fact]
+    public async Task MemberInviteToChatInPrivatePlaceShouldWaitForPlace()
+    {
+        // arrange
+        var memberAccount = await Moderator.SignInAsUniqueAlice();
+        await Owner.SignInAsUniqueBob();
+        var outsiderAccount = await Outsider.SignInAsUniqueAlice();
+        var place = await Owner.CreatePlace(false, "invite place", memberAccount);
+        var (chatId, inviteId) = await Moderator.CreateChat(false, "member's chat", place.Id);
+        var useCmd = new Invites_Use { Session = Outsider.Session, InviteId = inviteId, Join = true };
+
+        // act
+        await Outsider.Commander.Call(useCmd);
+        var placeRequests = await WaitForPending(Owner, place.Id.RootChatId, 1);
+        var approveCmd = new JoinRequests_Approve {
+            Session = Owner.Session,
+            ChatId = place.Id.RootChatId,
+            RequestId = placeRequests[0].Id,
+        };
+        await Owner.Commander.Call(approveCmd);
+
+        // assert
+        placeRequests[0].UserId.Should().Be(outsiderAccount.Id);
+        await Outsider.AssertJoined(chatId);
+        await WaitForPending(Moderator, chatId, 0);
+    }
+
+    [Fact]
+    public async Task PlaceOwnerInviteToChatShouldJoinPlaceToo()
+    {
+        // arrange
+        await Owner.SignInAsUniqueBob();
+        await Outsider.SignInAsUniqueAlice();
+        var place = await Owner.CreatePlace(false, "invite place");
+        var (chatId, inviteId) = await Owner.CreateChat(false, "owner's chat", place.Id);
+        var useCmd = new Invites_Use { Session = Outsider.Session, InviteId = inviteId, Join = true };
+
+        // act
+        await Outsider.Commander.Call(useCmd);
+
+        // assert
+        await Outsider.AssertJoined(place.Id.RootChatId);
+        await Outsider.AssertJoined(chatId);
     }
 
     [Fact]

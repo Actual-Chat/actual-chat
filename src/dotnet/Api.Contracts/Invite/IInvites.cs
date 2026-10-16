@@ -36,6 +36,7 @@ public sealed partial record Invites_Generate : ApiCommand<Invite>
 public sealed partial record Invites_Use : ApiCommand<Invite>
 {
     [DataMember(Order = 2), Key(2)] public required string InviteId { get; init; }
+    [DataMember(Order = 3), Key(3)] public bool Join { get; init; }
 }
 
 [DataContract, MessagePackObject]
