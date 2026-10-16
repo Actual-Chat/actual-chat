@@ -88,6 +88,7 @@ public class NotificationFormatterPresenceTest(ITestOutputHelper @out) : TestBas
             new LegacyThreadNotification(NotificationId.New(TestUserId, NotificationKind.Thread, TestChatId.Value)),
             ConversationNotification.New(TestUserId, conversationId, 2100),
             CallNotification.New(TestUserId, CallId.Parse(conversationId.Value), authorId, true),
+            JoinRequestNotification.New(TestUserId, TestChatId, 2),
         ];
         foreach (var notification in notifications)
             yield return notification with {

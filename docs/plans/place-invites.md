@@ -234,6 +234,45 @@ dialog.
 
 Stage 1 tasks: [implementation plan](./place-invites-stage1.md).
 
+### What stage 1 delivered
+
+All four steps are on `feat/5371-invite-people-outside-contacts`:
+
+- **Journal.** The `membership_events` table is written on every membership change, with its
+  actor and method.
+- **Invite links.** Links carry an optional name.
+- **`JoinRequestAccess`** on chats and places: `Off`, `SignedIn`, `Anyone`, plus `PlaceMembers`
+  for a chat inside a place.
+- **Join requests.**
+  - Submit, withdraw, approve and reject.
+  - A place request and a chat request are linked.
+  - Requests expire after 30 days, and a rejection holds for 7 days.
+  - Owners and moderators get a push.
+- **One-step join** by an invite link, including a chat of a private place.
+- **Links and sharing.**
+  - A landing page for plain and invite links.
+  - The share dialog uses the target's own address, with an invite links section for those
+    who can invite.
+- **Queue UI.**
+  - A "New requests" group in the chat and place member lists.
+  - A requests block on the chat list's People tab.
+  - The `JoinRequestAccess` choice is reachable from that block.
+
+Not done, or done differently from the plan:
+
+- `JoinRequestAccess` default: `SignedIn` for new targets, `Off` for existing ones. Still to be
+  confirmed with Alexey on a demo.
+- A public place is still shared by its welcome chat link, not its own address: direct place
+  navigation works poorly (`NOTE(DF)` in `ShareUIExt`).
+- The People-tab requests block sits above the virtual list, so it doesn't scroll with the
+  chats. Pending requests are gathered on the client from the user's chats and places: a
+  server-wide "my requests" method can't be invalidated across `ChatId` shards.
+- No bUnit test for the landing page and no unit test for the share models: both need an
+  `AppUIHub`, which the unit-test hosts don't build. The queue UI is covered in
+  `Chat.UI.Blazor.IntegrationTests`.
+- Not checked in a browser yet, including the end-to-end scenario with two accounts. There
+  is no mockup for the narrow layout.
+
 ## Reuse
 
 - `DbInvite`, `InvitesBackend`, `ChatInviteSettings` grants: the invite link.

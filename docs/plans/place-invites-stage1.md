@@ -441,14 +441,16 @@ Before coding, open the Figma frame (node 27697-223756) through the Figma MCP an
 
 ### Task 12: Final verification
 
-- [ ] `dotnet build ActualChat.CI.slnf`.
-- [ ] Chat, Notifications, UI unit and integration tests touched above; `DbMigrationTest` (Slow).
-- [ ] `has-pending-model-changes` for `Chat.Service` and `Invite.Service`.
+- [x] `dotnet build ActualChat.sln`. *There is no `ActualChat.CI.slnf`. The only errors come
+  from the MAUI Android projects, whose workload is missing on this machine.*
+- [x] Chat, Notifications, UI unit and integration tests touched above; `DbMigrationTest` (Slow).
+- [x] `has-pending-model-changes` for `Chat.Service` and `Invite.Service`: no changes.
 - [ ] End-to-end on the local server with two accounts: Alexey's scenario — a new user, not in anyone's
   contacts, follows a plain link to a private place, the owner approves from the People tab, the user
-  gets the push and lands in the place; then the same with an invite link and no approval.
-- [ ] Update the spec's [Stages](./place-invites.md#stages) with what shipped, and the
-  `JoinRequestAccess` default after the demo.
+  gets the push and lands in the place; then the same with an invite link and no approval. *Not
+  done: no browser in the session that built stage 1.*
+- [x] Update the spec's [Stages](./place-invites.md#stages) with what shipped. *The
+  `JoinRequestAccess` default still waits for the demo.*
 
 ## Open points
 
