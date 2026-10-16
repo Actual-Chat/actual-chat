@@ -141,13 +141,21 @@ jobs:
           docker exec -i ${{ job.services.postgres.id }} bash << EOF
           sed -i -e 's/max_connections = 100/max_connections = 1000/' /var/lib/postgresql/data/postgresql.conf
           sed -i -e 's/shared_buffers = 128MB/shared_buffers = 256MB/' /var/lib/postgresql/data/postgresql.conf
+          # The container lives one job, so durability buys nothing, while the fsync of every file of hundreds of
+          # test DBs made the checkpoint DROP DATABASE waits for outlast its 30 s command timeout (#5340).
+          # Frequent timed checkpoints keep a burst of test DB creations from piling up until a forced one.
+          printf 'fsync = off\nfull_page_writes = off\nsynchronous_commit = off\ncheckpoint_timeout = 30s\n' \
+            >> /var/lib/postgresql/data/postgresql.conf
           cat /var/lib/postgresql/data/postgresql.conf
           EOF
           docker restart --time 0 ${{ job.services.postgres.id }}
           sleep 5
 
       - name: Show max connections
-        run: PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW max_connections;'
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW max_connections;'
+          PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW fsync;'
+          PGPASSWORD=postgres psql -h localhost -U postgres -c 'SHOW checkpoint_timeout;'
 
       - name: Flush Valkey data
         run: |
