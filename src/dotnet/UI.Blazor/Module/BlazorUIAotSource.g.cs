@@ -18,6 +18,7 @@ internal partial class BlazorUIAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.AccountCircle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.AccountName>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.AccountPresenceIndicator>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.AnimatedEllipsis>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.AsyncDataAnnotationsValidator>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.AvatarBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.Components.AvatarCircle>();
@@ -596,6 +597,7 @@ internal partial class BlazorUIAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.Components.AccountCircle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.AccountName), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.AccountPresenceIndicator), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.Components.AnimatedEllipsis), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.AsyncDataAnnotationsValidator), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.AvatarBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.Components.AvatarCircle), AotTypeKind.Component),

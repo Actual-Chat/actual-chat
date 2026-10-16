@@ -563,6 +563,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.WipeChatHistoryModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.CallSystemMessagesCatalog>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.CallTestPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Pages.ChatPage>();
@@ -1462,6 +1463,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.WebSafariLocationGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.WipeChatHistoryModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.AudioBlobDownloadTestPage), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Pages.CallSystemMessagesCatalog), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.CallTestPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatInvitePage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Pages.ChatPage), AotTypeKind.Component),
