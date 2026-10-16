@@ -14,13 +14,17 @@
 # set of methods startup can touch. A merge is a union, so sessions that exercised
 # different parts of the app only ever add coverage; -Accumulate keeps parts from
 # earlier recording rounds in the merge as well.
+#
+# -MergedOnly skips the conversion and only rebuilds merged.mibc from the per-platform files on
+# disk - what is needed after ios.mibc, recorded on the Mac, has been copied in.
 
 param(
     [ValidateSet("Android", "AndroidNotification", "Windows")]
     [string] $Platform = "Android",
     [string] $TraceDir = "",
     [string] $Output = "",
-    [switch] $Accumulate
+    [switch] $Accumulate,
+    [switch] $MergedOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,64 +32,66 @@ $here = $PSScriptRoot
 $repoRoot = Resolve-Path (Join-Path $here "..")
 $pgo = Join-Path $repoRoot "dotnet-pgo.cmd"
 
-$objName, $mibcName, $defaultTraceDir = switch ($Platform) {
-    "Android" { "release_net11.0-android_android-arm64", "android.mibc", "tmp/profiles" }
-    "AndroidNotification" { "release_net11.0-android_android-arm64", "android-notif.mibc", "tmp/notif-profiles" }
-    "Windows" { "release_net11.0-windows10.0.22621.0_win-x64", "windows.mibc", "tmp/win-profiles" }
-}
-if ($TraceDir -eq "") { $TraceDir = $defaultTraceDir }
-if ($Output -eq "") { $Output = Join-Path $repoRoot "src/dotnet/App.Maui/_Profiling/$mibcName" }
-
-$refs = Join-Path $repoRoot "artifacts/obj/App.Maui/$objName/R2R"
-if (-not (Test-Path $refs)) {
-    throw "No Release assemblies at $refs - publish $Platform Release first."
-}
-
-$traces = @(Get-ChildItem (Join-Path $repoRoot $TraceDir) -Filter *.nettrace | Sort-Object Name)
-if ($traces.Count -eq 0) {
-    throw "No .nettrace files in $TraceDir."
-}
-
-$partsRoot = Join-Path $repoRoot "tmp/mibc"
-# Parts are namespaced by trace dir: separate recording rounds reuse startup-N.nettrace
-# names, and a flat parts dir would have each round overwrite the last.
-$tmpDir = Join-Path $partsRoot (Split-Path $TraceDir -Leaf)
-New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
-
-$parts = @()
-foreach ($trace in $traces) {
-    $part = Join-Path $tmpDir ($trace.BaseName + ".mibc")
-    Write-Output "=== $($trace.Name) -> $(Split-Path $part -Leaf)"
-    & $pgo create-mibc `
-        --trace $trace.FullName `
-        --output $part `
-        --compressed `
-        --reference "$refs/*.dll"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Output "    FAILED (exit $LASTEXITCODE) - skipping"
-        continue
+if (-not $MergedOnly) {
+    $objName, $mibcName, $defaultTraceDir = switch ($Platform) {
+        "Android" { "release_net11.0-android_android-arm64", "android.mibc", "tmp/profiles" }
+        "AndroidNotification" { "release_net11.0-android_android-arm64", "android-notif.mibc", "tmp/notif-profiles" }
+        "Windows" { "release_net11.0-windows10.0.22621.0_win-x64", "windows.mibc", "tmp/win-profiles" }
     }
-    $parts += $part
-}
+    if ($TraceDir -eq "") { $TraceDir = $defaultTraceDir }
+    if ($Output -eq "") { $Output = Join-Path $repoRoot "src/dotnet/App.Maui/_Profiling/$mibcName" }
 
-if ($Accumulate) {
-    $parts = @(Get-ChildItem $partsRoot -Recurse -Filter *.mibc | ForEach-Object { $_.FullName } | Sort-Object -Unique)
-}
+    $refs = Join-Path $repoRoot "artifacts/obj/App.Maui/$objName/R2R"
+    if (-not (Test-Path $refs)) {
+        throw "No Release assemblies at $refs - publish $Platform Release first."
+    }
 
-if ($parts.Count -eq 0) {
-    throw "No .mibc parts were produced."
-}
+    $traces = @(Get-ChildItem (Join-Path $repoRoot $TraceDir) -Filter *.nettrace | Sort-Object Name)
+    if ($traces.Count -eq 0) {
+        throw "No .nettrace files in $TraceDir."
+    }
 
-Write-Output "=== merging $($parts.Count) part(s) -> $Output"
-$mergeArgs = @("merge")
-foreach ($part in $parts) { $mergeArgs += @("-i", $part) }
-$mergeArgs += @("-o", $Output, "--compressed")
-& $pgo @mergeArgs
-if ($LASTEXITCODE -ne 0) {
-    throw "merge failed (exit $LASTEXITCODE)"
-}
+    $partsRoot = Join-Path $repoRoot "tmp/mibc"
+    # Parts are namespaced by trace dir: separate recording rounds reuse startup-N.nettrace
+    # names, and a flat parts dir would have each round overwrite the last.
+    $tmpDir = Join-Path $partsRoot (Split-Path $TraceDir -Leaf)
+    New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
 
-& $pgo dump -i $Output -o (Join-Path $repoRoot "tmp/mibc/$([IO.Path]::GetFileNameWithoutExtension($Output))-dump.txt")
+    $parts = @()
+    foreach ($trace in $traces) {
+        $part = Join-Path $tmpDir ($trace.BaseName + ".mibc")
+        Write-Output "=== $($trace.Name) -> $(Split-Path $part -Leaf)"
+        & $pgo create-mibc `
+            --trace $trace.FullName `
+            --output $part `
+            --compressed `
+            --reference "$refs/*.dll"
+        if ($LASTEXITCODE -ne 0) {
+            Write-Output "    FAILED (exit $LASTEXITCODE) - skipping"
+            continue
+        }
+        $parts += $part
+    }
+
+    if ($Accumulate) {
+        $parts = @(Get-ChildItem $partsRoot -Recurse -Filter *.mibc | ForEach-Object { $_.FullName } | Sort-Object -Unique)
+    }
+
+    if ($parts.Count -eq 0) {
+        throw "No .mibc parts were produced."
+    }
+
+    Write-Output "=== merging $($parts.Count) part(s) -> $Output"
+    $mergeArgs = @("merge")
+    foreach ($part in $parts) { $mergeArgs += @("-i", $part) }
+    $mergeArgs += @("-o", $Output, "--compressed")
+    & $pgo @mergeArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "merge failed (exit $LASTEXITCODE)"
+    }
+
+    & $pgo dump -i $Output -o (Join-Path $repoRoot "tmp/mibc/$([IO.Path]::GetFileNameWithoutExtension($Output))-dump.txt")
+}
 
 # merged.mibc is what every platform actually compiles against, so it has to be rebuilt
 # whenever either input changes - regenerating it here is the only way that invariant
