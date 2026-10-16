@@ -9,10 +9,15 @@
 
     var isExpanded = m.Mode == VisualActivityPanelMode.Expanded;
     var isIsland = m.Mode == VisualActivityPanelMode.Collapsed;
+    var isInline = m.Mode == VisualActivityPanelMode.Inline;
     var isInCall = m.Phase == CallPhase.Active;
     var hasPinToggle = m.RemoteAuthorCount > 1;
     // Speaker view hides the speaker's tile label (the name is in the header), so its hand moves here too
     var hasFocusedHand = isExpanded && m.IsFocusedHandRaised;
+    // The inline video has no reactions footer, so its ⋮ menu is the only way in - add the fullscreen
+    // footer's reaction button next to it.
+    var hasInlineReact = isInline && m.CanReact;
+    var reactionsMenuRef = hasInlineReact ? MenuRef.New<CallReactionsMenu>(Chat.Id.Value).ToString() : "";
 }
 
 @* Expanded, the screen covers every window-drag region of the page, so its header becomes one *@
@@ -65,6 +70,17 @@
         }
 
         <div class="c-right">
+            @if (hasInlineReact) {
+                <HeaderButton
+                    Class="@("btn-glass btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    data-menu="@reactionsMenuRef"
+                    data-menu-trigger="Primary"
+                    data-menu-placement="@(FloatingPosition.Bottom.ToPositionString())">
+                    <i class="@(m.IsOwnHandRaised ? "icon-hand" : "icon-add-reaction") text-lg"></i>
+                </HeaderButton>
+            }
             @if (!isIsland) {
                 <HeaderButton
                     Class="btn-glass btn-video-menu"
@@ -170,6 +186,8 @@
         var pinnedAuthorId = await LayoutCalculator.GetPinnedAuthor(chatId, cancellationToken)
             .ConfigureAwait(false);
         var focusedAuthorId = layout.GetFocusedAuthorId(remoteStreams);
+        var canReact = await LiveSessionUI.CanReact(chatId, cancellationToken).ConfigureAwait(false);
+        var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
         bool isFocusedHandRaised;
         if (focusedAuthorId is not null) {
             var raisedHandAuthorIds = await LiveSessionUI.ListRaisedHandAuthorIds(chatId, cancellationToken)
@@ -177,8 +195,7 @@
             isFocusedHandRaised = raisedHandAuthorIds.Contains(focusedAuthorId);
         }
         else
-            isFocusedHandRaised = layout.IsOwnCameraFocused
-                && await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
+            isFocusedHandRaised = layout.IsOwnCameraFocused && isOwnHandRaised;
         return m with {
             RemoteAuthorCount = remoteStreams.Select(s => s.AuthorId).Distinct().Count(),
             TileCount = layout.TileCount,
@@ -186,6 +203,8 @@
             FocusedAuthorId = focusedAuthorId,
             IsPinned = pinnedAuthorId is not null,
             IsFocusedHandRaised = isFocusedHandRaised,
+            CanReact = canReact,
+            IsOwnHandRaised = isOwnHandRaised,
         };
     }
 
@@ -222,5 +241,7 @@
         public AuthorId? FocusedAuthorId { get; init; }
         public bool IsPinned { get; init; }
         public bool IsFocusedHandRaised { get; init; }
+        public bool CanReact { get; init; }
+        public bool IsOwnHandRaised { get; init; }
     }
 }
