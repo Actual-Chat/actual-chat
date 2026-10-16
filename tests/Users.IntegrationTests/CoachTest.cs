@@ -446,7 +446,7 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         var now = Clocks.SystemClock.Now;
         var earlier = Entry(account.Id, chatId, 1, 20, 10, now - TimeSpan.FromMinutes(15), 2, "like");
         await Queues.Enqueue(new CoachEntryAnalyzedEvent(earlier, false));
-        await WhenDay(account.Id, UsageDay.DayOf(now), d => d.Entries == 1);
+        await WhenDay(account.Id, UsageDay.DayOf(earlier.BeginsAt), d => d.Entries == 1);
         await Queues.WhenProcessing(TimeSpan.FromSeconds(1), default);
         (await Kvas.ForUser(account.Id).UserCoachTip().Get(default)).IsPending
             .Should().BeFalse("two uses are below the count");
