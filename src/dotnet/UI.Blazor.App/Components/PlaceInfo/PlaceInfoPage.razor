@@ -16,6 +16,8 @@
         <div class="no-chat-body">
             @L.Place_SelectPlace
         </div>
+    } else if (m.JoinTarget is { } joinTarget) {
+        <JoinLanding Target="@joinTarget"/>
     } else {
         <ChatNotFound ShowSignIn="@false" Target="@ChatNotFound.TargetKind.Place" />
     }
@@ -28,6 +30,7 @@
     private Model? _rendered;
 
     private IPlaces Places => Hub.Places;
+    private IJoinRequests JoinRequests => field ??= Hub.Services.GetRequiredService<IJoinRequests>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     [Parameter] public string? PlaceSid { get; set; }
@@ -56,9 +59,14 @@
 
         try {
             var place = await Places.Get(Session, placeId, cancellationToken).ConfigureAwait(false);
-            return place is not null
-                ? new Model(place)
-                : Model.Unavailable;
+            if (place is not null)
+                return new Model(place);
+
+            // A private Place may still take join requests by its plain link
+            var joinTarget = await JoinRequests
+                .GetTarget(Session, placeId.RootChatId, cancellationToken)
+                .ConfigureAwait(false);
+            return joinTarget is null ? Model.Unavailable : new Model(null) { JoinTarget = joinTarget };
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Place #{PlaceId}", placeId);
@@ -71,6 +79,8 @@
     public sealed record Model(Place? Place) {
         public static readonly Model Unavailable = new((Place?)null);
         public static readonly Model NoPlaceSelected = new((Place?)null);
+
+        public JoinTarget? JoinTarget { get; init; }
 
         // This record relies on referential equality
         public bool Equals(Model? other) => ReferenceEquals(this, other);

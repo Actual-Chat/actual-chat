@@ -146,7 +146,6 @@
   "Error_InviteAlreadyUsed": "The invite link is already used.",
   "Error_InviteNotActive": "The invite link is no active already.",
   "Error_InviteCodeNotFound": "Invite with the specified code is not found.",
-  "Error_OnlyPlaceMembersCanUseCode": "Only place members can use this code.",
   "Error_UserInvitesRemoved": "User invites feature is removed.",
 
   // Live location

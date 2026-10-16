@@ -142,7 +142,6 @@
   "Error_InviteAlreadyUsed": "Link pozivnice je već iskorišten.",
   "Error_InviteNotActive": "Link pozivnice više nije aktivan.",
   "Error_InviteCodeNotFound": "Pozivnica s navedenim kodom nije pronađena.",
-  "Error_OnlyPlaceMembersCanUseCode": "Ovaj kod mogu koristiti samo članovi Mjesta.",
   "Error_UserInvitesRemoved": "Funkcija korisničkih pozivnica je uklonjena.",
 
   // Live location

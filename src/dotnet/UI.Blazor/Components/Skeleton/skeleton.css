@@ -83,9 +83,6 @@ thin-left-panel-skeleton .c-delimiter {
 body.narrow .wide-left-panel-skeleton {
     width: 100%;
 }
-body.narrow .wide-left-panel-skeleton:has(.inaccessible-place-request) {
-    @apply flex;
-}
 .wide-left-panel-skeleton .panel-header-skeleton {
     @apply flex-y gap-y-2;
     @apply h-14;
@@ -233,23 +230,6 @@ body.wide .thin-left-panel-skeleton .panel-footer-skeleton {
 
 .chat-view-footer {
     @apply flex-1;
-}
-
-/* Inaccessible Place Request */
-.inaccessible-place-request {
-    @apply absolute bottom-0;
-    @apply flex-y items-center gap-y-2;
-    @apply p-2;
-    @apply bg-gradient-to-b from-transparent via-[var(--background-03)] to-[var(--background-03)];
-}
-.inaccessible-place-request > .c-title {
-    @apply text-heading-600 text-03;
-}
-.inaccessible-place-request > .c-text {
-    @apply text-center text-body-500 text-03;
-}
-.inaccessible-place-request .btn {
-    @apply mt-4;
 }
 
 /* Chat List Skeleton */

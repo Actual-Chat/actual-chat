@@ -1,0 +1,22 @@
+.join-landing {
+    @apply flex items-center justify-center;
+    @apply h-full p-4;
+}
+.join-landing > .c-card {
+    @apply flex-y items-center gap-y-3;
+    @apply w-full max-w-sm;
+    @apply text-center;
+}
+.join-landing > .c-card > .c-place {
+    @apply text-caption-500 text-03;
+}
+.join-landing > .c-card > .c-title {
+    @apply text-heading-600 text-01;
+    @apply break-words;
+}
+.join-landing > .c-card > .c-status {
+    @apply text-title-500 text-primary;
+}
+.join-landing > .c-card > .c-text {
+    @apply text-02;
+}

@@ -142,7 +142,6 @@
   "Error_InviteAlreadyUsed": "Tautan undangan sudah dipakai.",
   "Error_InviteNotActive": "Tautan undangan sudah tidak aktif.",
   "Error_InviteCodeNotFound": "Undangan dengan kode tersebut tidak ditemukan.",
-  "Error_OnlyPlaceMembersCanUseCode": "Hanya anggota Tempat yang bisa memakai kode ini.",
   "Error_UserInvitesRemoved": "Fitur undangan pengguna telah dihapus.",
 
   // Live location

@@ -142,7 +142,6 @@
   "Error_InviteAlreadyUsed": "Ten link zapraszający został już wykorzystany.",
   "Error_InviteNotActive": "Ten link zapraszający nie jest już aktywny.",
   "Error_InviteCodeNotFound": "Nie znaleziono zaproszenia o podanym kodzie.",
-  "Error_OnlyPlaceMembersCanUseCode": "Tego kodu mogą użyć tylko uczestnicy Miejsca.",
   "Error_UserInvitesRemoved": "Funkcja zaproszeń użytkowników została usunięta.",
 
   // Live location

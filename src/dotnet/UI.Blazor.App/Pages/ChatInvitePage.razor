@@ -4,25 +4,29 @@
 
 <MainHeader>@L.ChatInvite_Title</MainHeader>
 
-@if (_signInFromHomeRequested) {
+@if (_isSignInFromHomeRequested) {
     return;
 }
 
-@if (_useResult is { } useResult) {
-    if (useResult.Error is { } error) {
-        <p>@L.ChatInvite_Failed_Format(error.Message)</p>
-    } else {
-        <p>@L.ChatInvite_Processing</p>
-    }
+@if (_error is { } error) {
+    <p>@L.ChatInvite_Failed_Format(error.Message)</p>
+} else if (_target is { } target) {
+    <JoinLanding Target="@target" JoinHandler="@Join"/>
+} else if (_isPreviewLoaded) {
+    <ChatNotFound ShowSignIn="@false"/>
+} else {
+    <p>@L.ChatInvite_Processing</p>
 }
 
 @code {
-    private bool _signInFromHomeRequested;
+    private bool _isSignInFromHomeRequested;
     private string? _reportedInviteId;
-    private Result<Invite>? _useResult;
-    private AccountFull? _account;
+    private bool _isPreviewLoaded;
+    private JoinTarget? _target;
+    private Exception? _error;
 
     private IPlaces Places => Hub.Places;
+    private IInvites Invites => field ??= Hub.Services.GetRequiredService<IInvites>();
     private AutoNavigationUI AutoNavigationUI => Hub.AutoNavigationUI;
     private ICommander Commander => Hub.Commander;
 
@@ -31,12 +35,12 @@
     [Parameter] public string InviteId { get; set; } = "";
 
     protected override async Task OnParametersSetAsync() {
-        _account = await AccountUI.OwnAccount.Use();
-        var isSignedOut = _account.IsGuest || !_account.IsActive();
+        var account = await AccountUI.OwnAccount.Use().ConfigureAwait(true);
+        var isSignedOut = account.IsGuest || !account.IsActive();
         var mustReport = _reportedInviteId != InviteId;
         _reportedInviteId = InviteId;
         if (isSignedOut) {
-            _signInFromHomeRequested = true;
+            _isSignInFromHomeRequested = true;
             if (mustReport) {
                 Hub.RecordFunnelEvent(FunnelEvent.JoinOpenedSignedOut);
                 if (ArrivalInfo.New(ArrivalKind.Join, InviteId) is { } arrival)
@@ -49,46 +53,80 @@
         if (mustReport)
             Hub.RecordFunnelEvent(FunnelEvent.JoinOpenedSignedIn);
 
-        // The invite leads to a chat; the hold moves there with the navigation below
+        // The invite leads to a chat; the hold moves there with the navigation after joining
         AutoNavigationUI.HoldAttentionAt(History.LocalUrl, AutoNavigationReason.Invite);
-        var useCommand = new Invites_Use { Session = Session, InviteId = InviteId };
+        // Nothing joins on opening the link: the page shows where it leads and waits for the button
+        var preview = await Invites.GetInviteChatLinkPreview(Session, InviteId, default).ConfigureAwait(true);
+        _isPreviewLoaded = true;
+        _target = preview switch {
+            { Chat: { } chat } => new JoinTarget(chat.Id, JoinTargetState.CanJoin) {
+                Title = chat.Title,
+                Picture = chat.Picture,
+                PlaceTitle = preview.Place?.Title ?? "",
+            },
+            { Place: { } place } => new JoinTarget(place.Id.RootChatId, JoinTargetState.CanJoin) {
+                Title = place.Title,
+                Picture = place.Picture,
+            },
+            _ => null,
+        };
+    }
+
+    // Private methods
+
+    private async Task Join() {
+        var useCommand = new Invites_Use { Session = Session, InviteId = InviteId, Join = true };
         Invite invite;
         try {
-            invite = await Commander.Call(useCommand);
-            _useResult = Result.New(invite);
+            invite = await Commander.Call(useCommand).ConfigureAwait(true);
         }
         catch (Exception e) {
-            _useResult = Result.NewError<Invite>(e); // We show the error on the page, not with error toasts.
+            _error = e; // We show the error on the page, not with error toasts
+            StateHasChanged();
             return;
         }
 
-        if (invite is PlaceInvite placeInvite) {
-            var placeId = placeInvite.PlaceId;
-            Place? place = null;
-            try {
-                var cPlace = await Computed.Capture(() => Places.Get(Session, placeId, default));
-                cPlace = await ActualChat.ClockExt.Timeout(Clocks, 3)
-                    .ApplyTo(ct => cPlace.When(p => p != null, ct));
-                place = cPlace.Value;
-            }
-            catch (TimeoutException) {
-                Log.LogWarning("PlaceInvite: Places.Get couldn't complete in 3 seconds");
-            }
-            if (place != null) {
-                var welcomeChatId = await Places.GetWelcomeChatId(Session, place.Id, default);
-                if (welcomeChatId is null) {
-                    // No chat to arrive at, so leaving the invite page releases the hold
-                    _ = History.NavigateTo(Links.Chats, true);
-                    return;
-                }
-
-                _ = AutoNavigationUI.NavigateTo(Links.Chat(welcomeChatId), AutoNavigationReason.Invite, true);
-            }
+        var targetChatId = invite switch {
+            PlaceInvite placeInvite => placeInvite.PlaceId.RootChatId,
+            ChatInvite chatInvite => chatInvite.ChatId,
+            _ => throw StandardError.Format<Invite>(),
+        };
+        if (targetChatId is not PlaceChatId placeChatId) {
+            _ = AutoNavigationUI.NavigateTo(Links.Chat(targetChatId), AutoNavigationReason.Invite, true);
             return;
         }
 
-        var chatInvite = invite as ChatInvite ?? throw StandardError.Format<Invite>();
-        var chatId = chatInvite.ChatId;
-        _ = AutoNavigationUI.NavigateTo(Links.Chat(chatId), AutoNavigationReason.Invite, true);
+        var place = await WaitForPlace(placeChatId.PlaceId).ConfigureAwait(true);
+        if (place is null) {
+            // The link pre-approved a chat of a private Place, and the Place is asked for first
+            _target = _target! with { State = JoinTargetState.RequestPending };
+            StateHasChanged();
+            return;
+        }
+
+        ChatId? arrivalChatId = placeChatId;
+        if (placeChatId.IsRoot)
+            arrivalChatId = await Places.GetWelcomeChatId(Session, place.Id, default).ConfigureAwait(true);
+        if (arrivalChatId is null) {
+            // No chat to arrive at, so leaving the invite page releases the hold
+            _ = History.NavigateTo(Links.Chats, true);
+            return;
+        }
+
+        _ = AutoNavigationUI.NavigateTo(Links.Chat(arrivalChatId), AutoNavigationReason.Invite, true);
+    }
+
+    private async Task<Place?> WaitForPlace(PlaceId placeId) {
+        try {
+            var cPlace = await Computed.Capture(() => Places.Get(Session, placeId, default)).ConfigureAwait(true);
+            cPlace = await ActualChat.ClockExt.Timeout(Clocks, 3)
+                .ApplyTo(ct => cPlace.When(p => p != null, ct))
+                .ConfigureAwait(true);
+            return cPlace.Value;
+        }
+        catch (TimeoutException) {
+            Log.LogWarning("Invite: Places.Get couldn't complete in 3 seconds");
+            return null;
+        }
     }
 }

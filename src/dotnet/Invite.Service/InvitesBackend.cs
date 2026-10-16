@@ -76,18 +76,9 @@ public class InvitesBackend(IServiceProvider services)
                 if (placeChatId.IsRoot)
                     return null;
 
-                var placeId = placeChatId.PlaceId;
-                var place = await PlacesBackend.Get(placeId, cancellationToken).ConfigureAwait(false);
-                if (chat is { IsPublic: true })
-                    return new InviteChatLinkPreview(chat, place);
-
-                var placeRules = await ChatsBackend
-                    .GetRules(placeId.RootChatId, accountId, cancellationToken)
-                    .ConfigureAwait(false);
-                if (placeRules.IsMember())
-                    return new InviteChatLinkPreview(chat, place);
-
-                return null;
+                // A non-member of a private Place can use the link too: it files a Place request
+                var place = await PlacesBackend.Get(placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
+                return new InviteChatLinkPreview(chat, place);
             }
 
             return new InviteChatLinkPreview(chat, null);

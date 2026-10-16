@@ -146,7 +146,6 @@
   "Error_InviteAlreadyUsed": "Dieser Einladungslink wurde bereits verwendet.",
   "Error_InviteNotActive": "Це посилання-запрошення більше не активне.",
   "Error_InviteCodeNotFound": "Es wurde keine Einladung mit diesem Code gefunden.",
-  "Error_OnlyPlaceMembersCanUseCode": "Использовать этот код могут только участники пространства.",
   "Error_UserInvitesRemoved": "Приглашения пользователей больше не поддерживаются.",
 
   // Live location

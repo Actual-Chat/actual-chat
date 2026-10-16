@@ -1,0 +1,95 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat
+@inherits ComponentBase<AppUIHub>
+@{
+    var target = Target;
+}
+
+<div class="join-landing">
+    <div class="c-card">
+        <Pic
+            Title="@target.Title"
+            Picture="@target.Picture.ToPicture()"
+            Size="@SquareSize.Size24"
+            AvatarKind="@AvatarKind.Marble"
+            AvatarKey="@target.ChatId.Value"/>
+        @if (!target.PlaceTitle.IsNullOrEmpty()) {
+            <div class="c-place">@target.PlaceTitle</div>
+        }
+        <div class="c-title">@target.Title</div>
+        @switch (target.State) {
+        case JoinTargetState.CanJoin:
+            <Button Class="btn-primary btn-w-full" IsDisabled="@_isBusy" Click="@OnJoinClick">
+                @L.Common_Join
+            </Button>
+            break;
+        case JoinTargetState.CanRequest:
+            <div class="c-text">@L.JoinLanding_RequestAccessHint</div>
+            @if (target.AlsoRequestsPlace) {
+                <div class="c-text">@L.JoinLanding_AlsoRequestsPlace_Format(target.PlaceTitle)</div>
+            }
+            <Button Class="btn-primary btn-w-full" IsDisabled="@_isBusy" Click="@OnRequestClick">
+                @L.JoinLanding_RequestAccess
+            </Button>
+            break;
+        case JoinTargetState.SignInToRequest:
+            <div class="c-text">@L.JoinLanding_SignInToRequest</div>
+            <SignInButton/>
+            break;
+        case JoinTargetState.RequestPending:
+            <div class="c-status">@L.JoinLanding_RequestSent</div>
+            <div class="c-text">@L.JoinLanding_RequestSentHint</div>
+            <Button Class="btn-modal btn-w-full" IsDisabled="@_isBusy" Click="@OnWithdrawClick">
+                @L.JoinLanding_Withdraw
+            </Button>
+            break;
+        case JoinTargetState.Rejected:
+            <div class="c-text">@L.JoinLanding_Rejected</div>
+            break;
+        }
+    </div>
+</div>
+
+@code {
+    private bool _isBusy;
+
+    [Parameter, EditorRequired] public JoinTarget Target { get; set; } = null!;
+    [Parameter] public Func<Task>? JoinHandler { get; set; }
+
+    // Private methods
+
+    private Task OnJoinClick()
+        => RunBusy(() => {
+            // An invite link brings its own join: it goes through Invites_Use
+            if (JoinHandler is not null)
+                return JoinHandler.Invoke();
+
+            // A chat of a Place someone can join outright is joined through the Place
+            ICommand joinCmd = Target.ChatId is PlaceChatId placeChatId
+                ? new Places_Join { Session = Session, PlaceId = placeChatId.PlaceId }
+                : new Authors_Join { Session = Session, ChatId = Target.ChatId };
+            return UICommander.Run(joinCmd);
+        });
+
+    private Task OnRequestClick()
+        => RunBusy(() => {
+            var submitCmd = new JoinRequests_Submit { Session = Session, ChatId = Target.ChatId };
+            return UICommander.Run(submitCmd);
+        });
+
+    private Task OnWithdrawClick()
+        => RunBusy(() => {
+            var withdrawCmd = new JoinRequests_Withdraw { Session = Session, ChatId = Target.ChatId };
+            return UICommander.Run(withdrawCmd);
+        });
+
+    private async Task RunBusy(Func<Task> action) {
+        _isBusy = true;
+        try {
+            await action.Invoke().ConfigureAwait(true);
+        }
+        finally {
+            _isBusy = false;
+        }
+    }
+}

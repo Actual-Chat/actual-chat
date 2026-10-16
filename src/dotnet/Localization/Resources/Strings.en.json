@@ -2063,6 +2063,16 @@
   "JoinRequestAccess_SignedInHint": "Anyone signed in can open the link, see the title and ask to join",
   "JoinRequestAccess_Anyone": "Anyone with the link",
   "JoinRequestAccess_AnyoneHint": "The title and picture are visible even without an account; asking to join needs one",
+
+  // The page a plain link to a private chat or Place opens for someone who isn't in it: the title, the picture and one button.
+  "JoinLanding_RequestAccess": "Request access",
+  "JoinLanding_RequestAccessHint": "An owner or a moderator will review your request, and you'll be notified",
+  "JoinLanding_AlsoRequestsPlace_Format": "This chat is in the Place «{0}», so you'll ask to join the Place too",
+  "JoinLanding_RequestSent": "Request sent",
+  "JoinLanding_RequestSentHint": "You'll be notified when it's approved",
+  "JoinLanding_Withdraw": "Withdraw request",
+  "JoinLanding_Rejected": "Your request was declined. You can ask again in a few days",
+  "JoinLanding_SignInToRequest": "Sign in to request access",
   "Stepper_StepCompleted": "This step is already completed!",
 
   // The info sheet of the media viewer; these labels keep their trailing colon.

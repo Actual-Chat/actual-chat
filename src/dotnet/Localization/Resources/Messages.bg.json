@@ -142,7 +142,6 @@
   "Error_InviteAlreadyUsed": "Линкът за покана вече е използван.",
   "Error_InviteNotActive": "Линкът за покана вече не е активен.",
   "Error_InviteCodeNotFound": "Покана с посочения код не е намерена.",
-  "Error_OnlyPlaceMembersCanUseCode": "Този код може да се използва само от участници в Мястото.",
   "Error_UserInvitesRemoved": "Функцията за потребителски покани е премахната.",
 
   // Live location

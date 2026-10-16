@@ -134,7 +134,6 @@
   "Error_InviteAlreadyUsed": "Este enlace de invitación ya se ha usado.",
   "Error_InviteNotActive": "Este enlace de invitación ya no está activo.",
   "Error_InviteCodeNotFound": "No se encontró ninguna invitación con ese código.",
-  "Error_OnlyPlaceMembersCanUseCode": "Solo los miembros del espacio pueden usar este código.",
   "Error_UserInvitesRemoved": "Las invitaciones de usuarios ya no están disponibles.",
 
   // Live location

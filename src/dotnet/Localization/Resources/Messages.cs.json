@@ -142,7 +142,6 @@
   "Error_InviteAlreadyUsed": "Odkaz s pozvánkou už byl použit.",
   "Error_InviteNotActive": "Odkaz s pozvánkou už není aktivní.",
   "Error_InviteCodeNotFound": "Pozvánka se zadaným kódem nebyla nalezena.",
-  "Error_OnlyPlaceMembersCanUseCode": "Tento kód mohou použít jen členové Místa.",
   "Error_UserInvitesRemoved": "Funkce uživatelských pozvánek byla odstraněna.",
 
   // Live location

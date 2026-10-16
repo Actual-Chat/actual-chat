@@ -238,9 +238,6 @@ body.hoverable .chat-header-control-panel .btn-start-call:disabled:hover {
 .chat-not-found-container > .c-wrapper {
     @apply flex-y items-center justify-center gap-y-4;
 }
-.chat-not-found-container.inaccessible-place > .c-wrapper {
-    @apply flex-1 flex-y items-start justify-center gap-y-4;
-}
 .chat-not-found-container > .c-wrapper > .text-wrapper {
     @apply flex-y items-center;
     @apply text-heading-600 text-03;

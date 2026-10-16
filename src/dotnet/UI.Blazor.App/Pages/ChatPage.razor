@@ -25,16 +25,6 @@
     Log.LogDebug("Rendered for #{ChatId}", chatId);
 }
 
-@if (chatContext is null && m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
-    <RenderIntoSlot Name="@LayoutSlots.MainLeftDrawer">
-        <LeftPanel IsSkeletonWidePanel="@true">
-            <WidePanelBottomContent>
-                <SendJoinPlaceRequestWidget/>
-            </WidePanelBottomContent>
-        </LeftPanel>
-    </RenderIntoSlot>
-}
-
 <RenderIntoSlot Name="@LayoutSlots.MainHeader">
     @if (chatContext is not null) {
         <CascadingValue Value="@chatContext">
@@ -91,8 +81,8 @@
                     <ChatView @key="@chatKey"/>
                 </CascadingValue>
             </ErrorBarrier>
-        } else if (m is { CanSendJoinPlaceRequest: true, EnableIncompleteUI: true }) {
-            <InaccessiblePlace ShowSignIn="@account.IsGuestOrNull()"/>
+        } else if (m.JoinTarget is { } joinTarget) {
+            <JoinLanding Target="@joinTarget"/>
             <ContentSwapDisplay/>
         } else if (route?.ChatId is not null) {
             <ChatNotFound ShowSignIn="@account.IsGuestOrNull()"/>
@@ -118,6 +108,7 @@
 
     protected IChats Chats => Hub.Chats;
     protected IPlaces Places => Hub.Places;
+    protected IJoinRequests JoinRequests => field ??= Hub.Services.GetRequiredService<IJoinRequests>();
     protected IAccounts Accounts => Hub.Accounts;
     protected IAvatars Avatars => Hub.Avatars;
     protected IContacts Contacts => Hub.Contacts;
@@ -195,10 +186,8 @@
         var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
         ChatSwitchTracer.Mark("ChatPage.ComputeState: OwnAccount used");
         if (chatId is null)
-            return Model.NewUnavailable(account, fixedRoute, false);
+            return Model.NewUnavailable(account, fixedRoute);
 
-        var canSendJoinPlaceRequest = false;
-        var enableIncompleteUITask = Features.IsIncompleteUIEnabled(cancellationToken);
         // Log.LogDebug("ComputeState(), ChatId: #{ChatId}", chatId);
 
         try {
@@ -219,23 +208,14 @@
             var chatContext = chat is not null
                 ? new ChatContext(Hub, chat)
                 : null;
-            if (chat is null && chatId is PlaceChatId placeChatId) {
-                var place = await Places.Get(Session, placeChatId.PlaceId, cancellationToken).ConfigureAwait(false);
-                if (place is null) {
-                    // Place does not exist or user is not member of the place.
-                    // TODO: Check if user can request place invitation.
-                    // Result should contain the following details:
-                    //  - if it's possible to send request,
-                    //  - if there is a pending request,
-                    //  - last request was declined.
-                    canSendJoinPlaceRequest = false;
-                }
-            }
+            // A chat the user can't see may still be one they can ask to join
+            JoinTarget? joinTarget = null;
+            if (chat is null)
+                joinTarget = await JoinRequests.GetTarget(Session, chatId, cancellationToken).ConfigureAwait(false);
             var footerModel = await GetFooterModel(chat, account, cancellationToken).ConfigureAwait(false);
             ChatSwitchTracer.Mark("ChatPage.ComputeState: GetFooterModel done");
-            var enableIncompleteUI = await enableIncompleteUITask.ConfigureAwait(false);
             ChatSwitchTracer.Mark("ChatPage.ComputeState: exit - new Model");
-            return new(account, fixedRoute, chatContext, footerModel, canSendJoinPlaceRequest, enableIncompleteUI);
+            return new(account, fixedRoute, chatContext, footerModel, joinTarget);
         }
         catch (TimeoutException) {
             Computed.Current?.Invalidate(LoadTimeoutToReloadDelay);
@@ -245,7 +225,7 @@
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Failed to get Chat #{ChatId}", chatId);
-            return Model.NewUnavailable(account, fixedRoute, false);
+            return Model.NewUnavailable(account, fixedRoute);
         }
     }
 
@@ -451,11 +431,10 @@
         RouteResult Route,
         ChatContext? ChatContext,
         FooterModel FooterModel,
-        bool CanSendJoinPlaceRequest,
-        bool EnableIncompleteUI
+        JoinTarget? JoinTarget
     ) {
-        public static Model NewUnavailable(AccountFull ownAccount, RouteResult route, bool canSendJoinPlaceRequest)
-            => new(ownAccount, route, null, FooterModel.None, canSendJoinPlaceRequest, false);
+        public static Model NewUnavailable(AccountFull ownAccount, RouteResult route)
+            => new(ownAccount, route, null, FooterModel.None, null);
 
         // This record relies on referential equality
         public bool Equals(Model? other) => ReferenceEquals(this, other);
