@@ -91,25 +91,37 @@ unnoticed. For a new user it's the first thing they hit.
      an explicit add lets them in sooner.
    - A former member who was excluded files an ordinary request; the queue row
      marks them as "previously excluded".
-10. **Join requests are a property of a private target.** A private place and a
-    private chat get `AllowJoinRequests`, changed by anyone with
-    `EditProperties` (owner, moderator).
-    - On: a plain link leads a non-member to the landing page with **Request
-      access**. The card shows only the title and picture - no members, no
-      content.
-    - Off: a non-member gets the same "not found or no access" page as for an
-      address that doesn't exist, so the link doesn't even reveal the target
-      exists. Only an invite link or an explicit add gets anyone in.
-    - A private chat in a place, for someone outside the place, needs it on for
-      both the chat and the place.
-    - Proposed default: off for existing private targets (their owners never
-      agreed to expose the title and picture), on for new ones. **To be confirmed
-      with Alexey on a working demo.**
+10. **Who sees the landing page is a setting of a private target.** A private
+    place and a private chat get `JoinRequestAccess`, changed by anyone with
+    `EditProperties` (owner, moderator). It decides who, following a plain link,
+    gets the landing page with **Request access**; everyone else gets the same
+    "not found or no access" page as for an address that doesn't exist, so the
+    link doesn't even reveal the target exists. The card shows only the title
+    and picture - no members, no content.
+
+    | Value | Who gets the landing page |
+    |---|---|
+    | `Off` | nobody: only an invite link or an explicit add gets anyone in |
+    | `PlaceMembers` | members of the place; only for a private chat inside a place |
+    | `SignedIn` | anyone signed in; a guest gets "not found" with the usual sign-in offer, and after signing in returns to the link |
+    | `Anyone` | anyone, guests included; a guest's button leads to sign-in, since only an account can file a request |
+
+    - `SignedIn` and `Anyone` differ only in who sees the title and picture. With
+      `Anyone` they may also show up in a link preview elsewhere; with any other
+      value the server gives a preview nothing.
+    - A private chat in a place, for someone outside the place, needs `SignedIn`
+      or `Anyone` on both the chat and the place, and the stricter of the two
+      applies. A place member only needs the chat's value to be `PlaceMembers` or
+      wider.
+    - Invite links are unaffected: their landing page always opens.
+    - Proposed default: `Off` for existing private targets (their owners never
+      agreed to expose the title and picture), `SignedIn` for new ones.
+      **To be confirmed with Alexey on a working demo.**
 11. **The share dialog.**
     - **Share** is available to every member and gives the plain link - the place
       or chat address itself, which opens the chat for a member and the landing
-      page for anyone else. For a private target it's shown only with
-      `AllowJoinRequests` on, captioned "joining needs approval by the owner or a
+      page for anyone else. For a private target it's shown only when
+      `JoinRequestAccess` isn't `Off`, captioned "joining needs approval by the owner or a
       moderator".
     - Those with `Invite` (the owner today) also get an **Invite link** row,
       captioned "joins without approval - share only with people you're ready to
@@ -208,7 +220,7 @@ ones before it.
 1. **Journal.** The table, actor and method on `AuthorsBackend_Upsert`, the copy
    chat path, the invite id read moved before the upsert. It goes first so every
    join from then on is recorded.
-2. **Join requests, backend.** `AllowJoinRequests` on places and chats (with the
+2. **Join requests, backend.** `JoinRequestAccess` on places and chats (with the
    migration), the request table, request / withdraw / approve / reject commands
    under `EditMembers`, linked place + chat requests, expiry and the rejection
    pause, notifications.

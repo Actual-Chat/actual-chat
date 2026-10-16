@@ -30,17 +30,20 @@ xUnit + FluentAssertions, bUnit.
 
 - No membership change bypasses the journal, except chat removal (`AuthorsBackend_Remove`, which
   deletes the authors together with the chat) and the copy-chat insert, which writes its rows itself.
-- Nothing private goes into `Author` / `AuthorFull` / `Chat` / `Place` beyond the `AllowJoinRequests`
-  flag. Journal rows and requests reach clients only through `EditMembers`-gated methods.
+- Nothing private goes into `Author` / `AuthorFull` / `Chat` / `Place` beyond the `JoinRequestAccess`
+  value. Journal rows and requests reach clients only through `EditMembers`-gated methods.
 - A non-member of a private target never gets `ChatPermissions.Read`; `ChatsBackend.GetRulesRaw` is
   not changed for join requests.
 - Approving requires `EditMembers` on the target. A chat moderator can never let anyone into the place.
 - Opening a link never joins. Joining happens only on the button.
 - Migrations come from `./ef-migrations.cmd` only; `has-pending-model-changes` is clean before each
   commit that touches the model; `DbMigrationTest` runs after the migration.
-- `AllowJoinRequests` defaults: `false` for existing rows (column default), `true` for private targets
-  created after the release. The default is to be confirmed with Alexey on the demo, so keep it in one
-  place (see [Task 4](#task-4-allowjoinrequests-on-chats-and-places)).
+- `JoinRequestAccess` defaults: `Off` for existing rows (column default), `SignedIn` for private
+  targets created after the release. The default is to be confirmed with Alexey on the demo, so keep it
+  in one place (see [Task 4](#task-4-joinrequestaccess-on-chats-and-places)).
+- The landing card (title, picture) reaches a non-member only when `JoinRequestAccess` lets that
+  viewer see it; for everyone else the target is indistinguishable from a missing one, including in
+  link previews.
 - Wire types get MessagePack keys after the last used one; `ApiContractsAotSource.g.cs` and the UI
   AOT keep lists are regenerated with `App.AotHelper -g`, never edited.
 
@@ -58,7 +61,7 @@ xUnit + FluentAssertions, bUnit.
   `CanUse`, `InvitesBackend.GetInviteChatLinkPreview` (the invite landing card), and `InviteList`
   (owner's list of links, reused in the share dialog).
 - **Permissions:** `ChatPermissions.EditMembers` / `EditProperties`, `SystemRole.Moderator`,
-  `ChatExt.RequiresOwner` (not extended; `AllowJoinRequests` is `EditProperties`, per the spec).
+  `ChatExt.RequiresOwner` (not extended; `JoinRequestAccess` is `EditProperties`, per the spec).
 - **Recipients of moderator pushes:** `RolesBackendExt.ListSystemRoleAuthorIds` for Owner + Moderator,
   as `LiveSessionsBackend` does.
 - **Notifications:** `Notification` union, `ChatNotification`, `MergeWith` coalescing,
@@ -94,6 +97,7 @@ pattern).
 | `MembershipEvent`, `MembershipMethod`, `MembershipChange` | `Chat.Contracts` (backend), moved to `Api` in stage 2 when the filtered view ships | Only Chat.Service and its tests read it in stage 1. A shared `Core.Server` audit log was considered: no second consumer exists, and the rows reference chat-specific ids. Local. |
 | `DbMembershipEvent`, `DbJoinRequest` | `Chat.Service/Db` | Chat database tables. |
 | `JoinRequest`, `JoinRequestId`, `JoinTarget`, `IJoinRequests` | `Api` / `Api.Contracts` | Client-facing. |
+| `JoinRequestAccess` + `Allows` / `Min` | `Api/Chat` | Part of `Chat` and `Place`; the UI, the backend and the Open Graph provider all evaluate it. |
 | `JoinRequestsBackend`, `JoinRequestExpiryFlow` | `Chat.Service` | Uses `AuthorsBackend` and the chat DB directly. |
 | `JoinRequestNotification` | `Api/Notifications` | Sits in the existing union. |
 | `JoinLanding` (card + one button) | `UI.Blazor.App/Components/JoinLanding/` | Used by three pages (`/join`, `/chat`, `/place`); app-specific. |
@@ -185,30 +189,36 @@ per copied active author next to `dbContext.Authors.Add` at :444.
 - [ ] **Step 1:** Test, model, column, migration, `has-pending-model-changes`.
 - [ ] **Step 2:** Commit.
 
-### Task 4: `AllowJoinRequests` on chats and places
+### Task 4: `JoinRequestAccess` on chats and places
 
 **Files:**
-- Modify: `src/dotnet/Api/Chat/Chat.cs` (`Chat.AllowJoinRequests` `Key(22)`, `ChatDiff`)
-- Modify: `src/dotnet/Api/Chat/Place.cs` (`Place.AllowJoinRequests` `Key(12)`, `PlaceDiff`)
-- Modify: `src/dotnet/Chat.Service/Db/DbChat.cs`, `Db/DbPlace.cs`
-- Modify: `src/dotnet/Chat.Service/PlacesBackend.cs` (`ToChatDiff` copies the flag to the root chat)
+- Create: `src/dotnet/Api/Chat/JoinRequestAccess.cs` (`Off = 0`, `PlaceMembers`, `SignedIn`,
+  `Anyone`, ordered from the strictest; `JoinRequestAccessExt.Allows(access, isSignedIn,
+  isPlaceMember)` and `Min` for the chat-in-place rule)
+- Modify: `src/dotnet/Api/Chat/Chat.cs` (`Chat.JoinRequestAccess` `Key(22)`, `ChatDiff`)
+- Modify: `src/dotnet/Api/Chat/Place.cs` (`Place.JoinRequestAccess` `Key(12)`, `PlaceDiff`)
+- Modify: `src/dotnet/Chat.Service/Db/DbChat.cs`, `Db/DbPlace.cs` (int column)
+- Modify: `src/dotnet/Chat.Service/PlacesBackend.cs` (`ToChatDiff` copies the value to the root chat)
 - Modify: `src/dotnet/Chat.Service/ChatsBackend.cs` (`OnChange` create: a private group or place chat
-  with no value gets `JoinRequestDefaults.ForNewTarget`; `ApplyDiff`: the flag is meaningless on a
-  public chat and is reset when one becomes public)
-- Modify: `src/dotnet/Chat.Service/ChatDiffExt.cs` (`ValidateForPlaceChat` allows the flag)
-- Modify: `src/dotnet/UI.Blazor.App/Components/ChatSettings/EditChatTypeModalPage.razor(.cs)` (toggle
-  in the toggles block, visible when private), `PlaceSettings/PlaceSettingsEditTypeModalPage.razor`
-  (the same toggle, new toggles block)
-- Modify: `src/dotnet/Localization/Resources/*` (label and caption, all languages)
-- Generate: migration `Add_AllowJoinRequests` (both columns, default `false`)
-- Test: `tests/Chat.IntegrationTests/AllowJoinRequestsTest.cs`
+  with no value gets `JoinRequestDefaults.ForNewTarget`; `ApplyDiff`: the value is meaningless on a
+  public chat and is reset to `Off` when one becomes public; `PlaceMembers` is refused on anything but
+  a non-root place chat)
+- Modify: `src/dotnet/Chat.Service/ChatDiffExt.cs` (`ValidateForPlaceChat` allows the value)
+- Modify: `src/dotnet/UI.Blazor.App/Components/ChatSettings/EditChatTypeModalPage.razor(.cs)` (a
+  choice of the values under the Private option; `PlaceMembers` only for a chat in a place),
+  `PlaceSettings/PlaceSettingsEditTypeModalPage.razor` (the same choice without `PlaceMembers`)
+- Modify: `src/dotnet/Localization/Resources/*` (label, one caption per value, all languages)
+- Generate: migration `Add_JoinRequestAccess` (both columns, default `0`)
+- Test: `tests/Chat.IntegrationTests/JoinRequestAccessTest.cs`, `tests/Chat.UnitTests/JoinRequestAccessTest.cs`
 
-The settings pages close for non-owners today; the server accepts the flag from anyone with
+The settings pages close for non-owners today; the server accepts the value from anyone with
 `EditProperties`, as the spec says, and a moderator-facing entry point waits for the queue UI
-(Task 10), where the toggle is also shown.
+(Task 11), where the choice is also shown.
 
-- [ ] **Step 1:** Tests: a new private chat gets `true`, a migrated one `false`; a place change
-  reaches its root chat; a moderator can change it, a plain member can't.
+- [ ] **Step 1:** Unit tests for `Allows` and `Min` over every value and viewer (guest, signed in,
+  place member). Integration tests: a new private chat gets `SignedIn`, a migrated one `Off`; a place
+  change reaches its root chat; `PlaceMembers` on a place or a standalone chat is refused; a moderator
+  can change it, a plain member can't.
 - [ ] **Step 2:** Model, migration, backend, settings toggles, strings.
 - [ ] **Step 3:** Commit.
 
@@ -234,17 +244,21 @@ a linked chat request), `InviteId` (pre-approves the chat request), `WasExcluded
 
 **`IJoinRequests` (client):**
 - `GetTarget(Session, ChatId, CancellationToken)` → `JoinTarget?`: title, picture, place title,
-  `State` (`Member`, `CanJoin`, `CanRequest`, `RequestPending`, `RejectedUntil`, `Unavailable`),
-  `AlsoRequestsPlace`. `null` when the target doesn't exist or `AllowJoinRequests` is off — the caller
-  then shows the ordinary not-found page.
+  `State` (`Member`, `CanJoin`, `CanRequest`, `SignInToRequest`, `RequestPending`, `RejectedUntil`,
+  `Unavailable`), `AlsoRequestsPlace`. `null` when the target doesn't exist or its
+  `JoinRequestAccess` doesn't let this viewer see it (`Off`; `PlaceMembers` for a non-member of the
+  place; `SignedIn` for a guest; for a chat in a place, the stricter of the chat's and the place's
+  value) — the caller then shows the ordinary not-found page. `SignInToRequest` is a guest under
+  `Anyone`.
 - `ListPending(Session, ChatId, CancellationToken)` → `ApiArray<JoinRequest>`, `EditMembers` only;
   chat requests whose parent is still pending are left out.
 - Commands: `JoinRequests_Submit { ChatId }`, `JoinRequests_Withdraw { ChatId }`,
   `JoinRequests_Approve { JoinRequestId }`, `JoinRequests_Reject { JoinRequestId }`.
 
 **Rules in the backend:**
-- Submit: refuses a member, a public target (join instead), `AllowJoinRequests` off (on the chat
-  and, for a non-member of the place, on the place), and a rejection younger than 7 days; returns the
+- Submit: refuses a guest, a member, a public target (join instead), a target whose
+  `JoinRequestAccess` hides it from this user (the same check as `GetTarget`), and a rejection younger
+  than 7 days; returns the
   existing pending request instead of a second one. A private chat in a place the person isn't in
   creates two rows: the place request and the chat request with `ParentId`. A public place is joined
   at once through `Places_Join` instead of a place request.
@@ -262,8 +276,10 @@ a linked chat request), `InviteId` (pre-approves the chat request), `WasExcluded
   approve by a moderator joins and journals with the actor; a plain member can't approve; reject then
   resubmit before 7 days fails and after it works (shift the clock through the test host's
   `MomentClock`); linked requests in a private place — the chat request is hidden until the place is
-  approved and closes on rejection; a public place joins the place at once; `AllowJoinRequests` off →
-  `GetTarget` is `null`; `WasExcluded` after an exclusion.
+  approved and closes on rejection; a public place joins the place at once; `GetTarget` and
+  Submit across the values — `Off` hides from everyone, `PlaceMembers` shows a place member and hides
+  from an outsider, `SignedIn` hides from a guest, `Anyone` gives a guest `SignInToRequest`, a chat in
+  a place takes the stricter value; `WasExcluded` after an exclusion.
 - [ ] **Step 2:** Implement contracts, entity, migration, services, registration; regenerate AOT.
 - [ ] **Step 3:** Commit.
 
@@ -342,30 +358,38 @@ on it before shipping.
 - Modify: `src/dotnet/UI.Blazor.App/Pages/ChatInvitePage.razor` (stops using the invite on open;
   shows `JoinLanding` built from `GetInviteChatLinkPreview`; the button sends
   `Invites_Use { Join = true }`; the signed-out branch is unchanged)
+- Modify: `src/dotnet/Chat.Service/OpenGraphTagsProvider.cs` (when `Chats.Get` is `null` for the
+  crawler's guest session, a private target under `Anyone` gets its title and picture from
+  `GetTarget`; every other value keeps returning `null`, as today)
 - Modify: localized strings (reuse `JoinRequest_*`, add "request sent", "Withdraw", "rejected",
-  "asks for the place too")
-- Test: `tests/Chat.UI.Blazor.UnitTests/JoinLandingTest.cs` (bUnit, one render per `JoinTargetState`)
+  "asks for the place too", "sign in to request access")
+- Test: `tests/Chat.UI.Blazor.UnitTests/JoinLandingTest.cs` (bUnit, one render per `JoinTargetState`),
+  `tests/Chat.IntegrationTests/OpenGraphTagsTest.cs` (preview only under `Anyone`)
 
 The button per state: `CanJoin` → Join (public: `Authors_Join` / `Places_Join`; invite: as above),
-`CanRequest` → Request access, `RequestPending` → "Request sent" + Withdraw, `RejectedUntil` → text
-only, `Member` → navigate to the chat.
+`CanRequest` → Request access, `SignInToRequest` → Sign in (`RequestSignInFromHomePage` with the link
+as the redirect, as `ChatInvitePage` does), `RequestPending` → "Request sent" + Withdraw,
+`RejectedUntil` → text only, `Member` → navigate to the chat. A guest who gets `null` under
+`SignedIn` sees `ChatNotFound` with its usual sign-in footer, and the same redirect brings them back
+to the link.
 
 - [ ] **Step 1:** bUnit tests per state.
 - [ ] **Step 2:** Implement; remove the dormant components and their AOT keep entries.
-- [ ] **Step 3:** Manual check with `/debug-ui` on the local server, two accounts: plain link to a
-  private place with requests on and off, a private chat in a private place, an invite link signed out
-  and signed in, a public place by its own address.
+- [ ] **Step 3:** Manual check with `/debug-ui` on the local server, two accounts and a guest window:
+  a plain link to a private place under each of the four values (`PlaceMembers` on a chat in the
+  place), signed in and as a guest, including the sign-in round trip under `SignedIn`; a private chat
+  in a private place; an invite link signed out and signed in; a public place by its own address.
 - [ ] **Step 4:** Commit.
 
 ### Task 10: Share dialog
 
 **Files:**
 - Modify: `src/dotnet/UI.Blazor.App/ShareUIExt.cs` (`GetModel(ChatId)` / `GetModel(PlaceId)`: the
-  plain address for every member; a private target only with `AllowJoinRequests`; no
+  plain address for every member; a private target only when `JoinRequestAccess` isn't `Off`; no
   `GetOrGenerate*Invite`; a public place by `Links.PlaceInfo`)
 - Modify: `src/dotnet/UI.Blazor/Components/Share/ShareModalModel.cs`, `ShareKind.cs` (caption kinds:
-  "needs approval", "joins without approval"), `ShareWithPlaceMembersOnly.GetFor` (only when requests
-  are off)
+  "needs approval", "joins without approval"), `ShareWithPlaceMembersOnly.GetFor` (when the effective
+  value is `PlaceMembers`: the link only reaches place members, so the selector stays limited to them)
 - Modify: `src/dotnet/UI.Blazor.App/Components/Share/ShareModal.razor` (owners: an "Invite link"
   section — `InviteList` plus Create, with the warning caption)
 - Modify: `src/dotnet/UI.Blazor.App/Components/AddMember/AddMemberModalPage.razor` (the placeholder
@@ -373,8 +397,9 @@ only, `Member` → navigate to the chat.
 - Modify: `src/dotnet/UI.Blazor.App/Components/ChatWelcomeBlock.razor:39-69` (same rules as Share)
 - Test: `tests/Chat.UI.Blazor.UnitTests/ShareModelTest.cs`
 
-- [ ] **Step 1:** Tests: a plain member of a private place with requests on gets the place address; with
-  requests off gets no model; an owner gets the invite section; no invite is generated by opening Share.
+- [ ] **Step 1:** Tests: a plain member of a private place under `SignedIn` gets the place address;
+  under `Off` gets no model; a chat under `PlaceMembers` is shared to place members only; an owner gets
+  the invite section; no invite is generated by opening Share.
 - [ ] **Step 2:** Implement, manual check, commit.
 
 ### Task 11: Queue UI
@@ -388,7 +413,7 @@ only, `Member` → navigate to the chat.
 - Modify: `src/dotnet/UI.Blazor.App/Services/ChatListUI.cs`, `Components/ChatList/ChatList.razor`
   (People tab: pending requests of the chats and places the user moderates, as a block above the list,
   marked unread, followed by a `Divider` like the pinned block)
-- Modify: the `AllowJoinRequests` toggle reachable for moderators from the requests block
+- Modify: the `JoinRequestAccess` choice reachable for moderators from the requests block
 - Test: `tests/Chat.UI.Blazor.UnitTests/JoinRequestListTest.cs`
 
 Before coding, open the Figma frame (node 27697-223756) through the Figma MCP and match spacing, the
@@ -408,10 +433,11 @@ Before coding, open the Figma frame (node 27697-223756) through the Figma MCP an
   contacts, follows a plain link to a private place, the owner approves from the People tab, the user
   gets the push and lands in the place; then the same with an invite link and no approval.
 - [ ] Update the spec's [Stages](./place-invites.md#stages) with what shipped, and the
-  `AllowJoinRequests` default after the demo.
+  `JoinRequestAccess` default after the demo.
 
 ## Open points
 
-- `AllowJoinRequests` default for new targets — demo to Alexey (spec decision 10).
+- `JoinRequestAccess` default for new targets (`SignedIn` proposed) — demo to Alexey (spec
+  decision 10).
 - The chat-list People block (Task 11) needs Grigory's frame for the narrow layout; the screenshot
   covers desktop only.
