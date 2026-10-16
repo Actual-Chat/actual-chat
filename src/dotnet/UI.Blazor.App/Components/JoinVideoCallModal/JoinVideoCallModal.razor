@@ -451,6 +451,11 @@
     }
 
     private async Task OnCameraSelected(VideoDevice device) {
+        // Nothing downstream restarts for the camera already in use, so Starting would never
+        // advance to On. Unavailable is the exception: re-picking retries the warmup.
+        if (device.DeviceId == _selectedDevice?.DeviceId && PreviewState is not CameraState.Unavailable)
+            return;
+
         _selectedDevice = device;
         StateHasChanged();
 
