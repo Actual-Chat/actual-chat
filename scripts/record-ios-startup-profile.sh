@@ -112,7 +112,7 @@ record() {
     date "+start %H:%M:%S"
     dotnet-trace collect -p $dsr \
         --providers "Microsoft-Windows-DotNETRuntime:0x1C000080018:5" \
-        --buffersize 512 --duration $duration -o "$trace"
+        --buffersize ${BUFFER_MB:-1024} --duration $duration -o "$trace"
     date "+end   %H:%M:%S"
     pkill -f dotnet-dsrouter || true
     ls -la "$trace"
