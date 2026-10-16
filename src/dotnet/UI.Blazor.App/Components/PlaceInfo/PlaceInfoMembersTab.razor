@@ -4,6 +4,9 @@
 }
 
 <div class="member-list no-scrollbar">
+    @if (m.Place is { } place) {
+        <JoinRequestQueue @key="@place.Id" ChatId="@place.Id.RootChatId"/>
+    }
     @foreach (var authorId in m.AuthorIds) {
         var isOwn = m.IsOwn(authorId);
         var isOwner = m.IsOwner(authorId);

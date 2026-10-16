@@ -71,7 +71,13 @@
                 } else if (_mustShowThreadsList) {
                     <ThreadList PlaceId="@PlaceId" />
                 } else {
-                    <ChatList @key="@ChatList.GetKey(PlaceId, true, null)" PlaceId="@PlaceId" UsePlaceChatListSettings="@true"/>
+                    @if (_selectedTabId == ChatListFilter.People.Id.Value) {
+                        <JoinRequestBlock @key="@PlaceId" PlaceId="@PlaceId"/>
+                    }
+                    <ChatList
+                        @key="@ChatList.GetKey(PlaceId, true, null)"
+                        PlaceId="@PlaceId"
+                        UsePlaceChatListSettings="@true"/>
                 }
             </ChildContent>
         </ContentSwap>

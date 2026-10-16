@@ -2052,6 +2052,11 @@
   "JoinRequest_NotMember": "Not member yet",
   "JoinRequest_Text": "Send a join request and admins will consider you for addition to the Place",
   "JoinRequest_Send": "Send Request",
+  "JoinRequest_GroupTitle": "New requests",
+  "JoinRequest_BlockTitle": "Requests to join",
+  "JoinRequest_PreviouslyExcluded": "Was removed from here before",
+  "JoinRequest_Approve": "Approve",
+  "JoinRequest_Reject": "Decline",
 
   // Settings of a private chat or Place: who, following its plain link, may see its title and ask to join. Everyone else sees "not found".
   "JoinRequestAccess_Title": "Who can ask to join",

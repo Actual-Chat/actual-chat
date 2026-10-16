@@ -121,6 +121,7 @@
 @import './Components/ChatActivityPanel/chat-activity-panel.css';
 @import './Components/IncomingShare/incoming-share-modal.css';
 @import './Components/JoinLanding/join-landing.css';
+@import './Components/JoinRequests/join-requests.css';
 @import './Components/JoinVideoCallModal/join-video-call-modal.css';
 @import './Components/NoResults/no-results.css';
 

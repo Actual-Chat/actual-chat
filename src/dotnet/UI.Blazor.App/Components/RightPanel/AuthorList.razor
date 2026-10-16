@@ -42,6 +42,9 @@
                     Click="@_onClickCallback"/>
             }
         } else {
+            @if (m.ChatId is { } chatId) {
+                <JoinRequestQueue @key="@chatId" ChatId="@chatId"/>
+            }
             var groups = new List<(string, string, ICollection<AuthorId>, bool)>();
             if (m.OwnerAuthorIds.Count > 0)
                 groups.Add(("owners", L.RightPanel_GroupOwners, m.OwnerAuthorIds, false));
@@ -184,6 +187,7 @@
 
         var allAreAnonymous = authorInfos.Count > 0 && authorInfos.All(c => c.IsAnonymous);
         return new() {
+            ChatId = isPeerChat ? null : chatId,
             AllAuthorIds = allAuthorIds,
             OwnAuthorId = ownAuthor?.Id,
             OwnerAuthorIds = ownerAuthors.Select(c => c.Id).ToList(),
@@ -205,6 +209,7 @@
     public sealed class Model {
         public static readonly Model None = new();
 
+        public ChatId? ChatId { get; init; }
         public AuthorId? OwnAuthorId { get; init; }
         public IReadOnlyList<AuthorId> AllAuthorIds { get; init; } = [];
         public List<AuthorId> OwnerAuthorIds { get; init; } = [];

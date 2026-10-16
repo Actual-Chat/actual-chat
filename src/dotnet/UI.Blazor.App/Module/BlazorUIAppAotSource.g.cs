@@ -265,7 +265,11 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.IosAppLocationGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinLanding>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinRequestAccessModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinRequestAccessPicker>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinRequestBlock>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinRequestList>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinRequestQueue>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.KeyboardShortcutsModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup>();
@@ -1167,7 +1171,11 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.IosAppLocationGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.JoinLanding), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.JoinRequestAccessModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.JoinRequestAccessPicker), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.JoinRequestBlock), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.JoinRequestList), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.JoinRequestQueue), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.JoinVideoCallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.KeyboardShortcutsModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.LanguageButtonGroup), AotTypeKind.Component),

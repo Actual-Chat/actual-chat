@@ -1833,6 +1833,11 @@ public static class LocalizedStringsLocalizerExt
         public string JoinRequest_NotMember => l["JoinRequest_NotMember"].Value;
         public string JoinRequest_Text => l["JoinRequest_Text"].Value;
         public string JoinRequest_Send => l["JoinRequest_Send"].Value;
+        public string JoinRequest_GroupTitle => l["JoinRequest_GroupTitle"].Value;
+        public string JoinRequest_BlockTitle => l["JoinRequest_BlockTitle"].Value;
+        public string JoinRequest_PreviouslyExcluded => l["JoinRequest_PreviouslyExcluded"].Value;
+        public string JoinRequest_Approve => l["JoinRequest_Approve"].Value;
+        public string JoinRequest_Reject => l["JoinRequest_Reject"].Value;
         public string JoinRequestAccess_Title => l["JoinRequestAccess_Title"].Value;
         public string JoinRequestAccess_Off => l["JoinRequestAccess_Off"].Value;
         public string JoinRequestAccess_OffHint => l["JoinRequestAccess_OffHint"].Value;

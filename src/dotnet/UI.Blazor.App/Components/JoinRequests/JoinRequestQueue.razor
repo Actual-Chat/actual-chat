@@ -1,0 +1,41 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat
+@inherits ComputedStateComponent<AppUIHub, IReadOnlyList<JoinRequest>>
+@{
+    var requests = State.Value;
+    if (requests.Count == 0)
+        return;
+
+    var title = L.RightPanel_GroupTitle_Format(L.JoinRequest_GroupTitle, requests.Count);
+}
+
+<Collapsed Title="@title" TitleClass="c-group-title c-join-requests" IsCollapsed="false">
+    <JoinRequestList ChatId="@ChatId" Requests="@requests"/>
+</Collapsed>
+
+@code {
+    private IChats Chats => Hub.Chats;
+    private IJoinRequests JoinRequests => field ??= Hub.Services.GetRequiredService<IJoinRequests>();
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+
+    // Protected methods
+
+    protected override ComputedState<IReadOnlyList<JoinRequest>>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<IReadOnlyList<JoinRequest>>.Options {
+                InitialValue = [],
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<IReadOnlyList<JoinRequest>> ComputeState(CancellationToken cancellationToken) {
+        var session = Session;
+        var chatId = ChatId;
+        var joinRequests = JoinRequests;
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat is null || chat.IsPublic || !chat.Rules.CanEditMembers())
+            return [];
+
+        return await joinRequests.ListPending(session, chatId, cancellationToken).ConfigureAwait(false);
+    }
+}

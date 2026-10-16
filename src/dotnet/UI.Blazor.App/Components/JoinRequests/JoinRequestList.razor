@@ -1,0 +1,101 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat
+@using ActualChat.Users
+@inherits ComputedStateComponent<AppUIHub, JoinRequestList.Model>
+@{
+    var m = State.Value;
+}
+
+<div class="join-request-list">
+    @foreach (var (request, account) in m.Items) {
+        var isBusy = _busyRequestIds.Contains(request.Id);
+        var statusText = request.WasExcluded ? L.JoinRequest_PreviouslyExcluded : null;
+        <div @key="@request.Id" class="join-request-item">
+            <AvatarBadge
+                Class="grow"
+                Avatar="@account?.Avatar"
+                StatusText="@statusText"/>
+            <div class="c-buttons">
+                <ButtonRound
+                    Class="btn-transparent c-reject"
+                    Tooltip="@L.JoinRequest_Reject"
+                    IsDisabled="@isBusy"
+                    Click="@(() => OnRejectClick(request))">
+                    <i class="icon-close text-xl"></i>
+                </ButtonRound>
+                <ButtonRound
+                    Class="btn-transparent c-approve"
+                    Tooltip="@L.JoinRequest_Approve"
+                    IsDisabled="@isBusy"
+                    Click="@(() => OnApproveClick(request))">
+                    <i class="icon-checkmark-simple text-xl"></i>
+                </ButtonRound>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly HashSet<JoinRequestId> _busyRequestIds = new();
+
+    private IAccounts Accounts => Hub.Accounts;
+
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
+    [Parameter, EditorRequired] public IReadOnlyList<JoinRequest> Requests { get; set; } = [];
+
+    // Protected methods
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var session = Session;
+        var accounts = Accounts;
+        var requests = Requests;
+        var items = await requests
+            .Select(async r => {
+                var account = await accounts.Get(session, r.UserId, cancellationToken).ConfigureAwait(false);
+                return new Item(r, account);
+            })
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+        return new Model(items);
+    }
+
+    // Private methods
+
+    private Task OnApproveClick(JoinRequest request) {
+        var command = new JoinRequests_Approve { Session = Session, ChatId = ChatId, RequestId = request.Id };
+        return Decide(request, command);
+    }
+
+    private Task OnRejectClick(JoinRequest request) {
+        var command = new JoinRequests_Reject { Session = Session, ChatId = ChatId, RequestId = request.Id };
+        return Decide(request, command);
+    }
+
+    private async Task Decide(JoinRequest request, ICommand command) {
+        if (!_busyRequestIds.Add(request.Id))
+            return;
+
+        try {
+            await UICommander.Run(command).ConfigureAwait(true);
+        }
+        finally {
+            _busyRequestIds.Remove(request.Id);
+        }
+    }
+
+    // Nested types
+
+    public sealed record Item(JoinRequest Request, Account? Account);
+
+    public sealed record Model(IReadOnlyList<Item> Items)
+    {
+        public static readonly Model None = new([]);
+    }
+}

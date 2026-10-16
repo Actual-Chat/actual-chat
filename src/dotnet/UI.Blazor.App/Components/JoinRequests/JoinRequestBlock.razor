@@ -1,0 +1,54 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, IReadOnlyList<JoinRequestGroup>>
+@{
+    var groups = State.Value;
+    if (groups.Count == 0)
+        return;
+}
+
+<div class="join-request-block">
+    <div class="c-title">@L.JoinRequest_BlockTitle</div>
+    @foreach (var group in groups) {
+        var chat = group.Chat;
+        <div @key="@chat.Id" class="c-group">
+            <div class="c-group-header">
+                <ChatIcon Chat="@chat" Size="SquareSize.Size6" HideTitle="true"/>
+                <span class="c-group-title">@chat.Title</span>
+                <UnreadCount Value="@(new Trimmed<int>(group.Requests.Count, ChatInfoExt.MaxUnreadChatCount))"/>
+                @if (chat.Rules.CanEditProperties()) {
+                    <ButtonRound
+                        Class="btn-xs btn-transparent"
+                        Tooltip="@L.JoinRequestAccess_Title"
+                        Click="@(() => OnAccessClick(chat.Id))">
+                        <i class="icon-settings text-xl"></i>
+                    </ButtonRound>
+                }
+            </div>
+            <JoinRequestList ChatId="@chat.Id" Requests="@group.Requests"/>
+        </div>
+    }
+    <Divider Class="mx-1 my-1.5"/>
+</div>
+
+@code {
+    private ChatListUI ChatListUI => Hub.ChatListUI;
+
+    [Parameter, EditorRequired] public PlaceId? PlaceId { get; set; }
+
+    // Protected methods
+
+    protected override ComputedState<IReadOnlyList<JoinRequestGroup>>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<IReadOnlyList<JoinRequestGroup>>.Options {
+                InitialValue = [],
+                Category = ComputedStateComponent.GetStateCategory(t),
+            });
+
+    protected override Task<IReadOnlyList<JoinRequestGroup>> ComputeState(CancellationToken cancellationToken)
+        => ChatListUI.ListJoinRequestGroups(PlaceId, cancellationToken);
+
+    // Private methods
+
+    private Task OnAccessClick(ChatId chatId)
+        => ModalUI.Show(new JoinRequestAccessModal.Model(chatId));
+}

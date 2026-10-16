@@ -1,0 +1,43 @@
+.join-request-list {
+    @apply flex-y;
+}
+.join-request-item {
+    @apply flex-x items-center gap-x-2;
+    @apply min-h-12 px-2;
+}
+.join-request-item .avatar-badge {
+    @apply min-w-0;
+}
+.join-request-item > .c-buttons {
+    @apply flex-x items-center gap-x-2;
+    @apply flex-none;
+}
+.join-request-item .c-reject i {
+    @apply text-03;
+}
+.join-request-item .c-approve i {
+    @apply text-primary;
+}
+.main-collapsed > .c-summary:has(> .c-join-requests),
+.main-collapsed > .c-summary:has(> .c-join-requests) i {
+    @apply text-primary;
+}
+
+/* ── People tab block ── */
+
+.join-request-block {
+    @apply flex-y;
+    @apply px-1 pt-1;
+}
+.join-request-block > .c-title {
+    @apply px-2 py-1;
+    @apply text-caption text-03;
+}
+.join-request-block .c-group-header {
+    @apply flex-x items-center gap-x-2;
+    @apply px-2 py-1;
+}
+.join-request-block .c-group-title {
+    @apply grow min-w-0 truncate;
+    @apply text-02 font-medium;
+}

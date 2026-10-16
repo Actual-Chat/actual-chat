@@ -425,10 +425,19 @@ to the link.
 Before coding, open the Figma frame (node 27697-223756) through the Figma MCP and match spacing, the
 ✕/✓ icons and the divider.
 
-- [ ] **Step 1:** bUnit tests: the block is hidden without `EditMembers`, shows the count, approve and
-  reject send the commands.
-- [ ] **Step 2:** Implement; manual check against the mockup on desktop and the narrow layout.
-- [ ] **Step 3:** Commit.
+- [x] **Step 1:** bUnit tests: the block is hidden without `EditMembers`, shows the count, approve and
+  reject send the commands. *In `tests/Chat.UI.Blazor.IntegrationTests/JoinRequestQueueTest.cs`: only
+  that host builds an `AppUIHub`. Also covers a Place's requests in `ChatListUI.ListJoinRequestGroups`
+  and a moderator changing `JoinRequestAccess`.*
+- [x] **Step 2:** Implement. *The member-list group is a shared `JoinRequestQueue` (used by `AuthorList`
+  and `PlaceInfoMembersTab`). The People-tab block (`JoinRequestBlock`) sits above the virtual list, not
+  inside it, so it doesn't scroll with the chats; its "unread" mark is an `UnreadCount` with the request
+  count per chat. `JoinRequestAccess` is reachable from the block through `JoinRequestAccessModal` for
+  anyone with `EditProperties` (moderators included). The groups are found client-side: the listed group
+  and Place chats plus the user's Places, filtered by `CanEditMembers` — no server-side "all my requests"
+  method, which a sharded backend couldn't invalidate. Manual check against the mockup pending: no
+  browser in this session; the narrow layout still has no frame.*
+- [x] **Step 3:** Commit.
 
 ### Task 12: Final verification
 

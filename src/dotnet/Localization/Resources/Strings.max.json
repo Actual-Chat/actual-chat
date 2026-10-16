@@ -2052,6 +2052,11 @@
   "JoinRequest_NotMember": "まだメンバーではありません",
   "JoinRequest_Text": "Изпратете заявка за присъединяване — администраторите ще преценят добавянето ви в Мястото",
   "JoinRequest_Send": "Envoyer la demande",
+  "JoinRequest_GroupTitle": "Nouvelles demandes",
+  "JoinRequest_BlockTitle": "Заявки за присъединяване",
+  "JoinRequest_PreviouslyExcluded": "이전에 여기서 제외된 적이 있습니다",
+  "JoinRequest_Approve": "Chấp thuận",
+  "JoinRequest_Reject": "अस्वीकार करें",
 
   // Settings of a private chat or Place: who, following its plain link, may see its title and ask to join. Everyone else sees "not found".
   "JoinRequestAccess_Title": "कौन शामिल होने का अनुरोध कर सकता है",

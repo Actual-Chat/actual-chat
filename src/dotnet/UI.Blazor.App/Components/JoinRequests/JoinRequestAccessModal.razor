@@ -1,0 +1,81 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Chat
+@inherits ComputedStateComponent<AppUIHub, Chat?>
+@implements IModalView<JoinRequestAccessModal.Model>
+@{
+    if (State.Value is not { } chat)
+        return;
+
+    var isPlaceChat = chat.Id is PlaceChatId { IsRoot: false };
+}
+
+<DialogFrame Class="join-request-access-modal modal-sm" HasCloseButton="true" Title="@chat.Title">
+    <Body>
+        @* InputRadioGroup needs an EditContext *@
+        <Form EditContext="@_editContext">
+            <JoinRequestAccessPicker
+                Id="@_pickerId"
+                IsPlaceChat="@isPlaceChat"
+                Value="@chat.JoinRequestAccess"
+                ValueChanged="@OnValueChanged"
+                ValueExpression="@(() => chat.JoinRequestAccess)"/>
+        </Form>
+    </Body>
+</DialogFrame>
+
+@code {
+    private readonly EditContext _editContext = new(new object());
+    private string _pickerId = "";
+
+    private IChats Chats => Hub.Chats;
+    private IPlaces Places => Hub.Places;
+
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    // Protected methods
+
+    protected override void OnInitialized() {
+        _pickerId = ComponentIdGenerator.Next("join-request-access");
+        base.OnInitialized();
+    }
+
+    protected override async Task<Chat?> ComputeState(CancellationToken cancellationToken) {
+        var chat = await Chats.Get(Session, ModalModel.ChatId, cancellationToken).ConfigureAwait(false);
+        return chat is { IsPublic: false } && chat.Rules.CanEditProperties() ? chat : null;
+    }
+
+    // Private methods
+
+    private async Task OnValueChanged(JoinRequestAccess access) {
+        if (State.Value is not { } chat || chat.JoinRequestAccess == access)
+            return;
+
+        // A Place keeps the value on itself and passes it to its root chat
+        if (chat.Id is PlaceChatId { IsRoot: true } rootChatId) {
+            var place = await Places.Get(Session, rootChatId.PlaceId, default).ConfigureAwait(true);
+            if (place is null)
+                return;
+
+            var placeChangeCmd = new Places_Change {
+                Session = Session,
+                PlaceId = place.Id,
+                ExpectedVersion = place.Version,
+                Change = Change.Update(new PlaceDiff { JoinRequestAccess = access }),
+            };
+            await UICommander.Run(placeChangeCmd).ConfigureAwait(true);
+            return;
+        }
+
+        var changeCmd = new Chats_Change {
+            Session = Session,
+            ChatId = chat.Id,
+            ExpectedVersion = chat.Version,
+            Change = Change.Update(new ChatDiff { JoinRequestAccess = access }),
+        };
+        await UICommander.Run(changeCmd).ConfigureAwait(true);
+    }
+
+    // Nested types
+
+    public sealed record Model(ChatId ChatId);
+}
