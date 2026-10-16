@@ -1042,17 +1042,25 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         InitializeHub(tester, hub, cut.Instance);
         cut.WaitForAssertion(() => cut.Find(".coach-header .c-settings-btn"), TimeSpan.FromSeconds(30));
         await cut.InvokeAsync(() => cut.Find(".coach-header .c-settings-btn").Click());
-        cut.WaitForAssertion(() => cut.Find(".coach-settings-page"));
+        await TestWait.WhenRendered(cut, () => cut.Find(".coach-settings-page .c-skip-peers"));
         await cut.InvokeAsync(() => cut.Find(".coach-settings-page .c-skip-peers").Click());
-        await hub.UICommander.Run(new Coach_SetChatCoaching {
+        // The click writes the whole settings record and so does the command below, so the second one
+        // must start after the first lands or it overwrites SkipPeerChats with the value it read (#5406)
+        await TestWait.When(async ct => {
+            var clicked = await kvas.UserCoachSettings().Get(ct);
+            clicked.SkipPeerChats.Should().BeTrue();
+        });
+        var switchOffCmd = new Coach_SetChatCoaching {
             Session = hub.Session,
             ChatId = chatId,
             IsEnabled = false,
-        });
+        };
+        await hub.UICommander.Run(switchOffCmd);
 
         // assert
-        await TestWait.When(async ct => (await kvas.UserCoachSettings().Get(ct)).SkipPeerChats.Should().BeTrue());
-        cut.WaitForAssertion(() => cut.Find(".coach-settings-page .c-switched-off").TextContent
+        var settings = await kvas.UserCoachSettings().Get(default);
+        settings.SkipPeerChats.Should().BeTrue();
+        await TestWait.WhenRendered(cut, () => cut.Find(".coach-settings-page .c-switched-off").TextContent
             .Should().Contain("Switched off")
             .And.Contain("1"));
         cut.Find(".coach-settings-page .c-languages-manage").TextContent.Should().Contain("Manage");
