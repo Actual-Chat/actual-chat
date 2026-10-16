@@ -122,9 +122,11 @@ is planned.
 **Interfaces:**
 - `MembershipEventKind`: `Joined`, `Left`, `RequestSubmitted`, `RequestApproved`, `RequestRejected`,
   `RequestWithdrawn`, `RequestExpired`.
-- `MembershipMethod`: `System` (0, the default for an unannotated upsert), `Creator`, `Self`,
-  `InviteLink`, `Added`, `Restored`, `JoinRequest`, `Excluded`, `PlaceLeft` (the cascade into place
-  chats), `PeerChat`, `Template`, `CopyChat`, `Bot`.
+- `MembershipMethod`: `None` (an author row that isn't a membership change — the per-chat row a
+  public place chat materializes on first write; not journaled), `System` (0, the default for an
+  unannotated upsert), `Creator`, `Self`, `InviteLink`, `Added`, `Restored`, `JoinRequest`,
+  `Excluded`, `PlaceLeft` (the cascade into place chats), `Template`, `CopyChat`, `Bot`. Peer chats
+  never flip `HasLeft`, so they write nothing.
 - `MembershipChange(MembershipMethod Method, UserId ActorId, string? InviteId, JoinRequestId? RequestId)`,
   `[DataContract, MessagePackObject]`.
 - Row: `Id` (random, `SharedLocationId` style), `ChatId`, `UserId`, `AuthorId`, `Kind`, `Method`,

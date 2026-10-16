@@ -17,6 +17,8 @@ public partial interface IAuthorsBackend : IComputeService, IBackendService
     Task<AuthorId[]> ListAuthorIds(ChatId chatId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<UserId[]> ListUserIds(ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<MembershipEvent[]> ListMembershipEvents(ChatId chatId, CancellationToken cancellationToken);
     // Commands
 
     [CommandHandler]
@@ -54,6 +56,7 @@ public sealed partial record AuthorsBackend_Upsert(
     // Place member's per-chat author row isn't a membership change, so the import guard must let it
     // through. Any other value than the running session's ID is rejected.
     [DataMember, Key(6)] public ChatImportId? ImportId { get; init; }
+    [DataMember, Key(7)] public MembershipChange? Change { get; init; }
 
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => ChatId.ShardKey;

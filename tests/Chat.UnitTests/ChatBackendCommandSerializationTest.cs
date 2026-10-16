@@ -21,6 +21,45 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     }
 
     [Fact]
+    public void UpsertShouldKeepMembershipChangeThroughSerializers()
+    {
+        // arrange
+        var change = new MembershipChange(MembershipMethod.InviteLink, TestUserId) {
+            InviteId = "invite-1",
+            RequestId = JoinRequestId.New(),
+        };
+        var cmd = new AuthorsBackend_Upsert(TestChatId, null, TestUserId, null, new AuthorDiff()) {
+            Change = change,
+        };
+
+        // act
+        var passThrough = () => cmd.AssertPassesThroughSerializers(
+            (deserialized, original) => deserialized.Change.Should().Be(original.Change),
+            Out);
+
+        // assert
+        passThrough.Should().NotThrow();
+    }
+
+    [Fact]
+    public void MembershipEventShouldPassThroughSerializers()
+    {
+        // arrange
+        var membershipEvent = new MembershipEvent("e1", TestChatId, TestUserId,
+            MembershipEventKind.Left, MembershipMethod.Excluded) {
+            AuthorId = AuthorId.New(TestChatId, 5),
+            ActorId = UserId.New(),
+            CreatedAt = Moment.Now,
+        };
+
+        // act
+        var passThrough = () => membershipEvent.AssertPassesThroughSerializers();
+
+        // assert
+        passThrough.Should().NotThrow();
+    }
+
+    [Fact]
     public void AuthorsBackend_Remove_Basic()
     {
         var authorId = AuthorId.New(TestChatId, 5);

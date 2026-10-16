@@ -1001,7 +1001,9 @@ public partial class Chats(IServiceProvider services) : IChats
                 new AuthorDiff {
                     AvatarId = templateAuthor.AvatarId,
                 },
-                DoNotNotify: true);
+                DoNotNotify: true) {
+                Change = new MembershipChange(MembershipMethod.Template),
+            };
             var clonedAuthor = await Commander.Call(cloneAuthorCommand, true, cancellationToken).ConfigureAwait(false);
             clonedAuthors.Add(clonedAuthor);
         }
@@ -1068,7 +1070,9 @@ public partial class Chats(IServiceProvider services) : IChats
             ExpectedVersion: null,
             new AuthorDiff {
                 AvatarId = guestAvatar.Id,
-            });
+            }) {
+            Change = new MembershipChange(MembershipMethod.Template, account.Id),
+        };
         await Commander.Run(createAuthorCommand, cancellationToken).ConfigureAwait(false);
 
         return cloned;

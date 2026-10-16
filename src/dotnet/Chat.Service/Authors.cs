@@ -214,21 +214,28 @@ public class Authors(IServiceProvider services) : IAuthors
             }
         }
 
+        // Read before the upsert: the journal records which invite let the user in
+        var userKvas = ServerKvasBackend.ForUser(account.Id, isOutermost: true);
+        var inviteSettingsKey = ChatInviteSettings.GetKey(chatId);
+        var inviteSettings = await userKvas
+            .Get<ChatInviteSettings>(inviteSettingsKey, cancellationToken)
+            .ConfigureAwait(false);
+        var change = inviteSettings is null
+            ? new MembershipChange(MembershipMethod.Self, account.Id)
+            : new MembershipChange(MembershipMethod.InviteLink, account.Id) { InviteId = inviteSettings.InviteId };
+
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author?.Id ?? null, account.Id, null,
             new AuthorDiff() {
                 IsAnonymous = joinAnonymously,
                 HasLeft = false,
                 AvatarId = avatarId.NullIfEmpty(),
-            });
+            }) {
+            Change = change,
+        };
         author = await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
 
         // Membership supersedes the invite grant, so drop it
-        var userKvas = ServerKvasBackend.ForUser(account.Id, isOutermost: true);
-        var inviteSettingsKey = ChatInviteSettings.GetKey(chatId);
-        var inviteSettings = await userKvas
-            .Get<ChatInviteSettings>(inviteSettingsKey, cancellationToken)
-            .ConfigureAwait(false);
         if (inviteSettings is not null)
             await userKvas.Set(inviteSettingsKey, null, cancellationToken).ConfigureAwait(false);
 
@@ -260,7 +267,9 @@ public class Authors(IServiceProvider services) : IAuthors
 
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, null, author.Version,
-            new AuthorDiff() { HasLeft = true });
+            new AuthorDiff() { HasLeft = true }) {
+            Change = new MembershipChange(MembershipMethod.Self, author.UserId),
+        };
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -275,14 +284,17 @@ public class Authors(IServiceProvider services) : IAuthors
         var chat = await Chats.Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
         chat.CanInvite().RequireTrue("You can't invite members in this chat.");
         ValidatePlaceMembershipRules(chat);
+        var change = new MembershipChange(MembershipMethod.Added, chat.Rules.Account.Require().Id);
 
         foreach (var userId in userIds) {
             // TODO(DF): to think if we can switch here to AuthorsBackend_GetAuthorOption.Full?
             // Can we use AuthorsBackendExt.EnsureJoined as before?
-            var author = await Backend.GetByUserId(chatId, userId, RequestedAuthorKind.Default, cancellationToken).ConfigureAwait(false);
+            var author = await Backend
+                .GetByUserId(chatId, userId, RequestedAuthorKind.Default, cancellationToken)
+                .ConfigureAwait(false);
             if (author != null) {
                 if (author.HasLeft)
-                    await RestoreAuthorMembership(author, cancellationToken).ConfigureAwait(false);
+                    await RestoreAuthorMembership(author, change, cancellationToken).ConfigureAwait(false);
             }
             else {
                 if (joinAnonymously == true && !chat.AllowAnonymousAuthors)
@@ -290,7 +302,9 @@ public class Authors(IServiceProvider services) : IAuthors
                 var authorDiff = new AuthorDiff {
                     IsAnonymous = joinAnonymously.GetValueOrDefault(chat.AllowAnonymousAuthors)
                 };
-                var upsertAuthorCommand = new AuthorsBackend_Upsert(chatId, null, userId, null, authorDiff);
+                var upsertAuthorCommand = new AuthorsBackend_Upsert(chatId, null, userId, null, authorDiff) {
+                    Change = change,
+                };
                 var commander = Backend.GetCommander();
                 await commander.Call(upsertAuthorCommand, true, cancellationToken).ConfigureAwait(false);
             }
@@ -330,7 +344,9 @@ public class Authors(IServiceProvider services) : IAuthors
 
         var upsertCommand = new AuthorsBackend_Upsert(
             chatId, author.Id, null, author.Version,
-            new AuthorDiff() { HasLeft = true });
+            new AuthorDiff() { HasLeft = true }) {
+            Change = new MembershipChange(MembershipMethod.Excluded, chat.Rules.Account.Require().Id),
+        };
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -351,7 +367,8 @@ public class Authors(IServiceProvider services) : IAuthors
         if (Bots.IsBot(authorId))
             throw StandardError.Constraint("A bot can't be restored to chat members.");
 
-        await RestoreAuthorMembership(author, cancellationToken).ConfigureAwait(false);
+        var change = new MembershipChange(MembershipMethod.Restored, chat.Rules.Account.Require().Id);
+        await RestoreAuthorMembership(author, change, cancellationToken).ConfigureAwait(false);
     }
 
     // [CommandHandler]
@@ -498,11 +515,14 @@ public class Authors(IServiceProvider services) : IAuthors
         await Commander.Call(changeRoleCommand, true, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task RestoreAuthorMembership(Author author, CancellationToken cancellationToken)
+    private async Task RestoreAuthorMembership(
+        Author author, MembershipChange change, CancellationToken cancellationToken)
     {
         var upsertCommand = new AuthorsBackend_Upsert(
             author.ChatId, author.Id, null, author.Version,
-            new AuthorDiff() { HasLeft = false });
+            new AuthorDiff() { HasLeft = false }) {
+            Change = change,
+        };
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }
 

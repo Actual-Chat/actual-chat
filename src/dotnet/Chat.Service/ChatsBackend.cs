@@ -823,7 +823,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                     chatId, default, ownerId, null,
                     new AuthorDiff {
                         IsAnonymous = chat.AllowAnonymousAuthors
-                    });
+                    }) {
+                    Change = new MembershipChange(MembershipMethod.Creator, ownerId),
+                };
                 var author = await Commander.Call(upsertCommand, cancellationToken).ConfigureAwait(false);
 
                 if (chat.HasSingleAuthor)
@@ -1943,6 +1945,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 HasLeft = false,
             }) {
             ImportId = importId,
+            Change = MembershipChange.None,
         };
         await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
     }

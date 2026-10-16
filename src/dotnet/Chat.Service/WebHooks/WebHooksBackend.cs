@@ -517,7 +517,9 @@ public partial class WebHooksBackend(IServiceProvider services)
         await InternalAccounts.Create(Services, info, cancellationToken).ConfigureAwait(false);
         // HasLeft = false: an earlier attempt's bot may have been excluded as an orphan meanwhile
         var upsert = new AuthorsBackend_Upsert(
-            chatId, null, botUserId, null, new AuthorDiff { HasLeft = false }, DoNotNotify: true);
+            chatId, null, botUserId, null, new AuthorDiff { HasLeft = false }, DoNotNotify: true) {
+            Change = new MembershipChange(MembershipMethod.Bot),
+        };
         await Commander.Call(upsert, true, cancellationToken).ConfigureAwait(false);
     }
 
@@ -546,7 +548,9 @@ public partial class WebHooksBackend(IServiceProvider services)
             .ConfigureAwait(false);
         if (author is { HasLeft: false }) {
             var leave = new AuthorsBackend_Upsert(chatId, author.Id, null, author.Version,
-                new AuthorDiff { HasLeft = true }, DoNotNotify: true);
+                new AuthorDiff { HasLeft = true }, DoNotNotify: true) {
+                Change = new MembershipChange(MembershipMethod.Bot),
+            };
             await Commander.Call(leave, true, cancellationToken).ConfigureAwait(false);
         }
         var account = await AccountsBackend.Get(botUserId, cancellationToken).ConfigureAwait(false);

@@ -93,6 +93,21 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
         return await ListUserIdsInternal(authorChatId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<MembershipEvent[]> ListMembershipEvents(
+        ChatId chatId, CancellationToken cancellationToken)
+    {
+        var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
+        await using var _ = dbContext.ConfigureAwait(false);
+
+        var dbEvents = await dbContext.MembershipEvents
+            .Where(e => e.ChatId == chatId.Value)
+            .OrderBy(e => e.CreatedAt)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return dbEvents.Select(e => e.ToModel()).ToArray();
+    }
+
     // [CommandHandler]
     public virtual async Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken)
     {
@@ -237,6 +252,7 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
             dbContext.Add(dbAuthor);
         }
 
+        var isCreatedConcurrently = false;
         try {
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -244,11 +260,19 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
             Log.LogWarning(e, "Upserting author failed with DbUpdateConcurrencyException. Command: {Command}", command);
             // Author for the same ChatId / UserId has already been created, let's get it
             dbAuthor = await (authorId is null
-                    ? dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId.Value && a.UserId == userId!.Value, cancellationToken)
-                    : dbAuthors.FirstOrDefaultAsync(a => a.ChatId == chatId.Value && a.Id == authorId.Value, cancellationToken)
+                    ? dbAuthors.FirstOrDefaultAsync(
+                        a => a.ChatId == chatId.Value && a.UserId == userId!.Value, cancellationToken)
+                    : dbAuthors.FirstOrDefaultAsync(
+                        a => a.ChatId == chatId.Value && a.Id == authorId.Value, cancellationToken)
                 ).ConfigureAwait(false);
             existingAuthor = dbAuthor.Require().ToModel().RequireValid(userId!);
+            isCreatedConcurrently = true;
         }
+        // The command that won the race journaled the join, and our failed insert is still tracked,
+        // so saving again here would only repeat the failure
+        if (!isCreatedConcurrently)
+            await AddMembershipEvent(dbContext, dbAuthor, existingAuthor, command.Change, cancellationToken)
+                .ConfigureAwait(false);
 
         // A hook bot is an author of its own chat only, never a place member, so it has no root author to match
         var isHookBot = isBot && Bots.IsHookBot(AuthorId.Parse(dbAuthor.Id));
@@ -276,6 +300,7 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
                 if (author.HasLeft != oldHadLeft) {
                     _ = ListAuthorIdsInternal(chatId, default);
                     _ = ListUserIdsInternal(chatId, default);
+                    _ = ListMembershipEvents(chatId, default);
                 }
             });
 
@@ -418,7 +443,8 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
                     userId,
                     null,
                     authorDiff) {
-                    DoNotNotify = true
+                    DoNotNotify = true,
+                    Change = new MembershipChange(MembershipMethod.CopyChat),
                 };
                 placeMember = await Commander.Call(upsertPlaceMemberCmd, cancellationToken)
                     .ConfigureAwait(false);
@@ -442,6 +468,11 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
                     newAuthor = newAuthor with { Version = VersionGenerator.NextVersion() };
                 }
                 dbContext.Authors.Add(new DbAuthor(newAuthor));
+                if (!newAuthor.HasLeft) {
+                    var copyChange = new MembershipChange(MembershipMethod.CopyChat);
+                    var membershipEvent = NewMembershipEvent(newAuthor, MembershipEventKind.Joined, copyChange);
+                    dbContext.MembershipEvents.Add(new DbMembershipEvent(membershipEvent));
+                }
                 await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
                 var roleIds = dbAuthor.Roles.Select(c => c.DbRoleId).ToList();
@@ -469,6 +500,7 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
                 _ = GetInternal(newChatId, newAuthorUserId, default);
             foreach (var newAuthorId in newAuthorIds)
                 _ = GetInternal(newChatId, newAuthorId, default);
+            _ = ListMembershipEvents(newChatId, default);
         });
         return hasChanges;
     }
@@ -646,6 +678,32 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
         throw StandardError.Constraint(message);
     }
 
+    private async Task AddMembershipEvent(
+        ChatDbContext dbContext, DbAuthor dbAuthor, AuthorFull? oldAuthor,
+        MembershipChange? change, CancellationToken cancellationToken)
+    {
+        // A missing previous author counts as "had left", as in the member list invalidation
+        change ??= MembershipChange.System;
+        var hasLeftBefore = oldAuthor?.HasLeft ?? true;
+        if (dbAuthor.HasLeft == hasLeftBefore || change.Method == MembershipMethod.None)
+            return;
+
+        var kind = dbAuthor.HasLeft ? MembershipEventKind.Left : MembershipEventKind.Joined;
+        var membershipEvent = NewMembershipEvent(dbAuthor.ToModel(), kind, change);
+        dbContext.MembershipEvents.Add(new DbMembershipEvent(membershipEvent));
+        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private MembershipEvent NewMembershipEvent(
+        AuthorFull author, MembershipEventKind kind, MembershipChange change)
+        => new(DbMembershipEvent.NewId(), author.ChatId, author.UserId, kind, change.Method) {
+            AuthorId = author.Id,
+            ActorId = change.ActorId,
+            InviteId = change.InviteId,
+            RequestId = change.RequestId,
+            CreatedAt = Clocks.SystemClock.Now,
+        };
+
     // Bots live below Sherlock (-2); Wall-E is -1 and has no row
     private static async Task<long> NextBotLocalId(ChatDbContext dbContext, ChatId chatId, CancellationToken cancellationToken)
     {
@@ -819,7 +877,9 @@ public partial class AuthorsBackend(IServiceProvider services) : DbServiceBase<C
                     author.Id,
                     default,
                     author.Version,
-                    new AuthorDiff() { HasLeft = true });
+                    new AuthorDiff() { HasLeft = true }) {
+                    Change = new MembershipChange(MembershipMethod.PlaceLeft),
+                };
                 await Commander.Call(upsertCommand, true, cancellationToken).ConfigureAwait(false);
             }))
             .ConfigureAwait(false);

@@ -32,6 +32,7 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
     public DbSet<DbAuthor> Authors { get; protected set; } = null!;
     public DbSet<DbRole> Roles { get; protected set; } = null!;
     public DbSet<DbAuthorRole> AuthorRoles { get; protected set; } = null!;
+    public DbSet<DbMembershipEvent> MembershipEvents { get; protected set; } = null!;
 
     public DbSet<DbWebHook> WebHooks { get; protected set; } = null!;
     public DbSet<DbWebHookDelivery> WebHookDeliveries { get; protected set; } = null!;
@@ -132,6 +133,15 @@ public class ChatDbContext(DbContextOptions<ChatDbContext> options) : DbContextB
         var authorRole = model.Entity<DbAuthorRole>();
         authorRole.Property(e => e.DbAuthorId).UseCollation("C");
         authorRole.Property(e => e.DbRoleId).UseCollation("C");
+
+        var membershipEvent = model.Entity<DbMembershipEvent>();
+        membershipEvent.Property(e => e.Id).UseCollation("C");
+        membershipEvent.Property(e => e.ChatId).UseCollation("C");
+        membershipEvent.Property(e => e.UserId).UseCollation("C");
+        membershipEvent.Property(e => e.AuthorId).UseCollation("C");
+        membershipEvent.Property(e => e.ActorId).UseCollation("C");
+        membershipEvent.Property(e => e.InviteId).UseCollation("C");
+        membershipEvent.Property(e => e.RequestId).UseCollation("C");
 
         var chatCopyState = model.Entity<DbChatCopyState>();
         chatCopyState.Property(e => e.Id).UseCollation("C");

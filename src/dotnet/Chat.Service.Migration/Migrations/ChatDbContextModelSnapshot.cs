@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261015090936_RenameChatIsArchivedToIsFrozen";
+    public override string LastMigrationId => "20261016084252_Add_MembershipEvents";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1193,6 +1193,72 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
                 NpgsqlIndexBuilderExtensions.IncludeProperties(index0, new[] { "EndEntryLid" });
 
                 b.ToTable("conversations");
+            });
+
+        modelBuilder.Entity("ActualChat.Chat.Db.DbMembershipEvent", b =>
+            {
+                b.Property<string>("Id")
+                    .HasColumnType("text")
+                    .HasColumnName("id")
+                    .UseCollation("C");
+
+                b.Property<string>("ActorId")
+                    .HasColumnType("text")
+                    .HasColumnName("actor_id")
+                    .UseCollation("C");
+
+                b.Property<string>("AuthorId")
+                    .HasColumnType("text")
+                    .HasColumnName("author_id")
+                    .UseCollation("C");
+
+                b.Property<string>("ChatId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("chat_id")
+                    .UseCollation("C");
+
+                b.Property<DateTime>("CreatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at");
+
+                b.Property<string>("InviteId")
+                    .HasColumnType("text")
+                    .HasColumnName("invite_id")
+                    .UseCollation("C");
+
+                b.Property<int>("Kind")
+                    .HasColumnType("integer")
+                    .HasColumnName("kind");
+
+                b.Property<int>("Method")
+                    .HasColumnType("integer")
+                    .HasColumnName("method");
+
+                b.Property<string>("RequestId")
+                    .HasColumnType("text")
+                    .HasColumnName("request_id")
+                    .UseCollation("C");
+
+                b.Property<string>("UserId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("user_id")
+                    .UseCollation("C");
+
+                b.HasKey("Id")
+                    .HasName("pk_membership_events");
+
+                b.HasIndex("InviteId")
+                    .HasDatabaseName("ix_membership_events_invite_id");
+
+                b.HasIndex("UserId")
+                    .HasDatabaseName("ix_membership_events_user_id");
+
+                b.HasIndex("ChatId", "CreatedAt")
+                    .HasDatabaseName("ix_membership_events_chat_id_created_at");
+
+                b.ToTable("membership_events");
             });
 
         modelBuilder.Entity("ActualChat.Chat.Db.DbMention", b =>
