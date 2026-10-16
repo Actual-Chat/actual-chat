@@ -1,6 +1,6 @@
 ---
 allowed-tools: Bash, Read, Edit
-description: Refresh the .mibc profiles in App.Maui/_Profiling - aothelper.mibc (with the AOT helper .g.cs files), android.mibc, android-notif.mibc, windows.mibc, ios.mibc and merged.mibc. Takes [aothelper|android|android-notif|windows|ios|all], default all.
+description: Refresh the .mibc profiles in App.Maui/_Profiling - aothelper.mibc (with the AOT helper .g.cs files), android.mibc, android-notif.mibc, windows.mibc, ios.mibc and merged.mibc. Takes [aothelper|android|android-notif|windows|ios|all] and an optional replace flag, default all.
 ---
 
 # /mibc-update — refresh the profiles
@@ -23,6 +23,14 @@ only one Android and Windows builds compile against (iOS Release takes `ios.mibc
 | `all` *(default, and what empty means)* | `aothelper`, then `android` + `windows`, then `ios` |
 
 Anything else — stop and say what the valid values are; don't guess.
+
+**`replace`** (also written `-replace`), alongside any of those: don't merge the old
+platform-dependent profiles into the new recordings — ditch them. Without it, every
+re-recorded profile is the union of the new capture and the old file. It applies to the
+recorded files only (`android`, `windows`, `ios`); `aothelper.mibc` is regenerated from the
+tree either way, and `android-notif.mibc` is never touched. `merged.mibc` is the same in both
+modes: the union of whatever per-platform files are on disk at the end. Replacing discards
+coverage, so the numbers come first — see *Merge, or replace*.
 
 **Order in `all`:** `aothelper` runs first. It rewrites the `.g.cs` files that the Android and
 Windows publishes compile, so recording against the old ones would profile a stale build.
@@ -61,7 +69,7 @@ For any platform:
   will overwrite assemblies mid-capture; check that no `dotnet`/`MSBuild` process is
   consuming CPU before you start.
 - **Snapshot the committed profiles** — the recordings below overwrite them, and the decision
-  in *Merge or overwrite* needs the old ones. (They are in Git LFS, so `git show HEAD:…`
+  in *Merge, or replace* needs the old ones. (They are in Git LFS, so `git show HEAD:…`
   would only give a pointer.)
 
   ```bash
@@ -104,9 +112,9 @@ measured 2026-09-03. One 60 s cold start is enough; if you record more than one,
 largest and discard the rest. Expect ~700 MB per capture.
 
 **This writes the new capture over `android.mibc`.** The old file is in `tmp/mibc-old/` (see
-*Before starting*); whether the old coverage is merged back is decided afterwards from the
-counts — see *Merge or overwrite*. Replacing blindly once cost 26k methods, because
-`android.mibc` carried hand-driven session coverage a cold start never reaches.
+*Before starting*) and is merged back in afterwards unless `replace` was given — see *Merge,
+or replace*. It has to be merged by default: `android.mibc` carries hand-driven session
+coverage a cold start never reaches, and replacing it blindly once cost 26k methods.
 
 ### Android notification path — only when `$ARGUMENTS` is `android-notif`
 
@@ -147,11 +155,11 @@ No tracing build is needed here — `dotnet-trace collect -- <exe>` launches and
 app itself.
 
 This writes the new capture over `windows.mibc`, like the Android step; a plain run drops
-whatever the previous recording had and this one did not (~23k methods once). *Merge or
-overwrite* below decides whether to put it back.
+whatever the previous recording had and this one did not (~23k methods once), so the old file
+is merged back in afterwards unless `replace` was given — see *Merge, or replace*.
 
 `New-StartupMibc.ps1` rebuilds `merged.mibc` at the end of **every** run, from the files on
-disk at that moment — so it has to be rebuilt again after the decision below.
+disk at that moment — so it has to be rebuilt again after the step below.
 
 ### iOS — skip unless `$ARGUMENTS` is `ios` or `all`
 
@@ -175,8 +183,8 @@ use that branch as `BRANCH` instead.
 
 The trace lists the methods that **ran interpreted** on the build it was recorded on, and that
 build already compiled everything the old `ios.mibc` rooted — so a fresh trace is expected to
-be much *smaller* than the old file (312 methods against 4,351 last time), and overwriting
-drops the old roots (4,195 once). *Merge or overwrite* settles it from the counts.
+be much *smaller* than the old file (312 methods against 4,351 last time). Merging keeps the
+old roots; `replace` drops them (4,195 once), which is why the stats come first.
 
 ```bash
 # 1. build (~5 min) and install on the phone
@@ -207,32 +215,31 @@ before the app was up: rerun `record`. A trace file of 0 bytes, or no `DOTNET_Di
 line in the build output, means the build lacks the diagnostic port: rerun `build`. After a
 runtime/SDK bump pass `CLEAN=1` to `build` — an incremental build keeps the old native runtime.
 
-### Merge or overwrite — decide from the counts
+### Merge, or replace
 
 By now every recorded file holds only its new capture; the old ones are in `tmp/mibc-old/`.
-For each file that was re-recorded:
+Print the stats for each re-recorded file **before** doing anything to it:
 
 ```bash
 P=src/dotnet/App.Maui/_Profiling
 pwsh -NoProfile -File scripts/Compare-Mibc.ps1 -Old tmp/mibc-old/android.mibc -New $P/android.mibc
 ```
 
-Look at `old only` — what the new file would lose:
+`old only` is what replacing discards; `new only` is what the new capture adds either way.
+Show these numbers to the user — in `replace` mode they are the whole point of this step.
 
-- **Overwrite** (keep the new file) when `old only` is at most ~5% of `old`, or when the
-  assembly breakdown shows it is churn from code that no longer exists. This is the expected
-  case for Android and Windows recorded at 60 s.
-- **Merge** when `old only` is large and plausibly real coverage — hand-driven sessions, and
-  above all `ios.mibc`, where a fresh trace is a small residue by construction:
+- **Default — merge the old file back in** (always safe: it can only add), per file:
 
   ```bash
-  ./dotnet-pgo.cmd merge -i tmp/mibc-old/ios.mibc -i $P/ios.mibc -o tmp/ios-merged.mibc --compressed
-  cp tmp/ios-merged.mibc $P/ios.mibc
+  ./dotnet-pgo.cmd merge -i tmp/mibc-old/android.mibc -i $P/android.mibc -o tmp/android-merged.mibc --compressed
+  cp tmp/android-merged.mibc $P/android.mibc
   ```
 
-Either way, report the numbers and what was chosen. Then rebuild `merged.mibc` from the files
-as they now stand — it is always the union of the *final* per-platform files, including when
-nothing was merged into them:
+- **`replace` — keep the new file as it is.** This is the one that needs the stats above. Nothing to do beyond the stats; the old file
+  stays in `tmp/mibc-old/` until the temp folder is cleaned, so it can still be restored.
+
+Then rebuild `merged.mibc` from the files as they now stand. It is the same step in both
+modes — the union of the final per-platform files:
 
 ```bash
 pwsh -NoProfile -File scripts/New-StartupMibc.ps1 -MergedOnly
@@ -248,8 +255,8 @@ git diff --stat src/dotnet/App.Maui/_Profiling/
 
 Sanity-check the output rather than trusting exit codes:
 
-- A method count that went **down** has to be a decision made in *Merge or overwrite*, not an
-  accident. Compare against `tmp/mibc-old/`, not against numbers written here — these grow
+- A method count that went **down** is only valid under `replace`; otherwise the merge
+  failed. Compare against `tmp/mibc-old/`, not against numbers written here — these grow
   every round.
 - Overlap with the previous profile is the real check that the trace mapped correctly.
   `common` in `Compare-Mibc.ps1` is how much of the old file the new capture reproduced;
@@ -306,7 +313,7 @@ other build to finish, then re-record.
 ## Reporting
 
 Give the user method counts for every recorded file and `merged.mibc` with before/after
-deltas, the `Compare-Mibc.ps1` verdict for each and whether it was merged or overwritten,
+deltas, the `Compare-Mibc.ps1` numbers for each and whether it was merged or replaced,
 which platform halves were re-recorded, whether `aothelper.mibc` and the `.g.cs` files
 changed, what was committed and pushed for the iOS build, and any traces that were dropped.
 If runs were lost, say how many rather than quietly merging fewer.
