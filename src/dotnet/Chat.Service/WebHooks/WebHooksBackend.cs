@@ -1,9 +1,11 @@
 using ActualChat.Chat.Db;
 using ActualChat.Chat.Flows;
+using ActualChat.Concurrency;
 using ActualChat.Flows;
 using ActualChat.Security;
 using ActualChat.WebHooks;
 using ActualLab.Fusion.EntityFramework;
+using ActualLab.Versioning;
 using Microsoft.EntityFrameworkCore;
 
 namespace ActualChat.Chat;
@@ -29,6 +31,8 @@ public partial class WebHooksBackend(IServiceProvider services)
     private EgressGuard EgressGuard => field ??= Services.GetRequiredService<EgressGuard>();
     private FlowHub FlowHub => field ??= Services.FlowHub();
     private HostInfo HostInfo => field ??= Services.HostInfo();
+    private MonotonicVersionGenerator DeliverySeqGenerator { get; }
+        = new(services.GetRequiredService<VersionGenerator<long>>());
 
     // [ComputeMethod]
     public virtual async Task<WebHook?> Get(WebHookId id, CancellationToken cancellationToken)
@@ -322,7 +326,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         dbContext.Add(new DbWebHookDelivery {
             Id = deliveryId,
             WebHookId = id.Value,
-            Seq = VersionGenerator.NextVersion(),
+            Seq = DeliverySeqGenerator.NextVersion(),
             EventType = eventType,
             Payload = payload,
             Status = WebHookDeliveryStatus.Pending,
@@ -459,7 +463,7 @@ public partial class WebHooksBackend(IServiceProvider services)
         dbContext.Add(new DbWebHookDelivery {
             Id = cloneId,
             WebHookId = dbDelivery.WebHookId,
-            Seq = VersionGenerator.NextVersion(),
+            Seq = DeliverySeqGenerator.NextVersion(),
             EventType = dbDelivery.EventType,
             Payload = dbDelivery.Payload,
             Status = WebHookDeliveryStatus.Pending,
