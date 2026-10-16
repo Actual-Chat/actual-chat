@@ -616,15 +616,21 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     // Separate class to handle the complex audio processing logic
     private sealed class AudioStreamProcessor(MauiRecorderEngine engine, ILogger log)
     {
+        // The ring buffer's own capacity is a pool-rounded power of two, so the size limit is enforced on Count.
+        private const int EncodingBufferFrameCount = 25; // 500ms
+        private const int EncodingBufferSampleCount = EncodingBufferFrameCount * Constants.Audio.OpusFrameLength;
+
         private readonly VoiceActivityDetector _vad = engine.VoiceActivityDetector;
         private readonly IAudioCodec _audioCodec = engine.AudioCodec;
 
         private readonly BlockRingBuffer<float> _vadBuffer = new (Constants.Audio.RecordingSampleRate * 2); // 2s
-        private readonly BlockRingBuffer<float> _encodingBuffer = new (Constants.Audio.RecordingSampleRate / 2); // 500ms
+        private readonly BlockRingBuffer<float> _encodingBuffer = new (EncodingBufferSampleCount);
         // Concurrent: written from the capture task, read from the encode worker. A plain
         // Queue<T> can corrupt or throw when a grow races a dequeue, and corruption here skews
         // firstFrameSourceCapturedAt - the stream's BeginsAt and the A/V-sync anchor.
         private readonly ConcurrentQueue<Moment> _encodingFrameSourceCapturedAts = new();
+
+        private readonly float[] _skipFrame = new float[Constants.Audio.OpusFrameLength];
 
         private FuncWorker? _encodeSendWorker;
         private bool _voiceActive;
@@ -731,27 +737,23 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             _vadBuffer.TryWrite(data);
 
             // Push to encoding buffer
+            // Whole frames only: TryWrite stores a prefix when the buffer is nearly full. Retrying
+            // after that duplicates the prefix, and a dropped tail leaves a remainder that isn't a frame.
+            var maxCount = EncodingBufferSampleCount - data.Length;
             if (isVoiceActive) {
-                if (_encodingBuffer.TryWrite(data))
+                // Enqueued before the write: the encode worker can read the frame right after TryWrite and
+                // would find no timestamp to dequeue. The Count check guarantees the write succeeds.
+                if (_encodingBuffer.Count <= maxCount) {
                     _encodingFrameSourceCapturedAts.Enqueue(sourceCapturedAt);
+                    _encodingBuffer.TryWrite(data);
+                }
             }
             else {
-                if (!_encodingBuffer.TryWrite(data)) {
-                    // Trim oldest audio to maintain preroll
-                    var retryCount = 0;
-                    var pushed = false;
-                    var skipBuf = new float[Constants.Audio.OpusFrameLength];
-                    while (!pushed && retryCount++ < 32) {
-                        if (!_encodingBuffer.TryRead(skipBuf, out _))
-                            break;
-                        _encodingFrameSourceCapturedAts.TryDequeue(out _);
+                // Trim the oldest audio to maintain the pre-roll
+                while (_encodingBuffer.Count > maxCount && _encodingBuffer.TryRead(_skipFrame, out _))
+                    _encodingFrameSourceCapturedAts.TryDequeue(out _);
 
-                        pushed = _encodingBuffer.TryWrite(data);
-                    }
-                    if (pushed)
-                        _encodingFrameSourceCapturedAts.Enqueue(sourceCapturedAt);
-                }
-                else
+                if (_encodingBuffer.TryWrite(data))
                     _encodingFrameSourceCapturedAts.Enqueue(sourceCapturedAt);
             }
             return Task.CompletedTask;
@@ -850,8 +852,8 @@ public class MauiRecorderEngine : IAudioRecorderEngine
                 speechGain += gains[i];
             speechGain /= speechFrames;
 
-            // Scan backward within the pre-roll window to find where gain drops below speechGain/2.
-            var threshold = speechGain / 2;
+            // Scan backward within the pre-roll window to find where gain drops below speechGain/3.
+            var threshold = speechGain / 3;
             var minStartIndex = frameCount - retainedFrameLimit;
             var startIndex = frameCount - speechFrames - 1;
             while (startIndex >= minStartIndex) {
@@ -862,7 +864,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
 
             // Discard older frames, but retain no more than the configured pre-roll window.
             var framesToDiscard = startIndex >= minStartIndex
-                ? startIndex - 1
+                ? startIndex
                 : minStartIndex;
             framesToDiscard = Math.Clamp(framesToDiscard, minStartIndex, frameCount - speechFrames);
             var framesToKeep = frameCount - framesToDiscard;
