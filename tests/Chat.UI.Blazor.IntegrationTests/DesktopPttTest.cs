@@ -21,7 +21,13 @@ public sealed class DesktopPttTest(ChatAppHostFixture fixture, ITestOutputHelper
     [InlineData(AppKind.Windows, true)]
     [InlineData(AppKind.MacOS, false)]
     [InlineData(AppKind.MacOS, true)]
-    public async Task DesktopPttShouldListenWithoutOpeningAChatAndExposeItsSettings(
+    [InlineData(AppKind.Linux, false)]
+    [InlineData(AppKind.Linux, true)]
+    [InlineData(AppKind.Unknown, false)]
+    [InlineData(AppKind.Unknown, true)]
+    [InlineData(AppKind.Wasm, false)]
+    [InlineData(AppKind.Wasm, true)]
+    public async Task PttShouldListenWithoutOpeningAChatAndExposeItsSettings(
         AppKind appKind, bool isEnabledAtStartup)
     {
         // arrange
@@ -29,7 +35,10 @@ public sealed class DesktopPttTest(ChatAppHostFixture fixture, ITestOutputHelper
         using var appHost = await NewAppHost("chat-ui", o => o with {
             MustInitializeDb = false,
             ConfigureServices = (ctx, services) => {
-                services.AddSingleton(ctx.HostInfo with { AppKind = appKind });
+                services.AddSingleton(ctx.HostInfo with {
+                    AppKind = appKind,
+                    HostKind = appKind == AppKind.Wasm ? HostKind.WasmApp : ctx.HostInfo.HostKind,
+                });
                 services.AddScoped<NavigationManager>(_ => new BunitNavigationManager(blazorTester!));
             },
         });
@@ -62,7 +71,10 @@ public sealed class DesktopPttTest(ChatAppHostFixture fixture, ITestOutputHelper
             (await audio.GetListeningPlayer(chatId, ct)).Should().NotBeNull());
         hub.ChatUI.SelectedChatId.Value.Should().NotBe(chatId);
         await TestWait.WhenRendered(settings, () => {
-            settings.Markup.Should().Contain(hub.StringLocalizer.Ptt_UseOnDesktopCaption);
+            var caption = Ptt.IsDesktopApp(hub.HostInfo)
+                ? hub.StringLocalizer.Ptt_UseOnDesktopCaption
+                : hub.StringLocalizer.Ptt_UseOnThisDeviceCaption;
+            settings.Markup.Should().Contain(caption);
             settings.Markup.Should().NotContain(hub.StringLocalizer.Ptt_GesturesTopic);
             settings.Markup.Should().NotContain(hub.StringLocalizer.Ptt_LockScreenTopic);
         });

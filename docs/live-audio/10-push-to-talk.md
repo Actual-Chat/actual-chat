@@ -56,13 +56,19 @@ recording and mute controls remain available. Desktop settings explain that
 PTT stops when the app quits, and omit mobile gesture and lock-screen controls.
 No desktop cold-start wake mechanism is installed.
 
+**Web while running.** Every web host exposes the device opt-in and chat
+participation settings. Like desktop apps, opted-in browser sessions restore
+listening without first opening a chat. Playback still goes through
+`ChatPlayer.CanContinuePlayback` and `InteractiveUI.Demand`: browser audio
+requires a user gesture, and there is no native cold-start or background-wake
+mechanism. Closing or suspending the browser can stop PTT playback.
+
 **Local web settings preview.** On local domains (including worktree subdomains)
-in the Development environment, the web settings expose all PTT controls for
-any account, including mobile gestures, headset buttons, lock-screen transmit
-and practice. Platform-only controls are shown for UI troubleshooting, not as
-browser capabilities; actual sensor availability remains unchanged and its
-warning stays visible. The preview gate does not apply to native apps or
-non-local/non-development web hosts. Chat-management permissions are unchanged.
+in the Development environment, web settings additionally expose mobile gestures,
+headset buttons, lock-screen transmit and practice for UI troubleshooting, not as
+browser capabilities. Actual sensor availability remains unchanged and its
+warning stays visible. Non-preview web settings omit these native-only controls.
+Chat-management permissions are unchanged.
 
 **Foreground navigation.** `ChatAudioUI.NavigateOnForeground` reacts only to
 background-to-foreground transitions, not incoming playback while the app is
@@ -943,13 +949,12 @@ The join banner distinguishes chat consent (`AllowChat`), device enablement
 device" only when the device is off; device-only prompts use a "Turn on" action,
 while chat consent prompts use "Allow".
 
-**Gating.** PTT is available to every user on every host. The only surface
-that is not universal is the Settings page: `SettingsModal` shows it in the
-MAUI apps, and on the web to any account on a `BaseUrlKind.Local` host in the
-Development environment. Local web previews show mobile-only controls for UI
-troubleshooting without enabling native capabilities. The right-panel PTT settings, the join banner and the Voice
-settings row are unconditional. There is no on-screen reply button — replies
-are triggered only through the native paths below.
+**Gating.** PTT is available to every user on every host, including the
+Settings page, right-panel PTT settings, join banner and Voice settings row.
+The muted-chat banner also supports web hosts. Local web previews show
+mobile-only controls for UI troubleshooting without enabling native capabilities.
+There is no on-screen reply button — replies are triggered only through the
+native paths below.
 
 On iOS the `com.apple.developer.push-to-talk` entitlement and the
 `push-to-talk` background mode are declared by both the dev and the prod app,

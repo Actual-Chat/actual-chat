@@ -18,7 +18,7 @@ public sealed class LocalPttSettingsTest(ChatAppHostFixture fixture, ITestOutput
     [Theory]
     [InlineData("local.voxt.ai", true)]
     [InlineData("voxt.ai", false)]
-    public async Task LocalWebShouldExposeAllPttSettingsWithoutAdminRights(string hostname, bool isPreview)
+    public async Task WebShouldExposePttSettingsWithoutAdminRights(string hostname, bool isPreview)
     {
         // arrange
         BlazorTester? blazorTester = null;
@@ -44,6 +44,10 @@ public sealed class LocalPttSettingsTest(ChatAppHostFixture fixture, ITestOutput
         account.IsAdmin.Should().BeFalse();
         var hub = tester.ScopedAppServices.AppUIHub();
         var host = tester.RenderModalHost(hub);
+        var (chatId, _) = await tester.CreateChat(true);
+        var enableCmd = new ChatsBackend_Change(
+            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart }));
+        var chat = await tester.AppServices.Commander().Call(enableCmd);
 
         // act
         await hub.ModalUI.Show(new SettingsModal.Model(SettingsTabId.Ptt));
@@ -51,9 +55,35 @@ public sealed class LocalPttSettingsTest(ChatAppHostFixture fixture, ITestOutput
         // assert
         await TestWait.WhenRendered(host, () =>
             host.FindComponent<SettingsPanel>().Instance.Tabs
-                .Any(x => x.Id == SettingsTabId.Ptt).Should().Be(isPreview));
-        if (!isPreview)
+                .Any(x => x.Id == SettingsTabId.Ptt).Should().BeTrue());
+        await TestWait.WhenRendered(host, () => host.FindComponent<PttSettings>()
+            .FindComponents<TileItem>().Should().Contain(x => x.Markup.Contains(chat.Title)));
+
+        // act
+        await host.InvokeAsync(() => host.FindComponent<PttSettings>()
+            .FindComponents<TileItem>().Single(x => x.Markup.Contains(hub.StringLocalizer.Ptt_UseOnThisDevice))
+            .Find(".tile-item").Click());
+        await host.InvokeAsync(() => host.FindComponent<PttSettings>()
+            .FindComponents<TileItem>().Single(x => x.Markup.Contains(chat.Title))
+            .Find(".tile-item").Click());
+
+        // assert
+        await TestWait.When(async ct =>
+            (await hub.ChatAudioUI.IsPttEnabledOnDevice(ct)).Should().BeTrue());
+        await TestWait.When(async ct =>
+            (await hub.ChatAudioUI.GetConsentedPttChatIds(ct)).Should().Contain(chatId));
+        if (!isPreview) {
+            await TestWait.WhenRendered(host, () => {
+                var settings = host.FindComponent<PttSettings>();
+                var l = hub.StringLocalizer;
+                settings.Markup.Should().Contain(l.Ptt_UseOnThisDevice);
+                settings.Markup.Should().NotContain(l.Ptt_GesturesTopic);
+                settings.Markup.Should().NotContain(l.Ptt_LockScreenTopic);
+                settings.Markup.Should().NotContain(l.Ptt_PracticeTopic);
+                settings.FindComponents<PttReplyWindowSettings>().Should().ContainSingle();
+            });
             return;
+        }
 
         await TestWait.WhenRendered(host, () => {
             var settings = host.FindComponent<PttSettings>();

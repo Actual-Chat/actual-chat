@@ -10,7 +10,6 @@
     var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
     var isPttPreview = Ptt.IsLocalSettingsPreview(HostInfo);
-    var showPtt = HostInfo.HostKind.IsMauiApp() || isPttPreview;
     // Android alone: it holds the Android Auto section too, which needs a car connection.
     var showAndroid = HostInfo.AppKind == AppKind.Android || isPttPreview;
     var quitTitle = L.Settings_Quit_Format(CoreConstants.AppName);
@@ -39,11 +38,10 @@
         TitleContent = @<LanguageShortcut/>,
         Content = @<TranscriptionSettings/>,
     });
-    if (showPtt)
-        tabs.Add(new(SettingsTabId.Ptt, L.Settings_Ptt) {
-            IconClass = "icon-push-to-talk",
-            Content = @<PttSettings/>,
-        });
+    tabs.Add(new(SettingsTabId.Ptt, L.Settings_Ptt) {
+        IconClass = "icon-push-to-talk",
+        Content = @<PttSettings/>,
+    });
     if (showAndroid)
         tabs.Add(new(SettingsTabId.Android, "Android") {
             IconClass = "icon-android",

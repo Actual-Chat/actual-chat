@@ -1,7 +1,10 @@
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
+using ActualChat.UI.Blazor.Components;
 using ActualChat.Users;
+using Bunit;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -139,6 +142,37 @@ public sealed class PttMuteTest(ChatAppHostFixture fixture, ITestOutputHelper @o
 
         // act + assert
         (await hub.ChatAudioUI.HushPtt(CancellationToken.None)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task WebMutedChatShouldShowBannerAndAllowUnmuting()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var chatId = await ArmPttChat(tester, hub);
+        var chat = (await hub.Chats.Get(tester.Session, chatId, CancellationToken.None))!;
+        var now = hub.Clocks.ServerClock.Now;
+        await hub.UserSettingsUI.UserPttSettings()
+            .Update(x => x.WithPttChatMuted(chatId, now, now + TimeSpan.FromHours(1)));
+        tester.RenderModalHost(hub);
+
+        // act
+        var banner = tester.Render<PttMutedBanner>(p => p.AddCascadingValue(new ChatContext(hub, chat)));
+
+        // assert
+        await TestWait.WhenRendered(banner, () =>
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().BeTrue());
+
+        // act
+        await banner.InvokeAsync(() => banner.FindComponent<BannerButton>().Find("button").Click());
+
+        // assert
+        await TestWait.WhenRendered(banner, () =>
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().BeFalse());
+        await TestWait.When(async ct =>
+            (await hub.ChatAudioUI.GetPttChatIds(ct)).Should().Contain(chatId));
     }
 
     // Private methods
