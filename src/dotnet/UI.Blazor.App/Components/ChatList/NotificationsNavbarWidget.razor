@@ -106,10 +106,11 @@
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var hasAll = await HasTab(ChatListFilter.Unread, cancellationToken).ConfigureAwait(false);
         if (!hasAll) {
-            // The All tab also carries the pending join requests the user decides on
+            // The All tab also carries the pending join requests the user decides on and the chats they were invited to
             var joinRequestGroups = await ChatListUI.ListJoinRequestGroups(null, cancellationToken)
                 .ConfigureAwait(false);
-            hasAll = joinRequestGroups.Count > 0;
+            var invitedChatIds = await NotificationsUI.ListInvitedChatIds(cancellationToken).ConfigureAwait(false);
+            hasAll = joinRequestGroups.Count > 0 || invitedChatIds.Count > 0;
         }
         var hasPeople = await HasTab(ChatListFilter.UnreadPeople, cancellationToken).ConfigureAwait(false);
         var hasMentions = await HasTab(ChatListFilter.UnreadMentions, cancellationToken).ConfigureAwait(false);

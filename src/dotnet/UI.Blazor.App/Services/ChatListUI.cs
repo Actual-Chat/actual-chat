@@ -192,16 +192,16 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         var chatById = await ListUnorderedForDisplay(placeId, settings, cancellationToken).ConfigureAwait(false);
         var filter = settings.GetFilter();
         // AcrossPlace filters are exactly the notifications panel's. Its Mentions tab lifts the chats
-        // with an attention ping and ignores reactions; the other tabs lift reacted chats - see
+        // with an attention ping and ignores reactions; the other tabs lift reacted and invited chats - see
         // ListUnorderedForDisplay.
         var isMentionsTab = filter == ChatListFilter.UnreadMentions;
         var isNotificationsPanel = filter.AcrossPlace && !isMentionsTab;
-        var liftedAt = isNotificationsPanel
-            ? await GetLiftedAt(chatById.Keys, GetReactedAt, cancellationToken).ConfigureAwait(false)
-            : isMentionsTab
-                ? await GetLiftedAt(chatById.Keys, NotificationsUI.GetAttentionAt, cancellationToken)
-                    .ConfigureAwait(false)
-                : null;
+        Func<ChatId, CancellationToken, Task<Moment?>>? getLiftedAt = isNotificationsPanel
+            ? GetReactedOrInvitedAt
+            : isMentionsTab ? NotificationsUI.GetAttentionAt : null;
+        IReadOnlyDictionary<ChatId, Moment>? liftedAt = null;
+        if (getLiftedAt is not null)
+            liftedAt = await GetLiftedAt(chatById.Keys, getLiftedAt, cancellationToken).ConfigureAwait(false);
         var preOrder = isNotificationsPanel ? ChatListPreOrder.ReactionsFirst : ChatListPreOrder.ChatList;
         DebugLog?.LogDebug(
             "<- List({PlaceId}, {Settings}): {Count} items",
@@ -293,10 +293,12 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
             return chatById;
 
         var expiring = await NotificationsPanelUI.GetExpiring(filter.Id, cancellationToken).ConfigureAwait(false);
-        // The Mentions tab means own-mentions and attention pings; reactions land on the other tabs.
-        var liftedChatIds = filter == ChatListFilter.UnreadMentions
-            ? await NotificationsUI.ListAttentionChatIds(cancellationToken).ConfigureAwait(false)
-            : await NotificationsUI.ListReactedChatIds(cancellationToken).ConfigureAwait(false);
+        // The Mentions tab means own-mentions and attention pings; reactions and invitations land on the other tabs.
+        IReadOnlyCollection<ChatId> liftedChatIds;
+        if (filter == ChatListFilter.UnreadMentions)
+            liftedChatIds = await NotificationsUI.ListAttentionChatIds(cancellationToken).ConfigureAwait(false);
+        else
+            liftedChatIds = await ListReactedOrInvitedChatIds(cancellationToken).ConfigureAwait(false);
         if (expiring.Count == 0 && liftedChatIds.Count == 0)
             return chatById;
 
@@ -546,10 +548,24 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         return result;
     }
 
-    private async Task<Moment?> GetReactedAt(ChatId chatId, CancellationToken cancellationToken)
+    private async Task<Moment?> GetReactedOrInvitedAt(ChatId chatId, CancellationToken cancellationToken)
     {
         var state = await NotificationsUI.GetReactionState(chatId, cancellationToken).ConfigureAwait(false);
-        return state.Emoji is null ? null : state.SentAt;
+        var invitation = await NotificationsUI.GetInvitation(chatId, cancellationToken).ConfigureAwait(false);
+        var reactedAt = state.Emoji is null ? (Moment?)null : state.SentAt;
+        var invitedAt = invitation?.SentAt;
+        return reactedAt is null ? invitedAt
+            : invitedAt is null ? reactedAt
+            : Moment.Max(reactedAt.Value, invitedAt.Value);
+    }
+
+    private async Task<IReadOnlyCollection<ChatId>> ListReactedOrInvitedChatIds(CancellationToken cancellationToken)
+    {
+        var reactedChatIds = await NotificationsUI.ListReactedChatIds(cancellationToken).ConfigureAwait(false);
+        var invitedChatIds = await NotificationsUI.ListInvitedChatIds(cancellationToken).ConfigureAwait(false);
+        return invitedChatIds.Count == 0
+            ? reactedChatIds
+            : reactedChatIds.Union(invitedChatIds).ToList();
     }
 
     private async Task<ChatInfo?> GetNotes(CancellationToken cancellationToken = default)

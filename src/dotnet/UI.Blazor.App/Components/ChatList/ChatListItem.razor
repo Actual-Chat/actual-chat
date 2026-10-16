@@ -46,7 +46,11 @@
                         @Hub.MarkupHelpers.LastEntryTime(m.LastBeginsAt)
                     }
                 </span>
-                @if (lastTextEntry != null) {
+                @if (m.Invitation is { } invitation) {
+                    <div class="c-last-message">
+                        <span class="c-text">@invitation.Text</span>
+                    </div>
+                } else if (lastTextEntry != null) {
                     <div class="c-last-message">
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span class="hidden last-entry-id">@m.LastTextEntry?.Id.Value</span>
@@ -289,10 +293,17 @@
         var navTarget = navTargetTask is null ? null : await navTargetTask.ConfigureAwait(false);
         if (navTarget is { Kind: ActualChat.NotificationKind.Reaction } && unreadState.Count > 0)
             navTarget = null;
+        // An invitation has no entry to walk to: it binds the row only while nothing else does
+        ChatInvitationState? invitation = null;
+        if (navTarget is null && unreadState.Count == 0
+            && !notificationsFilterId.IsEmpty && notificationsFilterId != ChatListFilter.UnreadMentions.Id)
+            invitation = await Hub.NotificationsUI.GetInvitation(chatId, cancellationToken).ConfigureAwait(false);
         // Every panel row opens as its notification's link, so the panel stays on the notification it shows
         var panelNotificationId = notificationsFilterId.IsEmpty
             ? null
-            : navTarget?.Id ?? NotificationsUI.GetChatNotificationId(AccountUI.OwnAccount.Value.Id, chatId);
+            : navTarget?.Id
+                ?? invitation?.Id
+                ?? NotificationsUI.GetChatNotificationId(AccountUI.OwnAccount.Value.Id, chatId);
         var panelUrl = panelNotificationId is null
             ? null
             : Links.Notification(panelNotificationId, navTarget?.EntryId.LocalId ?? 0).Value;
@@ -315,6 +326,7 @@
                 : navTarget.Kind == ActualChat.NotificationKind.Attention,
             ReactionEmoji = navTarget is null ? unreadState.ReactionEmoji : navTarget.Emoji,
             NavTarget = navTarget,
+            Invitation = invitation,
             PanelUrl = panelUrl,
             LastTextEntry = lastEntry,
             LastTextEntryText = preview.Text,
@@ -331,6 +343,12 @@
     }
 
     private void OnClick() {
+        if (_renderedModel?.Invitation is { } invitation) {
+            var dismissCommand = new Notifications_Dismiss { Session = Session, NotificationId = invitation.Id };
+            _ = Hub.UICommander.Run(dismissCommand);
+            return;
+        }
+
         if (_renderedModel?.NavTarget is not { } navTarget)
             return;
 
@@ -451,6 +469,7 @@
         // The notification this row is bound to in the notifications panel: the one its tap jumps
         // to and the one its badge shows. Null everywhere else, and once the chat's are all walked.
         public ChatNotificationTarget? NavTarget { get; init; }
+        public ChatInvitationState? Invitation { get; init; }
         public string? PanelUrl { get; init; }
         public Chat? LastThread { get; init; }
         public Author? LastThreadCreator { get; init; }

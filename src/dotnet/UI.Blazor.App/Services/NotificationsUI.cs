@@ -175,6 +175,44 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
     }
 
     [ComputeMethod]
+    public virtual async Task<ChatInvitationState?> GetInvitation(
+        ChatId chatId, CancellationToken cancellationToken = default)
+    {
+        var invitations = await ListInvitations(cancellationToken).ConfigureAwait(false);
+        return invitations.FirstOrDefault(x => x.ChatId == chatId);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<ChatId>> ListInvitedChatIds(CancellationToken cancellationToken = default)
+    {
+        var invitations = await ListInvitations(cancellationToken).ConfigureAwait(false);
+        return invitations.Select(x => x.ChatId).Distinct().ToApiArray();
+    }
+
+    [ComputeMethod]
+    public virtual async Task<ApiArray<ChatInvitationState>> ListInvitations(
+        CancellationToken cancellationToken = default)
+    {
+        // A place invitation is about its root chat, which no chat list shows: it's listed on the welcome chat
+        var active = await Notifications.ListActive(Session, cancellationToken).ConfigureAwait(false);
+        var result = new List<ChatInvitationState>();
+        foreach (var invitation in active.OfType<InvitationNotification>()) {
+            var chatId = invitation.ChatId;
+            if (chatId is PlaceChatId { IsRoot: true } rootChatId) {
+                var welcomeChatId = await Hub.Places
+                    .GetWelcomeChatId(Session, rootChatId.PlaceId, cancellationToken)
+                    .ConfigureAwait(false);
+                if (welcomeChatId is null)
+                    continue;
+
+                chatId = welcomeChatId;
+            }
+            result.Add(new ChatInvitationState(invitation.Id, chatId, invitation.Text, invitation.SentAt));
+        }
+        return result.ToApiArray();
+    }
+
+    [ComputeMethod]
     public virtual async Task<ApiArray<ChatId>> ListUnreadChatIds(CancellationToken cancellationToken = default)
     {
         // The chats that have an active message-level notification, i.e. something the user hasn't looked at
@@ -221,6 +259,9 @@ public class NotificationsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComp
 }
 
 public readonly record struct ChatReactionState(Emoji? Emoji, Moment SentAt);
+
+// ChatId is the chat the invitation is shown on, which for a place is its welcome chat
+public sealed record ChatInvitationState(NotificationId Id, ChatId ChatId, string Text, Moment SentAt);
 
 /// <summary>
 /// The notification a notifications-panel row is bound to: enough of it to link, badge and

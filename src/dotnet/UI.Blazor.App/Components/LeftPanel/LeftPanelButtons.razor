@@ -34,7 +34,7 @@
                     <i class="icon-notify-bell text-2xl font-medium"></i>
                 </ChildContent>
                 <BadgeContent>
-                    @if (m.HasUnread || m.HasReactions || m.HasJoinRequests) {
+                    @if (m.HasUnread || m.HasReactions || m.HasJoinRequests || m.HasInvitations) {
                         <Badge Class="c-unread-dot" Color="bg-danger"/>
                     }
                 </BadgeContent>
@@ -70,15 +70,17 @@
         var chatByIdTask = ChatListUI.ListUnordered(null, ChatListFilter.Unread, cancellationToken);
         var expiringTask = NotificationsPanelUI.GetExpiring(ChatListFilter.Unread.Id, cancellationToken);
         var reactedChatIdsTask = NotificationsUI.ListReactedChatIds(cancellationToken);
+        var invitedChatIdsTask = NotificationsUI.ListInvitedChatIds(cancellationToken);
         var hasHistoryTask = NotificationsUI.HasAnyHistory(cancellationToken);
         var joinRequestGroupsTask = ChatListUI.ListJoinRequestGroups(null, cancellationToken);
         var chatById = await chatByIdTask.ConfigureAwait(false);
         var expiring = await expiringTask.ConfigureAwait(false);
         var reactedChatIds = await reactedChatIdsTask.ConfigureAwait(false);
+        var invitedChatIds = await invitedChatIdsTask.ConfigureAwait(false);
         var hasHistory = await hasHistoryTask.ConfigureAwait(false);
         var joinRequestGroups = await joinRequestGroupsTask.ConfigureAwait(false);
         return new(true, chatById.Count > 0, expiring.Count > 0, reactedChatIds.Count > 0, hasHistory,
-            joinRequestGroups.Count > 0);
+            joinRequestGroups.Count > 0, invitedChatIds.Count > 0);
     }
 
     protected override void OnAfterRender(bool firstRender) {
@@ -99,8 +101,10 @@
         bool HasRetained = false,
         bool HasReactions = false,
         bool HasHistory = false,
-        bool HasJoinRequests = false)
+        bool HasJoinRequests = false,
+        bool HasInvitations = false)
     {
-        public bool HasAny => HasUnread || HasRetained || HasReactions || HasHistory || HasJoinRequests;
+        public bool HasAny => HasUnread || HasRetained || HasReactions || HasHistory || HasJoinRequests
+            || HasInvitations;
     }
 }

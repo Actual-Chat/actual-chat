@@ -5,9 +5,9 @@ using Notification = ActualChat.Notifications.Notification;
 namespace ActualChat.UI.Blazor.App.Services;
 
 // Clears NotificationDismissMode.OnView notifications - reactions and attention pings - once the
-// entry they point at has actually been on screen. Their anchor entry is one the Read position
-// may already cover (the recipient's own message, a mention they saw), so it can't answer "have
-// you seen this".
+// entry they point at has actually been on screen, and invitations once their chat has.
+// The anchor entry is one the Read position may already cover (the recipient's own message,
+// a mention they saw), so it can't answer "have you seen this".
 public sealed class SeenNotificationDismisser(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub)
 {
     private readonly Dictionary<NotificationId, Moment> _dismissedSentAt = new();
@@ -63,7 +63,7 @@ public sealed class SeenNotificationDismisser(AppUIHub hub) : UIWorkerBase<AppUI
             return;
 
         foreach (var notification in active) {
-            if (notification.DismissMode != NotificationDismissMode.OnView || !IsSeen(notification, visibility))
+            if (!IsSeen(notification, visibility))
                 continue;
 
             await Dismiss(notification, cancellationToken).ConfigureAwait(false);
@@ -98,7 +98,14 @@ public sealed class SeenNotificationDismisser(AppUIHub hub) : UIWorkerBase<AppUI
     }
 
     private static bool IsSeen(Notification notification, ChatViewItemVisibility visibility)
-        => notification is ChatEntryNotification entry
-            && entry.ChatId == visibility.ChatId
-            && visibility.VisibleMessageLids.Contains(entry.EntryLid);
+        // An invitation is about the chat as a whole, so having it open is seeing it - any chat of a place
+        // for a place invitation, which is about the place's root chat
+        => notification switch {
+            InvitationNotification { ChatId: PlaceChatId { IsRoot: true } rootChatId }
+                => visibility.ChatId is PlaceChatId placeChatId && placeChatId.PlaceId == rootChatId.PlaceId,
+            InvitationNotification invitation => invitation.ChatId == visibility.ChatId,
+            ChatEntryNotification { DismissMode: NotificationDismissMode.OnView } entry
+                => entry.ChatId == visibility.ChatId && visibility.VisibleMessageLids.Contains(entry.EntryLid),
+            _ => false,
+        };
 }
