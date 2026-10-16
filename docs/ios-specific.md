@@ -322,6 +322,9 @@ The diagnostic port is baked into the bundle by the SDK — no csproj change nee
 also keeps `EventSourceSupport` and `MetricsSupport` from being trimmed out of an optimized
 build (`Xamarin.Shared.Sdk.targets:137,139`).
 
+`scripts/record-ios-startup-profile.sh` (`build`, `install`, `record`, `convert`) runs this whole
+recipe on the Mac and is what `/mibc-update ios` drives; the notes below explain what it does.
+
 Both helper scripts live in `tmp/` on the Mac and are **gitignored**, like every other iOS
 build script there (`build-ios-dev.sh`, `build-ios-signed.sh`, ...) — they hard-code the
 device UDID, keychain path and `DEVELOPER_DIR`. The commands below are therefore given in

@@ -1,14 +1,15 @@
 ---
 allowed-tools: Bash, Read, Edit
-description: Refresh the .mibc profiles in App.Maui/_Profiling - aothelper.mibc (with the AOT helper .g.cs files), android.mibc, android-notif.mibc, windows.mibc and merged.mibc. Takes [aothelper|android|android-notif|windows|all], default all.
+description: Refresh the .mibc profiles in App.Maui/_Profiling - aothelper.mibc (with the AOT helper .g.cs files), android.mibc, android-notif.mibc, windows.mibc, ios.mibc and merged.mibc. Takes [aothelper|android|android-notif|windows|ios|all], default all.
 ---
 
 # /mibc-update — refresh the profiles
 
-Maintains five files in `src/dotnet/App.Maui/_Profiling/`: `aothelper.mibc` (static, from
-`App.AotHelper`; used by iOS / Mac Catalyst Release), `android.mibc`, `android-notif.mibc`,
-`windows.mibc`, and `merged.mibc` — the union of the three recorded ones, and the only one
-Android and Windows builds compile against.
+Maintains six files in `src/dotnet/App.Maui/_Profiling/`: `aothelper.mibc` (static, from
+`App.AotHelper`; used by iOS / Mac Catalyst Release), the recorded `android.mibc`,
+`android-notif.mibc`, `windows.mibc` and `ios.mibc`, and `merged.mibc` — their union, and the
+only one Android and Windows builds compile against (iOS Release takes `ios.mibc`,
+`merged.mibc` and `aothelper.mibc`).
 
 `$ARGUMENTS` selects what to refresh:
 
@@ -18,12 +19,15 @@ Android and Windows builds compile against.
 | `android` | `android.mibc` |
 | `android-notif` | `android-notif.mibc` — needs a push sent by hand, see below |
 | `windows` | `windows.mibc` |
-| `all` *(default, and what empty means)* | `aothelper`, then `android` + `windows` |
+| `ios` | `ios.mibc` — recorded on the Mac mini and the iPhone, see below |
+| `all` *(default, and what empty means)* | `aothelper`, then `android` + `windows`, then `ios` |
 
 Anything else — stop and say what the valid values are; don't guess.
 
 **Order in `all`:** `aothelper` runs first. It rewrites the `.g.cs` files that the Android and
 Windows publishes compile, so recording against the old ones would profile a stale build.
+`ios` runs last: its build compiles against `merged.mibc` and `aothelper.mibc`, and happens on
+another machine from pushed commits, so it must see everything above.
 
 **`all` deliberately excludes `android-notif`.** That capture can't be automated end to end:
 it needs someone to send the device a push at the right moment. The file is a kept artifact
@@ -39,6 +43,10 @@ Background, measured numbers and the reasoning behind every step:
 
 Check and report these; don't assume any of them.
 
+For `ios` or `all`:
+- `ssh macmini true` answers, and the iPhone is tethered and **unlocked** (`/macmini`).
+- The dev app on the phone is signed in; a reinstall keeps the sign-in.
+
 For `android` or `all`:
 - `adb devices` shows one device in state `device` — not `offline`, not `unauthorized`.
 - **The app on the device is signed in.** A signed-out recording profiles the sign-in screen
@@ -52,8 +60,13 @@ For any platform:
 - **Nothing else is building.** A concurrent publish shares `artifacts/obj/App.Maui/` and
   will overwrite assemblies mid-capture; check that no `dotnet`/`MSBuild` process is
   consuming CPU before you start.
-- `tmp/mibc` holds no parts from earlier experiments — `-Accumulate` globs it recursively.
-  Move them aside first.
+- **Snapshot the committed profiles** — the recordings below overwrite them, and the decision
+  in *Merge or overwrite* needs the old ones. (They are in Git LFS, so `git show HEAD:…`
+  would only give a pointer.)
+
+  ```bash
+  mkdir -p tmp/mibc-old && cp src/dotnet/App.Maui/_Profiling/*.mibc tmp/mibc-old/
+  ```
 
 Tell the user up front what this costs: Android is **reinstalled** with a tracing build
 (which suspends at launch until a tracer attaches), and the whole thing takes roughly 30-40
@@ -79,10 +92,7 @@ and `aothelper.mibc` are rewritten.
 
 ```bash
 pwsh -NoProfile -File scripts/Record-AndroidStartupProfiles.ps1 -Runs 1 -Duration 00:01:00 -Mode Methods -Build
-# -Accumulate globs tmp/mibc recursively, so stage the committed profile there to merge
-# into it, and move anything unrelated out first
-mkdir -p tmp/mibc/previous && cp src/dotnet/App.Maui/_Profiling/android.mibc tmp/mibc/previous/
-pwsh -NoProfile -File scripts/New-StartupMibc.ps1 -Platform Android -Accumulate
+pwsh -NoProfile -File scripts/New-StartupMibc.ps1 -Platform Android
 ```
 
 `-Build` publishes with `IsTracingEnabled=true` and installs it.
@@ -93,13 +103,10 @@ loading — and yields roughly half the methods: 23,201 against 31,225 for the s
 measured 2026-09-03. One 60 s cold start is enough; if you record more than one, keep the
 largest and discard the rest. Expect ~700 MB per capture.
 
-**Merge into the existing profile, never replace it.** `android.mibc` carries hand-driven
-session coverage a cold start never reaches, so each round unions the new capture into it —
-about 90-95% of a capture is already present and the delta is the point. Replacing it
-instead cost 26k methods in one run. `-Accumulate` merges every `*.mibc` under `tmp/mibc`
-recursively, which is why the committed profile has to be staged there, and why leftovers
-from earlier experiments (Windows, iOS, `-Mode Jit` parts) have to be moved out before the
-run or they land in `android.mibc`.
+**This writes the new capture over `android.mibc`.** The old file is in `tmp/mibc-old/` (see
+*Before starting*); whether the old coverage is merged back is decided afterwards from the
+counts — see *Merge or overwrite*. Replacing blindly once cost 26k methods, because
+`android.mibc` carried hand-driven session coverage a cold start never reaches.
 
 ### Android notification path — only when `$ARGUMENTS` is `android-notif`
 
@@ -139,15 +146,97 @@ pwsh -NoProfile -File scripts/New-StartupMibc.ps1 -Platform Windows
 No tracing build is needed here — `dotnet-trace collect -- <exe>` launches and suspends the
 app itself.
 
-**The Windows step replaces `windows.mibc`, it does not accumulate into it** — unlike the
-Android step, which stages the committed profile into `tmp/mibc` and merges. A plain run
-therefore drops everything the previous recording had captured but this one did not; that cost
-~23k methods once. Stage the committed `windows.mibc` and merge the previous profile back in by
-hand, then check the method count against the numbers in *Verify before reporting* before
-committing.
+This writes the new capture over `windows.mibc`, like the Android step; a plain run drops
+whatever the previous recording had and this one did not (~23k methods once). *Merge or
+overwrite* below decides whether to put it back.
 
-`New-StartupMibc.ps1` rebuilds `merged.mibc` at the end of **every** run, so there is no
-separate merge step.
+`New-StartupMibc.ps1` rebuilds `merged.mibc` at the end of **every** run, from the files on
+disk at that moment — so it has to be rebuilt again after the decision below.
+
+### iOS — skip unless `$ARGUMENTS` is `ios` or `all`
+
+Recorded on the Mac mini (`/macmini`), on the tethered iPhone, with
+`scripts/record-ios-startup-profile.sh`. Run it **last**: the iOS build compiles against
+`merged.mibc` and `aothelper.mibc`, so it has to see the results of every step above.
+
+**The Mac builds what is pushed, not your working tree.** Before the build, commit everything
+the steps above changed — the `*AotSource.g.cs` files and every `.mibc` — as
+`chore(profiling): …`, and push it. `build` resets the Mac's checkout to `origin/dev`, so a
+`.g.cs` or profile that was not pushed is silently absent from the build, and the recording
+then profiles a build that does not match. `EXPECT_SHA` makes it fail instead:
+
+```bash
+git push origin HEAD:dev
+SHA=$(git rev-parse HEAD)
+```
+
+Tell the user what was committed and pushed. If the current branch is not `dev`, say so and
+use that branch as `BRANCH` instead.
+
+The trace lists the methods that **ran interpreted** on the build it was recorded on, and that
+build already compiled everything the old `ios.mibc` rooted — so a fresh trace is expected to
+be much *smaller* than the old file (312 methods against 4,351 last time), and overwriting
+drops the old roots (4,195 once). *Merge or overwrite* settles it from the counts.
+
+```bash
+# 1. build (~5 min) and install on the phone
+ssh macmini "BRANCH=dev EXPECT_SHA=$SHA caffeinate -is ~/Projects/ActualChat/scripts/record-ios-startup-profile.sh build"
+ssh macmini '~/Projects/ActualChat/scripts/record-ios-startup-profile.sh install'
+```
+
+The script itself comes from the same push; if the Mac has no
+`scripts/record-ios-startup-profile.sh` yet, run `git -C ~/Projects/ActualChat pull` there once.
+
+**Then stop and tell the user to unlock the phone and be ready**: the capture is only worth
+anything if someone drives the app for the whole window — open chats, scroll, record voice,
+join a call. A launch-only capture leaves the audio and call paths interpreted. The phone
+must be tethered, unlocked, and the app signed in (a reinstall keeps the sign-in).
+
+```bash
+# 2. record - launches the app suspended, then traces for the window
+ssh macmini '~/Projects/ActualChat/scripts/record-ios-startup-profile.sh record 00:02:00'
+# 3. convert on the Mac, bring the new profile back
+ssh macmini '~/Projects/ActualChat/scripts/record-ios-startup-profile.sh convert'
+scp macmini:Projects/ActualChat/tmp/ios-profile/ios.mibc src/dotnet/App.Maui/_Profiling/ios.mibc
+```
+
+The `create-mibc` "MVID mismatch" warnings are expected here too.
+
+A dsrouter failure (`Failed USBMuxConnectByPort … result = 61`) means the tracer started
+before the app was up: rerun `record`. A trace file of 0 bytes, or no `DOTNET_DiagnosticPorts`
+line in the build output, means the build lacks the diagnostic port: rerun `build`. After a
+runtime/SDK bump pass `CLEAN=1` to `build` — an incremental build keeps the old native runtime.
+
+### Merge or overwrite — decide from the counts
+
+By now every recorded file holds only its new capture; the old ones are in `tmp/mibc-old/`.
+For each file that was re-recorded:
+
+```bash
+P=src/dotnet/App.Maui/_Profiling
+pwsh -NoProfile -File scripts/Compare-Mibc.ps1 -Old tmp/mibc-old/android.mibc -New $P/android.mibc
+```
+
+Look at `old only` — what the new file would lose:
+
+- **Overwrite** (keep the new file) when `old only` is at most ~5% of `old`, or when the
+  assembly breakdown shows it is churn from code that no longer exists. This is the expected
+  case for Android and Windows recorded at 60 s.
+- **Merge** when `old only` is large and plausibly real coverage — hand-driven sessions, and
+  above all `ios.mibc`, where a fresh trace is a small residue by construction:
+
+  ```bash
+  ./dotnet-pgo.cmd merge -i tmp/mibc-old/ios.mibc -i $P/ios.mibc -o tmp/ios-merged.mibc --compressed
+  cp tmp/ios-merged.mibc $P/ios.mibc
+  ```
+
+Either way, report the numbers and what was chosen. Then rebuild `merged.mibc` from the files
+as they now stand — it is always the union of the *final* per-platform files, including when
+nothing was merged into them:
+
+```bash
+pwsh -NoProfile -File scripts/New-StartupMibc.ps1 -MergedOnly
+```
 
 ### Verify before reporting
 
@@ -159,13 +248,13 @@ git diff --stat src/dotnet/App.Maui/_Profiling/
 
 Sanity-check the output rather than trusting exit codes:
 
-- Method counts went **up**, never down. The run merges into the committed profile, so up
-  is the only valid direction; a drop means it replaced instead of accumulating. Compare
-  against `HEAD`, not against numbers written here — these grow every round. As of
-  2026-09-03: android 50,976, windows 48,856, merged 62,686.
+- A method count that went **down** has to be a decision made in *Merge or overwrite*, not an
+  accident. Compare against `tmp/mibc-old/`, not against numbers written here — these grow
+  every round.
 - Overlap with the previous profile is the real check that the trace mapped correctly.
-  `new android.mibc − previous` is how many methods are new; the rest of the capture was
-  already there. 90-95% overlap is normal — far less means the references were wrong.
+  `common` in `Compare-Mibc.ps1` is how much of the old file the new capture reproduced;
+  far less than half on a re-record of the same app means the references were wrong. (Not
+  for `ios.mibc`, which is a residue by construction.)
 - The per-assembly listing shows `Mono.Android` **and** `Microsoft.WinUI` / `WinRT.Runtime`.
   A missing half is otherwise silent: the merge succeeds with whatever parts survived. (When
   only one platform was re-recorded, the other half comes from the existing `.mibc` — so both
@@ -216,7 +305,8 @@ other build to finish, then re-record.
 
 ## Reporting
 
-Give the user method counts for all three recorded files with before/after deltas, which
-platform halves were re-recorded, whether `aothelper.mibc` and the `.g.cs` files changed, and
-any traces that were dropped. If runs were lost, say how many
-rather than quietly merging fewer.
+Give the user method counts for every recorded file and `merged.mibc` with before/after
+deltas, the `Compare-Mibc.ps1` verdict for each and whether it was merged or overwritten,
+which platform halves were re-recorded, whether `aothelper.mibc` and the `.g.cs` files
+changed, what was committed and pushed for the iOS build, and any traces that were dropped.
+If runs were lost, say how many rather than quietly merging fewer.
