@@ -4,6 +4,7 @@ using ActualChat.Db.Module;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Npgsql;
 
 namespace ActualChat.Db;
 
@@ -14,6 +15,7 @@ public abstract class DbInitializer<
     where TDbContext : DbContext
 {
     private const int CommandTimeout = 30;
+    private const int DropDbCommandTimeout = 120;
 
     private new DbHub<TDbContext> DbHub => base.DbHub;
     public new IServiceProvider Services => base.Services;
@@ -57,7 +59,7 @@ public abstract class DbInitializer<
         var dbName = db.GetDbConnection().Database;
         if (DbInfo.ShouldRecreateDb) {
             Log.LogInformation("Recreating DB '{DatabaseName}'...", dbName);
-            await db.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
+            await DropDb(db.GetConnectionString().Require(), cancellationToken).ConfigureAwait(false);
             await db.EnsureCreatedWithMigrationsMarkedAsCompleted(cancellationToken).ConfigureAwait(false);
         }
         else if (DbInfo.ShouldMigrateDb)
@@ -125,5 +127,28 @@ public abstract class DbInitializer<
             }
         }
         Log.LogInformation("MigrateDb '{DatabaseName}': completed", dbName);
+    }
+
+    // Private methods
+
+    private static async Task DropDb(string connectionString, CancellationToken cancellationToken)
+    {
+        // Not EnsureDeleted: it connects to the DB to check it exists, which fails on a DB a cancelled DROP
+        // left invalid, and its command timeout is the DbContext's 30 s, while DROP DATABASE waits for
+        // a forced checkpoint that can take longer than that on a loaded CI machine (#5340)
+        var builder = new NpgsqlConnectionStringBuilder(connectionString) {
+            Pooling = false,
+            CommandTimeout = DropDbCommandTimeout,
+        };
+        var dbName = builder.Database;
+        builder.Database = "postgres";
+        // As EnsureDeleted does: pooled connections to the dropped DB are dead once FORCE terminates them
+        NpgsqlConnection.ClearAllPools();
+        var connection = new NpgsqlConnection(builder.ConnectionString);
+        await using var _ = connection.ConfigureAwait(false);
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        var command = new NpgsqlCommand($"DROP DATABASE IF EXISTS \"{dbName}\" WITH (FORCE)", connection);
+        await using var __ = command.ConfigureAwait(false);
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 }
