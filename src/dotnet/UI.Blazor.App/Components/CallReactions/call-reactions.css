@@ -23,7 +23,7 @@
     left: var(--left);
     translate: calc(-1 * var(--left)) 0;
     will-change: transform, opacity;
-    animation: callReactionFloat 3s ease-out forwards;
+    animation: callReactionFloat 5s ease-out forwards;
 }
 .call-reactions-overlay .c-emoji {
     @apply w-12 h-12;
@@ -48,7 +48,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
     .call-reactions-overlay .c-reaction {
-        animation: callReactionFade 3s linear forwards;
+        animation: callReactionFade 5s linear forwards;
     }
     @keyframes callReactionFade {
         0%, 100% { opacity: 0; }
