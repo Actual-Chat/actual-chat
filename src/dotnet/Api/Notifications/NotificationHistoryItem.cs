@@ -18,15 +18,14 @@ public sealed partial record NotificationHistoryItem(
     [DataMember(Order = 8), Key(8)] public NotificationId? NotificationId { get; init; }
 
     public static bool IsLoggedKind(NotificationKind kind)
-        // Message (a row per incoming message in every subscribed chat) and SpeechStarted are
-        // chat traffic, not something addressed to the user, so they never reach the log.
+        // Message and SpeechStarted are chat traffic, not addressed to the user; JoinRequest is a live
+        // count the request queue shows, so a logged copy would only go stale. None reaches the log.
         => kind is NotificationKind.Mention
             or NotificationKind.Reply
             or NotificationKind.Reaction
             or NotificationKind.Attention
             or NotificationKind.Thread
             or NotificationKind.Invitation
-            or NotificationKind.JoinRequest
             or NotificationKind.Conversation
             or NotificationKind.IncomingCall;
 }

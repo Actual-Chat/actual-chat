@@ -24,7 +24,7 @@
         <div class="c-buttons">
             <NavbarButtons/>
         </div>
-        @if (m.IsActive && (m.HasUnread || m.HasRetained || m.HasReactions || m.HasHistory)) {
+        @if (m.IsActive && m.HasAny) {
             <NavbarGroupSelectionButton
                 Class="create-btn"
                 Id="@NavbarGroupIds.Unread"
@@ -34,7 +34,7 @@
                     <i class="icon-notify-bell text-2xl font-medium"></i>
                 </ChildContent>
                 <BadgeContent>
-                    @if (m.HasUnread || m.HasReactions) {
+                    @if (m.HasUnread || m.HasReactions || m.HasJoinRequests) {
                         <Badge Class="c-unread-dot" Color="bg-danger"/>
                     }
                 </BadgeContent>
@@ -66,27 +66,29 @@
         if (account.IsGuest || !account.IsActive())
             return new();
 
-        // Four independent lookups behind one badge row
+        // Independent lookups behind one badge row
         var chatByIdTask = ChatListUI.ListUnordered(null, ChatListFilter.Unread, cancellationToken);
         var expiringTask = NotificationsPanelUI.GetExpiring(ChatListFilter.Unread.Id, cancellationToken);
         var reactedChatIdsTask = NotificationsUI.ListReactedChatIds(cancellationToken);
         var hasHistoryTask = NotificationsUI.HasAnyHistory(cancellationToken);
+        var joinRequestGroupsTask = ChatListUI.ListJoinRequestGroups(null, cancellationToken);
         var chatById = await chatByIdTask.ConfigureAwait(false);
         var expiring = await expiringTask.ConfigureAwait(false);
         var reactedChatIds = await reactedChatIdsTask.ConfigureAwait(false);
         var hasHistory = await hasHistoryTask.ConfigureAwait(false);
-        return new(true, chatById.Count > 0, expiring.Count > 0, reactedChatIds.Count > 0, hasHistory);
+        var joinRequestGroups = await joinRequestGroupsTask.ConfigureAwait(false);
+        return new(true, chatById.Count > 0, expiring.Count > 0, reactedChatIds.Count > 0, hasHistory,
+            joinRequestGroups.Count > 0);
     }
 
     protected override void OnAfterRender(bool firstRender) {
         var m = State.Value;
         // The Unread group stays selected while the panel still retains recently-read chats;
-        // once there's nothing unread, retained, reacted or logged, we fall back to Chats.
-        if (_hadAny && !m.HasUnread && !m.HasRetained && !m.HasReactions && !m.HasHistory
-            && NavbarUI.SelectedGroupId == NavbarGroupIds.Unread)
+        // once there's nothing unread, retained, reacted, logged or requested, we fall back to Chats.
+        if (_hadAny && !m.HasAny && NavbarUI.SelectedGroupId == NavbarGroupIds.Unread)
             NavbarUI.SelectGroup(NavbarGroupIds.Chats, false);
 
-        _hadAny = m.IsActive && (m.HasUnread || m.HasRetained || m.HasReactions || m.HasHistory);
+        _hadAny = m.IsActive && m.HasAny;
     }
 
     // Nested types
@@ -96,5 +98,9 @@
         bool HasUnread = false,
         bool HasRetained = false,
         bool HasReactions = false,
-        bool HasHistory = false);
+        bool HasHistory = false,
+        bool HasJoinRequests = false)
+    {
+        public bool HasAny => HasUnread || HasRetained || HasReactions || HasHistory || HasJoinRequests;
+    }
 }

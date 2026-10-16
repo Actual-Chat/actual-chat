@@ -13,6 +13,7 @@ public class NotificationHistoryItemTest(ITestOutputHelper @out) : TestBase(@out
     [InlineData(NotificationKind.IncomingCall, true)]
     [InlineData(NotificationKind.Message, false)]
     [InlineData(NotificationKind.SpeechStarted, false)]
+    [InlineData(NotificationKind.JoinRequest, false)]
     [InlineData(NotificationKind.None, false)]
     [InlineData(NotificationKind.Invalid, false)]
     public void IsLoggedKindShouldMatchTheSpec(NotificationKind kind, bool isLogged)
