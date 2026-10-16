@@ -465,6 +465,50 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
     }
 
     [Fact]
+    public async Task ACloseRacingTheCallsEndShouldMaterializeACardCoveringItsEntry()
+    {
+        // The other party's client stops its media as soon as it hears the call ended, and that leave can
+        // close the session before the end has written the entry - the card then stops one lid short of it.
+        // CallTailFlow is 5 s out, so every card checked here is still the one the close made.
+
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = (LiveSessionsBackend)tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        var shortCards = new List<string>();
+
+        // act - the leave's offset is swept, as the window is a few Redis round trips; 2 ms hit it on the host
+        for (var i = 0; i < 48; i++) {
+            var offsetMs = i % 16;
+            await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+            await backend.AcceptCall(chatId, alice.Id, default);
+            await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, true, default);
+            await backend.SetParticipation(chatId, bob.Id, ParticipationKind.Record, true, default);
+            var connected = await backend.GetState(chatId, default);
+            await tester.CreateTextEntry(chatId, "hi");
+            await backend.SetParticipation(chatId, alice.Id, ParticipationKind.Record, false, default);
+            var endTask = Task.Run(async () =>
+                await backend.EnforceCallLeaveGrace(chatId).ConfigureAwait(false));
+            await Task.Delay(offsetMs);
+            var leaveTask = Task.Run(async () => await backend
+                .SetParticipation(chatId, bob.Id, ParticipationKind.Record, false, default)
+                .ConfigureAwait(false));
+            await Task.WhenAll(endTask, leaveTask);
+
+            var callEntries = await ReadCallEntries(tester, chatId);
+            var callEntryLid = callEntries[0].LocalId;
+            var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
+            var card = await conversations.Get(conversationId, default);
+            if (card is null || !card.EntryLidRange.Contains(callEntryLid))
+                shortCards.Add($"offset {offsetMs} ms: card {card?.EntryLidRange.Format()}, entry #{callEntryLid}");
+        }
+
+        // assert
+        shortCards.Should().BeEmpty("a call's card must cover its own entry from the moment it is materialized");
+    }
+
+    [Fact]
     public async Task AMessageWrittenAfterTheCallShouldStayOutsideIt()
     {
         // The test of belonging is when the speech started, and a message written after the hang-up

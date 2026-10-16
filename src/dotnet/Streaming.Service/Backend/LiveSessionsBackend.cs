@@ -67,6 +67,8 @@ public partial class LiveSessionsBackend : ShardedComputeServiceBase, ILiveSessi
     private readonly RedisMultiHashMap<ParticipationInfo> _redisParticipants;
     private readonly RedisMultiHashMap<CallInvite> _redisInvites;
     private readonly AsyncLockSet<ChatId> _changeLocks = new(LockReentryMode.CheckedFail);
+    // Each claimed call's end until its entry is written; see CloseCallSession
+    private readonly ConcurrentDictionary<ChatId, Task> _callEndTasks = new();
     private long _lastCallLocalId;
 
     private IAuthorsBackend AuthorsBackend { get; }
