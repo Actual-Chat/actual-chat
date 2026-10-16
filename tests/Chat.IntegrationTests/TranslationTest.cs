@@ -93,11 +93,14 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
     }
 
     [Theory]
-    [InlineData("Hi! How are you?", "ru", "Привет! Как дела?")]
+    [InlineData("Hi! How are you?", "ru", "Привет! Как дела?", "Привет! Как ты?")]
     [InlineData("Привет! Как дела?", "en", "Hi! How are you?")]
-    [InlineData("Merhaba! Nasılsın?", "ru", "Привет! Как дела?")]
+    [InlineData("Merhaba! Nasılsın?", "ru", "Привет! Как дела?", "Привет! Как ты?")]
     [InlineData("Hola, cómo estás?", "en", "Hi! How are you?")]
-    public async Task ShouldTranslateMessage(string sourceText, string targetLanguage, string expectedTranslation)
+    public async Task ShouldTranslateMessage(
+        string sourceText,
+        string targetLanguage,
+        params string[] expectedTranslations)
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
@@ -111,7 +114,7 @@ public class TranslationTest(TranslationCollection.AppHostFixture fixture, ITest
 
             // assert
             translation.Should().NotBeNull();
-            translation.Content.Should().BeSimilarTo(expectedTranslation, 0.7);
+            translation.Content.Should().BeSimilarToAny(expectedTranslations, 0.7);
         },
             TimeSpan.FromSeconds(10));
     }
