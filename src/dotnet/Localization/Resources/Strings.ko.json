@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "다른 사진",
   "Banner_NotInContacts": "이 사용자는 아직 연락처에 없습니다",
   "Banner_AddToContacts": "연락처에 추가",
-  "Banner_PttAllow": "이 채팅은 푸시 투 토크 모드입니다. 내 푸시 투 토크 목록에 추가할까요?",
+  "Banner_PttAllow": "이 채팅의 푸시 투 토크 모드를 내 기기에서 사용할까요?",
   "Banner_PttAdd": "추가",
   "Banner_PttMuted": "푸시 투 토크 음소거 남은 시간",
   "Banner_PttUnmute": "음소거 해제",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "멤버 추가",
 
   "Common_Pause": "일시정지",
+
+  "Common_TurnOff": "끄기",
   "Common_Hide": "숨기기",
   "Common_Show": "보기",
   "Common_Open": "열기",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "설정에서 켜기",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "모두에게 일시 중지하기",
-  "Ptt_PauseConfirmTitle": "푸시 투 토크 모드를 일시 중지할까요?",
+  "Ptt_TurnOffTitle": "푸시 투 토크 모드를 끌까요?",
+  "Ptt_TurnOffCaption": "모든 사람의 푸시 투 토크 모드가 종료됩니다. 다시 켜면 각 멤버가 채팅을 자신의 목록에 다시 추가해야 합니다.",
   "Ptt_PauseConfirmText": "일시 중지된 동안에는 이 채팅의 누구도 푸시 투 토크 음성을 받지 않습니다. 채팅은 멤버의 목록에 그대로 남습니다.",
   "Ptt_UseOnThisDevice": "이 기기에서 푸시 투 토크 사용",
   "Ptt_UseOnThisDeviceCaption": "끄면 이 기기는 푸시 투 토크 음성으로 깨어나거나 재생·전송하지 않습니다.",

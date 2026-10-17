@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Probaj drugu",
   "Banner_NotInContacts": "Ovaj korisnik još nije na vašoj listi kontakata",
   "Banner_AddToContacts": "Dodajte u kontakte",
-  "Banner_PttAllow": "Ovaj chat je u načinu Pritisni i govori. Dodati ga na vašu listu Pritisni i govori?",
+  "Banner_PttAllow": "Koristiti način Pritisni i govori ovog chata na vašim uređajima?",
   "Banner_PttAdd": "Dodaj",
   "Banner_PttMuted": "Pritisni i govori je utišan na",
   "Banner_PttUnmute": "Uključi zvuk",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Dodajte članove",
 
   "Common_Pause": "Pauziraj",
+
+  "Common_TurnOff": "Isključite",
   "Common_Hide": "Sakrijte",
   "Common_Show": "Prikažite",
   "Common_Open": "Otvorite",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "Uključite ga u Postavkama",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Pauzirajte za sve",
-  "Ptt_PauseConfirmTitle": "Pauzirati način Pritisni i govori?",
+  "Ptt_TurnOffTitle": "Isključiti način rada „Pritisni i govori“?",
+  "Ptt_TurnOffCaption": "Način rada „Pritisni i govori“ prestaje za sve. Ako se ponovo uključi, svaki član mora ponovo dodati chat na svoju listu.",
   "Ptt_PauseConfirmText": "Dok je pauziran, niko u ovom chatu neće primati glas Pritisni i govori. Chat ostaje na listama članova.",
   "Ptt_UseOnThisDevice": "Koristite Pritisni i govori na ovom uređaju",
   "Ptt_UseOnThisDeviceCaption": "Kada je isključeno, ovaj uređaj se neće buditi, reproducirati ni slati glas putem Pritisni i govori.",

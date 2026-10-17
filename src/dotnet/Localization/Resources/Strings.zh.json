@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "换一张",
   "Banner_NotInContacts": "该用户还不在你的联系人列表中",
   "Banner_AddToContacts": "添加到联系人",
-  "Banner_PttAllow": "此聊天处于按住说话模式。要将其添加到你的按住说话列表吗？",
+  "Banner_PttAllow": "要在你的设备上使用此聊天的按住说话模式吗？",
   "Banner_PttAdd": "添加",
   "Banner_PttMuted": "按住说话已静音，剩余",
   "Banner_PttUnmute": "取消静音",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "添加成员",
 
   "Common_Pause": "暂停",
+
+  "Common_TurnOff": "关闭",
   "Common_Hide": "隐藏",
   "Common_Show": "显示",
   "Common_Open": "打开",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "在设置中开启",
   "Ptt_DeviceOff_Suffix": "。",
   "Ptt_PauseForEveryone": "为所有人暂停",
-  "Ptt_PauseConfirmTitle": "暂停按住说话模式？",
+  "Ptt_TurnOffTitle": "关闭按住说话模式？",
+  "Ptt_TurnOffCaption": "所有人的按住说话模式都会结束。如果再次开启，每位成员都需要重新将此聊天添加到自己的列表中。",
   "Ptt_PauseConfirmText": "暂停期间，此聊天中的任何人都不会收到按住说话语音。聊天仍保留在成员的列表中。",
   "Ptt_UseOnThisDevice": "在此设备上使用按住说话",
   "Ptt_UseOnThisDeviceCaption": "关闭后，此设备不会因按住说话语音而唤醒、播放或发送。",

@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Іншу",
   "Banner_NotInContacts": "Цього користувача ще немає у вашому списку контактів",
   "Banner_AddToContacts": "Додати до контактів",
-  "Banner_PttAllow": "Цей чат у режимі «Натисни і говори». Додати його до вашого списку «Натисни і говори»?",
+  "Banner_PttAllow": "Використовувати режим «Натисни і говори» цього чату на ваших пристроях?",
   "Banner_PttAdd": "Додати",
   "Banner_PttMuted": "Push-to-Talk вимкнено ще на",
   "Banner_PttUnmute": "Увімкнути звук",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Додати учасників",
 
   "Common_Pause": "Пауза",
+
+  "Common_TurnOff": "Вимкнути",
   "Common_Hide": "Сховати",
   "Common_Show": "Показати",
   "Common_Open": "Відкрити",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "Увімкніть у налаштуваннях",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Призупинити для всіх",
-  "Ptt_PauseConfirmTitle": "Призупинити режим «Натисни і говори»?",
+  "Ptt_TurnOffTitle": "Вимкнути режим Push-to-Talk?",
+  "Ptt_TurnOffCaption": "Режим Push-to-Talk вимкнеться для всіх. Якщо його знову ввімкнути, кожен учасник має знову додати чат до свого списку.",
   "Ptt_PauseConfirmText": "Поки режим призупинено, ніхто в цьому чаті не отримуватиме голос «Натисни і говори». Чат залишиться у списках учасників.",
   "Ptt_UseOnThisDevice": "Використовувати Push-to-Talk на цьому пристрої",
   "Ptt_UseOnThisDeviceCaption": "Коли вимкнено, цей пристрій не прокидатиметься, не відтворюватиме й не передаватиме голос Push-to-Talk.",

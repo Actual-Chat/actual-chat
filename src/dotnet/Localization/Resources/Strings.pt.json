@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Tentar outra",
   "Banner_NotInContacts": "Este usuário ainda não está na sua lista de contatos",
   "Banner_AddToContacts": "Adicionar aos contatos",
-  "Banner_PttAllow": "Este chat está no modo Pressione para falar. Adicioná-lo à sua lista de Pressione para falar?",
+  "Banner_PttAllow": "Usar o modo Pressione para falar deste chat nos seus dispositivos?",
   "Banner_PttAdd": "Adicionar",
   "Banner_PttMuted": "Pressione para falar está silenciado por",
   "Banner_PttUnmute": "Reativar",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Adicionar membros",
 
   "Common_Pause": "Pausar",
+
+  "Common_TurnOff": "Desativar",
   "Common_Hide": "Ocultar",
   "Common_Show": "Mostrar",
   "Common_Open": "Abrir",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "Ative nos Ajustes",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Pausar para todos",
-  "Ptt_PauseConfirmTitle": "Pausar o modo Pressione para falar?",
+  "Ptt_TurnOffTitle": "Desativar o modo Pressione para falar?",
+  "Ptt_TurnOffCaption": "O modo Pressione para falar termina para todos. Se for ativado novamente, cada membro terá de adicionar o chat à sua lista outra vez.",
   "Ptt_PauseConfirmText": "Enquanto estiver pausado, ninguém neste chat receberá voz do Pressione para falar. O chat continua nas listas dos membros.",
   "Ptt_UseOnThisDevice": "Usar Pressione para falar neste dispositivo",
   "Ptt_UseOnThisDeviceCaption": "Quando desligado, este dispositivo não desperta, não reproduz nem transmite voz de Pressione para falar.",

@@ -73,21 +73,20 @@
         _isChanging = true;
         try {
             var chat = m.Chat;
+            bool? isPause = null;
             if (!isEnabled) {
-                var isConfirmed = false;
-                var confirmation = new ConfirmModal.Model(false, L.Ptt_PauseConfirmText, () => isConfirmed = true) {
-                    Title = L.Ptt_PauseConfirmTitle,
-                    ConfirmButtonText = L.Ptt_PauseForEveryone,
-                };
-                var modalRef = await ModalUI.Show(confirmation).ConfigureAwait(true);
+                var modalRef = await ModalUI.Show(new PttTurnOffModal.Model(x => isPause = x)).ConfigureAwait(true);
                 await modalRef.WhenClosed.ConfigureAwait(true);
-                if (!isConfirmed)
+                if (isPause is null)
                     return;
             }
 
-            var diff = chat.PttEnabledAt is null
-                ? new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart }
-                : new ChatDiff { IsPttPaused = !isEnabled };
+            // Turning off clears the consent epoch, so re-enabling later asks every member again
+            var diff = isPause is false
+                ? new ChatDiff { PttEnabledAt = Option.Some<Moment?>(null), IsPttPaused = false }
+                : chat.PttEnabledAt is null
+                    ? new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart }
+                    : new ChatDiff { IsPttPaused = !isEnabled };
             var changeCmd = new Chats_Change {
                 Session = Session,
                 ChatId = chat.Id,

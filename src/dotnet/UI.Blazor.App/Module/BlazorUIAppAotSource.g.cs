@@ -418,6 +418,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttSupportModal>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttTurnOffModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.QrScanView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionBadge>();
@@ -1315,6 +1316,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttSupportModal), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttTurnOffModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.QrScanView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionBadge), AotTypeKind.Component),

@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Другую",
   "Banner_NotInContacts": "Этого пользователя ещё нет в вашем списке контактов",
   "Banner_AddToContacts": "Добавить в контакты",
-  "Banner_PttAllow": "Этот чат в режиме «Нажми и говори». Добавить его в ваш список «Нажми и говори»?",
+  "Banner_PttAllow": "Использовать режим «Нажми и говори» этого чата на ваших устройствах?",
   "Banner_PttAdd": "Добавить",
   "Banner_PttMuted": "Push-to-Talk заглушён ещё на",
   "Banner_PttUnmute": "Включить звук",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Добавить участников",
 
   "Common_Pause": "Пауза",
+
+  "Common_TurnOff": "Выключить",
   "Common_Hide": "Скрыть",
   "Common_Show": "Показать",
   "Common_Open": "Открыть",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "Включите в настройках",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Приостановить для всех",
-  "Ptt_PauseConfirmTitle": "Приостановить режим «Нажми и говори»?",
+  "Ptt_TurnOffTitle": "Выключить режим Push-to-Talk?",
+  "Ptt_TurnOffCaption": "Режим Push-to-Talk выключится для всех. Если его снова включить, каждому участнику придётся заново добавить чат в свой список.",
   "Ptt_PauseConfirmText": "Пока режим приостановлен, никто в этом чате не будет получать голос «Нажми и говори». Чат останется в списках участников.",
   "Ptt_UseOnThisDevice": "Использовать Push-to-Talk на этом устройстве",
   "Ptt_UseOnThisDeviceCaption": "Когда выключено, это устройство не будет просыпаться, воспроизводить и передавать голос Push-to-Talk.",
