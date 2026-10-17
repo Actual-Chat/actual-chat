@@ -28,6 +28,10 @@ public sealed record HostInfo
     public bool IsProductionInstance => _isProductionInstanceLazy.Value;
     public bool IsStagingInstance => _isStagingInstanceLazy.Value;
     public bool IsDevelopmentInstance => _isDevelopmentInstanceLazy.Value;
+    public bool MustShowAllUI
+        // UI the host can't act on is still shown against the dev and local instances, so it can be
+        // checked anywhere. A MAUI dev build talks to dev, so it qualifies too - until it's switched to prod.
+        => BaseUrlKind is BaseUrlKind.Development or BaseUrlKind.Local;
 
     public HostInfo()
     {
