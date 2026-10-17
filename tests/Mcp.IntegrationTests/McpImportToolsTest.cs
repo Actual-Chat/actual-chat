@@ -378,6 +378,71 @@ public class McpImportToolsTest(McpCollection.AppHostFixture fixture, ITestOutpu
         ended.NonConsentingCount.Should().Be(1, "bob never consented");
     }
 
+    [Fact]
+    public async Task WipeHistoryShouldWorkOnlyDuringImport()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false);
+        var client = await CreateClient();
+        await WaitForJoinEntries(chatId, 1);
+        var postedId = await CallTool<long>(client, "post_message", new { chatId = chatId.Value, text = "old" });
+        var posted = await CallTool<McpListMessagesResult>(client, "list_messages", new { chatId = chatId.Value });
+        var postedAt = posted.Messages.Single(m => m.Id == postedId).CreatedAt;
+
+        // act
+        var beforeError = await CallToolExpectingError(client, "wipe_history",
+            new { chatId = chatId.Value, importId = "none" });
+        var session = await Start(client, chatId);
+        var wrongIdError = await CallToolExpectingError(client, "wipe_history",
+            new { chatId = chatId.Value, importId = session.ImportId + "x" });
+        var wiped = await CallTool<McpWipeHistoryResult>(client, "wipe_history",
+            new { chatId = chatId.Value, importId = session.ImportId });
+        await Consent(client, chatId, session.ImportId);
+        var imported = await CallTool<McpImportMessagesResult>(client, "import_messages", new {
+            chatId = chatId.Value,
+            importId = session.ImportId,
+            batchId = "batch-1",
+            messages = new[] { new { authorUserId = alice.Id.Value, sentAt = postedAt - 1000, text = "older" } },
+        });
+        await End(client, chatId, session);
+        var afterError = await CallToolExpectingError(client, "wipe_history",
+            new { chatId = chatId.Value, importId = session.ImportId });
+        var messages = await CallTool<McpListMessagesResult>(client, "list_messages", new { chatId = chatId.Value });
+
+        // assert
+        beforeError.Should().Contain("get_import");
+        wrongIdError.Should().Contain("get_import");
+        afterError.Should().Contain("get_import", "the import has ended");
+        wiped.FromId.Should().Be(0);
+        wiped.EndId.Should().Be(postedId + 1);
+        wiped.IsPurged.Should().BeTrue();
+        imported.Items.Should().OnlyContain(x => x.Error == null,
+            "a wiped message no longer bounds the imported dates");
+        messages.Messages.Select(m => m.Text).Should().Equal(["older"],
+            "the wipe took everything, and an import posts no 'history wiped' entry");
+    }
+
+    [Fact]
+    public async Task RemoveMessageShouldWorkDuringImport()
+    {
+        // arrange
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false);
+        var client = await CreateClient();
+        await WaitForJoinEntries(chatId, 1);
+        var postedId = await CallTool<long>(client, "post_message", new { chatId = chatId.Value, text = "old" });
+        var session = await Start(client, chatId);
+
+        // act
+        await CallTool(client, "remove_message", new { chatId = chatId.Value, entryId = postedId });
+        var messages = await CallTool<McpListMessagesResult>(client, "list_messages", new { chatId = chatId.Value });
+        await End(client, chatId, session);
+
+        // assert
+        messages.Messages.Should().NotContain(m => m.Id == postedId);
+    }
+
     // Private methods
 
     private async Task<(AccountFull Alice, McpClient AliceMcp, AccountFull Bob, McpClient BobMcp, ChatId ChatId)>

@@ -11,9 +11,12 @@ public sealed class McpImportTools(IServiceProvider services)
 {
     private const int MaxPendingLimit = 100;
     private const int MaxStatusAttempts = 3;
+    private static readonly TimeSpan PurgeTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan PurgePollDelay = TimeSpan.FromMilliseconds(250);
 
     private IChatImports ChatImports { get; } = services.GetRequiredService<IChatImports>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private UrlMapper UrlMapper { get; } = services.GetRequiredService<UrlMapper>();
@@ -88,6 +91,45 @@ public sealed class McpImportTools(IServiceProvider services)
             GetScope(import),
             import.StartedBy?.Value,
             import.StartedAt.ToMcpMillis());
+    }
+
+    [McpServerTool(Name = "wipe_history", UseStructuredContent = true)]
+    [Description("Removes the chat's messages from `fromId` on - by default all of them - e.g. to replace " +
+        "them with the imported history. Owners only, and only while the import `importId` runs for this " +
+        "chat. Cannot be undone, and posts no 'history wiped' message. It returns once the messages are " +
+        "purged (`isPurged`), after which import_messages accepts dates as old as theirs; `isPurged` false " +
+        "means the purge is still running, and import_messages may reject such dates until it ends - resend " +
+        "a rejected batch with a new `batchId`, as a resent one returns its earlier result. Do not call it " +
+        "again after importing: it would wipe the imported messages too. If the import ends while this " +
+        "runs, it wipes the history all the same. The wiped ids are `fromId` to `endId` - 1; none if the " +
+        "two are equal.")]
+    public async Task<McpWipeHistoryResult> WipeHistory(
+        [Description("A group chat or a Place chat, not a root chat.")] string chatId,
+        [Description("Import id from get_import or start_import.")] string importId,
+        [Description("Id of the first message to wipe; 0 wipes the whole history.")] long fromId = 0,
+        CancellationToken cancellationToken = default)
+    {
+        var parsedChatId = ChatId.Parse(chatId);
+        var import = await ChatImports.Get(Session, parsedChatId, cancellationToken).ConfigureAwait(false);
+        // The API lets owners wipe at any time; through MCP, only an import may
+        if (import?.ImportId.Value != importId)
+            throw StandardError.Constraint(
+                "History can be wiped only while the import you pass runs for this chat - see get_import.");
+
+        var command = new Chats_WipeHistory { Session = Session, ChatId = parsedChatId, MinEntryLid = fromId };
+        var wipedRange = await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+        var deadline = CpuTimestamp.Now + PurgeTimeout;
+        while (true) {
+            var hasUnpurgedEntries = await ChatsBackend
+                .HasUnpurgedEntries(parsedChatId, wipedRange, cancellationToken)
+                .ConfigureAwait(false);
+            if (!hasUnpurgedEntries)
+                return new McpWipeHistoryResult(wipedRange.Start, wipedRange.End, true);
+            if (CpuTimestamp.Now > deadline)
+                return new McpWipeHistoryResult(wipedRange.Start, wipedRange.End, false);
+
+            await Task.Delay(PurgePollDelay, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     [McpServerTool(Name = "consent_to_import", UseStructuredContent = true)]

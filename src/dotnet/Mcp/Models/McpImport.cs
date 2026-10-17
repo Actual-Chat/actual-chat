@@ -24,6 +24,8 @@ public sealed record McpImportSession(
 
 public sealed record McpImportEndResult(int NonConsentingCount);
 
+public sealed record McpWipeHistoryResult(long FromId, long EndId, bool IsPurged);
+
 public sealed record McpImportMessage(
     string AuthorUserId,
     long SentAt,
