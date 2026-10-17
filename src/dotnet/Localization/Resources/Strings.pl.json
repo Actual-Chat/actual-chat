@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Autostart jest włączony przez zasady grupy lub komputera.",
   "NativeApp_AutoStartDisabledByPolicy": "Autostart jest wyłączony przez zasady grupy lub komputera albo nie jest obsługiwany na tym urządzeniu.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Autostart aplikacji {0} jest wyłączony w Menedżerze zadań. Możesz go ponownie włączyć na karcie Uruchamianie.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Zezwól na {0} w Ustawieniach systemowych > Ogólne > Rzeczy otwierane podczas logowania.",
 
   "ApiKeyCreate_Title": "Utwórz klucz API",
   "ApiKeyCreate_Name": "Nazwa",

@@ -368,6 +368,8 @@ public static class LocalizedStringsLocalizerExt
         public string NativeApp_AutoStartDisabledByPolicy => l["NativeApp_AutoStartDisabledByPolicy"].Value;
         public string NativeApp_AutoStartDisabledInTaskManager_Format(object arg0)
             => l["NativeApp_AutoStartDisabledInTaskManager_Format", arg0].Value;
+        public string NativeApp_AutoStartRequiresApproval_Format(object arg0)
+            => l["NativeApp_AutoStartRequiresApproval_Format", arg0].Value;
 
         public string ApiKeyCreate_Title => l["ApiKeyCreate_Title"].Value;
         public string ApiKeyCreate_Name => l["ApiKeyCreate_Name"].Value;

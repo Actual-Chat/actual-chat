@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "ऑटो-स्टार्ट ग्रुप/मशीन पॉलिसी द्वारा चालू किया गया है।",
   "NativeApp_AutoStartDisabledByPolicy": "ऑटो-स्टार्ट ग्रुप/मशीन पॉलिसी द्वारा बंद है या इस डिवाइस पर समर्थित नहीं है।",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "{0} का ऑटो-स्टार्ट Task Manager में बंद है। आप इसे उसके Startup टैब से फिर चालू कर सकते हैं।",
+  "NativeApp_AutoStartRequiresApproval_Format": "सिस्टम सेटिंग्स > सामान्य > लॉगिन आइटम में {0} को अनुमति दें।",
 
   "ApiKeyCreate_Title": "API कुंजी बनाएँ",
   "ApiKeyCreate_Name": "नाम",

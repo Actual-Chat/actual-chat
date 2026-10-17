@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Automatsko pokretanje je uključeno pravilima grupe ili računaloa.",
   "NativeApp_AutoStartDisabledByPolicy": "Automatsko pokretanje je isključeno pravilima grupe ili računaloa, ili nije podržano na ovom uređaju.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Automatsko pokretanje aplikacije {0} isključeno je u Upravitelju zadataka. Možete ga ponovo uključiti na kartici Pokretanje.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Dozvolite {0} u Postavkama sustava > Općenito > Stavke za prijavu.",
 
   "ApiKeyCreate_Title": "Stvorite API ključ",
   "ApiKeyCreate_Name": "Naziv",

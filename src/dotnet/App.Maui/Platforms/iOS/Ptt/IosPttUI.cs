@@ -34,7 +34,7 @@ public class IosPttUI : UIWorkerBase<AppUIHub>
             IosPtt.SetTransmitEnabled(settings.IsPttTransmitEnabled ?? true);
             // Asked for here, where arming is a deliberate act with the app up: a wake can't
             // prompt from a locked screen, and without the grant PTT can't tell Sleep Focus is on.
-            IosFocusStatus.EnsureAuthorized();
+            AppleFocusStatus.EnsureAuthorized();
             IosPtt.EnsureJoined();
         }
     }

@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Jalan otomatis diaktifkan oleh kebijakan grup atau perangkat.",
   "NativeApp_AutoStartDisabledByPolicy": "Jalan otomatis dinonaktifkan oleh kebijakan grup atau perangkat, atau tidak didukung di perangkat ini.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Jalan otomatis {0} dinonaktifkan di Task Manager. Anda bisa mengaktifkannya lagi di tab Startup.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Izinkan {0} di Pengaturan Sistem > Umum > Item Masuk.",
 
   "ApiKeyCreate_Title": "Buat kunci API",
   "ApiKeyCreate_Name": "Nama",

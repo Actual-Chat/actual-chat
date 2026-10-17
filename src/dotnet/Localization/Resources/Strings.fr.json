@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Le démarrage automatique est activé par une stratégie de groupe ou de l'appareil.",
   "NativeApp_AutoStartDisabledByPolicy": "Le démarrage automatique est désactivé par une stratégie de groupe ou de l'appareil, ou n'est pas pris en charge sur cet appareil.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Le démarrage automatique de {0} est désactivé dans le Gestionnaire des tâches. Vous pouvez le réactiver dans l'onglet Démarrage.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Autorisez {0} dans Réglages Système > Général > Ouverture.",
 
   "ApiKeyCreate_Title": "Créer une clé API",
   "ApiKeyCreate_Name": "Nom",

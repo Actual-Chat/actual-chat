@@ -26,6 +26,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly StoredState<Box<bool>> _isPttEnabledOnDevice;
+    private readonly MutableState<bool> _isDeviceQuiet;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
     // Boxed because Volatile.Read/Write take a reference; null means "no override".
     private object? _recordingIdleDurationBox;
@@ -96,6 +97,9 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
                 InitialValue = Box.New(false),
                 Category = StateCategories.Get(type, nameof(IsPttEnabledOnDevice)),
             });
+        _isDeviceQuiet = stateFactory.NewMutable(
+            false,
+            StateCategories.Get(type, nameof(GetChatsYouNeedToKeepListeningTo)));
         _audioFocusRequester = new AudioFocusRequester(AudioFocusMode.Playback, OnAudioFocusLost);
         _listeningFocusRequester = new AudioFocusRequester(AudioFocusMode.Listening, OnListeningFocusLost);
         _isListeningPausedByFocus = stateFactory.NewMutable(
@@ -139,10 +143,15 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     }
 
     [ComputeMethod(MinCacheDuration = 300)] // Synced
-    public virtual Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
-        // A PTT chat wakes you to hear someone, so it must also be listened to -
-        // arming alone starts no player.
-        => GetPttChatIds(cancellationToken);
+    public virtual async Task<List<ChatId>> GetChatsYouNeedToKeepListeningTo(CancellationToken cancellationToken)
+    {
+        // A PTT chat wakes you to hear someone, so it must also be listened to - arming alone starts
+        // no player. A desktop OS asking for quiet (Do Not Disturb, a Focus) suspends exactly that.
+        if (await _isDeviceQuiet.Use(cancellationToken).ConfigureAwait(false))
+            return [];
+
+        return await GetPttChatIds(cancellationToken).ConfigureAwait(false);
+    }
 
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<ChatId>> GetPttChatIds(CancellationToken cancellationToken)

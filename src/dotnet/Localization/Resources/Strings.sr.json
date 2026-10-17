@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Аутоматско покретање је укључено правилима групе или рачунара.",
   "NativeApp_AutoStartDisabledByPolicy": "Аутоматско покретање је искључено правилима групе или рачунара, или није подржано на овом уређају.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Аутоматско покретање апликације {0} искључено је у Управитељу задатака. Можете га поново укључити на картици Покретање.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Дозволите {0} у Поставкама система > Опћенито > Ставке за пријаву.",
 
   "ApiKeyCreate_Title": "Креирајте API кључ",
   "ApiKeyCreate_Name": "Назив",

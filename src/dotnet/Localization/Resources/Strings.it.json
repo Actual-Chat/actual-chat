@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "L'avvio automatico è abilitato da criteri di gruppo o del dispositivo.",
   "NativeApp_AutoStartDisabledByPolicy": "L'avvio automatico è disabilitato da criteri di gruppo o del dispositivo, oppure non è supportato su questo dispositivo.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "L'avvio automatico di {0} è disabilitato in Gestione attività. Puoi riabilitarlo nella scheda Avvio.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Consenti {0} in Impostazioni di Sistema > Generali > Elementi login.",
 
   "ApiKeyCreate_Title": "Crea chiave API",
   "ApiKeyCreate_Name": "Nome",

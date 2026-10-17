@@ -16,6 +16,8 @@ public partial class ChatAudioUI
     private static readonly TimeSpan ListeningFocusLinger = TimeSpan.FromSeconds(4);
     private static readonly int MaxStopRecordingTryCount = 3;
     private static readonly TimeSpan DiagnosticsTimeout = TimeSpan.FromSeconds(5);
+    // Neither Windows nor macOS raises an event an app can watch for Do Not Disturb or a Focus
+    private static readonly TimeSpan DesktopPttPlatformSyncPeriod = TimeSpan.FromSeconds(3);
 
     protected override async Task OnRun(CancellationToken cancellationToken)
     {
@@ -30,6 +32,7 @@ public partial class ChatAudioUI
             AsyncChain.From(NavigateOnForeground),
             AsyncChain.From(StopChatsInMaintenance),
             AsyncChain.From(SyncListeningWithPttArming),
+            AsyncChain.From(SyncDesktopPttPlatform),
             AsyncChain.From(NotifyOnExpiredPttConsents),
             AsyncChain.From(InvalidateActiveChatDependencies),
             AsyncChain.From(InvalidateReplayDependencies),
@@ -104,6 +107,36 @@ public partial class ChatAudioUI
                     await SetListeningState(chatId, true).ConfigureAwait(false);
             }
             oldChatIds = chatIds;
+        }
+    }
+
+    private async Task SyncDesktopPttPlatform(CancellationToken cancellationToken)
+    {
+        if (Hub.Services.GetService<DesktopPttPlatform>() is not { } platform)
+            return;
+
+        var wasArmed = false;
+        try {
+            while (true) {
+                // The armed set, not the keep-listening one: quiet empties the latter, and reading it
+                // here would end the quiet it caused
+                var pttChatIds = await GetPttChatIds(cancellationToken).ConfigureAwait(false);
+                var isArmed = pttChatIds.Count != 0;
+                if (isArmed != wasArmed) {
+                    platform.OnIsArmedChanged(isArmed);
+                    wasArmed = isArmed;
+                }
+                var isQuiet = isArmed && platform.IsQuiet;
+                if (_isDeviceQuiet.Value != isQuiet) {
+                    Log.LogInformation("SyncDesktopPttPlatform: the OS asks for quiet: {IsQuiet}", isQuiet);
+                    _isDeviceQuiet.Value = isQuiet;
+                }
+                await Clocks.CpuClock.Delay(DesktopPttPlatformSyncPeriod, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        finally {
+            if (wasArmed)
+                platform.OnIsArmedChanged(false);
         }
     }
 
