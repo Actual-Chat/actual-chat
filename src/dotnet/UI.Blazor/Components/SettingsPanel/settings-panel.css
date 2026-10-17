@@ -145,13 +145,47 @@ body.narrow .settings-panel > .c-tabs .c-footer.expanded {
     @apply custom-scrollbar;
     @apply bg-01;
 }
+/* No bottom padding: the safe-area overlay at the end of .tab-inner is the bottom spacer */
 body.wide .settings-tab {
     padding-top: var(--safe-area-top);
-    padding-bottom: var(--safe-area-bottom);
 }
 @media (min-width: 820px) {
     .settings-tab {
         overflow-y: auto;
+    }
+}
+/* Content scrolling under the bottom safe area fades and blurs out, as in the chat list. In narrow
+   .settings-tab-content scrolls, so the overlay sits absolute at the bottom of .settings-tab - set
+   explicitly, since the modal frame makes every such overlay sticky. */
+.settings-tab > .tab-inner > .safe-area-bottom-overlay {
+    @apply absolute;
+    background: linear-gradient(to bottom, transparent, var(--background-01));
+}
+/* The scroller has to reach the screen's bottom edge to pass under the safe area at all */
+body.narrow .settings-tab {
+    @apply pb-0;
+}
+/* In wide .settings-tab is the scroller itself: an absolute overlay would scroll away with the content,
+   and a sticky child of .settings-tab is confined to its viewport-tall box. .tab-inner spans the whole
+   scroll height, so a sticky overlay there stays put over the safe area while the content scrolls, and
+   at the end of the scroll it rests in its own space below the content - so the last row can still be
+   scrolled clear of the safe area. mt-auto keeps it at the bottom when the content is too short to scroll. */
+@media (min-width: 820px) {
+    /* No bottom padding: sticky offsets count from inside it, so it would lift the overlay off the edge.
+       The overlay takes over its 1rem as the gap after the content. */
+    .settings-tab {
+        @apply pb-0;
+        container-type: inline-size;
+    }
+    /* .tab-inner can be narrower than its content (3/5 of the pane), so the overlay takes the pane's width */
+    .settings-tab > .tab-inner > .safe-area-bottom-overlay {
+        @apply sticky flex-none self-center;
+        @apply mt-auto;
+        width: 100cqw;
+        height: calc(var(--safe-area-bottom) + 1rem);
+        left: auto;
+        right: auto;
+        bottom: 0;
     }
 }
 /* min-w-0: a flex item's default min-width is its content, so without this a wide child - a tab
@@ -219,8 +253,9 @@ body.hoverable .tile-btn:hover,
 body.narrow .settings-tab-content {
     padding-bottom: calc(0.5rem + var(--safe-area-bottom));
 }
+/* z-20: form labels inside inputs are absolute at z-10, and as later siblings they'd paint over it */
 .settings-tab-header {
-    @apply sticky top-0 z-10;
+    @apply sticky top-0 z-20;
     @apply ordinary-header;
     @apply px-4;
     @apply w-full md:w-100;
