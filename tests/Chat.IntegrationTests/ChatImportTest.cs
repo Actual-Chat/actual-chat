@@ -46,7 +46,10 @@ public sealed class ChatImportTest(ChatCollection.AppHostFixture fixture, ITestO
         entry.AuthorId.Should().Be((await Member.Authors.GetOwn(Member.Session, chatId, default))!.Id);
         entry.IsImported.Should().BeTrue();
         await FluentActions.Awaiting(() => Owner.CreateTextEntry(chatId, "blocked")).Should().ThrowAsync<Exception>();
-        await FluentActions.Awaiting(() => Owner.RemoveTextEntry(entry.Id)).Should().ThrowAsync<Exception>();
+        await FluentActions.Awaiting(() => Member.RemoveTextEntry(entry.Id)).Should()
+            .ThrowAsync<Exception>("only owners may remove messages during an import");
+        await Owner.RemoveTextEntry(entry.Id);
+        (await Owner.Chats.GetEntry(Owner.Session, entry.Id, default)).Should().BeNull();
         var summary = await Imports.GetConsentSummary(Owner.Session, chatId, 0, 5, default);
         summary.ConsentingCount.Should().Be(1);
         summary.NonConsentingUserIds.Should().Contain(owner.Id);
@@ -239,6 +242,39 @@ public sealed class ChatImportTest(ChatCollection.AppHostFixture fixture, ITestO
         author.HasLeft.Should().BeFalse();
         author.Id.Should().Be(authorId);
         await End(place.Id.RootChatId, import.ImportId);
+    }
+
+    [Fact]
+    public async Task OwnerShouldRemoveADepartedMembersPlaceChatMessageDuringAnImport()
+    {
+        // arrange
+        await Owner.SignInAsUniqueAlice();
+        var member = await Member.SignInAsUniqueBob();
+        var place = await Owner.CreatePlace(true, usersToInvite: [member]);
+        await Member.JoinPlace(place.Id);
+        var (chatId, _) = await Owner.CreateChat(false, placeId: place.Id);
+        await Owner.InviteToChat(chatId, member.Id);
+        var entry = await Member.CreateTextEntry(chatId, "posted before leaving");
+        await Member.LeaveChat(chatId);
+        // Both "joined" entries and the "left" one land asynchronously, in any order relative to the
+        // message, and one landing after the start fails it
+        var chatsBackend = Owner.AppServices.GetRequiredService<IChatsBackend>();
+        await TestWait.When(async ct => {
+            (await chatsBackend.GetMaxLid(chatId, true, ct)).Should().BeGreaterThanOrEqualTo(4);
+        });
+
+        var import = await Start(chatId);
+
+        // act
+        await Owner.RemoveTextEntry(entry.Id);
+
+        // assert
+        (await Owner.Chats.GetEntry(Owner.Session, entry.Id, default)).Should().BeNull();
+        var authors = Owner.AppServices.GetRequiredService<IAuthorsBackend>();
+        var author = await authors.GetByUserId(chatId, member.Id, RequestedAuthorKind.Full, default);
+        author!.HasLeft.Should().BeTrue("removing a message doesn't bring its author back");
+        (await authors.ListUserIds(chatId, default)).Should().NotContain(member.Id);
+        await End(chatId, import.ImportId);
     }
 
     [Fact]

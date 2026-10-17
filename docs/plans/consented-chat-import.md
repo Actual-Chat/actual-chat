@@ -15,10 +15,13 @@ Only current owners may import, only for current members with active consent. En
 invalidates further imports and consent without deleting imported data. Restarting
 requires fresh consent. Reject overlapping scopes and other maintenance operations.
 
-Assume history has been prepared before import. Never clear history on start or
-allow regular removal/reset during import. Regular posting, edits, removal and
-other content mutations are blocked for everyone, including owners. Only consent,
-import operations, reads and ending the session remain available for this workflow.
+Never clear history on start. Regular posting, edits and other content mutations
+are blocked for everyone, including owners. Only consent, import operations, reads,
+ending the session and two removals remain available: an owner may wipe the history
+(Chats_WipeHistory, which then posts no system entry) and remove messages. The purge
+handles both during the import; only retention waits for it to end, since it would
+expire the imported, old-dated entries. Through MCP, wipe_history works only during
+an import.
 
 ## Batches
 

@@ -153,9 +153,10 @@ public partial class ChatsBackend
         }
 
         var isRemoval = await IsRemovalPending(chatId, cancellationToken).ConfigureAwait(false);
-        // An import owns the chat's entries until it ends, so cleanup waits for it
-        if (!isRemoval && await MaintenancesBackend.IsImporting(chatId, cancellationToken).ConfigureAwait(false))
-            return 0;
+        // Retention would expire imported entries as they land, as their dates are old, so it waits
+        // for the import to end. The entries its owner wiped or removed go as usual.
+        var isImporting = !isRemoval
+            && await MaintenancesBackend.IsImporting(chatId, cancellationToken).ConfigureAwait(false);
 
         var wipeEntryLidRange = command.WipeEntryLidRange;
         ArgumentOutOfRangeException.ThrowIfNegative(wipeEntryLidRange.Start);
@@ -165,7 +166,7 @@ public partial class ChatsBackend
             throw StandardError.Constraint("The history cannot be cleared past the end of the chat.");
 
         var maxClearedEntryLid = isRemoval ? long.MaxValue : command.ClearUntilEntryLid;
-        if (!isRemoval && dbChat.RetentionPeriod is { } retention) {
+        if (!isRemoval && !isImporting && dbChat.RetentionPeriod is { } retention) {
             var cutoff = (Clocks.SystemClock.Now - retention).ToDateTime();
             // The first entry that outlives the cutoff - everything before it has expired
             var firstKeptEntryLid = await dbContext.ChatEntries
@@ -263,8 +264,10 @@ public partial class ChatsBackend
         // yet: eligibility is a clock comparison, and on a node whose clock trails the one that
         // stamped RemovedAt the grace period can look unfinished right when the resume fires.
         // A cleared entry that is still streaming waits for its stream to end the same way.
+        // An import keeps it polling as well: the author purges and retention it holds back resume
+        // only on the flow's periodic runs, as nothing resumes the flow when the import ends.
         var isIdle = !isRemoval && localIds.Length == 0 && conversationIds.Count == 0;
-        if (isIdle && dbChat.RetentionPeriod is null) {
+        if (isIdle && dbChat.RetentionPeriod is null && !isImporting) {
             var hasPendingEntries = await dbContext.ChatEntries
                 .AnyAsync(e => e.ChatId == chatId.Value && !e.IsRemovedAndPurged
                         && (e.IsRemoved || e.LocalId <= maxClearedEntryLid

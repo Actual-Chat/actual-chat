@@ -351,5 +351,6 @@ public sealed partial record Chats_WipeHistory : ApiCommand<Range<long>>
     [DataMember(Order = 2), Key(2)] public required ChatId ChatId { get; init; }
     // The first entry to wipe, 0 = the whole history. The last one is the chat's last entry
     // when the server gets this command, so messages posted after it stay.
+    // Allowed during an import, which posts no "history wiped" entry.
     [DataMember(Order = 3), Key(3)] public long MinEntryLid { get; init; }
 }
