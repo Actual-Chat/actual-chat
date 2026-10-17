@@ -14,7 +14,7 @@ public sealed record McpMediaRef(
 
 public sealed record McpUploadStatus(
     string UploadId,
-    string MediaId,
+    string? MediaId,
     long Offset,
     long Length,
     string Stage,

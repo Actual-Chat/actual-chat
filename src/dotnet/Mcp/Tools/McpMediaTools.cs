@@ -15,6 +15,7 @@ public sealed class McpMediaTools(IServiceProvider services)
 
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
+    private IChatsBackend ChatsBackend { get; } = services.GetRequiredService<IChatsBackend>();
     private IMedia MediaApi { get; } = services.GetRequiredService<IMedia>();
     private IMediaBackend MediaBackend { get; } = services.GetRequiredService<IMediaBackend>();
     private IUploads Uploads { get; } = services.GetRequiredService<IUploads>();
@@ -46,9 +47,10 @@ public sealed class McpMediaTools(IServiceProvider services)
 
     [McpServerTool(Name = "append_upload", UseStructuredContent = true)]
     [Description("Appends a chunk at `offset`. Returns the server-side offset after the call; if `offset` " +
-        "did not match the server's, nothing is written and the current offset is returned so you can resume.")]
+        "did not match the server's, nothing is written and the current offset is returned so you can resume. " +
+        "Works for uploads from begin_upload and begin_import_upload.")]
     public async Task<McpUploadStatus> AppendUpload(
-        [Description("Upload id from begin_upload.")] string uploadId,
+        [Description("Upload id from begin_upload or begin_import_upload.")] string uploadId,
         [Description("Byte offset this chunk starts at.")] long offset,
         [Description("Chunk bytes, base64-encoded; at most 1 MB decoded.")] string dataBase64,
         CancellationToken cancellationToken = default)
@@ -58,7 +60,7 @@ public sealed class McpMediaTools(IServiceProvider services)
         if (chunk.Length > MaxChunkLength)
             throw StandardError.Constraint($"Chunk is larger than {MaxChunkLength} bytes.");
 
-        var upload = await GetOwnUpload(parsedUploadId, cancellationToken).ConfigureAwait(false);
+        var upload = await GetOwnUpload(parsedUploadId, true, cancellationToken).ConfigureAwait(false);
         var serverOffset = await Uploads.GetOffset(Session, parsedUploadId, cancellationToken).ConfigureAwait(false);
         if (serverOffset != offset)
             return ToStatus(upload, serverOffset);
@@ -82,7 +84,7 @@ public sealed class McpMediaTools(IServiceProvider services)
         CancellationToken cancellationToken = default)
     {
         var parsedUploadId = UploadId.Parse(uploadId);
-        var upload = await GetOwnUpload(parsedUploadId, cancellationToken).ConfigureAwait(false);
+        var upload = await GetOwnUpload(parsedUploadId, false, cancellationToken).ConfigureAwait(false);
         return await Finish(upload, cancellationToken).ConfigureAwait(false);
     }
 
@@ -96,41 +98,19 @@ public sealed class McpMediaTools(IServiceProvider services)
         [Description("File name to store; defaults to the URL's last segment.")] string? fileName = null,
         CancellationToken cancellationToken = default)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !EgressHttpHandler.IsHttpUri(uri))
-            throw StandardError.Constraint("url must be an absolute http(s) URL.");
-
-        using var httpClient = HttpClientFactory.CreateClient(HttpClientName);
-        using var response = await httpClient
-            .GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-            .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
-        var name = fileName.NullIfEmpty()
-            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"').NullIfEmpty()
-            ?? uri.Segments[^1].Trim('/').NullIfEmpty()
-            ?? "file";
-        // Uploads_Create needs the length up front, so the body is buffered (bounded by the handler's response cap)
-        var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var file = await Download(HttpClientFactory, url, fileName, cancellationToken).ConfigureAwait(false);
         var (mediaId, uploadId) = await Begin(
-            name, contentType, bytes.Length, ParsePurpose(purpose), ChatId.ParseNullable(chatId), cancellationToken)
-            .ConfigureAwait(false);
-        for (var offset = 0; offset < bytes.Length; offset += MaxChunkLength) {
-            var chunk = bytes.AsSpan(offset, Math.Min(MaxChunkLength, bytes.Length - offset)).ToArray();
-            await Commander.Call(new Uploads_Append {
-                Session = Session,
-                UploadId = uploadId,
-                Offset = offset,
-                Chunk = chunk,
-            }, cancellationToken).ConfigureAwait(false);
-        }
-        var upload = await GetOwnUpload(uploadId, cancellationToken).ConfigureAwait(false);
+            file.FileName, file.ContentType, file.Data.Length, ParsePurpose(purpose), ChatId.ParseNullable(chatId),
+            cancellationToken).ConfigureAwait(false);
+        await AppendAll(Commander, Session, uploadId, file.Data, cancellationToken).ConfigureAwait(false);
+        var upload = await GetOwnUpload(uploadId, false, cancellationToken).ConfigureAwait(false);
         return await Finish(upload, cancellationToken).ConfigureAwait(false);
     }
 
     [McpServerTool(Name = "abort_upload", UseStructuredContent = true)]
-    [Description("Discards an unfinished upload.")]
+    [Description("Discards an unfinished upload, including one from begin_import_upload.")]
     public async Task AbortUpload(
-        [Description("Upload id from begin_upload.")] string uploadId,
+        [Description("Upload id from begin_upload or begin_import_upload.")] string uploadId,
         CancellationToken cancellationToken = default)
     {
         var command = new Uploads_Remove { Session = Session, UploadId = UploadId.Parse(uploadId) };
@@ -174,6 +154,47 @@ public sealed class McpMediaTools(IServiceProvider services)
             (id, key, page, ct) => Chats.GetLinkPeriod(Session, id, key, page, ct),
             item => item.ToMcpModel(),
             cancellationToken);
+
+    // Protected/internal methods
+
+    internal static async Task<DownloadedFile> Download(
+        IHttpClientFactory httpClientFactory, string url, string? fileName, CancellationToken cancellationToken)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || !EgressHttpHandler.IsHttpUri(uri))
+            throw StandardError.Constraint("url must be an absolute http(s) URL.");
+
+        using var httpClient = httpClientFactory.CreateClient(HttpClientName);
+        using var response = await httpClient
+            .GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var name = fileName.NullIfEmpty()
+            ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"').NullIfEmpty()
+            ?? uri.Segments[^1].Trim('/').NullIfEmpty()
+            ?? "file";
+        // Uploads_Create needs the length up front, so the body is buffered (bounded by the handler's response cap)
+        var data = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        return new DownloadedFile(name, contentType, data);
+    }
+
+    internal static async Task AppendAll(
+        ICommander commander,
+        Session session,
+        UploadId uploadId,
+        byte[] data,
+        CancellationToken cancellationToken)
+    {
+        for (var offset = 0; offset < data.Length; offset += MaxChunkLength) {
+            var appendCmd = new Uploads_Append {
+                Session = session,
+                UploadId = uploadId,
+                Offset = offset,
+                Chunk = data.AsSpan(offset, Math.Min(MaxChunkLength, data.Length - offset)).ToArray(),
+            };
+            await commander.Call(appendCmd, cancellationToken).ConfigureAwait(false);
+        }
+    }
 
     // Private methods
 
@@ -294,13 +315,25 @@ public sealed class McpMediaTools(IServiceProvider services)
         return media.ToMcpMediaRef(thumbnail, UrlMapper);
     }
 
-    private async Task<Upload> GetOwnUpload(UploadId uploadId, CancellationToken cancellationToken)
+    private async Task<Upload> GetOwnUpload(UploadId uploadId, bool allowImport, CancellationToken cancellationToken)
     {
-        // The backend read is unauthenticated, so ownership and origin are checked here
+        // The backend read is unauthenticated, so ownership and origin are checked here.
+        // An import upload (begin_import_upload) has no media until finish_import_upload creates it.
         var account = await Accounts.GetOwn(Session, cancellationToken).ConfigureAwait(false);
         var upload = await UploadsBackend.Get(uploadId, cancellationToken).ConfigureAwait(false);
-        if (upload is null || upload.UserId != account.Id || !upload.Tag.StartsWith(UploadTagPrefix))
-            throw StandardError.Upload.NotFound();
+        if (upload is null || upload.UserId != account.Id)
+            throw StandardError.Upload.NotFound("Upload not found.");
+
+        var importUpload = upload.HasChatEntryAttachmentTag()
+            ? await ChatsBackend
+                .GetImportUpload(upload.ExtractChatIdFromTag(), uploadId, cancellationToken)
+                .ConfigureAwait(false)
+            : null;
+        var isImport = importUpload is not null;
+        if (isImport && !allowImport)
+            throw StandardError.Constraint("This is an import upload: finish it with finish_import_upload.");
+        if (!isImport && !upload.Tag.StartsWith(UploadTagPrefix))
+            throw StandardError.Upload.NotFound("Upload not found.");
 
         return upload;
     }
@@ -309,8 +342,8 @@ public sealed class McpMediaTools(IServiceProvider services)
     {
         var length = upload.Length ?? 0;
         var progress = length == 0 ? 0 : 100.0 * offset / length;
-        var mediaId = GetMediaId(upload);
-        return new McpUploadStatus(upload.Id.Value, mediaId.Value, offset, length, "Uploading", progress, null);
+        var mediaId = upload.Tag.StartsWith(UploadTagPrefix) ? GetMediaId(upload).Value : null;
+        return new McpUploadStatus(upload.Id.Value, mediaId, offset, length, "Uploading", progress, null);
     }
 
     private static MediaId GetMediaId(Upload upload)
@@ -325,6 +358,8 @@ public sealed class McpMediaTools(IServiceProvider services)
         };
 
     // Nested types
+
+    internal sealed record DownloadedFile(string FileName, string ContentType, byte[] Data);
 
     private enum McpUploadPurpose
     {
