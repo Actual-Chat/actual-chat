@@ -158,6 +158,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 hasUnreadMentions = mention.EntryId.LocalId > readEntryLid;
 
             var navbarSettings = await NavbarUI.Settings.Use(cancellationToken).ConfigureAwait(false);
+            var (pttState, isPttArmed) = await GetPttStatus(contact.Chat, cancellationToken).ConfigureAwait(false);
 
             var result = new ChatInfo(contact) {
                 News = news,
@@ -167,6 +168,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 UnreadCount = unreadCount,
                 HasUnreadMentions = hasUnreadMentions,
                 IsPinnedToNavbar = navbarSettings.PinnedChats.Contains(chatId),
+                PttState = pttState,
+                IsPttArmed = isPttArmed,
             };
             return result;
         }
@@ -812,6 +815,20 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             .ToList();
 
     // Private methods
+
+    private async Task<(PttChatState State, bool IsArmed)> GetPttStatus(
+        Chat.Chat chat, CancellationToken cancellationToken)
+    {
+        // A chat without PTT skips both reads, so most ChatInfos don't depend on the PTT lists at all.
+        // Both lists come from the one account-level UserPttSettings, shared by every chat.
+        if (chat.PttEnabledAt is null)
+            return (PttChatState.Off, false);
+
+        var audio = Hub.ChatAudioUI;
+        var consentedChatIds = await audio.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
+        var armedChatIds = await audio.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        return (Ptt.GetChatState(chat, consentedChatIds.Contains(chat.Id)), armedChatIds.Contains(chat.Id));
+    }
 
     private async Task<ChatViewItemVisibility> ComputeItemVisibility(CancellationToken cancellationToken)
     {

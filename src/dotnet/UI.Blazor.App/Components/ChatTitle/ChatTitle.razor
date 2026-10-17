@@ -1,0 +1,19 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var pttCls = IsPttArmed ? "on" : "";
+}
+
+@* The text truncates on its own, so the PTT icon stays visible right after the ellipsis *@
+<span class="chat-title @Class">
+    <span class="c-text">@Chat.Title</span>
+    @if (PttState != PttChatState.Off) {
+        <i class="c-ptt icon-push-to-talk @pttCls"></i>
+    }
+</span>
+
+@code {
+    [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
+    [Parameter] public PttChatState PttState { get; set; }
+    [Parameter] public bool IsPttArmed { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+}

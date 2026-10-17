@@ -156,6 +156,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSidePanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSidePanelHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatSidePanelInfo>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatTitle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatTypingIndicator>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatViewNavigationPanel>();
@@ -416,6 +417,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttReplyWindowSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttSupportModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.QrScanView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionBadge>();
@@ -1051,6 +1053,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSidePanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSidePanelHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatSidePanelInfo), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatTitle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatTypingIndicator), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatViewNavigationPanel), AotTypeKind.Component),
@@ -1311,6 +1314,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttReplyWindowSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttSupportModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.QrScanView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionBadge), AotTypeKind.Component),

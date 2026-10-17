@@ -26,7 +26,7 @@
             <div class="chat-header-title">
                 <div class="c-title-wrapper">
                     <div class="c-title">
-                        @chat.Title
+                        <ChatTitle Chat="@chat" PttState="@m.PttState" IsPttArmed="@m.IsPttArmed"/>
                     </div>
                 </div>
                 <div class="c-info">
@@ -96,11 +96,17 @@
             });
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chat = Chat;
         var hasSelection = await Hub.SelectionUI.HasSelection.Use(cancellationToken).ConfigureAwait(false);
         var isSearchMode = await Hub.PanelsUI.Right.IsSearchMode.Use(cancellationToken).ConfigureAwait(false);
+        var chatInfo = chat is not null
+            ? await Hub.ChatUI.Get(chat.Id, cancellationToken).ConfigureAwait(false)
+            : null;
         return new() {
             HasSelection = hasSelection,
             IsSearchMode = isSearchMode,
+            PttState = chatInfo?.PttState ?? PttChatState.Off,
+            IsPttArmed = chatInfo?.IsPttArmed ?? false,
         };
     }
 
@@ -125,5 +131,7 @@
 
         public bool HasSelection { get; init; }
         public bool IsSearchMode { get; init; }
+        public PttChatState PttState { get; init; }
+        public bool IsPttArmed { get; init; }
     }
 }

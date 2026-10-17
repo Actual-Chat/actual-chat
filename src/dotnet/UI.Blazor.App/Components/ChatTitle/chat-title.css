@@ -1,0 +1,26 @@
+/* A flex row, so whitespace in the markup renders nothing, and the text - not the row - truncates.
+   Every host gives it a width limit: max-w-full here, or min-w-0 when the host is a flex row. */
+/* Baseline, not center, so the icon stays put at any font size; the small gap is deliberate - an
+   ellipsis already leaves up to a character's width of slack before it. */
+.chat-title {
+    @apply inline-flex items-baseline gap-x-px;
+    @apply min-w-0 max-w-full;
+    @apply align-bottom;
+}
+.chat-title > .c-text {
+    @apply min-w-0;
+    @apply truncate;
+}
+/* Blue only when this device answers in the chat - in the list, active, not muted, PTT on here - and
+   gray, like the header's buttons, for any reason it doesn't. The glyph is a bit taller than the
+   capitals, so it's lowered to center on them rather than to sit on the baseline. */
+.chat-title > .c-ptt {
+    @apply relative;
+    @apply flex-none;
+    @apply text-03;
+    top: 0.1em;
+    font-size: 0.875em;
+}
+.chat-title > .c-ptt.on {
+    @apply text-primary;
+}
