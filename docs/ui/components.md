@@ -1149,7 +1149,7 @@ directly.
 | Attribute | Meaning |
 |-----------|---------|
 | `data-tooltip` | The text. Resolved by walking up from the hovered node, so it can sit on a wrapper. |
-| `data-tooltip-position` | A `FloatingPosition`; defaults to `top`. |
+| `data-tooltip-position` | A `FloatingPosition`; defaults to `top`. A hovered tooltip treats `bottom*` as `top*`, so it never opens under the pointer: it goes below only when it does not fit above, safe areas included. An auto-shown tooltip uses the position as given. |
 | `data-tooltip-severity` | `error` paints the pink/red variant. Absent or empty is the default look. |
 | `data-render-script-tooltip-auto-show` | Non-empty shows that text with no pointer involved; empty clears it. |
 | `data-tooltip-auto-show-duration` | Milliseconds for the auto-shown tooltip. Absent picks the default for the severity — 3s normal, 10s error; an explicit `0` keeps it up until the value clears. |
