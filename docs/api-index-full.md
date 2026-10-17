@@ -421,7 +421,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `RecaptchaValidationResult` (record) - Result of a reCAPTCHA validation request.
 - `ICaptcha` - Service for reCAPTCHA token validation.
 - `IChatPositions` - Service for tracking user read and view positions in chats.
-- `IChatUsages` - Service for tracking recent chat usage patterns.
+- `IChatUsages` - Obsolete: a stub kept for old clients.
 - `IEmailAuth` - Service for email-based authentication with TOTP codes.
 - `IEmails` - Service for sending email communications.
 - `IMobileSessions` - Service for mobile app session creation and validation.
@@ -638,7 +638,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `ChatNotificationMode` (enum) - Specifies the notification preference for a chat.
 - `ChatPosition` - Represents a user's read or view position in a chat.
 - `ChatPositionKind` (enum) - Specifies the type of position tracked in a chat.
-- `ChatUsageListKind` (enum) - Specifies the type of chat usage tracking list.
+- `ChatUsageListKind` (enum) - Obsolete: used only by `IChatUsages`.
 - `ListeningLinger` (enum) - Specifies how long listening keeps running after a chat's conversation goes quiet.
 - `ListeningLingerExt` (static class) - Extension methods for ListeningLinger.
 - `Passkey` (record) - User-facing projection of a stored passkey (id, name, timestamps, synced flag).
@@ -731,7 +731,6 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IAccountsBackend` - Backend service for managing user accounts.
 - `IAvatarsBackend` - Backend service for managing user avatars.
 - `IChatPositionsBackend` - Backend service for tracking user chat positions.
-- `IChatUsagesBackend` - Backend service for tracking chat usage statistics.
 - `IEmailsBackend` - Backend service for email operations.
 - `IPasskeysBackend` - Backend service for stored passkey credentials (get/list/change); `PasskeyCredential` is the stored record, `Passkey` its user-facing projection.
 - `ISessionsBackend` - Backend service for managing user sessions.
@@ -813,8 +812,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `AvatarsBackend` - Implementation of IAvatarsBackend.
 - `ChatPositions` - Implementation of IChatPositions for tracking chat positions.
 - `ChatPositionsBackend` - Implementation of IChatPositionsBackend.
-- `ChatUsages` - Implementation of IChatUsages for tracking chat usage.
-- `ChatUsagesBackend` - Implementation of IChatUsagesBackend.
+- `ChatUsages` - The obsolete IChatUsages stub.
 - `Emails` - Implementation of IEmails for email operations.
 - `EmailsBackend` - Implementation of IEmailsBackend.
 - `ServerKvas` - Implementation of IServerKvas for server-side key-value store.

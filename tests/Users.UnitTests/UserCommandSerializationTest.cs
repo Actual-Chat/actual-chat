@@ -134,6 +134,7 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     }
 
     [Fact]
+    [Obsolete("2026.10: Old clients still send ChatUsages_RegisterUsage.")]
     public void ChatUsages_RegisterUsage_Basic()
     {
         var cmd = new ChatUsages_RegisterUsage {
@@ -305,13 +306,6 @@ public class UserCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
     {
         var position = new ChatPosition(42, "origin");
         var cmd = new ChatPositionsBackend_Set(TestUserId, TestChatId, ChatPositionKind.Heard, position);
-        cmd.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
-    public void ChatUsagesBackend_RegisterUsage_Basic()
-    {
-        var cmd = new ChatUsagesBackend_RegisterUsage(TestUserId, ChatUsageListKind.ViewedGroupChats, TestChatId, new Moment(DateTime.UtcNow));
         cmd.AssertPassesThroughSerializers();
     }
 

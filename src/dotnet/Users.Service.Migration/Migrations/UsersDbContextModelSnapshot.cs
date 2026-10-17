@@ -16,7 +16,7 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261008092838_AddCoachDailyPace";
+    public override string LastMigrationId => "20261017142713_Remove_ChatUsages";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -227,39 +227,6 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasName("pk_chat_positions");
 
                 b.ToTable("chat_positions");
-            });
-
-        modelBuilder.Entity("ActualChat.Users.Db.DbChatUsage", b =>
-            {
-                b.Property<string>("Id")
-                    .HasColumnType("text")
-                    .HasColumnName("id")
-                    .UseCollation("C");
-
-                b.Property<DateTime>("AccessedAt")
-                    .HasColumnType("timestamp with time zone")
-                    .HasColumnName("accessed_at");
-
-                b.Property<string>("ChatId")
-                    .IsRequired()
-                    .HasColumnType("text")
-                    .HasColumnName("chat_id")
-                    .UseCollation("C");
-
-                b.Property<int>("Kind")
-                    .HasColumnType("integer")
-                    .HasColumnName("kind");
-
-                b.Property<string>("UserId")
-                    .IsRequired()
-                    .HasColumnType("text")
-                    .HasColumnName("user_id")
-                    .UseCollation("C");
-
-                b.HasKey("Id")
-                    .HasName("pk_chat_usages");
-
-                b.ToTable("chat_usages");
             });
 
         modelBuilder.Entity("ActualChat.Users.Db.DbCoachDay", b =>

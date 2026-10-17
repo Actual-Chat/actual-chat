@@ -80,7 +80,7 @@ also duplicated into an indexed column — so the shard key is available on ever
 | DB | Shard key | Fit |
 |---|---|---|
 | `ac_chat` | `ChatId` | Clean. `DbChatEntry` (the hottest table) is only ever queried as `ChatId + Kind + LocalId` range; `DbChat`, `DbReaction`, `DbMention`, `DbRole`, attachments, conversations all carry `ChatId` |
-| `ac_users` | `UserId` | Mostly clean: `DbAccount`, `DbAvatar`, `DbKvasEntry`, `DbChatPosition`, `DbChatUsage`, `DbUserPresence` key by user. **Exception: `DbSessionInfo`/`DbUserSession` are looked up by session id before the user is known** (see open questions) |
+| `ac_users` | `UserId` | Mostly clean: `DbAccount`, `DbAvatar`, `DbKvasEntry`, `DbChatPosition`, `DbUserPresence` key by user. **Exception: `DbSessionInfo`/`DbUserSession` are looked up by session id before the user is known** (see open questions) |
 | `ac_contacts` | `OwnerId` (a `UserId`) | Clean — already how `ContactId` resolves its mesh shard key |
 | `ac_notification` | `UserId` | Clean |
 | `ac_media` | `MediaId` scope / `ChatId` | Mostly chat-scoped; verify `GetByBlobId`-style lookups |

@@ -30,7 +30,6 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public IRoles Roles => field ??= Services.GetRequiredService<IRoles>();
     public IInvites Invites => field ??= Services.GetRequiredService<IInvites>();
     public IContacts Contacts => field ??= Services.GetRequiredService<IContacts>();
-    public IChatUsages ChatUsages => field ??= Services.GetRequiredService<IChatUsages>();
     public IUsage Usage => field ??= Services.GetRequiredService<IUsage>();
     public ICoach Coach => field ??= Services.GetRequiredService<ICoach>();
     public IChatCoach ChatCoach => field ??= Services.GetRequiredService<IChatCoach>();

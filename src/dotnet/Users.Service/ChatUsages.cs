@@ -1,34 +1,42 @@
+using ActualChat.Contacts;
+
 namespace ActualChat.Users;
 
-/// <summary>
-/// Frontend service for tracking recently accessed chats per user.
-/// </summary>
+#pragma warning disable CS0618
+
 public class ChatUsages(IServiceProvider services) : IChatUsages
 {
+    private const int LegacyRecencyListLimit = 100;
+
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
-    private IChats Chats { get; } = services.GetRequiredService<IChats>();
-    private IChatUsagesBackend Backend { get; } = services.GetRequiredService<IChatUsagesBackend>();
-    private ICommander Commander { get; } = services.Commander();
+    private IContactsBackend ContactsBackend { get; } = services.GetRequiredService<IContactsBackend>();
 
     // [ComputeMethod]
-    public virtual async Task<ChatId[]> GetRecencyList(Session session, ChatUsageListKind kind, CancellationToken cancellationToken)
+    public virtual async Task<ChatId[]> GetLegacyRecencyList(
+        Session session, ChatUsageListKind kind, CancellationToken cancellationToken)
     {
+        // Old clients show these lists in the search panel; contacts give them the order new clients use
+        Func<ChatId, bool>? filter = kind switch {
+            ChatUsageListKind.PeerChatsWroteTo => c => c.Kind == ChatKind.Peer,
+            ChatUsageListKind.ViewedGroupChats => c => c.Kind != ChatKind.Peer,
+            _ => null,
+        };
+        if (filter is null)
+            return [];
+
         var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        return await Backend.GetRecencyList(account.Id, kind, cancellationToken).ConfigureAwait(false);
+        if (account.IsGuestOrNull())
+            return [];
+
+        var contacts = await ContactsBackend.ListRecent(account.Id, cancellationToken).ConfigureAwait(false);
+        return contacts
+            .Select(c => c.ChatId)
+            .Where(filter)
+            .Take(LegacyRecencyListLimit)
+            .ToArray();
     }
 
     // [CommandHandler]
-    public virtual async Task OnRegisterUsage(ChatUsages_RegisterUsage command, CancellationToken cancellationToken)
-    {
-        var session = command.Session;
-        var kind = command.Kind;
-        var chatId = command.ChatId;
-        var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat is null)
-            return;
-
-        var backendCommand = new ChatUsagesBackend_RegisterUsage(account.Id, kind, chatId, null);
-        await Commander.Call(backendCommand, true, cancellationToken).ConfigureAwait(false);
-    }
+    public virtual Task OnRegisterUsage(ChatUsages_RegisterUsage command, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 }

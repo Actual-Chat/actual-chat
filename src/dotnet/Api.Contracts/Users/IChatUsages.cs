@@ -1,21 +1,20 @@
-﻿namespace ActualChat.Users;
+﻿using ActualLab.Rpc;
 
-/// <summary>
-/// Service for tracking recent chat usage patterns.
-/// </summary>
+namespace ActualChat.Users;
+
+[Obsolete("2026.10: The search panel's recents and voice samples come from contacts. Old clients only.")]
 public interface IChatUsages : IComputeService
 {
-    [ComputeMethod]
-    Task<ChatId[]> GetRecencyList(Session session, ChatUsageListKind kind, CancellationToken cancellationToken);
+    [ComputeMethod, LegacyName("GetRecencyList")]
+    Task<ChatId[]> GetLegacyRecencyList(
+        Session session, ChatUsageListKind kind, CancellationToken cancellationToken);
 
     [CommandHandler]
     Task OnRegisterUsage(ChatUsages_RegisterUsage command, CancellationToken cancellationToken);
 }
 
-// Not deduplicated: recording a chat access is an idempotent upsert of its access time, so a repeat
-// costs nothing - while an entry per chat opening, held for CompletedTtl, does.
-
 [DataContract, MessagePackObject]
+[Obsolete("2026.10: The search panel's recents and voice samples come from contacts. Old clients only.")]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ChatUsages_RegisterUsage : ApiCommand<Unit>, INotDeduplicated
 {

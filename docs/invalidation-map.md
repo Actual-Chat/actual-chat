@@ -329,7 +329,7 @@ Downstream events fired from the same command
 (`context.Operation.AddEvent(new ChatEntryChangedEvent(...))`, `ChatsBackend.cs:1453`)
 are handled by: `ChatsBackend` (flows/summarization), `ContactsBackend`,
 `MentionsBackend`, `LinkPreviewsBackend`, `NotificationsBackend`, `SearchBackend`,
-`ChatUsagesBackend`, `ChatEntryLanguagesBackend` — each with its own invalidation
+`ChatEntryLanguagesBackend` — each with its own invalidation
 roots.
 
 ### 4.2 Read positions — `ChatPositionsBackend.OnSet` (`ChatPositionsBackend.cs:36`)
@@ -554,7 +554,7 @@ ChatsBackend.OnChangeEntry(Create)
    ├─ ContactsBackend.OnTouch (throttled) → Contact.Get [+ ListIds if it moved]
    ├─ MentionsBackend                     → GetLast(chat, mention)  → ChatUI.Get for mentioned users
    ├─ NotificationsBackend                → GetUserNotificationInfo(user) per recipient
-   ├─ ChatUsagesBackend, SearchBackend, LinkPreviewsBackend, ChatEntryLanguagesBackend
+   ├─ SearchBackend, LinkPreviewsBackend, ChatEntryLanguagesBackend
    └─ flows: ConversationSplitFlow, LiveConversationSummaryFlow
 ```
 

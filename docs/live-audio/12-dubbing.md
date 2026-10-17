@@ -1238,10 +1238,10 @@ string BlobId, TimeSpan Duration)` or a `VoiceSampleFailure`
   directly): candidate entries are the last
   `Constants.Audio.VoiceSampleWindow` (90 days) of the user's own audio
   entries — not removed, audio stored (`!IsStreaming`, non-empty
-  `BlobId`) — across the user's `IChatUsagesBackend.GetRecencyList` for
-  both `ChatUsageListKind.PeerChatsWroteTo` and `ViewedGroupChats` (10
-  chats each, deduplicated, up to `Constants.Audio.VoiceSampleMaxChats`
-  total), each chat scanned up to
+  `BlobId`) — across the user's contacts (`IContactsBackend.ListIds` for
+  the user and each of their places) with the most recent `TouchedAt`,
+  which moves when the user posts there (up to
+  `Constants.Audio.VoiceSampleMaxChats` chats), each chat scanned up to
   `Constants.Audio.VoiceSampleMaxEntriesPerChat` (500) entries via
   `ChatsBackendExt.ListEntries`, filtered to the user's own `AuthorId`.
   Entries shorter than `Constants.Audio.VoiceSampleMinEntryDuration`

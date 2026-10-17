@@ -135,7 +135,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
                 .Log(LogLevel.Debug, Log)
                 .RetryForever(RetryDelaySeq.Exp(0.5, 3), Log)
                 .RunIsolated(DisposeToken);
-            UpdateGroupChatUsageList();
         }
         catch {
             _whenInitializedSource.TrySetCanceled();
@@ -1021,28 +1020,6 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         var range = new Range<long>(minEntryLid, minEntryLid + (20 * ChatUI.EntryIdTiles.TileSize))
             .IntersectWith(chatLidRange);
         return await entryReader.GetFirst(range, cancellationToken).ConfigureAwait(false);
-    }
-
-    private void UpdateGroupChatUsageList()
-    {
-        var chatId = Chat.Id;
-        if (chatId.Kind == ChatKind.Peer)
-            return;
-
-        _ = BackgroundTask.Run(async () => {
-                var chat = await Chats.Get(Session, chatId, DisposeToken);
-                if (chat == null)
-                    return;
-
-                var command = new ChatUsages_RegisterUsage {
-                    Session = Session,
-                    Kind = ChatUsageListKind.ViewedGroupChats,
-                    ChatId = chatId,
-                };
-                await Commander.Call(command, DisposeToken);
-            },
-            ex => Log.LogDebug(ex, "Failed to register view group chat"),
-            DisposeToken);
     }
 
     // Nested types
