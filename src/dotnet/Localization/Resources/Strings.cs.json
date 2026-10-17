@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Zkusit jiný",
   "Banner_NotInContacts": "Tento uživatel zatím není ve vašich kontaktech",
   "Banner_AddToContacts": "Přidat do kontaktů",
-  "Banner_PttAllow": "Tento chat je v režimu Stiskni a mluv. Přidat ho do vašeho seznamu Stiskni a mluv?",
+  "Banner_PttAllow": "Používat režim Stiskni a mluv tohoto chatu na vašich zařízeních?",
   "Banner_PttAdd": "Přidat",
   "Banner_PttMuted": "Stiskni a mluv je ztlumeno na",
   "Banner_PttUnmute": "Zrušit ztlumení",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Přidat členy",
 
   "Common_Pause": "Pozastavit",
+
+  "Common_TurnOff": "Vypnout",
   "Common_Hide": "Skrýt",
   "Common_Show": "Zobrazit",
   "Common_Open": "Otevřít",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "Zapněte ho v Nastavení",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Pozastavit pro všechny",
-  "Ptt_PauseConfirmTitle": "Pozastavit režim Stiskni a mluv?",
+  "Ptt_TurnOffTitle": "Vypnout režim Stiskni a mluv?",
+  "Ptt_TurnOffCaption": "Režim Stiskni a mluv skončí pro všechny. Pokud se znovu zapne, každý člen si musí chat znovu přidat do svého seznamu.",
   "Ptt_PauseConfirmText": "Během pozastavení nebude nikdo v tomto chatu dostávat hlas Stiskni a mluv. Chat zůstane v seznamech členů.",
   "Ptt_UseOnThisDevice": "Používat Stiskni a mluv na tomto zařízení",
   "Ptt_UseOnThisDeviceCaption": "Když je vypnuto, toto zařízení se nebude budit, přehrávat ani vysílat hlas přes Stiskni a mluv.",

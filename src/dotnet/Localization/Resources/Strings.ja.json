@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "別の画像",
   "Banner_NotInContacts": "このユーザーはまだ連絡先に追加されていません",
   "Banner_AddToContacts": "連絡先に追加",
-  "Banner_PttAllow": "このチャットはプッシュ・トゥ・トーク モードです。プッシュ・トゥ・トーク リストに追加しますか？",
+  "Banner_PttAllow": "このチャットのプッシュ・トゥ・トーク モードをお使いのデバイスで使いますか？",
   "Banner_PttAdd": "追加",
   "Banner_PttMuted": "プッシュ・トゥ・トークはミュート中（残り",
   "Banner_PttUnmute": "ミュート解除",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "メンバーを追加",
 
   "Common_Pause": "一時停止",
+
+  "Common_TurnOff": "オフにする",
   "Common_Hide": "非表示",
   "Common_Show": "表示",
   "Common_Open": "開く",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "設定でオンにする",
   "Ptt_DeviceOff_Suffix": "。",
   "Ptt_PauseForEveryone": "全員に対して一時停止する",
-  "Ptt_PauseConfirmTitle": "プッシュ・トゥ・トーク モードを一時停止しますか？",
+  "Ptt_TurnOffTitle": "プッシュ・トゥ・トークモードをオフにしますか？",
+  "Ptt_TurnOffCaption": "全員のプッシュ・トゥ・トークモードが終了します。再びオンにした場合、各メンバーはチャットをもう一度リストに追加する必要があります。",
   "Ptt_PauseConfirmText": "一時停止中は、このチャットの誰にもプッシュ・トゥ・トークの音声が届きません。チャットはメンバーのリストに残ります。",
   "Ptt_UseOnThisDevice": "この端末でプッシュ・トゥ・トークを使う",
   "Ptt_UseOnThisDeviceCaption": "オフにすると、この端末はプッシュ・トゥ・トークの音声で起動・再生・送信しません。",

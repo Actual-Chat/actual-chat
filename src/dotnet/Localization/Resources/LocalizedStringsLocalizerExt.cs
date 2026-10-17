@@ -1255,6 +1255,8 @@ public static class LocalizedStringsLocalizerExt
         public string AddMember_Title => l["AddMember_Title"].Value;
 
         public string Common_Pause => l["Common_Pause"].Value;
+
+        public string Common_TurnOff => l["Common_TurnOff"].Value;
         public string Common_Hide => l["Common_Hide"].Value;
         public string Common_Show => l["Common_Show"].Value;
         public string Common_Open => l["Common_Open"].Value;
@@ -1460,7 +1462,8 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_DeviceOffTarget => l["Ptt_DeviceOffTarget"].Value;
         public string Ptt_DeviceOff_Suffix => l["Ptt_DeviceOff_Suffix"].Value;
         public string Ptt_PauseForEveryone => l["Ptt_PauseForEveryone"].Value;
-        public string Ptt_PauseConfirmTitle => l["Ptt_PauseConfirmTitle"].Value;
+        public string Ptt_TurnOffTitle => l["Ptt_TurnOffTitle"].Value;
+        public string Ptt_TurnOffCaption => l["Ptt_TurnOffCaption"].Value;
         public string Ptt_PauseConfirmText => l["Ptt_PauseConfirmText"].Value;
         public string Ptt_UseOnThisDevice => l["Ptt_UseOnThisDevice"].Value;
         public string Ptt_UseOnThisDeviceCaption => l["Ptt_UseOnThisDeviceCaption"].Value;

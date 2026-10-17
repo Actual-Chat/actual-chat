@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Coba yang lain",
   "Banner_NotInContacts": "Pengguna ini belum ada di daftar kontak Anda",
   "Banner_AddToContacts": "Tambah ke kontak",
-  "Banner_PttAllow": "Chat ini dalam mode Tekan untuk bicara. Tambahkan ke daftar Tekan untuk bicara Anda?",
+  "Banner_PttAllow": "Gunakan mode Tekan untuk bicara chat ini di perangkat Anda?",
   "Banner_PttAdd": "Tambah",
   "Banner_PttMuted": "Tekan untuk bicara dibisukan selama",
   "Banner_PttUnmute": "Bunyikan",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Tambah anggota",
 
   "Common_Pause": "Jeda",
+
+  "Common_TurnOff": "Matikan",
   "Common_Hide": "Sembunyikan",
   "Common_Show": "Tampilkan",
   "Common_Open": "Buka",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "Aktifkan di Pengaturan",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Jeda untuk semua orang",
-  "Ptt_PauseConfirmTitle": "Jeda mode Tekan untuk bicara?",
+  "Ptt_TurnOffTitle": "Matikan mode Tekan untuk bicara?",
+  "Ptt_TurnOffCaption": "Mode Tekan untuk bicara berakhir untuk semua orang. Jika dinyalakan lagi, setiap anggota harus menambahkan chat ini lagi ke daftar mereka.",
   "Ptt_PauseConfirmText": "Selama dijeda, tidak ada anggota chat ini yang menerima suara Tekan untuk bicara. Chat tetap ada di daftar anggota.",
   "Ptt_UseOnThisDevice": "Gunakan Tekan untuk bicara di perangkat ini",
   "Ptt_UseOnThisDeviceCaption": "Saat mati, perangkat ini tidak akan bangun, memutar, atau mengirim suara Tekan untuk bicara.",

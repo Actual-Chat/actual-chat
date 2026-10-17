@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Provane un'altra",
   "Banner_NotInContacts": "Questo utente non è ancora nei tuoi contatti",
   "Banner_AddToContacts": "Aggiungi ai contatti",
-  "Banner_PttAllow": "Questa chat è in modalità Push-to-Talk. Aggiungerla al tuo elenco Push-to-Talk?",
+  "Banner_PttAllow": "Usare la modalità Push-to-Talk di questa chat sui tuoi dispositivi?",
   "Banner_PttAdd": "Aggiungi",
   "Banner_PttMuted": "Push-to-Talk è silenziato per",
   "Banner_PttUnmute": "Riattiva",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Aggiungi membri",
 
   "Common_Pause": "Pausa",
+
+  "Common_TurnOff": "Disattiva",
   "Common_Hide": "Nascondi",
   "Common_Show": "Mostra",
   "Common_Open": "Apri",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "Attivalo nelle Impostazioni",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Metti in pausa per tutti",
-  "Ptt_PauseConfirmTitle": "Mettere in pausa la modalità Push-to-Talk?",
+  "Ptt_TurnOffTitle": "Disattivare la modalità Push-to-Talk?",
+  "Ptt_TurnOffCaption": "La modalità Push-to-Talk termina per tutti. Se viene riattivata, ogni membro dovrà aggiungere di nuovo la chat al proprio elenco.",
   "Ptt_PauseConfirmText": "Finché è in pausa, nessuno in questa chat riceverà la voce Push-to-Talk. La chat resta negli elenchi dei membri.",
   "Ptt_UseOnThisDevice": "Usa il Push-to-Talk su questo dispositivo",
   "Ptt_UseOnThisDeviceCaption": "Se disattivato, questo dispositivo non si sveglierà, non riprodurrà né trasmetterà la voce Push-to-Talk.",

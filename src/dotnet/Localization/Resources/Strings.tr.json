@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Başkasını dene",
   "Banner_NotInContacts": "Bu kullanıcı henüz kişi listenizde değil",
   "Banner_AddToContacts": "Kişilere ekleyin",
-  "Banner_PttAllow": "Bu sohbet Bas-konuş modunda. Bas-konuş listenize eklensin mi?",
+  "Banner_PttAllow": "Bu sohbetin Bas-konuş modu cihazlarınızda kullanılsın mı?",
   "Banner_PttAdd": "Ekle",
   "Banner_PttMuted": "Bas-Konuş şu süreyle susturuldu:",
   "Banner_PttUnmute": "Sesi aç",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Üye ekleyin",
 
   "Common_Pause": "Duraklatın",
+
+  "Common_TurnOff": "Kapatın",
   "Common_Hide": "Gizleyin",
   "Common_Show": "Gösterin",
   "Common_Open": "Açın",
@@ -1407,7 +1409,8 @@
   "Ptt_DeviceOffTarget": "Ayarlar'dan açın",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Herkes için duraklatın",
-  "Ptt_PauseConfirmTitle": "Bas-konuş modu duraklatılsın mı?",
+  "Ptt_TurnOffTitle": "Bas-Konuş modu kapatılsın mı?",
+  "Ptt_TurnOffCaption": "Bas-Konuş modu herkes için sona erer. Yeniden açılırsa her üyenin sohbeti listesine tekrar eklemesi gerekir.",
   "Ptt_PauseConfirmText": "Duraklatıldığı sürece bu sohbette kimse Bas-konuş sesi almaz. Sohbet üyelerin listelerinde kalır.",
   "Ptt_UseOnThisDevice": "Bu cihazda Bas-Konuş kullan",
   "Ptt_UseOnThisDeviceCaption": "Kapalıyken bu cihaz Bas-Konuş sesiyle uyanmaz, ses çalmaz ve iletmez.",

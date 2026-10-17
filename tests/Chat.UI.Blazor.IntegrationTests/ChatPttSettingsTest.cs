@@ -181,7 +181,7 @@ public sealed class ChatPttSettingsTest(ChatAppHostFixture fixture, ITestOutputH
         // act
         var settings = host.FindComponent<ChatPttSettingsModal>();
         var pauseTask = settings.InvokeAsync(() => settings.Find("input").Change(false));
-        await TestWait.WhenRendered(host, () => host.FindComponent<ConfirmModal>()
+        await TestWait.WhenRendered(host, () => host.FindComponent<PttTurnOffModal>()
             .Markup.Should().Contain(hub.StringLocalizer.Ptt_PauseConfirmText));
 
         // assert
@@ -189,24 +189,25 @@ public sealed class ChatPttSettingsTest(ChatAppHostFixture fixture, ITestOutputH
         settings.Find("input").HasAttribute("disabled").Should().BeTrue();
         await settings.InvokeAsync(() => settings.FindComponent<TileItem>()
             .Instance.ToggleValueChanged.InvokeAsync(false));
-        host.FindComponents<ConfirmModal>().Should().ContainSingle("repeated requests cannot start another change");
+        host.FindComponents<PttTurnOffModal>().Should().ContainSingle("repeated requests cannot start another change");
 
         // act
-        await host.InvokeAsync(() => host.FindComponent<ConfirmModal>().Find(".btn-modal:not(.btn-primary)").Click());
+        await host.InvokeAsync(() => host.FindComponent<PttTurnOffModal>()
+            .Find(".btn-modal:not(.btn-primary)").Click());
         await pauseTask;
 
         // assert
         (await hub.Chats.Get(tester.Session, chatId, default))!.IsPttPaused.Should().BeFalse();
         await TestWait.WhenRendered(host, () => {
-            host.FindComponents<ConfirmModal>().Should().BeEmpty();
+            host.FindComponents<PttTurnOffModal>().Should().BeEmpty();
             settings.Find("input").HasAttribute("disabled").Should().BeFalse();
             settings.Find("label.toggle").GetAttribute("aria-checked").Should().Be("true");
         });
 
         // act
         pauseTask = settings.InvokeAsync(() => settings.Find(".tile-item").Click());
-        await TestWait.WhenRendered(host, () => host.FindComponents<ConfirmModal>().Should().ContainSingle());
-        await host.InvokeAsync(() => host.FindComponent<ConfirmModal>().Find(".btn-primary").Click());
+        await TestWait.WhenRendered(host, () => host.FindComponents<PttTurnOffModal>().Should().ContainSingle());
+        await host.InvokeAsync(() => host.FindComponent<PttTurnOffModal>().Find(".btn-primary").Click());
         await pauseTask;
         await TestWait.WhenRendered(host, () => settings.Find("label.toggle")
             .GetAttribute("aria-checked").Should().Be("false"));
@@ -219,6 +220,42 @@ public sealed class ChatPttSettingsTest(ChatAppHostFixture fixture, ITestOutputH
         consentedIds.Should().Contain(chatId);
         var resumedChat = await hub.Chats.Get(tester.Session, chatId, default);
         resumedChat!.PttEnabledAt.Should().Be(chat.PttEnabledAt!.Value.Floor(TimeSpan.FromMicroseconds(1)));
+    }
+
+    [Fact]
+    public async Task TurningOffShouldClearTheModeAndAskEveryoneAgainWhenReenabled()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var (chatId, _) = await tester.CreateChat(true);
+        var chat = await ChangeChat(tester, chatId, new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart });
+        await hub.ChatAudioUI.ConsentPtt(chatId, chat.PttEnabledAt!.Value, CancellationToken.None);
+        var host = tester.RenderModalHost(hub);
+        await hub.ModalUI.Show(new ChatPttSettingsModal.Model(chatId));
+        await TestWait.WhenRendered(host, () => host.FindComponent<ChatPttSettingsModal>()
+            .Find("label.toggle").GetAttribute("aria-checked").Should().Be("true"));
+        var settings = host.FindComponent<ChatPttSettingsModal>();
+        var turnOffTask = settings.InvokeAsync(() => settings.Find("input").Change(false));
+        await TestWait.WhenRendered(host, () => host.FindComponent<PttTurnOffModal>()
+            .Find(".btn-primary").TextContent.Trim().Should().Be(hub.StringLocalizer.Common_Pause));
+
+        // act
+        var turnOff = host.FindComponent<PttTurnOffModal>();
+        await turnOff.InvokeAsync(() => turnOff.Find("input").Change(false));
+        await TestWait.WhenRendered(host, () => host.FindComponent<PttTurnOffModal>()
+            .Find(".btn-primary").TextContent.Trim().Should().Be(hub.StringLocalizer.Common_TurnOff));
+        await host.InvokeAsync(() => host.FindComponent<PttTurnOffModal>().Find(".btn-primary").Click());
+        await turnOffTask;
+
+        // assert
+        await TestWait.WhenPolled(async () => {
+            var offChat = await hub.Chats.Get(tester.Session, chatId, default);
+            offChat!.PttEnabledAt.Should().BeNull();
+            offChat.IsPttPaused.Should().BeFalse();
+        });
+        (await hub.ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None)).Should().NotContain(chatId);
     }
 
     [Fact]
@@ -236,11 +273,11 @@ public sealed class ChatPttSettingsTest(ChatAppHostFixture fixture, ITestOutputH
             .Find("label.toggle").GetAttribute("aria-checked").Should().Be("true"));
         var settings = host.FindComponent<ChatPttSettingsModal>();
         var pauseTask = settings.InvokeAsync(() => settings.Find("input").Change(false));
-        await TestWait.WhenRendered(host, () => host.FindComponents<ConfirmModal>().Should().ContainSingle());
+        await TestWait.WhenRendered(host, () => host.FindComponents<PttTurnOffModal>().Should().ContainSingle());
 
         // act
         await ChangeChat(tester, chatId, new ChatDiff { Title = "Changed while confirming pause" });
-        await host.InvokeAsync(() => host.FindComponent<ConfirmModal>().Find(".btn-primary").Click());
+        await host.InvokeAsync(() => host.FindComponent<PttTurnOffModal>().Find(".btn-primary").Click());
         await pauseTask;
 
         // assert

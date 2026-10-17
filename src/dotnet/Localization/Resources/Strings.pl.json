@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Spróbuj inny",
   "Banner_NotInContacts": "Tego użytkownika nie ma jeszcze na Twojej liście kontaktów",
   "Banner_AddToContacts": "Dodaj do kontaktów",
-  "Banner_PttAllow": "Ten czat jest w trybie Naciśnij i mów. Dodać go do Twojej listy Naciśnij i mów?",
+  "Banner_PttAllow": "Używać trybu Naciśnij i mów tego czatu na Twoich urządzeniach?",
   "Banner_PttAdd": "Dodaj",
   "Banner_PttMuted": "Naciśnij i mów jest wyciszone na",
   "Banner_PttUnmute": "Wyłącz wyciszenie",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Dodaj uczestników",
 
   "Common_Pause": "Wstrzymaj",
+
+  "Common_TurnOff": "Wyłącz",
   "Common_Hide": "Ukryj",
   "Common_Show": "Pokaż",
   "Common_Open": "Otwórz",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "Włącz w Ustawieniach",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Wstrzymaj dla wszystkich",
-  "Ptt_PauseConfirmTitle": "Wstrzymać tryb Naciśnij i mów?",
+  "Ptt_TurnOffTitle": "Wyłączyć tryb Naciśnij i mów?",
+  "Ptt_TurnOffCaption": "Tryb Naciśnij i mów zostanie wyłączony dla wszystkich. Po ponownym włączeniu każdy członek musi znów dodać czat do swojej listy.",
   "Ptt_PauseConfirmText": "Gdy jest wstrzymany, nikt w tym czacie nie otrzyma głosu Naciśnij i mów. Czat pozostaje na listach członków.",
   "Ptt_UseOnThisDevice": "Używaj Naciśnij i mów na tym urządzeniu",
   "Ptt_UseOnThisDeviceCaption": "Gdy wyłączone, to urządzenie nie będzie się budzić, odtwarzać ani nadawać głosu Naciśnij i mów.",

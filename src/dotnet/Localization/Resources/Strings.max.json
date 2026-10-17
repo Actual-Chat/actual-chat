@@ -1052,7 +1052,7 @@
   "Banner_RegenerateSuggestedPicture": "En essayer une autre",
   "Banner_NotInContacts": "Tego użytkownika nie ma jeszcze na Twojej liście kontaktów",
   "Banner_AddToContacts": "Zu Kontakten hinzufügen",
-  "Banner_PttAllow": "このチャットはプッシュ・トゥ・トーク モードです。プッシュ・トゥ・トーク リストに追加しますか？",
+  "Banner_PttAllow": "このチャットのプッシュ・トゥ・トーク モードをお使いのデバイスで使いますか？",
   "Banner_PttAdd": "Hinzufügen",
   "Banner_PttMuted": "プッシュ・トゥ・トークはミュート中（残り",
   "Banner_PttUnmute": "Stummschaltung aufheben",
@@ -1381,6 +1381,7 @@
   // transcript - then the video call join modal with its camera preview and permission hints.
   // Call_IncomingFrom ends with a space because the caller's name follows it.
   "Common_Pause": "Wstrzymaj",
+  "Common_TurnOff": "Matikan",
   "Common_Hide": "Sembunyikan",
   "Common_Show": "Tampilkan",
   "Common_Open": "Отворите",
@@ -1616,7 +1617,8 @@
   "Ptt_DeviceOffTarget": "In den Einstellungen einschalten",
   "Ptt_DeviceOff_Suffix": "。",
   "Ptt_PauseForEveryone": "Поставете на пауза за всички",
-  "Ptt_PauseConfirmTitle": "プッシュ・トゥ・トーク モードを一時停止しますか？",
+  "Ptt_TurnOffTitle": "Matikan mode Tekan untuk bicara?",
+  "Ptt_TurnOffCaption": "Mode Tekan untuk bicara berakhir untuk semua orang. Jika dinyalakan lagi, setiap anggota harus menambahkan chat ini lagi ke daftar mereka.",
   "Ptt_PauseConfirmText": "Trong khi tạm dừng, không ai trong cuộc trò chuyện này nhận được giọng nói Nhấn để nói. Cuộc trò chuyện vẫn nằm trong danh sách của các thành viên.",
   "Ptt_UseOnThisDevice": "Използвайте Натисни и говори на това устройство",
   "Ptt_UseOnThisDeviceCaption": "Когато е изключено, това устройство няма да се събужда, възпроизвежда или предава глас с Натисни и говори.",

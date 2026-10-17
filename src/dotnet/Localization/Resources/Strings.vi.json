@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Thử ảnh khác",
   "Banner_NotInContacts": "Người dùng này chưa có trong danh bạ của bạn",
   "Banner_AddToContacts": "Thêm vào danh bạ",
-  "Banner_PttAllow": "Cuộc trò chuyện này đang ở chế độ Nhấn để nói. Thêm vào danh sách Nhấn để nói của bạn?",
+  "Banner_PttAllow": "Dùng chế độ Nhấn để nói của cuộc trò chuyện này trên thiết bị của bạn?",
   "Banner_PttAdd": "Thêm",
   "Banner_PttMuted": "Nhấn để nói đang tắt tiếng trong",
   "Banner_PttUnmute": "Bật tiếng",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Thêm thành viên",
 
   "Common_Pause": "Tạm dừng",
+
+  "Common_TurnOff": "Tắt",
   "Common_Hide": "Ẩn",
   "Common_Show": "Hiện",
   "Common_Open": "Mở",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "Bật trong Cài đặt",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Tạm dừng cho mọi người",
-  "Ptt_PauseConfirmTitle": "Tạm dừng chế độ Nhấn để nói?",
+  "Ptt_TurnOffTitle": "Tắt chế độ Nhấn để nói?",
+  "Ptt_TurnOffCaption": "Chế độ Nhấn để nói sẽ kết thúc với mọi người. Nếu bật lại, mỗi thành viên phải thêm lại cuộc trò chuyện vào danh sách của mình.",
   "Ptt_PauseConfirmText": "Trong khi tạm dừng, không ai trong cuộc trò chuyện này nhận được giọng nói Nhấn để nói. Cuộc trò chuyện vẫn nằm trong danh sách của các thành viên.",
   "Ptt_UseOnThisDevice": "Dùng Nhấn để nói trên thiết bị này",
   "Ptt_UseOnThisDeviceCaption": "Khi tắt, thiết bị này sẽ không đánh thức, phát hay truyền giọng nói Nhấn để nói.",

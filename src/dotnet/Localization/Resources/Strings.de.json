@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "Anderes",
   "Banner_NotInContacts": "Diese Person ist noch nicht in Ihrer Kontaktliste",
   "Banner_AddToContacts": "Zu Kontakten hinzufügen",
-  "Banner_PttAllow": "Dieser Chat ist im Push-to-Talk-Modus. Zu deiner Push-to-Talk-Liste hinzufügen?",
+  "Banner_PttAllow": "Den Push-to-Talk-Modus dieses Chats auf deinen Geräten verwenden?",
   "Banner_PttAdd": "Hinzufügen",
   "Banner_PttMuted": "Push-to-Talk ist stummgeschaltet für",
   "Banner_PttUnmute": "Stummschaltung aufheben",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "Mitglieder hinzufügen",
 
   "Common_Pause": "Pause",
+
+  "Common_TurnOff": "Ausschalten",
   "Common_Hide": "Ausblenden",
   "Common_Show": "Einblenden",
   "Common_Open": "Öffnen",
@@ -1401,7 +1403,8 @@
   "Ptt_DeviceOffTarget": "In den Einstellungen einschalten",
   "Ptt_DeviceOff_Suffix": ".",
   "Ptt_PauseForEveryone": "Für alle pausieren",
-  "Ptt_PauseConfirmTitle": "Push-to-Talk-Modus pausieren?",
+  "Ptt_TurnOffTitle": "Push-to-Talk-Modus ausschalten?",
+  "Ptt_TurnOffCaption": "Der Push-to-Talk-Modus endet für alle. Wird er wieder eingeschaltet, muss jedes Mitglied den Chat erneut zu seiner Push-to-Talk-Liste hinzufügen.",
   "Ptt_PauseConfirmText": "Solange er pausiert ist, erhält niemand in diesem Chat Push-to-Talk-Sprache. Der Chat bleibt in den Push-to-Talk-Listen der Mitglieder.",
   "Ptt_UseOnThisDevice": "Push-to-Talk auf diesem Gerät verwenden",
   "Ptt_UseOnThisDeviceCaption": "Wenn aus, weckt dieses Gerät nicht, spielt nichts ab und überträgt keine Push-to-Talk-Sprache.",

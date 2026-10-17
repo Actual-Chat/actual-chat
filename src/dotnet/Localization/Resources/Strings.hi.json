@@ -891,7 +891,7 @@
   "Banner_RegenerateSuggestedPicture": "दूसरी आज़माएँ",
   "Banner_NotInContacts": "यह उपयोगकर्ता अभी आपकी संपर्क सूची में नहीं है",
   "Banner_AddToContacts": "संपर्कों में जोड़ें",
-  "Banner_PttAllow": "यह चैट पुश टू टॉक मोड में है। इसे अपनी पुश टू टॉक सूची में जोड़ें?",
+  "Banner_PttAllow": "इस चैट का पुश टू टॉक मोड अपने डिवाइस पर इस्तेमाल करें?",
   "Banner_PttAdd": "जोड़ें",
   "Banner_PttMuted": "पुश टू टॉक इतने समय के लिए म्यूट है:",
   "Banner_PttUnmute": "अनम्यूट करें",
@@ -1193,6 +1193,8 @@
   "AddMember_Title": "सदस्य जोड़ें",
 
   "Common_Pause": "रोकें",
+
+  "Common_TurnOff": "बंद करें",
   "Common_Hide": "छिपाएँ",
   "Common_Show": "दिखाएँ",
   "Common_Open": "खोलें",
@@ -1400,7 +1402,8 @@
   "Ptt_DeviceOffTarget": "इसे सेटिंग्स में चालू करें",
   "Ptt_DeviceOff_Suffix": "।",
   "Ptt_PauseForEveryone": "सभी के लिए रोकें",
-  "Ptt_PauseConfirmTitle": "पुश टू टॉक मोड रोकें?",
+  "Ptt_TurnOffTitle": "पुश टू टॉक मोड बंद करें?",
+  "Ptt_TurnOffCaption": "पुश टू टॉक मोड सभी के लिए बंद हो जाएगा। दोबारा चालू होने पर हर सदस्य को चैट फिर से अपनी सूची में जोड़नी होगी।",
   "Ptt_PauseConfirmText": "रुके रहने तक इस चैट में किसी को पुश टू टॉक आवाज़ नहीं मिलेगी। चैट सदस्यों की सूचियों में बना रहेगा।",
   "Ptt_UseOnThisDevice": "इस डिवाइस पर पुश टू टॉक इस्तेमाल करें",
   "Ptt_UseOnThisDeviceCaption": "बंद होने पर यह डिवाइस पुश टू टॉक आवाज़ के लिए न जागेगा, न चलाएगा, न भेजेगा।",
