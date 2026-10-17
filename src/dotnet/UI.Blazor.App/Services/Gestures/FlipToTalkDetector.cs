@@ -16,6 +16,8 @@ public sealed class FlipToTalkDetector
     private GravityAxis _lastAxis;
     private Moment _lastAxisSince;
     private bool _isLandscapeFromPortrait;
+    // 0 = portrait, 1 = landscape
+    private float _tilt;
 
     public bool Process(SensorSample sample)
     {
@@ -23,6 +25,8 @@ public sealed class FlipToTalkDetector
         // accelerometer reads gravity + hand acceleration, so a lateral jerk mimics landscape.
         if (MathF.Abs(sample.Magnitude - 1f) > MaxGravityDeviation)
             return false;
+
+        _tilt = MathF.Atan2(MathF.Abs(sample.X), MathF.Abs(sample.Y)) / (MathF.PI / 2);
 
         var axis = sample.GetDominantAxis(MinDominance);
         if (axis == GravityAxis.None)
@@ -56,10 +60,28 @@ public sealed class FlipToTalkDetector
         return false;
     }
 
+    public float GetProgress(Moment now)
+    {
+        // Tilting to landscape covers the first half, the dwell the next quarter, the turn back the rest
+        if (_lastAxis == GravityAxis.Y)
+            return 0.5f * _tilt;
+        if (_lastAxis != GravityAxis.X || !_isLandscapeFromPortrait)
+            return 0f;
+
+        var dwell = now - _lastAxisSince;
+        if (dwell > FlipWindow)
+            return 0f;
+
+        return dwell < LandscapeDwell
+            ? 0.5f + (0.25f * (float)(dwell / LandscapeDwell))
+            : 0.75f + (0.25f * (1f - _tilt));
+    }
+
     public void Reset()
     {
         _lastAxis = GravityAxis.None;
         _lastAxisSince = default;
         _isLandscapeFromPortrait = false;
+        _tilt = 0f;
     }
 }

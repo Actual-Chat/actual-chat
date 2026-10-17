@@ -1,0 +1,118 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var kindCls = Kind switch {
+        GestureKind.FlipToTalk => "flip-to-talk",
+        GestureKind.DoubleShake => "double-shake",
+        GestureKind.Hush => "hush",
+        GestureKind.LockScreenTalk => "lock-screen-talk",
+        GestureKind.DoublePat => "double-pat",
+        GestureKind.AlwaysWatch => "always-watch",
+        _ => "headset-button",
+    };
+}
+
+@* An animated stand-in for an icon-* glyph: 24x24, drawn in currentColor *@
+<svg class="ptt-gesture-icon @kindCls @Class" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    @switch (Kind) {
+    case GestureKind.FlipToTalk:
+        <g class="c-phone"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 17.5h2"/></g>
+        break;
+    case GestureKind.DoubleShake:
+        <g class="c-phone"><rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 17.5h2"/></g>
+        break;
+    case GestureKind.Hush:
+        @* A filled frame: 2-unit bars, quarter-disc corners, a sharp-cornered screen. Turning to the edge,
+           each side carries its corners in until both meet in one bar - the "I". Two quarter discs facing
+           apart leave a notch, so each corner fades in a cover (a square rounded at half the radius):
+           paired at the ends, the covers make them flat. *@
+        <g class="c-phone" fill="currentColor" stroke="none">
+            <g class="c-side left">
+                <path d="M6 4h2v16h-2z"/>
+                <path d="M8 4H6A2 2 0 0 1 8 2Z"/>
+                <path d="M8 20V22A2 2 0 0 1 6 20Z"/>
+                <path class="c-cover" d="M8 2V4H6V3A1 1 0 0 1 7 2Z"/>
+                <path class="c-cover" d="M8 22V20H6V21A1 1 0 0 0 7 22Z"/>
+            </g>
+            <g class="c-side right">
+                <path d="M16 4h2v16h-2z"/>
+                <path d="M16 4V2A2 2 0 0 1 18 4Z"/>
+                <path d="M16 20H18A2 2 0 0 1 16 22Z"/>
+                <path class="c-cover" d="M16 2V4H18V3A1 1 0 0 0 17 2Z"/>
+                <path class="c-cover" d="M16 22V20H18V21A1 1 0 0 1 17 22Z"/>
+            </g>
+            <path class="c-edge" d="M8 2h8v2h-8z"/>
+            <path class="c-edge" d="M8 20h8v2h-8z"/>
+        </g>
+        break;
+    case GestureKind.HeadsetButton:
+        <g transform="translate(2 0)">
+            <path d="M10.5 13.47A5 5 0 1 1 15 8.5V19A2.25 2.25 0 0 1 10.5 19Z"/>
+            <circle class="c-button" cx="12.75" cy="16.5" r="1.1" fill="currentColor" stroke="none"/>
+        </g>
+        break;
+    case GestureKind.LockScreenTalk:
+        <rect x="7" y="3" width="10" height="18" rx="2.5"/>
+        <circle class="c-light" cx="12" cy="16" r="2" fill="currentColor" stroke="none"/>
+        <circle class="c-ring" cx="12" cy="16" r="2.75" stroke-width="1"/>
+        break;
+    case GestureKind.DoublePat:
+        @* A pocket in the bottom-left corner (a filled, rounded pentagon with its opening cut out) and the icon-hand
+           glyph flipped and turned to lie on it, outlined so its fingers match the 2-unit lines of the other icons.
+           Two faint arcs leave the point the hand hits. *@
+        <path class="c-pocket" fill="currentColor" stroke="none" opacity="0.45" fill-rule="evenodd"
+              d="M0 10.75Q0 9 1.75 9L12.25 9Q14 9 14 10.75L14 18.5Q14 20.25 12.46 21.08L9.64 22.58Q7 24 4.36 22.58
+                 L1.54 21.08Q0 20.25 0 18.5ZM3 11.75h8a.6 .6 0 0 1 0 1.25h-8a.6 .6 0 0 1 0-1.25Z"/>
+        <g class="c-hand">
+            <g transform="translate(12.55 10.76) rotate(-60) scale(0.7 -0.7) translate(-12.3 -12.3)">
+                <path fill-rule="evenodd" fill="currentColor" stroke-width="0.66"
+                      d="M12.87 10.17C13.07 10.47 13.37 10.67 13.77 10.67C13.97 10.67 14.17 10.57 14.37 10.47
+                         C14.87 10.17 14.97 9.47 14.67 8.97L10.17 2.47C9.87 1.97 9.17 1.87 8.67 2.17
+                         C8.17 2.47 8.07 3.17 8.37 3.67L12.87 10.17ZM10.87 11.67C10.47 11.67 10.17 11.47 9.97 11.17
+                         L5.57 4.77C5.27 4.27 5.37 3.57 5.87 3.27C6.37 2.97 6.97 3.07 7.37 3.57L11.77 9.97
+                         C12.07 10.47 11.97 11.17 11.47 11.47C11.27 11.57 11.07 11.67 10.87 11.67ZM19.87 11.27
+                         C19.87 11.27 19.87 11.37 19.97 11.37C20.87 12.57 21.37 14.07 21.37 15.57
+                         C21.37 19.47 18.17 22.67 14.27 22.67C11.97 22.67 9.77 21.57 8.47 19.67L3.17 11.97
+                         C2.87 11.47 2.97 10.87 3.37 10.47C3.87 10.17 4.57 10.27 4.87 10.77L10.07 18.57
+                         C11.07 19.87 12.57 20.67 14.17 20.67C16.97 20.67 19.17 18.37 19.17 15.67
+                         C19.17 14.57 18.77 13.57 18.17 12.67C18.07 12.57 18 12.44 17.92 12.32
+                         C17.85 12.19 17.77 12.07 17.67 11.97C16.47 12.87 15.67 14.37 15.67 15.97
+                         C15.67 16.27 15.67 16.67 15.77 16.97C15.87 17.57 15.57 18.17 14.97 18.27H14.77
+                         C14.27 18.27 13.87 17.87 13.77 17.37C13.67 16.97 13.67 16.47 13.67 15.97
+                         C13.67 13.57 14.77 11.37 16.77 10.07C16.77 9.97 16.87 9.97 16.87 9.97
+                         C16.07 7.77 15.87 5.37 15.87 4.97C15.87 4.47 16.27 3.87 16.87 3.87
+                         C17.37 3.87 17.97 4.27 17.97 4.87C18.07 6.17 18.57 9.87 19.87 11.27ZM8.87 14.07
+                         C8.47 14.07 8.17 13.87 7.97 13.57L3.77 7.47C3.37 6.97 3.57 6.27 4.07 5.97
+                         C4.47 5.67 5.17 5.77 5.47 6.27L9.77 12.37C10.07 12.87 9.97 13.57 9.47 13.87
+                         C9.27 13.97 9.07 14.07 8.87 14.07Z"/>
+            </g>
+        </g>
+        <g stroke-width="1.5">
+            <path class="c-wave" d="M10.5 16.4A3.4 3.4 0 0 0 10.5 21.8"/>
+            <path class="c-wave second" d="M10.5 15.3A4.8 4.8 0 0 0 10.5 22.9"/>
+        </g>
+        break;
+    case GestureKind.AlwaysWatch:
+        @* A heartbeat line that keeps running; the beats repeat every 15 units, the distance it scrolls *@
+        <path class="c-line" d="M-10 12h4l2-5 3 10 2-5h8l2-5 3 10 2-5h8l2-5 3 10 2-5h4"/>
+        break;
+    }
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public GestureKind Kind { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+
+    // Nested types
+
+    public enum GestureKind
+    {
+        FlipToTalk,
+        DoubleShake,
+        Hush,
+        HeadsetButton,
+        LockScreenTalk,
+        DoublePat,
+        AlwaysWatch,
+    }
+}

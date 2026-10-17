@@ -9,6 +9,11 @@ public sealed record GestureOptions(
     bool IsHushEnabled,
     ShakeSensitivity ShakeSensitivity);
 
+// How far each gesture is toward firing, 0..1
+
+[StructLayout(LayoutKind.Auto)]
+public readonly record struct GestureProgress(float FlipToTalk, float DoubleShake, float PutAway, float DoublePat);
+
 /// <summary>
 /// Routes samples to the enabled detectors and emits a single gesture stream.
 /// Stop gestures are evaluated first and are never suppressed: on the mic, closing always
@@ -183,6 +188,17 @@ public sealed class GestureRecognizer
                 return new GestureEvent(GestureKind.DoubleShake, sample.At);
 
             return null;
+        }
+    }
+
+    public GestureProgress GetProgress()
+    {
+        lock (_lock) {
+            if (_lastSampleAt is not { } now)
+                return default;
+
+            return new GestureProgress(
+                _flip.GetProgress(now), _shake.GetProgress(now), _faceDown.GetProgress(now), _pat.GetProgress(now));
         }
     }
 

@@ -21,6 +21,7 @@
 @import './Components/ChatList/FoundResult/found-result.css';
 @import './Components/ChatList/ReactionNotifications/reaction-notification-list.css';
 @import './Components/ChatMemberCounter/chat-member-counter.css';
+@import './Components/PttGestureIcon/ptt-gesture-icon.css';
 @import './Components/PttSupportModal/ptt-support-modal.css';
 @import './Components/ChatSettings/chat-import-start-modal.css';
 @import './Components/ChatSettings/chat-settings-modal.css';

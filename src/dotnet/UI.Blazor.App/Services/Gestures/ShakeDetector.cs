@@ -100,6 +100,19 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
         return true;
     }
 
+    public float GetProgress(Moment now)
+    {
+        // The first extreme and every reversal after it are equal steps toward the fire
+        if (now < _debouncedUntil || _lastSign == 0 || now - _lastExtremeAt > ReversalWindow)
+            return 0f;
+
+        var stepCount = 1;
+        foreach (var at in _reversals)
+            if (now - at <= ReversalWindow)
+                stepCount++;
+        return stepCount / (GetReversalCount(Sensitivity) + 1f);
+    }
+
     public void Reset()
     {
         _reversals.Clear();

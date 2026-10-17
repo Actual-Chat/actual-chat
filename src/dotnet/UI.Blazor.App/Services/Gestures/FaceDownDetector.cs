@@ -98,6 +98,22 @@ public sealed class FaceDownDetector
         return kind;
     }
 
+    public float GetProgress(Moment now)
+    {
+        // Stays short of 1 until it fires; held but uncovered never passes half
+        if (_hasFired || _heldSince is not { } heldSince)
+            return 0f;
+
+        var progress = MathF.Min(1f, (float)((now - heldSince) / Dwell));
+        if (!_isFastEntry) {
+            var stillProgress = _stillSince is { } stillSince ? (float)((now - stillSince) / StillDwell) : 0f;
+            progress = MathF.Min(progress, stillProgress);
+        }
+        if (!_isCovered)
+            progress = MathF.Min(progress, 0.5f);
+        return 0.95f * progress;
+    }
+
     public string FormatStatus(Moment now)
     {
         if (_heldSince is not { } heldSince)
