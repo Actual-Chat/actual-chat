@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Der Autostart ist durch eine Gruppen- oder Geräterichtlinie aktiviert.",
   "NativeApp_AutoStartDisabledByPolicy": "Der Autostart ist durch eine Gruppen- oder Geräterichtlinie deaktiviert oder wird auf diesem Gerät nicht unterstützt.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Der Autostart von {0} ist im Task-Manager deaktiviert. Sie können ihn auf der Registerkarte „Autostart“ wieder aktivieren.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Erlaube {0} unter Systemeinstellungen > Allgemein > Anmeldeobjekte.",
 
   "ApiKeyCreate_Title": "API-Schlüssel erstellen",
   "ApiKeyCreate_Name": "Name",

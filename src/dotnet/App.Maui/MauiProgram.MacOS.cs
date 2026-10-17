@@ -4,6 +4,7 @@ using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Services;
+using Microsoft.Extensions.Localization;
 using Microsoft.Maui.LifecycleEvents;
 
 namespace ActualChat.App.Maui;
@@ -24,6 +25,8 @@ public static partial class MauiProgram
         services.AddScoped<WindowUI>(c => new MacWindowUI(c.AppUIHub()));
         services.AddScoped<IFileSaver>(c => new MacOSFileSaver(c.UIHub()));
         services.AddScoped<IPasskeyClient>(_ => new ApplePasskeyClient());
+        services.AddTransient<INativeAppSettings>(c => new MacOSAppSettings(c.GetRequiredService<IStringLocalizer>()));
+        services.AddScoped<DesktopPttPlatform>(_ => new MacOSDesktopPttPlatform());
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)

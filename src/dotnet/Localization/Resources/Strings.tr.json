@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Otomatik başlatma grup/makine ilkesiyle etkinleştirildi.",
   "NativeApp_AutoStartDisabledByPolicy": "Otomatik başlatma grup/makine ilkesiyle devre dışı bırakıldı veya bu cihazda desteklenmiyor.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "{0} otomatik başlatma Görev Yöneticisi'nde devre dışı. Başlangıç sekmesinden yeniden etkinleştirebilirsiniz.",
+  "NativeApp_AutoStartRequiresApproval_Format": "{0} uygulamasına Sistem Ayarları > Genel > Giriş Öğeleri bölümünden izin verin.",
 
   "ApiKeyCreate_Title": "API Anahtarı Oluşturun",
   "ApiKeyCreate_Name": "Ad",

@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "自動起動はグループ/デバイスのポリシーによって有効になっています。",
   "NativeApp_AutoStartDisabledByPolicy": "自動起動はグループ/デバイスのポリシーによって無効になっているか、このデバイスではサポートされていません。",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "{0} の自動起動はタスク マネージャーで無効になっています。「スタートアップ」タブから再度有効にできます。",
+  "NativeApp_AutoStartRequiresApproval_Format": "システム設定 > 一般 > ログイン項目で {0} を許可してください。",
 
   "ApiKeyCreate_Title": "APIキーを作成",
   "ApiKeyCreate_Name": "名前",

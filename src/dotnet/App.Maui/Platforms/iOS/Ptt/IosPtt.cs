@@ -561,8 +561,8 @@ public static class IosPtt
     {
         public static readonly IosPlatform Instance = new();
         public override bool IsSilenced
-            // Focus only - the Ring/Silent switch has no public API; see IosFocusStatus.
-            => IosFocusStatus.IsFocusActive;
+            // Focus only - the Ring/Silent switch has no public API; see AppleFocusStatus.
+            => AppleFocusStatus.IsFocusActive;
 
         public override (ChatId ChatId, Moment At)? LastWake {
             get {

@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "El inicio automático está habilitado por una directiva de grupo o del equipo.",
   "NativeApp_AutoStartDisabledByPolicy": "El inicio automático está deshabilitado por una directiva de grupo o del equipo, o no es compatible con este dispositivo.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "El inicio automático de {0} está deshabilitado en el Administrador de tareas. Puedes volver a habilitarlo en su pestaña Inicio.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Permite {0} en Ajustes del Sistema > General > Ítems de inicio.",
 
   "ApiKeyCreate_Title": "Crear clave API",
   "ApiKeyCreate_Name": "Nombre",

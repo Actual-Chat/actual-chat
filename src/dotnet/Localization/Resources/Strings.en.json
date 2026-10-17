@@ -398,6 +398,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Auto-start is enabled by group/machine policy.",
   "NativeApp_AutoStartDisabledByPolicy": "Auto-start is disabled by group/machine policy or is not supported on this device.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "{0} auto-start is disabled in Task Manager. You can re-enable it in its Startup tab.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Allow {0} in System Settings > General > Login Items.",
 
   // The API key creation form. ApiKeyCreate_Placeholder is the example text inside the empty
   // Name field, not a value.

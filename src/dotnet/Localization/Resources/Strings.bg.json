@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Автоматичното стартиране е включено от групова или машинна политика.",
   "NativeApp_AutoStartDisabledByPolicy": "Автоматичното стартиране е изключено от групова или машинна политика или не се поддържа на това устройство.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Автоматичното стартиране на {0} е изключено в Диспечера на задачите. Може да го включите отново в раздела „Стартиране“.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Разрешете {0} в Системни настройки > Общи > Елементи при вход.",
 
   "ApiKeyCreate_Title": "Създайте API ключ",
   "ApiKeyCreate_Name": "Име",

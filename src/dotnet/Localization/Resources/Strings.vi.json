@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Tự động khởi động đã được bật bởi chính sách nhóm hoặc thiết bị.",
   "NativeApp_AutoStartDisabledByPolicy": "Tự động khởi động đã bị tắt bởi chính sách nhóm hoặc thiết bị, hoặc không được hỗ trợ trên thiết bị này.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Tự động khởi động {0} đang bị tắt trong Trình quản lý tác vụ. Bạn có thể bật lại ở thẻ Khởi động.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Cho phép {0} trong Cài đặt hệ thống > Cài đặt chung > Mục đăng nhập.",
 
   "ApiKeyCreate_Title": "Tạo khóa API",
   "ApiKeyCreate_Name": "Tên",

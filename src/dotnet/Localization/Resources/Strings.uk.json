@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Автозапуск увімкнено груповою політикою або політикою пристрою.",
   "NativeApp_AutoStartDisabledByPolicy": "Автозапуск вимкнено груповою політикою або політикою пристрою чи не підтримується на цьому пристрої.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Автозапуск {0} вимкнено в Диспетчері завдань. Увімкнути його знову можна на вкладці «Автозавантаження».",
+  "NativeApp_AutoStartRequiresApproval_Format": "Дозвольте {0} у Системних параметрах > Загальні > Елементи входу.",
 
   "ApiKeyCreate_Title": "Створити API-ключ",
   "ApiKeyCreate_Name": "Назва",

@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Automatické spouštění je zapnuto zásadami skupiny nebo počítače.",
   "NativeApp_AutoStartDisabledByPolicy": "Automatické spouštění je vypnuto zásadami skupiny nebo počítače, případně není na tomto zařízení podporováno.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Automatické spouštění aplikace {0} je vypnuto ve Správci úloh. Znovu ho zapnete na kartě Po spuštění.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Povolte {0} v Nastavení systému > Obecné > Položky přihlášení.",
 
   "ApiKeyCreate_Title": "Vytvořit klíč API",
   "ApiKeyCreate_Name": "Název",

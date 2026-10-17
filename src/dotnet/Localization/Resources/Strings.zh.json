@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "自动启动已由组策略或设备策略启用。",
   "NativeApp_AutoStartDisabledByPolicy": "自动启动已由组策略或设备策略禁用，或此设备不支持。",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "{0} 的自动启动已在任务管理器中禁用。你可以在“启动”选项卡中重新启用。",
+  "NativeApp_AutoStartRequiresApproval_Format": "请在“系统设置”>“通用”>“登录项”中允许 {0}。",
 
   "ApiKeyCreate_Title": "创建 API 密钥",
   "ApiKeyCreate_Name": "名称",

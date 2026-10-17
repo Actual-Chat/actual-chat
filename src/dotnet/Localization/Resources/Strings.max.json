@@ -398,6 +398,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "Le démarrage automatique est activé par une stratégie de groupe ou de l'appareil.",
   "NativeApp_AutoStartDisabledByPolicy": "Le démarrage automatique est désactivé par une stratégie de groupe ou de l'appareil, ou n'est pas pris en charge sur cet appareil.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "Аутоматско покретање апликације {0} искључено је у Управитељу задатака. Можете га поново укључити на картици Покретање.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Zezwól na {0} w Ustawieniach systemowych > Ogólne > Rzeczy otwierane podczas logowania.",
 
   // The API key creation form. ApiKeyCreate_Placeholder is the example text inside the empty
   // Name field, not a value.

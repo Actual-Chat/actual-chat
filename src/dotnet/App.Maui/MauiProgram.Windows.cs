@@ -26,6 +26,7 @@ public static partial class MauiProgram
         services.AddScoped<IAudioCapture>(c => new WindowsAudioCapture(c.LogFor<WindowsAudioCapture>()));
         services.AddScoped<ClipboardUI>(c => new WindowsClipboardUI(c.UIHub()));
         services.AddScoped<IAppReviewer>(_ => new WindowsAppReviewer());
+        services.AddScoped<DesktopPttPlatform>(_ => new WindowsDesktopPttPlatform());
         // WebView2's origin is https://0.0.0.1, so WebAuthn can't target the RP id; a native Windows Hello
         // path is a follow-up
         services.AddScoped<IPasskeyClient>(_ => new UnavailablePasskeyClient());

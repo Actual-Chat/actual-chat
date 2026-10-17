@@ -329,6 +329,7 @@
   "NativeApp_AutoStartEnabledByPolicy": "A inicialização automática está ativada por política de grupo ou do dispositivo.",
   "NativeApp_AutoStartDisabledByPolicy": "A inicialização automática está desativada por política de grupo ou do dispositivo, ou não é compatível com este dispositivo.",
   "NativeApp_AutoStartDisabledInTaskManager_Format": "A inicialização automática do {0} está desativada no Gerenciador de Tarefas. Você pode reativá-la na aba Inicializar.",
+  "NativeApp_AutoStartRequiresApproval_Format": "Permita o {0} em Ajustes do Sistema > Geral > Itens de Início.",
 
   "ApiKeyCreate_Title": "Criar chave de API",
   "ApiKeyCreate_Name": "Nome",

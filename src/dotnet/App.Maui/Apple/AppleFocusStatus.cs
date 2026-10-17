@@ -2,19 +2,17 @@ using Intents;
 
 namespace ActualChat.App.Maui;
 
-// The iOS half of "does this phone want quiet". Only Focus is answerable - there is no public API
-// for the Ring/Silent switch - so a phone muted by the switch alone still reads as unsilenced.
+// The Apple half of "does this device want quiet". Only Focus is answerable - there is no public API
+// for the iPhone's Ring/Silent switch - so a phone muted by the switch alone still reads as unsilenced.
 // Every probe fails open, like AndroidRingerMode: one bad read must not silently kill PTT.
-public static class IosFocusStatus
+
+public static class AppleFocusStatus
 {
-    private static ILogger Log => field ??= StaticLog.For(typeof(IosFocusStatus));
+    private static ILogger Log => field ??= StaticLog.For(typeof(AppleFocusStatus));
 
     public static bool IsFocusActive {
         get {
             try {
-                if (!OperatingSystem.IsIOSVersionAtLeast(15))
-                    return false;
-
                 var center = INFocusStatusCenter.DefaultCenter;
                 if (center.AuthorizationStatus != INFocusStatusAuthorizationStatus.Authorized)
                     return false;
@@ -31,13 +29,10 @@ public static class IosFocusStatus
 
     public static void EnsureAuthorized()
     {
-        // Driven from IosPttUI rather than the wake path: the prompt needs a running app, and a
-        // wake can arrive with the phone locked. Re-asking is free - the call only prompts while
+        // Driven from a running, foreground app rather than the wake path: the prompt needs one, and
+        // a wake can arrive with the phone locked. Re-asking is free - the call only prompts while
         // the status is NotDetermined, and the user can revoke the grant in Settings at any time.
         try {
-            if (!OperatingSystem.IsIOSVersionAtLeast(15))
-                return;
-
             var center = INFocusStatusCenter.DefaultCenter;
             if (center.AuthorizationStatus != INFocusStatusAuthorizationStatus.NotDetermined)
                 return;
