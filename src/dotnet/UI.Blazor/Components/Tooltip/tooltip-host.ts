@@ -13,6 +13,7 @@ import {
     arrow,
 } from '@floating-ui/dom';
 import { MutationProcessor } from 'mutation-processor';
+import { SafeAreas } from 'safe-area';
 import { getLogs } from 'logging';
 
 const { errorLog } = getLogs('TooltipHost');
@@ -25,6 +26,7 @@ const HoverDelayMs = 300;
 const TooltipAttributes = ['data-tooltip', 'data-tooltip-severity'];
 const AutoShowDurationMs = 3000;
 const ErrorAutoShowDurationMs = 10000;
+const ViewportGap = 5;
 
 interface HoverTarget {
     element: HTMLElement | SVGElement;
@@ -241,9 +243,18 @@ export class TooltipHost implements Disposable {
         return element.dataset.tooltipSeverity === 'error' ? ErrorAutoShowDurationMs : AutoShowDurationMs;
     }
 
-    private getPlacement(triggerRef: HTMLElement | SVGElement): Placement {
-        const placement = triggerRef.dataset.tooltipPosition;
-        return placement ? placement as Placement : 'top';
+    // A hovered tooltip opens above its trigger whenever it fits there, whatever vertical side was
+    // requested: below, it lands right under the pointer. flip() moves it down only when it doesn't fit.
+    private getPlacement(triggerRef: HTMLElement | SVGElement, isAuto: boolean): Placement {
+        const placement = (triggerRef.dataset.tooltipPosition || 'top') as Placement;
+        if (isAuto)
+            return placement;
+
+        const [side, alignment] = placement.split('-');
+        if (side !== 'bottom')
+            return placement;
+
+        return (alignment ? `top-${alignment}` : 'top') as Placement;
     }
 
     // An element can carry a tooltip request while being hidden (empty box) or covered by an
@@ -272,13 +283,14 @@ export class TooltipHost implements Disposable {
             return;
         }
         this.tooltipRef.classList.add('show');
-        const placement = this.getPlacement(triggerRef);
+        const placement = this.getPlacement(triggerRef, this.isShownAuto);
+        const padding = SafeAreas.getPadding(ViewportGap);
         void computePosition(triggerRef, this.tooltipRef, {
             placement: placement,
             middleware: [
                 offset(6),
-                flip(),
-                shift({ padding: 5 }),
+                flip({ padding }),
+                shift({ padding }),
                 arrow({ element: this.arrowRef }),
             ],
         }).then(({ x, y, placement, middlewareData }) => {
