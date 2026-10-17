@@ -1,6 +1,5 @@
 .join-video-call-modal .c-container {
     @apply flex-y;
-    @apply px-4;
     @apply gap-y-2;
 }
 .join-video-call-modal .video-frame {

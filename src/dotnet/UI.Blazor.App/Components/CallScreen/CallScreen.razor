@@ -11,8 +11,15 @@
     var chat = m.Chat;
     var isExpanded = m.Mode == VisualActivityPanelMode.Expanded;
     var isRinging = m.Phase == CallPhase.Ringing;
-    // Inline, the screen is a part of its chat's header
-    var slotKey = chat is not null && m.Mode == VisualActivityPanelMode.Inline ? chat.Id.Value : null;
+    // Full screen on a desktop docks the screen as a layout column (left panel → video → chat → right
+    // panel), so the chat beside it is the real chat view, not a second one. Narrow and over-lock keep
+    // the viewport-covering full screen, and off its own chat's page there's no chat view to dock beside.
+    var isColumn = isExpanded && m.HasVideo && !m.IsOverLock && m.IsDesktopLayout && m.IsOnOwnChatPage;
+    // Inline, the screen is a part of its chat's header; docked, it's a column of its chat's page.
+    var slotKey = chat is null ? null
+        : isColumn ? LayoutSlots.CallScreenColumnKey
+        : m.Mode == VisualActivityPanelMode.Inline ? chat.Id.Value
+        : null;
 }
 
 <OnUIEvent TEvent="@CameraSelectedEvent" Handler="OnCameraSelectedEvent"/>
@@ -36,15 +43,19 @@
         var cls = $"call-screen {modeCls} {phaseCls} {(hasVideo ? "has-video" : "")} "
             + $"{(m.IsEqualLayout ? "layout-equal" : "")} {(_isFirstOpen ? "first-time-open" : "")} "
             + $"{(_isClosing ? "closing" : "")}";
-        // Same source of truth as the classes beside them, so a marker lands on the render its class does
+        // Same source of truth as the classes beside them, so a marker lands on the render its class does.
+        // call-screen-column drives the layout's panel-hide + chat column; call-screen-chat-visible keeps
+        // that chat column shown (desktop default, until the user hides it) — both read from body in CSS.
         var presence = $"{(isExpanded ? "video-panel-expanded" : "")} "
             + $"{(hasVideo && !isHidden ? "video-panel-shown" : "")} "
             + $"{(hasVideo && !isIsland ? "open-video-panel" : "")} "
-            + $"{(hasVideo && !isIsland && !isHidden ? "visible-video-panel" : "")}";
+            + $"{(hasVideo && !isIsland && !isHidden ? "visible-video-panel" : "")} "
+            + $"{(isColumn ? "call-screen-column" : "")} "
+            + $"{(isColumn && m.IsChatVisible ? "call-screen-chat-visible" : "")}";
         var videoMenuRef = MenuRef.New<VideoPanelMenu>(chat.Id.Value, ScreenSize.IsNarrow().ToString()).ToString();
 
         <div @ref="Ref" @key="@chat.Id.Value" class="@cls" data-chat-id="@chat.Id.Value"
-             data-child="@presence" data-children="call-screen-chat">
+             data-child="@presence">
             <CascadingValue Value="@GetChatContext(chat)">
                 <div class="c-container">
                     @if (isExpanded && !hasVideo) {
@@ -121,18 +132,6 @@
                             <CallReactionsOverlay ChatId="@chat.Id"/>
                         }
                     }
-                    @* Never over the lock screen: the chat's content stays behind the keyguard. *@
-                    @if (isExpanded && hasVideo && m.IsChatVisible && !m.IsOverLock) {
-                        <div class="call-screen-chat upload-drag-drop-host" data-child="call-screen-chat">
-                            <RegionVisibilityProvider IsRegionVisible="@ChatRegionVisible">
-                                <ChatView @key="@chat.Id.Value" NavigationSlotName="@ChatNavigationSlot"/>
-                                <div class="layout-subfooter">
-                                    <RenderStack Name="@ChatNavigationSlot"/>
-                                </div>
-                                <ChatMessageEditor @key="@("call-screen-editor-" + chat.Id.Value)"/>
-                            </RegionVisibilityProvider>
-                        </div>
-                    }
                 </div>
             </CascadingValue>
         </div>
@@ -144,7 +143,6 @@
 
 @code {
     public const string CameraMenuRequester = nameof(CallScreen);
-    private const string ChatNavigationSlot = "CallScreenSubFooter";
 
     private static readonly string JSCreateMethod = $"{BlazorUIAppModule.ImportName}.CallScreen.create";
     private static readonly string JSCreateSwipe = $"{BlazorUIAppModule.ImportName}.IncomingCallSwipe.create";
@@ -169,7 +167,6 @@
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private CameraUI CameraUI => Hub.CameraUI;
     private HistoryStepper HistoryStepper => field ??= Hub.Services.GetRequiredService<HistoryStepper>();
-    private IState<bool> ChatRegionVisible => field ??= StateFactory.NewMutable(true);
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
 
@@ -312,11 +309,16 @@
         var joinedAt = await CallScreensUI.GetCallConnectedAt(chatId, cancellationToken).ConfigureAwait(false);
         var isEqualLayout = await CallScreensUI.IsEqualLayout(cancellationToken).ConfigureAwait(false);
         var isChatVisible = await ChatVideoUI.GetIsVideoPanelChatVisible(cancellationToken).ConfigureAwait(false);
+        var isDesktopLayout = await ChatVideoUI.IsDesktopLayout(cancellationToken).ConfigureAwait(false);
+        var selectedChatId = await Hub.ChatUI.SelectedChatId.Use(cancellationToken).ConfigureAwait(false);
+        var isMiddleVisible = await Hub.PanelsUI.Middle.IsVisible(cancellationToken).ConfigureAwait(false);
         return m with {
             JoinedAt = joinedAt,
             HasVideo = screen.HasVideo,
             IsEqualLayout = isEqualLayout,
             IsChatVisible = isChatVisible,
+            IsDesktopLayout = isDesktopLayout,
+            IsOnOwnChatPage = selectedChatId == chatId && isMiddleVisible,
         };
     }
 
@@ -468,5 +470,7 @@
         public bool HasVideo { get; init; }
         public bool IsEqualLayout { get; init; }
         public bool IsChatVisible { get; init; }
+        public bool IsDesktopLayout { get; init; }
+        public bool IsOnOwnChatPage { get; init; }
     }
 }

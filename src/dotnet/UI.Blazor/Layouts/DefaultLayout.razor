@@ -6,6 +6,9 @@
             <PageWithHeaderAndFooter @key="@Key"
                 Class="@MiddlePanelClass" Child="@MiddlePanelChild" BodyClass="@BodyClass">
                 <LeftDrawer><RenderSlot Name="@LayoutSlots.MainLeftDrawer"/></LeftDrawer>
+                <VideoColumn>
+                    <RenderNomadSlot Name="@LayoutSlots.CallScreen" Key="@LayoutSlots.CallScreenColumnKey"/>
+                </VideoColumn>
                 <Header>
                     <ErrorBarrier Name="Header" Kind="@ErrorBarrierKind.Compact">
                         <RenderSlot Name="@LayoutSlots.MainHeader"/>
