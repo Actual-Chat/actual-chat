@@ -199,14 +199,6 @@ public class ContactSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void ContactsBackend_PublishCopiedChat_Basic()
-    {
-        var placeChatId = PlaceChatId.New(TestPlaceId);
-        var cmd = new ContactsBackend_PublishCopiedChat(placeChatId);
-        cmd.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
     public void ContactsBackend_ReviewExternalContactName_Basic()
     {
         var contactId = ContactId.NewAny(TestUserId, TestChatId);

@@ -28,19 +28,6 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
         cmd.AssertPassesThroughSerializers();
     }
 
-    [Fact]
-    public void AuthorsBackend_CopyChat_Basic()
-    {
-        var newChatId = GroupChatId.New();
-        var cmd = new AuthorsBackend_CopyChat(TestChatId, newChatId, [], "corr-1");
-        cmd.AssertPassesThroughSerializers(
-            (deserialized, original) => {
-                deserialized.OldChatId.Should().Be(original.OldChatId);
-                deserialized.NewChatId.Should().Be(original.NewChatId);
-                deserialized.CorrelationId.Should().Be(original.CorrelationId);
-            }, Out);
-    }
-
     // ChatsBackend
 
     [Fact]
@@ -79,28 +66,6 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
     public void ChatsBackend_CreateNotesChat_Basic()
     {
         var cmd = new ChatsBackend_CreateNotesChat(TestUserId);
-        cmd.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
-    public void ChatBackend_CopyChat_Basic()
-    {
-        var cmd = new ChatBackend_CopyChat(TestChatId, TestPlaceId, "corr-1");
-        cmd.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
-    public void ChatBackend_CopyChatResult_Basic()
-    {
-        var result = new ChatBackend_CopyChatResult(true, false, 42);
-        result.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
-    public void ChatsBackend_ChangeChatCopyState_Basic()
-    {
-        var diff = new ChatCopyStateDiff { IsCopiedSuccessfully = true };
-        var cmd = new ChatsBackend_ChangeChatCopyState(TestChatId, null, Change.Create(diff));
         cmd.AssertPassesThroughSerializers();
     }
 

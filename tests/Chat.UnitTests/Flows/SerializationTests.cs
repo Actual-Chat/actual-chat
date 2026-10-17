@@ -16,6 +16,18 @@ public class ChatEntryEndsAtFixupFlowSerializationTest(ITestOutputHelper @out)
     };
 }
 
+public class ForwardedChatFixupFlowSerializationTest(ITestOutputHelper @out)
+    : FlowSerializationTestBase<ForwardedChatFixupFlow>(@out)
+{
+    protected override ForwardedChatFixupFlow CreatePopulated() => new() {
+        LastChatId = "chat-7",
+        LastLocalId = 42,
+        FixedCount = 100,
+        ScannedCount = 200,
+        ChatCount = 30,
+    };
+}
+
 public class ChatEntryMigrationFlowSerializationTest(ITestOutputHelper @out)
     : FlowSerializationTestBase<ChatEntryMigrationFlow>(@out)
 {

@@ -58,7 +58,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     private IMarkupParser MarkupParser => field ??= Services.GetRequiredService<IMarkupParser>();
     private KeyedFactory<IBackendChatMarkupHub, ChatId> ChatMarkupHubFactory => field ??= Services.KeyedFactory<IBackendChatMarkupHub, ChatId>();
     private IDbEntityResolver<string, DbChat> DbChatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChat>>();
-    private IDbEntityResolver<string, DbChatCopyState> DbChatCopyStateResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbChatCopyState>>();
     private IDbEntityResolver<string, DbReadPositionsStat> DbReadPositionsStatResolver => field ??= Services.GetRequiredService<IDbEntityResolver<string, DbReadPositionsStat>>();
     private IDbShardLocalIdGenerator<DbChatEntry, string> DbChatEntryIdGenerator => field ??= Services.GetRequiredService<IDbShardLocalIdGenerator<DbChatEntry, string>>();
     private DiffEngine DiffEngine => field ??= Services.GetRequiredService<DiffEngine>();
@@ -567,13 +566,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             entryRanges.Add(new Range<long>(startId.Value, endId.Value + 1));
 
         return new ChatEntryRangeTile(chatId, entryRanges.ToArray(), previousEntryId, nextEntryId);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<ChatCopyState?> GetChatCopyState(ChatId chatId, CancellationToken cancellationToken)
-    {
-        var dbCopiedChat = await DbChatCopyStateResolver.Get(chatId.Value, cancellationToken).ConfigureAwait(false);
-        return dbCopiedChat?.ToModel();
     }
 
     // [ComputeMethod]
@@ -1499,77 +1491,6 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             },
             userId);
         await Commander.Call(createNotesCommand, cancellationToken).ConfigureAwait(false);
-    }
-
-    // [CommandHandler]
-    public virtual async Task<ChatCopyState> OnChangeChatCopyState(ChatsBackend_ChangeChatCopyState command, CancellationToken cancellationToken)
-    {
-        var change = command.Change;
-        var chatId = command.ChatId;
-        var expectedVersion = command.ExpectedVersion;
-
-        change.RequireValid();
-        ChatCopyState chatCopyState;
-
-        var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
-        await using var __ = dbContext.ConfigureAwait(false);
-
-        var dbChatCopyState = await dbContext.ChatCopyStates.ForUpdate()
-            // ReSharper disable once AccessToModifiedClosure
-            .FirstOrDefaultAsync(c => c.Id == chatId.Value, cancellationToken)
-            .ConfigureAwait(false);
-        var oldChatCopyState = dbChatCopyState?.ToModel();
-
-        if (change.IsCreate(out var update)) {
-            oldChatCopyState.RequireNull();
-
-            chatCopyState = new ChatCopyState(chatId) {
-                CreatedAt = Clocks.SystemClock.Now,
-            };
-            chatCopyState = DiffEngine.Patch(chatCopyState, update) with {
-                Version = VersionGenerator.NextVersion(),
-            };
-            if (chatCopyState.SourceChatId is null)
-                throw StandardError.Constraint("SourceChatId should be specified to create ChatCopyState.");
-
-            dbChatCopyState = new DbChatCopyState(chatCopyState);
-            dbContext.Add(dbChatCopyState);
-        }
-        else if (change.IsUpdate(out update)) {
-            dbChatCopyState.RequireVersion(expectedVersion);
-            if (update.SourceChatId.HasValue)
-                throw StandardError.Constraint("SourceChatId can't be edited.");
-            var originalChatCopyState = dbChatCopyState.ToModel();
-            if (originalChatCopyState.IsPublished)
-                throw StandardError.Constraint("ChatCopyState can't be edited after it has been marked as published.");
-
-            chatCopyState = DiffEngine.Patch(originalChatCopyState, update) with {
-                Version = VersionGenerator.NextVersion(),
-            };
-
-            if (update.IsPublished == true)
-                chatCopyState = chatCopyState with {
-                    PublishedAt = Clocks.SystemClock.Now,
-                };
-
-            if (update.IsCopiedSuccessfully.HasValue || update.LastProcessedEntryId.HasValue)
-                chatCopyState = chatCopyState with {
-                    LastCopyingAt = Clocks.SystemClock.Now,
-                };
-
-            dbChatCopyState.UpdateFrom(chatCopyState);
-        }
-        else if (change.IsRemove()) {
-            dbChatCopyState.Require();
-            throw StandardError.Constraint("Removing ChatCopyState is not allowed.");
-        }
-        else
-            throw StandardError.Internal("Invalid ChatCopyStateDiff state.");
-
-        await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        Invalidation.Defer(() => _ = GetChatCopyState(chatId, default));
-        return chatCopyState;
     }
 
     public virtual async Task OnUpdateReadPositionsStat(

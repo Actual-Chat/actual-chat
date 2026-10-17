@@ -895,46 +895,6 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
     }
 
     // [CommandHandler]
-    public virtual async Task OnPublishCopiedChat(
-        ContactsBackend_PublishCopiedChat command,
-        CancellationToken cancellationToken)
-    {
-        var chatId = command.ChatId;
-        var placeId = chatId.PlaceId;
-
-        Log.LogInformation("-> OnPublishCopiedChat: creating contacts for chat '{ChatId}'", chatId);
-
-        var authorIds = await AuthorsBackend.ListAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
-        foreach (var authorId in authorIds) {
-            var author = await AuthorsBackend.Get(authorId.ChatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
-            if (author == null || author.HasLeft)
-                continue;
-
-            var userId = author.UserId;
-            var changePlaceMembership = new ContactsBackend_ChangePlaceMembership(placeId, userId, false);
-            await Commander.Call(changePlaceMembership, false, cancellationToken).ConfigureAwait(false);
-
-            var contactId = ContactId.NewChat(userId, chatId);
-            var contact = await Get(userId, contactId, cancellationToken).ConfigureAwait(false);
-            if (contact.IsRegular)
-                continue; // No need to make any changes
-
-            var createContact = new ContactsBackend_Change(
-                contactId,
-                contact.HasVersion() ? contact.Version : null,
-                Change.Upsert(contact with { State = ContactState.Regular }));
-            await Commander.Call(createContact, false, cancellationToken).ConfigureAwait(false);
-        }
-
-        Invalidation.Defer(() => {
-            _ = PseudoChatContact(chatId);
-            _ = PseudoPlaceContact(placeId);
-        });
-
-        Log.LogInformation("<- OnPublishCopiedChat: created contacts for chat '{ChatId}'", chatId);
-    }
-
-    // [CommandHandler]
     public virtual async Task OnReviewExternalContactName(
         ContactsBackend_ReviewExternalContactName command,
         CancellationToken cancellationToken)

@@ -63,8 +63,6 @@ public interface IContactsBackend : IComputeService, IBackendService
     [CommandHandler]
     Task OnChangePlaceMembership(ContactsBackend_ChangePlaceMembership command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnPublishCopiedChat(ContactsBackend_PublishCopiedChat command, CancellationToken cancellationToken);
-    [CommandHandler]
     Task OnReviewExternalContactName(ContactsBackend_ReviewExternalContactName command, CancellationToken cancellationToken);
     [CommandHandler]
     Task<ThreadContact?> OnChangeThreadContact(ContactsBackend_ChangeThreadContact command, CancellationToken cancellationToken);
@@ -181,19 +179,6 @@ public sealed partial record ContactsBackend_ChangePlaceMembership(
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => PlaceId.ShardKey;
-}
-
-/// <summary>
-/// Command to publish a chat that was copied to a place.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ContactsBackend_PublishCopiedChat(
-    [property: DataMember, Key(0)] PlaceChatId ChatId
-) : ICommand<Unit>, IBackendCommand, IHasShardKey
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 /// <summary>

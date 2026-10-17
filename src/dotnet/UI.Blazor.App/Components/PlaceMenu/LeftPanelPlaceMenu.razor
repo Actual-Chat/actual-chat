@@ -24,11 +24,6 @@
 }
 @if (_isOwner) {
     <MenuEntry
-        Icon="icon-copy-in-place"
-        Text="@L.Place_CopyChatInto"
-        Click="OnImportChatsClick">
-    </MenuEntry>
-    <MenuEntry
         Icon="icon-edit"
         Text="@L.Common_Settings"
         Click="OnPlaceSettingsClick">
@@ -77,9 +72,6 @@
 
     private void OnPlaceLeaveClick()
         => ChatUI.LeavePlace(_placeId);
-
-    private void OnImportChatsClick()
-        => _ = ModalUI.Show(new CopyChatFromListToPlaceModal.Model(_placeId));
 
     private void OnInviteMembersClick()
         => _ = ModalUI.Show(new AddMemberModal.Model(_placeId));

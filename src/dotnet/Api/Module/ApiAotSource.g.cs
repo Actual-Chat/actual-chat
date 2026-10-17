@@ -34,7 +34,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatContentPeriod>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatContentSkeleton>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatCopyState>();
-        CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatCopyStateDiff>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatDiff>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ChatEntryAttachment>();
@@ -412,9 +411,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatCopyState>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatCopyState>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatCopyState>>>>();
-        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatCopyStateDiff>>();
-        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatCopyStateDiff>>>();
-        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatCopyStateDiff>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatDiff>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatDiff>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.ChatDiff>>>>();
@@ -2347,7 +2343,6 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+CallOutcomeFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatContentPeriodFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatContentSkeletonFormatter, ActualChat.Api");
-        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatCopyStateDiffFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatCopyStateFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatDiffFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ChatEntryAttachmentFormatter, ActualChat.Api");
@@ -2681,7 +2676,6 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Chat.ChatContentPeriod), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatContentSkeleton), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatCopyState), AotTypeKind.Serializable),
-            (typeof(global::ActualChat.Chat.ChatCopyStateDiff), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatDiff), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ChatEntryAttachment), AotTypeKind.Serializable),

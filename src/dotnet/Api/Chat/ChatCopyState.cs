@@ -20,13 +20,3 @@ public partial record ChatCopyState(
     [DataMember, Key(8)] public bool IsPublished { get; init; }
     [DataMember, Key(9)] public Moment PublishedAt { get; init; }
 }
-
-[DataContract, MessagePackObject(true)]
-public sealed partial record ChatCopyStateDiff : RecordDiff
-{
-    [DataMember] public Option<ChatId> SourceChatId { get; init; }
-    [DataMember] public long? LastProcessedEntryId { get; init; }
-    [DataMember] public string? LastCorrelationId { get; init; }
-    [DataMember] public bool? IsCopiedSuccessfully { get; init; }
-    [DataMember] public bool? IsPublished { get; init; }
-}

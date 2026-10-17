@@ -290,7 +290,7 @@ The dangerous combination is a **low-cardinality, high-subscription key** on a
 | high graph × high fan-out | `ChatsBackend.GetRules(chatId, principal)` — every facade method gates on it | worst |
 | high graph × low fan-out | `AccountsBackend.Get(userId)` — 109 downstream but per-user | moderate |
 | low graph × moderate fan-out | `UserPresences.Get(userId)` — 2 downstream, one per viewing session | high in aggregate because it fires constantly |
-| low × low | `ChatsBackend.GetChatCopyState` | negligible |
+| low × low | `ChatsBackend.GetForwardChatReplacement` | negligible |
 
 `UserPresences.Get` is the clearest case where graph depth understates real cost —
 see §7.3. **Measured**, the server-side fan-out from one `UserPresences.Get`

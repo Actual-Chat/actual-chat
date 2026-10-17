@@ -15,7 +15,7 @@ Implementation plan and history: [Management UI plan](../plans/mui.md).
   and every other subsystem; enough to follow what happens in real time and to find what is going wrong
   before users report it. The raw metrics also go to Google Cloud, but they are hard to navigate there
   when nobody knows which of them matter; Mui is the curated view.
-- **Acting on it.** Invalidate, prune, resume, copy a chat to a place, preview a digest: the operations
+- **Acting on it.** Invalidate, prune, resume, preview a digest: the operations
   that used to live in the app's `/test/*` pages.
 - **Keeping both out of the app UI.** Staff tools in the app's pages ship in the WASM and mobile bundles
   and grow there. Mui has its own shell and no shared UI code, JS or CSS.
@@ -29,7 +29,7 @@ mode, or mobile layout.
 | Section | What it holds |
 |---------|---------------|
 | **Dashboards** (`/m`, `/m/dashboards/...`) | The main section; its first page, Overview (`/m`), will show key metrics. One dashboard per area: Chats, Messages, Notifications, Sessions, Uploads, Users (user activity first: texts, voice, uploads, new chats and places). Places and other areas can follow. A dashboard runs SQL (sometimes with post-processing in code) and shows how a few metrics trend, so it is possible to follow what is happening. See "Dashboards" below. |
-| **System** (`/m/system/...`) | One page per subsystem or tool (Digest, Events, Flows, Host, Mesh, Operations, SQL, Tools). A page shows the subsystem's reports **and** offers its actions next to them, so one page answers "what is going on" and "let me fix it". |
+| **System** (`/m/system/...`) | One page per subsystem or tool (Digest, Events, Flows, Host, Mesh, Operations, SQL). A page shows the subsystem's reports **and** offers its actions next to them, so one page answers "what is going on" and "let me fix it". |
 
 Within a group the pages are alphabetical; Overview is first. A section registers itself (see
 "Adding a section").
@@ -215,4 +215,3 @@ actions instead of handling exceptions per page.
 | Mesh | `/m/system/mesh` | Nodes, mesh RPC refs, RPC peers, copyable report |
 | Operations | `/m/system/operations` | Per database: operation log size, operations per second, oldest and newest row. Refreshes every 5 s, no cache |
 | SQL | `/m/system/sql` | Schema browser and a read-only SQL console |
-| Tools | `/m/system/tools` | Copy a chat to a place, publish the copied chat |

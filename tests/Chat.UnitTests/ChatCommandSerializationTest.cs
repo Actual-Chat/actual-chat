@@ -148,37 +148,6 @@ public class ChatCommandSerializationTest(ITestOutputHelper @out) : TestBase(@ou
             }, Out);
     }
 
-    [Fact]
-    public void Chat_CopyChat_Basic()
-    {
-        var cmd = new Chat_CopyChat {
-            Session = TestSession,
-            SourceChatId = TestChatId,
-            PlaceId = TestPlaceId,
-            CorrelationId = "corr-1",
-        };
-        cmd.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
-    public void Chat_PublishCopiedChat_Basic()
-    {
-        var newChatId = PlaceChatId.New(TestPlaceId);
-        var cmd = new Chat_PublishCopiedChat {
-            Session = TestSession,
-            NewChatId = newChatId,
-            SourceChatId = TestChatId,
-        };
-        cmd.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
-    public void Chat_CopyChatResult_Basic()
-    {
-        var result = new Chat_CopyChatResult(true, false);
-        result.AssertPassesThroughSerializers();
-    }
-
     // Authors commands
 
     [Fact]

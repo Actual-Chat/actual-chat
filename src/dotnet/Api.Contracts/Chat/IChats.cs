@@ -118,8 +118,9 @@ public interface IChats : IComputeService
     [ComputeMethod]
     Task<Author[]> ListMentionableAuthors(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    Task<ChatCopyState?> GetChatCopyState(Session session, ChatId chatId, CancellationToken cancellationToken);
+    [ComputeMethod, LegacyName("GetChatCopyState")]
+    [Obsolete("2026.10: The copy-chat-to-place UI is removed - chat import replaces it. Old clients only.")]
+    Task<ChatCopyState?> GetLegacyChatCopyState(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ChatId?> GetForwardChatReplacement(Session session, ChatId sourceChatId, CancellationToken cancellationToken);
@@ -245,12 +246,6 @@ public interface IChats : IComputeService
     Task<Unit> OnForwardAttachment(Chats_ForwardAttachment command, CancellationToken cancellationToken);
 
     [CommandHandler]
-    Task<Chat_CopyChatResult> OnCopyChat(Chat_CopyChat command, CancellationToken cancellationToken);
-
-    [CommandHandler]
-    Task OnPublishCopiedChat(Chat_PublishCopiedChat command, CancellationToken cancellationToken);
-
-    [CommandHandler]
     Task OnSetPinned(Chats_SetPinned command, CancellationToken cancellationToken);
 }
 
@@ -343,34 +338,10 @@ public sealed partial record Chats_ForwardAttachment : ApiCommand<Unit>
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Chat_CopyChat : ApiCommand<Chat_CopyChatResult>
-{
-    [DataMember(Order = 2), Key(2)] public required ChatId SourceChatId { get; init; }
-    [DataMember(Order = 3), Key(3)] public required PlaceId PlaceId { get; init; }
-    [DataMember(Order = 4), Key(4)] public required string CorrelationId { get; init; }
-}
-
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record Chat_CopyChatResult(
-    [property: DataMember, Key(0)] bool HasChanges,
-    [property: DataMember, Key(1)] bool HasErrors
-);
-
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
 public sealed partial record Chats_SetPinned : ApiCommand<Unit>
 {
     [DataMember(Order = 2), Key(2)] public required ChatEntryId EntryId { get; init; }
     [DataMember(Order = 3), Key(3)] public required bool MustPin { get; init; }
-}
-
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record Chat_PublishCopiedChat : ApiCommand<Unit>
-{
-    [DataMember(Order = 2), Key(2)] public required PlaceChatId NewChatId { get; init; }
-    [DataMember(Order = 3), Key(3)] public required ChatId SourceChatId { get; init; }
 }
 
 [DataContract, MessagePackObject]
