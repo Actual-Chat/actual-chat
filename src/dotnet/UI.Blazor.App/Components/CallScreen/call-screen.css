@@ -192,9 +192,6 @@ body.wide .call-screen.expanded > .c-container {
     @apply rounded-lg;
     @apply overflow-hidden;
 }
-body.wide .call-screen.expanded[data-has-call-screen-chat] > .c-container {
-    @apply justify-start;
-}
 .call-screen .video-stage {
     @apply relative;
     @apply flex items-center justify-center;
@@ -385,10 +382,6 @@ body.device-mobile.narrow .call-screen.expanded .video-stage.video-stage-layout_
     body.device-mobile.narrow .call-screen.expanded .video-stage.video-stage-layout__sidebar {
         padding-bottom: calc(var(--vp-safe-bottom) + 1rem)
     }
-}
-
-.call-screen.expanded[data-has-call-screen-chat] .call-screen-toolbar {
-    right: calc(var(--call-screen-chat-width) + 0.5rem);
 }
 
 /* ── Ringing: 4 labelled round buttons (Decline · Mute · Message · Accept) ── */
@@ -993,41 +986,97 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
     @apply absolute right-4 top-0;
 }
 
-/* ── Embedded chat panel (expanded video, wide only) ── */
+/* ── Docked as a layout column (desktop full screen) ──
+   On a desktop the full-screen call screen doesn't cover the viewport: it moves (nomad slot) into a flow
+   column of its chat's page, between the left panel and the chat view. The side panels slide out, the
+   chat view narrows to a column on the video's right, and that real chat view is the chat beside the
+   video — there is no second one. body[data-has-call-screen-column] marks this is on, and it is set only
+   on a desktop, so the narrow / over-lock viewport-covering full screen above is untouched. */
 
-.call-screen[data-has-call-screen-chat] {
-    --call-screen-chat-width: 20rem;
+/* The slot is transparent; its moved-in content is the flex child of .page-with-header-and-footer. */
+.page-with-header-and-footer > render-nomad-slot[data-key="CallScreenColumnKey"] {
+    display: contents;
 }
-@media (min-width: 1024px) {
-    .call-screen[data-has-call-screen-chat] { --call-screen-chat-width: 28rem; }
+nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] {
+    @apply flex-1;
+    @apply min-w-0 h-full;
+}
+/* Docked, the screen is in flow, not covering the viewport. */
+nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expanded {
+    @apply relative inset-auto z-10;
+    @apply w-full h-full;
+}
+
+/* Docked as a column the video drops the desktop full-screen "card": no bg-03 wash, no safe+0.5rem
+   padding and no rounded/clipped container, so it reads as one surface with the chat beside it rather
+   than a tile floating in a gap. A hairline separator (added to the chat column below) draws the one
+   edge between them. The body[data-has-call-screen-column] prefix keeps this above the
+   body.wide(.side-nav-right-open) full-screen card rules, which are otherwise more specific. */
+body[data-has-call-screen-column]
+    nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expanded {
+    @apply p-0;
+    @apply bg-transparent;
+}
+body[data-has-call-screen-column]
+    nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expanded > .c-container {
+    @apply rounded-none;
+}
+/* The own-camera preview surface rounds itself in wide full screen (video-streaming-preview.css); docked
+   flush, the big focused tile has no rounded ancestor to clip it, so that rounding is the only thing left
+   curving the video against the flush edges — square it off here. Small side tiles are unaffected: their
+   own wrapper still clips them rounded. The carded (non-column) full screen keeps the general rule. */
+body[data-has-call-screen-column]
+    nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expanded
+    .video-streaming-preview .call-video,
+body[data-has-call-screen-column]
+    nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expanded
+    .video-streaming-preview .call-video-native {
+    @apply rounded-none;
+}
+
+/* The chat view narrows to a column on the video's right while the chat is shown; hidden (the user's
+   toggle, or anything narrower than desktop), the video takes the whole column. A hairline separator
+   on its left edge is the single divide between the flush video and the chat. */
+body[data-has-call-screen-chat-visible] .page-with-header-and-footer > .list-view-layout {
+    @apply flex-none;
+    @apply border-l border-separator;
+    width: 28rem;
 }
 @media (min-width: 1280px) {
-    .call-screen[data-has-call-screen-chat] { --call-screen-chat-width: 32rem; }
+    body[data-has-call-screen-chat-visible] .page-with-header-and-footer > .list-view-layout {
+        width: 32rem;
+    }
 }
 @media (min-width: 1536px) {
-    .call-screen[data-has-call-screen-chat] { --call-screen-chat-width: 40rem; }
+    body[data-has-call-screen-chat-visible] .page-with-header-and-footer > .list-view-layout {
+        width: 40rem;
+    }
 }
-.call-screen-chat {
-    @apply absolute z-tooltip right-0 top-0 bottom-0;
-    @apply flex-y;
-    @apply p-1;
-    @apply rounded-lg;
-    @apply overflow-hidden;
-    @apply bg-01;
-    width: var(--call-screen-chat-width);
-}
-.call-screen-chat .chat-view {
-    @apply flex-1;
-    @apply overflow-y-auto;
-}
-.call-screen-chat .chat-message-editor {
-    @apply flex-none;
-}
-.call-screen-chat .chat-message-editor.has-safe-area-bottom {
-    @apply pb-0;
-}
-.call-screen-chat .chat-audio-panel {
+body[data-has-call-screen-column]:not([data-has-call-screen-chat-visible])
+    .page-with-header-and-footer > .list-view-layout {
     @apply hidden;
+}
+
+/* The docked chat column's own call controls — the header's listen/hang-up (.chat-audio-controls) and
+   the editor footer's camera/mic/language/screencast (.chat-audio-panel) — duplicate the video footer's
+   controls right beside them, so hide them here. The video panel owns the call's controls in this mode. */
+body[data-has-call-screen-chat-visible] .page-with-header-and-footer > .list-view-layout .chat-audio-controls,
+body[data-has-call-screen-chat-visible] .page-with-header-and-footer > .list-view-layout .chat-audio-panel {
+    @apply hidden;
+}
+
+/* The side panels give way to the full-screen video: each collapses its width to 0 over 200ms, so the
+   video (flex-1) grows smoothly into the freed track and the chat column lands flush against the edge.
+   Width 0 is an exact reclaim — unlike a negative margin, which the flex-grow free-space math doesn't
+   fully credit, leaving a sliver of dark track on the right that grew with the viewport. Only the video
+   reflows per frame; the chat column is a fixed width. State is untouched, so a panel left open returns
+   on collapse. .side-nav.side-nav-* keeps this above the [data-has-right-panel-open] width/transition
+   overrides, so the collapse animates rather than snapping. */
+body[data-has-call-screen-column] .page-with-header-and-footer > .side-nav.side-nav-left,
+body[data-has-call-screen-column] .page-with-header-and-footer > .side-nav.side-nav-right {
+    @apply w-0;
+    @apply overflow-hidden;
+    transition: width 200ms ease-out;
 }
 
 @keyframes smoothShowVideoPanel {
@@ -1086,14 +1135,6 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
 .call-screen.expanded .video-stage.video-stage-layout__sidebar {
     @apply gap-2 p-4 pb-20;
 }
-.call-screen.expanded[data-has-call-screen-chat] .video-stage {
-    width: calc(100% - var(--call-screen-chat-width) - 0.5rem);
-    /* Trimmed to the left region, so its right edge sits mid-container where the
-       container's corner clip can't reach — round the video itself instead (left
-       corners already clipped round by the container, overflow-hidden clips the
-       square focused tile into the corners). */
-    @apply rounded-lg overflow-hidden;
-}
 
 /* ── Equal layout: split the content box into N equal regions instead of
    "one focused + sidebar". Toggled by the header grid button
@@ -1103,9 +1144,8 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
    are orientation-aware via a container query on the content box, so they
    adapt whether the panel is portrait (mobile) or landscape (desktop / chat
    open). PiP overlays are hidden here (they aren't counted in tiles-N). ── */
-/* The orientation container is the CONTENT box — its width is already trimmed
-   by the chat panel (see the :has(.call-screen-chat) rule above), so the split
-   follows the actual video area, not the whole panel. The grid itself lives on
+/* The orientation container is the CONTENT box — docked as a layout column its width is already the
+   video area beside the chat column, so the split follows the actual video area. The grid itself lives on
    the inner `.c-grid` wrapper, because an element can't react to its own
    container query. In the default sidebar layout `.c-grid` is display:contents
    — transparent — so tiles stay direct flex children of .video-stage. */

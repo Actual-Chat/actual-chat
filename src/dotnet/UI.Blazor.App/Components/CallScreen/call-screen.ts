@@ -529,8 +529,7 @@ export class CallScreen {
     // toggle the header/footer.
     private isOnFocusedTile(target: HTMLElement): boolean {
         return target.closest('.remote-video-container.item-focused') != null
-            && !target.closest('.call-screen-toolbar')
-            && !target.closest('.call-screen-chat');
+            && !target.closest('.call-screen-toolbar');
     }
 
     private isOnScreenCast(target: HTMLElement): boolean {
