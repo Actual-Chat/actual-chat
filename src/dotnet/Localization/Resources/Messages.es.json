@@ -92,12 +92,6 @@
   "Error_CustomLinkTaken_Format": "El enlace «{link}» ya lo usa otro chat del mismo espacio.",
   "Error_WelcomeChatCannotBePrivate": "El chat «Welcome» no puede pasar a ser privado.",
   "Error_WelcomeChatCannotBeRemoved": "El chat «Welcome» no se puede eliminar.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Solo los chats de grupo o de espacio se pueden copiar a un espacio.",
-  "Error_CannotCopyToSamePlace": "No se puede copiar un chat de espacio al mismo espacio.",
-  "Error_MigrationRequiresChatOwner": "Debes ser propietario de este chat para realizar la migración.",
-  "Error_MigrationRequiresPlaceOwner": "Debes ser propietario del espacio para copiar un chat en él.",
-  "Error_OperationRequiresChatOwner": "Debes ser propietario de este chat para realizar esta operación.",
-  "Error_OperationRequiresPlaceOwner": "Debes ser propietario del espacio al que pertenece el chat para realizar esta operación.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Podrás iniciar hilos cuando esta persona te añada a sus contactos o te responda.",

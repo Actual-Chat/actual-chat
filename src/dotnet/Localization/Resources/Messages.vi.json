@@ -92,12 +92,6 @@
   "Error_CustomLinkTaken_Format": "Liên kết «{link}» đã được một cuộc trò chuyện khác trong cùng không gian sử dụng.",
   "Error_WelcomeChatCannotBePrivate": "Không thể đặt cuộc trò chuyện «Welcome» ở chế độ riêng tư.",
   "Error_WelcomeChatCannotBeRemoved": "Không thể xóa cuộc trò chuyện «Welcome».",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Chỉ cuộc trò chuyện nhóm hoặc của không gian mới sao chép được vào một không gian.",
-  "Error_CannotCopyToSamePlace": "Không thể sao chép cuộc trò chuyện vào chính không gian đó.",
-  "Error_MigrationRequiresChatOwner": "Bạn phải là chủ sở hữu cuộc trò chuyện này để thực hiện việc chuyển.",
-  "Error_MigrationRequiresPlaceOwner": "Bạn phải là chủ sở hữu không gian để sao chép cuộc trò chuyện vào đó.",
-  "Error_OperationRequiresChatOwner": "Bạn phải là chủ sở hữu cuộc trò chuyện này để thực hiện thao tác này.",
-  "Error_OperationRequiresPlaceOwner": "Bạn phải là chủ sở hữu không gian chứa cuộc trò chuyện để thực hiện thao tác này.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Bạn chỉ có thể bắt đầu chủ đề sau khi người này thêm bạn vào liên hệ hoặc trả lời.",

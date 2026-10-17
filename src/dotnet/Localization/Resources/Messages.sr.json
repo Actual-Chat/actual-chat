@@ -100,12 +100,6 @@
   "Error_CustomLinkTaken_Format": "Властити линк „{link}“ већ користи други чет у истом Месту.",
   "Error_WelcomeChatCannotBePrivate": "Врста чета „Welcome“ не може се променити у затворену.",
   "Error_WelcomeChatCannotBeRemoved": "Чет „Welcome“ се не сме обрисати.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "У Место се могу копирати само групни четови или четови Места.",
-  "Error_CannotCopyToSamePlace": "Чет Места се не може копирати у исто Место.",
-  "Error_MigrationRequiresChatOwner": "Миграцију може извести само власник овог чета.",
-  "Error_MigrationRequiresPlaceOwner": "Чет у Место може копирати само власник Места.",
-  "Error_OperationRequiresChatOwner": "Ову операцију може извести само власник овог чета.",
-  "Error_OperationRequiresPlaceOwner": "Ову операцију може извести само власник Места којем чет припада.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Нити се могу започети тек након што вас овај корисник дода у контакте или одговори.",

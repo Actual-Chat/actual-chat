@@ -104,12 +104,6 @@
   "Error_CustomLinkTaken_Format": "Custom link '{link}' is already used for another chat in the same Place.",
   "Error_WelcomeChatCannotBePrivate": "Can't change chat type to private for 'Welcome' chat.",
   "Error_WelcomeChatCannotBeRemoved": "It's prohibited to remove 'Welcome' chat.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Only group or place chats can be copied to a Place.",
-  "Error_CannotCopyToSamePlace": "Can't copy place chat to the same Place.",
-  "Error_MigrationRequiresChatOwner": "You must be the Owner of this chat to perform the migration.",
-  "Error_MigrationRequiresPlaceOwner": "You should be place owner to perform 'copy chat to place' operation.",
-  "Error_OperationRequiresChatOwner": "You must be the Owner of this chat to perform this operation.",
-  "Error_OperationRequiresPlaceOwner": "You must be a chat's place owner to perform this operation.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Threads can be started only after this user adds you to their contacts or replies.",

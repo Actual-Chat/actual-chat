@@ -100,12 +100,6 @@
   "Error_CustomLinkTaken_Format": "Tautan khusus “{link}” sudah dipakai obrolan lain di Tempat yang sama.",
   "Error_WelcomeChatCannotBePrivate": "Jenis obrolan “Welcome” tidak bisa diubah menjadi tertutup.",
   "Error_WelcomeChatCannotBeRemoved": "Obrolan “Welcome” tidak boleh dihapus.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Hanya obrolan grup atau obrolan Tempat yang bisa disalin ke sebuah Tempat.",
-  "Error_CannotCopyToSamePlace": "Obrolan Tempat tidak bisa disalin ke Tempat yang sama.",
-  "Error_MigrationRequiresChatOwner": "Anda harus menjadi pemilik obrolan ini untuk melakukan migrasi.",
-  "Error_MigrationRequiresPlaceOwner": "Anda harus menjadi pemilik Tempat untuk menyalin obrolan ke Tempat.",
-  "Error_OperationRequiresChatOwner": "Anda harus menjadi pemilik obrolan ini untuk melakukan operasi tersebut.",
-  "Error_OperationRequiresPlaceOwner": "Anda harus menjadi pemilik Tempat dari obrolan ini untuk melakukan operasi tersebut.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Utas hanya bisa dimulai setelah pengguna ini menambahkan Anda ke kontaknya atau membalas.",

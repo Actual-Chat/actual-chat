@@ -92,12 +92,6 @@
   "Error_CustomLinkTaken_Format": "リンク「{link}」は同じスペースの別のチャットで使われています。",
   "Error_WelcomeChatCannotBePrivate": "「Welcome」チャットは非公開にできません。",
   "Error_WelcomeChatCannotBeRemoved": "「Welcome」チャットは削除できません。",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "スペースにコピーできるのは、グループチャットまたはスペースのチャットだけです。",
-  "Error_CannotCopyToSamePlace": "スペースのチャットを同じスペースにはコピーできません。",
-  "Error_MigrationRequiresChatOwner": "移行するには、このチャットのオーナーである必要があります。",
-  "Error_MigrationRequiresPlaceOwner": "チャットをスペースにコピーするには、そのスペースのオーナーである必要があります。",
-  "Error_OperationRequiresChatOwner": "この操作を行うには、このチャットのオーナーである必要があります。",
-  "Error_OperationRequiresPlaceOwner": "この操作を行うには、チャットが属するスペースのオーナーである必要があります。",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "スレッドを開始できるのは、相手があなたを連絡先に追加するか返信した後です。",

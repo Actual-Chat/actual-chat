@@ -100,12 +100,6 @@
   "Error_CustomLinkTaken_Format": "Vlastní odkaz „{link}“ už používá jiný chat ve stejném Místě.",
   "Error_WelcomeChatCannotBePrivate": "Typ chatu „Welcome“ nelze změnit na uzavřený.",
   "Error_WelcomeChatCannotBeRemoved": "Chat „Welcome“ nelze smazat.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Do Místa lze kopírovat jen skupinové chaty nebo chaty Místa.",
-  "Error_CannotCopyToSamePlace": "Chat Místa nelze zkopírovat do stejného Místa.",
-  "Error_MigrationRequiresChatOwner": "Migraci může provést jen vlastník tohoto chatu.",
-  "Error_MigrationRequiresPlaceOwner": "Zkopírovat chat do Místa může jen vlastník Místa.",
-  "Error_OperationRequiresChatOwner": "Tuto operaci může provést jen vlastník tohoto chatu.",
-  "Error_OperationRequiresPlaceOwner": "Tuto operaci může provést jen vlastník Místa, kam chat patří.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Vlákna lze založit až poté, co si vás tento uživatel přidá do kontaktů nebo odpoví.",
