@@ -51,8 +51,7 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
-        // Phones only: on the web the chat list's muted badge is always in view next to the chat.
-        if (!HostInfo.HostKind.IsMauiApp() || Chat.Id.IsThread())
+        if (Chat.Id.IsThread())
             return null;
 
         if (!_settings.WhenRead.IsCompleted)
