@@ -52,6 +52,8 @@
     }
 
     private void OnClick() {
+        if (NavbarUI.SelectedGroupId == Id)
+            Hub.SearchUI.Clear();
         NavbarUI.SelectGroup(Id, true);
         _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
     }
