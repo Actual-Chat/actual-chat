@@ -5,6 +5,10 @@
     @apply w-full;
     @apply mb-2;
 }
+/* The header already ends with a margin, so the body's own top padding would double the gap under the name */
+.author-modal .dialog-body {
+    @apply pt-0;
+}
 .author-modal .c-header > .c-top {
     @apply relative;
     @apply h-20 w-full;
