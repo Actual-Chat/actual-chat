@@ -710,7 +710,11 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             (change.IsCreate(out var importCreate)
                 ? importCreate.PlaceId?.RootChatId
                 : null);
-        if (importGuardChatId is not null)
+        // A chat pending removal is removed by its purge, which may run during an import of its
+        // parent: that's the case for a thread whose anchor the import's owner wiped
+        var isPurgeRemoval = chatId is not null && change.IsRemove()
+            && await IsRemovalPending(chatId, cancellationToken).ConfigureAwait(false);
+        if (importGuardChatId is not null && !isPurgeRemoval)
             await MaintenancesBackend.RequireNotImporting(importGuardChatId, cancellationToken).ConfigureAwait(false);
 
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
@@ -1099,8 +1103,10 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         var maintenanceMode = await MaintenancesBackend.GetMode(chatId, cancellationToken).ConfigureAwait(false);
         var isImporting = await MaintenancesBackend.IsImporting(chatId, cancellationToken).ConfigureAwait(false);
         // An import aborts the streams open in its scope; the change that ends such an entry must
-        // still go through, or the entry would stay empty and streaming
-        var mayEndStream = change.IsRemove() || (change.IsUpdate(out var endDiff) && endDiff.ContentStreamId == "");
+        // still go through, or the entry would stay empty and streaming. Any removal goes through too:
+        // the import's owners may remove what it replaces.
+        var isRemove = change.IsRemove();
+        var mayEndStream = isRemove || (change.IsUpdate(out var endDiff) && endDiff.ContentStreamId == "");
         if (isImporting && !mayEndStream)
             throw StandardError.Constraint("The chat is in import mode.");
 
@@ -1132,7 +1138,7 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             throw StandardError.NotFound<ChatEntry>();
 
         var oldEntry = dbEntry?.ToModel();
-        if (isImporting && dbEntry?.ContentStreamId.IsNullOrEmpty() != false)
+        if (isImporting && !isRemove && dbEntry?.ContentStreamId.IsNullOrEmpty() != false)
             throw StandardError.Constraint("The chat is in import mode.");
 
         ChatEntry entry;
@@ -1245,7 +1251,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             context.Operation.AddEvent(FlowHub.NewResumeEvent<ChatPurgeFlow>(chatId.Value)
                 .WithDelay(Settings.RemovedEntryRetention));
 
-        await EnsurePlaceChatAuthorExists(entry.AuthorId, null, cancellationToken).ConfigureAwait(false);
+        // Not on removal: it needs no author, and it would bring back one who left
+        if (changeKind != ChangeKind.Remove)
+            await EnsurePlaceChatAuthorExists(entry.AuthorId, null, cancellationToken).ConfigureAwait(false);
         if (changeKind == ChangeKind.Remove) {
             // Clean up associated Media record when removing an entry with audio
             if (entry.Audio?.MediaId is { } removedMediaId && !removedMediaId.Value.IsNullOrEmpty()) {
@@ -1423,9 +1431,9 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
         ChatsBackend_RemoveAttachments command,
         CancellationToken cancellationToken)
     {
+        // No import check: OnChangeEntry already applies one, and the purge of what an import's
+        // owner wiped or removed runs during the import
         var entryId = command.EntryId;
-        await MaintenancesBackend.RequireNotImporting(entryId.ChatId, cancellationToken).ConfigureAwait(false);
-
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 

@@ -21,12 +21,17 @@ public partial class Chats
         var chat = await Get(session, command.ChatId, cancellationToken).Require().ConfigureAwait(false);
         chat.Rules.Permissions.Require(GetHistoryPermissions(chat.Id));
         ThrowIfPlaceRootChat(chat.Id);
-        await MaintenancesBackend.RequireAvailable(chat.Id, cancellationToken).ConfigureAwait(false);
+        // An import may wipe the history it is about to replace
+        var maintenanceMode = await MaintenancesBackend.GetMode(chat.Id, cancellationToken).ConfigureAwait(false);
+        var isImporting = maintenanceMode == MaintenanceMode.Import;
+        if (!isImporting)
+            maintenanceMode.RequireNone("chat");
 
         var entryLidRange = new Range<long>(command.MinEntryLid, long.MaxValue);
         var requestHistoryWipeCmd = new ChatsBackend_RequestHistoryWipe(chat.Id, entryLidRange);
         var wipedRange = await Commander.Call(requestHistoryWipeCmd, cancellationToken).ConfigureAwait(false);
-        if (wipedRange.IsEmpty)
+        // The import blocks the system entry, and an imported history needs none
+        if (wipedRange.IsEmpty || isImporting)
             return wipedRange;
 
         // The system entry says how far back the wipe went from now; none = the whole history

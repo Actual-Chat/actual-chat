@@ -867,7 +867,7 @@ public partial class Chats(IServiceProvider services) : IChats
 
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Permissions.Require(ChatPermissions.Write);
+        RequireCanRemoveEntries(chat);
 
         var chatEntryId = ChatEntryId.New(chatId, localId);
         await RemoveTextEntry(session, chat, chatEntryId, author, cancellationToken).ConfigureAwait(false);
@@ -902,7 +902,7 @@ public partial class Chats(IServiceProvider services) : IChats
 
         var author = await Authors.EnsureJoined(session, chatId, cancellationToken).ConfigureAwait(false);
         var chat = await Get(session, chatId, cancellationToken).Require().ConfigureAwait(false);
-        chat.Rules.Permissions.Require(ChatPermissions.Write);
+        RequireCanRemoveEntries(chat);
 
         foreach (var localId in localIds) {
             var chatEntryId = ChatEntryId.New(chatId, localId);
@@ -1395,6 +1395,13 @@ public partial class Chats(IServiceProvider services) : IChats
         if (chatId is PlaceChatId { IsRoot: true })
             throw StandardError.Constraint(
                 "A place's root chat can't hold messages — post to one of the place's chats instead.");
+    }
+
+    private static void RequireCanRemoveEntries(Chat chat)
+    {
+        // An import takes Write from everyone, yet its owners may remove what it replaces
+        var permission = chat.MaintenanceMode == MaintenanceMode.Import ? ChatPermissions.Owner : ChatPermissions.Write;
+        chat.Rules.Permissions.Require(permission);
     }
 
     // TODO: 2026-07, remove when all clients support location entries.

@@ -862,13 +862,13 @@ public sealed class ChatCleanupTest(ChatCollection.AppHostFixture fixture, ITest
     }
 
     [Fact]
-    public async Task CleanupShouldWaitForAnImportToEnd()
+    public async Task WipeShouldBePurgedDuringAnImport()
     {
         // arrange
         await Owner.SignInAsUniqueAlice();
         var (chatId, _) = await Owner.CreateChat(true);
-        var entry = await Owner.CreateTextEntry(chatId, "cleared once the import ends");
-        await Owner.CreateTextEntry(chatId, "kept");
+        var entry = await Owner.CreateTextEntry(chatId, "wiped by the import's owner");
+        var kept = await Owner.CreateTextEntry(chatId, "kept");
         var key = chatId.ToMaintenanceKey();
         var startImportCmd = new MaintenancesBackend_Set(key, MaintenanceMode.Import) { OwnerId = ImportOwnerId };
         await Owner.Commander.Call(startImportCmd);
@@ -878,15 +878,95 @@ public sealed class ChatCleanupTest(ChatCollection.AppHostFixture fixture, ITest
         var count = await Owner.Commander.Call(new ChatsBackend_PurgeEntryBatch(chatId, entry.LocalId));
 
         // assert
-        count.Should().Be(0);
-        (await HasUnpurgedEntry(entry.Id)).Should().BeTrue();
+        count.Should().BePositive();
+        (await HasUnpurgedEntry(entry.Id)).Should().BeFalse();
+        (await HasUnpurgedEntry(kept.Id)).Should().BeTrue();
+        var endImportCmd = new MaintenancesBackend_Set(key, MaintenanceMode.None) { OwnerId = ImportOwnerId };
+        await Owner.Commander.Call(endImportCmd);
+    }
+
+    [Fact]
+    public async Task PurgeShouldKeepPollingDuringAnImport()
+    {
+        // arrange
+        await Owner.SignInAsUniqueAlice();
+        var (chatId, _) = await Owner.CreateChat(true);
+        await Owner.CreateTextEntry(chatId, "nothing to purge");
+        var key = chatId.ToMaintenanceKey();
+        var startImportCmd = new MaintenancesBackend_Set(key, MaintenanceMode.Import) { OwnerId = ImportOwnerId };
+        await Owner.Commander.Call(startImportCmd);
+
+        // act
+        var count = await Owner.Commander.Call(new ChatsBackend_PurgeEntryBatch(chatId));
+
+        // assert
+        count.Should().BeGreaterThanOrEqualTo(0,
+            "the author purges an import holds back resume only while the flow keeps polling");
+        var endImportCmd = new MaintenancesBackend_Set(key, MaintenanceMode.None) { OwnerId = ImportOwnerId };
+        await Owner.Commander.Call(endImportCmd);
+    }
+
+    [Fact]
+    public async Task WipedThreadAnchorShouldRemoveTheThreadDuringAnImport()
+    {
+        // arrange
+        await Owner.SignInAsUniqueAlice();
+        var (chatId, _) = await Owner.CreateChat(true);
+        var anchor = await Owner.CreateTextEntry(chatId, "thread anchor");
+        var startThreadCmd = new ChatThreads_Start {
+            Session = Owner.Session, ParentChatId = chatId,
+            Title = "thread", Description = "", EntryIds = [anchor.Id],
+        };
+        var thread = await Owner.Commander.Call(startThreadCmd);
+        await Owner.CreateTextEntry(thread.Id, "thread content");
+        await Owner.CreateTextEntry(chatId, "after the anchor");
+        var key = chatId.ToMaintenanceKey();
+        var startImportCmd = new MaintenancesBackend_Set(key, MaintenanceMode.Import) { OwnerId = ImportOwnerId };
+        await Owner.Commander.Call(startImportCmd);
+
+        // act
+        await Clear(chatId, anchor.LocalId);
+        await Owner.Commander.Call(new ChatsBackend_PurgeEntryBatch(chatId, anchor.LocalId));
+
+        // assert
+        await TestWait.WhenPolled(async () => {
+            await using var db = await DbHub.CreateDbContext();
+            (await db.Chats.AnyAsync(c => c.Id == thread.Id.Value)).Should().BeFalse();
+        }, TimeSpan.FromSeconds(30));
+        await TestWait.When(async ct => {
+            (await Maintenances.Get(thread.Id.ToMaintenanceKey(), ct)).Should().Be(Maintenance.None);
+        });
+        var endImportCmd = new MaintenancesBackend_Set(key, MaintenanceMode.None) { OwnerId = ImportOwnerId };
+        await Owner.Commander.Call(endImportCmd);
+    }
+
+    [Fact]
+    public async Task RetentionShouldWaitForAnImportToEnd()
+    {
+        // arrange
+        await Owner.SignInAsUniqueAlice();
+        var (chatId, _) = await Owner.CreateChat(true);
+        var old = await Owner.CreateTextEntry(chatId, "as old as an imported message");
+        await Owner.CreateTextEntry(chatId, "recent");
+        await SetRetention(chatId, TimeSpan.FromDays(1));
+        var key = chatId.ToMaintenanceKey();
+        var startImportCmd = new MaintenancesBackend_Set(key, MaintenanceMode.Import) { OwnerId = ImportOwnerId };
+        await Owner.Commander.Call(startImportCmd);
+        // Only now: the retention change resumes the purge flow, which would expire it before the import
+        await ExpireEntries(chatId, old.LocalId);
+
+        // act
+        await Owner.Commander.Call(new ChatsBackend_PurgeEntryBatch(chatId));
+
+        // assert
+        (await HasUnpurgedEntry(old.Id)).Should().BeTrue("retention would expire imported messages as they land");
         var endImportCmd = new MaintenancesBackend_Set(key, MaintenanceMode.None) { OwnerId = ImportOwnerId };
         await Owner.Commander.Call(endImportCmd);
         await TestWait.When(async ct => {
             (await Maintenances.Get(key, ct)).Should().Be(Maintenance.None);
         });
-        await Owner.Commander.Call(new ChatsBackend_PurgeEntryBatch(chatId, entry.LocalId));
-        (await HasUnpurgedEntry(entry.Id)).Should().BeFalse();
+        await Owner.Commander.Call(new ChatsBackend_PurgeEntryBatch(chatId));
+        (await HasUnpurgedEntry(old.Id)).Should().BeFalse();
     }
 
     [Fact]
