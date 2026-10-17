@@ -2,6 +2,7 @@ using ActualChat.Localization;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App;
 using ActualChat.UI.Blazor.App.Components;
+using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Components;
 using Bunit;
 
@@ -16,19 +17,15 @@ public sealed class PttJoinBannerTest(ChatAppHostFixture fixture, ITestOutputHel
     [InlineData(false, true)]
     [InlineData(true, false)]
     [InlineData(true, true)]
-    public async Task BannerShouldAskOnlyForMissingChatOrDeviceConsent(bool isConsented, bool isDeviceEnabled)
+    public async Task BannerShouldAskOnlyForAnUnconsentedChatOnAnEnabledDevice(bool isConsented, bool isDeviceEnabled)
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
         var hub = tester.ScopedAppServices.AppUIHub();
-        var (chatId, _) = await tester.CreateChat(true);
-        var command = new ChatsBackend_Change(
-            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart }));
-        await tester.AppServices.Commander().Call(command);
-        var chat = (await hub.Chats.Get(tester.Session, chatId, default))!;
+        var chat = await CreatePttChat(tester, hub);
         if (isConsented)
-            await hub.ChatAudioUI.ConsentPtt(chatId, chat.PttEnabledAt!.Value, CancellationToken.None);
+            await hub.ChatAudioUI.ConsentPtt(chat.Id, chat.PttEnabledAt!.Value, CancellationToken.None);
         hub.ChatAudioUI.SetIsPttEnabledOnDevice(isDeviceEnabled);
         await TestWait.When(async ct =>
             (await hub.ChatAudioUI.IsPttEnabledOnDevice(ct)).Should().Be(isDeviceEnabled));
@@ -38,18 +35,16 @@ public sealed class PttJoinBannerTest(ChatAppHostFixture fixture, ITestOutputHel
         var banner = tester.Render<PttJoinBanner>(p => p.AddCascadingValue(new ChatContext(hub, chat)));
 
         // assert
+        var isExpectedVisible = !isConsented && isDeviceEnabled;
         await TestWait.WhenRendered(banner, () =>
-            banner.FindComponent<Banner>().Instance.IsVisible.Should().Be(!isConsented || !isDeviceEnabled));
-        if (isConsented && isDeviceEnabled)
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().Be(isExpectedVisible));
+        if (!isExpectedVisible)
             return;
 
         var l = hub.StringLocalizer;
-        var text = isConsented ? l.Banner_PttUseDevice
-            : isDeviceEnabled ? l.Banner_PttAllow : l.Banner_PttAllowOnDevice;
         await TestWait.WhenRendered(banner, () => {
-            banner.Find(".banner-body").TextContent.Trim().Should().Be(text);
-            banner.FindComponent<BannerButton>().Find("button").TextContent.Trim()
-                .Should().Be(isConsented ? l.Banner_PttTurnOn : l.Common_Allow);
+            banner.Find(".banner-body").TextContent.Trim().Should().Be(l.Banner_PttAllow);
+            banner.FindComponent<BannerButton>().Find("button").TextContent.Trim().Should().Be(l.Common_Allow);
         });
 
         // act
@@ -57,34 +52,46 @@ public sealed class PttJoinBannerTest(ChatAppHostFixture fixture, ITestOutputHel
 
         // assert
         await TestWait.WhenRendered(banner, () => banner.FindComponent<Banner>().Instance.IsVisible.Should().BeFalse());
-        (await hub.ChatAudioUI.IsPttEnabledOnDevice(CancellationToken.None)).Should().BeTrue();
-        (await hub.ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None)).Should().Contain(chatId);
+        (await hub.ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None)).Should().Contain(chat.Id);
+        // The tester is a web host, where PTT is only partially supported - so the Allow explains why
+        var expectedLead = l.PttSupport_EnabledInChat_Format(chat.Title);
+        await TestWait.When(async ct => (await hub.ModalUI.ActiveModals.Use(ct))
+            .Select(x => x.Model)
+            .OfType<PttSupportModal.Model>()
+            .Should().ContainSingle(x => x.Lead == expectedLead));
     }
 
     [Fact]
-    public async Task EnablingTheDeviceShouldRemoveDeviceWordingFromAnUnconsentedChatBanner()
+    public async Task EnablingTheDeviceShouldShowTheBannerOfAnUnconsentedChat()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
         await tester.SignInAsUniqueBob();
         var hub = tester.ScopedAppServices.AppUIHub();
-        var (chatId, _) = await tester.CreateChat(true);
-        var command = new ChatsBackend_Change(
-            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart }));
-        await tester.AppServices.Commander().Call(command);
-        var chat = (await hub.Chats.Get(tester.Session, chatId, default))!;
+        var chat = await CreatePttChat(tester, hub);
         hub.ChatAudioUI.SetIsPttEnabledOnDevice(false);
         tester.RenderModalHost(hub);
         var banner = tester.Render<PttJoinBanner>(p => p.AddCascadingValue(new ChatContext(hub, chat)));
-        await TestWait.WhenRendered(banner, () => banner.Find(".banner-body").TextContent.Trim()
-            .Should().Be(hub.StringLocalizer.Banner_PttAllowOnDevice));
+        await TestWait.WhenRendered(banner, () =>
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().BeFalse());
 
         // act
         hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
 
         // assert
-        await TestWait.WhenRendered(banner, () => banner.Find(".banner-body").TextContent.Trim()
-            .Should().Be(hub.StringLocalizer.Banner_PttAllow));
-        (await hub.ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None)).Should().NotContain(chatId);
+        await TestWait.WhenRendered(banner, () =>
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().BeTrue());
+        (await hub.ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None)).Should().NotContain(chat.Id);
+    }
+
+    // Private methods
+
+    private static async Task<Chat> CreatePttChat(BlazorTester tester, AppUIHub hub)
+    {
+        var (chatId, _) = await tester.CreateChat(true);
+        var command = new ChatsBackend_Change(
+            chatId, null, Change.Update(new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart }));
+        await tester.AppServices.Commander().Call(command);
+        return (await hub.Chats.Get(tester.Session, chatId, default))!;
     }
 }

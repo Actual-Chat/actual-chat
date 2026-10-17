@@ -19,32 +19,38 @@
             <img draggable="false" src="/dist/images/landing/app-store.svg" alt="App Store">
         </Brand>
         <QrCode>
-            <img draggable="false" src="/dist/images/landing/app-store-qr.svg" alt="@L.Download_QrCode_Format("App Store")">
+            <img draggable="false" src="/dist/images/landing/app-store-qr.svg"
+                 alt="@L.Download_QrCode_Format("App Store")">
         </QrCode>
     </DownloadTile>
-    <DownloadTile Link="@(Links.Apps.Windows)">
-        <Title>@L.Download_WindowsApp</Title>
-        <Text>@L.Download_Desktop</Text>
-        <Brand>
-            <img draggable="false" src="/dist/images/landing/microsoft-store.svg" alt="Microsoft Store">
-        </Brand>
-        <QrCode>
-            <img draggable="false" src="/dist/images/landing/microsoft-store-qr.svg" alt="@L.Download_QrCode_Format("Microsoft Store")">
-        </QrCode>
-    </DownloadTile>
-    <DownloadTile OnClick="@SignIn">
-        <Title>@L.Download_WebApp</Title>
-        <Text>@L.Download_MobileDesktop</Text>
-        <Brand>
-            <div class="web-app">
-                <span>@L.Download_SignInToWebApp</span>
-                <i class="icon-monitor"></i>
-            </div>
-        </Brand>
-    </DownloadTile>
+    @if (!IsMobileOnly) {
+        <DownloadTile Link="@(Links.Apps.Windows)">
+            <Title>@L.Download_WindowsApp</Title>
+            <Text>@L.Download_Desktop</Text>
+            <Brand>
+                <img draggable="false" src="/dist/images/landing/microsoft-store.svg" alt="Microsoft Store">
+            </Brand>
+            <QrCode>
+                <img draggable="false" src="/dist/images/landing/microsoft-store-qr.svg"
+                     alt="@L.Download_QrCode_Format("Microsoft Store")">
+            </QrCode>
+        </DownloadTile>
+        <DownloadTile OnClick="@SignIn">
+            <Title>@L.Download_WebApp</Title>
+            <Text>@L.Download_MobileDesktop</Text>
+            <Brand>
+                <div class="web-app">
+                    <span>@L.Download_SignInToWebApp</span>
+                    <i class="icon-monitor"></i>
+                </div>
+            </Brand>
+        </DownloadTile>
+    }
 </div>
 
 @code {
+    [Parameter] public bool IsMobileOnly { get; set; }
+
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());
 }

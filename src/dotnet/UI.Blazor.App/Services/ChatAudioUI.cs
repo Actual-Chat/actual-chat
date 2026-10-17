@@ -4,6 +4,7 @@ using ActualChat.Kvas;
 using ActualChat.Live;
 using ActualChat.Localization;
 using ActualChat.UI.App.Services;
+using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Components.AudioPanel;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Interception;
@@ -17,6 +18,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 {
     private static bool DebugMode => Constants.DebugMode.ChatAudioUI;
     private static readonly TimeSpan PttMuteTextUpdatePeriod = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan PttSupportLimitsRepeatPeriod = TimeSpan.FromMinutes(15);
 
     private readonly MutableState<Moment?> _stopRecordingAt;
     private readonly MutableState<Moment> _recordingIntentChangedAt;
@@ -28,6 +30,8 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     // Boxed because Volatile.Read/Write take a reference; null means "no override".
     private object? _recordingIdleDurationBox;
     private bool _isBeginTuneSuppressed;
+    // CPU time; guarded by Lock
+    private Moment _pttSupportLimitsShownAt;
 
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
@@ -329,7 +333,30 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
                 x => x.WithOnlyPttChats(consentedChatIds.ToHashSet()).WithPttChat(chatId, joinedAt),
                 cancellationToken)
             .ConfigureAwait(false);
+        if (Ptt.GetSupport(HostInfo) != PttSupport.Full) {
+            var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+            var l = Hub.StringLocalizer;
+            var lead = chat is null ? null : l.PttSupport_EnabledInChat_Format(chat.Title);
+            _ = ShowPttSupportLimits(lead);
+        }
         return true;
+    }
+
+    public Task ShowPttSupportLimits(string? lead = null, bool isRequested = false)
+    {
+        // Every Allow and device switch shows it, so a burst of them would stack the same dialog -
+        // the unrequested ones wait out PttSupportLimitsRepeatPeriod after the last one shown.
+        if (Ptt.GetSupport(HostInfo) == PttSupport.Full)
+            return Task.CompletedTask;
+
+        var now = CpuNow;
+        lock (Lock) {
+            if (!isRequested && now - _pttSupportLimitsShownAt < PttSupportLimitsRepeatPeriod)
+                return Task.CompletedTask;
+
+            _pttSupportLimitsShownAt = now;
+        }
+        return ModalUI.Show(new PttSupportModal.Model(lead));
     }
 
     [ComputeMethod] // Synced

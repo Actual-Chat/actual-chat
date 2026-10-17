@@ -1052,9 +1052,6 @@
   "Banner_NotInContacts": "This user is not in your contact list yet",
   "Banner_AddToContacts": "Add to contacts",
   "Banner_PttAllow": "Allow push-to-talk from this chat?",
-  "Banner_PttUseDevice": "Turn on push-to-talk on this device?",
-  "Banner_PttAllowOnDevice": "Allow push-to-talk from this chat on this device?",
-  "Banner_PttTurnOn": "Turn on",
   "Banner_PttMuted": "Push-to-talk is muted for",
   "Banner_PttUnmute": "Unmute",
   "Banner_Connected": "Connected!",
@@ -1664,6 +1661,22 @@
   "Ptt_AudibleCuesCaption": "Play a sound when a reply starts and ends",
   "Ptt_ChatAtCapacity_Format": "Push-to-talk is on for this chat, but you're already in {0} - allow it in Settings.",
 
+  // The "partial support" notice at the top of Settings > Push-to-talk and the dialog it
+  // opens; the same dialog follows every "Allow" in a browser or a desktop app. Push-to-talk is
+  // complete only in the phone apps: a browser tab can be put to sleep, and a desktop app hears
+  // nothing once it quits. _EnabledInChat_Format and _EnabledOnDevice open the dialog when it
+  // follows an action ({0} is a chat title); _Browser / _Desktop_Format explain the limits ({0}
+  // is the app name). _FullSupportTarget is a link that opens the mobile app download dialog.
+  "PttSupport_Title": "Partial Push-to-talk support",
+  "PttSupport_Details": "Details",
+  "PttSupport_EnabledInChat_Format": "Push-to-talk is now enabled in {0}.",
+  "PttSupport_EnabledOnDevice": "Push-to-talk is now enabled on this device.",
+  "PttSupport_Browser": "In a browser, push-to-talk works only while this tab is open and awake. Browsers slow down background tabs or put them to sleep, and a sleeping tab misses incoming voice. The app can't prevent this. A closed tab can't be woken up, and gestures and the headset button aren't available here.",
+  "PttSupport_Desktop_Format": "On a computer, push-to-talk works only while {0} is running. Closing the window keeps it running, but quitting the app, sleep, or closing the laptop lid stops it. Gestures and the headset button aren't available here.",
+  "PttSupport_FullSupport_Prefix": "",
+  "PttSupport_FullSupportTarget": "Get the Voxt mobile app",
+  "PttSupport_FullSupport_Suffix": " for full Push-to-talk support.",
+
   // Back on Settings > Voice & Transcription.
   "Transcription_MicrophoneTopic": "Microphone",
   "Transcription_FaceDownStop": "Stop recording when face down",
@@ -1929,6 +1942,7 @@
   "Download_SignInToWebApp": "Sign in to web app",
   "Download_QrCode_Format": "{0} QR code",
   "Download_GetApp_Format": "Get {0}",
+  "Download_GetMobileApp_Format": "Get the {0} mobile app",
   "Download_GetAppBanner_Format": "Install {0}",
   "Download_OpenAppBanner_Format": "Open {0}",
 

@@ -10,6 +10,15 @@
     var showSensorSettings = hasSensors || isPreview;
     var showHeadsetSettings = HostInfo.AppKind == AppKind.Android || isPreview;
     var canAllowMore = m.CanAllowMore;
+    var isFullySupported = Ptt.GetSupport(HostInfo) == PttSupport.Full;
+}
+
+@if (!isFullySupported) {
+    <div class="ptt-support-notice" @onclick="@OnSupportNoticeClick">
+        <i class="icon-alert-triangle"></i>
+        <span class="c-text">@L.PttSupport_Title</span>
+        <span class="c-details">@L.PttSupport_Details</span>
+    </div>
 }
 
 <Tile>
@@ -216,24 +225,24 @@
                 ? L.Ptt_NothingAllowed
                 : L.Ptt_NoPttChats;
 
-    private void OnToggleDevice()
-        => ChatAudioUI.SetIsPttEnabledOnDevice(!State.Value.IsDeviceEnabled);
+    private Task OnSupportNoticeClick()
+        => ChatAudioUI.ShowPttSupportLimits(isRequested: true);
+
+    private Task OnToggleDevice() {
+        var isEnabled = !State.Value.IsDeviceEnabled;
+        ChatAudioUI.SetIsPttEnabledOnDevice(isEnabled);
+        return isEnabled
+            ? ChatAudioUI.ShowPttSupportLimits(L.PttSupport_EnabledOnDevice)
+            : Task.CompletedTask;
+    }
 
     private Task OnTurnOff(ChatId chatId)
         => UserSettingsUI.UserPttSettings().Update(x => x.WithoutPttChat(chatId), CancellationToken.None);
 
-    private Task OnAllow(ChatItem chat) {
-        var m = State.Value;
-        if (!m.CanAllowMore)
-            return Task.CompletedTask;
-
-        // Never a raw client clock: JoinedAt must land within the current epoch (>= PttEnabledAt).
-        var joinedAt = Moment.Max(Clocks.ServerClock.Now, chat.PttEnabledAt);
-        var allowedChatIds = m.AllowedChatIds;
-        return UserSettingsUI.UserPttSettings().Update(
-            x => x.WithOnlyPttChats(allowedChatIds).WithPttChat(chat.Id, joinedAt),
-            CancellationToken.None);
-    }
+    private Task OnAllow(ChatItem chat)
+        => State.Value.CanAllowMore
+            ? ChatAudioUI.ConsentPtt(chat.Id, chat.PttEnabledAt, CancellationToken.None)
+            : Task.CompletedTask;
 
     private Task OnToggleFlip()
         => UserSettingsUI.UserPttSettings()

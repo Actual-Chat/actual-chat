@@ -66,9 +66,9 @@ public sealed class ChatPttSettingsTest(ChatAppHostFixture fixture, ITestOutputH
         var settings = await hub.UserSettingsUI.UserPttSettings().Get();
         settings.PttChats.Should().Equal(priorSettings.PttChats);
         (await hub.ChatAudioUI.IsPttEnabledOnDevice(CancellationToken.None)).Should().Be(isDeviceEnabled);
-        var bannerKind = Ptt.GetJoinBannerKind(
+        var mustShowBanner = Ptt.ShouldShowJoinBanner(
             settings.IsArmedIn(chatId, chat.PttEnabledAt), isDeviceEnabled, default, enabledAt);
-        bannerKind.Should().Be(isDeviceEnabled ? PttJoinBannerKind.None : PttJoinBannerKind.EnableDevice);
+        mustShowBanner.Should().BeFalse("the resumed chat keeps the consent it had");
     }
 
     [Fact]
