@@ -88,8 +88,9 @@ public partial class ChatAudioUI
         var oldChatIds = (HashSet<ChatId>?)null;
         await foreach (var c in cKeepListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
             var chatIds = c.Value.ToHashSet();
-            if (Ptt.IsDesktopApp(HostInfo) && chatIds.Count != 0) {
-                // Desktop has no cold wake: an opted-in running app listens without first opening a chat.
+            if (Ptt.GetSupport(HostInfo) != PttSupport.Full && chatIds.Count != 0) {
+                // Desktop and web have no cold wake: an opted-in running app or open tab listens
+                // without first opening a chat.
                 Enable();
                 oldChatIds ??= [];
             }
