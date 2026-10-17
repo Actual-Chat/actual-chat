@@ -1,12 +1,12 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Kvas
-@inherits ComputedStateComponent<AppUIHub, PttJoinBannerKind>
+@inherits ComputedStateComponent<AppUIHub, bool>
 @{
-    var kind = State.Value;
+    var isVisible = State.Value;
 }
 
 <Banner
-    IsVisible="@(kind != PttJoinBannerKind.None)"
+    IsVisible="@isVisible"
     Severity="BannerSeverity.Info"
     ShowDismissButton="true"
     Dismiss="@OnDismiss">
@@ -14,17 +14,10 @@
         <i class="icon-push-to-talk text-2xl"></i>
     </Icon>
     <Body>
-        @(kind switch {
-            PttJoinBannerKind.EnableDevice => L.Banner_PttUseDevice,
-            PttJoinBannerKind.AllowChatAndDevice => L.Banner_PttAllowOnDevice,
-            _ => L.Banner_PttAllow,
-        })
+        @L.Banner_PttAllow
     </Body>
     <Buttons>
-        <BannerButton
-            Click="@OnJoinClick">@(kind == PttJoinBannerKind.EnableDevice
-                ? L.Banner_PttTurnOn
-                : L.Common_Allow)</BannerButton>
+        <BannerButton Click="@OnJoinClick">@L.Common_Allow</BannerButton>
     </Buttons>
 </Banner>
 
@@ -49,42 +42,42 @@
             });
     }
 
-    protected override ComputedState<PttJoinBannerKind>.Options GetStateOptions()
+    protected override ComputedState<bool>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
-            static t => new ComputedState<PttJoinBannerKind>.Options() {
-                InitialValue = PttJoinBannerKind.None,
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
-    protected override async Task<PttJoinBannerKind> ComputeState(CancellationToken cancellationToken) {
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
         var chat = Chat;
         if (chat.HasSingleAuthor || !chat.IsMember() || chat.Id.IsThread())
-            return PttJoinBannerKind.None;
+            return false;
         if (chat.ActivePttEnabledAt is not { } enabledAt)
-            return PttJoinBannerKind.None;
+            return false;
 
         if (!_settings.WhenRead.IsCompleted)
             await _settings.WhenRead.ConfigureAwait(false);
 
-        var kind = await GetKind(enabledAt).ConfigureAwait(false);
-        if (kind == PttJoinBannerKind.None || State.Value != PttJoinBannerKind.None)
-            return kind;
+        var isVisible = await IsVisible(enabledAt).ConfigureAwait(false);
+        if (!isVisible || State.Value)
+            return isVisible;
 
         // Let pending participation writes settle before showing a new consent prompt.
         await Clocks.CpuClock.Delay(ShowDelay, cancellationToken).ConfigureAwait(false);
-        return await GetKind(enabledAt).ConfigureAwait(false);
+        return await IsVisible(enabledAt).ConfigureAwait(false);
     }
 
     // Private methods
 
-    private async Task<PttJoinBannerKind> GetKind(Moment enabledAt) {
+    private async Task<bool> IsVisible(Moment enabledAt) {
         var settings = await _settings.Use(CancellationToken.None).ConfigureAwait(false);
         var pttSettings = await UserSettingsUI.UserPttSettings()
             .Get(CancellationToken.None)
             .ConfigureAwait(false);
         var isDeviceEnabled = await ChatAudioUI.IsPttEnabledOnDevice(CancellationToken.None).ConfigureAwait(false);
-        return Ptt.GetJoinBannerKind(
+        return Ptt.ShouldShowJoinBanner(
             pttSettings.IsArmedIn(Chat.Id, enabledAt),
             isDeviceEnabled,
             settings.DismissedAt,
@@ -93,15 +86,11 @@
 
     // Event handlers
 
-    private async Task OnJoinClick() {
+    private Task OnJoinClick() {
         var chat = Chat;
-        if (chat.ActivePttEnabledAt is not { } enabledAt)
-            return;
-
-        if (!await ChatAudioUI.ConsentPtt(chat.Id, enabledAt, CancellationToken.None).ConfigureAwait(true))
-            return;
-
-        ChatAudioUI.SetIsPttEnabledOnDevice(true);
+        return chat.ActivePttEnabledAt is { } enabledAt
+            ? ChatAudioUI.ConsentPtt(chat.Id, enabledAt, CancellationToken.None)
+            : Task.CompletedTask;
     }
 
     private void OnDismiss()

@@ -935,9 +935,6 @@ public static class LocalizedStringsLocalizerExt
         public string Banner_NotInContacts => l["Banner_NotInContacts"].Value;
         public string Banner_AddToContacts => l["Banner_AddToContacts"].Value;
         public string Banner_PttAllow => l["Banner_PttAllow"].Value;
-        public string Banner_PttUseDevice => l["Banner_PttUseDevice"].Value;
-        public string Banner_PttAllowOnDevice => l["Banner_PttAllowOnDevice"].Value;
-        public string Banner_PttTurnOn => l["Banner_PttTurnOn"].Value;
         public string Banner_PttMuted => l["Banner_PttMuted"].Value;
         public string Banner_PttUnmute => l["Banner_PttUnmute"].Value;
         public string Banner_Connected => l["Banner_Connected"].Value;
@@ -1507,6 +1504,15 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_AudibleCues => l["Ptt_AudibleCues"].Value;
         public string Ptt_AudibleCuesCaption => l["Ptt_AudibleCuesCaption"].Value;
         public string Ptt_ChatAtCapacity_Format(object arg0) => l["Ptt_ChatAtCapacity_Format", arg0].Value;
+        public string PttSupport_Title => l["PttSupport_Title"].Value;
+        public string PttSupport_Details => l["PttSupport_Details"].Value;
+        public string PttSupport_EnabledInChat_Format(object arg0) => l["PttSupport_EnabledInChat_Format", arg0].Value;
+        public string PttSupport_EnabledOnDevice => l["PttSupport_EnabledOnDevice"].Value;
+        public string PttSupport_Browser => l["PttSupport_Browser"].Value;
+        public string PttSupport_Desktop_Format(object arg0) => l["PttSupport_Desktop_Format", arg0].Value;
+        public string PttSupport_FullSupport_Prefix => l["PttSupport_FullSupport_Prefix"].Value;
+        public string PttSupport_FullSupportTarget => l["PttSupport_FullSupportTarget"].Value;
+        public string PttSupport_FullSupport_Suffix => l["PttSupport_FullSupport_Suffix"].Value;
         public string Privacy_BlockedUsers => l["Privacy_BlockedUsers"].Value;
         public string LocationAccuracy_High => l["LocationAccuracy_High"].Value;
         public string LocationAccuracy_HighCaption => l["LocationAccuracy_HighCaption"].Value;
@@ -1718,6 +1724,7 @@ public static class LocalizedStringsLocalizerExt
         public string Download_SignInToWebApp => l["Download_SignInToWebApp"].Value;
         public string Download_QrCode_Format(object arg0) => l["Download_QrCode_Format", arg0].Value;
         public string Download_GetApp_Format(object arg0) => l["Download_GetApp_Format", arg0].Value;
+        public string Download_GetMobileApp_Format(object arg0) => l["Download_GetMobileApp_Format", arg0].Value;
         public string Download_GetAppBanner_Format(object arg0) => l["Download_GetAppBanner_Format", arg0].Value;
         public string Download_OpenAppBanner_Format(object arg0) => l["Download_OpenAppBanner_Format", arg0].Value;
         public string AppUpdate_Banner_Format(object arg0) => l["AppUpdate_Banner_Format", arg0].Value;

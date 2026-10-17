@@ -1052,9 +1052,6 @@
   "Banner_NotInContacts": "Tego użytkownika nie ma jeszcze na Twojej liście kontaktów",
   "Banner_AddToContacts": "Zu Kontakten hinzufügen",
   "Banner_PttAllow": "このチャットからのプッシュ・トゥ・トークを許可しますか？",
-  "Banner_PttUseDevice": "この端末でプッシュ・トゥ・トークを有効にしますか？",
-  "Banner_PttAllowOnDevice": "この端末でこのチャットからのプッシュ・トゥ・トークを許可しますか？",
-  "Banner_PttTurnOn": "有効にする",
   "Banner_PttMuted": "プッシュ・トゥ・トークはミュート中（残り",
   "Banner_PttUnmute": "Stummschaltung aufheben",
   "Banner_Connected": "Соединение восстановлено!",
@@ -1664,6 +1661,22 @@
   "Ptt_AudibleCuesCaption": "Reproducir un sonido al empezar y terminar una respuesta",
   "Ptt_ChatAtCapacity_Format": "このチャットではプッシュトゥトークが有効ですが、すでに {0} 件に参加しています。設定で許可してください。",
 
+  // The "partial support" notice at the top of Settings > Push-to-talk and the dialog it
+  // opens; the same dialog follows every "Allow" in a browser or a desktop app. Push-to-talk is
+  // complete only in the phone apps: a browser tab can be put to sleep, and a desktop app hears
+  // nothing once it quits. _EnabledInChat_Format and _EnabledOnDevice open the dialog when it
+  // follows an action ({0} is a chat title); _Browser / _Desktop_Format explain the limits ({0}
+  // is the app name). _FullSupportTarget is a link that opens the mobile app download dialog.
+  "PttSupport_Title": "Дјелимична подршка за Притисни и говори",
+  "PttSupport_Details": "Подробности",
+  "PttSupport_EnabledInChat_Format": "{0}でプッシュ・トゥ・トークがオンになりました。",
+  "PttSupport_EnabledOnDevice": "このデバイスでプッシュ・トゥ・トークがオンになりました。",
+  "PttSupport_Browser": "No navegador, Pressione para falar só funciona enquanto esta aba estiver aberta e ativa. Os navegadores deixam as abas em segundo plano mais lentas ou as colocam em suspensão, e uma aba suspensa perde a voz recebida. O aplicativo não pode impedir isso. Uma aba fechada não pode ser reativada, e os gestos e o botão do fone de ouvido não estão disponíveis aqui.",
+  "PttSupport_Desktop_Format": "コンピュータでは、プッシュ・トゥ・トークは {0} の実行中しか動作しません。ウィンドウを閉じてもアプリは動き続けますが、アプリを終了したり、スリープしたり、ノートパソコンのふたを閉じたりすると停止します。ジェスチャーやヘッドセットのボタンはここでは使えません。",
+  "PttSupport_FullSupport_Prefix": "プッシュ・トゥ・トークをすべて使うには、",
+  "PttSupport_FullSupportTarget": "Установите мобильное приложение Voxt",
+  "PttSupport_FullSupport_Suffix": " para tener compatibilidad completa con Pulsar para hablar.",
+
   // Back on Settings > Voice & Transcription.
   "Transcription_MicrophoneTopic": "माइक्रोफ़ोन",
   "Transcription_FaceDownStop": "Останавливать запись, когда телефон экраном вниз",
@@ -1929,6 +1942,7 @@
   "Download_SignInToWebApp": "Se connecter à l'application web",
   "Download_QrCode_Format": "Código QR do {0}",
   "Download_GetApp_Format": "Встановити {0}",
+  "Download_GetMobileApp_Format": "Установите мобильное приложение {0}",
   "Download_GetAppBanner_Format": "{0} をインストール",
   "Download_OpenAppBanner_Format": "Відкрити {0}",
 

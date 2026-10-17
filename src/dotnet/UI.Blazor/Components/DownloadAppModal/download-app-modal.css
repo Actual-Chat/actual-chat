@@ -1,3 +1,7 @@
 .download-app-modal.modal-frame {
     @apply md:min-w-200 md:max-w-200 md:min-h-110 md:max-h-110;
 }
+/* Two tiles fill one row, so the fixed height sized for the full 2x2 grid would leave it half empty */
+.download-app-modal.mobile-only.modal-frame {
+    @apply md:min-h-0 md:max-h-none;
+}

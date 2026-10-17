@@ -78,6 +78,26 @@ body.narrow .close-settings-btn {
 
 /* ── Push to Talk tab ── */
 
+.settings-tab .ptt-support-notice {
+    @apply flex-x items-center gap-x-2;
+    @apply px-3 py-2;
+    @apply rounded-lg border border-banner-error;
+    @apply bg-banner-error;
+    @apply text-caption-500 text-banner-error;
+    @apply cursor-pointer;
+}
+.settings-tab .ptt-support-notice > i {
+    @apply flex-none;
+    @apply text-xl;
+}
+.settings-tab .ptt-support-notice .c-text {
+    @apply flex-1;
+}
+.settings-tab .ptt-support-notice .c-details {
+    @apply flex-none;
+    @apply underline;
+}
+
 /* The tab content's flex gap reaches its direct children only, so this wrapper has to
    repeat it - otherwise every tile-topic's -mb-2 lands on the tile below with nothing
    to cancel it out. */

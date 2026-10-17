@@ -1,0 +1,10 @@
+.ptt-support-modal .link {
+    @apply text-primary;
+    @apply underline;
+    @apply cursor-pointer;
+}
+/* What the action that opened the dialog just did - the part the user must not miss */
+.ptt-support-modal .c-lead {
+    @apply text-02;
+    @apply underline;
+}

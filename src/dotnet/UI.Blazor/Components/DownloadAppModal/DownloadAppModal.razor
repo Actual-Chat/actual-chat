@@ -2,17 +2,19 @@
 @inherits ComponentBase<UIHub>
 @implements IModalView<DownloadAppModal.Model>
 @{
-    var title = L.Download_GetApp_Format(CoreConstants.AppName);
+    var title = ModalModel.IsMobileOnly
+        ? L.Download_GetMobileApp_Format(CoreConstants.AppName)
+        : L.Download_GetApp_Format(CoreConstants.AppName);
 }
 
 <DialogFrame
-    Class="download-app-modal"
+    Class="@(ModalModel.IsMobileOnly ? "download-app-modal mobile-only" : "download-app-modal")"
     Title="@title"
     HasCloseButton="true"
     NarrowViewSettings="@DialogFrameNarrowViewSettings.Default">
     <Body>
         <FormBlock>
-            <DownloadTiles/>
+            <DownloadTiles IsMobileOnly="@ModalModel.IsMobileOnly"/>
         </FormBlock>
     </Body>
 </DialogFrame>
@@ -20,5 +22,5 @@
 @code {
     [Parameter] public Model ModalModel { get; set; } = null!;
 
-    public sealed record Model;
+    public sealed record Model(bool IsMobileOnly = false);
 }

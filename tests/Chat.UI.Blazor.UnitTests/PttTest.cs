@@ -206,54 +206,68 @@ public class PttTest
         Ptt.ShouldShowMutedBanner(muted, now, dismissedMutedAt: mutedAt - TimeSpan.FromDays(1)).Should().BeTrue();
     }
 
+    [Fact]
+    public void UnconsentedChatOnEnabledDeviceShouldShowJoinBanner()
+    {
+        // act + assert
+        Ptt.ShouldShowJoinBanner(isArmedInChat: false, isDeviceEnabled: true, dismissedAt: default, enabledAt: T0)
+            .Should().BeTrue();
+    }
+
     [Theory]
-    [InlineData(false, PttJoinBannerKind.AllowChatAndDevice)]
-    [InlineData(true, PttJoinBannerKind.AllowChat)]
-    public void UnconsentedChatShouldAskOnlyForMissingConsent(
-        bool isDeviceEnabled, PttJoinBannerKind expectedKind)
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DisabledDeviceShouldNeverShowJoinBanner(bool isArmedInChat)
     {
         // act + assert
-        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled, dismissedAt: default, enabledAt: T0)
-            .Should().Be(expectedKind);
+        Ptt.ShouldShowJoinBanner(isArmedInChat, isDeviceEnabled: false, dismissedAt: default, enabledAt: T0)
+            .Should().BeFalse("turning PTT on for a device is a Settings decision");
     }
 
     [Fact]
-    public void ConsentedChatOnDisabledDeviceShowsEnableDeviceBanner()
+    public void ConsentedChatShouldNotShowJoinBanner()
     {
         // act + assert
-        Ptt.GetJoinBannerKind(isArmedInChat: true, isDeviceEnabled: false, dismissedAt: default, enabledAt: T0)
-            .Should().Be(PttJoinBannerKind.EnableDevice);
+        Ptt.ShouldShowJoinBanner(isArmedInChat: true, isDeviceEnabled: true, dismissedAt: default, enabledAt: T0)
+            .Should().BeFalse();
     }
 
     [Fact]
-    public void ConsentedChatOnEnabledDeviceShowsNoBanner()
+    public void DismissalWithinEpochShouldHideJoinBanner()
     {
         // act + assert
-        Ptt.GetJoinBannerKind(isArmedInChat: true, isDeviceEnabled: true, dismissedAt: default, enabledAt: T0)
-            .Should().Be(PttJoinBannerKind.None);
+        Ptt.ShouldShowJoinBanner(isArmedInChat: false, isDeviceEnabled: true, dismissedAt: T0, enabledAt: T0)
+            .Should().BeFalse();
     }
 
     [Fact]
-    public void DismissalWithinEpochShouldHideAllBannerKinds()
-    {
-        // act + assert
-        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled: false, dismissedAt: T0, enabledAt: T0)
-            .Should().Be(PttJoinBannerKind.None);
-        Ptt.GetJoinBannerKind(isArmedInChat: false, isDeviceEnabled: true, dismissedAt: T0, enabledAt: T0)
-            .Should().Be(PttJoinBannerKind.None);
-        Ptt.GetJoinBannerKind(isArmedInChat: true, isDeviceEnabled: false, dismissedAt: T0, enabledAt: T0)
-            .Should().Be(PttJoinBannerKind.None);
-    }
-
-    [Fact]
-    public void DismissalFromAPriorEpochDoesNotHideTheBanner()
+    public void DismissalFromAPriorEpochShouldNotHideJoinBanner()
     {
         // An owner's off-on cycle starts a new epoch, and stale dismissals must not survive it.
         // act + assert
-        Ptt.GetJoinBannerKind(
-                isArmedInChat: false, isDeviceEnabled: false,
+        Ptt.ShouldShowJoinBanner(
+                isArmedInChat: false, isDeviceEnabled: true,
                 dismissedAt: T0 - TimeSpan.FromSeconds(1), enabledAt: T0)
-            .Should().Be(PttJoinBannerKind.AllowChatAndDevice);
+            .Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(HostKind.MauiApp, AppKind.Android, PttSupport.Full)]
+    [InlineData(HostKind.MauiApp, AppKind.Ios, PttSupport.Full)]
+    [InlineData(HostKind.MauiApp, AppKind.Windows, PttSupport.WhileAppRuns)]
+    [InlineData(HostKind.MauiApp, AppKind.MacOS, PttSupport.WhileAppRuns)]
+    [InlineData(HostKind.Server, AppKind.Unknown, PttSupport.WhileTabOpen)]
+    [InlineData(HostKind.WasmApp, AppKind.Wasm, PttSupport.WhileTabOpen)]
+    public void SupportShouldBeFullOnlyInMobileApps(HostKind hostKind, AppKind appKind, PttSupport expected)
+    {
+        // arrange
+        var hostInfo = new HostInfo { HostKind = hostKind, AppKind = appKind };
+
+        // act
+        var support = Ptt.GetSupport(hostInfo);
+
+        // assert
+        support.Should().Be(expected);
     }
 
     [Fact]

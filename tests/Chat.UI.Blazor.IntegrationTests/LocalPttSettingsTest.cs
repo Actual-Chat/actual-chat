@@ -18,7 +18,7 @@ public sealed class LocalPttSettingsTest(ChatAppHostFixture fixture, ITestOutput
     [Theory]
     [InlineData("local.voxt.ai", true)]
     [InlineData("voxt.ai", false)]
-    public async Task LocalWebShouldExposeAllPttSettingsWithoutAdminRights(string hostname, bool isPreview)
+    public async Task WebShouldShowPttTabWithMobileOnlySectionsPreviewedOnlyLocally(string hostname, bool isPreview)
     {
         // arrange
         BlazorTester? blazorTester = null;
@@ -51,7 +51,15 @@ public sealed class LocalPttSettingsTest(ChatAppHostFixture fixture, ITestOutput
         // assert
         await TestWait.WhenRendered(host, () =>
             host.FindComponent<SettingsPanel>().Instance.Tabs
-                .Any(x => x.Id == SettingsTabId.Ptt).Should().Be(isPreview));
+                .Any(x => x.Id == SettingsTabId.Ptt).Should().BeTrue("PTT is available on every host"));
+        await TestWait.WhenRendered(host, () => {
+            var markup = host.FindComponent<PttSettings>().Markup;
+            var l = hub.StringLocalizer;
+            markup.Should().Contain(l.PttSupport_Title, "a browser supports PTT only partially");
+            markup.Should().Contain(l.Ptt_UseOnThisDevice);
+            if (!isPreview)
+                markup.Should().NotContain(l.Ptt_FlipToTalk, "gestures need a phone");
+        });
         if (!isPreview)
             return;
 

@@ -22,6 +22,11 @@ public static class Ptt
     public static bool IsDesktopApp(HostInfo hostInfo)
         => hostInfo.AppKind is AppKind.Windows or AppKind.MacOS or AppKind.Linux;
 
+    public static PttSupport GetSupport(HostInfo hostInfo)
+        => !hostInfo.HostKind.IsMauiApp() ? PttSupport.WhileTabOpen
+            : IsDesktopApp(hostInfo) ? PttSupport.WhileAppRuns
+            : PttSupport.Full;
+
     public static bool IsStaleWake(Moment startedAt, Moment now)
         => now - startedAt > Constants.Audio.PttStaleWakeAge;
 
@@ -55,25 +60,18 @@ public static class Ptt
         // next one - a fresh MutedAt - asks again.
         => pttChat is { MutedAt: { } mutedAt } && pttChat.IsMutedAt(now) && mutedAt != dismissedMutedAt;
 
-    public static PttJoinBannerKind GetJoinBannerKind(
+    public static bool ShouldShowJoinBanner(
         bool isArmedInChat, bool isDeviceEnabled, Moment dismissedAt, Moment enabledAt)
-    {
-        // The dismissal expires with the chat's enable-epoch: an owner's off-on cycle re-asks.
-        if (dismissedAt >= enabledAt)
-            return PttJoinBannerKind.None;
-        if (!isArmedInChat)
-            return isDeviceEnabled ? PttJoinBannerKind.AllowChat : PttJoinBannerKind.AllowChatAndDevice;
-
-        return isDeviceEnabled ? PttJoinBannerKind.None : PttJoinBannerKind.EnableDevice;
-    }
+        // A device with PTT off never asks: turning it on is a Settings decision, not a chat's.
+        // The dismissal expires with the chat's enable-epoch, so an owner's off-on cycle re-asks.
+        => isDeviceEnabled && !isArmedInChat && dismissedAt < enabledAt;
 }
 
-public enum PttJoinBannerKind
+public enum PttSupport
 {
-    None,
-    AllowChat,
-    EnableDevice,
-    AllowChatAndDevice,
+    Full,
+    WhileAppRuns,
+    WhileTabOpen,
 }
 
 // Platform-independent view of the phone's alert mode; hosts that can't tell report Normal.

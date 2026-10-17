@@ -1,0 +1,45 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Hosting
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<PttSupportModal.Model>
+@{
+    var limits = Ptt.GetSupport(HostInfo) == PttSupport.WhileAppRuns
+        ? L.PttSupport_Desktop_Format(CoreConstants.AppName)
+        : L.PttSupport_Browser;
+}
+
+@* Reuses ConfirmModal's look: a short text dialog *@
+<DialogFrame Class="ptt-support-modal confirm-modal compact-header modal-sm" Title="@L.PttSupport_Title">
+    <Body>
+        <FormBlock Class="confirm-text">
+            <div class="c-text">
+                @if (!ModalModel.Lead.IsNullOrEmpty()) {
+                    <p class="c-lead">@ModalModel.Lead</p>
+                }
+                <p>@limits</p>
+                <p>
+                    @L.PttSupport_FullSupport_Prefix<a class="link" @onclick="@OnGetAppClick"
+                        @onclick:preventDefault="true"
+                        >@L.PttSupport_FullSupportTarget</a>@L.PttSupport_FullSupport_Suffix
+                </p>
+            </div>
+        </FormBlock>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal" Click="@(_ => Modal.Close())">@L.Common_Close</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    private Task OnGetAppClick() {
+        Modal.Close();
+        return ModalUI.Show(new DownloadAppModal.Model(IsMobileOnly: true));
+    }
+
+    // Nested types
+
+    public sealed record Model(string? Lead = null);
+}
