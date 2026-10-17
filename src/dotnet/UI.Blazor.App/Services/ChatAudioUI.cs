@@ -201,13 +201,10 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     [ComputeMethod]
     public virtual async Task<PttChatState> GetPttChatState(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Every chat title asks, so a chat without PTT skips the consent read and the dependency on it
+        var consentedChatIdsTask = GetConsentedPttChatIds(cancellationToken);
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat?.PttEnabledAt is null)
-            return PttChatState.Off;
-
-        var consentedChatIds = await GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
-        return Ptt.GetChatState(chat, consentedChatIds.Contains(chatId));
+        var consentedChatIds = await consentedChatIdsTask.ConfigureAwait(false);
+        return chat is null ? PttChatState.Off : Ptt.GetChatState(chat, consentedChatIds.Contains(chatId));
     }
 
     [ComputeMethod(MinCacheDuration = 300)] // Synced
@@ -218,9 +215,13 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var pttChats = await UserSettingsUI.UserPttSettings()
             .Get(x => x.PttChats, cancellationToken)
             .ConfigureAwait(false);
+        var chats = await pttChats
+            .Select(c => Chats.Get(Session, c.ChatId, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
         var result = new List<PttChat>(pttChats.Length);
-        foreach (var pttChat in pttChats) {
-            var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
+        for (var i = 0; i < pttChats.Length; i++) {
+            var (pttChat, chat) = (pttChats[i], chats[i]);
             if (chat != null && UserPttSettings.IsArmed(chat.PttEnabledAt, pttChat.JoinedAt))
                 result.Add(pttChat);
             else
@@ -242,9 +243,13 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var pttChats = await UserSettingsUI.UserPttSettings()
             .Get(x => x.PttChats, cancellationToken)
             .ConfigureAwait(false);
+        var chats = await pttChats
+            .Select(c => Chats.Get(Session, c.ChatId, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
         var result = new List<ChatId>();
-        foreach (var pttChat in pttChats) {
-            var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
+        for (var i = 0; i < pttChats.Length; i++) {
+            var (pttChat, chat) = (pttChats[i], chats[i]);
             if (chat?.PttEnabledAt is { } enabledAt && pttChat.JoinedAt < enabledAt)
                 result.Add(pttChat.ChatId);
         }
@@ -735,11 +740,15 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private async Task<List<ChatId>> FilterConsentedPttChatIds(bool isMuted, CancellationToken cancellationToken)
     {
         var pttChats = await GetConsentedPttChats(cancellationToken).ConfigureAwait(false);
+        var chats = await pttChats
+            .Select(c => Chats.Get(Session, c.ChatId, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Unlimited, cancellationToken)
+            .ConfigureAwait(false);
         var now = ServerNow;
         var result = new List<ChatId>(pttChats.Count);
         Moment? nextMuteEnd = null;
-        foreach (var pttChat in pttChats) {
-            var chat = await Chats.Get(Session, pttChat.ChatId, cancellationToken).ConfigureAwait(false);
+        for (var i = 0; i < pttChats.Count; i++) {
+            var (pttChat, chat) = (pttChats[i], chats[i]);
             if (chat?.ActivePttEnabledAt is null)
                 continue;
 

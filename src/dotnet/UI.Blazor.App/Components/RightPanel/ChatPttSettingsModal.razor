@@ -57,9 +57,9 @@
         if (chat is null || !chat.IsMember() || chat.HasSingleAuthor || chat.Id.IsThread())
             return null;
 
-        var audio = Hub.ChatAudioUI;
-        var listChatIds = await audio.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
-        var isDeviceEnabled = await audio.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
+        var chatAudioUI = Hub.ChatAudioUI;
+        var listChatIds = await chatAudioUI.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
+        var isDeviceEnabled = await chatAudioUI.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
         var canManage = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
         return new(chat, canManage, listChatIds.Contains(chat.Id), listChatIds.Count, isDeviceEnabled);
     }

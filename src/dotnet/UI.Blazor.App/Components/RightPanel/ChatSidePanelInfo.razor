@@ -74,17 +74,17 @@
         if (!model.ShowPttSettings)
             return model;
 
-        var audio = Hub.ChatAudioUI;
-        var pttState = await audio.GetPttChatState(chat.Id, cancellationToken).ConfigureAwait(false);
+        var chatAudioUI = Hub.ChatAudioUI;
+        var pttState = await chatAudioUI.GetPttChatState(chat.Id, cancellationToken).ConfigureAwait(false);
         if (pttState != PttChatState.InList)
             return model with { PttState = pttState };
 
-        var isDeviceEnabled = await audio.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
-        var isMuted = await audio.GetPttMuteCountdown(chat.Id, cancellationToken).ConfigureAwait(false) is not null;
+        var isDeviceEnabled = await chatAudioUI.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
+        var muteCountdown = await chatAudioUI.GetPttMuteCountdown(chat.Id, cancellationToken).ConfigureAwait(false);
         return model with {
             PttState = pttState,
             IsPttEnabledOnDevice = isDeviceEnabled,
-            IsPttMuted = isMuted,
+            IsPttMuted = muteCountdown is not null,
         };
     }
 
