@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "Изключено",
   "VoiceSettings_Ptt": "Натисни и говори",
   "VoiceSettings_PttNotEnabled": "Режимът Натисни и говори е изключен",
-  "VoiceSettings_PttOn": "Събужда това устройство, когато някой заговори",
   "VoiceSettings_PttAtCapacity_Format": "Вашият списък Натисни и говори вече има {0} чата",
   "VoiceSettings_TranscriptionLanguage": "Език за транскрипция",
   "VoiceSettings_Setup": " (настрой)",

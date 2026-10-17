@@ -7,15 +7,6 @@
         : m.MustStreamVoice
             ? L.VoiceSettings_On
             : L.VoiceSettings_Off;
-    var pttCaption = m.IsPttPaused
-        ? L.Ptt_ChatPaused
-        : m.PttEnabledAt is null
-        ? L.VoiceSettings_PttNotEnabled
-        : m.IsPtt
-            ? L.VoiceSettings_PttOn
-            : m.IsAtPttCapacity
-                ? L.VoiceSettings_PttAtCapacity_Format(UserPttSettings.MaxChatCount)
-                : L.VoiceSettings_Off;
 }
 
 <FormBlock Class="first last">
@@ -30,18 +21,6 @@
                 IsDisabled="@(!m.CanChangeMustStreamVoice)"
                 IsChecked="@m.MustStreamVoice"
                 IsCheckedChanged="@(_ => OnVoiceStreamingClick())" />
-        </Right>
-    </TileItem>
-
-    <TileItem Click="@OnPttClick">
-        <Icon><i class="icon-push-to-talk text-xl"></i></Icon>
-        <Content>@L.Ptt_InMyList</Content>
-        <Caption>@pttCaption</Caption>
-        <Right>
-            <Toggle
-                IsDisabled="@(m.PttEnabledAt is null || m.IsAtPttCapacity)"
-                IsChecked="@m.IsPtt"
-                IsCheckedChanged="@(_ => OnPttClick())"/>
         </Right>
     </TileItem>
 </FormBlock>
@@ -59,27 +38,14 @@
     protected override ComputedState<ComputedModel>.Options GetStateOptions()
         => ComputedStateComponent.GetStateOptions(GetType(),
             static t => new ComputedState<ComputedModel>.Options() {
-                InitialValue = new(false, false, false, false, null, false),
+                InitialValue = new(false, false),
                 UpdateDelayer = FixedDelayer.NextTick,
                 Category = GetStateCategory(t),
             });
 
     protected override async Task<ComputedModel> ComputeState(CancellationToken cancellationToken) {
-        var chatId = ChatId;
-        var settings = await UserSettingsUI.GetChatVoiceMode(chatId, cancellationToken).ConfigureAwait(false);
-        var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var pttEnabledAt = chat?.PttEnabledAt;
-        // Consent, not the armed set: a muted chat is still "on" here.
-        var pttChatIds = await Hub.ChatAudioUI.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
-        var isPtt = pttChatIds.Contains(chatId);
-        var mustStreamVoice = settings.VoiceMode.HasVoice();
-        return new (
-            mustStreamVoice,
-            settings.CanChange,
-            isPtt,
-            !isPtt && pttChatIds.Count >= UserPttSettings.MaxChatCount,
-            pttEnabledAt,
-            chat?.IsPttPaused ?? false);
+        var settings = await UserSettingsUI.GetChatVoiceMode(ChatId, cancellationToken).ConfigureAwait(false);
+        return new (settings.VoiceMode.HasVoice(), settings.CanChange);
     }
 
     private Task OnVoiceStreamingClick()
@@ -92,31 +58,9 @@
         await UserSettingsUI.SetChatVoiceMode(ChatId, voiceMode);
     }
 
-    private async Task OnPttClick() {
-        var m = State.Value;
-        if (m.PttEnabledAt is not { } enabledAt)
-            return;
-
-        var chatId = ChatId;
-        if (m.IsPtt) {
-            await UserSettingsUI.UserPttSettings()
-                .Update(x => x.WithoutPttChat(chatId), CancellationToken.None);
-            return;
-        }
-
-        if (m.IsAtPttCapacity)
-            return;
-
-        await Hub.ChatAudioUI.ConsentPtt(chatId, enabledAt, CancellationToken.None);
-    }
-
     // Nested types
 
     public sealed record ComputedModel(
         bool MustStreamVoice,
-        bool CanChangeMustStreamVoice,
-        bool IsPtt,
-        bool IsAtPttCapacity,
-        Moment? PttEnabledAt,
-        bool IsPttPaused);
+        bool CanChangeMustStreamVoice);
 }

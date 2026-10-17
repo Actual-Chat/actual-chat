@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "关闭",
   "VoiceSettings_Ptt": "按住说话",
   "VoiceSettings_PttNotEnabled": "按住说话模式已关闭",
-  "VoiceSettings_PttOn": "有人讲话时唤醒此设备",
   "VoiceSettings_PttAtCapacity_Format": "你的按住说话列表中已有 {0} 个聊天",
   "VoiceSettings_TranscriptionLanguage": "转写语言",
   "VoiceSettings_Setup": "（设置）",

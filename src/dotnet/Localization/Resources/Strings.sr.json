@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "Искључено",
   "VoiceSettings_Ptt": "Притисни и говори",
   "VoiceSettings_PttNotEnabled": "Начин Притисни и говори је искључен",
-  "VoiceSettings_PttOn": "Буди овај уређај када неко проговори",
   "VoiceSettings_PttAtCapacity_Format": "Ваша листа Притисни и говори већ има {0} четова",
   "VoiceSettings_TranscriptionLanguage": "Језик транскрипције",
   "VoiceSettings_Setup": " (подеси)",

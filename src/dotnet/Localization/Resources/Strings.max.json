@@ -1477,7 +1477,6 @@
   "VoiceSettings_Off": "Desactivado",
   "VoiceSettings_Ptt": "プッシュ・トゥ・トーク",
   "VoiceSettings_PttNotEnabled": "プッシュ・トゥ・トーク モードはオフです",
-  "VoiceSettings_PttOn": "Пробуждает это устройство, когда кто-то говорит",
   "VoiceSettings_PttAtCapacity_Format": "プッシュ・トゥ・トーク リストにはすでに {0} 件のチャットがあります",
   "VoiceSettings_TranscriptionLanguage": "Ngôn ngữ chuyển văn bản",
   "VoiceSettings_Setup": " (налаштувати)",

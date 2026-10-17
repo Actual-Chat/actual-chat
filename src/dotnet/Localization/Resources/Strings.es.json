@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "Desactivado",
   "VoiceSettings_Ptt": "Pulsar para hablar",
   "VoiceSettings_PttNotEnabled": "El modo Pulsar para hablar está desactivado",
-  "VoiceSettings_PttOn": "Despierta este dispositivo cuando alguien habla",
   "VoiceSettings_PttAtCapacity_Format": "Tu lista de Pulsar para hablar ya tiene {0} chats",
   "VoiceSettings_TranscriptionLanguage": "Idioma de transcripción",
   "VoiceSettings_Setup": " (configurar)",

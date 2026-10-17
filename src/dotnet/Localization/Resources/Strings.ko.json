@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "꺼짐",
   "VoiceSettings_Ptt": "푸시 투 토크",
   "VoiceSettings_PttNotEnabled": "푸시 투 토크 모드가 꺼져 있습니다",
-  "VoiceSettings_PttOn": "누군가 말하면 이 기기를 깨웁니다",
   "VoiceSettings_PttAtCapacity_Format": "푸시 투 토크 목록에 이미 채팅 {0}개가 있습니다",
   "VoiceSettings_TranscriptionLanguage": "전사 언어",
   "VoiceSettings_Setup": " (설정)",

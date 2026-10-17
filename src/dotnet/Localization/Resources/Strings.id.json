@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "Nonaktif",
   "VoiceSettings_Ptt": "Tekan untuk bicara",
   "VoiceSettings_PttNotEnabled": "Mode Tekan untuk bicara nonaktif",
-  "VoiceSettings_PttOn": "Membangunkan perangkat ini saat ada yang bicara",
   "VoiceSettings_PttAtCapacity_Format": "Daftar Tekan untuk bicara Anda sudah berisi {0} chat",
   "VoiceSettings_TranscriptionLanguage": "Bahasa transkripsi",
   "VoiceSettings_Setup": " (atur)",

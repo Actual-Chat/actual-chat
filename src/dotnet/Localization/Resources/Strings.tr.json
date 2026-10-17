@@ -1285,7 +1285,6 @@
   "VoiceSettings_Off": "Kapalı",
   "VoiceSettings_Ptt": "Bas-Konuş",
   "VoiceSettings_PttNotEnabled": "Bas-konuş modu kapalı",
-  "VoiceSettings_PttOn": "Biri konuştuğunda bu cihazı uyandırır",
   "VoiceSettings_PttAtCapacity_Format": "Bas-konuş listenizde zaten {0} sohbet var",
   "VoiceSettings_TranscriptionLanguage": "Yazıya dökme dili",
   "VoiceSettings_Setup": " (ayarlayın)",

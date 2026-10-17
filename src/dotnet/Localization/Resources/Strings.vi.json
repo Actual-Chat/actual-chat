@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "Tắt",
   "VoiceSettings_Ptt": "Nhấn để nói",
   "VoiceSettings_PttNotEnabled": "Chế độ Nhấn để nói đang tắt",
-  "VoiceSettings_PttOn": "Đánh thức thiết bị này khi có người nói",
   "VoiceSettings_PttAtCapacity_Format": "Danh sách Nhấn để nói của bạn đã có {0} cuộc trò chuyện",
   "VoiceSettings_TranscriptionLanguage": "Ngôn ngữ chuyển văn bản",
   "VoiceSettings_Setup": " (thiết lập)",

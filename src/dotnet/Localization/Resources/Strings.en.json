@@ -1477,7 +1477,6 @@
   "VoiceSettings_Off": "Off",
   "VoiceSettings_Ptt": "Push-to-talk",
   "VoiceSettings_PttNotEnabled": "Push-to-talk mode is off",
-  "VoiceSettings_PttOn": "Wakes this device when someone speaks",
   "VoiceSettings_PttAtCapacity_Format": "Your Push-to-talk list already has {0} chats",
   "VoiceSettings_TranscriptionLanguage": "Transcription language",
   "VoiceSettings_Setup": " (setup)",

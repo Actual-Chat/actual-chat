@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "Вимк.",
   "VoiceSettings_Ptt": "Push-to-Talk",
   "VoiceSettings_PttNotEnabled": "Режим «Натисни і говори» вимкнено",
-  "VoiceSettings_PttOn": "Пробуджує цей пристрій, коли хтось говорить",
   "VoiceSettings_PttAtCapacity_Format": "У вашому списку «Натисни і говори» вже {0} чатів",
   "VoiceSettings_TranscriptionLanguage": "Мова розшифрування",
   "VoiceSettings_Setup": " (налаштувати)",

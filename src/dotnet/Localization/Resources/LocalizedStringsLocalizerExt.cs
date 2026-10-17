@@ -1346,7 +1346,6 @@ public static class LocalizedStringsLocalizerExt
         public string VoiceSettings_Off => l["VoiceSettings_Off"].Value;
         public string VoiceSettings_Ptt => l["VoiceSettings_Ptt"].Value;
         public string VoiceSettings_PttNotEnabled => l["VoiceSettings_PttNotEnabled"].Value;
-        public string VoiceSettings_PttOn => l["VoiceSettings_PttOn"].Value;
         public string VoiceSettings_PttAtCapacity_Format(object arg0)
             => l["VoiceSettings_PttAtCapacity_Format", arg0].Value;
         public string VoiceSettings_TranscriptionLanguage => l["VoiceSettings_TranscriptionLanguage"].Value;

@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "オフ",
   "VoiceSettings_Ptt": "プッシュ・トゥ・トーク",
   "VoiceSettings_PttNotEnabled": "プッシュ・トゥ・トーク モードはオフです",
-  "VoiceSettings_PttOn": "誰かが話すとこの端末を起動します",
   "VoiceSettings_PttAtCapacity_Format": "プッシュ・トゥ・トーク リストにはすでに {0} 件のチャットがあります",
   "VoiceSettings_TranscriptionLanguage": "文字起こしの言語",
   "VoiceSettings_Setup": "(設定)",

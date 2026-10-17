@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "Wyłączone",
   "VoiceSettings_Ptt": "Naciśnij i mów",
   "VoiceSettings_PttNotEnabled": "Tryb Naciśnij i mów jest wyłączony",
-  "VoiceSettings_PttOn": "Wybudza to urządzenie, gdy ktoś mówi",
   "VoiceSettings_PttAtCapacity_Format": "Twoja lista Naciśnij i mów ma już {0} czatów",
   "VoiceSettings_TranscriptionLanguage": "Język transkrypcji",
   "VoiceSettings_Setup": " (skonfiguruj)",

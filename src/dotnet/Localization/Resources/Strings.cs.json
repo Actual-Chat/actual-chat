@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "Vypnuto",
   "VoiceSettings_Ptt": "Stiskni a mluv",
   "VoiceSettings_PttNotEnabled": "Režim Stiskni a mluv je vypnutý",
-  "VoiceSettings_PttOn": "Probudí toto zařízení, když někdo promluví",
   "VoiceSettings_PttAtCapacity_Format": "Váš seznam Stiskni a mluv už má {0} chatů",
   "VoiceSettings_TranscriptionLanguage": "Jazyk přepisu",
   "VoiceSettings_Setup": " (nastavit)",

@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "बंद",
   "VoiceSettings_Ptt": "पुश टू टॉक",
   "VoiceSettings_PttNotEnabled": "पुश टू टॉक मोड बंद है",
-  "VoiceSettings_PttOn": "जब कोई बोलता है तो यह डिवाइस जाग जाता है",
   "VoiceSettings_PttAtCapacity_Format": "आपकी पुश टू टॉक सूची में पहले से {0} चैट हैं",
   "VoiceSettings_TranscriptionLanguage": "ट्रांसक्रिप्शन भाषा",
   "VoiceSettings_Setup": " (सेटअप)",

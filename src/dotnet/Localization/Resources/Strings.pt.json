@@ -1278,7 +1278,6 @@
   "VoiceSettings_Off": "Desativado",
   "VoiceSettings_Ptt": "Pressione para falar",
   "VoiceSettings_PttNotEnabled": "O modo Pressione para falar está desativado",
-  "VoiceSettings_PttOn": "Acorda este dispositivo quando alguém fala",
   "VoiceSettings_PttAtCapacity_Format": "Sua lista de Pressione para falar já tem {0} chats",
   "VoiceSettings_TranscriptionLanguage": "Idioma de transcrição",
   "VoiceSettings_Setup": " (configurar)",
