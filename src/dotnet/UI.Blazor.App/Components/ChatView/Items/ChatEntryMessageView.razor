@@ -127,7 +127,9 @@
                     @if (!isStateBadge) {
                         <div class="c-author-meta">
                             @if (message.Flags.HasFlag(ChatMessageFlags.Audio)) {
-                                <i class="chat-message-kind-icon icon-voice-to-text-message"></i>
+                                <i class="chat-message-kind-icon icon-voice-to-text-message"
+                                   data-tooltip="@L.ChatView_TranscribedVoice"
+                                   data-tooltip-position="@(FloatingPosition.Top.ToPositionString())"></i>
                             }
                             @if (entry.IsViaApi) {
                                 var viaApiColorClass = m.Colorize

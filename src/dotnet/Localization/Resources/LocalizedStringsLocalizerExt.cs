@@ -447,6 +447,7 @@ public static class LocalizedStringsLocalizerExt
         public string ChatView_SayHiTo_Suffix => l["ChatView_SayHiTo_Suffix"].Value;
         public string ChatView_ForwardedFrom => l["ChatView_ForwardedFrom"].Value;
         public string ChatView_SentViaApi => l["ChatView_SentViaApi"].Value;
+        public string ChatView_TranscribedVoice => l["ChatView_TranscribedVoice"].Value;
         public string ChatView_MessageDeleted => l["ChatView_MessageDeleted"].Value;
         public string ChatView_SendingAttachments => l["ChatView_SendingAttachments"].Value;
         public string ChatView_ShowDetails => l["ChatView_ShowDetails"].Value;
@@ -1453,6 +1454,11 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_AvailableDeviceOff => l["Ptt_AvailableDeviceOff"].Value;
         public string Ptt_AvailableMuted => l["Ptt_AvailableMuted"].Value;
         public string Ptt_ChatPaused => l["Ptt_ChatPaused"].Value;
+        public string Ptt_TooltipInList => l["Ptt_TooltipInList"].Value;
+        public string Ptt_TooltipMuted => l["Ptt_TooltipMuted"].Value;
+        public string Ptt_TooltipDeviceOff => l["Ptt_TooltipDeviceOff"].Value;
+        public string Ptt_TooltipNotInList => l["Ptt_TooltipNotInList"].Value;
+        public string Ptt_TooltipPaused => l["Ptt_TooltipPaused"].Value;
         public string Ptt_ChatScopeCaption => l["Ptt_ChatScopeCaption"].Value;
         public string Ptt_ChatReadOnlyCaption => l["Ptt_ChatReadOnlyCaption"].Value;
         public string Ptt_ChatAvailability => l["Ptt_ChatAvailability"].Value;

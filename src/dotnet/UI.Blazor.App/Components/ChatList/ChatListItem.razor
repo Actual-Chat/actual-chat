@@ -40,7 +40,8 @@
             <ChatIcon Chat="@chat" ShowPresence="@true"/>
             <div class="c-description">
                 <span class="c-chat-title">
-                    <ChatTitle Chat="@chat" PttState="@m.PttState" IsPttArmed="@m.IsPttArmed"/>
+                    <ChatTitle Chat="@chat" PttState="@m.PttState" IsPttArmed="@m.IsPttArmed"
+                               IsPttOffOnDevice="@m.IsPttOffOnDevice"/>
                     <span class="c-incut"></span>
                     @if (lastTextEntry != null && !showEnding) {
                         @Hub.MarkupHelpers.LastEntryTime(m.LastBeginsAt)
@@ -325,6 +326,7 @@
             IsPttMuted = isPttMuted,
             PttState = pttState,
             IsPttArmed = chatInfo.IsPttArmed,
+            IsPttOffOnDevice = chatInfo.IsPttOffOnDevice,
             HasOngoingCall = hasOngoingCall,
             LastThread = preview.Thread,
             LastThreadCreator = preview.ThreadCreator,
@@ -449,6 +451,7 @@
         public bool IsPttMuted { get; init; }
         public PttChatState PttState { get; init; }
         public bool IsPttArmed { get; init; }
+        public bool IsPttOffOnDevice { get; init; }
         public bool HasOngoingCall { get; init; }
         // The notification this row is bound to in the notifications panel: the one its tap jumps
         // to and the one its badge shows. Null everywhere else, and once the chat's are all walked.
