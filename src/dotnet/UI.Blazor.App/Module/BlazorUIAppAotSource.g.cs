@@ -407,11 +407,12 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttAnswerWindowSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttChatAvatar>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttChats>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttGestureIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttHushDurationSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttJoinBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttMuteMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttMutedBanner>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttPracticePanel>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttPracticeModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttReplyWindowSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings>();
@@ -1301,11 +1302,12 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttAnswerWindowSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttChatAvatar), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttChats), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttGestureIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttHushDurationSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttJoinBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttMuteMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttMutedBanner), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.PttPracticePanel), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttPracticeModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttReplyWindowSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttShakeSensitivitySettings), AotTypeKind.Component),

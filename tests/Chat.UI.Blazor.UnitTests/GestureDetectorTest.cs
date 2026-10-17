@@ -853,6 +853,64 @@ public class GestureDetectorTest
         HasFired(Oscillation(GravityAxis.X, 1.5f), ShakeSensitivity.Medium).Should().BeTrue();
     }
 
+    [Fact]
+    public void FlipProgressRisesThroughTheFlipAndClearsOnFire()
+    {
+        var d = new FlipToTalkDetector();
+        // act + assert
+        d.Process(Portrait(0));
+        d.GetProgress(At(0)).Should().Be(0f);
+        d.Process(Landscape(68));
+        d.GetProgress(At(68)).Should().BeApproximately(0.5f, 0.01f);
+        d.GetProgress(At(200)).Should().BeApproximately(0.75f, 0.01f);
+        d.Process(Portrait(300)).Should().BeTrue();
+        d.GetProgress(At(300)).Should().Be(0f);
+    }
+
+    [Fact]
+    public void ShakeProgressCountsStepsAndClearsOnFire()
+    {
+        var d = new ShakeDetector(ShakeSensitivity.Medium);
+        var samples = Rest(0).Concat(Burst(1.0f, extremes: 3, startMs: 1000, stepMs: 80)).ToList();
+        foreach (var s in samples)
+            d.Process(s).Should().BeFalse();
+        // assert
+        var at = samples[^1].At;
+        d.GetProgress(at).Should().BeGreaterThan(0.5f).And.BeLessThan(1f);
+        d.GetProgress(at + ShakeDetector.ReversalWindow + TimeSpan.FromMilliseconds(1)).Should().Be(0f);
+    }
+
+    [Fact]
+    public void PatProgressStepsThroughThePair()
+    {
+        var d = new PatDetector();
+        foreach (var s in PocketRest(0))
+            d.Process(s);
+        // act + assert
+        d.Process(Pat(1000));
+        d.GetProgress(At(1000)).Should().BeApproximately(1f / 3, 0.01f);
+        d.Process(UpsideDown(1050));
+        d.Process(Pat(1300));
+        d.GetProgress(At(1300)).Should().BeApproximately(2f / 3, 0.01f);
+        d.GetProgress(At(1700)).Should().BeGreaterThan(2f / 3).And.BeLessThan(1f);
+        d.Process(UpsideDown(1850)).Should().BeTrue();
+        d.GetProgress(At(1850)).Should().Be(0f);
+    }
+
+    [Fact]
+    public void FaceDownProgressFollowsTheDwellAndIsCappedWhileUncovered()
+    {
+        var d = new FaceDownDetector();
+        // act + assert
+        d.Process(FaceUp(0));
+        d.Process(FaceDown(100));
+        d.GetProgress(At(450)).Should().BeApproximately(0.475f, 0.01f);
+        d.GetProgress(At(1000)).Should().BeApproximately(0.475f, 0.01f);
+        d.SetProximityCovered(true);
+        d.Process(FaceDown(600));
+        d.GetProgress(At(600)).Should().BeApproximately(0.95f * 500 / 700, 0.01f);
+    }
+
     private static IEnumerable<SensorSample> Oscillation(
         GravityAxis axis, float amplitude, double startMs = 0, int halfCycles = 6,
         double stepMs = 60, double periodMs = 280)

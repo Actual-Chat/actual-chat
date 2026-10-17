@@ -86,6 +86,12 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         hub.RegisterDisposable(AppSettings);
     }
 
+    public GestureProgress GetGestureProgress()
+        => _recognizer.GetProgress();
+
+    public void ResetGestures()
+        => _recognizer.Reset();
+
     public HeadsetButtonState GetHeadsetButtonState()
     {
         // The reads are fenced because TrackActivation publishes them from its own thread and

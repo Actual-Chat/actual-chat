@@ -1256,6 +1256,7 @@ public static class LocalizedStringsLocalizerExt
 
         public string Common_Pause => l["Common_Pause"].Value;
         public string Common_Hide => l["Common_Hide"].Value;
+        public string Common_Show => l["Common_Show"].Value;
         public string Common_Open => l["Common_Open"].Value;
         public string Common_Today => l["Common_Today"].Value;
         public string Common_Yesterday => l["Common_Yesterday"].Value;
@@ -1501,7 +1502,12 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_LockScreenTalk => l["Ptt_LockScreenTalk"].Value;
         public string Ptt_LockScreenTalkCaption => l["Ptt_LockScreenTalkCaption"].Value;
         public string Ptt_PracticeTopic => l["Ptt_PracticeTopic"].Value;
-        public string Ptt_PracticeOn => l["Ptt_PracticeOn"].Value;
+        public string Ptt_PracticeTitle => l["Ptt_PracticeTitle"].Value;
+        public string Ptt_Practice_PutAway => l["Ptt_Practice_PutAway"].Value;
+        public string Ptt_Practice_DoublePat => l["Ptt_Practice_DoublePat"].Value;
+        public string Ptt_Practice_Off => l["Ptt_Practice_Off"].Value;
+        public string Ptt_Practice_Reset => l["Ptt_Practice_Reset"].Value;
+        public string Ptt_Practice_RawData => l["Ptt_Practice_RawData"].Value;
         public string Ptt_ReplyWindowTopic => l["Ptt_ReplyWindowTopic"].Value;
         public string Ptt_KeepMicOpen => l["Ptt_KeepMicOpen"].Value;
         public string Ptt_Seconds_Format(object arg0) => l["Ptt_Seconds_Format", arg0].Value;

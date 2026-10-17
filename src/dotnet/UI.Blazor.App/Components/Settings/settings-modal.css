@@ -109,12 +109,66 @@ body.narrow .close-settings-btn {
     @apply pointer-events-none;
 }
 
-.ptt-practice .c-readout {
-    @apply flex-y gap-y-1 px-4 py-2;
-    @apply text-sm text-03;
+/* The hush row shows both of its gestures: put the phone away, double-pat the pocket */
+.ptt-hush-icons {
+    @apply flex flex-col gap-y-2;
 }
 
-.ptt-practice .c-readout > div {
+/* ── Push-to-talk practice modal ── */
+
+.ptt-practice-modal .c-meters {
+    @apply flex-y gap-y-3 py-2;
+}
+.ptt-practice-modal .c-meter {
+    @apply grid items-center gap-x-3 px-2 py-1.5 rounded-lg;
+    grid-template-columns: auto 1fr 5rem;
+}
+.ptt-practice-modal .c-meter .c-icon {
+    @apply flex text-primary;
+    transition: opacity 100ms linear;
+}
+.ptt-practice-modal .c-meter .c-title {
+    @apply text-body text-02 truncate;
+}
+.ptt-practice-modal .c-meter .c-bar {
+    @apply h-2 rounded-full overflow-hidden bg-04;
+}
+.ptt-practice-modal .c-meter .c-fill {
+    @apply h-full rounded-full bg-primary;
+    transition: width 100ms linear;
+}
+.ptt-practice-modal .c-meter .c-off {
+    @apply text-caption-500 text-03 text-right;
+}
+.ptt-practice-modal .c-meter.off .c-title {
+    @apply text-03;
+}
+.ptt-practice-modal .c-meter.fired {
+    animation: ptt-practice-fired 600ms ease-out;
+}
+.ptt-practice-modal .c-meter.fired .c-icon,
+.ptt-practice-modal .c-meter.fired .c-title {
+    @apply text-success;
+}
+.ptt-practice-modal .c-meter.fired .c-fill {
+    @apply bg-success;
+}
+@keyframes ptt-practice-fired {
+    0% { background-color: color-mix(in srgb, var(--success) 30%, transparent); }
+    100% { background-color: transparent; }
+}
+.ptt-practice-modal .c-raw-header {
+    @apply flex-x items-center justify-between gap-x-2;
+    @apply cursor-pointer text-caption-500 text-03;
+}
+.ptt-practice-modal .c-raw-header > .c-link {
+    @apply text-primary;
+}
+.ptt-practice-modal .c-readout {
+    @apply flex-y gap-y-1 py-2;
+    @apply text-sm text-03;
+}
+.ptt-practice-modal .c-readout > div {
     @apply font-mono;
 }
 

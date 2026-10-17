@@ -77,7 +77,7 @@ public sealed class LocalPttSettingsTest(ChatAppHostFixture fixture, ITestOutput
             settings.FindComponents<PttHushDurationSettings>().Should().ContainSingle();
             settings.FindComponents<PttAnswerWindowSettings>().Should().ContainSingle();
             settings.FindComponents<PttReplyWindowSettings>().Should().ContainSingle();
-            settings.FindComponents<PttPracticePanel>().Should().ContainSingle();
+            settings.Markup.Should().Contain(l.Ptt_PracticeTopic);
         });
 
         // act

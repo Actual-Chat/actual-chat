@@ -1,0 +1,151 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.App.Services.Gestures
+@inherits ComponentBase<AppUIHub>
+@implements IModalView<PttPracticeModal.Model>
+@implements IDisposable
+@{
+    var options = GestureUI.RecognizerOptions;
+    var progress = GestureUI.GetGestureProgress();
+    var lastGesture = _lastGesture is { } g ? g.Kind.ToString() : "none yet";
+    var sample = GestureUI.LastSample;
+}
+
+@* Practice mode lasts exactly as long as the dialog is open *@
+<DialogFrame Class="ptt-practice-modal compact-header modal-sm" Title="@L.Ptt_PracticeTitle" HasCloseButton="true">
+    <Body>
+        <FormBlock>
+            <div class="c-meters">
+                @RenderMeter(Meter.FlipToTalk, PttGestureIcon.GestureKind.FlipToTalk,
+                    L.Ptt_FlipToTalk, options.IsFlipToTalkEnabled, progress.FlipToTalk)
+                @RenderMeter(Meter.DoubleShake, PttGestureIcon.GestureKind.DoubleShake,
+                    L.Ptt_DoubleShake, options.IsDoubleShakeEnabled, progress.DoubleShake)
+                @RenderMeter(Meter.PutAway, PttGestureIcon.GestureKind.Hush,
+                    L.Ptt_Practice_PutAway, options.IsStopGestureEnabled || options.IsHushEnabled, progress.PutAway)
+                @RenderMeter(Meter.DoublePat, PttGestureIcon.GestureKind.DoublePat,
+                    L.Ptt_Practice_DoublePat, options.IsHushEnabled, progress.DoublePat)
+            </div>
+            <div class="c-raw-header" @onclick="@OnRawDataClick">
+                <span class="c-title">@L.Ptt_Practice_RawData@(_isRawDataShown ? "" : " ›")</span>
+                <span class="c-link">@(_isRawDataShown ? L.Common_Hide : L.Common_Show)</span>
+            </div>
+            @if (_isRawDataShown) {
+                <div class="c-readout">
+                    <div>Samples: @GestureUI.SampleCount</div>
+                    <div>Accel: @($"{sample.X:F2}, {sample.Y:F2}, {sample.Z:F2} |a|={sample.Magnitude:F3}")</div>
+                    <div>Shake peak: @GestureUI.ShakePeakDeviation.ToString("F2") g</div>
+                    <div>Pat peak: @GestureUI.PatPeakDeviation.ToString("F2") g</div>
+                    <div>Last gesture: @lastGesture</div>
+                    <div>Put away: @GestureUI.FaceDownStatus</div>
+                    <div>Guard: @GestureUI.GuardStatus</div>
+                    @if (GestureUI.FaceDownLastFireInfo is { } fireInfo) {
+                        <div>Last fire: @fireInfo</div>
+                    }
+                </div>
+            }
+        </FormBlock>
+    </Body>
+    <Buttons>
+        <Button Class="btn-modal btn-primary" Click="@(_ => Modal.Close())">@L.Common_Close</Button>
+        <Button Class="btn-modal" Click="@OnResetClick">@L.Ptt_Practice_Reset</Button>
+    </Buttons>
+</DialogFrame>
+
+@code {
+    private static readonly TimeSpan CoolDown = TimeSpan.FromSeconds(1.5);
+
+    private readonly CpuTimestamp?[] _firedAt = new CpuTimestamp?[4];
+    private GestureEvent? _lastGesture;
+    private bool _isRawDataShown;
+    private CancellationTokenSource? _refreshCts;
+
+    private GestureUI GestureUI => Hub.GestureUI;
+
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
+    [Parameter] public Model ModalModel { get; set; } = null!;
+
+    public void Dispose() {
+        GestureUI.IsPracticeMode = false;
+        GestureUI.PracticeGestureDetected -= OnGesture;
+        _refreshCts.CancelAndDisposeSilently();
+        _refreshCts = null;
+    }
+
+    // Protected/internal methods
+
+    protected override void OnInitialized() {
+        GestureUI.PracticeGestureDetected += OnGesture;
+        GestureUI.IsPracticeMode = true;
+        var cts = new CancellationTokenSource();
+        _refreshCts = cts;
+        _ = BackgroundTask.Run(() => RefreshLoop(cts.Token), CancellationToken.None);
+    }
+
+    // Private methods
+
+    private RenderFragment RenderMeter(
+        Meter meter, PttGestureIcon.GestureKind iconKind, string title, bool isEnabled, float progress)
+        => __builder => {
+            // A fired gesture turns the meter green and drains it over the cool-down instead
+            var coolDownLeft = _firedAt[(int)meter] is { } firedAt
+                ? 1 - (firedAt.Elapsed / CoolDown)
+                : 0;
+            var isFired = coolDownLeft > 0;
+            var value = isFired ? coolDownLeft : isEnabled ? progress : 0;
+            var iconOpacity = isFired ? 1 : 0.2 + (0.8 * value);
+            var cls = isFired ? "fired" : isEnabled ? "" : "off";
+            var iconStyle = $"opacity: {iconOpacity.ToString("F2", CultureInfo.InvariantCulture)}";
+            var fillStyle = $"width: {(value * 100).ToString("F0", CultureInfo.InvariantCulture)}%";
+            <div class="c-meter @cls">
+                <div class="c-icon" style="@iconStyle"><PttGestureIcon Kind="@iconKind"/></div>
+                <div class="c-title">@title</div>
+                @if (isEnabled || isFired) {
+                    <div class="c-bar"><div class="c-fill" style="@fillStyle"></div></div>
+                } else {
+                    <div class="c-off">@L.Ptt_Practice_Off</div>
+                }
+            </div>
+        };
+
+    private void OnRawDataClick()
+        => _isRawDataShown = !_isRawDataShown;
+
+    private void OnResetClick() {
+        GestureUI.ResetGestures();
+        Array.Clear(_firedAt);
+        _lastGesture = null;
+    }
+
+    private async Task RefreshLoop(CancellationToken cancellationToken) {
+        // Fast enough for the meters to follow a gesture, which lasts a fraction of a second
+        while (!cancellationToken.IsCancellationRequested) {
+            await Task.Delay(100, cancellationToken).ConfigureAwait(true);
+            await InvokeAsync(StateHasChanged).ConfigureAwait(true);
+        }
+    }
+
+    private void OnGesture(GestureEvent gesture) {
+        _lastGesture = gesture;
+        Meter? meter = gesture.Kind switch {
+            GestureKind.FlipToTalk => Meter.FlipToTalk,
+            GestureKind.DoubleShake => Meter.DoubleShake,
+            GestureKind.FaceDown or GestureKind.Pocket => Meter.PutAway,
+            GestureKind.DoublePat => Meter.DoublePat,
+            _ => null,
+        };
+        if (meter is { } m)
+            _firedAt[(int)m] = CpuTimestamp.Now;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // Nested types
+
+    public sealed record Model;
+
+    private enum Meter
+    {
+        FlipToTalk,
+        DoubleShake,
+        PutAway,
+        DoublePat,
+    }
+}

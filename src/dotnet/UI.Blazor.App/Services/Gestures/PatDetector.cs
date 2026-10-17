@@ -73,6 +73,20 @@ public sealed class PatDetector
             _firstPatAt = at;
         return false;
     }
+
+    public float GetProgress(Moment now)
+    {
+        // A pair still has to sit out MaxGap with no third pat, so it stays short of 1 until it fires
+        if (now < _debouncedUntil)
+            return 0f;
+        if (_secondPatAt is { } second)
+            return (2f + (0.9f * MathF.Min(1f, (float)((now - second) / MaxGap)))) / 3f;
+        if (_firstPatAt is { } first && now - first <= MaxGap)
+            return 1f / 3f;
+
+        return 0f;
+    }
+
     public void Reset()
     {
         _filter.Reset();

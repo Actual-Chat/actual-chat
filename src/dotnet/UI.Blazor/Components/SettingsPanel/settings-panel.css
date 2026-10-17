@@ -175,6 +175,9 @@ body.wide .settings-tab {
     @apply bg-transparent;
     @apply font-medium text-02;
 }
+.tile-topic.has-right {
+    @apply flex items-center justify-between gap-x-2;
+}
 .tile-hidden-btn {
     @apply md:invisible group-hover:md:visible;
 }

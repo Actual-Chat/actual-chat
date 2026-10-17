@@ -1,9 +1,17 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="tile-topic">
-    @Topic
-</div>
+@if (Right is null) {
+    <div class="tile-topic">
+        @Topic
+    </div>
+} else {
+    <div class="tile-topic has-right">
+        <span>@Topic</span>
+        @Right
+    </div>
+}
 
 @code {
     [Parameter] public string Topic { get; set; } = "";
+    [Parameter] public RenderFragment? Right { get; set; }
 }
