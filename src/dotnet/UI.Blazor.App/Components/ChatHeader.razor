@@ -26,7 +26,8 @@
             <div class="chat-header-title">
                 <div class="c-title-wrapper">
                     <div class="c-title">
-                        <ChatTitle Chat="@chat" PttState="@m.PttState" IsPttArmed="@m.IsPttArmed"/>
+                        <ChatTitle Chat="@chat" PttState="@m.PttState" IsPttArmed="@m.IsPttArmed"
+                                   IsPttOffOnDevice="@m.IsPttOffOnDevice"/>
                     </div>
                 </div>
                 <div class="c-info">
@@ -107,6 +108,7 @@
             IsSearchMode = isSearchMode,
             PttState = chatInfo?.PttState ?? PttChatState.Off,
             IsPttArmed = chatInfo?.IsPttArmed ?? false,
+            IsPttOffOnDevice = chatInfo?.IsPttOffOnDevice ?? false,
         };
     }
 
@@ -133,5 +135,6 @@
         public bool IsSearchMode { get; init; }
         public PttChatState PttState { get; init; }
         public bool IsPttArmed { get; init; }
+        public bool IsPttOffOnDevice { get; init; }
     }
 }

@@ -494,6 +494,7 @@
   // Tooltip on the robot icon beside the time of a message an app or an AI agent posted
   // through the author's API key rather than the author typing it.
   "ChatView_SentViaApi": "API üzerinden gönderildi, örneğin bir yapay zekâ ajanı tarafından",
+  "ChatView_TranscribedVoice": "Транскрипція голосового повідомлення",
   "ChatView_MessageDeleted": "このメッセージは削除されました。",
   "ChatView_SendingAttachments": "Изпращане на прикачени файлове…",
   "ChatView_ShowDetails": "Покажете подробностите",
@@ -1608,6 +1609,11 @@
   "Ptt_AvailableDeviceOff": "Във вашия списък · Изключено на това устройство",
   "Ptt_AvailableMuted": "У вашому списку · Звук вимкнено",
   "Ptt_ChatPaused": "Đã tạm dừng cho mọi người",
+  "Ptt_TooltipInList": "プッシュ・トゥ・トーク · リストに追加済み",
+  "Ptt_TooltipMuted": "プッシュ・トゥ・トーク · リストに追加済み · ミュート中",
+  "Ptt_TooltipDeviceOff": "Натисни и говори · Във вашия списък · Изключено на това устройство",
+  "Ptt_TooltipNotInList": "Nhấn để nói · Không có trong danh sách của bạn",
+  "Ptt_TooltipPaused": "プッシュ・トゥ・トーク · 全員に対して一時停止中",
   "Ptt_ChatScopeCaption": "メンバーはこのチャットを自分のプッシュ・トゥ・トーク リストに追加できます。",
   "Ptt_ChatReadOnlyCaption": "Seuls les propriétaires de la conversation peuvent modifier ce réglage.",
   "Ptt_ChatAvailability": "プッシュ・トゥ・トーク モード",

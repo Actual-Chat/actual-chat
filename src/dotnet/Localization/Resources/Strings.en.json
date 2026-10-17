@@ -494,6 +494,7 @@
   // Tooltip on the robot icon beside the time of a message an app or an AI agent posted
   // through the author's API key rather than the author typing it.
   "ChatView_SentViaApi": "Sent via API, e.g. by an AI agent",
+  "ChatView_TranscribedVoice": "Transcribed from a voice message",
   "ChatView_MessageDeleted": "The message was deleted.",
   "ChatView_SendingAttachments": "Sending attachments…",
   "ChatView_ShowDetails": "Show details",
@@ -1608,6 +1609,11 @@
   "Ptt_AvailableDeviceOff": "In your list · Off on this device",
   "Ptt_AvailableMuted": "In your list · Muted",
   "Ptt_ChatPaused": "Paused for everyone",
+  "Ptt_TooltipInList": "Push-to-talk · In your list",
+  "Ptt_TooltipMuted": "Push-to-talk · In your list · Muted",
+  "Ptt_TooltipDeviceOff": "Push-to-talk · In your list · Off on this device",
+  "Ptt_TooltipNotInList": "Push-to-talk · Not in your list",
+  "Ptt_TooltipPaused": "Push-to-talk · Paused for everyone",
   "Ptt_ChatScopeCaption": "Members can add this chat to their Push-to-talk lists.",
   "Ptt_ChatReadOnlyCaption": "Only chat owners can change this.",
   "Ptt_ChatAvailability": "Push-to-talk mode",

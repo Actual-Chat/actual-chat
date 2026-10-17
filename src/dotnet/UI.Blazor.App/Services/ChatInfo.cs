@@ -18,6 +18,7 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public bool IsPinnedToNavbar { get; init; }
     public PttChatState PttState { get; init; }
     public bool IsPttArmed { get; init; }
+    public bool IsPttOffOnDevice { get; init; }
 
     // Shortcuts
     public ChatId Id => Contact.Id.ChatId;
