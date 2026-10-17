@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.UI.Blazor.Events
 @inherits ComputedStateComponent<AppUIHub, ChatPttSettingsModal.ViewState?>
 @implements IModalView<ChatPttSettingsModal.Model>
 @{
@@ -6,22 +7,41 @@
         return;
 
     var chat = m.Chat;
-    var status = chat.IsPttPaused
-        ? L.Ptt_ChatPaused
-        : chat.PttEnabledAt is null ? L.VoiceSettings_PttNotEnabled : L.Ptt_ChatActive;
+    var isModeOn = chat.ActivePttEnabledAt is not null;
+    var isAtCapacity = !m.IsInList && m.ListCount >= UserPttSettings.MaxChatCount;
 }
 
 <DialogFrame Class="chat-ptt-settings-modal modal-sm" Title="@L.VoiceSettings_Ptt">
     <Body>
         <FormBlock>
             <TileItem IsHoverable="@m.CanManage"
-                      ToggleValue="@(m.CanManage ? chat.ActivePttEnabledAt is not null : (bool?)null)"
-                      ToggleValueChanged="@OnAvailabilityChanged"
-                      ToggleDisabled="@_isChanging">
+                      ToggleValue="@isModeOn"
+                      ToggleValueChanged="@OnModeChanged"
+                      ToggleDisabled="@(_isChanging || !m.CanManage)">
                 <Icon><i class="icon-push-to-talk text-xl"></i></Icon>
-                <Content>@(m.CanManage ? L.Ptt_ChatAvailability : status)</Content>
+                <Content>@L.Ptt_ChatAvailability</Content>
                 <Caption>@(m.CanManage ? L.Ptt_ChatScopeCaption : L.Ptt_ChatReadOnlyCaption)</Caption>
             </TileItem>
+            @if (isModeOn) {
+                <TileItem ToggleValue="@m.IsInList"
+                          ToggleValueChanged="@OnInListChanged"
+                          ToggleDisabled="@(_isChanging || isAtCapacity)">
+                    <Icon><i class="icon-person text-xl"></i></Icon>
+                    <Content>@L.Ptt_InMyList</Content>
+                    <Caption>
+                        @(isAtCapacity
+                            ? L.VoiceSettings_PttAtCapacity_Format(UserPttSettings.MaxChatCount)
+                            : L.Ptt_InMyListCaption)
+                    </Caption>
+                </TileItem>
+                @if (!m.IsDeviceEnabled) {
+                    <p class="c-device-off">
+                        @L.Ptt_DeviceOff_Prefix<a class="link" @onclick="@OnOpenSettingsClick"
+                            @onclick:preventDefault="true"
+                            >@L.Ptt_DeviceOffTarget</a>@L.Ptt_DeviceOff_Suffix
+                    </p>
+                }
+            }
         </FormBlock>
     </Body>
 </DialogFrame>
@@ -29,6 +49,7 @@
 @code {
     private bool _isChanging;
 
+    [CascadingParameter] public Modal Modal { get; set; } = null!;
     [Parameter] public Model ModalModel { get; set; } = null!;
 
     protected override async Task<ViewState?> ComputeState(CancellationToken cancellationToken) {
@@ -36,10 +57,14 @@
         if (chat is null || !chat.IsMember() || chat.HasSingleAuthor || chat.Id.IsThread())
             return null;
 
-        return new(chat, chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer);
+        var audio = Hub.ChatAudioUI;
+        var listChatIds = await audio.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
+        var isDeviceEnabled = await audio.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
+        var canManage = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
+        return new(chat, canManage, listChatIds.Contains(chat.Id), listChatIds.Count, isDeviceEnabled);
     }
 
-    private async Task OnAvailabilityChanged(bool isEnabled) {
+    private async Task OnModeChanged(bool isEnabled) {
         if (_isChanging || State.Value is not { CanManage: true } m)
             return;
         if (isEnabled == (m.Chat.ActivePttEnabledAt is not null))
@@ -76,9 +101,34 @@
         }
     }
 
+    private async Task OnInListChanged(bool isInList) {
+        if (_isChanging || State.Value is not { } m || m.Chat.ActivePttEnabledAt is not { } enabledAt)
+            return;
+        if (isInList == m.IsInList)
+            return;
+
+        _isChanging = true;
+        try {
+            if (isInList)
+                await Hub.ChatAudioUI.ConsentPtt(m.Chat.Id, enabledAt, CancellationToken.None).ConfigureAwait(true);
+            else
+                await UserSettingsUI.UserPttSettings()
+                    .Update(x => x.WithoutPttChat(m.Chat.Id), CancellationToken.None)
+                    .ConfigureAwait(true);
+        }
+        finally {
+            _isChanging = false;
+        }
+    }
+
+    private void OnOpenSettingsClick() {
+        Modal.Close();
+        _ = UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Ptt));
+    }
+
     // Nested types
 
     public sealed record Model(ChatId ChatId);
 
-    public sealed record ViewState(Chat Chat, bool CanManage);
+    public sealed record ViewState(Chat Chat, bool CanManage, bool IsInList, int ListCount, bool IsDeviceEnabled);
 }

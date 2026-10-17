@@ -762,3 +762,15 @@ body.narrow .content-list-links .link-preview:not(.local-link) {
 .side-panel-swap > .c-layer {
     @apply min-h-0;
 }
+
+/* ── Push-to-talk modal ── */
+
+.chat-ptt-settings-modal .c-device-off {
+    @apply px-4 pt-2;
+    @apply text-caption text-03;
+}
+.chat-ptt-settings-modal .c-device-off .link {
+    @apply text-primary;
+    @apply underline;
+    @apply cursor-pointer;
+}

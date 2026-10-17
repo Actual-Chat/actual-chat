@@ -22,6 +22,12 @@ public static class Ptt
     public static bool IsDesktopApp(HostInfo hostInfo)
         => hostInfo.AppKind is AppKind.Windows or AppKind.MacOS or AppKind.Linux;
 
+    public static PttChatState GetChatState(ActualChat.Chat.Chat chat, bool isInList)
+        => chat.PttEnabledAt is null || chat.HasSingleAuthor || chat.Id.IsThread() ? PttChatState.Off
+            : chat.IsPttPaused ? PttChatState.Paused
+            : isInList ? PttChatState.InList
+            : PttChatState.NotInList;
+
     public static PttSupport GetSupport(HostInfo hostInfo)
         => !hostInfo.HostKind.IsMauiApp() ? PttSupport.WhileTabOpen
             : IsDesktopApp(hostInfo) ? PttSupport.WhileAppRuns
@@ -65,6 +71,17 @@ public static class Ptt
         // A device with PTT off never asks: turning it on is a Settings decision, not a chat's.
         // The dismissal expires with the chat's enable-epoch, so an owner's off-on cycle re-asks.
         => isDeviceEnabled && !isArmedInChat && dismissedAt < enabledAt;
+}
+
+/// <summary>
+/// The chat's Push-to-talk mode combined with whether the chat is in this user's Push-to-talk list.
+/// </summary>
+public enum PttChatState
+{
+    Off,
+    Paused,
+    NotInList,
+    InList,
 }
 
 public enum PttSupport
