@@ -280,6 +280,26 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     }
 
     [ComputeMethod]
+    public virtual async Task<IReadOnlyList<ChatInfo>> ListRecent(
+        PlaceId? placeId,
+        ChatListFilter filter,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        // Without a place, recents span every place - unlike the "All chats" list
+        var chatById = placeId is null
+            ? await ListAllUnordered(cancellationToken).ConfigureAwait(false)
+            : await ListUnordered(placeId, filter, cancellationToken).ConfigureAwait(false);
+        // A contact turns Regular once its owner posts there, so this drops a peer who wrote first and
+        // was never answered, and a place member never contacted (a fake contact)
+        return chatById.Values
+            .Where(c => c.Contact.IsRegular && filter.Invoke(c))
+            .OrderBy(ChatListOrder.ByOwnUpdateTime, ChatListPreOrder.None)
+            .Take(limit)
+            .ToList();
+    }
+
+    [ComputeMethod]
     protected virtual async Task<IReadOnlyDictionary<ChatId, ChatInfo>> ListUnorderedForDisplay(
         PlaceId? placeId,
         ChatListSettings settings,

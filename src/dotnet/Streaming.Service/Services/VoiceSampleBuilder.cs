@@ -1,5 +1,6 @@
 using ActualChat.Audio;
 using ActualChat.Chat;
+using ActualChat.Contacts;
 using ActualChat.Hashing;
 using ActualChat.IO;
 using ActualChat.Users;
@@ -21,7 +22,7 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
     private static readonly int MinPcmLength = PcmLengthOf(Constants.Audio.VoiceSampleMinDuration);
 
     private IServiceProvider Services { get; } = services;
-    private IChatUsagesBackend ChatUsagesBackend => field ??= Services.GetRequiredService<IChatUsagesBackend>();
+    private IContactsBackend ContactsBackend => field ??= Services.GetRequiredService<IContactsBackend>();
     private IAuthorsBackend AuthorsBackend => field ??= Services.GetRequiredService<IAuthorsBackend>();
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private AudioSourceDownloader AudioDownloader => field ??= Services.GetRequiredService<AudioSourceDownloader>();
@@ -214,16 +215,9 @@ public sealed class VoiceSampleBuilder(IServiceProvider services)
 
     private async Task<ChatId[]> ListRecentChatIds(UserId userId, CancellationToken cancellationToken)
     {
-        // A peer chat lands on the list on the first entry written there, a group chat when it's
-        // viewed - together that's every chat the user has recently spoken in
-        var peerChatIds = await ChatUsagesBackend
-            .GetRecencyList(userId, ChatUsageListKind.PeerChatsWroteTo, cancellationToken)
-            .ConfigureAwait(false);
-        var groupChatIds = await ChatUsagesBackend
-            .GetRecencyList(userId, ChatUsageListKind.ViewedGroupChats, cancellationToken)
-            .ConfigureAwait(false);
-        return peerChatIds.Concat(groupChatIds)
-            .Distinct()
+        var contacts = await ContactsBackend.ListRecent(userId, cancellationToken).ConfigureAwait(false);
+        return contacts
+            .Select(c => c.ChatId)
             .Take(Constants.Audio.VoiceSampleMaxChats)
             .ToArray();
     }

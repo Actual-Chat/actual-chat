@@ -8,14 +8,7 @@
         new("chats", L.Navbar_Chats) {
             Content = @<div class="c-container"><ChatSearchTab Place="@Place"/></div>,
         },
-        new("ai-search", L.Common_Search) {
-            Content = @<div class="c-container">
-                           <RecentlyViewedGroups
-                               Title="@L.Search_RecentSearches"
-                               ListKind="@ChatUsageListKind.SearchChats"
-                               Place="@Place"/>
-                       </div>,
-        },
+        new("ai-search", L.Common_Search) { Content = @<ToBeDone/> },
         new("Threads", L.RightPanel_TabThreads) { Content = @<ToBeDone/> },
         new("tags", L.Search_TabTags) { Content = @<ToBeDone/> },
         new("media", L.RightPanel_TabMedia) { Content = @<ToBeDone/> },

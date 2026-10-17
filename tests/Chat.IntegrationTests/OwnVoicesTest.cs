@@ -42,7 +42,6 @@ public sealed class OwnVoicesTest(
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
-        await RegisterView(chatId);
         await Tester.RecordVoiceEntry(chatId, Languages.English, frameCount: EntryFrameCount);
         var ct = CancellationToken.None;
         var before = await OwnVoices.GetOwnVoiceStatus(Tester.Session, ct);
@@ -112,17 +111,6 @@ public sealed class OwnVoicesTest(
     }
 
     // Private methods
-
-    private Task RegisterView(ChatId chatId)
-    {
-        // What ChatView does when a group chat is opened - that's how it reaches the recency list
-        var command = new ChatUsages_RegisterUsage {
-            Session = Tester.Session,
-            Kind = ChatUsageListKind.ViewedGroupChats,
-            ChatId = chatId,
-        };
-        return Tester.AppServices.Commander().Call(command, CancellationToken.None);
-    }
 
     private Task SetSettings(Func<UserLanguageSettings, UserLanguageSettings> update)
         => AppHost.Services.UserSettingsUI(Tester.Session)
