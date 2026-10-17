@@ -63,5 +63,26 @@ public static class McpServerInstructions
         check - it is append-only, and a chunk you send twice is heard twice.
 
         A stream with no append for 90 seconds is finished for you with whatever arrived.
+
+        ## Importing history
+
+        Owners of a group chat or a Place can import history - e.g. a Telegram, WhatsApp or
+        Slack export - with the original authors and dates. Every author must consent first.
+        Imported dates must be later than everything already in the chat, system messages such
+        as "joined" included; in a group chat that means after its members joined.
+        Starting an import stops posting for every member, the owner included, until it ends;
+        a Place-wide import stops every chat of the Place. So confirm with the user before
+        start_import, and end the import as soon as you are done. The order:
+
+        1. get_import - check that no import runs yet.
+        2. start_import with `confirm: true`.
+        3. Remind the members in `pending` with post_message in their `peerChatId` - direct
+           chats stay open during the import - and poll get_import until enough have consented.
+           The owner consents with consent_to_import like everyone else.
+        4. Upload attachments: begin_import_upload, append_upload, finish_import_upload, or
+           import_upload_from_url - with the same chatId you will pass to import_messages,
+           which for a Place-wide import is a Place chat, not the root.
+        5. import_messages in batches, oldest first.
+        6. end_import.
         """;
 }

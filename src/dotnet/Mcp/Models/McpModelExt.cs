@@ -154,6 +154,9 @@ public static class McpModelExt
     public static long ToMcpMillis(this Moment moment)
         => (long)(moment - Moment.EpochStart).TotalMilliseconds;
 
+    public static Moment FromMcpMillis(this long millis)
+        => Moment.EpochStart + TimeSpan.FromMilliseconds(millis);
+
     public static string[] ToFlagNames<TEnum>(this TEnum flags)
         where TEnum : struct, Enum
         => Enum.GetValues<TEnum>()

@@ -24,10 +24,15 @@ public static class McpToolErrorFilter
 
     private static bool IsCallerError(Exception e)
         // The types StandardError produces for input the caller got wrong: Constraint, Format,
-        // NotFound and Unauthorized. Everything else stays masked - it may carry internals.
+        // NotFound, Unauthorized and the non-transient upload errors. Everything else stays
+        // masked - it may carry internals.
         => e is InvalidOperationException
             or FormatException
             or KeyNotFoundException
+            or NotFoundException
             or ArgumentException
-            or UnauthorizedAccessException;
+            or UnauthorizedAccessException
+            or UploadNotFoundException
+            or OffsetConflictException
+            or UploadFileEmptyException;
 }
