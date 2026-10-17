@@ -257,6 +257,10 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         // Test Pages
         services.TryAddSingleton<IWebViewCrasher, NoopWebViewCrasher>();
 
+        // Native app settings: hosts that have them register theirs, which overrides this one
+        if (HostInfo.MustShowAllUI)
+            services.AddScoped<INativeAppSettings>(_ => new FakeNativeAppSettings());
+
         // Contacts
         fusion.AddService<ContactSync>(ServiceLifetime.Scoped);
         if (HostInfo.IsDevelopmentInstance && HostInfo.HostKind != HostKind.MauiApp)
