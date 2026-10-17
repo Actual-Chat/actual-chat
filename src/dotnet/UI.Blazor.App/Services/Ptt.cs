@@ -14,11 +14,6 @@ public static class Ptt
         return box?.Value ?? false;
     }
 
-    public static bool IsLocalSettingsPreview(HostInfo hostInfo)
-        => !hostInfo.HostKind.IsMauiApp()
-            && hostInfo.IsDevelopmentInstance
-            && hostInfo.BaseUrlKind == BaseUrlKind.Local;
-
     public static bool IsDesktopApp(HostInfo hostInfo)
         => hostInfo.AppKind is AppKind.Windows or AppKind.MacOS or AppKind.Linux;
 

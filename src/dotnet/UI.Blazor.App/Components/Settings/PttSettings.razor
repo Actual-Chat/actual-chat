@@ -5,10 +5,10 @@
 @{
     var m = State.Value;
     var isDesktop = Ptt.IsDesktopApp(HostInfo);
-    var isPreview = Ptt.IsLocalSettingsPreview(HostInfo);
-    var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
-    var showSensorSettings = hasSensors || isPreview;
-    var showHeadsetSettings = HostInfo.AppKind == AppKind.Android || isPreview;
+    var mustShowAllUI = HostInfo.MustShowAllUI;
+    var hasSensors = HostInfo.HostKind.IsMauiApp() && !isDesktop && GestureUI.Feed.IsAccelerometerAvailable;
+    var showSensorSettings = hasSensors || mustShowAllUI;
+    var showHeadsetSettings = HostInfo.AppKind == AppKind.Android || mustShowAllUI;
     var canAllowMore = m.CanAllowMore;
     var isFullySupported = Ptt.GetSupport(HostInfo) == PttSupport.Full;
 }
@@ -23,7 +23,7 @@
 
 <Tile>
     <TileItem Click="@OnToggleDevice">
-        <Icon><i class="icon-phone text-2xl"></i></Icon>
+        <Icon><i class="icon-push-to-talk text-xl"></i></Icon>
         <Content>@L.Ptt_UseOnThisDevice</Content>
         <Caption>@(isDesktop ? L.Ptt_UseOnDesktopCaption : L.Ptt_UseOnThisDeviceCaption)</Caption>
         <Right><Toggle IsChecked="@m.IsDeviceEnabled" IsCheckedChanged="@(_ => OnToggleDevice())"/></Right>
@@ -31,26 +31,22 @@
 </Tile>
 
 <div class="ptt-settings-body @(m.IsDeviceEnabled ? "" : "off")">
-<TileTopic Topic="@L.Ptt_ChatsTopic"/>
+<TileTopic Topic="@L.Ptt_ChatsTopicLimit_Format(UserPttSettings.MaxChatCount)"/>
 <Tile>
     @foreach (var chat in m.AllowedChats) {
-        <TileItem Click="@(() => OnTurnOff(chat.Id))" Caption="@GetPlaceCaption(chat)">
-            <Icon><i class="icon-push-to-talk text-xl"></i></Icon>
+        <TileItem Class="ptt-chat-item" Click="@(() => OnTurnOff(chat.Id))" Caption="@GetPlaceCaption(chat)">
+            <Icon><ChatIcon Chat="@chat.Chat" Size="SquareSize.Size8"/></Icon>
             <Content>@chat.Title</Content>
             <Right>
                 <Toggle IsChecked="true" IsCheckedChanged="@(_ => OnTurnOff(chat.Id))"/>
             </Right>
         </TileItem>
     }
-    <p class="c-description">@GetAllowedDescription(m)</p>
-</Tile>
-
-@if (m.AvailableChats.Count != 0) {
-    <TileTopic Topic="@L.Ptt_AvailableTopic"/>
-    <Tile>
+    @if (m.AvailableChats.Count != 0) {
+        <div class="ptt-chats-divider">@L.Ptt_AvailableTopic</div>
         @foreach (var chat in m.AvailableChats) {
-            <TileItem Click="@(() => OnAllow(chat))" Caption="@GetPlaceCaption(chat)">
-                <Icon><i class="icon-push-to-talk text-xl"></i></Icon>
+            <TileItem Class="ptt-chat-item" Click="@(() => OnAllow(chat))" Caption="@GetPlaceCaption(chat)">
+                <Icon><ChatIcon Chat="@chat.Chat" Size="SquareSize.Size8"/></Icon>
                 <Content>@chat.Title</Content>
                 <Right>
                     <Toggle
@@ -60,15 +56,16 @@
                 </Right>
             </TileItem>
         }
-        <p class="c-description">
-            @(canAllowMore
-                ? L.Ptt_AllowHint
-                : L.Ptt_AllowLimitHint)
-        </p>
-    </Tile>
-}
+    }
+    @if (m.AllowedChats.Count == 0) {
+        <p class="c-description">@GetAllowedDescription(m)</p>
+    }
+    @if (m.AvailableChats.Count != 0 && !canAllowMore) {
+        <p class="c-description">@L.Ptt_AllowLimitHint</p>
+    }
+</Tile>
 
-@if ((HostInfo.HostKind.IsMauiApp() && !isDesktop) || isPreview) {
+@if (showSensorSettings || showHeadsetSettings) {
     <TileTopic Topic="@L.Ptt_GesturesTopic">
         <Right>
             @if (showSensorSettings) {
@@ -79,7 +76,19 @@
             }
         </Right>
     </TileTopic>
+    @* Answer *@
     <Tile>
+        @if (showHeadsetSettings) {
+            <TileItem Click="@OnToggleHeadsetButton">
+                <Icon><PttGestureIcon Kind="PttGestureIcon.GestureKind.HeadsetButton"/></Icon>
+                <Content>@L.Ptt_HeadsetButton</Content>
+                <Caption>@L.Ptt_HeadsetButtonCaption</Caption>
+                <Right>
+                    <Toggle IsChecked="@(m.Settings.IsHeadsetButtonEnabled ?? true)"
+                            IsCheckedChanged="@(_ => OnToggleHeadsetButton())"/>
+                </Right>
+            </TileItem>
+        }
         @if (showSensorSettings) {
             <TileItem Click="@OnToggleFlip">
                 <Icon><PttGestureIcon Kind="PttGestureIcon.GestureKind.FlipToTalk"/></Icon>
@@ -96,6 +105,11 @@
             @if (m.Settings.IsDoubleShakeEnabled) {
                 <PttShakeSensitivitySettings/>
             }
+        }
+    </Tile>
+    @* Hush *@
+    <Tile>
+        @if (showSensorSettings) {
             <TileItem Click="@OnToggleHush">
                 <Icon>
                     <div class="ptt-hush-icons">
@@ -111,19 +125,12 @@
                 </Right>
             </TileItem>
         }
-        @if (showSensorSettings || showHeadsetSettings) {
-            <PttHushDurationSettings/>
-        }
-        @if (showHeadsetSettings) {
-            <TileItem Click="@OnToggleHeadsetButton">
-                <Icon><PttGestureIcon Kind="PttGestureIcon.GestureKind.HeadsetButton"/></Icon>
-                <Content>@L.Ptt_HeadsetButton</Content>
-                <Caption>@L.Ptt_HeadsetButtonCaption</Caption>
-                <Right>
-                    <Toggle IsChecked="@(m.Settings.IsHeadsetButtonEnabled ?? true)"
-                            IsCheckedChanged="@(_ => OnToggleHeadsetButton())"/>
-                </Right>
-            </TileItem>
+        <PttHushDurationSettings/>
+    </Tile>
+    @* Common *@
+    <Tile>
+        @if (!m.Settings.AreGesturesAlwaysOn) {
+            <PttAnswerWindowSettings/>
         }
         @if (showSensorSettings) {
             <TileItem Click="@OnToggleAlwaysOn">
@@ -139,25 +146,22 @@
         @if (!hasSensors) {
             <p class="c-description">@L.Ptt_NoMotionSensor</p>
         }
-        @if ((showSensorSettings || showHeadsetSettings) && !m.Settings.AreGesturesAlwaysOn) {
-            <PttAnswerWindowSettings/>
-        }
     </Tile>
+}
 
-    @if (HostInfo.AppKind == AppKind.Ios || isPreview) {
-        <TileTopic Topic="@L.Ptt_LockScreenTopic"/>
-        <Tile>
-            <TileItem Click="@OnTogglePttTransmit">
-                <Icon><PttGestureIcon Kind="PttGestureIcon.GestureKind.LockScreenTalk"/></Icon>
-                <Content>@L.Ptt_LockScreenTalk</Content>
-                <Caption>@L.Ptt_LockScreenTalkCaption</Caption>
-                <Right>
-                    <Toggle IsChecked="@(m.Settings.IsPttTransmitEnabled ?? true)"
-                            IsCheckedChanged="@(_ => OnTogglePttTransmit())"/>
-                </Right>
-            </TileItem>
-        </Tile>
-    }
+@if (HostInfo.AppKind == AppKind.Ios || mustShowAllUI) {
+    <TileTopic Topic="@L.Ptt_LockScreenTopic"/>
+    <Tile>
+        <TileItem Click="@OnTogglePttTransmit">
+            <Icon><PttGestureIcon Kind="PttGestureIcon.GestureKind.LockScreenTalk"/></Icon>
+            <Content>@L.Ptt_LockScreenTalk</Content>
+            <Caption>@L.Ptt_LockScreenTalkCaption</Caption>
+            <Right>
+                <Toggle IsChecked="@(m.Settings.IsPttTransmitEnabled ?? true)"
+                        IsCheckedChanged="@(_ => OnTogglePttTransmit())"/>
+            </Right>
+        </TileItem>
+    </Tile>
 }
 
 <TileTopic Topic="@L.Ptt_ReplyWindowTopic"/>
@@ -201,7 +205,7 @@
                 continue;
 
             var placeTitle = await GetPlaceTitle(chat, cancellationToken).ConfigureAwait(false);
-            var item = new ChatItem(chat.Id, chat.Title, placeTitle, pttEnabledAt, chat.IsPttPaused);
+            var item = new ChatItem(chat, placeTitle, pttEnabledAt);
             if (allowedChatIdSet.Contains(chat.Id))
                 allowedChats.Add(item);
             else
@@ -231,11 +235,9 @@
                 : null;
 
     private string GetAllowedDescription(Model m)
-        => m.AllowedChats.Count != 0
-            ? L.Ptt_AllowedCount_Format(m.AllowedChatIds.Count, UserPttSettings.MaxChatCount)
-            : m.AvailableChats.Count != 0
-                ? L.Ptt_NothingAllowed
-                : L.Ptt_NoPttChats;
+        => m.AvailableChats.Count != 0
+            ? L.Ptt_NothingAllowed
+            : L.Ptt_NoPttChats;
 
     private Task OnSupportNoticeClick()
         => ChatAudioUI.ShowPttSupportLimits(isRequested: true);
@@ -303,6 +305,9 @@
         public bool CanAllowMore => AllowedChatIds.Count < UserPttSettings.MaxChatCount;
     }
 
-    public sealed record ChatItem(
-        ChatId Id, string Title, string? PlaceTitle, Moment PttEnabledAt, bool IsPttPaused);
+    public sealed record ChatItem(Chat Chat, string? PlaceTitle, Moment PttEnabledAt) {
+        public ChatId Id => Chat.Id;
+        public string Title => Chat.Title;
+        public bool IsPttPaused => Chat.IsPttPaused;
+    }
 }

@@ -9,9 +9,9 @@
     var showMyAccount = !isGuest;
     var showLogout = !isGuest;
     var showQuit = HostInfo.HostKind.IsMauiApp() && HostInfo.AppKind == AppKind.Windows;
-    var isPttPreview = Ptt.IsLocalSettingsPreview(HostInfo);
+    var mustShowAllUI = HostInfo.MustShowAllUI;
     // Android alone: it holds the Android Auto section too, which needs a car connection.
-    var showAndroid = HostInfo.AppKind == AppKind.Android || isPttPreview;
+    var showAndroid = HostInfo.AppKind == AppKind.Android || mustShowAllUI;
     var quitTitle = L.Settings_Quit_Format(CoreConstants.AppName);
 
     var tabs = new List<SettingsTabDef>();
