@@ -26,7 +26,6 @@ public class VoiceSampleBuilderTest(
         // arrange
         var account = await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
-        await RegisterView(chatId);
         var entries = new List<ChatEntry>();
         for (var i = 0; i < 3; i++)
             entries.Add(await Tester.RecordVoiceEntry(chatId, Languages.English, frameCount: EntryFrameCount));
@@ -68,7 +67,6 @@ public class VoiceSampleBuilderTest(
         // arrange
         var account = await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(false);
-        await RegisterView(chatId);
         await Tester.RecordVoiceEntry(chatId, Languages.English, frameCount: EntryFrameCount);
 
         // act
@@ -130,17 +128,6 @@ public class VoiceSampleBuilderTest(
     }
 
     // Private methods
-
-    private Task RegisterView(ChatId chatId)
-    {
-        // What ChatView does when a group chat is opened - that's how it reaches the recency list
-        var command = new ChatUsages_RegisterUsage {
-            Session = Tester.Session,
-            Kind = ChatUsageListKind.ViewedGroupChats,
-            ChatId = chatId,
-        };
-        return Tester.AppServices.Commander().Call(command, CancellationToken.None);
-    }
 
     private async Task<byte[]> ReadBlob(string blobId)
     {

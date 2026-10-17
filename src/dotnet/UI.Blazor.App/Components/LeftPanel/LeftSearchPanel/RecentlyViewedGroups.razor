@@ -7,7 +7,7 @@
 
 <div class="recently-viewed-groups">
     <div class="c-header">
-        <div class="c-title">@(Title ?? L.Search_RecentlyViewed)</div>
+        <div class="c-title">@L.Search_RecentlyViewed</div>
     </div>
     <div class="chat-list">
         @foreach (var chat in chats) {
@@ -19,26 +19,12 @@
 <ContentSwapDisplay/>
 
 @code {
-    private IChats Chats => Hub.Chats;
-    private IChatUsages ChatUsages => Hub.ChatUsages;
-
-    [Parameter] public string? Title { get; set; }
-    [Parameter] public ChatUsageListKind ListKind { get; set; } = ChatUsageListKind.ViewedGroupChats;
     [Parameter] public Place? Place { get; set; }
 
     protected override async Task<IReadOnlyList<Chat>> ComputeState(CancellationToken cancellationToken) {
-        var session = Hub.Session;
-        var recentChatIds = await ChatUsages.GetRecencyList(session, ListKind, cancellationToken).ConfigureAwait(false);
-        var chats = await recentChatIds
-            .Select(id => Chats.Get(session, id, cancellationToken))
-            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+        var chats = await Hub.ChatListUI
+            .ListRecent(Place?.Id, ChatListFilter.Groups, ChatListUI.HalfLoadLimit, cancellationToken)
             .ConfigureAwait(false);
-        if (Place is not null) {
-            chats = chats
-                .SkipNullItems()
-                .Where(chat => (chat.Id as PlaceChatId)?.PlaceId == Place.Id)
-                .ToArray();
-        }
-        return chats.SkipNullItems().ToList();
+        return chats.Select(c => c.Chat).ToList();
     }
 }

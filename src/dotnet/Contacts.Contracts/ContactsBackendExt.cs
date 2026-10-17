@@ -10,4 +10,31 @@ public static class ContactsBackendExt
         UserId userId,
         CancellationToken cancellationToken)
         => contactsBackend.ListPeerContactIds(userId, null, cancellationToken);
+
+    public static async Task<Contact[]> ListRecent(
+        this IContactsBackend contactsBackend,
+        UserId userId,
+        CancellationToken cancellationToken)
+    {
+        // TouchedAt moves when the owner posts in the chat, so this is "the chats I recently wrote to"
+        var placeIds = await contactsBackend.ListPlaceIds(userId, cancellationToken).ConfigureAwait(false);
+        var contactIds = new List<ContactId>();
+        foreach (var placeId in placeIds.Select(x => (PlaceId?)x).Prepend(null)) {
+            var placeContactIds = await contactsBackend
+                .ListIds(userId, placeId, cancellationToken)
+                .ConfigureAwait(false);
+            contactIds.AddRange(placeContactIds);
+        }
+        var contacts = await contactIds
+            .Distinct()
+            .Select(id => contactsBackend.Get(userId, id, cancellationToken))
+            .Collect(ApiConstants.Concurrency.Low, cancellationToken)
+            .ConfigureAwait(false);
+        // A contact turns Regular once its owner posts there; ListIds also returns fake contacts
+        // for the Announcements chat and a place's public chats, which are never Regular
+        return contacts
+            .Where(c => c.IsRegular)
+            .OrderByDescending(c => c.TouchedAt)
+            .ToArray();
+    }
 }
