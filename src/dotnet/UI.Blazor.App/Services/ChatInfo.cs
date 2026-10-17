@@ -16,6 +16,8 @@ public sealed record ChatInfo(Contact Contact) : IHasId<ChatId>
     public Trimmed<int> UnreadCount { get; init; }
     public bool HasUnreadMentions { get; init; }
     public bool IsPinnedToNavbar { get; init; }
+    public PttChatState PttState { get; init; }
+    public bool IsPttArmed { get; init; }
 
     // Shortcuts
     public ChatId Id => Contact.Id.ChatId;

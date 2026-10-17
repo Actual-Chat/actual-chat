@@ -40,7 +40,7 @@
             <ChatIcon Chat="@chat" ShowPresence="@true"/>
             <div class="c-description">
                 <span class="c-chat-title">
-                    <span>@chat.Title</span>
+                    <ChatTitle Chat="@chat" PttState="@m.PttState" IsPttArmed="@m.IsPttArmed"/>
                     <span class="c-incut"></span>
                     @if (lastTextEntry != null && !showEnding) {
                         @Hub.MarkupHelpers.LastEntryTime(m.LastBeginsAt)
@@ -275,12 +275,12 @@
             .GetCallActivity(chatId, cancellationToken)
             .UseIfReady(chatActivityUI.GetLastKnownCallActivity(chatId), Computed.GetCurrent());
 
-        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
-        var isPttArmed = pttChatIds.Contains(chatId);
         // Only the Active list renders the muted badge, so only it takes the dependency.
         var isPttMuted = listKind == ChatListKind.Active
             && (await Hub.ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false)).Contains(chatId);
-        var hasOngoingCall = isPttArmed
+        // Active Chats shows its PTT chats with their own badge, so its titles carry no icon
+        var pttState = listKind == ChatListKind.Active ? PttChatState.Off : chatInfo.PttState;
+        var hasOngoingCall = chatInfo.IsPttArmed
             && await chatActivityUI.HasOngoingCall(chatId, cancellationToken).ConfigureAwait(false);
         // Deliberately outside the IsReadingTail gate GetUnreadState applies: the row you just
         // tapped into is exactly the one that still has to show what's left to walk to. A reaction
@@ -322,8 +322,9 @@
             IsLastItemInBlock = isLastItemInBlock,
             IsFirstItem = isFirstItem,
             IsUnreadByOthers = isUnreadByOthers,
-            IsPttArmed = isPttArmed,
             IsPttMuted = isPttMuted,
+            PttState = pttState,
+            IsPttArmed = chatInfo.IsPttArmed,
             HasOngoingCall = hasOngoingCall,
             LastThread = preview.Thread,
             LastThreadCreator = preview.ThreadCreator,
@@ -445,8 +446,9 @@
         public bool IsLastItemInBlock { get; init; }
         public bool IsFirstItem { get; init; }
         public bool IsUnreadByOthers { get; init; }
-        public bool IsPttArmed { get; init; }
         public bool IsPttMuted { get; init; }
+        public PttChatState PttState { get; init; }
+        public bool IsPttArmed { get; init; }
         public bool HasOngoingCall { get; init; }
         // The notification this row is bound to in the notifications panel: the one its tap jumps
         // to and the one its badge shows. Null everywhere else, and once the chat's are all walked.
