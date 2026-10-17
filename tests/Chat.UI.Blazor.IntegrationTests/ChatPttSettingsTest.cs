@@ -121,12 +121,14 @@ public sealed class ChatPttSettingsTest(ChatAppHostFixture fixture, ITestOutputH
         await hub.ModalUI.Show(new ChatPttSettingsModal.Model(chatId));
         await TestWait.WhenRendered(host, () => {
             var settings = host.FindComponent<ChatPttSettingsModal>();
-            settings.Markup.Should().Contain(isPaused
-                ? hub.StringLocalizer.Ptt_ChatPaused
-                : hub.StringLocalizer.Ptt_ChatActive);
-            settings.Markup.Should().Contain(hub.StringLocalizer.Ptt_ChatReadOnlyCaption);
-            settings.FindComponents<Toggle>().Should().BeEmpty();
-            settings.FindAll(".btn-primary").Should().BeEmpty("only owners manage chat availability");
+            var l = hub.StringLocalizer;
+            settings.Markup.Should().Contain(l.Ptt_ChatReadOnlyCaption);
+            var modeToggle = settings.FindComponents<Toggle>()[0].Instance;
+            modeToggle.IsChecked.Should().Be(!isPaused);
+            modeToggle.IsDisabled.Should().BeTrue("only owners change the chat's mode");
+            settings.Markup.Contains(l.Ptt_InMyList)
+                .Should().Be(!isPaused, "a member manages their own list only while the mode is on");
+            settings.FindAll(".btn-primary").Should().BeEmpty();
         });
     }
 
@@ -180,11 +182,10 @@ public sealed class ChatPttSettingsTest(ChatAppHostFixture fixture, ITestOutputH
         var settings = host.FindComponent<ChatPttSettingsModal>();
         var pauseTask = settings.InvokeAsync(() => settings.Find("input").Change(false));
         await TestWait.WhenRendered(host, () => host.FindComponent<ConfirmModal>()
-            .Markup.Should().Contain("Members’ participation and listening preferences will be kept."));
+            .Markup.Should().Contain(hub.StringLocalizer.Ptt_PauseConfirmText));
 
         // assert
         (await hub.Chats.Get(tester.Session, chatId, default))!.IsPttPaused.Should().BeFalse();
-        settings.FindComponents<Toggle>().Should().ContainSingle("only chat-wide availability is editable");
         settings.Find("input").HasAttribute("disabled").Should().BeTrue();
         await settings.InvokeAsync(() => settings.FindComponent<TileItem>()
             .Instance.ToggleValueChanged.InvokeAsync(false));

@@ -44,7 +44,7 @@ public sealed class PttJoinBannerTest(ChatAppHostFixture fixture, ITestOutputHel
         var l = hub.StringLocalizer;
         await TestWait.WhenRendered(banner, () => {
             banner.Find(".banner-body").TextContent.Trim().Should().Be(l.Banner_PttAllow);
-            banner.FindComponent<BannerButton>().Find("button").TextContent.Trim().Should().Be(l.Common_Allow);
+            banner.FindComponent<BannerButton>().Find("button").TextContent.Trim().Should().Be(l.Banner_PttAdd);
         });
 
         // act

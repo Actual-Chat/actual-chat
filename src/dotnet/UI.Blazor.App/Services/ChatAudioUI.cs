@@ -198,6 +198,18 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return pttChats.Select(c => c.ChatId).ToList();
     }
 
+    [ComputeMethod]
+    public virtual async Task<PttChatState> GetPttChatState(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Every chat title asks, so a chat without PTT skips the consent read and the dependency on it
+        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat?.PttEnabledAt is null)
+            return PttChatState.Off;
+
+        var consentedChatIds = await GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false);
+        return Ptt.GetChatState(chat, consentedChatIds.Contains(chatId));
+    }
+
     [ComputeMethod(MinCacheDuration = 300)] // Synced
     public virtual async Task<List<PttChat>> GetConsentedPttChats(CancellationToken cancellationToken)
     {
@@ -704,7 +716,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             () => _ = BackgroundTask.Run(
                 () => ConsentPtt(chatId, enabledAt, CancellationToken.None),
                 Log, "PTT re-consent failed", CancellationToken.None),
-            l.Common_Allow,
+            l.Banner_PttAdd,
             ToastDismissDelay.Long);
     }
 

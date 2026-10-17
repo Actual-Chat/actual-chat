@@ -19,7 +19,11 @@
                 </TileItem>
             }
             @if (m.ShowPttSettings) {
-                var pttIconCls = m.IsPttEnabled && !m.IsPttPaused ? "text-primary" : "text-03";
+                var pttIconCls = m.PttState switch {
+                    PttChatState.InList => "text-primary",
+                    PttChatState.NotInList => "text-02",
+                    _ => "text-03",
+                };
                 <TileItem Click="@OnPttSettingsClick">
                     <Icon><i class="text-xl icon-push-to-talk @pttIconCls"></i></Icon>
                     <Content>@L.VoiceSettings_Ptt</Content>
@@ -59,27 +63,26 @@
 
         var isOwner = chat.Rules.IsOwner() || chat.Kind == ChatKind.Peer;
         var isSummarized = chat.IsSummarized ?? false;
-        var isPttEnabled = chat.PttEnabledAt != null;
         var model = new Model {
             IsOwner = isOwner,
             ShowSummarizationToggle = isOwner || isSummarized,
             IsSummarized = isSummarized,
             ShowPttSettings = !chat.Id.IsThread(),
-            IsPttEnabled = isPttEnabled,
-            IsPttPaused = chat.IsPttPaused,
             RetentionPeriod = chat.RetentionPeriod,
             CanManageHistory = chat.CanManageHistory(),
         };
-        if (!model.ShowPttSettings || chat.ActivePttEnabledAt is null)
+        if (!model.ShowPttSettings)
             return model;
 
         var audio = Hub.ChatAudioUI;
-        var isAllowed = (await audio.GetConsentedPttChatIds(cancellationToken).ConfigureAwait(false)).Contains(chat.Id);
+        var pttState = await audio.GetPttChatState(chat.Id, cancellationToken).ConfigureAwait(false);
+        if (pttState != PttChatState.InList)
+            return model with { PttState = pttState };
+
         var isDeviceEnabled = await audio.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
-        var isMuted = isAllowed
-            && await audio.GetPttMuteCountdown(chat.Id, cancellationToken).ConfigureAwait(false) is not null;
+        var isMuted = await audio.GetPttMuteCountdown(chat.Id, cancellationToken).ConfigureAwait(false) is not null;
         return model with {
-            IsPttAllowed = isAllowed,
+            PttState = pttState,
             IsPttEnabledOnDevice = isDeviceEnabled,
             IsPttMuted = isMuted,
         };
@@ -112,11 +115,11 @@
     }
 
     private string GetPttCaption(Model m) {
-        if (!m.IsPttEnabled)
+        if (m.PttState == PttChatState.Off)
             return L.VoiceSettings_PttNotEnabled;
-        if (m.IsPttPaused)
+        if (m.PttState == PttChatState.Paused)
             return L.Ptt_ChatPaused;
-        if (!m.IsPttAllowed)
+        if (m.PttState == PttChatState.NotInList)
             return L.Ptt_AvailableNotAllowed;
         if (!m.IsPttEnabledOnDevice)
             return L.Ptt_AvailableDeviceOff;
@@ -132,10 +135,8 @@
         public bool IsOwner { get; init; }
         public bool IsSummarized { get; init; }
         public bool ShowSummarizationToggle { get; init; }
-        public bool IsPttEnabled { get; init; }
-        public bool IsPttPaused { get; init; }
         public bool ShowPttSettings { get; init; }
-        public bool IsPttAllowed { get; init; }
+        public PttChatState PttState { get; init; }
         public bool IsPttEnabledOnDevice { get; init; }
         public bool IsPttMuted { get; init; }
         public TimeSpan? RetentionPeriod { get; init; }
