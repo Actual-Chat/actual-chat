@@ -6,6 +6,9 @@
             @LeftDrawer
         </ErrorBarrier>
     </RegionVisibilityProvider>
+    @* A full-screen call docks here as a flow column, between the left panel and the chat view; empty
+       (0-width) otherwise. See call-screen.css. *@
+    @VideoColumn
     <RegionVisibilityProvider ComputeIsRegionVisible="@PanelsUI.Middle.IsVisible">
         <ErrorBarrier Name="PageWithHeaderAndFooter-Content" MustHidePanels="@true">
             <div class="@Class" data-child="@Child.NullIfEmpty()"
@@ -58,5 +61,6 @@
     [Parameter] public RenderFragment? Body { get; set; }
     [Parameter] public RenderFragment? BodyOverlay { get; set; }
     [Parameter] public RenderFragment? LeftDrawer { get; set; }
+    [Parameter] public RenderFragment? VideoColumn { get; set; }
     [Parameter] public RenderFragment? RightDrawer { get; set; }
 }
