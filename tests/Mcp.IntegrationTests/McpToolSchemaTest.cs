@@ -22,7 +22,7 @@ public class McpToolSchemaTest(McpCollection.AppHostFixture fixture, ITestOutput
         "react", "list_reactions", "notify_members", "notify_mentioned",
         "begin_upload", "append_upload", "finish_upload", "abort_upload", "upload_from_url",
         "list_media", "list_files", "list_links",
-        "get_import", "start_import", "consent_to_import", "end_import", "import_messages",
+        "get_import", "start_import", "wipe_history", "consent_to_import", "end_import", "import_messages",
         "begin_import_upload", "finish_import_upload", "import_upload_from_url",
         "get_me", "list_avatars", "create_avatar", "update_avatar", "set_default_avatar",
         "list_conversations", "get_conversation",
