@@ -1466,12 +1466,10 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_UseOnThisDeviceCaption => l["Ptt_UseOnThisDeviceCaption"].Value;
         public string Ptt_UseOnDesktopCaption => l["Ptt_UseOnDesktopCaption"].Value;
         public string Ptt_ChatsTopic => l["Ptt_ChatsTopic"].Value;
+        public string Ptt_ChatsTopicLimit_Format(object arg0) => l["Ptt_ChatsTopicLimit_Format", arg0].Value;
         public string Ptt_NoPttChats => l["Ptt_NoPttChats"].Value;
         public string Ptt_AvailableTopic => l["Ptt_AvailableTopic"].Value;
-        public string Ptt_AllowedCount_Format(object arg0, object arg1)
-            => l["Ptt_AllowedCount_Format", arg0, arg1].Value;
         public string Ptt_NothingAllowed => l["Ptt_NothingAllowed"].Value;
-        public string Ptt_AllowHint => l["Ptt_AllowHint"].Value;
         public string Ptt_AllowLimitHint => l["Ptt_AllowLimitHint"].Value;
         public string Ptt_MaxChatsReached_Format(object arg0) => l["Ptt_MaxChatsReached_Format", arg0].Value;
         public string Ptt_GesturesTopic => l["Ptt_GesturesTopic"].Value;
