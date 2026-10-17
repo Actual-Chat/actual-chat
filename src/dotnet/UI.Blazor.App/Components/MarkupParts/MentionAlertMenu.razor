@@ -1,9 +1,10 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @using ActualChat.Notifications
-@inherits Menu<AppUIHub>
+@inherits ComputedMenuBase<AppUIHub, ApiArray<AuthorId>>
 @{
     var chatEntryId = ChatEntryId.TryParse(Arguments.ElementAtOrDefault(0));
     var authorId = AuthorId.TryParse(Arguments.ElementAtOrDefault(1));
+    var alertable = State.Value;
 }
 
 <div class="mention-alert-menu">
@@ -12,11 +13,13 @@
         Text="@L.Alert_Alert"
         Click="@(() => OnAlert(chatEntryId, authorId))">
     </MenuEntry>
-    <MenuEntry
-        Icon="icon-megaphone"
-        Text="@L.Alert_AlertAll"
-        Click="@(() => OnAlertAll(chatEntryId))">
-    </MenuEntry>
+    @if (alertable.Count > 1) {
+        <MenuEntry
+            Icon="icon-megaphone"
+            Text="@L.Alert_AlertAll"
+            Click="@(() => Notify(chatEntryId, alertable))">
+        </MenuEntry>
+    }
     <MenuEntry
         Icon="icon-person"
         Text="@L.Alert_Profile"
@@ -25,38 +28,43 @@
 </div>
 
 @code {
+    protected override ComputedState<ApiArray<AuthorId>>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<ApiArray<AuthorId>>.Options() {
+                InitialValue = default,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<ApiArray<AuthorId>> ComputeState(CancellationToken cancellationToken) {
+        if (ChatEntryId.TryParse(Arguments.ElementAtOrDefault(0)) is not { } entryId)
+            return default;
+
+        var alerts = await Hub.Notifications
+            .ListMentionedMemberAlerts(Hub.Session, entryId, cancellationToken)
+            .ConfigureAwait(false);
+        return alerts
+            .Where(a => a is { IsNotified: false, IsRead: false })
+            .Select(a => a.AuthorId)
+            .ToApiArray();
+    }
+
     private Task OnAlert(ChatEntryId? chatEntryId, AuthorId? authorId) {
         if (chatEntryId is not { } entryId || authorId is not { } aid)
+            return Task.CompletedTask;
+
+        return Notify(entryId, ApiArray.New(aid));
+    }
+
+    private Task Notify(ChatEntryId? chatEntryId, ApiArray<AuthorId> authorIds) {
+        if (chatEntryId is not { } entryId || authorIds.Count == 0)
             return Task.CompletedTask;
 
         var command = new Notifications_NotifyMentionedMembers {
             Session = Hub.Session,
             ChatEntryId = entryId,
-            AuthorIds = ApiArray.New(aid),
+            AuthorIds = authorIds,
         };
         return UICommander.Run(command);
-    }
-
-    private async Task OnAlertAll(ChatEntryId? chatEntryId) {
-        if (chatEntryId is not { } entryId)
-            return;
-
-        var alerts = await Hub.Notifications
-            .ListMentionedMemberAlerts(Hub.Session, entryId, CancellationToken.None)
-            .ConfigureAwait(true);
-        var alertable = alerts
-            .Where(a => a is { IsNotified: false, IsRead: false })
-            .Select(a => a.AuthorId)
-            .ToApiArray();
-        if (alertable.Count == 0)
-            return;
-
-        var command = new Notifications_NotifyMentionedMembers {
-            Session = Hub.Session,
-            ChatEntryId = entryId,
-            AuthorIds = alertable,
-        };
-        await UICommander.Run(command).ConfigureAwait(true);
     }
 
     private Task OnShowInfo(AuthorId? authorId) {
