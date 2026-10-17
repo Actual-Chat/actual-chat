@@ -20,8 +20,6 @@ public interface IMediaBackend : IComputeService, IBackendService
     [CommandHandler]
     Task<MediaFull?> OnChange(MediaBackend_Change command, CancellationToken cancellationToken);
     [CommandHandler]
-    Task OnCopyChat(MediaBackend_CopyChat command, CancellationToken cancellationToken);
-    [CommandHandler]
     Task<MediaId?> OnGrabImage(MediaBackend_GrabImage command, CancellationToken cancellationToken);
 }
 
@@ -38,21 +36,6 @@ public sealed partial record MediaBackend_Change(
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => Id.ShardKey;
-}
-
-/// <summary>
-/// Command to copy media files to a new chat.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record MediaBackend_CopyChat(
-    [property: DataMember, Key(0)] ChatId ChatId,
-    [property: DataMember, Key(1)] string CorrelationId,
-    [property: DataMember, Key(2)] MediaId[] MediaIds
-) : ICommand<Unit>, IBackendCommand, IHasShardKey
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 /// <summary>

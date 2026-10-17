@@ -26,11 +26,6 @@
         Text="@L.Common_Settings"
         Click="OnPlaceSettingsClick">
     </MenuEntry>
-    <MenuEntry
-        Icon="icon-copy-in-place"
-        Text="@L.Place_CopyChatInto"
-        Click="OnImportChatsClick">
-    </MenuEntry>
 }
 @if (_canLeave) {
     <MenuEntrySeparator />
@@ -76,9 +71,6 @@
 
     private void OnPlaceLeaveClick()
         => ChatUI.LeavePlace(_placeId);
-
-    private void OnImportChatsClick()
-        => ModalUI.Show(new CopyChatFromListToPlaceModal.Model(_placeId));
 
     private Task OnShareClick()
         => ShareUI.Share(_placeId);

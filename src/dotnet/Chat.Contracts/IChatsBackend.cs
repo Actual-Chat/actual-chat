@@ -123,9 +123,6 @@ public partial interface IChatsBackend : IComputeService, IBackendService
     Task<ChatEntryAttachment[]> GetEntryAttachments(ChatEntryId entryId, CancellationToken cancellationToken);
 
     [ComputeMethod]
-    Task<ChatCopyState?> GetChatCopyState(ChatId chatId, CancellationToken cancellationToken);
-
-    [ComputeMethod]
     Task<ChatId?> GetForwardChatReplacement(ChatId sourceChatId, CancellationToken cancellationToken);
 
     [ComputeMethod]
@@ -155,10 +152,6 @@ public partial interface IChatsBackend : IComputeService, IBackendService
     Task OnUpdateChatLinkIndex(ChatsBackend_UpdateChatLinkIndex command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnCreateNotesChat(ChatsBackend_CreateNotesChat command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task<ChatBackend_CopyChatResult> OnCopyChat(ChatBackend_CopyChat command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task<ChatCopyState> OnChangeChatCopyState(ChatsBackend_ChangeChatCopyState command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnUpdateReadPositionsStat(ChatsBackend_UpdateReadPositionsStat command, CancellationToken cancellationToken);
 
@@ -284,47 +277,6 @@ public sealed partial record ChatsBackend_CreateNotesChat(
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => UserId.ShardKey;
-}
-
-/// <summary>
-/// Command to copy a chat to a different place.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatBackend_CopyChat(
-    [property: DataMember, Key(0)] ChatId ChatId,
-    [property: DataMember, Key(1)] PlaceId PlaceId,
-    [property: DataMember, Key(2)] string CorrelationId
-) : ICommand<ChatBackend_CopyChatResult>, IBackendCommand, IHasShardKey
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ShardKey ShardKey => ChatId.ShardKey;
-}
-
-/// <summary>
-/// Result of the chat copy operation.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatBackend_CopyChatResult(
-    [property: DataMember, Key(0)] bool HasChanges,
-    [property: DataMember, Key(1)] bool HasErrors,
-    [property: DataMember, Key(2)] long LastProcessedEntryId
-);
-
-/// <summary>
-/// Command to update the chat copy state during migration.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record ChatsBackend_ChangeChatCopyState(
-    [property: DataMember, Key(0)] ChatId ChatId,
-    [property: DataMember, Key(1)] long? ExpectedVersion,
-    [property: DataMember, Key(2)] Change<ChatCopyStateDiff> Change
-) : ICommand<ChatCopyState>, IBackendCommand, IHasShardKey
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ShardKey ShardKey => ChatId.ShardKey;
 }
 
 /// <summary>

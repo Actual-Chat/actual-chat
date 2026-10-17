@@ -23,9 +23,6 @@ public partial interface IAuthorsBackend : IComputeService, IBackendService
     Task<AuthorFull> OnUpsert(AuthorsBackend_Upsert command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRemove(AuthorsBackend_Remove command, CancellationToken cancellationToken);
-    [CommandHandler]
-    Task<bool> OnCopyChat(AuthorsBackend_CopyChat command, CancellationToken cancellationToken);
-
     // Events
 
     [EventHandler]
@@ -72,22 +69,6 @@ public sealed partial record AuthorsBackend_Remove(
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => ByChatId?.ShardKey ?? ByAuthorId?.ShardKey ?? ByUserId?.ShardKey ?? default;
-}
-
-/// <summary>
-/// Command to copy authors from one chat to another.
-/// </summary>
-[DataContract, MessagePackObject]
-// ReSharper disable once InconsistentNaming
-public sealed partial record AuthorsBackend_CopyChat(
-    [property: DataMember, Key(0)] ChatId OldChatId,
-    [property: DataMember, Key(1)] ChatId NewChatId,
-    [property: DataMember, Key(2)] (RoleId, RoleId)[] RolesMap,
-    [property: DataMember, Key(3)] string CorrelationId
-) : ICommand<bool>, IBackendCommand, IHasShardKey
-{
-    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
-    public ShardKey ShardKey => OldChatId.ShardKey;
 }
 
 // ReSharper disable once InconsistentNaming

@@ -15,7 +15,6 @@ public class DbChatCopyState : IHasId<string>, IHasVersion<long>, IRequirementTa
     private DateTime _publishedAt;
 
     public DbChatCopyState() { }
-    public DbChatCopyState(ChatCopyState model) => UpdateFrom(model);
 
     [DbKey] public string Id { get; set; } = null!;
     [ConcurrencyCheck] public long Version { get; set; }
@@ -39,35 +38,5 @@ public class DbChatCopyState : IHasId<string>, IHasVersion<long>, IRequirementTa
     public DateTime PublishedAt {
         get => _publishedAt.DefaultKind(DateTimeKind.Utc);
         set => _publishedAt = value.DefaultKind(DateTimeKind.Utc);
-    }
-
-    public ChatCopyState ToModel()
-        => new (ChatId.Parse(Id), Version) {
-            CreatedAt = CreatedAt,
-            SourceChatId = ChatId.Parse(SourceChatId),
-            LastCopyingAt = LastCopyingAt,
-            LastProcessedEntryId = LastEntryId,
-            LastCorrelationId = LastCorrelationId,
-            IsCopiedSuccessfully = IsCopiedSuccessfully,
-            PublishedAt = PublishedAt,
-            IsPublished = IsPublished
-        };
-
-    public void UpdateFrom(ChatCopyState model)
-    {
-        var id = model.Id;
-        this.RequireSameOrEmptyId(id.Value);
-        model.RequireVersion();
-
-        Id = id.Value;
-        Version = model.Version;
-        CreatedAt = model.CreatedAt;
-        SourceChatId = model.SourceChatId.Value;
-        LastCopyingAt = model.LastCopyingAt;
-        LastEntryId = model.LastProcessedEntryId;
-        LastCorrelationId = model.LastCorrelationId;
-        IsCopiedSuccessfully = model.IsCopiedSuccessfully;
-        PublishedAt = model.PublishedAt;
-        IsPublished = model.IsPublished;
     }
 }

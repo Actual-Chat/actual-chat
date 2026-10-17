@@ -238,6 +238,7 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             .Add<ChatEntryMigrationFlow>()
             .Add<ChatEntryMigrationFixupFlow>()
             .Add<ChatEntryEndsAtFixupFlow>()
+            .Add<ForwardedChatFixupFlow>()
             .Add<ChatPurgeFlow>()
             .Add<UsageBackfillFlow>()
             .Add<StreamingEntryFixupFlow>()
@@ -296,9 +297,6 @@ public sealed class ChatServiceModule(IServiceProvider moduleServices)
             db.AddShardLocalIdGenerator(dbContext => dbContext.Roles,
                 (e, shardKey) => e.ChatId == shardKey, e => e.LocalId);
             db.AddEntityResolver<string, DbRole>();
-
-            // DbCopiedChat
-            db.AddEntityResolver<string, DbChatCopyState>();
 
             // DbPlace
             db.AddEntityResolver<string, DbPlace>();

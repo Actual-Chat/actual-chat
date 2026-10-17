@@ -1,6 +1,6 @@
 # Voxt Management UI (Mui) Implementation Plan
 
-**Goal:** A separate, web-only front-end for staff (the Voxt Management UI, `Mui`) under `/m/` ("manage"), built on MudBlazor and Blazor Server, that takes over the staff pages now living in the app's `/test/*` pages: flow monitoring, system commands, mesh info, the chat-to-place copy tool, and the digest preview. It shares no UI code, JS, or CSS with the app UI.
+**Goal:** A separate, web-only front-end for staff (the Voxt Management UI, `Mui`) under `/m/` ("manage"), built on MudBlazor and Blazor Server, that takes over the staff pages now living in the app's `/test/*` pages: flow monitoring, system commands, mesh info, and the digest preview. It shares no UI code, JS, or CSS with the app UI.
 
 **Architecture:** A new Razor class library `Mui` is referenced by `App.Server`, which maps it at `/m/` with its own HTML shell and the interactive Server render mode only. Components inject contract interfaces (`IDiagnostics`, `ISystemProperties`, `IAccounts`, commands via `ICommander`) and never server-only types, so adding a WASM render mode later does not require rewriting them. Access is limited to admin accounts through the existing session cookie.
 
@@ -15,7 +15,6 @@
 | `FlowsTestPage` (`/test/flows`) | Flows | Stats per flow type, instance list with filters, expandable console/error per instance |
 | `SystemTestPage` (`/test/system`) | System | Host info, invalidate everything, prune computed graph, GC |
 | `MeshTestPage` (`/test/mesh`) | Mesh | Nodes, mesh RPC refs, RPC peers, copyable report |
-| `AdminCopyChatToPlacePage` (`/test/copy-chat2place`) | Tools | Copy chat to place, publish copied chat |
 | `DigestTestPage` (`/test/digest`) | Digest | Digest email preview for the viewer's unread chats or selected chats; rendered email and per-chat diagnostics |
 
 `SystemTestPage` actions that exist only to test the app UI ("Reload UI", "Throw Exception") are not moved. "Invalidate everything → on this front-end / locally" keep their current semantics; under Blazor Server "locally" is the whole server process, same as the existing guard in `SystemTestPage` says.
@@ -31,7 +30,7 @@
 3. **Hosted in the `App.Server` process**, not a new executable. The Mui pages call `IDiagnostics` and the system commands, which are server-side services; in-process, they run without extra RPC hops, and the mesh fan-out in `Diagnostics.GetMeshDiagInfo` keeps working as is.
 4. **Isolated shell and bundle.** The Mui root page renders its own `<html>`, loads only MudBlazor's static assets and `blazor.web.js`. It does not load the app bundle, Tailwind CSS, or app TypeScript.
 5. **English-only UI.** `docs/CODING_STYLE.md` requires every user-visible string to come from the localization catalog. The Management UI is for staff, and the pages it replaces already hardcode English. `docs/CODING_STYLE.md` and `docs/i18n.md` now list the Management UI (`/m/`) with the test pages as English-only developer surfaces.
-6. **Feature folders registered through one nav registry.** Each feature (`Flows`, `System`, `Mesh`, `Tools`) is a folder with its page(s) and a single `MuiNavEntry` registration. A new section is a new folder plus one registration line.
+6. **Feature folders registered through one nav registry.** Each feature (`Flows`, `System`, `Mesh`) is a folder with its page(s) and a single `MuiNavEntry` registration. A new section is a new folder plus one registration line.
 7. **Migrated pages are removed from the app UI** once the admin versions are verified, so there is one place for each tool.
 
 ## Reuse
@@ -44,7 +43,6 @@
 - `ComputedStateComponent<T>` from `ActualLab.Fusion.Blazor` for live state (`GetFlowDetails`, `GetMeshDiagInfo` are compute methods), instead of `AppUIHub`-based components.
 - `ISessionResolver`, `AuthHelper.UpdateAuthState` and the session cookie handling from `RootServerPage.razor` (`Initialize()`): the Mui root reuses the same session establishment.
 - `HostId`, `HostInfo`, `ComputedRegistry`, `ReloadUI`-free parts of `SystemTestPage`.
-- `CopyChatToPlaceUI.CopyChat` / `PublishCopiedChat` and `ChatsBackend.CopyChat`: logic is reused; the UI-hub-bound part is replaced (task 7).
 - `docs/ui/components.md` conventions for file layout and CSS class naming (`c-` prefix), applied inside `Mui`.
 
 Searched `docs/api-index.md` and `api-index-full.md` for admin, diagnostics, dashboard, table and grid helpers; nothing reusable beyond the list above. `UI.Blazor` components (`Button`, `Form`, `MainHeader`, `CopyTrigger`, `RequireAccount`) are deliberately not reused: they depend on the app's styling, `AppUIHub`, and bundle, which this project isolates.
@@ -56,7 +54,7 @@ Searched `docs/api-index.md` and `api-index-full.md` for admin, diagnostics, das
 | `Mui` (pages, layout, theme, nav registry) | New project `Mui` | Staff-only; keeping it out of `UI.Blazor*` is the point of the work |
 | `MuiComponent`, `MuiComputedComponent<T>` (session, services, error reporting) | `Mui` | Depend on MudBlazor; useful only to Mui pages |
 | Flow-status/diagnostic view models (formatting, status → severity) | `Mui`, plain classes with no MudBlazor types | Unit-testable now; movable to `ActualChat.Core` if another host needs them |
-| Admin-only data the pages need that doesn't exist yet (see task 7) | `Api.Contracts` + service project (`IAdmin…` frontend service) | Contracts are what keep the pages WASM-ready |
+| Admin-only data the pages need that doesn't exist yet | `Api.Contracts` + service project (`IAdmin…` frontend service) | Contracts are what keep the pages WASM-ready |
 
 No TypeScript is added.
 
@@ -178,18 +176,9 @@ Ports `FlowsTestPage`:
 - [x] Instances grid, filters, expansion (each expanded row hosts a `FlowDetailsPanel` with its own live state)
 - [x] Query-string state (`type`, `problematic`, `completed`)
 
-### Task 7: Tools page (copy chat to place)
+### Task 7: Tools page (dropped)
 
-**Investigation first:** `CopyChatToPlaceUI.CopyChat` / `PublishCopiedChat` are in the app UI project and take `AppUIHub`. Check what they do (command calls, confirmation, progress). If they only run commands, call the same commands from the admin page through `ICommander`. If they depend on app-UI services, add an admin-only frontend service (`IAdminChats` in `Api.Contracts`, implementation in `Chat.Service`, `RequireAdmin` inside) and make both callers use it.
-
-**Files:** `src/dotnet/Mui/Features/Tools/CopyChatToPlacePage.razor`; possibly `Api.Contracts/Chat/IAdminChats.cs` and `Chat.Service/AdminChats.cs`
-
-Form with chat id and place id, validated through `MudForm` and the id parsers (`ChatId.Parse`, `PlaceId.Parse`); results and errors shown inline instead of as toasts only.
-
-**Verification:** manual on a dev chat; if a service is added, a service test for the admin check.
-
-- [x] Investigate and decide on the service boundary: `CopyChatToPlaceUI` only wraps `Chat_CopyChat` / `Chat_PublishCopiedChat` with modals and localized toasts, so no `IAdminChats` service is needed; the page runs the same commands through `ICommander`
-- [x] Page (confirmation shows the real chat and place titles; failures show the correlation ID)
+The copy-chat-to-place feature was removed (chat import replaces it), so the Tools page, its nav entry and the `Tools` feature folder are gone.
 
 ### Task 8: Digest page
 
@@ -204,7 +193,7 @@ Ports `DigestTestPage` on `IEmails.GetDigestPreview`: mode selector (the viewer'
 ### Task 9: Remove migrated pages, document
 
 **Files:**
-- Delete: `FlowsTestPage.razor`, `MeshTestPage.razor`, `SystemTestPage.razor`, `AdminCopyChatToPlacePage.razor`, `DigestTestPage.razor`, and any links/menu entries to them; delete `CopyChatToPlaceUI` pieces no longer used
+- Delete: `FlowsTestPage.razor`, `MeshTestPage.razor`, `SystemTestPage.razor`, `DigestTestPage.razor`, and any links/menu entries to them
 - Create: `docs/ui/mui.md` (purpose, hosting decision, how to add a section, theme, the English-only exception, the reference rule); add to `docs/ui/index.md`
 - Modify: `docs/architecture/project-structure.md` (new project row), `docs/plans/index.md` (this plan under Active)
 - Regenerate: `docs/api-index*.md` with the repo's generator if `Mui` types should be listed
@@ -232,5 +221,5 @@ Ports `DigestTestPage` on `IEmails.GetDigestPreview`: mode selector (the viewer'
 - **Name:** the project, folder and namespace are `Mui` / `ActualChat.Mui` (Management UI); three-letter abbreviations are PascalCase in .NET, like `Sql`. The UI calls itself "Voxt Management UI". Types use the `Mui` prefix (`MuiApp`, `MuiLayout`, `MuiAccess`, `MuiGate`, `MuiActions`, …); `MuiAccess` is `SignedOut` / `Denied` / `Granted`. `Mui` is a word in the solution dictionary, and `Directory.Build.props` classifies the project as a Blazor (UI) project.
 - **Look:** the app bar uses the theme's primary color; no logo in the app bar; light theme only, no toggle (nothing stored the choice); 16px corner radius so buttons are rounder; menu is Overview first, then alphabetical; the drawer ends with a GitHub link and a gray Voxt logo that leads to the main site.
 - **Hosting:** one Razor root, see task 1.
-- **Menu:** Dashboard (front page, key metrics later), Reports (the main section: users, chats, messages, ...; a common report structure comes with the first reports) and System (one page per subsystem or tool: Digest, Flows, Host, Mesh, Tools; each shows reports and offers actions). The old "System" page is "Host" and every System page is under `/m/system/`.
+- **Menu:** Dashboard (front page, key metrics later), Reports (the main section: users, chats, messages, ...; a common report structure comes with the first reports) and System (one page per subsystem or tool: Digest, Flows, Host, Mesh; each shows reports and offers actions). The old "System" page is "Host" and every System page is under `/m/system/`.
 - **Server-side only:** Mui may call backend services and run backend commands directly, so it is its own authorization layer and WASM is no longer a design goal; see [the Mui document](../ui/mui.md#server-side-only).

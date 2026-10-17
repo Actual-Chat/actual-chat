@@ -296,16 +296,6 @@ public class ChatModelSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void ChatCopyStateDiff_Basic()
-    {
-        var diff = new ChatCopyStateDiff {
-            LastProcessedEntryId = 100,
-            IsCopiedSuccessfully = true,
-        };
-        diff.AssertPassesThroughSerializers();
-    }
-
-    [Fact]
     public void Conversation_Basic()
     {
         var chatId = ChatId.Parse("the-actual-one");

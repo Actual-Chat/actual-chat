@@ -916,7 +916,6 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Restart => l["Common_Restart"].Value;
         public string Common_Configure => l["Common_Configure"].Value;
         public string Common_Update => l["Common_Update"].Value;
-        public string Common_Publish => l["Common_Publish"].Value;
         public string Common_Skip => l["Common_Skip"].Value;
 
         public string Banner_Notify_Prefix(object arg0) => l["Banner_Notify_Prefix", arg0].Value;
@@ -935,7 +934,6 @@ public static class LocalizedStringsLocalizerExt
         public string Banner_RegenerateSuggestedPicture => l["Banner_RegenerateSuggestedPicture"].Value;
         public string Banner_NotInContacts => l["Banner_NotInContacts"].Value;
         public string Banner_AddToContacts => l["Banner_AddToContacts"].Value;
-        public string Banner_ChatCopiedToPlace => l["Banner_ChatCopiedToPlace"].Value;
         public string Banner_PttAllow => l["Banner_PttAllow"].Value;
         public string Banner_PttUseDevice => l["Banner_PttUseDevice"].Value;
         public string Banner_PttAllowOnDevice => l["Banner_PttAllowOnDevice"].Value;
@@ -1217,7 +1215,6 @@ public static class LocalizedStringsLocalizerExt
         public string Place_InviteMembers => l["Place_InviteMembers"].Value;
         public string Place_AddMembers => l["Place_AddMembers"].Value;
         public string Place_AddMember => l["Place_AddMember"].Value;
-        public string Place_CopyChatInto => l["Place_CopyChatInto"].Value;
         public string Place_Leave => l["Place_Leave"].Value;
         public string Place_Public => l["Place_Public"].Value;
         public string Place_Private => l["Place_Private"].Value;
@@ -1239,12 +1236,6 @@ public static class LocalizedStringsLocalizerExt
         public string Place_SettingsTitle => l["Place_SettingsTitle"].Value;
         public string Place_EditSettingsTitle => l["Place_EditSettingsTitle"].Value;
         public string Place_TypeTitle => l["Place_TypeTitle"].Value;
-        public string Place_CopyChatToPlaceTitle => l["Place_CopyChatToPlaceTitle"].Value;
-        public string Place_CopyErrorTitle => l["Place_CopyErrorTitle"].Value;
-        public string Place_CopyErrorText_Format(object arg0, object arg1)
-            => l["Place_CopyErrorText_Format", arg0, arg1].Value;
-        public string Place_CopyPartialSuccess => l["Place_CopyPartialSuccess"].Value;
-        public string Place_CopyErrorHelp => l["Place_CopyErrorHelp"].Value;
         public string Place_RemoveFromPlace => l["Place_RemoveFromPlace"].Value;
         public string Place_WhomToAdd => l["Place_WhomToAdd"].Value;
         public string Place_AddCount(long count, object arg0) => l.Plural("Place_AddCount", count, arg0);
@@ -1253,17 +1244,6 @@ public static class LocalizedStringsLocalizerExt
         public string Place_PublicHint => l["Place_PublicHint"].Value;
         public string Place_PrivateHint => l["Place_PrivateHint"].Value;
         public string Place_CopyInviteLink => l["Place_CopyInviteLink"].Value;
-        public string Place_CopyChat => l["Place_CopyChat"].Value;
-        public string Place_CopyChatIdPlaceholder => l["Place_CopyChatIdPlaceholder"].Value;
-        public string Place_CopyChatConfirm_Format(object arg0, object arg1)
-            => l["Place_CopyChatConfirm_Format", arg0, arg1].Value;
-        public string Place_CopyChatSuccess_Format(object arg0, object arg1)
-            => l["Place_CopyChatSuccess_Format", arg0, arg1].Value;
-        public string Place_CopyChatNoChanges_Format(object arg0, object arg1)
-            => l["Place_CopyChatNoChanges_Format", arg0, arg1].Value;
-        public string Place_PublishChatConfirm_Format(object arg0, object arg1)
-            => l["Place_PublishChatConfirm_Format", arg0, arg1].Value;
-        public string Place_PublishChatSuccess_Format(object arg0) => l["Place_PublishChatSuccess_Format", arg0].Value;
         public string Place_NewPlace => l["Place_NewPlace"].Value;
         public string Members_Owner => l["Members_Owner"].Value;
         public string Members_Moderator => l["Members_Moderator"].Value;

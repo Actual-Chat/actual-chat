@@ -27,6 +27,7 @@ public partial class MigrationFlow : Flow<Unit>, IMasterFlow
             await Apply<UsageContactsBackfillFlow>().ConfigureAwait(false);
             await Apply<BlockedContactsMigrationFlow>().ConfigureAwait(false);
             await Apply<HeicAttachmentRepairFlow>(minDataVersion: 2).ConfigureAwait(false);
+            await Apply<ForwardedChatFixupFlow>().ConfigureAwait(false);
         }
         catch (DependencyNotMetException e) {
             var dependencyCheckPeriod = DependencyCheckPeriod;

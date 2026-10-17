@@ -446,7 +446,6 @@ they test.
 |---|---|
 | `/test/auth` | Sign-in / claims plumbing. |
 | `/test/blazor` | Blazor render / RPC sandbox. |
-| `/test/copy-chat2place` | Admin-style chat→place migration. |
 | `/test/digest` | Email digest preview. |
 | `/test/discover` | Discover feed component. |
 | `/test/dive-in-modal` | Dive-in modal animation. |

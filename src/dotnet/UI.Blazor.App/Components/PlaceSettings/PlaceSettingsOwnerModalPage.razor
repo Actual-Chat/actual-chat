@@ -74,14 +74,6 @@
             </TileItem>
         }
         @if (isOwner) {
-            <TileItem Click="OnCopyChatClick" Class="copy-chat-item">
-                <Icon>
-                    <i class="icon-copy-in-place text-xl"></i>
-                </Icon>
-                <Content>
-                    @L.Place_CopyChatInto
-                </Content>
-            </TileItem>
             @if (m.EnableIncompleteUI) {
                 <TileItem Class="item-integrations" Click="OnIntegrationsClick">
                     <Icon>
@@ -265,9 +257,6 @@
 
     private void OnManagePlaceTypeClick()
         => Context.StepIn(DiveInDialogPage.New<PlaceSettingsEditTypeModalPage>(PlaceId));
-
-    private void OnCopyChatClick()
-        => Context.StepIn(DiveInDialogPage.New<PlaceSettingsCopyChatModalPage>(PlaceId));
 
     private void OnManageMembersClick()
         => Context.StepIn(DiveInDialogPage.New<PlaceSettingsEditMembersModalPage>(new PlaceSettingsEditMembersModalPage.Model(PlaceId)));

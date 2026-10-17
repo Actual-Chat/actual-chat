@@ -90,7 +90,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatAudioPanel>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatBotWaitingMessage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatContentItemMenu>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatCopyBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatDescription>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsViewContainer>();
@@ -198,10 +197,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationMessageFooter>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationMessageHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ConversationMessageView>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CopyChatFromListToPlaceModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CopyChatFromListToPlaceModalContent>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CopyChatToPlaceErrorModal>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CopyChatToPlaceModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CreateChatOrPlaceBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CreateChatsStep>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CreateMenu>();
@@ -401,7 +396,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceIntegrationsModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceMenuButton>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsCopyChatModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsEditMembersModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsEditTypeModalPage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PlaceSettingsModal>();
@@ -990,7 +984,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatAudioPanel), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatBotWaitingMessage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatContentItemMenu), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatCopyBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatDescription), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsViewContainer), AotTypeKind.Component),
@@ -1098,10 +1091,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationMessageFooter), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationMessageHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ConversationMessageView), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.CopyChatFromListToPlaceModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.CopyChatFromListToPlaceModalContent), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.CopyChatToPlaceErrorModal), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.CopyChatToPlaceModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CreateChatOrPlaceBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CreateChatsStep), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CreateMenu), AotTypeKind.Component),
@@ -1301,7 +1290,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceIntegrationsModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceMenuButton), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsCopyChatModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsEditMembersModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsEditTypeModalPage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PlaceSettingsModal), AotTypeKind.Component),

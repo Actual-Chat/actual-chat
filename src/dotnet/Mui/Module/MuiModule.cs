@@ -34,6 +34,5 @@ public sealed class MuiModule(IServiceProvider moduleServices)
         services.AddMuiMesh();
         services.AddMuiOperations();
         services.AddMuiSql();
-        services.AddMuiTools();
     }
 }
