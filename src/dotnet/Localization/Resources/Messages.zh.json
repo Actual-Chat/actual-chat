@@ -92,12 +92,6 @@
   "Error_CustomLinkTaken_Format": "链接“{link}”已被同一空间中的另一个聊天使用。",
   "Error_WelcomeChatCannotBePrivate": "“Welcome”聊天无法设为私密。",
   "Error_WelcomeChatCannotBeRemoved": "“Welcome”聊天无法删除。",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "只有群聊或空间聊天才能复制到空间。",
-  "Error_CannotCopyToSamePlace": "无法将空间聊天复制到同一空间。",
-  "Error_MigrationRequiresChatOwner": "执行迁移需要您是该聊天的拥有者。",
-  "Error_MigrationRequiresPlaceOwner": "将聊天复制到空间需要您是该空间的拥有者。",
-  "Error_OperationRequiresChatOwner": "执行此操作需要您是该聊天的拥有者。",
-  "Error_OperationRequiresPlaceOwner": "执行此操作需要您是该聊天所属空间的拥有者。",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "只有在对方将您加为联系人或回复后，才能创建话题。",

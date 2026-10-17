@@ -92,12 +92,6 @@
   "Error_CustomLinkTaken_Format": "Der Link „{link}“ wird bereits von einem anderen Chat in diesem Place verwendet.",
   "Error_WelcomeChatCannotBePrivate": "Der Chat „Welcome“ kann nicht auf privat gestellt werden.",
   "Error_WelcomeChatCannotBeRemoved": "Der Chat „Welcome“ kann nicht gelöscht werden.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Nur Gruppen- oder Place-Chats können in einen Place kopiert werden.",
-  "Error_CannotCopyToSamePlace": "Ein Place-Chat kann nicht in denselben Place kopiert werden.",
-  "Error_MigrationRequiresChatOwner": "Für die Migration musst du Eigentümer dieses Chats sein.",
-  "Error_MigrationRequiresPlaceOwner": "Um einen Chat in einen Place zu kopieren, musst du Eigentümer des Place sein.",
-  "Error_OperationRequiresChatOwner": "Für diese Aktion musst du Eigentümer dieses Chats sein.",
-  "Error_OperationRequiresPlaceOwner": "Für diese Aktion musst du Eigentümer des Place sein, zu dem der Chat gehört.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Threads kannst du erst starten, wenn diese Person dich zu ihren Kontakten hinzufügt oder antwortet.",

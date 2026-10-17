@@ -100,12 +100,6 @@
   "Error_CustomLinkTaken_Format": "Собственият линк „{link}“ вече се използва от друг чат в същото Място.",
   "Error_WelcomeChatCannotBePrivate": "Видът на чата „Welcome“ не може да се смени на затворен.",
   "Error_WelcomeChatCannotBeRemoved": "Чатът „Welcome“ не може да бъде изтрит.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "В Място може да се копират само групови чатове или чатове на Място.",
-  "Error_CannotCopyToSamePlace": "Чат на Място не може да се копира в същото Място.",
-  "Error_MigrationRequiresChatOwner": "За да извършите миграцията, трябва да сте собственик на този чат.",
-  "Error_MigrationRequiresPlaceOwner": "За да копирате чат в Място, трябва да сте собственик на Мястото.",
-  "Error_OperationRequiresChatOwner": "За да извършите тази операция, трябва да сте собственик на този чат.",
-  "Error_OperationRequiresPlaceOwner": "За да извършите тази операция, трябва да сте собственик на Мястото на чата.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Нишки може да се започват едва след като този потребител ви добави в контактите си или отговори.",

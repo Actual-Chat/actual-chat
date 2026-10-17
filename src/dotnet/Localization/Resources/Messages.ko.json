@@ -92,12 +92,6 @@
   "Error_CustomLinkTaken_Format": "링크 「{link}」는 같은 스페이스의 다른 채팅에서 이미 사용 중입니다.",
   "Error_WelcomeChatCannotBePrivate": "「Welcome」 채팅은 비공개로 전환할 수 없습니다.",
   "Error_WelcomeChatCannotBeRemoved": "「Welcome」 채팅은 삭제할 수 없습니다.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "스페이스로는 그룹 채팅이나 스페이스 채팅만 복사할 수 있습니다.",
-  "Error_CannotCopyToSamePlace": "스페이스 채팅을 같은 스페이스로 복사할 수 없습니다.",
-  "Error_MigrationRequiresChatOwner": "이전하려면 이 채팅의 소유자여야 합니다.",
-  "Error_MigrationRequiresPlaceOwner": "채팅을 스페이스로 복사하려면 해당 스페이스의 소유자여야 합니다.",
-  "Error_OperationRequiresChatOwner": "이 작업을 수행하려면 이 채팅의 소유자여야 합니다.",
-  "Error_OperationRequiresPlaceOwner": "이 작업을 수행하려면 채팅이 속한 스페이스의 소유자여야 합니다.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "상대가 회원님을 연락처에 추가하거나 답장한 후에 스레드를 시작할 수 있습니다.",

@@ -92,12 +92,6 @@
   "Error_CustomLinkTaken_Format": "«{link}» bağlantısı aynı alandaki başka bir sohbette kullanılıyor.",
   "Error_WelcomeChatCannotBePrivate": "«Welcome» sohbeti özel yapılamaz.",
   "Error_WelcomeChatCannotBeRemoved": "«Welcome» sohbeti silinemez.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Bir alana yalnızca grup veya alan sohbetleri kopyalanabilir.",
-  "Error_CannotCopyToSamePlace": "Alan sohbeti aynı alana kopyalanamaz.",
-  "Error_MigrationRequiresChatOwner": "Taşıma işlemi için bu sohbetin sahibi olmalısınız.",
-  "Error_MigrationRequiresPlaceOwner": "Bir sohbeti alana kopyalamak için alanın sahibi olmalısınız.",
-  "Error_OperationRequiresChatOwner": "Bu işlem için bu sohbetin sahibi olmalısınız.",
-  "Error_OperationRequiresPlaceOwner": "Bu işlem için sohbetin bağlı olduğu alanın sahibi olmalısınız.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Konu başlatabilmeniz için bu kişinin sizi kişilerine eklemesi veya yanıt vermesi gerekir.",

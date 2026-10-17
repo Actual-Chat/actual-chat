@@ -100,12 +100,6 @@
   "Error_CustomLinkTaken_Format": "Własny link „{link}” jest już używany przez inny czat w tym samym Miejscu.",
   "Error_WelcomeChatCannotBePrivate": "Nie można zmienić typu czatu „Welcome” na zamknięty.",
   "Error_WelcomeChatCannotBeRemoved": "Usunięcie czatu „Welcome” jest zabronione.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "Do Miejsca można kopiować tylko czaty grupowe lub czaty Miejsca.",
-  "Error_CannotCopyToSamePlace": "Nie można skopiować czatu Miejsca do tego samego Miejsca.",
-  "Error_MigrationRequiresChatOwner": "Aby wykonać migrację, musisz być właścicielem tego czatu.",
-  "Error_MigrationRequiresPlaceOwner": "Aby skopiować czat do Miejsca, musisz być właścicielem Miejsca.",
-  "Error_OperationRequiresChatOwner": "Aby wykonać tę operację, musisz być właścicielem tego czatu.",
-  "Error_OperationRequiresPlaceOwner": "Aby wykonać tę operację, musisz być właścicielem Miejsca, do którego należy czat.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Wątki można rozpocząć dopiero, gdy ten użytkownik doda Cię do kontaktów lub odpowie.",

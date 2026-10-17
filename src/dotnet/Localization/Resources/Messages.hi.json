@@ -92,12 +92,6 @@
   "Error_CustomLinkTaken_Format": "लिंक «{link}» इसी स्पेस की किसी दूसरी चैट में पहले से उपयोग हो रहा है।",
   "Error_WelcomeChatCannotBePrivate": "«Welcome» चैट को निजी नहीं बनाया जा सकता।",
   "Error_WelcomeChatCannotBeRemoved": "«Welcome» चैट को हटाया नहीं जा सकता।",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "स्पेस में केवल समूह चैट या स्पेस चैट कॉपी की जा सकती है।",
-  "Error_CannotCopyToSamePlace": "स्पेस चैट को उसी स्पेस में कॉपी नहीं किया जा सकता।",
-  "Error_MigrationRequiresChatOwner": "माइग्रेशन करने के लिए आपको इस चैट का स्वामी होना चाहिए।",
-  "Error_MigrationRequiresPlaceOwner": "चैट को स्पेस में कॉपी करने के लिए आपको उस स्पेस का स्वामी होना चाहिए।",
-  "Error_OperationRequiresChatOwner": "यह कार्रवाई करने के लिए आपको इस चैट का स्वामी होना चाहिए।",
-  "Error_OperationRequiresPlaceOwner": "यह कार्रवाई करने के लिए आपको उस स्पेस का स्वामी होना चाहिए जिसमें यह चैट है।",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "थ्रेड तभी शुरू किए जा सकते हैं जब यह व्यक्ति आपको संपर्कों में जोड़ ले या जवाब दे।",

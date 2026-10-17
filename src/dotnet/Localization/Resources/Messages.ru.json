@@ -92,12 +92,6 @@
   "Error_CustomLinkTaken_Format": "Ссылка «{link}» уже используется другим чатом в этом пространстве.",
   "Error_WelcomeChatCannotBePrivate": "Чат «Welcome» нельзя сделать приватным.",
   "Error_WelcomeChatCannotBeRemoved": "Чат «Welcome» нельзя удалить.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "В пространство можно скопировать только групповой чат или чат пространства.",
-  "Error_CannotCopyToSamePlace": "Нельзя скопировать чат в то же пространство.",
-  "Error_MigrationRequiresChatOwner": "Для переноса нужно быть владельцем этого чата.",
-  "Error_MigrationRequiresPlaceOwner": "Чтобы скопировать чат в пространство, нужно быть владельцем пространства.",
-  "Error_OperationRequiresChatOwner": "Для этого действия нужно быть владельцем этого чата.",
-  "Error_OperationRequiresPlaceOwner": "Для этого действия нужно быть владельцем пространства, которому принадлежит чат.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Начинать треды можно только после того, как этот человек добавит вас в контакты или ответит.",

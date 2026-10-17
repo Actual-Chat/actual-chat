@@ -104,12 +104,6 @@
   "Error_CustomLinkTaken_Format": "Liên kết «{link}» đã được một cuộc trò chuyện khác trong cùng không gian sử dụng.",
   "Error_WelcomeChatCannotBePrivate": "Видът на чата „Welcome“ не може да се смени на затворен.",
   "Error_WelcomeChatCannotBeRemoved": "Der Chat „Welcome“ kann nicht gelöscht werden.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "スペースにコピーできるのは、グループチャットまたはスペースのチャットだけです。",
-  "Error_CannotCopyToSamePlace": "Não é possível copiar um chat de espaço para o mesmo espaço.",
-  "Error_MigrationRequiresChatOwner": "Bạn phải là chủ sở hữu cuộc trò chuyện này để thực hiện việc chuyển.",
-  "Error_MigrationRequiresPlaceOwner": "チャットをスペースにコピーするには、そのスペースのオーナーである必要があります。",
-  "Error_OperationRequiresChatOwner": "この操作を行うには、このチャットのオーナーである必要があります。",
-  "Error_OperationRequiresPlaceOwner": "Vous devez être propriétaire de l’espace auquel appartient ce chat pour effectuer cette opération.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Vous pourrez démarrer des fils quand cette personne vous aura ajouté à ses contacts ou vous aura répondu.",

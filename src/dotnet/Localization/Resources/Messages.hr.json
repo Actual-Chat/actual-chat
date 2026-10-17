@@ -100,12 +100,6 @@
   "Error_CustomLinkTaken_Format": "Vlastiti link „{link}“ već koristi drugi chat u istom Mjestu.",
   "Error_WelcomeChatCannotBePrivate": "Vrsta chata „Welcome“ ne može se promijeniti u zatvorenu.",
   "Error_WelcomeChatCannotBeRemoved": "Chat „Welcome“ se ne smije obrisati.",
-  "Error_OnlyGroupOrPlaceChatCanBeCopied": "U Mjesto se mogu kopirati samo grupni chatovi ili chatovi Mjesta.",
-  "Error_CannotCopyToSamePlace": "Chat Mjesta se ne može kopirati u isto Mjesto.",
-  "Error_MigrationRequiresChatOwner": "Migraciju može izvesti samo vlasnik ovog chata.",
-  "Error_MigrationRequiresPlaceOwner": "Chat u Mjesto može kopirati samo vlasnik Mjesta.",
-  "Error_OperationRequiresChatOwner": "Ovu operaciju može izvesti samo vlasnik ovog chata.",
-  "Error_OperationRequiresPlaceOwner": "Ovu operaciju može izvesti samo vlasnik Mjesta kojem chat pripada.",
 
   // Threads and contacts
   "Error_ThreadRequiresContact": "Niti se mogu započeti tek nakon što vas ovaj korisnik doda u kontakte ili odgovori.",
