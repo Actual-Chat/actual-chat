@@ -182,8 +182,9 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         rpcHost.AddBackend<IChatPositionsBackend, ChatPositionsBackend>();
 
         // ChatUsages
+#pragma warning disable CS0618
         rpcHost.AddApi<IChatUsages, ChatUsages>();
-        rpcHost.AddBackend<IChatUsagesBackend, ChatUsagesBackend>();
+#pragma warning restore CS0618
 
         // Usage
         rpcHost.AddApi<IUsage, Usage>();

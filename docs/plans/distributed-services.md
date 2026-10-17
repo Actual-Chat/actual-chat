@@ -367,7 +367,7 @@ building blocks all exist already.
 | 1. Pilot | `InvitesBackend` (N=1 shard), then `ChatPositionsBackend` | Smallest OF service; then a hot, write-heavy, naturally idempotent one sharded by `UserId` |
 | 2. Low-risk breadth | Media (`MediaBackend`, `UploadsBackend`, `LinkPreviewsBackend`, ...), `MLSearch.SearchBackend` | Simple entities, no cross-key invalidation found |
 | 3. Contacts | `ContactsBackend`, `ExternalContactsBackend`, `ExternalContactHashesBackend` | Event-driven already; exercises event-based cross-shard invalidation at scale |
-| 4. Users | `AccountsBackend`, `AvatarsBackend`, `ServerKvasBackend`, `SessionsBackend`, `ChatUsagesBackend`, remaining Users services | Includes the Sessions↔Accounts cross-key case; big win from session read traffic |
+| 4. Users | `AccountsBackend`, `AvatarsBackend`, `ServerKvasBackend`, `SessionsBackend`, remaining Users services | Includes the Sessions↔Accounts cross-key case; big win from session read traffic |
 | 5. Chat | `ChatsBackend` + partials, `AuthorsBackend`, `PlacesBackend`, `RolesBackend`, `MentionsBackend`, `ReactionsBackend`, `ConversationsBackend`, ... | The bulk (~71 occurrences) and the highest-value target; by now the recipe and helpers are proven |
 | 6. Notifications | `NotificationsBackend` | Highest handler density + hybrid soft-buffer state; benefits from everything learned |
 | 7. Cleanup | Disable operation-log tail readers for DBs with no OF services left; keep `_events` + `DbEventForwarder` | The log readers' replay role ends; the outbox role stays |

@@ -16,7 +16,6 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     public DbSet<DbAvatar> Avatars { get; protected set; } = null!;
     public DbSet<DbUserPresence> UserPresences { get; protected set; } = null!;
     public DbSet<DbChatPosition> ChatPositions { get; protected set; } = null!;
-    public DbSet<DbChatUsage> ChatUsages { get; protected set; } = null!;
     public DbSet<DbPasskey> Passkeys { get; protected set; } = null!;
     public DbSet<DbUserVoice> UserVoices { get; protected set; } = null!;
     public DbSet<DbUsageEvent> UsageEvents { get; protected set; } = null!;
@@ -78,11 +77,6 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
 
         var chatPosition = model.Entity<DbChatPosition>();
         chatPosition.Property(e => e.Id).UseCollation("C");
-
-        var chatUsage = model.Entity<DbChatUsage>();
-        chatUsage.Property(e => e.Id).UseCollation("C");
-        chatUsage.Property(e => e.ChatId).UseCollation("C");
-        chatUsage.Property(e => e.UserId).UseCollation("C");
 
         var userVoice = model.Entity<DbUserVoice>();
         userVoice.Property(e => e.Id).UseCollation("C");

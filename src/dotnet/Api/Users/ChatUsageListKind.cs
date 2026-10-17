@@ -1,8 +1,6 @@
 namespace ActualChat.Users;
 
-/// <summary>
-/// Specifies the type of chat usage tracking list.
-/// </summary>
+[Obsolete("2026.10: The search panel's recents and voice samples come from contacts. Old clients only.")]
 public enum ChatUsageListKind
 {
     PeerChatsWroteTo = 0,

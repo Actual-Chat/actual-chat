@@ -180,7 +180,6 @@ The tab and sort settings (`ChatListSettings`) are local. The "Threads" tab adds
 | `IUserSettings.Get(UserAppSettings)`, `IUserSettings.Get(ChatUserSettings:{chatId})` | cached | Author colours and translation state, read per message | S |
 | `INotifications.ListActive` | cached | `NavigateToUnreadOrEnd` unread count | S |
 | `IPlaces.Get`, `IPlaces.GetWelcomeChatId`, `IAliases.*` | cached | Place chats, place-root and alias routes | S / V |
-| `ChatUsages_RegisterUsage` | command | Recency list; fire-and-forget, logged at Debug | n/a |
 
 ### Chat view: every rebuild (each scroll step, each new message)
 
@@ -234,7 +233,6 @@ question is what they do while offline.
 | Call | Where | Offline behaviour |
 |---|---|---|
 | `ChatPositions_Set` | Read-position `SyncedState` writer in `ChatUI`, debounced 1 s, `Commander.Run` with `CancellationToken.None` | Times out after 20 s, error not surfaced, **position advanced offline is lost** |
-| `ChatUsages_RegisterUsage` | `ChatView` on open | Times out, logged at Debug |
 | `UserPresences_CheckIn` | `AppPresenceReporter` timer | Skipped while the peer isn't connected |
 | `Notifications_Dismiss` | `SeenNotificationDismisser` | Times out, un-marks and logs a warning |
 | `UserSettings_Set` | Any `SyncedState` write (navbar pins, PTT toggle) | Retried by `SyncedState.LazyWrite` |

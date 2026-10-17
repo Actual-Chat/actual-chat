@@ -90,7 +90,6 @@ public sealed class ApiContractsModule(IServiceProvider moduleServices)
         fusion.AddClient<IAvatars>();
         fusion.AddClient<IUserPresences>();
         fusion.AddClient<IChatPositions>();
-        fusion.AddClient<IChatUsages>();
         fusion.AddClient<IUsage>();
         fusion.AddClient<ICoach>();
 

@@ -3,32 +3,36 @@ using ActualChat.Testing.Host;
 namespace ActualChat.Chat.IntegrationTests;
 
 [Collection(nameof(ChatCollection))]
+[Obsolete("2026.10: Covers IChatUsages, which old clients still call.")]
 public class ChatUsagesTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
     [Fact]
-    public async Task PostingMessageToPeerChatShouldUpdateRecencyList()
+    public async Task LegacyRecencyListsShouldComeFromContacts()
     {
-        var appHost = AppHost;
-        var chatUsages = appHost.Services.GetRequiredService<IChatUsages>();
-        await using var tester = appHost.NewBlazorTester(Out);
+        // arrange
+        var chatUsages = AppHost.Services.GetRequiredService<IChatUsages>();
+        await using var tester = AppHost.NewBlazorTester(Out);
         var session = tester.Session;
-        var commander = tester.Commander;
-        var account = await tester.SignInAsBob();
+        var bob = await tester.SignInAsUniqueBob();
+        await using var tester2 = AppHost.NewBlazorTester(Out);
+        var alice = await tester2.SignInAsUniqueAlice();
+        var peerChatId = PeerChatId.New(bob.Id, alice.Id);
+        var (groupChatId, _) = await tester.CreateChat(false);
 
-        await using var tester2 = appHost.NewBlazorTester(Out);
-        var account2 = await tester2.SignInAsAlice();
-
-        var peerChatId = PeerChatId.New(account.Id, account2.Id);
-        var list = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
-        list.Should().BeEmpty();
-
+        // act
         var cmd = new Chats_UpsertEntry { Session = session, ChatId = peerChatId, LocalId = null, Text = "Hello!" };
-        _ = await commander.Call(cmd);
+        await tester.Commander.Call(cmd);
 
-        await TestWait.When(async _ => {
-            list = await chatUsages.GetRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, default);
-            list.Should().HaveCount(1).And.Contain(peerChatId);
+        // assert
+        await TestWait.When(async ct => {
+            var peers = await chatUsages.GetLegacyRecencyList(session, ChatUsageListKind.PeerChatsWroteTo, ct);
+            peers.Should().Equal(peerChatId);
+            var groups = await chatUsages.GetLegacyRecencyList(session, ChatUsageListKind.ViewedGroupChats, ct);
+            groups.Should().Contain(groupChatId).And.NotContain(peerChatId);
+            var alicePeers = await chatUsages.GetLegacyRecencyList(
+                tester2.Session, ChatUsageListKind.PeerChatsWroteTo, ct);
+            alicePeers.Should().NotContain(peerChatId, "Alice never wrote to Bob");
         });
     }
 }
