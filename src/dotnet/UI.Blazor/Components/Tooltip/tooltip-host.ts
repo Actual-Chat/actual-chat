@@ -246,7 +246,8 @@ export class TooltipHost implements Disposable {
     // A hovered tooltip opens above its trigger whenever it fits there, whatever vertical side was
     // requested: below, it lands right under the pointer. flip() moves it down only when it doesn't fit.
     private getPlacement(triggerRef: HTMLElement | SVGElement, isAuto: boolean): Placement {
-        const placement = (triggerRef.dataset.tooltipPosition || 'top') as Placement;
+        const position = triggerRef.dataset.tooltipPosition;
+        const placement = (position && position.length > 0 ? position : 'top') as Placement;
         if (isAuto)
             return placement;
 
