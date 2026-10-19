@@ -6,9 +6,8 @@
         return;
 }
 
-<div class="cookie-settings @(_isExpanded ? "is-expanded" : "is-collapsed")">
+<div class="cookie-settings theme-dark @(_isExpanded ? "is-expanded" : "is-collapsed")">
     @if (_isExpanded) {
-        <div class="c-handle"></div>
         <div class="c-head">
             <div class="c-icon"><i class="icon-cookie text-2xl"></i></div>
             <span class="c-title">Cookie settings</span>
@@ -42,8 +41,10 @@
                 <span class="c-link-narrow">Read full cookie policy</span>
             </a>
             <div class="c-foot-buttons">
-                <Button Class="c-btn c-btn-outline" Click="@OnSaveChoicesClick">Save choices</Button>
-                <Button Class="c-btn c-btn-accent" Click="@OnAllCookiesClick">Accept all</Button>
+                <Button Class="btn-modal" IsDisabled="_isDataCollectionEnabled" Click="@OnAcceptSelectedClick">
+                    Accept selected
+                </Button>
+                <Button Class="btn-primary" Click="@OnAllCookiesClick">Accept all</Button>
             </div>
         </div>
     } else {
@@ -55,8 +56,8 @@
             </span>
         </div>
         <div class="c-pill-buttons">
-            <Button Class="c-btn c-btn-outline" Click="@OnNecessaryOnlyClick">Necessary only</Button>
-            <Button Class="c-btn c-btn-accent" Click="@OnAllCookiesClick">Accept all</Button>
+            <Button Class="btn-modal" Click="@OnNecessaryOnlyClick">Necessary only</Button>
+            <Button Class="btn-primary" Click="@OnAllCookiesClick">Accept all</Button>
         </div>
     }
 </div>
@@ -100,7 +101,7 @@
         await DataCollectionSettingsUI.UpdateState(true, CancellationToken.None);
     }
 
-    private async Task OnSaveChoicesClick() {
+    private async Task OnAcceptSelectedClick() {
         await AcceptCookies().ConfigureAwait(false);
         await DataCollectionSettingsUI.UpdateState(_isDataCollectionEnabled, CancellationToken.None);
     }
