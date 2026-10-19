@@ -19,6 +19,18 @@ public sealed class ConversationMessage : ChatMessage
     // the card's collapsed/expanded form can never disagree with what renders around it.
     public bool IsExpanded { get; init; }
 
+    public ConversationMessage WithOwnFooter()
+        => new(Conversation!) {
+            Kind = Kind,
+            Date = Date,
+            Flags = Flags,
+            ShouldSkipKey = ShouldSkipKey,
+            PreviousMessage = PreviousMessage,
+            NextMessage = NextMessage,
+            HasSplitHeader = HasSplitHeader,
+            IsExpanded = IsExpanded,
+        };
+
     public override bool Equals(ChatMessage? other)
     {
         if (ReferenceEquals(null, other))
