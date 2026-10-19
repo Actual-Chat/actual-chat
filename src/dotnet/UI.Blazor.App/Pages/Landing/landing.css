@@ -1655,72 +1655,184 @@ body.narrow .premium-features-modal .c-block-note {
 /* Cookie settings */
 .cookie-settings {
     @apply fixed z-button;
-    @apply flex-y gap-y-4;
-    @apply max-w-150;
-    @apply p-4;
-    @apply rounded-lg;
-    @apply overflow-hidden;
     @apply bg-toast-body;
-    @apply opacity-95;
+    @apply text-white;
     bottom: calc(1rem + var(--safe-area-bottom));
-    left: calc(1rem + var(--safe-area-left));
-    right: calc(1rem + var(--safe-area-right));
+    left: 50%;
+    transform: translateX(-50%);
 }
-body.narrow .cookie-settings {
-    @apply transform-none;
-    transform: none;
-    left: calc(1rem + var(--safe-area-left));
-    right: calc(1rem + var(--safe-area-right));
-}
-.cookie-settings .c-top {
-    @apply flex-x items-center gap-x-4;
-}
-.cookie-settings .c-top > .c-icon {
+.cookie-settings .c-icon {
     @apply flex-none flex items-center justify-center;
-    @apply w-10 h-10;
-    @apply rounded-full;
-    @apply bg-white;
-    @apply text-03;
 }
-.cookie-settings .c-top > .c-text {
-    @apply text-title-500 text-white;
+.cookie-settings .c-learn {
+    @apply text-primary;
 }
-.cookie-settings .c-content {
-    @apply flex-y gap-4;
-    @apply text-body text-white;
-}
-.cookie-settings .c-content a {
-    @apply text-05;
-}
-.cookie-settings .c-content a:hover {
-    @apply text-06 underline;
-}
-.cookie-settings .c-bottom {
-    @apply flex-x items-center gap-4;
-}
-body.narrow .cookie-settings .c-bottom {
-    @apply flex-y;
-}
-.cookie-settings .c-bottom a.c-link {
-    @apply flex-1 self-start md:self-auto;
-    @apply text-body text-primary;
-}
-.cookie-settings .c-bottom a.c-link:hover {
+.cookie-settings .c-learn:hover {
     @apply underline;
 }
-.cookie-settings .c-bottom .c-buttons {
-    @apply flex-y md:flex-x items-center gap-4;
+.cookie-settings .btn.c-btn {
+    @apply min-w-0 min-h-0 h-10;
+    @apply px-5;
+    @apply rounded-full;
+    @apply text-body-500 text-white;
 }
-body.narrow .cookie-settings .c-bottom .c-buttons {
-    @apply w-full;
+.cookie-settings .btn.c-btn-outline {
+    @apply border border-pal-white-20;
+    @apply bg-transparent;
 }
-.btn.cookie-btn {
-    @apply min-w-40 min-h-0 h-10;
-    @apply text-body text-white;
+.cookie-settings .btn.c-btn-accent {
+    @apply border-none;
+    @apply bg-gradient-to-r from-pal-magenta-40 to-primary;
+}
+
+/* Collapsed pill */
+.cookie-settings.is-collapsed {
+    @apply flex-x items-center gap-x-4;
+    @apply py-2 pl-3 pr-2;
+    @apply rounded-full;
+}
+.cookie-settings.is-collapsed .c-pill-main {
+    @apply flex-x items-center gap-x-3;
+}
+.cookie-settings.is-collapsed .c-icon {
+    @apply w-9 h-9;
+    @apply rounded-full;
     @apply bg-pal-white-10;
 }
-body.narrow .btn.cookie-btn {
-    @apply min-w-0 w-full;
+.cookie-settings.is-collapsed .c-text {
+    @apply flex-none;
+    @apply text-body-500 text-white;
+}
+.cookie-settings.is-collapsed .c-pill-buttons {
+    @apply flex-x items-center gap-x-2;
+}
+body.narrow .cookie-settings.is-collapsed {
+    @apply flex-y items-stretch gap-y-3;
+    @apply p-4;
+    @apply rounded-2xl;
+    left: calc(1rem + var(--safe-area-left));
+    right: calc(1rem + var(--safe-area-right));
+    transform: none;
+}
+body.narrow .cookie-settings.is-collapsed .c-text {
+    @apply flex-1;
+}
+body.narrow .cookie-settings.is-collapsed .c-pill-buttons {
+    @apply gap-x-3;
+}
+body.narrow .cookie-settings.is-collapsed .btn.c-btn {
+    @apply flex-1;
+}
+
+/* Expanded settings panel */
+.cookie-settings.is-expanded {
+    @apply flex-y gap-y-3;
+    @apply w-full max-w-150;
+    @apply p-5;
+    @apply rounded-2xl;
+}
+.cookie-settings .c-handle {
+    @apply hidden;
+}
+.cookie-settings .c-head {
+    @apply flex-x items-center gap-x-2;
+}
+.cookie-settings .c-title {
+    @apply flex-1;
+    @apply text-title-500 text-white;
+}
+.cookie-settings .c-collapse {
+    @apply flex-none;
+    @apply text-04;
+}
+.cookie-settings .c-collapse:hover {
+    @apply text-white;
+}
+.cookie-settings .c-subtitle {
+    @apply text-body text-05;
+}
+.cookie-settings .c-rows {
+    @apply flex-y;
+}
+.cookie-settings .c-row {
+    @apply flex-x items-center gap-x-4;
+    @apply py-3;
+}
+.cookie-settings .c-row + .c-row {
+    @apply border-t border-pal-white-10;
+}
+.cookie-settings .c-row-text {
+    @apply flex-1 flex-y gap-y-0.5;
+}
+.cookie-settings .c-row-title {
+    @apply text-body-500 text-white;
+}
+.cookie-settings .c-row-caption {
+    @apply text-caption text-05;
+}
+.cookie-settings .c-row-control {
+    @apply flex-x items-center gap-x-3;
+}
+.cookie-settings .c-always {
+    @apply text-caption text-05;
+}
+.cookie-settings .c-foot {
+    @apply flex-x items-center gap-x-4;
+    @apply mt-1;
+}
+.cookie-settings .c-link {
+    @apply flex-1;
+    @apply text-body-500 text-primary;
+}
+.cookie-settings .c-link:hover {
+    @apply underline;
+}
+.cookie-settings .c-link-narrow {
+    @apply hidden;
+}
+.cookie-settings .c-foot-buttons {
+    @apply flex-x items-center gap-x-3;
+}
+body.narrow .cookie-settings.is-expanded {
+    @apply max-w-none;
+    @apply pt-3;
+    @apply rounded-t-2xl;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding-bottom: calc(1.25rem + var(--safe-area-bottom));
+    transform: none;
+}
+body.narrow .cookie-settings .c-handle {
+    @apply block;
+    @apply w-9 h-1;
+    @apply mx-auto mb-1;
+    @apply rounded-full;
+    @apply bg-pal-white-20;
+}
+body.narrow .cookie-settings .c-collapse,
+body.narrow .cookie-settings .c-subtitle,
+body.narrow .cookie-settings .c-always {
+    @apply hidden;
+}
+body.narrow .cookie-settings .c-foot {
+    @apply flex-y items-stretch gap-y-3;
+}
+body.narrow .cookie-settings .c-foot-buttons {
+    @apply order-first;
+}
+body.narrow .cookie-settings .c-foot-buttons .btn.c-btn {
+    @apply flex-1;
+}
+body.narrow .cookie-settings .c-link {
+    @apply flex-none;
+    @apply text-center;
+}
+body.narrow .cookie-settings .c-link-wide {
+    @apply hidden;
+}
+body.narrow .cookie-settings .c-link-narrow {
+    @apply inline;
 }
 
 /* Menu */
