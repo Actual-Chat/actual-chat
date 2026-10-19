@@ -569,11 +569,11 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
             LeafEntryLids(items).Should().Equal(frozenLeafLids);
             var block = items.Items.OfType<ExpandedConversationMessage>().Single();
             ((IVirtualListItem)block).RenderKey.Should().Be(frozenRenderKey);
-            // Rows and @key are unchanged, but a completed session drops the live header - the card
-            // falls back to its own regular header (HasSplitHeader == false). See
-            // ClosedBlockRendersAsCompletedNotLive for the full completed-render assertions.
+            // Rows and @key are unchanged, but a completed session drops the live header - the expanded
+            // block is headed like any expanded conversation. See ClosedBlockRendersAsCompletedNotLive
+            // for the full completed-render assertions.
             block.Items.OfType<LiveConversationHeader>().Should().BeEmpty();
-            block.Items.OfType<ConversationMessage>().Single().HasSplitHeader.Should().BeFalse();
+            block.Items.OfType<ConversationHeader>().Should().ContainSingle();
         }, TimeSpan.FromSeconds(15));
     }
 
@@ -1171,8 +1171,8 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
         await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
 
-        // assert - the completed block drops the live header + footer; the card renders its own
-        // regular header (HasSplitHeader == false)
+        // assert - the completed block drops the live header + footer and reads as an expanded
+        // conversation: its sticky header, not the card, which only has the collapsed form
         await TestWait.When(async ct => {
             var liveState = await liveBackend.GetState(chat.Id, ct);
             liveState.Should().BeNull();
@@ -1186,8 +1186,69 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
                 .Should().ContainSingle("a completed block still closes with its own regular footer band");
             block.Items[^1].Should().BeOfType<ConversationFooter>(
                 "the regular footer is the block's last child, past the frozen tail");
-            var card = block.Items.OfType<ConversationMessage>().Single();
-            card.HasSplitHeader.Should().BeFalse("the card renders its own regular header once completed");
+            block.Items[0].Should().BeOfType<ConversationHeader>(
+                "an expanded completed conversation is headed by its sticky header");
+            block.Items.OfType<ConversationMessage>()
+                .Should().BeEmpty("the card draws the collapsed form, an expand toggle above expanded rows");
+        }, TimeSpan.FromSeconds(15));
+    }
+
+    [Fact]
+    public async Task ClosedCollapsedBlockRendersAsCompletedCard()
+    {
+        // Collapsed at close, the retained block is a collapsed completed conversation: one card carrying
+        // its own footer, not a card with a separate footer band under it.
+
+        // arrange
+        await Tester.SignInAsUniqueBob();
+        var chat = await CreateSettledChat("closed-collapsed-card-test");
+        var author = await Tester.GetOwnAuthor(chat.Id).Require();
+        var peerId = AuthorId.New(chat.Id, 777_210);
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.OnStreamRegistered(chat.Id, author.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chat.Id, peerId, null, true, true, CancellationToken.None);
+        var live = await liveBackend.GetState(chat.Id, CancellationToken.None);
+        live.Should().NotBeNull();
+        var v = live!.OpenConversation!.StartLid;
+        for (var i = 0; i < 3; i++)
+            await CreateSpokenEntry(chat.Id, $"folded-{i}");
+        await liveBackend.UpdateLiveConversationSummary(chat.Id,
+            new LiveConversationSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                SummaryEndLid = v + 3, SummarizedEntryCount = 3, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+        for (var i = 0; i < 4; i++)
+            await CreateSpokenEntry(chat.Id, $"tail-{i}");
+
+        var chatAudioUI = Tester.ScopedAppServices.GetRequiredService<ChatAudioUI>();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        await chatAudioUI.SetListeningState(chat.Id, true);
+        chatUI.SelectChatOnNavigation(chat.Id);
+        await CollapseJoinedLiveBlock(chatUI, chat.Id, live.OpenConversation!.ToConversation());
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chat.Id, CancellationToken.None);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        await liveBackend.SetParticipation(chat.Id, peerId, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(chat.Id, author.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.UpdateLiveConversationSummary(chat.Id,
+            new LiveConversationSummary {
+                Title = "Recap", Description = "d", Summary = "s",
+                SummaryEndLid = v + 7, SummarizedEntryCount = 7, IsExpandedByDefault = false,
+            }, CancellationToken.None);
+
+        // act
+        await liveBackend.FinalizeSession(chat.Id, CancellationToken.None);
+
+        // assert
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        await TestWait.When(async ct => {
+            var liveBlock = await liveBlockUI.GetBlock(chat.Id, ct);
+            liveBlock.Should().Match<LiveBlock>(b => !b.IsOpen);
+            var items = await chatUI.GetChatItems(chat.Id, query, 0, ct);
+            var block = items.Items.OfType<ExpandedConversationMessage>().Single();
+            var card = block.Items.Should().ContainSingle(Dump(items)).Which
+                .Should().BeOfType<ConversationMessage>().Subject;
+            card.IsExpanded.Should().BeFalse();
+            card.HasSplitFooter.Should().BeFalse("nothing below the card is left to carry its footer");
         }, TimeSpan.FromSeconds(15));
     }
 

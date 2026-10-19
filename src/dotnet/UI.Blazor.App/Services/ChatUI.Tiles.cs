@@ -1022,6 +1022,10 @@ public partial class ChatUI
         conversations = normalized.ApplyTo(conversations, requestedIdRange);
         var isFoldingLiveBlock = liveBlockId is { } foldingBlockId
             && (materializedBlockId == null || !expandedConversations.Contains(foldingBlockId));
+        // A closed block renders as a completed conversation, so expanded it is headed by a sticky
+        // ConversationHeader rather than its card - the card only knows the collapsed form.
+        var isClosedBlockExpanded = materializedBlockId != null
+            && liveBlockId is { } closedBlockId && expandedConversations.Contains(closedBlockId);
         var idRangesToSkip = conversations
             .Where(c => (c.Id == liveBlockId && isFoldingLiveBlock) || !expandedConversations.Contains(c.Id))
             .Select(c => c.Id == liveBlockId ? liveFoldRange : c.EntryLidRange)
@@ -1110,17 +1114,19 @@ public partial class ChatUI
         }
 
         var messages = new List<ChatMessage>(entries.Count);
-        // The joined live card is emitted even when expanded (it is the block header), so keep it on the
-        // merge's right side regardless of expansion.
+        // The open live block's card is emitted even when expanded (it is the block header), so keep it on
+        // the merge's right side regardless of expansion.
         var items = entries.Merge(
-            conversations.Where(c => !expandedConversations.Contains(c.Id) || c.Id == liveBlockId),
+            conversations.Where(c => !expandedConversations.Contains(c.Id)
+                || (c.Id == liveBlockId && !isClosedBlockExpanded)),
             e => e.LocalId,
             c => c.Id.StartEntryLid);
         var isWelcomeBlockAdded = false;
         foreach (var (entry, conversation) in items) {
             var date = DateOnly.FromDateTime(DateTimeConverter.ToLocalTime(entry?.BeginsAt ?? conversation!.StartsAt));
             var shouldEmitCard = conversation != null
-                && (!expandedConversations.Contains(conversation.Id) || conversation.Id == liveBlockId);
+                && (!expandedConversations.Contains(conversation.Id)
+                    || (conversation.Id == liveBlockId && !isClosedBlockExpanded));
             // Paired tuple: a loaded entry shares the card's key lid (V) - emit the card before the entry.
             if (shouldEmitCard && entry != null)
                 EmitConversationCard(conversation!, date);
@@ -1215,8 +1221,9 @@ public partial class ChatUI
                         prevMessage = newLineMessage;
                     }
 
-                    // Conversation header goes before the date line (the joined live card is its own header).
-                    if (expandedConversation != null && expandedConversation.Id != liveBlockId
+                    // Conversation header goes before the date line (the open live card is its own header).
+                    if (expandedConversation != null
+                        && (expandedConversation.Id != liveBlockId || isClosedBlockExpanded)
                         && alreadyAddedConversationHeaders.Add(expandedConversation.Id)
                         && (prevMessage == null
                             || prevMessage.Kind == ChatMessageKind.WelcomeBlock
@@ -1587,7 +1594,12 @@ public partial class ChatUI
             // block ends with the same regular conversation footer every expanded conversation gets.
             // It's appended as the block's last child rather than emitted inline at EndEntryLid (the
             // GetTile path), because the frozen tail kept inside the block extends past that lid.
-            if (conversation.Id == liveBlockId)
+            // A closed block that holds nothing but its card is a collapsed completed conversation, whose
+            // card carries its own footer - one below it would split the card in two.
+            if (conversation.Id == liveBlockId && materializedBlockId != null
+                && items is [ConversationMessage { HasSplitFooter: true } card])
+                items[0] = card.WithOwnFooter();
+            else if (conversation.Id == liveBlockId)
                 items.Add(materializedBlockId == null
                     ? new LiveConversationFooter(conversation) {
                         Kind = ChatMessageKind.ConversationEnd,
