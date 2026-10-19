@@ -405,9 +405,9 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         // its tail, has nothing to tell the user through a badge, and a listener who had not touched
         // anything for three minutes used to watch it count up. What keeps hiding it honest is
         // ChatView advancing the read position on the interaction that ends the idle stretch, so what
-        // the badge hides is read before it could show anywhere else. A hidden document still counts
-        // as not reading - unless the user is in this chat's live conversation, which goes on with the
-        // screen untouched, or off.
+        // the badge hides is read before it could show anywhere else. A hidden document or an unfocused
+        // desktop window still counts as not reading - unless the user is in this chat's live
+        // conversation, which goes on with the screen untouched, or off.
         var lastPresentAt = await UserActivityUI.LastPresentAt.Use(cancellationToken).ConfigureAwait(false);
         if (lastPresentAt != Moment.MinValue)
             return true;
@@ -416,7 +416,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     }
 
     // The non-reactive half of IsReadingTail, for the JS-driven callbacks that can't await:
-    // the document is visible and the user interacted recently enough to still be at the screen.
+    // the document is visible (and focused, on desktop) and the user interacted recently enough
+    // to still be at the screen.
     public bool IsUserPresent()
         => UserActivityUI.LastPresentAt.Value + Constants.Chat.ReadingGracePeriod > Clocks.CpuClock.Now;
 

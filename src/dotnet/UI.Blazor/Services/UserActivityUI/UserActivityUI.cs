@@ -17,8 +17,8 @@ public class UserActivityUI : UIServiceBase<UIHub>, IUserActivityUIBackend
 
     public IState<Moment> ActiveUntil => _activeUntil; // CPU time
 
-    // CPU time of the last interaction that happened while the document was visible;
-    // Moment.MinValue while it's hidden. Consumers apply their own grace period on top -
+    // CPU time of the last interaction that happened while the document was visible and, on desktop,
+    // its window focused; Moment.MinValue while it isn't. Consumers apply their own grace period on top -
     // "the user is at the screen" means something different for presence and for reading.
     public IState<Moment> LastPresentAt => _lastPresentAt;
 
@@ -39,13 +39,14 @@ public class UserActivityUI : UIServiceBase<UIHub>, IUserActivityUIBackend
     }
 
     [JSInvokable]
-    public void OnInteraction(double willBeActiveForMs)
+    public void OnInteraction(double willBeActiveForMs, bool isFocused)
     {
         // Zero means the document just went hidden - the JS side reports it explicitly
         // rather than letting the activity period decay, so presence drops right away.
+        // Focus doesn't affect the activity period: with the window unfocused the user is still around.
         var activeFor = TimeSpan.FromMilliseconds(willBeActiveForMs);
         var now = CpuNow;
         _activeUntil.Value = now + activeFor;
-        _lastPresentAt.Value = activeFor > TimeSpan.Zero ? now : Moment.MinValue;
+        _lastPresentAt.Value = isFocused && activeFor > TimeSpan.Zero ? now : Moment.MinValue;
     }
 }
