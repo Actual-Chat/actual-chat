@@ -1,11 +1,27 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="segmented-switch @Class">
+@{
+    var activeIndex = 0;
+    for (var i = 0; i < Items.Count; i++) {
+        if (Items[i].Id == SelectedId) {
+            activeIndex = i;
+            break;
+        }
+    }
+}
+
+<div class="segmented-switch @Class" role="tablist" style="--seg-count: @Items.Count; --seg-index: @activeIndex;">
+    <div class="c-thumb"></div>
     @foreach (var item in Items) {
+        var isOn = item.Id == SelectedId;
         <button
             type="button"
-            class="btn-segment @(item.Id == SelectedId ? "on" : "")"
-            @onclick="@(() => OnClick(item.Id))">@item.Title</button>
+            role="tab"
+            aria-selected="@(isOn ? "true" : "false")"
+            class="btn-segment @(isOn ? "on" : "")"
+            @onclick="@(() => OnClick(item.Id))">@item.Title@if (item.HasDot) {
+                <span class="c-dot"></span>
+            }</button>
     }
 </div>
 

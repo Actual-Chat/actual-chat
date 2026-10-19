@@ -8,14 +8,6 @@
         return; // Loading
 
     var useShortTitle = languages.Count > 2;
-    var segmentCount = languages.Count == 1 ? 2 : languages.Count;
-    var activeIndex = 0;
-    for (var i = 0; i < languages.Count; i++) {
-        if (languages[i] == language) {
-            activeIndex = i;
-            break;
-        }
-    }
 }
 
 <div class="language-btn-group">
@@ -38,24 +30,16 @@
         }
         @**@:
     </div>
-    <div class="c-languages" style="--seg-count: @segmentCount; --seg-index: @activeIndex;">
-        <div class="c-thumb"></div>
-        @foreach (var l in languages) {
-            <button
-                class="@(l == language ? "active" : "")"
-                @onclick="@(() => OnClick(l))">
-                @(useShortTitle ? l.ShortTitle : l.Title)
-            </button>
-        }
-        @if (languages.Count == 1) {
-            <button @onclick="@OnConfigureSecondLanguage">
-                @L.VoiceSettings_AddLanguage
-            </button>
-        }
-    </div>
+    <SegmentedSwitch
+        Class="pill"
+        Items="@BuildItems(languages, useShortTitle)"
+        SelectedId="@language.Value"
+        SelectedIdChanged="@OnLanguageIdChanged"/>
 </div>
 
 @code {
+    private const string AddLanguageId = "@add";
+
     private LanguageUI LanguageUI => Hub.LanguageUI;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; } = null!;
@@ -75,8 +59,22 @@
         return (languages.ListSpoken(), language);
     }
 
-    private Task OnClick(Language language)
-        => LanguageUI.ChangeChatLanguage(ChatId, language);
+    private IReadOnlyList<SegmentedSwitchItem> BuildItems(IReadOnlyList<Language> languages, bool useShortTitle) {
+        var items = new List<SegmentedSwitchItem>(languages.Count + 1);
+        foreach (var l in languages)
+            items.Add(new(l.Value, useShortTitle ? l.ShortTitle : l.Title));
+        if (languages.Count == 1)
+            items.Add(new(AddLanguageId, L.VoiceSettings_AddLanguage));
+        return items;
+    }
+
+    private Task OnLanguageIdChanged(string id) {
+        if (id == AddLanguageId) {
+            OnConfigureSecondLanguage();
+            return Task.CompletedTask;
+        }
+        return LanguageUI.ChangeChatLanguage(ChatId, Language.Parse(id));
+    }
 
     private void OnConfigureSecondLanguage()
         => _ = UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Transcription));

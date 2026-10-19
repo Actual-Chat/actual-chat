@@ -616,50 +616,6 @@ body.hoverable .language-btn-group > .c-title > .c-edit:hover {
     @apply underline;
 }
 
-.language-btn-group > .c-languages {
-    @apply relative;
-    @apply flex-x gap-x-1;
-    @apply p-1;
-    @apply rounded-lg;
-    @apply bg-04;
-}
-.language-btn-group > .c-languages > .c-thumb {
-    @apply absolute z-0 top-1 bottom-1 left-1;
-    @apply rounded-lg;
-    @apply bg-modal;
-    @apply shadow-sm;
-    width: calc((100% - 0.5rem - (var(--seg-count, 2) - 1) * 0.25rem) / var(--seg-count, 2));
-    transform: translateX(calc(var(--seg-index, 0) * (100% + 0.25rem)));
-    transition: transform 0.2s ease;
-}
-@media (prefers-reduced-motion: reduce) {
-    .language-btn-group > .c-languages > .c-thumb {
-        transition: none;
-    }
-}
-.language-btn-group > .c-languages > span {
-    @apply relative z-10 flex-1 flex items-center justify-center;
-    @apply text-03;
-}
-.language-btn-group > .c-languages > button {
-    @apply relative z-10 flex-1 flex items-center justify-center;
-    @apply h-8;
-    @apply bg-transparent;
-    @apply text-02;
-}
-.language-btn-group > .c-languages > button.active {
-    @apply text-primary;
-    @apply cursor-default;
-}
-body.hoverable .language-btn-group > .c-languages > button:not(.active):hover {
-    @apply rounded-lg;
-    @apply bg-round;
-}
-.language-btn-group > .c-languages > .c-none {
-    @apply flex-1 flex items-center justify-center;
-    @apply text-03;
-}
-
 /* Selected language */
 .selected-language {
     @apply absolute z-menu-container -top-1 -right-0.5;

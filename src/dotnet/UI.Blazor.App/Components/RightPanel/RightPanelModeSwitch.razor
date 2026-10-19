@@ -2,20 +2,14 @@
 @using ActualChat.Users
 @inherits ComputedStateComponent<AppUIHub, RightPanelModeSwitch.Model>
 @{
-    var mode = State.Value.Mode;
+    var m = State.Value;
 }
 
-<div class="right-panel-mode-switch" role="tablist">
-    <Button Class="@ButtonClass(mode, RightPanelMode.Chat)" Click="@(_ => Select(RightPanelMode.Chat))">
-        @L.Coach_ModeChat
-    </Button>
-    <Button Class="@ButtonClass(mode, RightPanelMode.Coach)" Click="@(_ => Select(RightPanelMode.Coach))">
-        @L.Coach_ModeCoach
-        @if (State.Value.HasNote) {
-            <span class="c-dot"></span>
-        }
-    </Button>
-</div>
+<SegmentedSwitch
+    Class="right-panel-mode-switch pill"
+    Items="@BuildItems(m)"
+    SelectedId="@m.Mode.ToString()"
+    SelectedIdChanged="@OnSelectedIdChanged"/>
 
 @code {
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -31,11 +25,13 @@
         return new Model(mode, note.IsPending);
     }
 
-    private void Select(RightPanelMode mode)
-        => PanelsUI.Right.SetMode(mode);
+    private IReadOnlyList<SegmentedSwitchItem> BuildItems(Model m) => [
+        new(RightPanelMode.Chat.ToString(), L.Coach_ModeChat),
+        new(RightPanelMode.Coach.ToString(), L.Coach_ModeCoach) { HasDot = m.HasNote },
+    ];
 
-    private static string ButtonClass(RightPanelMode current, RightPanelMode mode)
-        => current == mode ? "btn-mode on" : "btn-mode";
+    private void OnSelectedIdChanged(string id)
+        => PanelsUI.Right.SetMode(Enum.Parse<RightPanelMode>(id));
 
     public sealed record Model(RightPanelMode Mode, bool HasNote);
 }
