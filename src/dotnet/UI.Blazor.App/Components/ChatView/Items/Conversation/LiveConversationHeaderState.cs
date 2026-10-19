@@ -4,6 +4,7 @@ public sealed record LiveConversationHeaderState(
     string Title,
     string ParticipantsText,
     bool IsJoined = false,
+    bool CanJoin = false,
     bool HasAttended = false,
     bool IsDissolving = false,
     bool CanExpand = false,
