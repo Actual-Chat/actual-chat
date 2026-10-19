@@ -53,6 +53,7 @@ public static class LocalizedStringsLocalizerExt
         public string Settings_ApiKeys => l["Settings_ApiKeys"].Value;
         public string Settings_ApiAndApps => l["Settings_ApiAndApps"].Value;
         public string Settings_Documents => l["Settings_Documents"].Value;
+        public string Settings_Documentation => l["Settings_Documentation"].Value;
         public string Settings_DeveloperTools => l["Settings_DeveloperTools"].Value;
         public string Settings_LogViewer => l["Settings_LogViewer"].Value;
         public string Settings_Privacy => l["Settings_Privacy"].Value;

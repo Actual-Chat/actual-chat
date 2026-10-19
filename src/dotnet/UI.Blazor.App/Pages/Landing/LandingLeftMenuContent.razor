@@ -39,6 +39,9 @@
     <Button Class="btn-transparent" Click="@(() => NavigateTo(cookiesUrl))">
         @L.Documents_Cookies
     </Button>
+    <Button Class="btn-transparent" Click="@OpenDocumentation">
+        @L.Settings_Documentation
+    </Button>
 </div>
 <div class="menu-footer">
     @if (m.EnableIncompleteUI) {
@@ -78,6 +81,11 @@
     private void NavigateTo(string url) {
         Owner.Close();
         _ = History.NavigateTo(url);
+    }
+
+    private void OpenDocumentation() {
+        Owner.Close();
+        _ = Hub.ExternalUrlOpener.Open("https://docs.voxt.ai/");
     }
 
     private Task SignIn() {
