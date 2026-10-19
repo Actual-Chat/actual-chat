@@ -241,15 +241,15 @@ public sealed class AndroidAudioFocusUI : MauiAudioFocusUI
     {
         // Built from the route we asked for, not read back: CommunicationDevice blocks in AudioService
         // for up to 3s while a route change is still landing.
-        var externalKind = _focusHelper.GetExternalOutputKind();
+        var externalOutput = _focusHelper.GetExternalOutput(ExternalRouteId);
         var route = _callAudioRoute ?? default;
         var routes = new List<AudioOutputRoute>(3);
-        if (externalKind is { } kind)
-            routes.Add(new AudioOutputRoute(ExternalRouteId, kind));
+        if (externalOutput is not null)
+            routes.Add(externalOutput);
         if (_focusHelper.HasEarpiece)
             routes.Add(new AudioOutputRoute(AudioOutputRoute.PhoneId, AudioOutputKind.Phone));
         routes.Add(new AudioOutputRoute(AudioOutputRoute.SpeakerId, AudioOutputKind.Speaker));
-        var currentId = externalKind is not null && !route.IsBuiltinForced ? ExternalRouteId
+        var currentId = externalOutput is not null && !route.IsBuiltinForced ? ExternalRouteId
             : route.IsEarpiece ? AudioOutputRoute.PhoneId
             : AudioOutputRoute.SpeakerId;
         _outputRoutes.Value = new AudioOutputRoutes(routes, currentId);
