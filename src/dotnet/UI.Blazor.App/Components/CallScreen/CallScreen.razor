@@ -124,9 +124,14 @@
                                 Text="@CallScreensUI.GetStatusText(m.Stage)"
                                 IsAnswered="@(m.Phase == CallPhase.Active)"
                                 IsInProgress="@m.Stage.IsInProgress()"/>
-                            @if (m.JoinedAt is { } joinedAt) {
-                                <div class="c-timer"><LiveDuration StartedAt="@joinedAt"/></div>
-                            }
+                            @* The line is held from the start, so the timer showing up doesn't shift the body. *@
+                            <div class="c-timer">
+                                @if (m.JoinedAt is { } joinedAt) {
+                                    <LiveDuration StartedAt="@joinedAt"/>
+                                } else {
+                                    @:&nbsp;
+                                }
+                            </div>
                         </div>
                         @if (!isRinging) {
                             <CallReactionsOverlay ChatId="@chat.Id"/>
