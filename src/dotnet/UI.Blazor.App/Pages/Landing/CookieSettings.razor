@@ -6,40 +6,65 @@
         return;
 }
 
-<div class="cookie-settings">
-    <div class="c-top">
-        <div class="c-icon">
-            <i class="icon-cookie text-2xl"></i>
+<div class="cookie-settings @(_isExpanded ? "is-expanded" : "is-collapsed")">
+    @if (_isExpanded) {
+        <div class="c-handle"></div>
+        <div class="c-head">
+            <div class="c-icon"><i class="icon-cookie text-2xl"></i></div>
+            <span class="c-title">Cookie settings</span>
+            <button type="button" class="c-collapse" @onclick="Collapse">
+                <i class="icon-chevron-compact-down"></i>
+            </button>
         </div>
-        <span class="c-text">Cookie Settings</span>
-
-    </div>
-    <div class="c-content">
-        <p>
-            Our website uses essential cookies to ensure accessibility, security, and to manage your website access.
-            You can control these through your browser settings, though disabling them may affect the website’s functionality.
-        </p>
-        <p>
-            With your consent, @CoreConstants.AppName may also use cookies to personalize your experience, in line with our
-            <a href="/docs/privacy">Privacy Policy</a> and <a href="/docs/terms">Terms of Use</a>.
-            Additionally, we may use cookies to collect telemetry data, such as user actions leading up to errors and crashes.
-            The data we capture via cookies may be processed by trusted third-party providers,
-            such as <a href="https://marketingplatform.google.com/about/analytics/" target="_blank">Google Analytics</a>,
-            <a href="https://firebase.google.com/docs/analytics" target="_blank">Firebase Analytics</a>,
-            and <a href="https://sentry.io/" target="_blank">Sentry</a>.
-        </p>
-    </div>
-    <div class="c-bottom">
-        <a class="c-link" href="/docs/cookies">Read Cookie Policy</a>
-        <div class="c-buttons">
-            <Button Class="cookie-btn" Click="@OnNecessaryOnlyClick">Necessary cookies only</Button>
-            <Button Class="cookie-btn" Click="@OnAllCookiesClick">Accept all cookies</Button>
+        <p class="c-subtitle">Choose what @CoreConstants.AppName can use. You can change this anytime.</p>
+        <div class="c-rows">
+            <div class="c-row">
+                <div class="c-row-text">
+                    <div class="c-row-title">Necessary</div>
+                    <div class="c-row-caption">Security, sign-in, accessibility</div>
+                </div>
+                <div class="c-row-control">
+                    <span class="c-always">Always on</span>
+                    <Toggle IsChecked="true" IsDisabled="true"/>
+                </div>
+            </div>
+            <div class="c-row">
+                <div class="c-row-text">
+                    <div class="c-row-title">Analytics and error reports</div>
+                    <div class="c-row-caption">Google Analytics, Firebase Analytics, Sentry</div>
+                </div>
+                <Toggle IsChecked="_isDataCollectionEnabled" IsCheckedChanged="OnDataCollectionChanged"/>
+            </div>
         </div>
-    </div>
+        <div class="c-foot">
+            <a class="c-link" href="/docs/cookies">
+                <span class="c-link-wide">Cookie policy</span>
+                <span class="c-link-narrow">Read full cookie policy</span>
+            </a>
+            <div class="c-foot-buttons">
+                <Button Class="c-btn c-btn-outline" Click="@OnSaveChoicesClick">Save choices</Button>
+                <Button Class="c-btn c-btn-accent" Click="@OnAllCookiesClick">Accept all</Button>
+            </div>
+        </div>
+    } else {
+        <div class="c-pill-main">
+            <div class="c-icon"><i class="icon-cookie text-2xl"></i></div>
+            <span class="c-text">
+                We use cookies to improve @CoreConstants.AppName.
+                <button type="button" class="c-learn" @onclick="Expand">Learn more</button>
+            </span>
+        </div>
+        <div class="c-pill-buttons">
+            <Button Class="c-btn c-btn-outline" Click="@OnNecessaryOnlyClick">Necessary only</Button>
+            <Button Class="c-btn c-btn-accent" Click="@OnAllCookiesClick">Accept all</Button>
+        </div>
+    }
 </div>
 
-
 @code {
+    private bool _isExpanded;
+    private bool _isDataCollectionEnabled;
+
     private OnboardingUI OnboardingUI => Hub.OnboardingUI;
     private IDataCollectionSettingsUI DataCollectionSettingsUI => Hub.DataCollectionSettingsUI;
 
@@ -52,12 +77,32 @@
         return new(settings.AreCookiesAccepted);
     }
 
+    private void Expand() {
+        _isExpanded = true;
+        StateHasChanged();
+    }
+
+    private void Collapse() {
+        _isExpanded = false;
+        StateHasChanged();
+    }
+
+    private void OnDataCollectionChanged(bool value) {
+        _isDataCollectionEnabled = value;
+        StateHasChanged();
+    }
+
     private Task OnNecessaryOnlyClick()
         => AcceptCookies();
 
     private async Task OnAllCookiesClick() {
         await AcceptCookies().ConfigureAwait(false);
         await DataCollectionSettingsUI.UpdateState(true, CancellationToken.None);
+    }
+
+    private async Task OnSaveChoicesClick() {
+        await AcceptCookies().ConfigureAwait(false);
+        await DataCollectionSettingsUI.UpdateState(_isDataCollectionEnabled, CancellationToken.None);
     }
 
     private async Task AcceptCookies() {
