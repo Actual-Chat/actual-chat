@@ -274,7 +274,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         InitializeHub(tester, hub, cut.Instance);
 
         // act
-        await cut.InvokeAsync(() => cut.FindAll(".btn-mode")[1].Click());
+        await cut.InvokeAsync(() => cut.FindAll(".btn-segment")[1].Click());
 
         // assert
         await TestWait.When(_ => {
@@ -285,7 +285,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             stored.Mode.Should().Be(RightPanelMode.Coach, "the mode survives a chat switch and the next session");
             return Task.CompletedTask;
         });
-        cut.WaitForAssertion(() => cut.Find(".btn-mode.on").TextContent.Trim().Should().Be("Coach"));
+        cut.WaitForAssertion(() => cut.Find(".btn-segment.on").TextContent.Trim().Should().Be("Coach"));
 
         // act - the mobile menu entry opens the panel in Coach mode
         await cut.InvokeAsync(() => hub.PanelsUI.Right.Open(RightPanelMode.Coach));
@@ -1093,11 +1093,11 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         hub.CoachUI.SelectTab(CoachTab.Progress);
 
         // assert
-        mode.WaitForAssertion(() => mode.Find(".btn-mode .c-dot"), TimeSpan.FromSeconds(10));
+        mode.WaitForAssertion(() => mode.Find(".btn-segment .c-dot"), TimeSpan.FromSeconds(10));
         cut.WaitForAssertion(() => cut.Find(".coach-note").TextContent.Should().Contain("Your week with the coach"),
             TimeSpan.FromSeconds(10));
         await cut.InvokeAsync(() => cut.Find(".coach-note .tile-item").Click());
-        mode.WaitForAssertion(() => mode.FindAll(".btn-mode .c-dot").Should().BeEmpty(), TimeSpan.FromSeconds(10));
+        mode.WaitForAssertion(() => mode.FindAll(".btn-segment .c-dot").Should().BeEmpty(), TimeSpan.FromSeconds(10));
     }
 
     [Fact(Timeout = 60_000)]
