@@ -51,7 +51,7 @@ docs/ui-kit/
   index.html                       self-contained kit (tokens + icons inlined)
   README.md
   assets/
-    icon.woff2                     real icon webfont (266 glyphs)
+    icon.woff2                     real icon webfont (269 glyphs)
     TT-Commons-Pro-*.woff2         real UI typeface (Light/Regular/Medium/DemiBold/Mono)
 ```
 
