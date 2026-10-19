@@ -107,7 +107,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
                 return new ProcessedFile(upload.AsBinaryFile(), null);
 
             (size, duration, frameRate) = UploadProcessorHelper.AnalyzeVideo(mediaInfo!);
-            conversion = UploadProcessorHelper.GetConversion(mediaInfo!);
+            conversion = UploadProcessorHelper.GetConversion(mediaInfo!, upload.Length);
             hasAudio = mediaInfo!.PrimaryAudioStream is not null;
         }
 

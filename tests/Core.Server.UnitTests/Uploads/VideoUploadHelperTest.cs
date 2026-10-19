@@ -5,6 +5,8 @@ namespace ActualChat.Core.Server.UnitTests.Uploads;
 
 public sealed class VideoUploadHelperTest
 {
+    private const long MB = 1024 * 1024;
+
     [Theory]
     [InlineData(0, 1920, 1080, 1920, 1080)]
     [InlineData(180, 1920, 1080, 1920, 1080)]
@@ -89,15 +91,33 @@ public sealed class VideoUploadHelperTest
         VideoConversion expected)
     {
         // arrange
-        var videoStream = new VideoStream { CodecName = codecName, Width = width, Height = height };
-        var tags = new Dictionary<string, string> { ["major_brand"] = majorBrand };
-        var format = new FFMpegCore.MediaFormat { Tags = tags };
-        var mediaInfo = new Mock<IMediaAnalysis>(MockBehavior.Strict);
-        mediaInfo.SetupGet(x => x.PrimaryVideoStream).Returns(videoStream);
-        mediaInfo.SetupGet(x => x.Format).Returns(format);
+        var mediaInfo = NewMediaInfo(codecName, majorBrand, width, height);
 
         // act
-        var result = UploadProcessorHelper.GetConversion(mediaInfo.Object);
+        var result = UploadProcessorHelper.GetConversion(mediaInfo, 100 * MB);
+
+        // assert
+        result.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("h264", "isom", 3840, 2160, 70, VideoConversion.None)]
+    [InlineData("hevc", "qt  ", 2160, 3840, 70, VideoConversion.Remux)]
+    [InlineData("hevc", "qt  ", 3840, 2160, 71, VideoConversion.Transcode)]
+    [InlineData("vp9", "isom", 3840, 2160, 10, VideoConversion.Transcode)]
+    public void GetConversionShouldKeepResolutionOfVideosUpTo70Mb(
+        string codecName,
+        string majorBrand,
+        int width,
+        int height,
+        long lengthMb,
+        VideoConversion expected)
+    {
+        // arrange
+        var mediaInfo = NewMediaInfo(codecName, majorBrand, width, height);
+
+        // act
+        var result = UploadProcessorHelper.GetConversion(mediaInfo, lengthMb * MB);
 
         // assert
         result.Should().Be(expected);
@@ -139,5 +159,18 @@ public sealed class VideoUploadHelperTest
         arguments.Should().NotContain(a => a.Contains(' '),
             "the transcode job gets the arguments as a list, with no shell to split them");
         size.Should().Be(new Size2D(expectedWidth, expectedHeight));
+    }
+
+    // Private methods
+
+    private static IMediaAnalysis NewMediaInfo(string codecName, string majorBrand, int width, int height)
+    {
+        var videoStream = new VideoStream { CodecName = codecName, Width = width, Height = height };
+        var tags = new Dictionary<string, string> { ["major_brand"] = majorBrand };
+        var format = new FFMpegCore.MediaFormat { Tags = tags };
+        var mediaInfo = new Mock<IMediaAnalysis>(MockBehavior.Strict);
+        mediaInfo.SetupGet(x => x.PrimaryVideoStream).Returns(videoStream);
+        mediaInfo.SetupGet(x => x.Format).Returns(format);
+        return mediaInfo.Object;
     }
 }
