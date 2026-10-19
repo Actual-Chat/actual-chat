@@ -1,6 +1,6 @@
 // TODO: Fix ESLint errors
 import hljs from 'highlight.js/lib/core';
-import { LanguageFn } from 'highlight.js';
+import { AutoHighlightResult, LanguageFn } from 'highlight.js';
 import bash from 'highlight.js/lib/languages/bash';
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -38,6 +38,11 @@ const AutoDetectLanguages = [
     'bash', 'javascript', 'typescript', 'json', 'xml', 'yaml', 'css',
     'python', 'go', 'rust', 'java', 'kotlin', 'c', 'cpp', 'csharp',
 ];
+// A tie inside one of these groups still means "this is code", so the guess is kept.
+const RelatedLanguages = [['javascript', 'typescript'], ['c', 'cpp'], ['java', 'kotlin', 'csharp']];
+// Real code scores 0.8+ per line; prose that happens to match a grammar scores well below.
+const MinRelevancePerLine = 0.5;
+const ProseWordRe = /^[«("']?\p{L}+[»)"'.,:;!?]*$/u;
 
 export function highlightCode(root: HTMLElement, languageName: string | null, code: string) {
     const pre = root.querySelector('pre');
@@ -59,9 +64,13 @@ export function highlightCode(root: HTMLElement, languageName: string | null, co
             codeElement.innerHTML = highlightTableCells(code);
         } else {
             const result = hljs.highlightAuto(code, AutoDetectLanguages);
-            codeElement.innerHTML = result.value;
-            if (!requestedLanguage)
-                primaryLanguage = result.language ?? '';
+            if (isConfidentGuess(result)) {
+                codeElement.innerHTML = result.value;
+                if (!requestedLanguage)
+                    primaryLanguage = result.language ?? '';
+            } else {
+                codeElement.innerHTML = escapeHtml(code);
+            }
         }
     } catch (e) {
         errorLog?.log(`highlightCode: failed to highlight code`, e);
@@ -72,6 +81,29 @@ export function highlightCode(root: HTMLElement, languageName: string | null, co
     else
         updateLanguageLabel(root, codeElement, primaryLanguage);
     setupWrapToggle(root);
+    return;
+
+    function isConfidentGuess(result: AutoHighlightResult): boolean {
+        const language = result.language;
+        if (!language)
+            return false;
+
+        const lineCount = code.split('\n').filter(l => l.trim().length > 0).length;
+        if (result.relevance / lineCount < MinRelevancePerLine)
+            return false;
+
+        // Mostly bare words, several per line: a code fence around ordinary text
+        const tokens = code.split(/\s+/).filter(t => t.length > 0);
+        const wordCount = tokens.filter(t => ProseWordRe.test(t)).length;
+        if (wordCount >= tokens.length * 0.8 && wordCount >= lineCount * 4)
+            return false;
+
+        const runnerUp = result.secondBest;
+        if (!runnerUp?.language || runnerUp.relevance < result.relevance)
+            return true;
+
+        return RelatedLanguages.some(group => group.includes(language) && group.includes(runnerUp.language!));
+    }
 }
 
 function looksLikeTable(code: string): boolean {
