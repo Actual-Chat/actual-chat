@@ -944,6 +944,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
+    <!-- The incoming ringtone loops in the WebView (IncomingCallRingtone), and WebView2 isn't WebKit,
+         so it fetches the .webm from dist/sounds - the folder build.mjs strips from the MAUI wwwroot -->
+    <Content Include="..\..\..\resources\sounds\converted\attention_ringtone.webm" Link="wwwroot\dist\sounds\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
