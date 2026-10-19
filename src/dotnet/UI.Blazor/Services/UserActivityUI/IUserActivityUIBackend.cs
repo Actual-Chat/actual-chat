@@ -2,5 +2,5 @@ namespace ActualChat.UI.Blazor.Services;
 
 public interface IUserActivityUIBackend
 {
-    void OnInteraction(double willBeActiveForMs);
+    void OnInteraction(double willBeActiveForMs, bool isFocused);
 }

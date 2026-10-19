@@ -1,4 +1,6 @@
+import { fromEvent } from 'rxjs';
 import { DocumentEvents } from 'event-handling';
+import { DeviceInfo } from 'device-info';
 import { delayAsync, throttle } from 'actuallab-core';
 import { getLogs } from 'logging';
 
@@ -30,6 +32,15 @@ export class UserActivityUI {
                 void this.notifyBackend();
             }
         })
+        if (!DeviceInfo.isMobile) {
+            // Reported right away for the same reason. The blur is read a tick later: when focus moves
+            // into an embedded iframe, the window blurs while document.hasFocus() stays true.
+            fromEvent(window, 'focus').subscribe(() => {
+                this.onInteraction();
+                void this.notifyBackend();
+            });
+            fromEvent(window, 'blur').subscribe(() => setTimeout(() => void this.notifyBackend(), 0));
+        }
         documentEvents.pointerMove$.subscribe(() => this.onInteraction());
         documentEvents.pointerDown$.subscribe(() => this.onInteraction());
         documentEvents.keyDown$.subscribe(() => this.onInteraction());
@@ -51,9 +62,11 @@ export class UserActivityUI {
     }
 
     private static notifyBackend = async () => {
-        // Zero is meaningful here: it's how .NET learns the user is no longer present
+        // Zero is meaningful here: it's how .NET learns the document went hidden
         const willBeActiveForMs = Math.max(0, this._activeUntil - Date.now());
-        debugLog?.log(`notifyBackend`);
-        await this._blazorRef.invokeMethodAsync('OnInteraction', willBeActiveForMs);
+        // Mobile has no "visible but unfocused" window, so a visible page there counts as focused
+        const isFocused = DeviceInfo.isMobile || document.hasFocus();
+        debugLog?.log(`notifyBackend: isFocused:`, isFocused);
+        await this._blazorRef.invokeMethodAsync('OnInteraction', willBeActiveForMs, isFocused);
     }
 }
