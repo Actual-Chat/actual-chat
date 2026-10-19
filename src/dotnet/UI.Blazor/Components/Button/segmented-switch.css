@@ -1,8 +1,12 @@
 .segmented-switch {
+    @apply relative;
     @apply flex-x gap-x-2;
     @apply p-1;
     @apply rounded-lg;
     @apply bg-04;
+}
+.segmented-switch > .c-thumb {
+    @apply hidden;
 }
 /* basis-auto, not flex-1's 0: a zero basis sizes the segments below their own labels, and the
    longer one then wraps to two lines. */
@@ -24,4 +28,43 @@
 body.hoverable .segmented-switch > .btn-segment:not(.on):hover,
 .touch-capable .segmented-switch > .btn-segment:not(.on):active {
     @apply bg-round;
+}
+.segmented-switch > .btn-segment > .c-dot {
+    @apply inline-block;
+    @apply w-2 h-2;
+    @apply ml-1;
+    @apply rounded-full;
+    @apply bg-danger;
+}
+/* Pill variant: a rounded-full track whose active segment is marked by a brand-coloured thumb that
+   slides between segments. min-w-0 on the segments keeps the columns equal regardless of label
+   length, so the thumb aligns identically on either side and the gap stays constant. 0.25rem gap. */
+.segmented-switch.pill {
+    @apply gap-x-1;
+    @apply rounded-full;
+}
+.segmented-switch.pill > .c-thumb {
+    @apply block;
+    @apply absolute z-0 top-1 bottom-1 left-1;
+    @apply rounded-full;
+    @apply bg-primary;
+    @apply shadow-sm;
+    width: calc((100% - 0.5rem - (var(--seg-count, 2) - 1) * 0.25rem) / var(--seg-count, 2));
+    transform: translateX(calc(var(--seg-index, 0) * (100% + 0.25rem)));
+    transition: transform 0.2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    .segmented-switch.pill > .c-thumb {
+        transition: none;
+    }
+}
+.segmented-switch.pill > .btn-segment {
+    @apply relative z-10;
+    @apply basis-0;
+    @apply min-w-0;
+    @apply rounded-full;
+}
+.segmented-switch.pill > .btn-segment.on {
+    @apply bg-transparent;
+    @apply text-white;
 }
