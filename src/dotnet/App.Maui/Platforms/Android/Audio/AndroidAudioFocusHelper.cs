@@ -204,11 +204,17 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     }
 
     public AudioOutputKind? GetExternalOutputKind()
+        => GetExternalOutput()?.Kind;
+
+    public AudioOutputRoute? GetExternalOutput(string routeId = "")
     {
         try {
             foreach (var output in _audioManager.GetDevices(GetDevicesTargets.Outputs) ?? [])
-                if (GetExternalKind(output.Type) is { } externalKind)
-                    return externalKind;
+                if (GetExternalKind(output.Type) is { } externalKind) {
+                    // A wired device's product name is the phone's own model, so only a Bluetooth one names it.
+                    var name = externalKind == AudioOutputKind.Bluetooth ? output.ProductName ?? "" : "";
+                    return new AudioOutputRoute(routeId, externalKind, name);
+                }
 
             return null;
         }
