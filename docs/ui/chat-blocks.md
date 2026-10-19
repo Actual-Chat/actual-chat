@@ -99,8 +99,8 @@ fold state, returning a `LiveBlock` (`IsOpen` is `EndLid == long.MaxValue`) or `
 | Result | Meaning | Lifetime |
 | --- | --- | --- |
 | open `LiveBlock` | A started session still exists, whether the viewer is joined or has left. | Until the session closes. |
-| closed `LiveBlock` with `MaterializedId` | An attended session closed with a summary. | Until dismissed, another chat is selected, or the session restarts. |
-| closed `LiveBlock` without `MaterializedId` (`IsDissolving`) | An attended session closed without a persisted replacement. | The 300 ms dissolve interval. |
+| closed `LiveBlock` with `MaterializedId` | An attended session closed with a summary, or an attended call: a call is saved as a conversation even without one. | Until dismissed, another chat is selected, or the session restarts. |
+| closed `LiveBlock` without `MaterializedId` (`IsDissolving`) | An attended session that isn't a call closed without a persisted replacement. | The 300 ms dissolve interval. |
 | `null` | No started session or retained block for this viewer. | Until a block becomes available. |
 
 Open/closed describe session lifetime; expanded/collapsed describe presentation. `HasAttended` is true when the viewer is joined now or
@@ -127,7 +127,9 @@ and fold advances do not also trigger an explicit invalidation.
 
 ## Unsummarized close and dissolve
 
-An attended session that closes without a summary has no persisted replacement conversation.
+An attended session that closes without a summary has no persisted replacement conversation, unless
+it is a call: a call always leaves its conversation, so its block is retained like a summarized one.
+Dissolved instead, its chrome would collapse away and the call's card would then grow back in its place.
 `LiveBlockUI` retains a `Conversation` descriptor in its private template before closure,
 bounded to that snapshot's chat end. The dissolving `LiveBlock` exposes this descriptor until its
 timer expires. The record is released from the template when the dissolve finishes.

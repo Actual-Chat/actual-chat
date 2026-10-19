@@ -289,6 +289,48 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
         header.FindAll(".c-lc-join").Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task AnEndedCallsBlockShouldStayAsItsConversationRatherThanDissolve()
+    {
+        // A call is saved as a conversation even when nothing summarized it. Dissolved, its block collapsed
+        // its chrome away and the call's card then grew back in the same place - the list jumped both times.
+
+        // arrange
+        var (chatId, bobAuthor, aliceAuthor) = await NewPeerChat();
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.StartCall(
+            chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, CancellationToken.None);
+        await liveBackend.AcceptCall(chatId, aliceAuthor.Id, CancellationToken.None);
+        var connected = await liveBackend.GetState(chatId, CancellationToken.None);
+        var liveConversation = connected!.OpenConversation!;
+        liveConversation.HasSummary.Should().BeFalse();
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var liveBlockUI = Tester.ScopedAppServices.GetRequiredService<LiveBlockUI>();
+        chatUI.SelectChatOnNavigation(chatId);
+        await TestWait.When(async ct => {
+            var block = await liveBlockUI.GetBlock(chatId, ct);
+            block.Should().Match<LiveBlock>(b => b.IsOpen && b.HasAttended);
+        });
+
+        // act
+        await liveBackend.SetParticipation(
+            chatId, aliceAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
+        await liveBackend.SetParticipation(
+            chatId, bobAuthor.Id, ParticipationKind.Record, false, CancellationToken.None);
+
+        // assert
+        await TestWait.When(async ct => {
+            var block = await liveBlockUI.GetBlock(chatId, ct);
+            block.Should().NotBeNull("an ended call's block stays until it is dismissed");
+            block!.IsOpen.Should().BeFalse();
+            block.IsDissolving.Should().BeFalse("the call's conversation is what the block turns into");
+            block.MaterializedId.Should().Be(liveConversation.MaterializedId);
+        });
+        var messages = await GetMessages(chatId);
+        messages.OfType<ConversationMessage>().Count(m => m.Conversation is { IsCall: true })
+            .Should().Be(1, "the block is the call's one card");
+    }
+
     // Private methods
 
     private async Task<(ChatId ChatId, AuthorFull Bob, AuthorFull Alice)> NewPeerChat()
