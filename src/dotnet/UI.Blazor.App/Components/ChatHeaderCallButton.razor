@@ -3,7 +3,7 @@
     if (State.IsInitial(out var m))
         return;
     // Hidden while a live conversation is active — the ChatActivityPanel owns that state.
-    if (!m.EnableIncompleteUI || m.IsBusy)
+    if (m.IsBusy)
         return;
 }
 
@@ -25,10 +25,6 @@
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
-        var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
-        if (!enableIncompleteUI)
-            return new Model(false, false, false, false);
-
         var chatId = Chat.Id;
         var activity = await ChatActivityUI.GetCallActivity(chatId, cancellationToken).ConfigureAwait(false);
         var canCall = true;
@@ -41,7 +37,7 @@
         var isBusy = activity.IsActive || activity.IsDialing;
         // One call at a time: a call held in another chat disables the button here.
         var canStartCall = await CallUI.CanStartCall(cancellationToken).ConfigureAwait(false);
-        return new Model(true, isBusy, canCall, !isBusy && !canStartCall);
+        return new Model(isBusy, canCall, !isBusy && !canStartCall);
     }
 
     private Task OnClick()
@@ -56,5 +52,5 @@
 
     // Nested types
 
-    public sealed record Model(bool EnableIncompleteUI, bool IsBusy, bool CanCall, bool IsInAnotherCall);
+    public sealed record Model(bool IsBusy, bool CanCall, bool IsInAnotherCall);
 }
