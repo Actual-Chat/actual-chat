@@ -180,7 +180,10 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         Task whenCancelled;
         CancellationTokenSource? droppedTokenSource = null;
+        bool isDialing;
         lock (_lock) {
+            isDialing = _activeCall.Value is { Role: CallRole.Caller, Phase: CallPhase.Dialing } dialingCall
+                && dialingCall.ChatId == chatId;
             // Read before the release: the server must cancel the call this client held, not whichever
             // one the chat is in by the time the request lands.
             var callId = GetCallIdNonComputed(chatId);
@@ -199,6 +202,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             whenCancelled = _whenCancelled = Cancel(callId, placedCall?.WhenPlaced, droppedTokenSource is not null);
         }
         droppedTokenSource.CancelSilently();
+        // A dialing call records nothing yet, so the tone a stopped recording plays on a hang-up is played here.
+        if (isDialing)
+            _ = TuneUI.Play(Tune.EndRecording);
         SystemCallUI.OnOutgoingCallCancelled(chatId);
         return whenCancelled;
 
