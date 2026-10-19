@@ -1074,7 +1074,7 @@ body[data-has-call-screen-chat-visible] .page-with-header-and-footer > .list-vie
    overrides, so the collapse animates rather than snapping. */
 body[data-has-call-screen-column] .page-with-header-and-footer > .side-nav.side-nav-left,
 body[data-has-call-screen-column] .page-with-header-and-footer > .side-nav.side-nav-right {
-    @apply w-0;
+    @apply w-0 mr-0;
     @apply overflow-hidden;
     transition: width 200ms ease-out;
 }
