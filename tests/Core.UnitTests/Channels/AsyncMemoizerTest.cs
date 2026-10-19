@@ -1048,10 +1048,7 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         await memoizer.WhenBuffered(5);
 
         var replayChannel = ChannelExt.New<int>(capacity: null, singleReader: true);
-        var copyTask = Task.Run(() => memoizer.AddReplayTarget(replayChannel.Writer, 0));
-
-        // Give AddReplayTarget a moment to register / reach its first await.
-        await Task.Delay(100);
+        var copyTask = memoizer.AddReplayTarget(replayChannel.Writer, 0);
 
         source.Writer.TryWrite(6);
         source.Writer.TryWrite(7);
