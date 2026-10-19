@@ -2185,7 +2185,8 @@ export class VideoRecorder {
         //   `requestVideoFrameCallback`. On each callback we build a
         //   `VideoFrame` from the element and ship it to the worker via
         //   `pushFrame`. Used when MSTP is unavailable (older Safari /
-        //   Firefox) or its construction fails.
+        //   Firefox / WebKitGTK) or its construction fails. WebKitGTK gets a
+        //   timer pump shipping canvas copies of the element instead.
         //
         // Historical note: the rVFC pump used to be the production path
         // because Chromium 147 starved MSTP-readable consumers after a
@@ -2255,8 +2256,13 @@ export class VideoRecorder {
         if (lifecycleEpoch !== this.lifecycleEpoch || this.worker !== worker)
             return;
 
+        const framerate = this.requireFramerate('startWorker');
         if (!useMstp) {
-            infoLog?.log('startWorker: MSTP unavailable (main + worker), using rVFC pump');
+            // WebKitGTK: rVFC never fires for a camera <video>, and the encoder fails on every
+            // VideoFrame built from the element after the first one - but takes canvas copies.
+            const mustCopyViaCanvas = DeviceInfo.isWebKit && DeviceInfo.isLinux;
+            infoLog?.log('startWorker: MSTP unavailable (main + worker), using '
+                + (mustCopyViaCanvas ? 'canvas-copy timer pump' : 'rVFC pump'));
             // FALLBACK: rVFC pump from a hidden <video>.
             const sourceVideo = document.createElement('video');
             sourceVideo.muted = true;
@@ -2281,14 +2287,14 @@ export class VideoRecorder {
             this.workerSourceCancelled = false;
             const workerForPump = this.worker;
             let pumpFrameCount = 0;
-            let lastRvfcTickAtMs = performance.now();
+            let lastPumpTickAtMs = performance.now();
 
             // False means the worker rejected the frame, which cancels the
             // source for good; a failed VideoFrame ctor is only transient.
-            const pushFrame = (mediaTime: number): boolean => {
+            const pushFrame = (source: HTMLVideoElement | OffscreenCanvas, timestampUs: number): boolean => {
                 let frame: VideoFrame;
                 try {
-                    frame = new VideoFrame(sourceVideo, { timestamp: Math.round(mediaTime * 1_000_000) });
+                    frame = new VideoFrame(source, { timestamp: Math.round(timestampUs) });
                 } catch (e) {
                     warnLog?.log('pushFrame pump: VideoFrame ctor failed', e);
                     return true;
@@ -2311,18 +2317,47 @@ export class VideoRecorder {
                 return true;
             };
 
-            const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
-                if (this.workerSourceCancelled)
-                    return;
+            if (mustCopyViaCanvas) {
+                const copyCanvas = new OffscreenCanvas(1, 1);
+                const copyContext = copyCanvas.getContext('2d', { alpha: false })!;
+                let dueAtMs = performance.now();
+                // Teardown drops workerSourceVideo, and a restart sets its own one, so a timer
+                // left over from an earlier start stops here instead of pumping a dead element.
+                const onTimer = (): void => {
+                    if (this.workerSourceCancelled || this.workerSourceVideo !== sourceVideo)
+                        return;
 
-                void now;
-                lastRvfcTickAtMs = performance.now();
-                if (!pushFrame(metadata.mediaTime))
-                    return;
+                    const { videoWidth: width, videoHeight: height } = sourceVideo;
+                    if (width > 0 && height > 0) {
+                        if (copyCanvas.width !== width || copyCanvas.height !== height) {
+                            copyCanvas.width = width;
+                            copyCanvas.height = height;
+                        }
+                        copyContext.drawImage(sourceVideo, 0, 0);
+                        lastPumpTickAtMs = performance.now();
+                        if (!pushFrame(copyCanvas, lastPumpTickAtMs * 1000))
+                            return;
+                    }
 
+                    const now = performance.now();
+                    dueAtMs = Math.max(now, dueAtMs + 1000 / (this.captureFpsApplied ?? framerate));
+                    setTimeout(onTimer, dueAtMs - now);
+                };
+                onTimer();
+            } else {
+                const onFrame = (now: DOMHighResTimeStamp, metadata: VideoFrameCallbackMetadata): void => {
+                    if (this.workerSourceCancelled)
+                        return;
+
+                    void now;
+                    lastPumpTickAtMs = performance.now();
+                    if (!pushFrame(sourceVideo, metadata.mediaTime * 1_000_000))
+                        return;
+
+                    sourceVideo.requestVideoFrameCallback(onFrame);
+                };
                 sourceVideo.requestVideoFrameCallback(onFrame);
-            };
-            sourceVideo.requestVideoFrameCallback(onFrame);
+            }
 
             // Capture watchdog: fires every 2s and reports source state only
             // while nothing is arriving from the pump. Replaces any prior
@@ -2341,7 +2376,7 @@ export class VideoRecorder {
                 const t = this.inputTrack;
                 warnLog?.log(
                     `capture watchdog: pump=#${pumpFrameCount} ` +
-                    `sinceRvfcTick=${(performance.now() - lastRvfcTickAtMs).toFixed(0)}ms ` +
+                    `sincePumpTick=${(performance.now() - lastPumpTickAtMs).toFixed(0)}ms ` +
                     `srcVid(rs=${sourceVideo.readyState} ct=${sourceVideo.currentTime.toFixed(2)} ` +
                     `paused=${sourceVideo.paused} ended=${sourceVideo.ended}) ` +
                     `track(rs=${t?.readyState} muted=${t?.muted} enabled=${t?.enabled})`);
@@ -2369,7 +2404,6 @@ export class VideoRecorder {
             ?? ladder[ladder.length - 1];
         const normalizeSize = { width: ceilingTier.width, height: ceilingTier.height };
 
-        const framerate = this.requireFramerate('startWorker');
         const isFrontCamera = this.inputTrack.getSettings().facingMode === 'user';
         const config: WireSafeRecorderConfig = {
             chatId: this.chatId,
