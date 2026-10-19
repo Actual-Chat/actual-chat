@@ -38,9 +38,13 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             // A join followed by an immediate leave/close must not outrun the governor, so the descriptor
             // an attended block retains is built here too, idempotently.
             mustBuildTemplate = hasAttended
-                && (chatState.Template is not { HasAttended: true } known || known.Conversation.Id != liveConversation!.Id);
+                && (chatState.Template is not { HasAttended: true } known
+                    || known.Conversation.Id != liveConversation!.Id);
             if (liveConversation == null
-                && chatState is { IsDismissed: false, Template: { HasAttended: true, HadSummary: true } closingTemplate })
+                && chatState is {
+                    IsDismissed: false,
+                    Template: { HasAttended: true, LeavesConversation: true } closingTemplate,
+                })
                 closedId = closingTemplate.Conversation.Id;
         }
         // The server knows where the closed conversation really ends; the summary's end is what the
@@ -139,7 +143,9 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             foreach (var chatState in _chatStates.Values) {
                 // IsDismissed gates the intercept to a still-visible block: once dismissed, later
                 // toggles on the materialized conversation must reach the ordinary expand/collapse path.
-                if (!chatState.IsClosed || chatState.IsDismissed || chatState.Template is not { HadSummary: true } t)
+                if (!chatState.IsClosed || chatState.IsDismissed)
+                    continue;
+                if (chatState.Template is not { LeavesConversation: true } t)
                     continue;
                 if (t.Conversation.Id != conversationId && t.Conversation.MaterializedId != conversationId)
                     continue;
@@ -169,8 +175,11 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         if (chatState.IsDismissed || chatState.Template is not { HasAttended: true } t)
             return null;
 
-        return t.HadSummary
-            ? new LiveBlock(t.Conversation.Id, true, foldEndLid, closed?.EndLid ?? t.Conversation.SummaryEndLid, t.Conversation.MaterializedId)
+        // An unsummarized call has no summary end to fall back on: the chat end it was last seen at stands in
+        var knownEndLid = t.Conversation.HasSummary ? t.Conversation.SummaryEndLid : t.ChatEndLid;
+        return t.LeavesConversation
+            ? new LiveBlock(
+                t.Conversation.Id, true, foldEndLid, closed?.EndLid ?? knownEndLid, t.Conversation.MaterializedId)
             : chatState.DissolveDone
                 ? null
                 : new LiveBlock(t.Conversation.Id, true, foldEndLid, t.ChatEndLid, null, t.DissolvingConversation);
@@ -301,11 +310,12 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         Range<long> chatIdRange;
         using (Computed.BeginIsolation())
             chatIdRange = await Chats.GetIdRange(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var conversation = liveConversation.HasSummary ? null : liveConversation.ToConversation();
+        var leavesConversation = LeavesConversationOf(liveConversation);
+        var conversation = leavesConversation ? null : liveConversation.ToConversation();
         var v = liveConversation.StartLid;
         var renderId = ConversationId.New(chatId, v);
         // A close may reach the conversation read before its snapshot; keep the descriptor already shown.
-        if (conversation == null && !liveConversation.HasSummary)
+        if (conversation == null && !leavesConversation)
             lock (Lock)
                 if (_chatStates.TryGetValue(chatId, out var state) && state.Template?.Conversation.Id == renderId)
                     conversation = state.Template.DissolvingConversation;
@@ -391,7 +401,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
 
             // DeriveBlock exposes dissolve immediately; the governor owns its expiry.
             var isTierOneClose = liveConversation == null
-                && chatState is { IsDismissed: false, Template: { HasAttended: true, HadSummary: false } };
+                && chatState is { IsDismissed: false, Template: { HasAttended: true, LeavesConversation: false } };
             if (isTierOneClose) {
                 if (chatState.DissolveEndsAt == default)
                     chatState.DissolveEndsAt = Clocks.ServerClock.Now + DissolveDuration;
@@ -490,6 +500,10 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
             ? rawStreamingFloorLid
             : long.MaxValue;
 
+    private static bool LeavesConversationOf(LiveConversation liveConversation)
+        // A call is saved as a conversation even when nothing summarized it, so its block must not dissolve
+        => liveConversation.HasSummary || liveConversation.IsCall;
+
     // Nested types
 
     private sealed class ChatFoldState
@@ -512,7 +526,7 @@ public class LiveBlockUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), IComputeSe
         bool HasAttended,
         Conversation? DissolvingConversation)
     {
-        public bool HadSummary => Conversation.HasSummary;
+        public bool LeavesConversation => LeavesConversationOf(Conversation);
     }
 
     protected sealed record GovernorInputs(

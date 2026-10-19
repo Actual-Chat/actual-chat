@@ -1568,7 +1568,7 @@ public sealed class LiveConversationDisplayTest(ChatAppHostFixture fixture, ITes
         await chatAudioUI.SetListeningState(chat.Id, true);
         InvalidateAmIInLiveConversation(chatAudioUI, chat.Id);
         chatUI.SelectChatOnNavigation(chat.Id);
-        // Let the governor latch the template (HadSummary == false).
+        // Let the governor latch the template (LeavesConversation == false).
         await TestWait.When(async ct => {
             var s = (await liveBlockUI.GetBlock(chat.Id, ct)).Require();
             s.Should().Match<LiveBlock>(b => b.IsOpen);
