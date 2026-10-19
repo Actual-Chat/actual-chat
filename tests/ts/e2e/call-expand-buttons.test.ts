@@ -310,8 +310,8 @@ describe('expand button during a call with video, wide screen', () => {
         await waitForInlineVideo(caller, OWN_TILE);
         await expandVideoPanel(caller);
         await expect.poll(() => isVideoCoveringScreen(caller), { timeout: 20_000 }).toBe(true);
-        // The screen's own chat editor takes the focus, and Escape with it
-        const editor = caller.locator(`${CALL_SCREEN} .editor-content[contenteditable="true"]`).first();
+        // The editor of the chat beside the docked video takes the focus, and Escape with it
+        const editor = caller.locator('#message-input .editor-content[contenteditable="true"]').first();
         await editor.focus();
         await caller.keyboard.type('draft', { delay: 20 });
 
