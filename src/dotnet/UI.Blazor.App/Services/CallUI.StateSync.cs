@@ -1,4 +1,5 @@
 using ActualChat.Live;
+using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -140,8 +141,10 @@ public partial class CallUI
         }
         if (ringingChatId is { } chatId)
             _ = SendRingAck(chatId, RingAck.Ringing);
-        if (unansweredChatId is { } unanswered)
+        if (unansweredChatId is { } unanswered) {
+            _ = TuneUI.Play(Tune.EndRecording);
             SystemCallUI.OnOutgoingCallStatusChanged(unanswered, CallerStatus.NoAnswer);
+        }
         if (joinedChatId is { } joined) {
             // Reported before the join: it is what flips the platform call UI to connected, and the
             // join can sit on a permission prompt for as long as it likes.
