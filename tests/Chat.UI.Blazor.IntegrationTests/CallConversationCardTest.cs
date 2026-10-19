@@ -3,6 +3,8 @@ using ActualChat.Streaming;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
+using Bunit;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace ActualChat.Chat.UI.Blazor.IntegrationTests;
 
@@ -240,6 +242,51 @@ public sealed class CallConversationCardTest(ChatAppHostFixture fixture, ITestOu
                 "the span must be talk time from connect, not ring time from StartedAt");
         (conversation.EndsAt >= beforeHangup).Should().BeTrue(
             "EndsAt must be the close moment, not stuck at StartsAt or a LastSummaryAt a call never writes");
+    }
+
+    [Fact]
+    public async Task APeerCallsLiveHeaderShouldNotOfferJoinAfterHangUp()
+    {
+        // The server keeps a peer call's session for its leave grace after a hang-up, and Join there
+        // offered to re-enter a call that is already ending.
+
+        // arrange
+        var (chatId, bobAuthor, aliceAuthor) = await NewPeerChat();
+        var liveBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        await liveBackend.StartCall(
+            chatId, bobAuthor.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, CancellationToken.None);
+        await liveBackend.AcceptCall(chatId, aliceAuthor.Id, CancellationToken.None);
+        // Both parties streaming, or the connect grace ends the call before the header is checked
+        await liveBackend.OnStreamRegistered(chatId, bobAuthor.Id, null, true, true, CancellationToken.None);
+        await liveBackend.OnStreamRegistered(chatId, aliceAuthor.Id, null, true, true, CancellationToken.None);
+        var connected = await liveBackend.GetState(chatId, CancellationToken.None);
+        var conversation = connected!.OpenConversation!.ToConversation();
+        var chat = await Tester.Chats.Get(Tester.Session, chatId, CancellationToken.None);
+        var hub = Tester.ScopedAppServices.GetRequiredService<AppUIHub>();
+        Tester.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var header = Tester.Render<LiveConversationHeaderView>(p => p
+            .Add(x => x.Header, new LiveConversationHeader(conversation))
+            .Add(x => x.ChatContext, new ChatContext(hub, chat!)));
+        var headerState = ((IStatefulComponent<LiveConversationHeaderState>)header.Instance).State;
+        // The caller's client joins an answered call on its own
+        await TestWait.When(async ct => {
+            var isJoined = await hub.LiveSessionUI.AmIInLiveConversation(chatId, ct);
+            isJoined.Should().BeTrue();
+        });
+
+        // act
+        await hub.CallUI.HangUp(chatId);
+
+        // assert - the placeholder state reads as joined, so a false here is the computed one
+        await TestWait.When(async ct => {
+            var state = await headerState.Use(ct);
+            state.IsJoined.Should().BeFalse();
+        });
+        // The state runs ahead of the markup, so the render this check reads is forced
+        header.Render();
+        headerState.Value.IsDissolving.Should().BeFalse(
+            "the session must still be in its leave grace, where only the fix keeps Join away");
+        header.FindAll(".c-lc-join").Should().BeEmpty();
     }
 
     // Private methods

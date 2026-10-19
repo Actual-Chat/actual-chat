@@ -24,7 +24,7 @@
     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
     <span class="c-lc-name">@title</span>
     @* Leaving is just "stop listening", so re-joining stays one tap away. *@
-    @if (!s.IsJoined && !s.IsDissolving) {
+    @if (s.CanJoin) {
         <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">@L.Call_Join</button>
     }
     @if (s.IsTranslatedVoiceAvailable) {
@@ -86,6 +86,9 @@
         // that recompute this header for sessions it doesn't show
         var isJoined = isLive
             && await LiveSessionUI.AmIInLiveConversation(chatId, cancellationToken).ConfigureAwait(false);
+        // A peer call is over once either side leaves, though its session outlives the hang-up by the
+        // server's leave grace: there is nothing to rejoin, and a reload or a dip rejoins on its own.
+        var canJoin = isLive && !isJoined && !(live!.IsCall && chatId.Kind == ChatKind.Peer);
         var isVoiceOnly = isLive
             && !await LiveSessionUI.HasTranscript(chatId, cancellationToken).ConfigureAwait(false);
         var participantsText = isLive || isDissolving
@@ -104,7 +107,7 @@
         var isTranslatedVoiceOn = isTranslatedVoiceAvailable
             && await TranslationUI.GetDubLanguage(chatId, cancellationToken).ConfigureAwait(false) != null;
         return new LiveConversationHeaderState(
-            translated.Title.Text, participantsText, isJoined,
+            translated.Title.Text, participantsText, isJoined, canJoin,
             block?.HasAttended ?? false, isDissolving, canExpand,
             isAnyoneTalking, isTranslatedVoiceAvailable, isTranslatedVoiceOn);
     }
