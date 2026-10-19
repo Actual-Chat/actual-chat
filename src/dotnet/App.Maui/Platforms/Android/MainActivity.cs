@@ -74,6 +74,7 @@ public partial class MainActivity : MauiAppCompatActivity
     private Action<bool>? _onReceivePermissionRequestResult;
     private Action<Uri[]>? _onReceivePickVisualMedialResult;
     private AView? _callCover;
+    private CallId? _callCoverCallId;
 
     private ILogger Log { get; } = StaticLog.For<MainActivity>();
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.AndroidIncomingCalls);
@@ -199,19 +200,10 @@ public partial class MainActivity : MauiAppCompatActivity
         SetTurnScreenOn(true);
     }
 
-    // Reverts any over-lock-screen behavior once the ring ends, so the app doesn't linger over the
-    // keyguard on later locks (e.g. after answering from the notification while locked).
-    public void DisableShowWhenLocked()
-    {
-        SetShowWhenLocked(false);
-        SetTurnScreenOn(false);
-        HideCallCover();
-    }
-
     // Opaque cover placed over the WebView the instant the app is brought over the keyguard for a
     // call, so the app's own content never flashes on the lock screen before the (Blazor) call
     // screen has rendered. HideCallCover reveals the already-drawn call screen underneath.
-    public void ShowCallCover()
+    public void ShowCallCover(CallId? callId)
     {
         DebugLog?.LogInformation("CALL_TRACE: ShowCallCover (alreadyShown={AlreadyShown})", _callCover != null);
         if (_callCover != null)
@@ -227,14 +219,27 @@ public partial class MainActivity : MauiAppCompatActivity
         decor.AddView(cover, new ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.MatchParent));
         _callCover = cover;
+        _callCoverCallId = callId;
+        // A cover still up past the ring's lifetime is one whose call screen never came: the ring ended
+        // before Blazor could draw it, and nothing else would ever take the cover down.
+        cover.PostDelayed(() => {
+            if (_callCover != cover)
+                return;
+
+            Log.LogWarning("The call cover outlived its ring, taking it down");
+            DisableShowWhenLocked();
+        }, (long)Constants.Call.RingTimeout.TotalMilliseconds);
     }
 
-    public void HideCallCover()
+    public void OnCallDismissed(CallId callId)
     {
-        DebugLog?.LogInformation("CALL_TRACE: HideCallCover (hadCover={HadCover})", _callCover != null);
-        if (_callCover?.Parent is ViewGroup parent)
-            parent.RemoveView(_callCover);
-        _callCover = null;
+        // The call screen never shows a ring that ended before it was drawn, so the cover
+        // put up for that ring would stay over the app.
+        if (_callCover is null || _callCoverCallId != callId)
+            return;
+
+        DebugLog?.LogInformation("CALL_TRACE: the covered call #{CallId} is dismissed", callId);
+        DisableShowWhenLocked();
     }
 
     // On accept: if the screen is locked, ask the user to unlock so they land in the app instead
@@ -249,6 +254,24 @@ public partial class MainActivity : MauiAppCompatActivity
             return;
         }
         keyguardManager.RequestDismissKeyguard(this, new CallKeyguardDismissCallback(this, onResult));
+    }
+
+    public void DisableShowWhenLocked()
+    {
+        // Reverts any over-lock-screen behavior once the ring ends, so the app doesn't linger over the
+        // keyguard on later locks (e.g. after answering from the notification while locked).
+        SetShowWhenLocked(false);
+        SetTurnScreenOn(false);
+        HideCallCover();
+    }
+
+    public void HideCallCover()
+    {
+        DebugLog?.LogInformation("CALL_TRACE: HideCallCover (hadCover={HadCover})", _callCover != null);
+        if (_callCover?.Parent is ViewGroup parent)
+            parent.RemoveView(_callCover);
+        _callCover = null;
+        _callCoverCallId = null;
     }
 
     public override void OnTrimMemory(TrimMemory level)

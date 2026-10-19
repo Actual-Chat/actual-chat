@@ -112,21 +112,12 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
         var data = new NotificationData(message.MessageId ?? "", dataRaw);
 
         if (data.DismissedTags.Count > 0) {
-            // Read before cancelling: afterwards nothing tells which call notification was on screen.
-            string[] shownCallTags;
-            try {
-                shownCallTags = IncomingCallNotifications.ListActiveCallTags();
-            }
-            catch (Exception e) {
-                Log.LogWarning(e, "Couldn't list the shown call notifications; dismissing without stopping the ring");
-                shownCallTags = [];
-            }
             var notificationManager = NotificationManagerCompat.From(this)!;
-            foreach (var tag in data.DismissedTags)
+            foreach (var tag in data.DismissedTags.Where(t => !NotificationExt.IsCallTag(t)))
                 notificationManager.Cancel(tag, 0);
             ClearAttentionRequests(data.DismissedTags);
+            IncomingCallNotifications.EndDismissedRings(data.DismissedTags);
             ClearForegroundCallRings(data.DismissedTags);
-            StopRingForDismissedCalls(data.DismissedTags, shownCallTags);
 
             return;
         }
@@ -253,16 +244,6 @@ public sealed class FirebaseMessagingService : Firebase.Messaging.FirebaseMessag
                 c => c.GetRequiredService<CallScreensUI>().OnCallDismissed(callId.ChatId, callId),
                 "CallScreensUI.OnCallDismissed");
         }
-    }
-
-    private static void StopRingForDismissedCalls(IReadOnlyList<string> dismissedTags, string[] shownCallTags)
-    {
-        // The ringtone that started with a shown call notification goes with it - and only with it: a
-        // dismissal for an earlier call to the chat names another tag. A ring Blazor drives is stopped by
-        // CallScreensUI too; a double stop is harmless.
-        var isShownCallDismissed = dismissedTags.Any(tag => shownCallTags.Contains(tag));
-        if (isShownCallDismissed)
-            IncomingCallRinger.Stop();
     }
 
     private static void HandleIncomingCall(NotificationData data, long sentTime)
