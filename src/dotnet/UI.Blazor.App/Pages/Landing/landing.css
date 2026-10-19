@@ -1655,7 +1655,7 @@ body.narrow .premium-features-modal .c-block-note {
 /* Cookie settings */
 .cookie-settings {
     @apply fixed z-button;
-    @apply bg-toast-body;
+    @apply bg-modal;
     @apply text-white;
     bottom: calc(1rem + var(--safe-area-bottom));
     left: 50%;
@@ -1670,26 +1670,18 @@ body.narrow .premium-features-modal .c-block-note {
 .cookie-settings .c-learn:hover {
     @apply underline;
 }
-.cookie-settings .btn.c-btn {
-    @apply min-w-0 min-h-0 h-10;
-    @apply px-5;
-    @apply rounded-full;
-    @apply text-body-500 text-white;
-}
-.cookie-settings .btn.c-btn-outline {
-    @apply border border-pal-white-20;
-    @apply bg-transparent;
-}
-.cookie-settings .btn.c-btn-accent {
-    @apply border-none;
-    @apply bg-gradient-to-r from-pal-magenta-40 to-primary;
+/* Default-size buttons wrap to two lines by design; the cookie actions stay on one line. */
+.cookie-settings .c-pill-buttons .btn > .btn-content,
+.cookie-settings .c-foot-buttons .btn > .btn-content {
+    @apply whitespace-nowrap;
+    @apply line-clamp-none;
 }
 
 /* Collapsed pill */
 .cookie-settings.is-collapsed {
     @apply flex-x items-center gap-x-4;
     @apply py-2 pl-3 pr-2;
-    @apply rounded-full;
+    @apply rounded-2xl;
 }
 .cookie-settings.is-collapsed .c-pill-main {
     @apply flex-x items-center gap-x-3;
@@ -1718,10 +1710,10 @@ body.narrow .cookie-settings.is-collapsed .c-text {
     @apply flex-1;
 }
 body.narrow .cookie-settings.is-collapsed .c-pill-buttons {
-    @apply gap-x-3;
+    @apply flex-y gap-y-2;
 }
-body.narrow .cookie-settings.is-collapsed .btn.c-btn {
-    @apply flex-1;
+body.narrow .cookie-settings.is-collapsed .c-pill-buttons .btn {
+    @apply w-full;
 }
 
 /* Expanded settings panel */
@@ -1730,9 +1722,6 @@ body.narrow .cookie-settings.is-collapsed .btn.c-btn {
     @apply w-full max-w-150;
     @apply p-5;
     @apply rounded-2xl;
-}
-.cookie-settings .c-handle {
-    @apply hidden;
 }
 .cookie-settings .c-head {
     @apply flex-x items-center gap-x-2;
@@ -1749,7 +1738,7 @@ body.narrow .cookie-settings.is-collapsed .btn.c-btn {
     @apply text-white;
 }
 .cookie-settings .c-subtitle {
-    @apply text-body text-05;
+    @apply text-body text-03;
 }
 .cookie-settings .c-rows {
     @apply flex-y;
@@ -1768,13 +1757,13 @@ body.narrow .cookie-settings.is-collapsed .btn.c-btn {
     @apply text-body-500 text-white;
 }
 .cookie-settings .c-row-caption {
-    @apply text-caption text-05;
+    @apply text-caption text-03;
 }
 .cookie-settings .c-row-control {
     @apply flex-x items-center gap-x-3;
 }
 .cookie-settings .c-always {
-    @apply text-caption text-05;
+    @apply text-caption text-03;
 }
 .cookie-settings .c-foot {
     @apply flex-x items-center gap-x-4;
@@ -1796,21 +1785,13 @@ body.narrow .cookie-settings.is-collapsed .btn.c-btn {
 body.narrow .cookie-settings.is-expanded {
     @apply max-w-none;
     @apply pt-3;
-    @apply rounded-t-2xl;
+    @apply rounded-t-2xl rounded-b-none;
     left: 0;
     right: 0;
     bottom: 0;
     padding-bottom: calc(1.25rem + var(--safe-area-bottom));
     transform: none;
 }
-body.narrow .cookie-settings .c-handle {
-    @apply block;
-    @apply w-9 h-1;
-    @apply mx-auto mb-1;
-    @apply rounded-full;
-    @apply bg-pal-white-20;
-}
-body.narrow .cookie-settings .c-collapse,
 body.narrow .cookie-settings .c-subtitle,
 body.narrow .cookie-settings .c-always {
     @apply hidden;
@@ -1819,10 +1800,10 @@ body.narrow .cookie-settings .c-foot {
     @apply flex-y items-stretch gap-y-3;
 }
 body.narrow .cookie-settings .c-foot-buttons {
-    @apply order-first;
+    @apply flex-y gap-y-2;
 }
-body.narrow .cookie-settings .c-foot-buttons .btn.c-btn {
-    @apply flex-1;
+body.narrow .cookie-settings .c-foot-buttons .btn {
+    @apply w-full;
 }
 body.narrow .cookie-settings .c-link {
     @apply flex-none;
