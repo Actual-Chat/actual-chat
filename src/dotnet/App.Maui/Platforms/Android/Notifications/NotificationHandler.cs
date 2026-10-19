@@ -28,9 +28,12 @@ public static class NotificationHandler
             // keyguard eagerly behind a splash-colored cover. When the app is already running, don't
             // cover or show-over-lock yet — the call screen renders first (behind the keyguard, the
             // live WebView draws it) and RevealCallScreen brings it over the lock once it's drawn.
-            if (isColdStart) {
+            // A ring that ended before its intent got here has no screen to cover for: the cover would stay.
+            if (isColdStart && IncomingCallNotifications.IsRingHandled(intent))
+                DebugLog?.LogInformation("CALL_TRACE: the ring is already over — no cover");
+            else if (isColdStart) {
                 var activity = MainActivity.Current;
-                activity.ShowCallCover();
+                activity.ShowCallCover(IncomingCallNotifications.GetCallId(intent));
                 activity.EnableShowWhenLocked();
             }
             else

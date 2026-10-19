@@ -164,6 +164,43 @@ public static class IncomingCallNotifications
         }
     }
 
+    public static void EndDismissedRings(IReadOnlyList<string> dismissedTags)
+    {
+        // All of it natively, as Blazor may be seconds away on a cold start: the banner, the ringtone,
+        // a full-screen intent still on its way, and the cover already up for the ring.
+        var callTags = dismissedTags.Where(tag => NotificationExt.IsCallTag(tag)).ToList();
+        if (callTags.Count == 0)
+            return;
+
+        // Read before cancelling: afterwards nothing tells which call notification was on screen.
+        string[] shownCallTags;
+        try {
+            shownCallTags = ListActiveCallTags();
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "Couldn't list the shown call notifications; dismissing without stopping the ring");
+            shownCallTags = [];
+        }
+
+        var notificationManager = NotificationManagerCompat.From(Context)!;
+        foreach (var tag in callTags) {
+            notificationManager.Cancel(tag, 0);
+            if (NotificationExt.TryParseCallTag(tag) is not { } callId)
+                continue;
+
+            MarkRingHandled(callId.ChatId, callId);
+            BeginDispatchToMainThread(() => {
+                if (MainActivity.HasCurrent)
+                    MainActivity.Current.OnCallDismissed(callId);
+            });
+        }
+
+        // The ringtone that started with a shown call notification goes with it - and only with it: a
+        // dismissal for an earlier call to the chat names another tag. A double stop is harmless.
+        if (callTags.Any(tag => shownCallTags.Contains(tag)))
+            IncomingCallRinger.Stop();
+    }
+
     public static void MarkRingHandled(ChatId chatId, CallId? callId)
         // Call before dispatching the answer or the decline, not after: a full-screen intent
         // already waiting for the render has to find the ring spoken for by the time it runs.
@@ -211,7 +248,7 @@ public static class IncomingCallNotifications
             chatId, overLockScreen);
         _ = AppServicesAccessor.DispatchToBlazor(
             c => {
-                if (Volatile.Read(ref _handledRing) == (callId?.Value ?? chatId.Value)) {
+                if (IsRingHandled(chatId, callId)) {
                     DebugLog?.LogInformation(
                         "CALL_TRACE: dropping a stale OnRing #{ChatId} - the ring is already handled", chatId);
                     return;
@@ -221,6 +258,13 @@ public static class IncomingCallNotifications
             },
             "CallScreensUI.OnRing", whenRendered: true);
     }
+
+    public static bool IsRingHandled(Intent intent)
+        => ChatId.TryParse(intent.GetStringExtra(ChatIdExtraKey), allowNull: true) is { } chatId
+            && IsRingHandled(chatId, GetCallId(intent));
+
+    public static bool IsRingHandled(ChatId chatId, CallId? callId)
+        => Volatile.Read(ref _handledRing) == (callId?.Value ?? chatId.Value);
 
     public static string[] ListActiveCallTags()
     {
