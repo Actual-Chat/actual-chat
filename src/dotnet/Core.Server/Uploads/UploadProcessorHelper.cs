@@ -8,16 +8,20 @@ namespace ActualChat.Uploads;
 public static class UploadProcessorHelper
 {
     private const int TranscodeThreadCount = 2;
+    private const long MaxUnscaledLength = 70L * 1024 * 1024;
 
     private static readonly ILogger Log = StaticLog.For(typeof(UploadProcessorHelper));
     private static readonly Size2D FullHd = new(1920, 1080);
     // x264 takes every core it sees, so concurrent transcodes would starve the rest of the pod
     private static readonly SemaphoreSlim TranscodeLock = new(1, 1);
 
-    public static VideoConversion GetConversion(IMediaAnalysis mediaInfo)
+    public static VideoConversion GetConversion(IMediaAnalysis mediaInfo, long length)
     {
+        // The Apple apps only remux a clip of up to 70 MB (AppleVideoTranscoder.MaxRemuxSize),
+        // so it arrives at its original resolution and is kept at it
         var videoStream = mediaInfo.PrimaryVideoStream!;
-        if (ExceedsFullHd(GetEffectiveSize(videoStream)) || MustTranscode(videoStream))
+        var mustScaleDown = ExceedsFullHd(GetEffectiveSize(videoStream)) && length > MaxUnscaledLength;
+        if (mustScaleDown || MustTranscode(videoStream))
             return VideoConversion.Transcode;
 
         return IsMp4Container(mediaInfo.Format) ? VideoConversion.None : VideoConversion.Remux;

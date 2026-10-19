@@ -57,7 +57,7 @@ public sealed class LocalVideoUploadProcessor(ILogger<LocalVideoUploadProcessor>
             return new ProcessedFile(upload.AsBinaryFile(), null);
 
         var (size, duration, _) = UploadProcessorHelper.AnalyzeVideo(mediaInfo!);
-        var conversion = UploadProcessorHelper.GetConversion(mediaInfo!);
+        var conversion = UploadProcessorHelper.GetConversion(mediaInfo!, upload.Length);
 
         progress?.Report(10);
 
