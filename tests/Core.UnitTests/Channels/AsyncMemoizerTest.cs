@@ -1060,6 +1060,28 @@ public abstract class AsyncMemoizerTestBase(ITestOutputHelper @out) : TestBase(@
         items.Should().Equal(6, 7);
     }
 
+    [Fact]
+    public async Task ReplayShouldPinItsStartWhenCalled()
+    {
+        // arrange
+        var source = Channel.CreateUnbounded<int>();
+        await using var memoizer = Memoize(source, 16);
+        for (var i = 1; i <= 5; i++)
+            source.Writer.TryWrite(i);
+        await memoizer.WhenBuffered(5);
+
+        // act
+        var replay = memoizer.Replay(0);
+        source.Writer.TryWrite(6);
+        source.Writer.TryWrite(7);
+        source.Writer.Complete();
+        await memoizer.WhenBuffered(7);
+        var items = await replay.ToListAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(5));
+
+        // assert
+        items.Should().Equal([6, 7], "the start is pinned by the Replay call, not by the first MoveNextAsync");
+    }
+
     // === DisposeAsync releases buffered items for GC ===
 
     [Fact]
