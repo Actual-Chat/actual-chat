@@ -168,13 +168,15 @@ deploy, so the flag would be the only thing that made the command meaningful.
 On Android, iOS and macOS packaging is the only mode, so `--package` is accepted
 there but warns that it's redundant.
 
-> **`--package` is currently broken.** It registers `<output>/AppX/AppxManifest.xml`,
-> and no `AppX` layout is produced — a packaged `dotnet build` writes a manifest to
-> the output root and stages only the Windows App Runtime dependency under
-> `obj/.../MsixContent/`. The step fails with `Not found: ...AppX/AppxManifest.xml`
-> rather than doing anything harmful. Getting a loose layout probably needs
-> `GenerateAppxPackageOnBuild` or an explicit layout target; until then use the
-> default unpackaged run.
+Deploying works the way Visual Studio and Rider do it. `dotnet build` doesn't
+produce a package layout: the output root holds only part of the app and serves
+`wwwroot` through the static web assets manifest, so registering the manifest there
+gives a WebView stuck on `https://0.0.0.1/ is unreachable`. Instead, `b` reads the
+`App.Maui.build.appxrecipe` the packaged build writes, copies every file it lists
+to its package path under `<output>/AppX/`, and registers `AppX/AppxManifest.xml`.
+Files in the output root that the recipe leaves out are copied too, because the
+recipe misses `Platforms/Windows/App.xbf`, and WinUI crashes on start without it.
+Only changed files are copied, and files the build no longer produces are removed.
 
 The identity is whatever the checked-in `Platforms/Windows/Package.appxmanifest`
 says — `ActualChatInc.ActualChat.Local`, which doesn't collide with an installed
@@ -182,9 +184,11 @@ store Voxt. One caveat: `app pack` (via `AppxManifestGenerator`) rewrites that
 tracked file in place to the store identity and doesn't restore it, so after a
 pack the next `app run` registers over the store app until you revert the file.
 
-Since the registration points into `artifacts/`, a rebuild updates the installed
-app in place; re-running `app run` re-registers it. Stop the running app before
-rebuilding — otherwise MSBuild can't overwrite `ActualChat.exe`, packaged or not.
+The registration points into `artifacts/.../AppX`, so a plain rebuild doesn't
+change the installed app; re-running `app install` or `app run --package` stages
+the new build and re-registers it. Staging closes a running packaged instance
+first, since it locks its own files. An unpackaged instance has to be closed by
+hand before a rebuild, or MSBuild can't overwrite `ActualChat.exe`.
 
 The default build passes `WindowsPackageType=None` and launches
 `artifacts/.../ActualChat.exe` directly; that run blocks until the app exits,
