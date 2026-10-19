@@ -163,6 +163,9 @@ internal static class MauiApp
             plan.Add(new RunStep("adb", ["install", "-r", apkPath]) { RequiredPath = apkPath });
             break;
         case AppPlatform.Windows when isPackaged:
+            var outputDir = GetOutputDir(settings);
+            plan.AddAction($"stage the MSIX layout in {AppxLayout.GetDir(outputDir)}",
+                _ => Task.FromResult(AppxLayout.Stage(outputDir)));
             var manifestPath = GetAppxManifestPath(settings);
             plan.Add(PowerShell($"Add-AppxPackage -Register '{manifestPath}'"
                     + " -ForceUpdateFromAnyVersion -ForceApplicationShutdown")
@@ -230,10 +233,10 @@ internal static class MauiApp
         => new(PowerShellExe, ["-NoProfile", "-NonInteractive", "-Command", $"\"{command}\""]);
 
     private static string GetAppxManifestPath(AppSettings settings)
-        // AppX/ is the MSIX layout MSBuild stages, and the one VS and Rider deploy; the manifest in
-        // the output root looks the same but registering it breaks the WebView's own content.
+        // The manifest in the output root looks the same, but that folder isn't a package layout:
+        // registered from there, the WebView can't load its own content.
         // Absolute, because Add-AppxPackage rejects a relative path.
-        => Path.GetFullPath(Path.Combine(GetOutputDir(settings), "AppX", "AppxManifest.xml"));
+        => Path.GetFullPath(Path.Combine(AppxLayout.GetDir(GetOutputDir(settings)), "AppxManifest.xml"));
 
     private static string GetAppId(AppSettings settings)
         => GetAppId(settings.IsDev);

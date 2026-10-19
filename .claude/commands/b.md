@@ -86,10 +86,10 @@ Windows builds are **unpackaged** by default. `--package` builds an MSIX instead
 — that's what gives the app toast notifications, the `voxt-dev://` protocol
 handler and the startup task — and since an MSIX can only start through its
 registered identity, `--package` deploys before launching. `app install windows`
-implies it. **`--package` is
-currently broken**: it registers `<output>/AppX/AppxManifest.xml` and no `AppX`
-layout is produced, so the step fails with `Not found`. Use the default
-unpackaged run. See [`docs/build-tool.md` → Windows](../../docs/build-tool.md#windows).
+implies it. Like VS and Rider, it stages the package layout in `<output>/AppX/`
+from the build's `.appxrecipe` and registers that; the manifest in the output root
+is not a layout, and registered from there the WebView can't load the app. See
+[`docs/build-tool.md` → Windows](../../docs/build-tool.md#windows).
 
 iOS and macOS build Debug only: `--release`, `--aot` and `--publish` are rejected there
 (a Release Apple build is the store package - use `app pack`), and so is `--prod` on
