@@ -20,6 +20,7 @@ public partial class MauiWebView
         WindowsWebView = (WebView2Control)platformWebView;
         // Makes the control a drop target, so an OS file drop reaches the web content: dotnet/maui#2205
         WindowsWebView.AllowDrop = true;
+        WindowsWebView.LostFocus += OnWindowsWebViewLostFocus;
         // Fixes a brief "flash" w/ white background on Windows
         WindowsWebView.DefaultBackgroundColor = Windows.UI.Color.FromArgb(0, 0, 0, 0); // Transparent
         // NOTE(DF): It seems that this event handler is useless
@@ -188,6 +189,17 @@ public partial class MauiWebView
     {
         var webView = eventArgs.WebView;
         SetPlatformWebView(webView);
+    }
+
+    private static void OnWindowsWebViewLostFocus(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        // A click on the title bar hands the focus to the window's root ScrollViewer, so the page reads
+        // document.hasFocus() false in an active window and stops marking what's on screen read.
+        var webView = (WebView2Control)sender;
+        if (webView.XamlRoot is { } xamlRoot
+            && Microsoft.UI.Xaml.Input.FocusManager.GetFocusedElement(xamlRoot)
+                is Microsoft.UI.Xaml.Controls.ScrollViewer)
+            webView.Focus(Microsoft.UI.Xaml.FocusState.Programmatic);
     }
 
     private static void OnPermissionRequested(CoreWebView2 sender, CoreWebView2PermissionRequestedEventArgs args)
