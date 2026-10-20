@@ -43,7 +43,11 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     {
         Hub = hub;
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
-        Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>().Multiplier = 1;
+        var chunkSizeRecommendation = Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>();
+        chunkSizeRecommendation.Multiplier = 1;
+        // A chunk costs several times its size in transit, and the extension idles ~15 MB under
+        // its 120 MB jetsam limit on older iPhones - a 4 MB chunk gets it killed mid-upload.
+        chunkSizeRecommendation.MaxMultiplier = 2;
         _isInitialized = Hub.StateFactory.NewMutable<bool>();
         _isSending = Hub.StateFactory.NewMutable<bool>();
         _isSent = Hub.StateFactory.NewMutable<bool>();
@@ -314,8 +318,15 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
         var uploadId = await InitUpload().ConfigureAwait(false);
         var streamSource = (StreamUploadSource)uploadSource.StreamSource;
-        await FileUploader.UploadData(uploadId, streamSource.GetStream(), uploadProgress, cancellationToken).ConfigureAwait(false);
+        await FileUploader
+            .UploadData(uploadId, streamSource.GetStream(), uploadProgress, CollectChunkGarbage, cancellationToken)
+            .ConfigureAwait(false);
         return await CompleteUpload().ConfigureAwait(false);
+
+        static void CollectChunkGarbage()
+            // Every chunk leaves its copies on the large object heap, which only a full GC frees -
+            // and the GC never runs one on its own before jetsam kills the extension at its limit.
+            => GC.Collect(2, GCCollectionMode.Aggressive, true, true);
 
         Task<UploadId> InitUpload()
         {
