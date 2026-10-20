@@ -1,41 +1,28 @@
-@inherits ComputedStateComponent<AppUIHub, string>
+@inherits ComponentBase<AppUIHub>
 
 <div class="landing-footer">
     <div class="c-content">
         <div class="c-left">
             <div class="c-links">
+                <a href="mailto:@Constants.Team.SupportEmail" target="_blank" class="footer-link">
+                    @L.Landing_ContactUs
+                </a>
+                <a class="footer-link" data-href="https://github.com/Actual-Chat/actual-chat">
+                    GitHub
+                </a>
                 <a data-href="/docs/privacy" class="footer-link">
-                    Privacy policy
+                    @L.Documents_PrivacyPolicy
                 </a>
                 <a data-href="/docs/terms" class="footer-link">
-                    Terms
+                    @L.Landing_Terms
                 </a>
                 <a data-href="/docs/cookies" class="footer-link">
-                    Cookie Preferences
-                </a>
-                <a data-href="@(State.Value ?? Links.Documentation())" class="footer-link">
-                    Documentation
-                </a>
-                <a href="mailto:@Constants.Team.SupportEmail" target="_blank" class="footer-link">
-                    Contact us
+                    @L.Landing_CookiePreferences
                 </a>
             </div>
             <div class="c-copyright">
                 @CoreConstants.Copyright
             </div>
         </div>
-        <div class="c-right">
-            <a class="footer-link" data-href="@(Links.Chat(Constants.Chat.AnnouncementsChatId).ToAbsolute(UrlMapper))">
-                News
-            </a>
-            <a class="footer-link" data-href="https://github.com/Actual-Chat/actual-chat">
-                GitHub
-            </a>
-        </div>
     </div>
 </div>
-
-@code {
-    protected override Task<string> ComputeState(CancellationToken cancellationToken)
-        => Hub.LanguageUI.GetDocumentationUrl(cancellationToken);
-}

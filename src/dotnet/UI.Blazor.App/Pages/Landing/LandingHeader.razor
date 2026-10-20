@@ -2,9 +2,6 @@
 @inherits ComputedStateComponent<AppUIHub, string>
 @{
     var account = Account;
-    var baseUri = HostInfo.BaseUrl.ToUri();
-    var privacyPath = Links.Privacy;
-    var privacyUri = new Uri(baseUri, privacyPath);
 }
 
 @* Header *@
@@ -55,6 +52,8 @@
                     </div>
                     <div class="c-btn-group">
                         <div class="w-16"></div>
+                        <a data-href="@(Links.Chat(Constants.Chat.AnnouncementsChatId).ToAbsolute(UrlMapper))"
+                           class="landing-nav-btn btn-transparent unhovered">@L.Landing_News</a>
                         @if (!HostInfo.HostKind.IsMauiApp()) {
                             <Button
                                 Click="@WhyUsClick"
@@ -64,8 +63,6 @@
                                 Class="landing-nav-btn btn-transparent unhovered">Why now
                             </Button> *@
                         }
-                        <a href="@privacyUri"
-                           class="landing-nav-btn btn-transparent unhovered">@L.Documents_PrivacyPolicy</a>
                         <a href="@(State.Value ?? Links.Documentation())"
                            class="landing-nav-btn btn-transparent unhovered">@L.Settings_Documentation</a>
                     </div>
@@ -79,6 +76,8 @@
                     </div>
                     <div class="c-btn-group">
                         <div class="w-16"></div>
+                        <a data-href="@(Links.Chat(Constants.Chat.AnnouncementsChatId).ToAbsolute(UrlMapper))"
+                           class="landing-nav-btn btn-transparent unhovered">@L.Landing_News</a>
                         @if (!HostInfo.HostKind.IsMauiApp()) {
                             <Button
                                 Click="@WhyUsClick"
@@ -88,8 +87,6 @@
                                 Class="landing-nav-btn btn-transparent unhovered">Why now
                             </Button> *@
                         }
-                        <a href="@privacyUri"
-                           class="landing-nav-btn btn-transparent unhovered">@L.Documents_PrivacyPolicy</a>
                         <a href="@(State.Value ?? Links.Documentation())"
                            class="landing-nav-btn btn-transparent unhovered">@L.Settings_Documentation</a>
                     </div>

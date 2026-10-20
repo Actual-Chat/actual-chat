@@ -10,54 +10,54 @@
     @if (_isExpanded) {
         <div class="c-head">
             <div class="c-icon"><i class="icon-cookie text-2xl"></i></div>
-            <span class="c-title">Cookie settings</span>
+            <span class="c-title">@L.Cookie_Settings</span>
             <button type="button" class="c-collapse" @onclick="Collapse">
                 <i class="icon-chevron-compact-down"></i>
             </button>
         </div>
-        <p class="c-subtitle">Choose what @CoreConstants.AppName can use. You can change this anytime.</p>
+        <p class="c-subtitle">@L.Cookie_SettingsSubtitle_Format(CoreConstants.AppName)</p>
         <div class="c-rows">
             <div class="c-row">
                 <div class="c-row-text">
-                    <div class="c-row-title">Necessary</div>
-                    <div class="c-row-caption">Security, sign-in, accessibility</div>
+                    <div class="c-row-title">@L.Cookie_Necessary</div>
+                    <div class="c-row-caption">@L.Cookie_NecessaryCaption</div>
                 </div>
                 <div class="c-row-control">
-                    <span class="c-always">Always on</span>
+                    <span class="c-always">@L.Cookie_AlwaysOn</span>
                     <Toggle IsChecked="true" IsDisabled="true"/>
                 </div>
             </div>
             <div class="c-row">
                 <div class="c-row-text">
-                    <div class="c-row-title">Analytics and error reports</div>
-                    <div class="c-row-caption">Google Analytics, Firebase Analytics, Sentry</div>
+                    <div class="c-row-title">@L.Cookie_Analytics</div>
+                    <div class="c-row-caption">@L.Cookie_AnalyticsCaption</div>
                 </div>
                 <Toggle IsChecked="_isDataCollectionEnabled" IsCheckedChanged="OnDataCollectionChanged"/>
             </div>
         </div>
         <div class="c-foot">
             <a class="c-link" href="/docs/cookies">
-                <span class="c-link-wide">Cookie policy</span>
-                <span class="c-link-narrow">Read full cookie policy</span>
+                <span class="c-link-wide">@L.Cookie_Policy</span>
+                <span class="c-link-narrow">@L.Cookie_PolicyFull</span>
             </a>
             <div class="c-foot-buttons">
                 <Button Class="btn-modal" IsDisabled="_isDataCollectionEnabled" Click="@OnAcceptSelectedClick">
-                    Accept selected
+                    @L.Cookie_AcceptSelected
                 </Button>
-                <Button Class="btn-primary" Click="@OnAllCookiesClick">Accept all</Button>
+                <Button Class="btn-primary" Click="@OnAllCookiesClick">@L.Cookie_AcceptAll</Button>
             </div>
         </div>
     } else {
         <div class="c-pill-main">
             <div class="c-icon"><i class="icon-cookie text-2xl"></i></div>
             <span class="c-text">
-                We use cookies to improve @CoreConstants.AppName.
-                <button type="button" class="c-learn" @onclick="Expand">Learn more</button>
+                @L.Cookie_PillText_Format(CoreConstants.AppName)
+                <button type="button" class="c-learn" @onclick="Expand">@L.Cookie_LearnMore</button>
             </span>
         </div>
         <div class="c-pill-buttons">
-            <Button Class="btn-modal" Click="@OnNecessaryOnlyClick">Necessary only</Button>
-            <Button Class="btn-primary" Click="@OnAllCookiesClick">Accept all</Button>
+            <Button Class="btn-modal" Click="@OnNecessaryOnlyClick">@L.Cookie_NecessaryOnly</Button>
+            <Button Class="btn-primary" Click="@OnAllCookiesClick">@L.Cookie_AcceptAll</Button>
         </div>
     }
 </div>
