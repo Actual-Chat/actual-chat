@@ -96,7 +96,7 @@ public partial class MauiWebView
     }
 
 #if MACOS || LINUX
-    private static bool HandleWebNavigation(MauiWebView? mauiWebView, Uri uri)
+    private static bool HandleWebNavigation(MauiWebView? mauiWebView, Uri uri, bool isSubframe)
     {
         // The labs backends' twin of HandleLoading: their BlazorWebView handlers don't raise MAUI's
         // UrlLoading event, so the same policy runs from the WebKit navigation callbacks. Static
@@ -112,9 +112,8 @@ public partial class MauiWebView
         }
 
         if (!MauiSettings.BaseUri.IsBaseOf(uri)) {
-            if (AllowedExternalHosts.Contains(uri.Host)) {
-                if (mauiWebView != null)
-                    mauiWebView.LastUri = uri;
+            // Allowed hosts serve embeds (the YouTube player iframe); a link to one opens in the browser
+            if (isSubframe && AllowedExternalHosts.Contains(uri.Host)) {
                 return true;
             }
 
