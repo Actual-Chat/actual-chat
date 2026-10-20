@@ -1105,7 +1105,7 @@ export class VisualMediaViewer {
         if (!thumbnailWrapper)
             return;
 
-        const thumbnail = wrapper.querySelector('.video-thumbnail')!;
+        const thumbnail = wrapper.querySelector<HTMLElement>('.video-thumbnail')!;
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!thumbnail)
             return;
@@ -1123,20 +1123,13 @@ export class VisualMediaViewer {
         const imagePlug = thumbnail.querySelector('image-skeleton')!;
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (imagePlug) {
-            // @ts-expect-error TODO(Andrey) fix eslint error
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             const originalWidth = Number(thumbnail.dataset.width);
-            // @ts-expect-error TODO(Andrey) fix eslint error
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
             const originalHeight = Number(thumbnail.dataset.height);
-            const { width, height } = this.calculateSize(originalWidth, originalHeight);
-
-            // @ts-expect-error TODO(Andrey) fix eslint error
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/restrict-plus-operands
-            thumbnail.style.width = width + 'px';
-            // @ts-expect-error TODO(Andrey) fix eslint error
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access,@typescript-eslint/restrict-plus-operands
-            thumbnail.style.height = height + 'px';
+            // The video fits the wrapper, which safe areas (notch, AppKit titlebar) make smaller than the window
+            const { width, height } = this.calculateSize(
+                originalWidth, originalHeight, wrapper.clientWidth, wrapper.clientHeight);
+            thumbnail.style.width = `${width}px`;
+            thumbnail.style.height = `${height}px`;
         }
     }
 
