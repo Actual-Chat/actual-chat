@@ -76,10 +76,12 @@ internal static class MauiContentRequests
         }
     }
 
-    public static async Task<HttpResponseMessage?> HandleAsync(string? url, string? method, string? range)
+    public static async Task<HttpResponseMessage?> HandleAsync(
+        string? url, string? method, string? range, bool mustFillWhole = false)
     {
         // Hit, else one download that feeds the caller and fills the cache; a duplicate of a
         // fetch already running goes back to the caller, since the first one stores it anyway.
+        // With mustFillWhole a range is read from the whole resource's fill, which every range joins.
         if (!TryCreateRequest(url, method, range, out var request))
             return null;
 
@@ -91,6 +93,8 @@ internal static class MauiContentRequests
             var cached = await cache.TryHandleCached(request).ConfigureAwait(false);
             if (cached != null)
                 return cached;
+            if (mustFillWhole && !range.IsNullOrEmpty())
+                return await cache.Handle(request with { MustFillWhole = true }).ConfigureAwait(false);
 
             var identity = request.Url.AbsoluteUri;
             if (!Fetches.TryAdd(identity, default))

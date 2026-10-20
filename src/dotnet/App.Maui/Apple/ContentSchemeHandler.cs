@@ -81,13 +81,16 @@ internal sealed class ContentSchemeHandler : NSObject, IWKUrlSchemeHandler
         // everything after it must be marshalled back, and dropped once the task was stopped.
         var request = urlSchemeTask.Request!;
         var taskHandle = urlSchemeTask.Handle.Handle;
+        // WebKit plays a video by asking for each sample's exact bytes, ~100 ranges a second, and
+        // stalls on any answer but a 206 for exactly that range - so ranges come from one whole fill
+        var range = request["Range"];
         _ = Task.Run(async () => {
             HttpResponseMessage? response = null;
             try {
-                response = await MauiContentRequests.HandleAsync(mediaUrl, request.HttpMethod, null)
+                response = await MauiContentRequests.HandleAsync(mediaUrl, request.HttpMethod, range, true)
                     .ConfigureAwait(false);
                 // Every media URL here is projected, so one the cache declines still has to load
-                response ??= await MauiContentRequests.FetchDirect(mediaUrl, request.HttpMethod)
+                response ??= await MauiContentRequests.FetchDirect(mediaUrl, request.HttpMethod, range)
                     .ConfigureAwait(false);
                 if (response == null) {
                     await Fail(taskHandle, urlSchemeTask, -3).ConfigureAwait(false);
@@ -104,6 +107,11 @@ internal sealed class ContentSchemeHandler : NSObject, IWKUrlSchemeHandler
                 headers[new NSString("Access-Control-Allow-Origin")] = new NSString("*");
                 if (length is { } l)
                     headers[new NSString("Content-Length")] = new NSString(l.ToString());
+                if (response.Content.Headers.ContentRange is { } contentRange)
+                    headers[new NSString("Content-Range")] = new NSString(contentRange.ToString());
+                if (response.Headers.AcceptRanges.Count != 0)
+                    headers[new NSString("Accept-Ranges")] = new NSString(response.Headers.AcceptRanges.ToString());
+                var statusCode = (int)response.StatusCode;
                 await using var body = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
                 // Every hop below is a main-thread round-trip, and on Apple every media URL comes
                 // through here - one per 64KB chunk saturated the UI thread as soon as a screen
@@ -123,7 +131,8 @@ internal sealed class ContentSchemeHandler : NSObject, IWKUrlSchemeHandler
 
                 var headData = NSData.FromArray(chunk.AsSpan(0, headLength).ToArray());
                 var isSent = await Send(taskHandle, () => {
-                    urlSchemeTask.DidReceiveResponse(new NSHttpUrlResponse(request.Url!, 200, "HTTP/1.1", headers));
+                    urlSchemeTask.DidReceiveResponse(
+                        new NSHttpUrlResponse(request.Url!, statusCode, "HTTP/1.1", headers));
                     using (headData)
                         urlSchemeTask.DidReceiveData(headData);
                     if (isComplete)

@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using ActualLab.IO;
 
@@ -12,7 +13,8 @@ public sealed partial class FileSystemContentHandler
         HttpResponseMessage response,
         Stream source,
         EncryptedContentFile file,
-        ResponseMetadata metadata) : WorkerBase
+        ResponseMetadata metadata,
+        bool isDetached) : WorkerBase
     {
         private readonly Lock _lock = new();
         private Progress _progress;
@@ -21,6 +23,8 @@ public sealed partial class FileSystemContentHandler
         private int _readerCount;
         private bool _isClosed;
         private bool _isFinished;
+
+        public long? Length => metadata.ExpectedLength;
 
         public Progress GetProgress(long position, out Task<long>? whenAvailable)
         {
@@ -35,9 +39,20 @@ public sealed partial class FileSystemContentHandler
         public bool HasEncryptionKey(byte[] other)
             => CryptographicOperations.FixedTimeEquals(owner._encryptionKey, other);
 
-        public HttpResponseMessage? TryCreateResponse(CancellationToken cancellationToken)
+        public HttpResponseMessage? TryCreateResponse(RangeHeaderValue? range, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var offset = 0L;
+            var length = metadata.ExpectedLength;
+            if (range != null) {
+                if (!TryResolveRange(range, length!.Value, out offset, out var rangeLength)) {
+                    // Only a detached fill takes a range, and the one that starts it must still run
+                    _ = Run();
+                    return CreateUnsatisfiableRangeResponse(length.Value);
+                }
+
+                length = rangeLength;
+            }
             lock (_lock) {
                 if (_isClosed)
                     return null;
@@ -47,9 +62,14 @@ public sealed partial class FileSystemContentHandler
             ReadStream? body = null;
             try {
                 body = new ReadStream(
-                    owner, path, file, 0, metadata.ExpectedLength, this,
+                    owner, path, file, offset, length, this,
                     request, metadata, cancellationToken);
-                var result = owner.ApplyResponseMaxAge(metadata.CreateResponse(body, metadata.ExpectedLength));
+                var result = owner.ApplyResponseMaxAge(metadata.CreateResponse(body, length));
+                if (range != null) {
+                    SelectRange(result, offset, length!.Value, metadata.ExpectedLength!.Value);
+                    result.Headers.AcceptRanges.Clear();
+                    result.Headers.AcceptRanges.Add("bytes");
+                }
                 _ = Run();
                 body.ActivateCancellation();
                 cancellationToken.ThrowIfCancellationRequested();
@@ -70,8 +90,10 @@ public sealed partial class FileSystemContentHandler
             bool mustDispose;
             lock (_lock) {
                 _readerCount--;
-                mustStop = _readerCount == 0;
-                mustDispose = mustStop && _isFinished;
+                var isIdle = _readerCount == 0;
+                // A detached fill serves ranges requested one at a time, so it keeps going between them
+                mustStop = isIdle && !isDetached;
+                mustDispose = isIdle && _isFinished;
                 if (mustStop)
                     _isClosed = true;
             }
