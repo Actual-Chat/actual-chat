@@ -8,6 +8,16 @@
     <LandingLeftMenu @ref="LandingLeftMenuRef" />
     <CookieSettings/>
 
+    @* Dev-only: preview the landing in any UI language; hidden on production. *@
+    @if (!HostInfo.IsProductionInstance) {
+        <select class="landing-lang-switcher" title="Preview UI language" @onchange="@OnPreviewLanguageChanged">
+            @foreach (var language in Languages.AllUI) {
+                <option value="@language.IsoCode"
+                        selected="@(language.IsoCode == PreviewUiIsoCode)">@language.NativeName</option>
+            }
+        </select>
+    }
+
     <LandingHeader
         Account="@account"
         Click="OnMenuHandleClick"
@@ -69,6 +79,14 @@
 
 @code {
     [CascadingParameter] ScreenSize ScreenSize { get; set; }
+
+    private string PreviewUiIsoCode
+        => Hub.BrowserInfo.UILanguage.IsoCode;
+
+    private void OnPreviewLanguageChanged(ChangeEventArgs e) {
+        if (e.Value is string isoCode && !isoCode.IsNullOrEmpty())
+            Nav.NavigateTo(Nav.GetUriWithQueryParameter("ui-language", isoCode), forceLoad: true);
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {

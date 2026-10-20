@@ -5,7 +5,7 @@
 
 <div class="landing-links @hideForNarrow" xmlns="http://www.w3.org/1999/html">
     <div class="c-title">
-        Get @CoreConstants.AppName
+        @L.Download_GetApp_Format(CoreConstants.AppName)
     </div>
     <div class="link-group">
         <button class="link-btn" data-href="@(Links.Apps.Android)">
@@ -13,8 +13,8 @@
                 <img draggable="false" src="/dist/images/webonly/android-logo-white.svg" alt="Android app">
             </div>
             <div class="c-text">
-                <span>Install</span>
-                <span>for Android</span>
+                <span>@L.Landing_Install</span>
+                <span>@L.Landing_ForPlatform_Format("Android")</span>
             </div>
         </button>
         <button class="link-btn" data-href="@(Links.Apps.iOS)">
@@ -22,8 +22,8 @@
                 <img draggable="false" src="/dist/images/webonly/apple-logo-white.svg" alt="iOS app">
             </div>
             <div class="c-text">
-                <span>Install</span>
-                <span>for iOS</span>
+                <span>@L.Landing_Install</span>
+                <span>@L.Landing_ForPlatform_Format("iOS")</span>
             </div>
         </button>
         <button class="link-btn" data-href="@(Links.Apps.Windows)">
@@ -31,8 +31,8 @@
                 <img class="windows-icon" draggable="false" src="/dist/images/webonly/windows-logo-white.svg" alt="Windows app">
             </div>
             <div class="c-text">
-                <span>Install</span>
-                <span>for Windows</span>
+                <span>@L.Landing_Install</span>
+                <span>@L.Landing_ForPlatform_Format("Windows")</span>
             </div>
         </button>
         <button class="link-btn" @onclick="@SignIn">
@@ -40,8 +40,8 @@
                 <img draggable="false" src="/dist/images/webonly/web-logo-white.svg" alt="Web app">
             </div>
             <div class="c-text">
-                <span>Just Sign in</span>
-                <span>for Web App</span>
+                <span>@L.Landing_JustSignIn</span>
+                <span>@L.Landing_ForWebApp</span>
             </div>
         </button>
     </div>

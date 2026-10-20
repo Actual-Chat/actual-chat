@@ -1,3 +1,5 @@
+@inherits ComponentBase<AppUIHub>
+
 <div class="bg-wrapper">
     @if (!ScreenSize.IsNarrow()) {
         <img draggable="false" class="wide-image" src="/dist/images/voxt-galaxy-horizontal.svg" alt="voxt">
@@ -7,33 +9,16 @@
 </div>
 
 <div class="c-content">
-    <div class="c-top">
-        <div class="main-image">
-            <img draggable="false" src="/dist/images/webonly/page-last-image.svg" alt="">
-        </div>
-        <div class="main-text">
-            <span class="title-text">
-                Talk the way humans
-            </span>
-            <span class="page-last-handwrite">
-                were meant to.
-            </span>
-            @* <button class="btn-download light" @onclick="@PremiumFeaturesClick"> *@
-            @*     <span>Learn more</span> *@
-            @* </button> *@
-        </div>
-    </div>
-
     <div class="c-bottom">
         <div class="c-btn-group">
             @if (IsGuest) {
                 <button class="btn-download web-signin" @onclick="@SignInClick">
-                    <span>Sign in to web app</span>
+                    <span>@L.Landing_SignInToWebApp</span>
                     <i class="icon-monitor text-2xl font-thin"></i>
                 </button>
             }
             <DownloadButton
-                Title="Get mobile/desktop app"
+                Title="@L.Landing_GetMobileDesktopApp"
                 Click="@DownloadClick"
                 Class="download-app"/>
         </div>
