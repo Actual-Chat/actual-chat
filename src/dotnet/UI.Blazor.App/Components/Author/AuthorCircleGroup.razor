@@ -53,7 +53,7 @@
                     <div class="author-wrapper">
                         @{
                             var avatarText = authorIds.Count < 11
-                                ? "+" + (authorIds.Count - MaxCount)
+                                ? "+" + (authorIds.Count - maxLength)
                                 : "...";
                         }
                         <AvatarText Size="@avatarSize" Text="@avatarText"/>
