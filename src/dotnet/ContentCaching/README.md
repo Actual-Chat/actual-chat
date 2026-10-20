@@ -28,6 +28,14 @@ URL plus its range. Identical ranges share a download; different or overlapping 
 separate entries. Seeking to an uncached video tail does not first download the prefix.
 Multipart ranges and conditional range requests retain downstream handling.
 
+`ContentRequest.MustFillWhole` changes what a cold range does: it joins the fill of the whole
+resource, or starts one, and is served from it - a 206 for exactly the requested bytes, waiting for
+them if the fill hasn't reached them yet. Such a fill is detached: it runs to the end even when no
+reader is left, because the caller asks for one small range after another and the reader count keeps
+dropping to zero in between. A range that ends before the resource does returns as soon as its last
+byte arrives. If the whole resource can't be cached (too long, unknown length, any bypass reason),
+the range is fetched on its own and not stored. A seek far ahead of the fill waits for it.
+
 Cache fills are coordinated by absolute file path within one process, including across handler
 instances. A concurrent dictionary tracks downloads, an AsyncLockSet serializes startup, and
 The latest progress is stored separately from a shared Task<long> notification. Readers that
@@ -87,7 +95,10 @@ Every platform uses the same shape: a hit is served from disk, and a miss stream
 feeds the WebView and fills the cache at the same time, publishing when the source ends. A second
 request for a resource already being fetched goes back to the WebView rather than sharing the
 download - `JoinedFill` measured 0 in every run, because Chromium already dedupes its own in-flight
-loads. `ReadStream` is seekable during a fill (a read past it waits for that position, and a short
+loads. Apple is the exception for video: WebKit loads a `<video>` over the `content://` scheme
+by asking for each sample's exact bytes, ~100 ranges a second, and stalls on any answer but a 206
+for exactly that range. `ContentSchemeHandler` forwards the range with `MustFillWhole`, so one whole
+fill serves them all and the next viewing is a disk hit. `ReadStream` is seekable during a fill (a read past it waits for that position, and a short
 source surfaces as the fill's `EndOfStreamException`), which is what lets WebView2 accept it.
 
 The one thing that must not happen is waiting on the network inside a native callback. Android

@@ -201,10 +201,15 @@ public sealed partial class FileSystemContentHandler
             if (_fallbackStream != null)
                 return await ReadFallback(buffer, cancellationToken).ConfigureAwait(false);
 
+            // A range ending before the resource does has nothing to wait for. The end of the whole
+            // resource still waits for the fill to publish, which a reader leaving early would cancel.
+            if (_position >= _length && _offset + _length < _metadata.ExpectedLength)
+                return 0;
+
             var available = _file.Length;
             if (_download != null) {
                 while (true) {
-                    var state = _download.GetProgress(_position, out var whenAvailable);
+                    var state = _download.GetProgress(_offset + _position, out var whenAvailable);
                     if (state.Error is StorageFailure) {
                         await OpenFallback(cancellationToken).ConfigureAwait(false);
                         return await ReadFallback(buffer, cancellationToken).ConfigureAwait(false);

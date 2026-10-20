@@ -85,7 +85,9 @@ public sealed partial class FileSystemContentHandler : IContentHandler
             }
         }
 
-        var (path, key) = range == null ? (fullPath, fullKey) : GetPath(url + "\nRange: " + range);
+        var isWholeFill = range != null && request.MustFillWhole;
+        var fillRange = isWholeFill ? null : range;
+        var (path, key) = fillRange == null ? (fullPath, fullKey) : GetPath(url + "\nRange: " + range);
         using var fillLock = await FillLocks.Lock(path, cancellationToken).ConfigureAwait(false);
         while (true) {
             // A fill publishes its file before it leaves Downloads, so the fill must be looked up first:
@@ -93,8 +95,10 @@ public sealed partial class FileSystemContentHandler : IContentHandler
             if (Downloads.TryGetValue(path, out var active)) {
                 if (!active.HasEncryptionKey(_encryptionKey))
                     return await Bypass(request, "encryption key", cancellationToken).ConfigureAwait(false);
+                if (isWholeFill && active.Length == null)
+                    return await Bypass(request, "range of unknown length", cancellationToken).ConfigureAwait(false);
 
-                if (active.TryCreateResponse(cancellationToken) is { } shared) {
+                if (active.TryCreateResponse(isWholeFill ? range : null, cancellationToken) is { } shared) {
                     Stats.Report(ContentCacheOutcome.JoinedFill);
                     DebugLog?.LogDebug("Content cache fill joined: {Key}", key);
                     return shared;
@@ -104,7 +108,7 @@ public sealed partial class FileSystemContentHandler : IContentHandler
                 continue;
             }
 
-            var cached = await TryRead(path, key, request, range, false, cancellationToken).ConfigureAwait(false);
+            var cached = await TryRead(path, key, request, range, isWholeFill, cancellationToken).ConfigureAwait(false);
             if (cached == null)
                 break;
 
@@ -112,19 +116,28 @@ public sealed partial class FileSystemContentHandler : IContentHandler
             return cached;
         }
 
-        var response = await Downstream.Handle(request, cancellationToken).ConfigureAwait(false);
+        var fillRequest = isWholeFill ? request with { Headers = ImmutableDictionary<string, string>.Empty } : request;
+        var response = await Downstream.Handle(fillRequest, cancellationToken).ConfigureAwait(false);
         if (response == null) {
             Stats.Report(ContentCacheOutcome.Bypass);
             Log?.LogWarning("Content cache bypass (no response): {Key}", key);
             return null;
         }
 
-        if (GetBypassReason(response, range) is { } bypassReason) {
+        var bypassReason = GetBypassReason(response, fillRange);
+        if (bypassReason == null && isWholeFill && response.Content.Headers.ContentLength == null)
+            bypassReason = "range of unknown length";
+        if (bypassReason != null) {
             Stats.Report(ContentCacheOutcome.Bypass);
             // Path only: a signed URL carries its token in the query
             Log?.LogWarning("Content cache bypass: {StatusCode}, {Reason}, {Url}",
                 response.StatusCode, bypassReason, request.Url.GetLeftPart(UriPartial.Path));
-            return response;
+            if (!isWholeFill)
+                return response;
+
+            // The whole resource answers no range, so the range itself still has to be fetched
+            response.Dispose();
+            return await Downstream.Handle(request, cancellationToken).ConfigureAwait(false);
         }
 
         EncryptedContentFile? file = null;
@@ -155,10 +168,10 @@ public sealed partial class FileSystemContentHandler : IContentHandler
             }
 
             download = new Download(
-                this, path, request, response, stream, file,
-                metadata);
+                this, path, fillRequest, response, stream, file,
+                metadata, isWholeFill);
             Downloads[path] = download;
-            var result = download.TryCreateResponse(cancellationToken)!;
+            var result = download.TryCreateResponse(isWholeFill ? range : null, cancellationToken)!;
             file = null;
             Stats.Report(ContentCacheOutcome.StartedFill);
             DebugLog?.LogDebug("Content cache fill started: {Key}, {ContentType}, {Length}",
@@ -251,13 +264,7 @@ public sealed partial class FileSystemContentHandler : IContentHandler
             if (mustSelectRange && !TryResolveRange(range!, length, out offset, out length)) {
                 file.Dispose();
                 file = null;
-                return new HttpResponseMessage(HttpStatusCode.RequestedRangeNotSatisfiable) {
-                    Content = new ByteArrayContent([]) {
-                        Headers = {
-                            ContentRange = new ContentRangeHeaderValue(probe.Content.Headers.ContentLength!.Value),
-                        },
-                    },
-                };
+                return CreateUnsatisfiableRangeResponse(probe.Content.Headers.ContentLength!.Value);
             }
 
             var sourceRequest = mustSelectRange ? new ContentRequest(request.Url) : request;
@@ -265,12 +272,8 @@ public sealed partial class FileSystemContentHandler : IContentHandler
                 this, path, file, offset, length, null,
                 sourceRequest, metadata, cancellationToken);
             var response = metadata.CreateResponse(body, length);
-            if (mustSelectRange) {
-                response.StatusCode = HttpStatusCode.PartialContent;
-                response.ReasonPhrase = null;
-                response.Content.Headers.ContentRange = new ContentRangeHeaderValue(
-                    offset, offset + length - 1, file.Length);
-            }
+            if (mustSelectRange)
+                SelectRange(response, offset, length, file.Length);
             response.Headers.AcceptRanges.Clear();
             response.Headers.AcceptRanges.Add("bytes");
             ApplyResponseMaxAge(response);
@@ -360,6 +363,20 @@ public sealed partial class FileSystemContentHandler : IContentHandler
             && (response.Content.Headers.ContentLength == null || response.Content.Headers.ContentLength == length)
                 ? null
                 : "content-range mismatch";
+    }
+
+    private static HttpResponseMessage CreateUnsatisfiableRangeResponse(long total)
+        => new(HttpStatusCode.RequestedRangeNotSatisfiable) {
+            Content = new ByteArrayContent([]) {
+                Headers = { ContentRange = new ContentRangeHeaderValue(total) },
+            },
+        };
+
+    private static void SelectRange(HttpResponseMessage response, long offset, long length, long total)
+    {
+        response.StatusCode = HttpStatusCode.PartialContent;
+        response.ReasonPhrase = null;
+        response.Content.Headers.ContentRange = new ContentRangeHeaderValue(offset, offset + length - 1, total);
     }
 
     private static bool TryResolveRange(RangeHeaderValue range, long total, out long start, out long length)
