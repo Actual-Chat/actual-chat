@@ -249,6 +249,17 @@ jobs:
         if: ${{ inputs.build-target == 'e2e-tests' }}
         run: echo "ActualChat_DevLog=${{ github.workspace }}/tmp/e2e-server-dev.log" >> $GITHUB_ENV
 
+      # A test host that dies without stderr was killed by a signal (#5486); this memory timeline
+      # shows whether it grew until the OOM killer stepped in, and which process did the growing.
+      - name: Start memory sampler
+        run: |
+          mkdir -p tmp
+          nohup bash -c 'while true; do
+            echo "=== $(date -u +%H:%M:%S) $(free -m | awk "/^Mem:/ {print \"used \" \$3 \" MB, available \" \$7 \" MB\"}")"
+            ps -eo rss=,pid=,args= --sort=-rss | head -6 | awk "{printf \"%6d MB %s\", \$1/1024, \$2; for (i = 3; i <= NF && i < 8; i++) printf \" %s\", \$i; print \"\"}"
+            sleep 10
+          done' > tmp/memory-samples.log 2>&1 &
+
       - name: Run tests
         id: run-tests
         env:
@@ -275,6 +286,28 @@ jobs:
           EOF
 
           ./run-build.cmd ${{ inputs.build-target }} --configuration Debug
+
+      - name: Show crash diagnostics
+        if: ${{ failure() }}
+        run: |
+          echo "--- Kernel: OOM kills and segfaults"
+          sudo dmesg -T | grep -iE 'killed process|out of memory|oom-kill|segfault|traps:' || echo "(none)"
+          echo "--- Memory"
+          free -m
+          echo "--- Containers"
+          docker stats --no-stream
+
+      - name: Upload crash diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: crash-diagnostics-${{ inputs.report-name }}
+          # Sequence_*.xml is the blame collector's list of tests the crashed host had started, in order
+          path: |
+            tests/**/TestResults/**/Sequence_*.xml
+            tmp/memory-samples.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Report test results
         uses: phoenix-actions/test-reporting@v15
