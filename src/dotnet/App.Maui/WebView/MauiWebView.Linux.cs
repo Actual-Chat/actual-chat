@@ -72,7 +72,8 @@ public partial class MauiWebView
         // target=_blank: no in-app windows, the link goes through the policy and nowhere else
         var isNewWindow = args.DecisionType == PolicyDecisionType.NewWindowAction;
         IsCurrent(webView, out var mauiWebView);
-        if (HandleWebNavigation(mauiWebView, uri) && !isNewWindow)
+        // WebKitGTK doesn't say which frame a navigation targets, so only a new window counts as a link
+        if (HandleWebNavigation(mauiWebView, uri, isSubframe: !isNewWindow) && !isNewWindow)
             return false;
 
         decision.Ignore();
@@ -85,7 +86,7 @@ public partial class MauiWebView
         var url = args.NavigationAction.GetRequest().GetUri();
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https") {
             IsCurrent(webView, out var mauiWebView);
-            _ = HandleWebNavigation(mauiWebView, uri);
+            _ = HandleWebNavigation(mauiWebView, uri, isSubframe: false);
         }
         return null!;
     }

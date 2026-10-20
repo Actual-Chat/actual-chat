@@ -78,8 +78,10 @@ public partial class MauiWebView
             Action<WKNavigationActionPolicy> decisionHandler)
         {
             var url = navigationAction.Request?.Url?.AbsoluteString;
-            Log.LogDebug("DecidePolicy: {Url}, type={Type}, isMainFrame={IsMainFrame}",
-                url, navigationAction.NavigationType, navigationAction.TargetFrame?.MainFrame ?? true);
+            // No target frame means a new window (target=_blank)
+            var isSubframe = navigationAction.TargetFrame is { MainFrame: false };
+            Log.LogDebug("DecidePolicy: {Url}, type={Type}, isSubframe={IsSubframe}",
+                url, navigationAction.NavigationType, isSubframe);
             if (url.IsNullOrEmpty()
                 || !Uri.TryCreate(url, UriKind.Absolute, out var uri)
                 || uri.Scheme is not ("http" or "https")) {
@@ -89,7 +91,7 @@ public partial class MauiWebView
             }
 
             IsCurrent(webView, out var mauiWebView);
-            decisionHandler.Invoke(HandleWebNavigation(mauiWebView, uri)
+            decisionHandler.Invoke(HandleWebNavigation(mauiWebView, uri, isSubframe)
                 ? WKNavigationActionPolicy.Allow
                 : WKNavigationActionPolicy.Cancel);
         }
@@ -112,7 +114,7 @@ public partial class MauiWebView
                 && Uri.TryCreate(url, UriKind.Absolute, out var uri)
                 && uri.Scheme is "http" or "https") {
                 IsCurrent(webView, out var mauiWebView);
-                _ = HandleWebNavigation(mauiWebView, uri);
+                _ = HandleWebNavigation(mauiWebView, uri, isSubframe: false);
             }
             return null;
         }
