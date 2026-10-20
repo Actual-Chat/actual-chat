@@ -1306,19 +1306,31 @@ export class VisualMediaViewer {
 
     private onVideoLoaded(event: Event, video: HTMLMediaElement) {
         const wrapper = video.closest('.video-wrapper')!;
-        const thumbnailWrapper = wrapper.querySelector('.video-thumbnail-wrapper');
-        const spinner = wrapper.querySelector('.spinner-icon-wrapper');
         const control = wrapper.querySelector('.video-control')!;
-        if (thumbnailWrapper)
-            thumbnailWrapper.remove();
-        if (spinner)
-            spinner.remove();
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (control) {
             control.classList.remove('invisible');
             control.classList.add('has-mini-progress');
         }
         this.updateLoading(video);
+
+        // iOS fires loadeddata well before it draws the first frame, and the video is black until then.
+        // A paused video may never present one, so the plug goes on pause too.
+        const canAwaitFrame = video instanceof HTMLVideoElement
+            && typeof video.requestVideoFrameCallback === 'function';
+        if (canAwaitFrame && !video.paused) {
+            video.requestVideoFrameCallback(impl);
+            video.addEventListener('pause', impl, { once: true });
+            return;
+        }
+
+        impl();
+        return;
+
+        function impl(): void {
+            wrapper.querySelector('.video-thumbnail-wrapper')?.remove();
+            wrapper.querySelector('.spinner-icon-wrapper')?.remove();
+        }
     }
 
     private updateLoading(video: HTMLMediaElement) {
