@@ -1,0 +1,45 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+
+<Banner IsVisible="@State.Value" Severity="BannerSeverity.Info" ShowDismissButton="false">
+    <Icon>
+        <i class="icon-push-to-talk text-2xl text-03"></i>
+    </Icon>
+    <Body>
+        @L.Ptt_DeviceOff_Prefix.TrimEnd()
+    </Body>
+    <Buttons>
+        <BannerButton Click="@OnEnableClick">@L.Common_Allow</BannerButton>
+    </Buttons>
+</Banner>
+
+@code {
+    [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
+
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<bool>.Options() {
+                InitialValue = false,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var chat = ChatContext.Chat;
+        if (!chat.IsMember())
+            return false;
+
+        var audio = Hub.ChatAudioUI;
+        var isDeviceEnabled = await audio.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
+        if (isDeviceEnabled)
+            return false;
+
+        var state = await audio.GetPttChatState(chat.Id, cancellationToken).ConfigureAwait(false);
+        return state == PttChatState.InList;
+    }
+
+    private Task OnEnableClick() {
+        Hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
+        return Hub.ChatAudioUI.ShowPttSupportLimits(L.PttSupport_EnabledOnDevice);
+    }
+}

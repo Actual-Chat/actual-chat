@@ -55,9 +55,12 @@ public sealed class PttSidePanelTest(ChatAppHostFixture fixture, ITestOutputHelp
         var panel = tester.Render<ChatSidePanelInfo>(p => p.AddCascadingValue(new ChatContext(hub, chat)));
 
         // assert
-        await TestWait.WhenRendered(panel, () => panel.FindComponents<TileItem>()
-            .Single(x => x.Markup.Contains("icon-push-to-talk"))
-            .Find(".ti-caption").TextContent.Trim().Should().Be(hub.StringLocalizer[expectedKey].Value));
+        await TestWait.WhenRendered(panel, () => {
+            var tile = panel.FindComponents<TileItem>().Single(x => x.Markup.Contains("icon-push-to-talk"));
+            tile.Find(".ti-caption").TextContent.Trim().Should().Be(hub.StringLocalizer[expectedKey].Value);
+            tile.Find(".icon-push-to-talk").ClassList.Contains("text-primary")
+                .Should().Be(isEnabled && !isPaused && isAllowed && isDeviceEnabled);
+        });
     }
 
     [Fact]
@@ -96,14 +99,20 @@ public sealed class PttSidePanelTest(ChatAppHostFixture fixture, ITestOutputHelp
         hub.ChatAudioUI.SetIsPttEnabledOnDevice(false);
 
         // assert
-        await TestWait.WhenRendered(panel, () => panel.Markup.Should().Contain(l.Ptt_AvailableDeviceOff));
+        await TestWait.WhenRendered(panel, () => {
+            panel.Markup.Should().Contain(l.Ptt_AvailableDeviceOff);
+            panel.Find(".icon-push-to-talk").ClassList.Should().Contain("text-03").And.NotContain("text-primary");
+        });
 
         // act
         hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
         await hub.ChatAudioUI.UnmutePtt([chatId], CancellationToken.None);
 
         // assert
-        await TestWait.WhenRendered(panel, () => panel.Markup.Should().Contain(l.Ptt_AvailableAllowed));
+        await TestWait.WhenRendered(panel, () => {
+            panel.Markup.Should().Contain(l.Ptt_AvailableAllowed);
+            panel.Find(".icon-push-to-talk").ClassList.Should().Contain("text-primary");
+        });
 
         // act
         await hub.UserSettingsUI.UserPttSettings().Update(x => x.WithoutPttChat(chatId));

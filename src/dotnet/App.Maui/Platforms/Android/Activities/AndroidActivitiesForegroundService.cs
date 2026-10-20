@@ -798,9 +798,19 @@ public sealed class AndroidActivitiesForegroundService : Service
                 _ = BackgroundTask.Run(() => hub.PttReplyUI.StopReply(), Log,
                     "Screen-off reply stop failed", CancellationToken.None);
 
-            if (!PowerHush.OnScreenOff(Android.OS.SystemClock.ElapsedRealtime()))
+            var isCandidate = PowerHush.OnScreenOff(Android.OS.SystemClock.ElapsedRealtime());
+            Log.LogInformation("Power-button hush screen-off: validSequence={IsCandidate}", isCandidate);
+            if (!isCandidate)
                 return;
-            if (!hub.GestureUI.IsHushArmed || !hub.GestureUI.IsPocketed)
+
+            var gestures = hub.GestureUI;
+            var isArmed = gestures.IsHushArmed;
+            var isPocketed = gestures.IsPocketed;
+            Log.LogInformation(
+                "Power-button hush candidate: armed={IsArmed}, pocketed={IsPocketed}, "
+                + "guard={GuardStatus}, sample={LastSample}",
+                isArmed, isPocketed, gestures.GuardStatus, gestures.LastSample);
+            if (!isArmed || !isPocketed)
                 return;
 
             Log.LogInformation("Power-button hush triggered while locked and pocketed");
@@ -816,7 +826,9 @@ public sealed class AndroidActivitiesForegroundService : Service
     private static void TryHandleScreenOn(Context? context)
     {
         var keyguard = context?.GetSystemService(KeyguardService) as KeyguardManager;
-        PowerHush.OnScreenOn(Android.OS.SystemClock.ElapsedRealtime(), keyguard?.IsKeyguardLocked == true);
+        var isLocked = keyguard?.IsKeyguardLocked == true;
+        Log.LogInformation("Power-button hush screen-on: locked={IsLocked}", isLocked);
+        PowerHush.OnScreenOn(Android.OS.SystemClock.ElapsedRealtime(), isLocked);
     }
 
     private static void TryHandleNotificationReply(bool isStop)
@@ -1007,6 +1019,9 @@ public sealed class AndroidActivitiesForegroundService : Service
     private sealed class UserPresentReceiver : BroadcastReceiver
     {
         public override void OnReceive(Context? context, Intent? intent)
-            => PowerHush.OnUnlocked();
+        {
+            Log.LogInformation("Power-button hush sequence cancelled by unlock");
+            PowerHush.OnUnlocked();
+        }
     }
 }

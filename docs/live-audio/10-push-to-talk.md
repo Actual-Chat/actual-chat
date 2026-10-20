@@ -47,6 +47,15 @@ Chats) through ordinary invalidation. Armed chats also always appear in the
 **Active Chats** list with a PTT badge, and removing one there also revokes
 consent.
 
+**Device activation is explicit and visible.** A chat can be in the account's PTT
+list while PTT is disabled on this device, including after reinstalling the app.
+`PttDeviceOffBanner` then shows a short, non-dismissible informational notice above
+the collapsed banner stack: PTT is off on this device. Its Allow button enables
+this device without changing the chat's account-level consent.
+The chat's PTT settings also offer that activation directly, rather than sending
+the user to general Settings. Adding a chat never silently enables the device;
+the warning appears as soon as the chat joins the list.
+
 **Desktop and web while running.** Desktop apps and browsers expose the same
 device opt-in and chat participation settings as phones. Neither has a
 cold-start wake, so `Ptt.GetSupport` reports `WhileAppRuns` or `WhileTabOpen`,
