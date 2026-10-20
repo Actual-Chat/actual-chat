@@ -4,6 +4,14 @@ concurrency:
 
 on:
   workflow_dispatch:
+    inputs:
+      target:
+        description: "dev: build and push to docker-dev; prod: copy the docker-dev image to docker"
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
 
 permissions:
   contents: read
@@ -13,10 +21,12 @@ env:
   # Bump when services/video-transcoder changes, then point the Cloud Run service at the new tag
   IMAGE_TAG: "3"
   IMAGE: us-central1-docker.pkg.dev/actual-infrastructure/docker-dev/video-transcoder
+  PROD_IMAGE: us-central1-docker.pkg.dev/actual-infrastructure/docker/video-transcoder
 
 jobs:
   build:
     name: Build and push image
+    if: inputs.target == 'dev'
     runs-on: ubuntu-latest
     environment: dev
     steps:
@@ -50,3 +60,32 @@ jobs:
           context: services/video-transcoder
           tags: ${{ env.IMAGE }}:${{ env.IMAGE_TAG }}
           push: true
+
+  # Copies the image checked on dev rather than building it again
+  promote-prod:
+    name: Copy image to prod
+    if: inputs.target == 'prod'
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          token_format: access_token
+          workload_identity_provider: projects/1074465586741/locations/global/workloadIdentityPools/actual-identity-pool/providers/github-actual-chat
+          service_account: sa-deploy-bot@actual-infrastructure.iam.gserviceaccount.com
+
+      - name: Login to GAR
+        uses: docker/login-action@v3
+        with:
+          registry: us-central1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Copy '${{ env.IMAGE }}:${{ env.IMAGE_TAG }}' to '${{ env.PROD_IMAGE }}:${{ env.IMAGE_TAG }}'
+        uses: akhilerm/tag-push-action@v2.2.0
+        with:
+          src: ${{ env.IMAGE }}:${{ env.IMAGE_TAG }}
+          dst: |
+            ${{ env.PROD_IMAGE }}:${{ env.IMAGE_TAG }}
