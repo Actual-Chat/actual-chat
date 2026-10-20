@@ -77,7 +77,7 @@ Record the issue number from the returned URL.
 Then set the org-level **issue type** (not labels — labels are ignored in this repo). The org defines `Task`, `Bug`, and `Feature`; `gh issue create` has no flag for them, but the REST endpoint takes the type by name:
 
 ```bash
-gh api -X PATCH repos/Actual-Chat/actual-chat/issues/<NUMBER> -f type=Bug --jq '.type.name'
+gh api -X PATCH repos/Actual-Chat/actual-chat/issues/<NUMBER> -f type=<Task|Bug|Feature> --jq '.type.name'
 ```
 
 Pick the type by what actually happened, not by how the request is worded:
@@ -87,6 +87,10 @@ Pick the type by what actually happened, not by how the request is worded:
 - `Task` — everything else: improving something that works as designed (UX polish, layout, wording, making it faster than it ever was, an extra option), a small self-contained addition, refactoring, tooling, docs.
 
 An improvement is a `Task` even when the request says "bug", "broken" or "fix" — "the button should be bigger", "the list should also show X", "loading feels slow" when it was never faster. It becomes a `Bug` only when the current behavior is a departure: it used to work, the design says otherwise, or it plainly fails. When unsure whether the behavior is by design, pick `Task`; when in doubt between `Feature` and `Task`, pick `Task`.
+
+A **coverage gap** found while building a feature is a `Task`: a platform, process or component the feature never reached — an app extension that was never wired to it, a platform it was never built for. It is a `Bug` only when a part the feature *does* cover contradicts the feature's own design. Example: edge-node content (#5338) says content follows the host RPC is on. The Linux app keeping content on the origin while RPC is on the edge breaks that rule — `Bug` (#5477). The iOS share extension, which never had endpoint switching at all, keeps both RPC and content on the origin — `Task` (#5520).
+
+Apply this rule whenever you name a type, including when you only propose one to the user in chat ("should I file it as a Bug?"). The type you suggest is the type that gets filed, so decide it here, not by instinct.
 
 A failing, flaky or outdated **test** is a `Task`, not a `Bug` — e2e specs, integration and unit tests, test rigs and CI checks alike. `Bug` means the product misbehaves for a user; when only the test is wrong (a stale selector, a race in a wait, a spec that no longer matches intended behavior), nothing is broken for users, so the fix is maintenance work. If the failing test exposed a real product defect, file that defect as a `Bug` and describe the user-visible symptom, not the red test.
 
