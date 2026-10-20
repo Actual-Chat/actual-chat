@@ -344,8 +344,17 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
     @apply h-auto;
     filter: blur(4px) drop-shadow(0px 0px 4px var(--background-01));
 }
+/* JS sizes the plug to the video's fitted box; stretched to the full height, it would
+   letterbox the bitmap and leave transparent bands around it. */
+.image-viewer-modal .video-wrapper .video-plug:has(image-skeleton) {
+    @apply min-h-0;
+}
+/* Absolute, so it fills the box: as a flex item, WebKit sizes it by the bitmap's natural width. */
+.video-wrapper .video-plug image-skeleton {
+    @apply absolute inset-0;
+}
 .video-wrapper .video-plug img {
-    @apply object-contain;
+    @apply object-cover;
 }
 .image-viewer-modal .video-thumbnail {
     @apply min-h-full max-h-full;
