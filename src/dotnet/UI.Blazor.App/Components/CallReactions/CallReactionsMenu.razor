@@ -6,18 +6,7 @@
         return;
 }
 
-<div class="call-reactions-menu">
-    @* Two people need no queue for the floor, and the server rejects hands in peer chats *@
-    @if (chatId.Kind != ChatKind.Peer) {
-        <MenuEntry
-            Icon="icon-hand"
-            Class="@(m.IsOwnHandRaised ? "on" : "")"
-            Text="@(m.IsOwnHandRaised ? L.Call_LowerHand : L.Call_RaiseHand)"
-            Click="@(() => OnHandClick(chatId, !m.IsOwnHandRaised))"/>
-        <MenuEntrySeparator/>
-    }
-    <CallReactionSelect ChatId="@chatId"/>
-</div>
+<CallReactionsContent ChatId="@chatId" IsOwnHandRaised="@m.IsOwnHandRaised"/>
 
 @code {
     private ChatId? _chatId;
@@ -45,9 +34,6 @@
         var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
         return new Model(chatId, isOwnHandRaised);
     }
-
-    private Task OnHandClick(ChatId chatId, bool isRaised)
-        => LiveSessionUI.SetOwnHandRaised(chatId, isRaised, CancellationToken.None);
 
     // Nested types
 

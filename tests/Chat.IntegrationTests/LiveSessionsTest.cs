@@ -3185,18 +3185,21 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
-    public async Task HandsShouldBeRejectedInAPeerChat()
+    public async Task HandsShouldBeAllowedInAPeerChat()
     {
         // arrange
         await using var tester = AppHost.NewBlazorTester(Out);
-        var (chatId, bobAuthor, _) = await NewTwoPartyCall(tester);
+        var (chatId, bobAuthor, aliceAuthor) = await NewTwoPartyCall(tester);
         var liveSessions = tester.AppServices.GetRequiredService<ILiveSessions>();
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.OnStreamRegistered(chatId, bobAuthor.Id, null, true, true, default);
+        await backend.OnStreamRegistered(chatId, aliceAuthor.Id, null, true, true, default);
 
         // act
-        var raise = () => liveSessions.SetHandRaised(tester.Session, chatId, bobAuthor.Id, true, default);
+        await liveSessions.SetHandRaised(tester.Session, chatId, bobAuthor.Id, true, default);
 
         // assert
-        await raise.Should().ThrowAsync<Exception>();
+        HandRaisedAt(await backend.Get(chatId, default), bobAuthor.Id).Should().NotBeNull();
     }
 
     private static Task WaitForParticipantPresence(

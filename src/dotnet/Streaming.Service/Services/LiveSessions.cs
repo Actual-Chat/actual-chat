@@ -254,7 +254,6 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     {
         var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
         chat.Require();
-        RequireNotPeerChatForHands(chatId);
         if (chat.Rules.Author?.Id != targetAuthorId) {
             if (isRaised)
                 throw StandardError.Constraint("You can't raise another participant's hand.");
@@ -273,7 +272,6 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
 
     public async Task LowerAllHands(Session session, ChatId chatId, CancellationToken cancellationToken)
     {
-        RequireNotPeerChatForHands(chatId);
         var authority = await GetCallAuthority(session, chatId, cancellationToken).ConfigureAwait(false);
         authority.RequireManage();
         var loweredAuthorIds = await Backend.LowerAllHands(chatId, cancellationToken).ConfigureAwait(false);
@@ -559,12 +557,6 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         // A 1:1 conversation has no host in any meaningful sense - neither side may silence the other.
         if (chatId is PeerChatId)
             throw StandardError.Constraint("You cannot mute another participant in a one-on-one chat.");
-    }
-
-    private static void RequireNotPeerChatForHands(ChatId chatId)
-    {
-        if (chatId is PeerChatId)
-            throw StandardError.Constraint("Raising a hand isn't available in a one-on-one chat.");
     }
 
     // Nested types

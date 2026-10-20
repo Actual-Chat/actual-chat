@@ -8,19 +8,17 @@
     var isExpanded = a.Mode == VisualActivityPanelMode.Expanded;
     var isCollapsed = a.Mode == VisualActivityPanelMode.Collapsed;
     var hasLayoutActions = a.CanToggleFullscreen || a.CanToggleIsland || a.CanMinimize;
-    var hasStreamActions = a.CanSwitchCamera || a.CanToggleVideo || a.CanToggleScreenCast || CanReact;
+    var hasStreamActions = a.CanSwitchCamera || a.CanToggleVideo || a.CanToggleScreenCast;
     var hasSettingsActions = a.CanShowVideoSettings || a.CanShowVoiceSettings;
     var hasChatActions = a.CanToggleChatPanel;
     var hasDiagnosticsActions = a.CanShowDiagnostics;
-    // A narrow call screen has no room for its own reactions button, so they open here; so do the inline ones
-    var hasReactionSelect = CanReact && (IsNarrow || a.Mode == VisualActivityPanelMode.Inline);
+    // Where the screen has a reactions button of its own, they open from it and not from here
+    var hasReactions = CanReact && !a.HasReactButton;
 }
 
 <div class="video-panel-menu">
-    @if (hasReactionSelect) {
-        <div class="call-reactions-menu">
-            <CallReactionSelect ChatId="@ChatId"/>
-        </div>
+    @if (hasReactions) {
+        <CallReactionsContent ChatId="@ChatId" IsOwnHandRaised="@IsOwnHandRaised"/>
         @if (hasLayoutActions || hasStreamActions || hasSettingsActions || hasChatActions || hasDiagnosticsActions) {
             <MenuEntrySeparator/>
         }
@@ -69,12 +67,6 @@
                 Icon="icon-screen-share"
                 Text="@(IsOwnScreenCasting ? L.Call_StopScreenShare : L.Call_ShareScreen)"
                 Click="@OnToggleScreenCast"/>
-        }
-        @if (CanReact) {
-            <MenuEntry
-                Icon="icon-hand"
-                Text="@(IsOwnHandRaised ? L.Call_LowerHand : L.Call_RaiseHand)"
-                Click="@OnToggleHand"/>
         }
     }
 
@@ -127,7 +119,6 @@
     [Parameter] public bool IsOwnScreenCasting { get; set; }
     [Parameter] public bool IsChatVisible { get; set; }
     [Parameter] public bool CanReact { get; set; }
-    [Parameter] public bool IsNarrow { get; set; }
     [Parameter] public bool IsOwnHandRaised { get; set; }
 
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
@@ -150,9 +141,6 @@
 
     private void OnToggleScreenCast()
         => ChatVideoUI.ToggleScreenCast(ChatId);
-
-    private Task OnToggleHand()
-        => Hub.LiveSessionUI.SetOwnHandRaised(ChatId, !IsOwnHandRaised, CancellationToken.None);
 
     private void OnToggleChatPanel()
         => ChatVideoUI.SetVideoPanelChatVisible(!IsChatVisible);

@@ -13,7 +13,6 @@
     IsOwnScreenCasting="@m.IsOwnScreenCasting"
     IsChatVisible="@m.IsChatVisible"
     CanReact="@m.CanReact"
-    IsNarrow="@m.IsNarrow"
     IsOwnHandRaised="@m.IsOwnHandRaised"/>
 
 @code {
@@ -53,7 +52,6 @@
 
         return new Model {
             ChatId = chatId,
-            IsNarrow = _isNarrow,
             Actions = actions,
             IsOwnRecording = isOwnRecording,
             IsOwnScreenCasting = isOwnScreenCasting,
@@ -67,7 +65,6 @@
         public static readonly Model None = new();
 
         public ChatId? ChatId { get; init; }
-        public bool IsNarrow { get; init; }
         public VideoPanelActions? Actions { get; init; }
         public bool IsOwnRecording { get; init; }
         public bool IsOwnScreenCasting { get; init; }
