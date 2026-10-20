@@ -83,12 +83,14 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var s1 = stateFactory.NewKvasSynced<string>(new(kvas, "s1") {
             UpdateDelayer = updateDelayer,
         });
+        Trace(s1, "s1", kvas.Journal);
         s1.Value = "a";
         await s1.WhenWritten().WaitAsync(timeout);
 
         var s2 = stateFactory.NewKvasSynced<string>(new(kvas, "s1") {
             UpdateDelayer = updateDelayer,
         });
+        Trace(s2, "s2", kvas.Journal);
         await s2.WhenFirstTimeRead;
         s2.Value.Should().Be("a");
 
@@ -103,7 +105,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         await s1.WhenWritten().WaitAsync(timeout);
         await s2.WhenWritten().WaitAsync(timeout);
         await Task.Delay(TimeSpan.FromSeconds(1));
-        s1.Value.Should().Be(s2.Value);
+        s1.Value.Should().Be(s2.Value, "the states must converge; journal:\n{0}", string.Join('\n', kvas.Journal));
     }
 
     [FlakyFact("AY: Time-dependent", 3)]
@@ -120,6 +122,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var s1 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
             UpdateDelayer = updateDelayer,
         });
+        Trace(s1, "s1", kvas.Journal);
         s1.Value = "a";
         (s1.Value.Origin == s1.OwnOrigin).Should().BeTrue();
         await Task.Delay(100);
@@ -129,6 +132,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         var s2 = stateFactory.NewKvasSynced<StringState>(new(kvas, "s1") {
             UpdateDelayer = updateDelayer,
         });
+        Trace(s2, "s2", kvas.Journal);
         await s2.WhenFirstTimeRead;
         s2.Value.Value.Should().Be("a");
         s2.Value.Origin.Should().Be(s1.OwnOrigin);
@@ -148,7 +152,7 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         await s1.WhenWritten().WaitAsync(timeout);
         await s2.WhenWritten().WaitAsync(timeout);
         await Task.Delay(timeout);
-        s1.Value.Should().Be(s2.Value);
+        s1.Value.Should().Be(s2.Value, "the states must converge; journal:\n{0}", string.Join('\n', kvas.Journal));
         s1.Value.Origin.Should().Be(s2.Value.Origin);
     }
 
@@ -210,6 +214,16 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         await TestWait.WhenPolled(() => (state.ValueOrDefault?.Value ?? false).Should().BeTrue(),
             TimeSpan.FromSeconds(10));
+    }
+
+    // Private methods
+
+    private static void Trace<T>(SyncedState<T> state, string name, ConcurrentQueue<string> journal)
+        where T : class?
+    {
+        state.ReadState.Invalidated += (_, _) => journal.Enqueue($"{name}.read invalidated");
+        state.ReadState.Updated += (_, _) => journal.Enqueue($"{name}.read = {state.ReadState.ValueOrDefault}");
+        state.Updated += (_, _) => journal.Enqueue($"{name} = {state.ValueOrDefault}");
     }
 }
 
