@@ -6,6 +6,8 @@ using Google.Api.Gax.ResourceNames;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Storage.V1;
 using Google.Cloud.Video.Transcoder.V1;
+using GrpcException = Grpc.Core.RpcException;
+using GrpcStatusCode = Grpc.Core.StatusCode;
 using TranscoderAudioStream = Google.Cloud.Video.Transcoder.V1.AudioStream;
 using TranscoderVideoStream = Google.Cloud.Video.Transcoder.V1.VideoStream;
 
@@ -35,6 +37,8 @@ public sealed class GoogleCloudVideoUploadProcessor(
     private static readonly TimeSpan MaxLocalTranscodeDuration = TimeSpan.FromMinutes(10);
     // The service keeps its output in memory until the upload
     private static readonly TimeSpan MaxServiceTranscodeDuration = TimeSpan.FromMinutes(60);
+    // Transcoder rejects a job above 120 fps, and slow-motion rates are of no use in a chat
+    private const double MaxFrameRate = 60;
     private const string OutputContentType = "video/mp4";
 
     // ffprobe codec names of the input codecs Transcoder lists as supported:
@@ -156,10 +160,20 @@ public sealed class GoogleCloudVideoUploadProcessor(
                 stepSw.Restart();
                 if (UploadProcessorHelper.ExceedsFullHd(size))
                     size = UploadProcessorHelper.ScaleToFullHd(size);
-                frameRate = Math.Max(frameRate, 24);
-                var createdJob = await CreateTranscoderJob(
-                        inputGcsUri, outputGcsUri, size, frameRate, hasAudio, cancellationToken)
-                    .ConfigureAwait(false);
+                frameRate = Math.Clamp(frameRate, 24, MaxFrameRate);
+                Job createdJob;
+                try {
+                    createdJob = await CreateTranscoderJob(
+                            inputGcsUri, outputGcsUri, size, frameRate, hasAudio, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (GrpcException e) when (IsRejection(e.StatusCode)) {
+                    Log.LogError(e, "Transcoder rejected the job for '{FileName}', converting it without Transcoder",
+                        upload.FileName);
+                    return await Convert(original, signedUrl, mediaInfo, conversion, progress, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
                 jobName = createdJob.Name;
                 Log.LogDebug("Transcoder job created in {Elapsed:N0}ms: '{JobName}'",
                     stepSw.ElapsedMilliseconds, jobName);
@@ -207,6 +221,12 @@ public sealed class GoogleCloudVideoUploadProcessor(
         => TranscoderInputCodecs.Contains(videoStream.CodecName);
 
     // Private methods
+
+    private static bool IsRejection(GrpcStatusCode statusCode)
+        => statusCode is GrpcStatusCode.InvalidArgument
+            or GrpcStatusCode.FailedPrecondition
+            or GrpcStatusCode.OutOfRange
+            or GrpcStatusCode.Unimplemented;
 
     private Task<ProcessedFile> Convert(
         ProcessedFile original,
