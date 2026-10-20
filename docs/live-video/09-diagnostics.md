@@ -156,7 +156,7 @@ fields live in `src/nodejs/src/app-constants.ts` (`expandVideo`).
 | `KeyFramePeriodSize` | 90 frames | derived |
 | `KeyFrameRequestCooldown` | 1 s (= `KeyFramePeriod / 3`) | Server-side PLI rate limit |
 | `CodecSwitchHysteresisWindow` | 10 s | Delay before codec upgrades take effect |
-| `MaxCameraStreamsPerChat` | 8 | Per-chat camera publisher cap |
+| `MaxCameraStreamsPerChat` | 15 | Per-chat camera publisher cap |
 | `StreamSilenceCheckInterval` | 5 s | Server silence watchdog interval |
 | `StreamSilenceMaxConsecutiveZeroIntervals` | 2 | Tear-down after `interval × N` of no bundles |
 | `MaxLiveDuration` | 8 h | Hard cap on a single publish session |

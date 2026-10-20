@@ -664,7 +664,7 @@ surface is in `09-diagnostics.md`.
   is deliberate (a slow decoder mustn't ratchet the shared ceiling down), but it
   means a viewer whose device is the bottleneck on *every* stream walks each one
   down separately, three good ticks per tier at a time.
-- **Stream count cap is 9 above-Lowest.** Above that, the server demotes by
+- **Stream count cap is 5 above-Lowest.** Above that, the server demotes by
   priority then registration order.
 - **No cross-epoch carry on the estimator.** Each reconnect re-learns the
   ceiling from `InitialCeilingBps`. User-visible quality stays steady because
