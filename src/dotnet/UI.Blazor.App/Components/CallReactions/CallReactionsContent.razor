@@ -1,0 +1,19 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<div class="call-reactions-menu">
+    <CallReactionSelect ChatId="@ChatId"/>
+    <MenuEntry
+        Icon="icon-hand"
+        Class="@(IsOwnHandRaised ? "on" : "")"
+        Text="@(IsOwnHandRaised ? L.Call_LowerHand : L.Call_RaiseHand)"
+        Click="@OnHandClick"/>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+    [Parameter, EditorRequired] public bool IsOwnHandRaised { get; set; }
+
+    private Task OnHandClick()
+        => Hub.LiveSessionUI.SetOwnHandRaised(ChatId, !IsOwnHandRaised, CancellationToken.None);
+}

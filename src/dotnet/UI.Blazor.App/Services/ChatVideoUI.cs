@@ -197,7 +197,9 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             CanToggleChatPanel: hasVideo && isDesktopLayout && mode == VisualActivityPanelMode.Expanded,
             CanShowDiagnostics: isDiagnosticsEnabled,
             CanShowVoiceSettings: true,
-            CanShowVideoSettings: isVideoAvailable);
+            CanShowVideoSettings: isVideoAvailable,
+            HasReactButton: mode == VisualActivityPanelMode.Inline
+                || (mode == VisualActivityPanelMode.Expanded && isDesktopLayout));
     }
 
     [ComputeMethod]
@@ -402,4 +404,5 @@ public sealed record VideoPanelActions(
     bool CanToggleChatPanel,
     bool CanShowDiagnostics,
     bool CanShowVoiceSettings,
-    bool CanShowVideoSettings);
+    bool CanShowVideoSettings,
+    bool HasReactButton);
