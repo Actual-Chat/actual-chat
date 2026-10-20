@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using ActualChat.App.Maui.IosShareExt.UI.Fusion.Ios;
 using ActualChat.Contacts;
 using ActualChat.Maui;
@@ -12,6 +13,10 @@ namespace ActualChat.App.Maui.IosShareExt.Services;
 
 public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
 {
+    // A 4 GB iPhone has ~27 MB left before its 120 MB jetsam limit when an upload starts, an 8 GB one ~130 MB
+    private const long LargeChunkMinAvailableMemory = 64 * 1024 * 1024;
+    private const int SmallMaxChunkMultiplier = 2; // 512 KB
+
     private readonly HashSet<ContactId> _selectedIds = new();
     private readonly MutableState<double> _uploadPct;
     private readonly FuncWorker _sendWorker;
@@ -36,6 +41,10 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     private Session Session => Hub.Session;
     private UICommander UICommander => Hub.UICommander;
     private ICommander Commander => Hub.Commander;
+
+    private ChunkSizeSelectorRecommendation ChunkSizeRecommendation
+        => field ??= Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>();
+
     private IncomingShareSuggestions ShareSuggestions => field ??= Hub.Services.GetRequiredService<IncomingShareSuggestions>();
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
@@ -43,11 +52,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
     {
         Hub = hub;
         SelectedPlaceId = Hub.StateFactory.NewMutable<PlaceId?>();
-        var chunkSizeRecommendation = Hub.Services.GetRequiredService<ChunkSizeSelectorRecommendation>();
-        chunkSizeRecommendation.Multiplier = 1;
-        // A chunk costs several times its size in transit, and the extension idles ~15 MB under
-        // its 120 MB jetsam limit on older iPhones - a 4 MB chunk gets it killed mid-upload.
-        chunkSizeRecommendation.MaxMultiplier = 2;
+        ChunkSizeRecommendation.Multiplier = 1;
         _isInitialized = Hub.StateFactory.NewMutable<bool>();
         _isSending = Hub.StateFactory.NewMutable<bool>();
         _isSent = Hub.StateFactory.NewMutable<bool>();
@@ -318,6 +323,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
             .Set(nameof(Media.Media.ContentType), uploadSource.Metadata.ContentType);
         var uploadId = await InitUpload().ConfigureAwait(false);
         var streamSource = (StreamUploadSource)uploadSource.StreamSource;
+        SetMaxChunkSize();
         await FileUploader
             .UploadData(uploadId, streamSource.GetStream(), uploadProgress, CollectChunkGarbage, cancellationToken)
             .ConfigureAwait(false);
@@ -344,6 +350,18 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
                 Session = Session,
                 UploadId = uploadId,
             }, CancellationToken.None);
+    }
+
+    private void SetMaxChunkSize()
+    {
+        // The jetsam limit depends on the device and the iOS version (120 MB on a 4 GB iPhone with iOS 17,
+        // ~220 MB on an 8 GB one with iOS 26), so the choice goes by what's actually left. It's made once:
+        // the session keeps memory proportional to the largest chunk it has sent until the upload ends,
+        // so a 4 MB chunk sent early shrinks what's left for the rest of the upload.
+        var availableMemory = (long)os_proc_available_memory();
+        ChunkSizeRecommendation.MaxMultiplier = availableMemory >= LargeChunkMinAvailableMemory
+            ? ChunkSizeSelectorRecommendation.DefaultMaxMultiplier
+            : SmallMaxChunkMultiplier;
     }
 
     private async Task<Disposable<UploadSource>> PrepareUploadSource(
@@ -373,4 +391,7 @@ public class ShareUI : WorkerBase, IComputeService, INotifyInitialized
         return Disposable.New(new UploadSource(newMetadata, new FileUploadSource(transcodedFilePath)),
             _ => File.Delete(transcodedFilePath));
     }
+
+    [DllImport("/usr/lib/libSystem.dylib")]
+    private static extern nuint os_proc_available_memory();
 }
