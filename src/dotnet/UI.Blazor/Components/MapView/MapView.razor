@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.Components
+@using ActualChat.Rpc
 @using ActualChat.UI.Blazor.Module
 @using ActualChat.UI.Blazor.Services
 @using System.Diagnostics.CodeAnalysis
@@ -14,6 +15,7 @@
     private string? _appliedStyleUrl;
 
     private BrowserInfo BrowserInfo => Hub.BrowserInfo;
+    private RpcEndpointMonitor EndpointMonitor => field ??= Services.GetRequiredService<RpcEndpointMonitor>();
 
     private ElementReference Ref { get; set; }
 
@@ -36,7 +38,9 @@
             });
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
+        // The endpoints change when RPC moves to another node, and the style URL moves with it
         var themeInfo = await BrowserInfo.ThemeInfo.Use(cancellationToken).ConfigureAwait(false);
+        await EndpointMonitor.Endpoints.Use(cancellationToken).ConfigureAwait(false);
         return new Model(GetStyleUrl(themeInfo.CurrentTheme));
     }
 
@@ -97,13 +101,15 @@
     // Private methods
 
     private string GetStyleUrl(Theme theme) {
+        // Unlike images, tiles bypass the native content cache, so the map follows the edge node on its own;
+        // the style it gets from there points its tiles, glyphs and sprites at the same edge host
         var styleName = theme switch {
             Theme.Light => "liberty",
             Theme.Ash => "positron",
             Theme.Dark => "fiord",
             _ => "liberty",
         };
-        return $"{UrlMapper.MapTilesBaseUrl}styles/{styleName}";
+        return RpcEndpointSelector.ApplyToContent($"{UrlMapper.MapTilesBaseUrl}styles/{styleName}");
     }
 
     // Nested types
