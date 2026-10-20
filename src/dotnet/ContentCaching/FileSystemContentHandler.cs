@@ -88,23 +88,28 @@ public sealed partial class FileSystemContentHandler : IContentHandler
         var (path, key) = range == null ? (fullPath, fullKey) : GetPath(url + "\nRange: " + range);
         using var fillLock = await FillLocks.Lock(path, cancellationToken).ConfigureAwait(false);
         while (true) {
+            // A fill publishes its file before it leaves Downloads, so the fill must be looked up first:
+            // the other way round, a fill finishing in between is missed both times and fetched again
+            if (Downloads.TryGetValue(path, out var active)) {
+                if (!active.HasEncryptionKey(_encryptionKey))
+                    return await Bypass(request, "encryption key", cancellationToken).ConfigureAwait(false);
+
+                if (active.TryCreateResponse(cancellationToken) is { } shared) {
+                    Stats.Report(ContentCacheOutcome.JoinedFill);
+                    DebugLog?.LogDebug("Content cache fill joined: {Key}", key);
+                    return shared;
+                }
+
+                await active.WhenRunning!.WaitAsync(cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
             var cached = await TryRead(path, key, request, range, false, cancellationToken).ConfigureAwait(false);
-            if (cached != null) {
-                Stats.Report(ContentCacheOutcome.Hit);
-                return cached;
-            }
-
-            if (!Downloads.TryGetValue(path, out var active))
+            if (cached == null)
                 break;
-            if (!active.HasEncryptionKey(_encryptionKey))
-                return await Bypass(request, "encryption key", cancellationToken).ConfigureAwait(false);
-            if (active.TryCreateResponse(cancellationToken) is { } shared) {
-                Stats.Report(ContentCacheOutcome.JoinedFill);
-                DebugLog?.LogDebug("Content cache fill joined: {Key}", key);
-                return shared;
-            }
 
-            await active.WhenRunning!.WaitAsync(cancellationToken).ConfigureAwait(false);
+            Stats.Report(ContentCacheOutcome.Hit);
+            return cached;
         }
 
         var response = await Downstream.Handle(request, cancellationToken).ConfigureAwait(false);
