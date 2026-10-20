@@ -6,7 +6,8 @@ public sealed partial record ActiveChat(
     [property: DataMember, Key(1)] bool IsListening = false,
     [property: DataMember, Key(2)] bool IsRecording = false,
     [property: DataMember, Key(3)] Moment Recency = default, // CPU time
-    [property: DataMember, Key(4)] Moment ListeningRecency = default // CPU time
+    [property: DataMember, Key(4)] Moment ListeningRecency = default, // CPU time
+    [property: DataMember, Key(5)] bool IsListeningExplicitly = false
     )
 {
     public bool IsSameAs(ActiveChat? other)
@@ -15,7 +16,8 @@ public sealed partial record ActiveChat(
             && Recency == other.Recency
             && ListeningRecency == other.ListeningRecency
             && IsListening == other.IsListening
-            && IsRecording == other.IsRecording;
+            && IsRecording == other.IsRecording
+            && IsListeningExplicitly == other.IsListeningExplicitly;
 
     public static implicit operator ActiveChat(ChatId chatId)
         => new(chatId);

@@ -79,7 +79,7 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
         if (isForeground) {
             // The user is in the app: don't hijack their state with a forced replay -
             // just make sure the trigger chat is being listened to.
-            await chatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
+            await chatAudioUI.SetListeningState(chatId, true, isAutomatic: true).ConfigureAwait(false);
             await platform.OnForegroundWakeHandled(chatId).ConfigureAwait(false);
             return null;
         }
@@ -95,7 +95,7 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
             armedChatIds = [..armedChatIds, chatId];
 
         foreach (var armedChatId in armedChatIds)
-            await chatAudioUI.SetListeningState(armedChatId, true).ConfigureAwait(false);
+            await chatAudioUI.SetListeningState(armedChatId, true, isAutomatic: true).ConfigureAwait(false);
 
         _ = platform.OnPlaybackStarted(Hub, chatId);
         return null;

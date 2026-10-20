@@ -83,6 +83,152 @@ public sealed class PttMuteTest(ChatAppHostFixture fixture, ITestOutputHelper @o
         countdown!.Duration.Should().Be(TimeSpan.FromMinutes(15), "HushDuration defaults to 15 minutes");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task HushOnAnotherDeviceShouldPreserveOnlyExplicitListening(bool isListeningExplicitly)
+    {
+        // arrange
+        await using var desktop = AppHost.NewBlazorTester(Out);
+        var account = await desktop.SignInAsUniqueBob();
+        var desktopHub = desktop.ScopedAppServices.AppUIHub();
+        var chatId = await ArmPttChat(desktop, desktopHub);
+        var desktopAudio = desktopHub.ChatAudioUI;
+        await desktopAudio.ApplyPttListeningChange([], [chatId], CancellationToken.None);
+        if (isListeningExplicitly)
+            await desktopAudio.SetListeningState(chatId, true);
+
+        await using var phone = AppHost.NewBlazorTester(Out);
+        await phone.SignIn(account);
+        var phoneHub = phone.ScopedAppServices.AppUIHub();
+        phoneHub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
+        await TestWait.When(async ct =>
+            (await phoneHub.ChatAudioUI.GetPttChatIds(ct)).Should().Contain(chatId));
+        await phoneHub.ChatAudioUI.SetListeningState(chatId, true, isAutomatic: true);
+
+        // act
+        await phoneHub.ChatAudioUI.HushPtt(CancellationToken.None);
+        await TestWait.When(async ct =>
+            (await desktopAudio.GetMutedPttChatIds(ct)).Should().Contain(chatId));
+        await desktopAudio.ApplyPttListeningChange([chatId], [], CancellationToken.None);
+
+        // assert
+        desktopHub.ActiveChatsUI.ActiveChats.Value.Any(c => c.ChatId == chatId && c.IsListening)
+            .Should().Be(isListeningExplicitly, "a remote hush must not end a deliberately joined conversation");
+        phoneHub.ActiveChatsUI.ActiveChats.Value.Any(c => c.ChatId == chatId && c.IsListening)
+            .Should().BeFalse("the device that hushed must stop immediately");
+        (await desktopAudio.GetPttChatIds(CancellationToken.None)).Should().NotContain(chatId);
+    }
+
+    [Fact]
+    public async Task AProtectedConversationShouldGainAnIdleWatcherAndNotRestartAfterLeaving()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var chatId = await ArmPttChat(tester, hub);
+        var audio = hub.ChatAudioUI;
+        await audio.SetListeningState(chatId, true);
+        var idleChats = await Computed.Capture(() => audio.GetIdleListeningChatIds(CancellationToken.None));
+        idleChats.Value.Should().NotContain(chatId);
+
+        // act
+        var now = hub.Clocks.ServerClock.Now;
+        await hub.UserSettingsUI.UserPttSettings()
+            .Update(x => x.WithPttChatMuted(chatId, now, now + TimeSpan.FromMinutes(15)));
+        await audio.ApplyPttListeningChange([chatId], [], CancellationToken.None);
+
+        // assert
+        await TestWait.When(async ct =>
+            (await audio.GetIdleListeningChatIds(ct)).Should().Contain(chatId));
+        hub.ActiveChatsUI.ActiveChats.Value.Single(c => c.ChatId == chatId)
+            .IsListeningExplicitly.Should().BeTrue("silence between utterances must not remove the exemption");
+
+        // act
+        await audio.SetListeningState(chatId, false);
+        await audio.ApplyPttListeningChange([], [], CancellationToken.None);
+
+        // assert
+        hub.ActiveChatsUI.ActiveChats.Value.Should().NotContain(c => c.ChatId == chatId);
+        (await audio.GetPttChatIds(CancellationToken.None)).Should().NotContain(chatId);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeviceOptOutAndChatPauseShouldStillStopExplicitListening(bool isChatPaused)
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var chatId = await ArmPttChat(tester, hub);
+        var audio = hub.ChatAudioUI;
+        await audio.SetListeningState(chatId, true);
+
+        // act
+        if (isChatPaused) {
+            var pauseCmd = new ChatsBackend_Change(
+                chatId, null, Change.Update(new ChatDiff { IsPttPaused = true }));
+            await tester.AppServices.Commander().Call(pauseCmd);
+        }
+        else
+            audio.SetIsPttEnabledOnDevice(false);
+        await TestWait.When(async ct => (await audio.GetPttChatIds(ct)).Should().NotContain(chatId));
+        await audio.ApplyPttListeningChange([chatId], [], CancellationToken.None);
+
+        // assert
+        hub.ActiveChatsUI.ActiveChats.Value.Should().NotContain(c => c.ChatId == chatId && c.IsListening);
+    }
+
+    [Fact]
+    public async Task ExplicitMuteOnThisDeviceShouldStillStopItsConversation()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var chatId = await ArmPttChat(tester, hub);
+        var audio = hub.ChatAudioUI;
+        await audio.SetListeningState(chatId, true);
+
+        // act
+        await audio.MutePtt(chatId, TimeSpan.FromMinutes(15), CancellationToken.None);
+        await audio.ApplyPttListeningChange([chatId], [], CancellationToken.None);
+
+        // assert
+        hub.ActiveChatsUI.ActiveChats.Value.Should().NotContain(c => c.ChatId == chatId && c.IsListening);
+        (await audio.GetMutedPttChatIds(CancellationToken.None)).Should().Contain(chatId);
+    }
+
+    [Fact]
+    public async Task RecordingShouldEstablishExplicitListeningUntilTheConversationIsLeft()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var (chatId, _) = await tester.CreateChat(true);
+        var audio = hub.ChatAudioUI;
+
+        // act
+        await audio.SetRecordingChatId(chatId);
+        await audio.SetRecordingChatId(null);
+
+        // assert
+        hub.ActiveChatsUI.ActiveChats.Value.Single(c => c.ChatId == chatId)
+            .IsListeningExplicitly.Should().BeTrue();
+
+        // act
+        await audio.SetListeningState(chatId, false);
+        await audio.SetListeningState(chatId, true, isAutomatic: true);
+
+        // assert
+        hub.ActiveChatsUI.ActiveChats.Value.Single(c => c.ChatId == chatId)
+            .IsListeningExplicitly.Should().BeFalse();
+    }
+
     [Fact]
     public async Task IsAnyPlayingShouldBeFalseWithNoPlayer()
     {

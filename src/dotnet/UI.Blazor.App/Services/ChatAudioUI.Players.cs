@@ -11,6 +11,7 @@ public partial class ChatAudioUI
         ImmutableDictionary<(ChatId ChatId, ChatPlayerKind PlayerKind), ChatPlayer>.Empty;
     private readonly ConcurrentDictionary<ChatId, Moment> _listeningCatchUpAnchors = new();
     private ImmutableHashSet<ChatId> _listeningChatsBeforeReplay = ImmutableHashSet<ChatId>.Empty;
+    private ImmutableHashSet<ChatId> _explicitListeningChatsBeforeReplay = ImmutableHashSet<ChatId>.Empty;
     private readonly MutableState<ReplayState?> _replayState;
     private readonly AudioFocusRequester _audioFocusRequester;
     private readonly AudioFocusRequester _listeningFocusRequester;
@@ -96,8 +97,13 @@ public partial class ChatAudioUI
             // One-shot per replay session: preserve the snapshot across replay switches
             // (when a stop transition hasn't been processed yet by StartStopReplayingPlayers).
             lock (Lock) {
-                if (_listeningChatsBeforeReplay.IsEmpty)
+                if (_listeningChatsBeforeReplay.IsEmpty) {
                     _listeningChatsBeforeReplay = listeningChatIds;
+                    _explicitListeningChatsBeforeReplay = ActiveChatsUI.ActiveChats.Value
+                        .Where(c => c.IsListening && c.IsListeningExplicitly)
+                        .Select(c => c.ChatId)
+                        .ToImmutableHashSet();
+                }
             }
             await ClearListeningChats().ConfigureAwait(false);
             tracer.Point("StartReplay: listening cleared");

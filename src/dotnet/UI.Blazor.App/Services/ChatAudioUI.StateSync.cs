@@ -95,17 +95,7 @@ public partial class ChatAudioUI
                 oldChatIds ??= [];
             }
             if (oldChatIds is not null) {
-                // Arming is the only thing that keeps such a chat listening, and StopListeningWhenIdle
-                // deliberately runs no watcher for it - so leaving PTT is what must end that listening,
-                // ongoing conversation or not.
-                foreach (var chatId in oldChatIds.Except(chatIds)) {
-                    Log.LogInformation("SyncListeningWithPttArming: {ChatId} left the keep-listening set", chatId);
-                    await SetListeningState(chatId, false).ConfigureAwait(false);
-                }
-                // The mirror: an armed chat is a listened chat, and InitializeListening covers only
-                // the ones armed at startup.
-                foreach (var chatId in chatIds.Except(oldChatIds))
-                    await SetListeningState(chatId, true).ConfigureAwait(false);
+                await ApplyPttListeningChange(oldChatIds, chatIds, cancellationToken).ConfigureAwait(false);
             }
             oldChatIds = chatIds;
         }
@@ -613,12 +603,21 @@ public partial class ChatAudioUI
 
                         // Restore listening for chats that had it before replay started
                         ImmutableHashSet<ChatId> toRestore;
+                        ImmutableHashSet<ChatId> explicitToRestore;
                         lock (Lock) {
                             toRestore = _listeningChatsBeforeReplay;
+                            explicitToRestore = _explicitListeningChatsBeforeReplay;
                             _listeningChatsBeforeReplay = ImmutableHashSet<ChatId>.Empty;
+                            _explicitListeningChatsBeforeReplay = ImmutableHashSet<ChatId>.Empty;
                         }
-                        foreach (var chatId in toRestore)
-                            await SetListeningState(chatId, true).ConfigureAwait(false);
+                        var mutedChatIds = await GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
+                        foreach (var chatId in toRestore) {
+                            var isExplicit = explicitToRestore.Contains(chatId);
+                            if (mutedChatIds.Contains(chatId) && !isExplicit)
+                                continue;
+
+                            await SetListeningState(chatId, true, isAutomatic: !isExplicit).ConfigureAwait(false);
+                        }
 
                         // Listening runs on its own transient focus now, so replay's ends with replay
                         TryReleaseAudioFocus();
@@ -684,7 +683,7 @@ public partial class ChatAudioUI
         await WhenEnabled.WaitAsync(cancellationToken).ConfigureAwait(false);
 
         var cListeningChatIds = await Computed
-            .Capture(GetListeningChatIds, cancellationToken)
+            .Capture(() => GetIdleListeningChatIds(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
         var monitors = new Dictionary<ChatId, FuncWorker>();
         await foreach (var change in cListeningChatIds.Changes(cancellationToken).ConfigureAwait(false)) {
@@ -701,12 +700,7 @@ public partial class ChatAudioUI
             if (toStart.Count == 0)
                 continue;
 
-            var keepListeningChatIds = await GetChatsYouNeedToKeepListeningTo(cancellationToken)
-                .ConfigureAwait(false);
             foreach (var chatId in toStart) {
-                if (keepListeningChatIds.Contains(chatId))
-                    continue; // armed PTT chats keep listening — no idle watcher
-
                 var watcher = FuncWorker.Start(
                     ct => StopListeningWhenIdle(chatId, ct),
                     cancellationToken);
