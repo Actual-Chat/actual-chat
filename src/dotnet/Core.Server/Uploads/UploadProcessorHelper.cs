@@ -52,17 +52,32 @@ public static class UploadProcessorHelper
         // These are ffmpeg's output options, also passed as is to the transcode job's container,
         // so none of them may contain a space.
         // yuv420p: AV1 and HEVC sources are often 10-bit, and browsers don't play 10-bit H.264
+        // maxrate keeps noisy footage from growing past what Transcoder would produce for the same size
+        var (size, _, frameRate) = AnalyzeVideo(mediaInfo);
+        var mustScale = ExceedsFullHd(size);
+        if (mustScale)
+            size = ScaleToFullHd(size);
+        var maxBitrate = EstimateVideoBitrate(size, frameRate);
         List<string> arguments = [
-            "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+            "-maxrate", maxBitrate.ToString(),
+            "-bufsize", (2L * maxBitrate).ToString(),
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart",
         ];
         var mustCopyAudio = mediaInfo.PrimaryAudioStream is null or { CodecName: "aac" };
         arguments.AddRange(["-c:a", mustCopyAudio ? "copy" : "aac"]);
-        var (size, _, _) = AnalyzeVideo(mediaInfo);
-        if (ExceedsFullHd(size)) {
-            size = ScaleToFullHd(size);
+        if (mustScale)
             arguments.AddRange(["-vf", $"scale={size.Width}:{size.Height}"]);
-        }
         return ([.. arguments], size);
+    }
+
+    public static int EstimateVideoBitrate(Size2D size, double frameRate)
+    {
+        // ~7 Mbps for 1080p@30, ~3 Mbps for 720p@30, ~1 Mbps for 480p@30
+        var pixels = size.Width * size.Height;
+        var frameFactor = Math.Max(frameRate, 24) / 30.0;
+        var bps = (int)(pixels * frameFactor * 3.5);
+        return Math.Clamp(bps, 500_000, 15_000_000);
     }
 
     public static T EnsureMp4Extension<T>(T file) where T : UploadedFile

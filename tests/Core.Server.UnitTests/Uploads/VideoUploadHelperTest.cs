@@ -124,10 +124,11 @@ public sealed class VideoUploadHelperTest
     }
 
     [Theory]
-    [InlineData(1920, 1080, "aac", "-c:a copy", null, 1920, 1080)]
-    [InlineData(1920, 1080, null, "-c:a copy", null, 1920, 1080)]
-    [InlineData(3840, 2160, "opus", "-c:a aac", "-vf scale=1920:1080", 1920, 1080)]
-    [InlineData(2160, 3840, "opus", "-c:a aac", "-vf scale=1080:1920", 1080, 1920)]
+    [InlineData(1920, 1080, "aac", "-c:a copy", null, 1920, 1080, 7257600)]
+    [InlineData(1920, 1080, null, "-c:a copy", null, 1920, 1080, 7257600)]
+    [InlineData(1280, 720, "aac", "-c:a copy", null, 1280, 720, 3225600)]
+    [InlineData(3840, 2160, "opus", "-c:a aac", "-vf scale=1920:1080", 1920, 1080, 7257600)]
+    [InlineData(2160, 3840, "opus", "-c:a aac", "-vf scale=1080:1920", 1080, 1920, 7257600)]
     public void GetTranscodeArgumentsShouldScaleToFullHdAndConvertAudioToAac(
         int width,
         int height,
@@ -135,10 +136,13 @@ public sealed class VideoUploadHelperTest
         string expectedAudio,
         string? expectedFilter,
         int expectedWidth,
-        int expectedHeight)
+        int expectedHeight,
+        int expectedMaxRate)
     {
         // arrange
-        var videoStream = new VideoStream { CodecName = "av1", Width = width, Height = height };
+        var videoStream = new VideoStream {
+            CodecName = "av1", Width = width, Height = height, AvgFrameRate = 30,
+        };
         var audioStream = audioCodec is null ? null : new AudioStream { CodecName = audioCodec };
         var mediaInfo = new Mock<IMediaAnalysis>(MockBehavior.Strict);
         mediaInfo.SetupGet(x => x.PrimaryVideoStream).Returns(videoStream);
@@ -150,7 +154,9 @@ public sealed class VideoUploadHelperTest
 
         // assert
         var joined = string.Join(' ', arguments);
-        joined.Should().StartWith("-c:v libx264 -preset veryfast -pix_fmt yuv420p -movflags +faststart");
+        joined.Should().StartWith(
+            $"-c:v libx264 -preset veryfast -crf 26 -maxrate {expectedMaxRate} -bufsize {2 * expectedMaxRate} "
+            + "-pix_fmt yuv420p -movflags +faststart");
         joined.Should().Contain(expectedAudio);
         if (expectedFilter is null)
             joined.Should().NotContain("-vf");

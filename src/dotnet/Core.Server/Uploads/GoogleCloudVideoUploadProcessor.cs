@@ -417,7 +417,7 @@ public sealed class GoogleCloudVideoUploadProcessor(
                 Key = videoStreamKey,
                 VideoStream = new TranscoderVideoStream {
                     H264 = new TranscoderVideoStream.Types.H264CodecSettings {
-                        BitrateBps = EstimateVideoBitrate(size, frameRate),
+                        BitrateBps = UploadProcessorHelper.EstimateVideoBitrate(size, frameRate),
                         CrfLevel = 23,
                         FrameRate = frameRate,
                         HeightPixels = size.Height,
@@ -578,16 +578,6 @@ public sealed class GoogleCloudVideoUploadProcessor(
         // Neither Transcoder nor the service reports progress, so it's estimated from the elapsed time:
         // 20% → ~84% when the expected time is up → ~92% at twice that, never above 94%
         => progress?.Report(20 + (74 * (1 - Math.Exp(-2 * elapsedFraction))));
-
-    private static int EstimateVideoBitrate(Size2D size, double frameRate)
-    {
-        // Estimate a reasonable bitrate based on resolution and frame rate.
-        // ~8 Mbps for 1080p@30, ~5 Mbps for 720p@30, ~1.5 Mbps for 480p@30.
-        var pixels = size.Width * size.Height;
-        var frameFactor = Math.Max(frameRate, 24) / 30.0;
-        var bps = (int)(pixels * frameFactor * 3.5);
-        return Math.Clamp(bps, 500_000, 15_000_000);
-    }
 
     private static string GetStateObjectName(string blobPath)
         => $"transcode-state/{blobPath}.json";
