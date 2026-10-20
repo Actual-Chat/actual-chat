@@ -1852,14 +1852,3 @@ ul.custom-list {
     @apply absolute left-0;
     @apply text-white;
 }
-
-/* Dev-only UI-language preview switcher (hidden on production) */
-.landing .landing-lang-switcher {
-    @apply fixed bottom-4 left-4;
-    @apply z-50;
-    @apply px-2 py-1;
-    @apply rounded-md;
-    @apply border border-separator;
-    @apply bg-01;
-    @apply text-02 text-sm;
-}
