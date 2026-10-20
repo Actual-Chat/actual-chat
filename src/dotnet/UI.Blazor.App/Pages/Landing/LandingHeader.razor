@@ -1,5 +1,5 @@
 @using ActualChat.Hosting
-@inherits FusionComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, string>
 @{
     var account = Account;
     var baseUri = HostInfo.BaseUrl.ToUri();
@@ -66,7 +66,7 @@
                         }
                         <a href="@privacyUri"
                            class="landing-nav-btn btn-transparent unhovered">@L.Documents_PrivacyPolicy</a>
-                        <a href="https://docs.voxt.ai/"
+                        <a href="@(State.Value ?? Links.Documentation())"
                            class="landing-nav-btn btn-transparent unhovered">@L.Settings_Documentation</a>
                     </div>
                 </div>
@@ -90,7 +90,7 @@
                         }
                         <a href="@privacyUri"
                            class="landing-nav-btn btn-transparent unhovered">@L.Documents_PrivacyPolicy</a>
-                        <a href="https://docs.voxt.ai/"
+                        <a href="@(State.Value ?? Links.Documentation())"
                            class="landing-nav-btn btn-transparent unhovered">@L.Settings_Documentation</a>
                     </div>
                 </div>
@@ -132,6 +132,9 @@
     [Parameter] public EventCallback BackToMainPageClick { get; set; }
     [Parameter] public EventCallback WhyUsClick { get; set; }
     [Parameter] public EventCallback Click { get; set; }
+
+    protected override Task<string> ComputeState(CancellationToken cancellationToken)
+        => Hub.LanguageUI.GetDocumentationUrl(cancellationToken);
 
     private Task SignIn()
         => ModalUI.Show(new SignInModal.Model());

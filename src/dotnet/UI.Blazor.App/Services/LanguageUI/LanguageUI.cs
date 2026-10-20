@@ -34,6 +34,17 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
         => Settings.DisposeSilently();
 
     [ComputeMethod]
+    public virtual async Task<string> GetDocumentationUrl(CancellationToken cancellationToken = default)
+    {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        if (account.IsGuest)
+            return Links.Documentation();
+
+        var settings = await Settings.Use(WhenReady, cancellationToken).ConfigureAwait(false);
+        return Links.Documentation(settings.UILanguage);
+    }
+
+    [ComputeMethod]
     public virtual async Task<IReadOnlyList<Language>> ListSpoken(CancellationToken cancellationToken)
     {
         var settings = await Settings.Use(WhenReady, cancellationToken).ConfigureAwait(false);

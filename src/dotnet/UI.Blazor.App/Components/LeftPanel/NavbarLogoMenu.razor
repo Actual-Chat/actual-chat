@@ -99,7 +99,7 @@
 
     private async Task OnHelpPagesClick() {
         await WhenClosed;
-        _ = Hub.ExternalUrlOpener.Open("https://docs.voxt.ai/");
+        _ = Hub.ExternalUrlOpener.Open(await Hub.LanguageUI.GetDocumentationUrl());
     }
 
     private async Task OnTestPagesClick() {

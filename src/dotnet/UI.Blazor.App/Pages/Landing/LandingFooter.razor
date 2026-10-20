@@ -1,4 +1,4 @@
-@inherits ComponentBase<AppUIHub>
+@inherits ComputedStateComponent<AppUIHub, string>
 
 <div class="landing-footer">
     <div class="c-content">
@@ -13,7 +13,7 @@
                 <a data-href="/docs/cookies" class="footer-link">
                     Cookie Preferences
                 </a>
-                <a data-href="https://docs.voxt.ai/" class="footer-link">
+                <a data-href="@(State.Value ?? Links.Documentation())" class="footer-link">
                     Documentation
                 </a>
                 <a href="mailto:@Constants.Team.SupportEmail" target="_blank" class="footer-link">
@@ -34,3 +34,8 @@
         </div>
     </div>
 </div>
+
+@code {
+    protected override Task<string> ComputeState(CancellationToken cancellationToken)
+        => Hub.LanguageUI.GetDocumentationUrl(cancellationToken);
+}

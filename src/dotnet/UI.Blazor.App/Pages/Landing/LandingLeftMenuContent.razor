@@ -83,9 +83,9 @@
         _ = History.NavigateTo(url);
     }
 
-    private void OpenDocumentation() {
+    private async Task OpenDocumentation() {
         Owner.Close();
-        _ = Hub.ExternalUrlOpener.Open("https://docs.voxt.ai/");
+        _ = Hub.ExternalUrlOpener.Open(await Hub.LanguageUI.GetDocumentationUrl());
     }
 
     private Task SignIn() {

@@ -78,7 +78,7 @@
     tabs.Add(new(SettingsTabId.Documentation, L.Settings_HelpPages) {
         IconClass = "icon-question-mark-circle",
         HasSeparatorBefore = true,
-        Click = OpenDocumentation,
+        Click = () => _ = OpenDocumentation(),
     });
     tabs.Add(new(SettingsTabId.Documents, L.Documents_PrivacyPolicy) {
         IconClass = "icon-file-text",
@@ -127,11 +127,11 @@
             <i class="icon-close text-xl"></i>
         </ButtonRound>
     }
-    <SettingsPanel @ref="_panel" Tabs="@tabs" Title="@L.Settings_Title" CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId"/>
+    <SettingsPanel @ref="_panel" Tabs="@tabs" Title="@L.Settings_Title"
+        CloseModalClick="OnCloseClick" DefaultTabId="@m.TabId"/>
 </ModalFrame>
 
 @code {
-    private const string DocumentationUrl = "https://docs.voxt.ai/";
     private static readonly string JSGetVisibleLogsText =
         $"{BlazorUIAppModule.ImportName}.LogView.getVisibleEntriesText";
 
@@ -168,8 +168,8 @@
     private void OnCloseClick()
         => Modal.Close();
 
-    private void OpenDocumentation()
-        => _ = Hub.ExternalUrlOpener.Open(DocumentationUrl);
+    private async Task OpenDocumentation()
+        => await Hub.ExternalUrlOpener.Open(await Hub.LanguageUI.GetDocumentationUrl());
 
     private void SignOut() {
         Modal.Close();

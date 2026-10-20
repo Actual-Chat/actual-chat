@@ -23,6 +23,11 @@ public static class Links
     public static readonly LocalUrl Notifications = "/n";
     public static readonly LocalUrl TestPageHome = "/test/blazor";
 
+    public static string Documentation(Language? language = null)
+        => language is null
+            ? "https://docs.voxt.ai/?lang="
+            : $"https://docs.voxt.ai/?lang={language.IsoCode}";
+
     public static LocalUrl Notification(
         NotificationId notificationId,
         long chatEntryId = 0,
