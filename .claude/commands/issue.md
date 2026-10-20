@@ -80,7 +80,13 @@ Then set the org-level **issue type** (not labels — labels are ignored in this
 gh api -X PATCH repos/Actual-Chat/actual-chat/issues/<NUMBER> -f type=Bug --jq '.type.name'
 ```
 
-Pick `Bug` for defects in the product, `Feature` only for a large new user-visible capability that spans several pieces of work, `Task` for everything else — including a small, self-contained addition to the product. When in doubt between `Feature` and `Task`, pick `Task`.
+Pick the type by what actually happened, not by how the request is worded:
+
+- `Bug` — something that worked, or was designed to work, does not: a regression, a crash or hang, an error, lost or wrong data, an action that does nothing, behavior that contradicts the design or spec. You must be able to name the intended behavior it breaks.
+- `Feature` — a large new user-visible capability that spans several pieces of work.
+- `Task` — everything else: improving something that works as designed (UX polish, layout, wording, making it faster than it ever was, an extra option), a small self-contained addition, refactoring, tooling, docs.
+
+An improvement is a `Task` even when the request says "bug", "broken" or "fix" — "the button should be bigger", "the list should also show X", "loading feels slow" when it was never faster. It becomes a `Bug` only when the current behavior is a departure: it used to work, the design says otherwise, or it plainly fails. When unsure whether the behavior is by design, pick `Task`; when in doubt between `Feature` and `Task`, pick `Task`.
 
 A failing, flaky or outdated **test** is a `Task`, not a `Bug` — e2e specs, integration and unit tests, test rigs and CI checks alike. `Bug` means the product misbehaves for a user; when only the test is wrong (a stale selector, a race in a wait, a spec that no longer matches intended behavior), nothing is broken for users, so the fix is maintenance work. If the failing test exposed a real product defect, file that defect as a `Bug` and describe the user-visible symptom, not the red test.
 
