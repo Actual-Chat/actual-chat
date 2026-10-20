@@ -8,7 +8,10 @@ public sealed class ChunkedFileUploader(IServiceProvider services)
     private static readonly RetryDelaySeq RetryDelays = RetryDelaySeq.Exp(0.5d, 3);
 
     private IServiceProvider Services => services;
-    private ChunkSizeSelectorRecommendation ChunkSizeSelectorRecommendation => field ??= Services.GetRequiredService<ChunkSizeSelectorRecommendation>();
+
+    private ChunkSizeSelectorRecommendation ChunkSizeSelectorRecommendation
+        => field ??= Services.GetRequiredService<ChunkSizeSelectorRecommendation>();
+
     private Session Session => field ??= Services.Session();
     private ICommander Commander => field ??= Services.Commander();
     private ILogger Log => field ??= Services.LogFor(GetType());
@@ -18,6 +21,7 @@ public sealed class ChunkedFileUploader(IServiceProvider services)
         UploadId uploadId,
         Task<Stream> getStream,
         IProgress<double> progressTracker,
+        Action? onChunkUploaded,
         CancellationToken ct)
     {
         var file = await getStream.ConfigureAwait(false);
@@ -34,7 +38,10 @@ public sealed class ChunkedFileUploader(IServiceProvider services)
                             file,
                             progressTracker,
                             chunkSizeSelector,
-                            () => retryIndex = 0,
+                            () => {
+                                retryIndex = 0;
+                                onChunkUploaded?.Invoke();
+                            },
                             ct)
                         .ConfigureAwait(false);
                 }
@@ -123,14 +130,15 @@ public sealed class ChunkedFileUploader(IServiceProvider services)
 public sealed class ChunkSizeSelectorRecommendation
 {
     public const int DefaultMultiplier = 8;
+    public const int DefaultMaxMultiplier = 16; // 16 x 256 KB = 4 MB, see Constants.Uploads.MaxChunkSize
 
     public int Multiplier { get; set; } = DefaultMultiplier;
+    public int MaxMultiplier { get; set; } = DefaultMaxMultiplier;
 }
 
 internal sealed class ChunkSizeSelector
 {
     private const int MinChunkSize = 256 * 1024; // 256 KB
-    private const int MaxChunkSizeMultiplier = 16; // 16 x 256 KB = 4 MB, see Constants.Uploads.MaxChunkSize
     private const int MaxChunkUploadDurationMs = 5000; // 5 seconds
 
     private readonly Queue<(int multiplier, long ms)> _lastStats = new();
@@ -142,7 +150,7 @@ internal sealed class ChunkSizeSelector
     {
         _log = log;
         _recommendation = recommendation;
-        _currentMultiplier = recommendation.Multiplier;
+        _currentMultiplier = Math.Min(recommendation.Multiplier, recommendation.MaxMultiplier);
     }
 
     public int GetChunkSize()
@@ -162,7 +170,7 @@ internal sealed class ChunkSizeSelector
                 return;
         }
         else {
-            if (_currentMultiplier == MaxChunkSizeMultiplier)
+            if (_currentMultiplier >= _recommendation.MaxMultiplier)
                 return;
         }
 
@@ -191,7 +199,7 @@ internal sealed class ChunkSizeSelector
 
         var averageMultiplier = averagePerf * MaxChunkUploadDurationMs;
         var newMultiplier = (int)Math.Round(averageMultiplier);
-        newMultiplier = Math.Min(Math.Max(newMultiplier, 1), MaxChunkSizeMultiplier);
+        newMultiplier = Math.Min(Math.Max(newMultiplier, 1), _recommendation.MaxMultiplier);
         _currentMultiplier = newMultiplier;
         _log.LogDebug("Adapted chunkSizeMultiplier={Multiplier}", _currentMultiplier);
     }

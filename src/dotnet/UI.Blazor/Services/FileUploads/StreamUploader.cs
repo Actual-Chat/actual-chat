@@ -18,6 +18,7 @@ public sealed class StreamUploader(ChunkedFileUploader chunkedUploader) : IFileU
             uploadId,
             streamSource.GetStream(),
             progress,
+            null,
             ct).ConfigureAwait(false);
     }
 }
