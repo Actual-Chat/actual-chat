@@ -47,7 +47,7 @@ Behaviour:
   their own prior screencast — every reconnect or pipeline restart mints a
   fresh `StreamId` and the same-author/same-kind loop below evicts the
   stale entry.
-- **Camera limit**: max `Constants.Video.MaxCameraStreamsPerChat = 8`. Going
+- **Camera limit**: max `Constants.Video.MaxCameraStreamsPerChat = 15`. Going
   over throws `VideoStreamLimitExceededException` (which propagates to the
   client and is surfaced in the UI).
 - **Stale-stream eviction**: if the same author registers a new stream of
@@ -239,8 +239,8 @@ PLI fires on:
 
 `VideoStreamLimitExceededException` (`Api/Video/`) is thrown when:
 
-- A 9th camera tries to register in one chat
-  (`MaxCameraStreamsPerChat = 8`).
+- A 16th camera tries to register in one chat
+  (`MaxCameraStreamsPerChat = 15`).
 - A second author tries to start a screencast while another is active.
 
 The exception propagates from `LiveVideoBackend.Register` up through

@@ -646,15 +646,15 @@ public class LiveVideoStreams : ILiveVideoStreams
         ApiMap<string, ReceiveQuality> qualityByStream,
         PlaybackQualityInfo? info)
     {
-        const int serverCap = 9;
+        const int nonLowQualityCap = 5;
         var aboveLowest = qualityByStream.Where(kv => !kv.Value.IsLowestOrPaused).ToList();
-        if (aboveLowest.Count <= serverCap)
+        if (aboveLowest.Count <= nonLowQualityCap)
             return qualityByStream;
 
         var demotedStreamIds = aboveLowest
             .Select((kv, index) => (kv, rank: PriorityRank(kv.Key), index))
             .OrderBy(x => (x.rank, x.index))
-            .Take(aboveLowest.Count - serverCap)
+            .Take(aboveLowest.Count - nonLowQualityCap)
             .Select(kv => kv.kv.Key)
             .ToHashSet();
 

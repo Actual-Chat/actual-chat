@@ -186,7 +186,7 @@ public static partial class Constants
         public static readonly int EgressGapFrameThreshold = 150;
 
         // Stream count limits
-        public static readonly int MaxCameraStreamsPerChat = 8;
+        public static readonly int MaxCameraStreamsPerChat = 15;
         public static readonly int PriorityActivationThreshold = 6;
         public static readonly TimeSpan SilenceGracePeriod = TimeSpan.FromSeconds(30);
 
