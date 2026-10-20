@@ -72,7 +72,10 @@
                 <round-skeleton radius="6"/>
             } else {
                 const int displayAuthorsLimit = 3;
-                var topAuthorIds = m!.TopAuthorIds.Take(displayAuthorsLimit).ToList();
+                var shownAuthorCount = m!.AuthorCount > displayAuthorsLimit
+                    ? displayAuthorsLimit - 1
+                    : displayAuthorsLimit;
+                var topAuthorIds = m.TopAuthorIds.Take(shownAuthorCount).ToList();
                 var extraAuthorCount = Math.Clamp(m.AuthorCount - topAuthorIds.Count, 0, 99);
                 foreach (var authorId in topAuthorIds) {
                     <AuthorCircle @key="@authorId" AuthorId="@authorId" Size="@SquareSize.Size6"/>
