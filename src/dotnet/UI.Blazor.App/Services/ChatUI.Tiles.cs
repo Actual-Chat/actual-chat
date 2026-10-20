@@ -1767,7 +1767,7 @@ public partial class ChatUI
             .Select(e => Reactions.ListSummaries(Session, e.Id, cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken);
         var ownReactionTasks = reactedEntries
-            .Select(e => Reactions.Get(Session, e.Id, cancellationToken))
+            .Select(e => Reactions.ListOwn(Session, e.Id, cancellationToken))
             .Collect(ApiConstants.Concurrency.High, cancellationToken);
         return Task.WhenAll(authorTasks, reactionSummaryTasks, ownReactionTasks);
     }

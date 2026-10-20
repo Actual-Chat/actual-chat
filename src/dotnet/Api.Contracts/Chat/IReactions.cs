@@ -5,8 +5,11 @@ namespace ActualChat.Chat;
 /// </summary>
 public interface IReactions : IComputeService
 {
+    [Obsolete("2026.10: Old clients only. Returns the latest of ListOwn - an author may leave several reactions.")]
     [ComputeMethod]
     Task<Reaction?> Get(Session session, ChatEntryId entryId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Reaction[]> ListOwn(Session session, ChatEntryId entryId, CancellationToken cancellationToken);
 
     [ComputeMethod]
     Task<ReactionSummary[]> ListSummaries(

@@ -409,7 +409,7 @@ metadata cache. `InvalidateLiveView` is gone: `GetOpenLiveConversation` /
 |---|---|---|
 | `ConversationsBackend` | `Get`, `GetRangeTile` × covering + prev + next tiles | summarization flows |
 | `MentionsBackend` | `GetLast(chatId, mentionRef)` for changed mentions only | message with mentions |
-| `ReactionsBackend` | `List(entryId)`, `Get(entryId, authorId)` | reaction added/removed |
+| `ReactionsBackend` | `List(entryId)`, `ListByAuthor(entryId, authorId)` | reaction added/removed |
 | `NotificationsBackend` | `GetUserNotificationInfo(userId)` via `ApplyHardUpdate`; `ListDevices`; `GetExplicit` | notify / handle / device registration |
 | `RolesBackend` | `Get(chatId, roleId)` + `PseudoList(chatId)` | role edits (rare) |
 | `ChatsBackend.OnChange` | `Get(chatId)`, `GetTemplatedChatFor`, `GetPublicChatIdsFor`, `ListPlaceChatIds` | chat property edits |

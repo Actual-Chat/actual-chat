@@ -421,7 +421,7 @@ public partial class ChatsBackend
         }
 
         var reactionKeys = await dbContext.Reactions.Where(e => entryIds.Contains(e.EntryId))
-            .Select(e => new { e.EntryId, e.AuthorId }).ToListAsync(cancellationToken).ConfigureAwait(false);
+            .Select(e => new { e.EntryId, e.AuthorId }).Distinct().ToListAsync(cancellationToken).ConfigureAwait(false);
         var mentionRefs = await dbContext.Mentions
             .Where(e => e.ChatId == chatId.Value && localIds.Contains(e.EntryLid))
             .Select(e => e.MentionRef).Distinct().ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -486,7 +486,7 @@ public partial class ChatsBackend
             foreach (var entryId in entryIds)
                 _ = reactions.List(ChatEntryId.Parse(entryId), default);
             foreach (var key in reactionKeys)
-                _ = reactions.Get(ChatEntryId.Parse(key.EntryId), AuthorId.Parse(key.AuthorId), default);
+                _ = reactions.ListByAuthor(ChatEntryId.Parse(key.EntryId), AuthorId.Parse(key.AuthorId), default);
             var mentions = Services.GetRequiredService<IMentionsBackend>();
             foreach (var mentionRef in mentionRefs)
                 _ = mentions.GetLast(chatId, MentionRef.Parse(mentionRef), default);

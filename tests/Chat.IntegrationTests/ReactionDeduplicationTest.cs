@@ -22,21 +22,26 @@ public class ReactionDeduplicationTest(ChatCollection.AppHostFixture fixture, IT
         var uuid = ApiCommand.NewUuid();
 
         // act — react, then send the SAME Uuid with a different emoji (must be deduped)
-        await commander.Call(new Reactions_React { Uuid = uuid, Session = session, Reaction = NewReaction(entryId, Emojis.Lol) });
-        await commander.Call(new Reactions_React { Uuid = uuid, Session = session, Reaction = NewReaction(entryId, Emojis.Cool) });
+        var lolCmd = new Reactions_React {
+            Uuid = uuid, Session = session, Reaction = NewReaction(entryId, Emojis.Lol),
+        };
+        var coolCmd = new Reactions_React {
+            Uuid = uuid, Session = session, Reaction = NewReaction(entryId, Emojis.Cool),
+        };
+        await commander.Call(lolCmd);
+        await commander.Call(coolCmd);
 
-        // assert — the duplicate never ran; the reaction stays Lol (Cool was not applied)
+        // assert — the duplicate never ran; only Lol is there (Cool was not applied)
         await TestWait.When(async ct => {
-            var reaction = await Reactions.Get(session, entryId, ct);
-            reaction.Should().NotBeNull();
-            reaction!.Emoji.Should().Be(Emojis.Lol);
+            var reactions = await Reactions.ListOwn(session, entryId, ct);
+            reactions.Select(x => x.Emoji).Should().Equal([Emojis.Lol]);
         });
 
-        // control — a fresh (auto-generated) Uuid does change the reaction to Cool
+        // control — a fresh (auto-generated) Uuid does add Cool next to Lol
         await commander.Call(new Reactions_React { Session = session, Reaction = NewReaction(entryId, Emojis.Cool) });
         await TestWait.When(async ct => {
-            var reaction = await Reactions.Get(session, entryId, ct);
-            reaction!.Emoji.Should().Be(Emojis.Cool);
+            var reactions = await Reactions.ListOwn(session, entryId, ct);
+            reactions.Select(x => x.Emoji).Should().BeEquivalentTo([Emojis.Lol, Emojis.Cool]);
         });
     }
 
