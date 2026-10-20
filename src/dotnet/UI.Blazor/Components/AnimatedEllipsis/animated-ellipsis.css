@@ -1,4 +1,4 @@
-/* The dots fill in one by one and start over: 1.2 s, a 300 ms step each, on the AnimationSync grid. */
+/* The dots fill in one by one and start over: 1.6 s, a 400 ms step each, on the AnimationSync grid. */
 
 /* Inline-block with inline dots, so they sit on the text's baseline. No layout containment: it takes the
    baseline away, and the box then aligns by its bottom edge, a few pixels above the text. */
@@ -8,7 +8,7 @@
 }
 .animated-ellipsis .animated-ellipsis-dot {
     will-change: opacity;
-    animation: animated-ellipsis-dot-1 1.2s steps(1, end) infinite;
+    animation: animated-ellipsis-dot-1 1.6s steps(1, end) infinite;
 }
 .animated-ellipsis .animated-ellipsis-dot:nth-child(2) {
     animation-name: animated-ellipsis-dot-2;
