@@ -257,6 +257,7 @@ public class DbChatEntry : IHasId<string>, IHasVersion<long>, IRequirementTarget
         LinkPreviewIds = model.LinkPreviewIds.Length != 0
             ? JsonSerializer.Serialize(model.LinkPreviewIds)
             : null;
+        LinkPreviewMode = model.LinkPreviewMode;
 
         // Write audio to DB columns (like SystemEntry → Content/IsSystemEntry)
         if (model.Audio is { } modelAudio) {
