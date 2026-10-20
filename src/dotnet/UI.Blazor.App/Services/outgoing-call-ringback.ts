@@ -4,12 +4,14 @@ import { SoundPlayer } from '../../UI.Blazor/Services/TuneUI/sound-player';
 
 const { logScope, debugLog } = getLogs('OutgoingCallRingback');
 
-// European ringback tone: a 425 Hz sine, 1s on / 4s off. Synthesized into a short WAV (a standard
-// telephony signal - no asset or licensing needed) and looped the same way as the incoming ringtone.
+// Ringback tone: a 425 Hz sine, 1s on / 2s off - the European 4s pause made Bluetooth earbuds doze off
+// and swallow the tones. Synthesized into a short WAV and looped the same way as the incoming ringtone.
+// The loop opens with part of the pause, so the first tone isn't lost while the Bluetooth stream starts.
 const SampleRate = 8000;
 const Frequency = 425;
+const LeadSec = 0.5;
 const ToneSec = 1;
-const PauseSec = 4;
+const PauseSec = 2;
 const Volume = 0.2;
 const RampSec = 0.01;
 
@@ -39,6 +41,7 @@ export class OutgoingCallRingback {
 
 function buildRingbackWav(): Blob {
     const total = Math.floor(SampleRate * (ToneSec + PauseSec));
+    const leadSamples = Math.floor(SampleRate * LeadSec);
     const toneSamples = Math.floor(SampleRate * ToneSec);
     const rampSamples = Math.max(1, Math.floor(SampleRate * RampSec));
     const samples = new Int16Array(total); // the pause segment stays zero-filled (silence)
@@ -49,7 +52,7 @@ function buildRingbackWav(): Blob {
         else if (i > toneSamples - rampSamples)
             amp = Volume * ((toneSamples - i) / rampSamples);
         const value = Math.sin(2 * Math.PI * Frequency * (i / SampleRate)) * amp;
-        samples[i] = Math.round(Math.max(-1, Math.min(1, value)) * 0x7fff);
+        samples[leadSamples + i] = Math.round(Math.max(-1, Math.min(1, value)) * 0x7fff);
     }
     return encodeWav(samples, SampleRate);
 }
