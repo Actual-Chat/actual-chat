@@ -69,6 +69,9 @@ public sealed class ShareExtensionApplication : IHasServices, IAsyncDisposable
     {
         _view?.DisposeStates();
         await _scope.DisposeAsync().ConfigureAwait(false);
+        // After a video upload the session leaves ~8 MB of buffers on the large object heap, and the
+        // GC won't run the full collection that frees them before the next share hits the jetsam limit.
+        GC.Collect(2, GCCollectionMode.Aggressive, true, true);
     }
 
     // Private methods
