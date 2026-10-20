@@ -1,8 +1,8 @@
 namespace ActualChat.Rpc;
 
 /// <summary>
-/// Picks the host used for RPC connections, which may differ from the app's base
-/// host — content URLs keep using the base host.
+/// Picks the hosts used for RPC connections and content downloads, which may differ
+/// from the app's base host.
 /// </summary>
 public class RpcEndpointSelector
 {
@@ -56,6 +56,20 @@ public class RpcEndpointSelector
     public string Get(string host)
         => string.Equals(host, OriginHost, StringComparison.OrdinalIgnoreCase) ? Current : host;
 
+    public string GetContentHost(string host)
+    {
+        // An edge node serves the origin's subdomains under its own prefix:
+        // on <node>.edge.voxt.ai, cdn.voxt.ai is reached as <node>.edge.cdn.voxt.ai
+        var current = Current;
+        var origin = OriginHost;
+        if (string.Equals(current, origin, StringComparison.OrdinalIgnoreCase)
+            || !current.EndsWith("." + origin, StringComparison.OrdinalIgnoreCase)
+            || !host.EndsWith("." + origin, StringComparison.OrdinalIgnoreCase))
+            return host;
+
+        return string.Concat(current.AsSpan(0, current.Length - origin.Length), host);
+    }
+
     public void Invalidate()
     {
         Interlocked.Increment(ref _version);
@@ -90,20 +104,14 @@ public class RpcEndpointSelector
     }
 
     public static string ApplyTo(string baseUrl)
-    {
-        if (Instance is not { } instance)
-            return baseUrl;
+        => IsRemapped(baseUrl, static (selector, host) => selector.Get(host), out var url) ? url : baseUrl;
 
-        var (hostStart, hostEnd) = GetHostRange(baseUrl);
-        if (hostStart < 0)
-            return baseUrl;
+    public static string ApplyToContent(string url)
+        => IsContentRemapped(url, out var contentUrl) ? contentUrl : url;
 
-        var host = baseUrl[hostStart..hostEnd];
-        var endpoint = instance.Get(host);
-        return string.Equals(host, endpoint, StringComparison.OrdinalIgnoreCase)
-            ? baseUrl
-            : string.Concat(baseUrl.AsSpan(0, hostStart), endpoint, baseUrl.AsSpan(hostEnd));
-    }
+    public static bool IsContentRemapped(string url, out string contentUrl)
+        // When false, contentUrl is url itself
+        => IsRemapped(url, static (selector, host) => selector.GetContentHost(host), out contentUrl);
 
     // Same as ApplyTo, and notes the host a connection is about to be made to
     public static string ApplyToForConnection(string baseUrl)
@@ -131,6 +139,36 @@ public class RpcEndpointSelector
 
     // Private methods
 
+    private void Set(string endpoint)
+    {
+        if (string.Equals(Current, endpoint, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        // Publication: Get() reads this without a lock.
+        Volatile.Write(ref _current, endpoint);
+        OnChanged(endpoint);
+    }
+
+    private static bool IsRemapped(
+        string url, Func<RpcEndpointSelector, string, string> getHost, out string remappedUrl)
+    {
+        remappedUrl = url;
+        if (Instance is not { } instance)
+            return false;
+
+        var (hostStart, hostEnd) = GetHostRange(url);
+        if (hostStart < 0)
+            return false;
+
+        var host = url[hostStart..hostEnd];
+        var newHost = getHost(instance, host);
+        if (string.Equals(host, newHost, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        remappedUrl = string.Concat(url.AsSpan(0, hostStart), newHost, url.AsSpan(hostEnd));
+        return true;
+    }
+
     private static (int Start, int End) GetHostRange(string baseUrl)
     {
         // Scheme, port, path and query are preserved - only the host moves.
@@ -141,16 +179,6 @@ public class RpcEndpointSelector
         var hostStart = schemeEnd + 3;
         var hostEnd = baseUrl.IndexOfAny(['/', ':', '?'], hostStart);
         return (hostStart, hostEnd < 0 ? baseUrl.Length : hostEnd);
-    }
-
-    private void Set(string endpoint)
-    {
-        if (string.Equals(Current, endpoint, StringComparison.OrdinalIgnoreCase))
-            return;
-
-        // Publication: Get() reads this without a lock.
-        Volatile.Write(ref _current, endpoint);
-        OnChanged(endpoint);
     }
 
     // Nested types

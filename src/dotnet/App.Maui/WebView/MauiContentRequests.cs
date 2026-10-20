@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
+using ActualChat.App.Maui.Services;
 using ActualChat.ContentCaching;
 using ActualChat.Maui;
 using ActualLab.IO;
@@ -24,13 +25,16 @@ internal static class MauiContentRequests
     private static readonly TimeSpan StatsDumpDelay = TimeSpan.FromSeconds(30);
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, byte> Fetches = new();
-    private static readonly HttpClient Client = new(new HttpClientHandler {
-        // The cache stores the bytes the headers describe, and it never replays a session cookie
-        AutomaticDecompression = DecompressionMethods.None,
-        UseCookies = false,
-        // Intercepting takes the WebView's own connection pool out of the picture, and a
-        // screenful of pictures opens this many fills at once
-        MaxConnectionsPerServer = 32,
+
+    private static readonly HttpClient Client = new(new ContentHostHandler(UrlMapper) {
+        InnerHandler = new HttpClientHandler {
+            // The cache stores the bytes the headers describe, and it never replays a session cookie
+            AutomaticDecompression = DecompressionMethods.None,
+            UseCookies = false,
+            // Intercepting takes the WebView's own connection pool out of the picture, and a
+            // screenful of pictures opens this many fills at once
+            MaxConnectionsPerServer = 32,
+        },
     }) {
         // The response stream outlives the request; cancellation comes from the reader
         Timeout = System.Threading.Timeout.InfiniteTimeSpan,
