@@ -12,7 +12,7 @@ public static class AudioOutputRouteExt
                 AudioOutputKind.Speaker => "icon-volume-up-2",
                 AudioOutputKind.Car => "icon-car",
                 AudioOutputKind.Bluetooth => "icon-bluetooth-signal",
-                _ => "icon-listen",
+                _ => "icon-airpods",
             };
     }
 }
