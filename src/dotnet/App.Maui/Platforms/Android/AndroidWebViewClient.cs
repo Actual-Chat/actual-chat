@@ -131,6 +131,8 @@ public class AndroidWebViewClient(
 
     private WebResourceResponse? TryReadFromContentCache(IWebResourceRequest? request)
     {
+        // A URL the cache declines (a range, a duplicate) goes back to the WebView, unless its content
+        // host is remapped: then it's fetched here, waiting for its headers - a Content-Range can't be guessed
         var url = request?.Url?.ToString();
         var range = request?.RequestHeaders?
             .FirstOrDefault(x => x.Key.Equals("Range", StringComparison.OrdinalIgnoreCase)).Value;
@@ -143,8 +145,10 @@ public class AndroidWebViewClient(
             // A fill answers before the real headers exist, so the one that matters for a
             // CORS-flagged load (a canvas-bound image) has to be replayed from what every
             // own-content host sends - without it such a load fails until the entry is cached.
-            if (fetch is not var (body, mimeType))
-                return null;
+            if (fetch is not var (body, mimeType)) {
+                response = MauiContentRequests.FetchRemapped(url, request?.Method, range).GetAwaiter().GetResult();
+                return response == null ? null : CreateResponse(response, url);
+            }
 
             return new WebResourceResponse(
                 mimeType, null, 200, "OK", CorsHeaders(), new WebViewResponseStream(body, url));
@@ -152,7 +156,11 @@ public class AndroidWebViewClient(
 
         ContentCacheLog.DebugLog?.LogDebug("Intercept blocked {Elapsed} on T{ThreadId}, hit: {Url}",
             CpuTimestamp.Now - startedAt, Environment.CurrentManagedThreadId, url);
+        return CreateResponse(response, url);
+    }
 
+    private WebResourceResponse? CreateResponse(HttpResponseMessage response, string? url)
+    {
         try {
             // WebView hands an intercepted body to the renderer undecoded
             if (response.Content.Headers.ContentEncoding.Count != 0) {

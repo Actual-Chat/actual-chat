@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using ActualChat.App.Maui.Services;
 using ActualChat.ContentCaching;
 using ActualChat.Maui;
+using ActualChat.Rpc;
 using ActualLab.IO;
 using Microsoft.Maui.Storage;
 
@@ -130,7 +131,15 @@ internal static class MauiContentRequests
         }
     }
 
-    public static async Task<HttpResponseMessage?> FetchDirect(string? url, string? method)
+    public static Task<HttpResponseMessage?> FetchRemapped(string? url, string? method, string? range)
+    {
+        // The WebView fetches a URL from the host written in it, which is wrong while content is remapped
+        // (RPC is on an edge node); such a URL is fetched here instead, and ContentHostHandler sends it there
+        var isRemapped = IsCacheable(url) && RpcEndpointSelector.IsContentRemapped(url!, out _);
+        return isRemapped ? FetchDirect(url, method, range) : Task.FromResult<HttpResponseMessage?>(null);
+    }
+
+    public static async Task<HttpResponseMessage?> FetchDirect(string? url, string? method, string? range = null)
     {
         // For a caller with no fallback of its own: on Apple every media URL is projected onto
         // the app's scheme, so one the cache declines still has to be served from somewhere.
@@ -140,6 +149,8 @@ internal static class MauiContentRequests
         try {
             using var message = new HttpRequestMessage(
                 method.IsNullOrEmpty() ? HttpMethod.Get : HttpMethod.Parse(method), uri);
+            if (!range.IsNullOrEmpty())
+                message.Headers.TryAddWithoutValidation("Range", range);
             return await Client
                 .SendAsync(message, HttpCompletionOption.ResponseHeadersRead)
                 .ConfigureAwait(false);

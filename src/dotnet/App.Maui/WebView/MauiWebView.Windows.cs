@@ -1,4 +1,5 @@
 using ActualChat.Module;
+using ActualChat.Rpc;
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Maui.Platform;
@@ -115,9 +116,11 @@ public partial class MauiWebView
             void Complete() {
                 try {
                     // Never assign null here - WebView2 access-violates on it. Leaving Response
-                    // unset is what makes it fetch the request itself.
+                    // unset is what makes it fetch the request itself, so it's sent to the content host
                     if (response != null && CreateResponse(sender, response) is { } webResponse)
                         args.Response = webResponse;
+                    else if (RpcEndpointSelector.IsContentRemapped(url, out var contentUrl))
+                        request.Uri = contentUrl;
                 }
                 finally {
                     deferral.Complete();
