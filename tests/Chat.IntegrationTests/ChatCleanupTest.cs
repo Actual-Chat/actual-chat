@@ -1146,10 +1146,15 @@ public sealed class ChatCleanupTest(ChatCollection.AppHostFixture fixture, ITest
     private async Task ExpireEntries(ChatId chatId, long maxLid)
     {
         await using var db = await DbHub.CreateDbContext(true);
+        await using var tx = await db.Database.BeginTransactionAsync();
+        // Locked the way an entry that lands in the chat is: a purge batch checks for an import before
+        // it queries the expired entries, so an entry expiring in between would pass the check unseen
+        await db.Chats.ForShare().SingleAsync(c => c.Id == chatId.Value);
         await db.ChatEntries.Where(e => e.ChatId == chatId.Value && e.LocalId <= maxLid)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(e => e.BeginsAt, DateTime.UtcNow.AddDays(-2))
                 .SetProperty(e => e.EndsAt, DateTime.UtcNow.AddDays(-2)));
+        await tx.CommitAsync();
     }
 
     private Task SetRetention(ChatId chatId, TimeSpan? retentionPeriod)
