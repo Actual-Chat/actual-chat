@@ -516,8 +516,9 @@ export class MarkupEditor {
 
         const plainText = data.getData('text');
         const text = cleanupPastedText(plainText);
-        const url = data.getData('text/uri-list');
-        const concatenatedText = text?.length && url?.length ? `${text}\n${url}` : (text || url);
+        const url = data.getData('text/uri-list').trim();
+        // iOS puts a copied link into both text/plain and text/uri-list
+        const concatenatedText = text && url && !text.includes(url) ? `${text}\n${url}` : (text || url);
 
         if (!concatenatedText) { ok(); return; }
 
