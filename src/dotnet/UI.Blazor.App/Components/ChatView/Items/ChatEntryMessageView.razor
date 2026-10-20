@@ -221,7 +221,10 @@
                     IsUnreadByOthers="@m.IsUnreadByOthers"
                     IsUnreadByOthersBlockStart="@m.IsUnreadByOthersBlockStart" />
             }
-            @if (entry.LinkPreviews.Length > 0) {
+            @* A location entry's links come from the hidden old-client fallback text, and entries stored
+               before LinkPreviewMode was persisted again don't carry its None.
+               TODO: 2026-07, remove when all clients support location entries. *@
+            @if (entry.LinkPreviews.Length > 0 && !entry.HasLocation) {
                 <div class="message-links">
                     @foreach (var linkPreview in entry.LinkPreviews) {
                         var showLinkPreview = entry.LinkPreviewMode != LinkPreviewMode.None
