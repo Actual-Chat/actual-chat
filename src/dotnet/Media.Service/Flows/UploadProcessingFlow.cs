@@ -1,4 +1,5 @@
 using ActualChat.Flows;
+using ActualLab.Resilience;
 
 namespace ActualChat.Media.Flows;
 
@@ -47,14 +48,21 @@ public sealed partial class UploadProcessingFlow : Flow<MediaRef>
                 throw;
             }
         }
-        catch {
+        catch (Exception e) {
             await ActualChat.Media.UploadsBackend.ReportMediaServerProcessingError(
                 MediaProgressBackend,
                 Commander,
                 mediaId,
                 "",
                 cancellationToken).ConfigureAwait(false);
-            throw;
+            // A throw is retried ~200 times (10 resumes per each of 20 queue deliveries),
+            // which only a transient error is worth
+            var isPermanent = e is INotFoundException
+                || TransiencyResolvers.PreferTransient.Invoke(e) is Transiency.NonTransient or Transiency.Terminal;
+            if (!isPermanent)
+                throw;
+
+            SetError(e);
         }
     }
 
