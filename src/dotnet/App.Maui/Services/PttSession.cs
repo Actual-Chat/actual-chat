@@ -247,7 +247,7 @@ public static class PttSession
                 "PTT: handing {Count} listening chat(s) off to the WebView scope", listeningChatIds.Count);
             hub.ChatAudioUI.Enable();
             foreach (var chatId in listeningChatIds)
-                await hub.ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(false);
+                await hub.ChatAudioUI.SetListeningState(chatId, true, isAutomatic: true).ConfigureAwait(false);
         }
         if (foregroundChatId is not null)
             await hub.ChatAudioUI.NavigateToForegroundChat(foregroundChatId).ConfigureAwait(false);

@@ -142,10 +142,12 @@ the same `Hush` call: a headset button long-press — `HeadsetButtonPolicy.Decid
 now acts on a press's *release*, because Android delivers the first down edge
 before it knows the press will turn out long, and a long press hushes on its
 flagged edge and swallows its release — and the Android power-button gesture:
-the screen comes on and goes off again by hand inside `PowerPressWindow` (3 s)
-while hush is armed and the guard says pocketed. A single screen-on is never
-enough — a call, an alarm or lift-to-wake all light the display — and a double
-press opens the camera before the app sees it. The foreground-service
+the locked screen comes on and goes off again in less than `PowerHushGesture.Window`
+(800 ms), while hush is armed and the guard says pocketed. `ACTION_USER_PRESENT`
+clears the pending sequence on unlock, so unlocking then immediately turning the
+screen off cannot complete it. Waking an already unlocked device does not arm it.
+A single screen-on is never enough; screen broadcasts do not distinguish a power
+press from lift-to-wake or other screen-on causes. The foreground-service
 notification adds an Android-only **Mute** action, labelled
 `L.Activity_MuteFor_Format` with `PttSessionCore.FormatDuration`, but only while
 a chat is armed (`AudioActivity.CanHush`); an ordinary listen or replay keeps
@@ -165,6 +167,16 @@ action (`ACTION_UNMUTE` → `UnmutePtt` over every muted chat). Inside a muted
 chat on every host, `PttMutedBanner` says so with a ticking countdown and an
 **Unmute** button for that chat (`Ptt.ShouldShowMutedBanner`); its dismissal is
 device-local and keyed to the mute's `MutedAt`, so the next mute asks again.
+
+**An existing conversation survives a remote mute.** `ActiveChat.IsListeningExplicitly`
+distinguishes a deliberately joined conversation (including one started by recording)
+from automatic PTT listening. A shared mute removes automatic listening, but
+`SyncListeningWithPttArming` preserves explicitly joined listening on other devices,
+including the pauses between utterances. Such a conversation gains the ordinary
+listening idle watcher; leaving it clears the exemption and the mute prevents automatic
+rejoining. Hush and the badge's `ChatAudioUI.MutePtt` stop listening on the initiating
+device before writing the shared mute. Device opt-out, revoked consent and chat-wide
+pause still stop listening regardless of this distinction.
 
 Between armed and hot sits the **answer window** — the period after voice
 during which a gesture, a headset press or the Apple PTT Talk button may

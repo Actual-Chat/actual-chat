@@ -302,8 +302,10 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             await SetListeningState(chatId, false).ConfigureAwait(false);
         }
         // Otherwise StopReplay's own restore would briefly re-listen a chat hush just silenced.
-        lock (Lock)
+        lock (Lock) {
             _listeningChatsBeforeReplay = _listeningChatsBeforeReplay.Except(pttChatIds);
+            _explicitListeningChatsBeforeReplay = _explicitListeningChatsBeforeReplay.Except(pttChatIds);
+        }
         StopReplay();
         var now = ServerNow;
         var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
@@ -318,6 +320,20 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             .Update(x => x.WithAllPttChatsMuted(now, mutedUntil), cancellationToken)
             .ConfigureAwait(false);
         return priorEntries;
+    }
+
+    public async Task MutePtt(ChatId chatId, TimeSpan duration, CancellationToken cancellationToken)
+    {
+        VoiceActivityUI.ClearIncomingVoice(chatId);
+        await SetListeningState(chatId, false).ConfigureAwait(false);
+        lock (Lock) {
+            _listeningChatsBeforeReplay = _listeningChatsBeforeReplay.Remove(chatId);
+            _explicitListeningChatsBeforeReplay = _explicitListeningChatsBeforeReplay.Remove(chatId);
+        }
+        var now = ServerNow;
+        await UserSettingsUI.UserPttSettings()
+            .Update(x => x.WithPttChatMuted(chatId, now, now + duration), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public async Task UndoHush(IReadOnlyCollection<PttChat> priorEntries, CancellationToken cancellationToken)
@@ -489,9 +505,18 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             .Select(c => c.ChatId)
             .ToImmutableHashSet());
 
+    [ComputeMethod]
+    public virtual async Task<ImmutableHashSet<ChatId>> GetIdleListeningChatIds(CancellationToken cancellationToken)
+    {
+        var listeningChatIds = await GetListeningChatIds().ConfigureAwait(false);
+        var keepListeningChatIds = await GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
+        return listeningChatIds.Except(keepListeningChatIds);
+    }
+
     public ValueTask SetListeningState(
         ChatId chatId,
         bool mustListen,
+        bool isAutomatic = false,
         [CallerMemberName] string caller = "",
         [CallerFilePath] string callerFile = "")
     {
@@ -502,18 +527,20 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var now = CpuNow;
         return ActiveChatsUI.UpdateActiveChats(activeChats => {
             if (activeChats.TryGetValue(chatId, out var chat)) {
-                if (chat.IsListening == mustListen)
+                var isListeningExplicitly = mustListen && (chat.IsListeningExplicitly || !isAutomatic);
+                if (chat.IsListening == mustListen && chat.IsListeningExplicitly == isListeningExplicitly)
                     return activeChats;
 
                 chat = chat with {
                     IsListening = mustListen,
+                    IsListeningExplicitly = isListeningExplicitly,
                     Recency = mustListen ? now : chat.Recency,
                     ListeningRecency = mustListen ? now : chat.ListeningRecency,
                 };
                 activeChats = activeChats.WithOrReplace(chat).ToArray();
             }
             else if (mustListen)
-                activeChats = activeChats.With(new ActiveChat(chatId, true, false, now, now), true);
+                activeChats = activeChats.With(new ActiveChat(chatId, true, false, now, now, !isAutomatic), true);
             return activeChats;
         });
     }
@@ -529,7 +556,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             var isUpdated = false;
             foreach (var chat in activeChats) {
                 if (chat.IsListening) {
-                    newActiveChats.Add(chat with { IsListening = false });
+                    newActiveChats.Add(chat with { IsListening = false, IsListeningExplicitly = false });
                     isUpdated = true;
                 }
                 else
@@ -670,12 +697,13 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             var chat = activeChats.FirstOrDefault(c => c.ChatId == chatId);
             var mustListen = !isPtt;
             if (chat == null)
-                chat = new ActiveChat(chatId, mustListen, true, now, mustListen ? now : default);
+                chat = new ActiveChat(chatId, mustListen, true, now, mustListen ? now : default, true);
             else {
                 var isListening = mustListen || chat.IsListening;
                 chat = chat with {
                     IsListening = isListening,
                     IsRecording = true,
+                    IsListeningExplicitly = true,
                     Recency = now,
                     ListeningRecency = isListening && !chat.IsListening ? now : chat.ListeningRecency,
                 };
@@ -685,7 +713,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             activeChats = mustListen
                 ? activeChats.WithUpdate(
                     c => c.ChatId != chatId && (c.IsRecording || c.IsListening),
-                    c => c with { IsRecording = false, IsListening = false })
+                    c => c with { IsRecording = false, IsListening = false, IsListeningExplicitly = false })
                     .ToArray()
                 : activeChats.WithUpdate(
                     c => c.ChatId != chatId && c.IsRecording,
@@ -696,6 +724,26 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
 
         if (hasStoppedRecording)
             await RestoreKeepListeningChats(StopToken).ConfigureAwait(false);
+    }
+
+    // Protected/internal methods
+
+    internal async Task ApplyPttListeningChange(
+        IReadOnlyCollection<ChatId> previousChatIds,
+        IReadOnlyCollection<ChatId> chatIds,
+        CancellationToken cancellationToken)
+    {
+        var mutedChatIds = await GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
+        foreach (var chatId in previousChatIds.Except(chatIds)) {
+            var activeChat = ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.ChatId == chatId);
+            if (mutedChatIds.Contains(chatId) && activeChat is { IsListeningExplicitly: true })
+                continue;
+
+            Log.LogInformation("SyncListeningWithPttArming: {ChatId} left the keep-listening set", chatId);
+            await SetListeningState(chatId, false).ConfigureAwait(false);
+        }
+        foreach (var chatId in chatIds.Except(previousChatIds))
+            await SetListeningState(chatId, true, isAutomatic: true).ConfigureAwait(false);
     }
 
     // Private methods
@@ -733,7 +781,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         var pttChatIds = await GetPttChatIds(cancellationToken).ConfigureAwait(false);
         foreach (var chatId in chatIds) {
             if (pttChatIds.Contains(chatId))
-                await SetListeningState(chatId, true).ConfigureAwait(false);
+                await SetListeningState(chatId, true, isAutomatic: true).ConfigureAwait(false);
         }
     }
 
@@ -774,6 +822,6 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         // returns is published, so writes made to the captured one afterwards are lost.
         var chatIdsToListenTo = await GetChatsYouNeedToKeepListeningTo(cancellationToken).ConfigureAwait(false);
         foreach (var chatId in chatIdsToListenTo)
-            await SetListeningState(chatId, true).ConfigureAwait(false);
+            await SetListeningState(chatId, true, isAutomatic: true).ConfigureAwait(false);
     }
 }

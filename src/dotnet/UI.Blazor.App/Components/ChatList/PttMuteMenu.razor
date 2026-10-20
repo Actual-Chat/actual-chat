@@ -36,11 +36,7 @@
         if (_chatId is not { } chatId)
             return Task.CompletedTask;
 
-        // Server-clock stamps, like JoinedAt: the server compares them against its own clock.
-        var now = Clocks.ServerClock.Now;
-        return UICommander.RunLocal(ct
-            => UserSettingsUI.UserPttSettings()
-                .Update(x => x.WithPttChatMuted(chatId, now, now + duration), ct));
+        return UICommander.RunLocal(ct => Hub.ChatAudioUI.MutePtt(chatId, duration, ct));
     }
 
     private Task OnUnmute() {

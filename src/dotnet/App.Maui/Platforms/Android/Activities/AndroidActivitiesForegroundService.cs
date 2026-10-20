@@ -61,20 +61,18 @@ public sealed class AndroidActivitiesForegroundService : Service
     private const string RecordingQuietChannelId = "audio_recording_quiet";
     private const string LocationChannelId = "location_sharing";
     private const int NotificationId = 3001;
+    private static readonly PowerHushGesture PowerHush = new();
     private static ILogger Log { get; } = StaticLog.For<AndroidActivitiesForegroundService>();
     private static IStringLocalizer L => AppStrings.L;
     private static int _pendingStartCount;
     private static bool _isStopPending;
     private static int _lastRequestedTypes;
-    // The power-button hush is a deliberate two-press gesture - screen on, then off again inside
-    // this window - so a call, an alarm or lift-to-wake lighting the display can't fire it.
-    private static readonly TimeSpan PowerPressWindow = TimeSpan.FromSeconds(3);
-    private static long _screenOnAtMs;
     private static bool _wasHeadsetLongPressHandled;
     private string _requestId = "";
     private MediaSessionCompat? _mediaSession;
     private ScreenOffReceiver? _screenOffReceiver;
     private ScreenOnReceiver? _screenOnReceiver;
+    private UserPresentReceiver? _userPresentReceiver;
     private string _lastTitle = "";
     private string _lastLink = "";
     private Bitmap? _lastAlbumArt;
@@ -738,12 +736,14 @@ public sealed class AndroidActivitiesForegroundService : Service
 
     private void UpdateScreenReceivers(ActivityKind? kind)
     {
-        // Both broadcasts serve every audio state: screen-off closes an open mic and completes the
-        // two-press power hush, screen-on opens that hush's window.
+        // Unlock cancels the sequence even when the user turns the screen off again immediately.
         var shouldRegister = kind is ActivityKind.Recording or ActivityKind.Armed
             or ActivityKind.Listening or ActivityKind.Replaying;
         UpdateReceiver(ref _screenOffReceiver, shouldRegister, Intent.ActionScreenOff, "screen-off");
         UpdateReceiver(ref _screenOnReceiver, shouldRegister, Intent.ActionScreenOn, "screen-on");
+        UpdateReceiver(ref _userPresentReceiver, shouldRegister, Intent.ActionUserPresent, "user-present");
+        if (!shouldRegister)
+            PowerHush.OnUnlocked();
     }
 
     private void UpdateReceiver<T>(ref T? receiver, bool shouldRegister, string action, string name)
@@ -798,16 +798,12 @@ public sealed class AndroidActivitiesForegroundService : Service
                 _ = BackgroundTask.Run(() => hub.PttReplyUI.StopReply(), Log,
                     "Screen-off reply stop failed", CancellationToken.None);
 
-            // The second press of the power hush: the screen came on inside the window and is going
-            // off again by hand. A single screen-on is never enough - a call, an alarm or lift-to-
-            // wake all light the display, and a double press opens the camera before we see it.
-            var screenOnAtMs = Interlocked.Exchange(ref _screenOnAtMs, 0);
-            if (screenOnAtMs == 0
-                || Android.OS.SystemClock.ElapsedRealtime() - screenOnAtMs > PowerPressWindow.TotalMilliseconds)
+            if (!PowerHush.OnScreenOff(Android.OS.SystemClock.ElapsedRealtime()))
                 return;
             if (!hub.GestureUI.IsHushArmed || !hub.GestureUI.IsPocketed)
                 return;
 
+            Log.LogInformation("Power-button hush triggered while locked and pocketed");
             _ = BackgroundTask.Run(
                 () => services.GetRequiredService<PttSessionCore>().Hush(CancellationToken.None),
                 Log, "Power-button hush failed", CancellationToken.None);
@@ -817,9 +813,11 @@ public sealed class AndroidActivitiesForegroundService : Service
         }
     }
 
-    private static void TryHandleScreenOn()
-        // Only the stamp: whether this was a power press is decided by the screen-off that follows.
-        => Volatile.Write(ref _screenOnAtMs, Android.OS.SystemClock.ElapsedRealtime());
+    private static void TryHandleScreenOn(Context? context)
+    {
+        var keyguard = context?.GetSystemService(KeyguardService) as KeyguardManager;
+        PowerHush.OnScreenOn(Android.OS.SystemClock.ElapsedRealtime(), keyguard?.IsKeyguardLocked == true);
+    }
 
     private static void TryHandleNotificationReply(bool isStop)
     {
@@ -1003,6 +1001,12 @@ public sealed class AndroidActivitiesForegroundService : Service
     private sealed class ScreenOnReceiver : BroadcastReceiver
     {
         public override void OnReceive(Context? context, Intent? intent)
-            => TryHandleScreenOn();
+            => TryHandleScreenOn(context);
+    }
+
+    private sealed class UserPresentReceiver : BroadcastReceiver
+    {
+        public override void OnReceive(Context? context, Intent? intent)
+            => PowerHush.OnUnlocked();
     }
 }
