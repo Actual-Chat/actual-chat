@@ -100,26 +100,80 @@
             case "buttons":
                 <h2 class="uk-h2">Variants</h2>
                 <div class="uk-card uk-row">
-                    <Button Class="btn-primary">Primary</Button>
-                    <Button Class="btn-secondary">Secondary</Button>
-                    <Button Class="btn-danger">Danger</Button>
-                    <Button Class="btn-cancel">Cancel</Button>
-                    <Button Class="btn-outline">Outline</Button>
-                    <Button Class="btn-transparent">Transparent</Button>
+                    @foreach (var v in BtnVariants) {
+                        <Button Class="@v.Cls">@v.Label</Button>
+                    }
+                    <Button Class="btn-primary" IsDisabled="true">Disabled</Button>
                 </div>
                 <h2 class="uk-h2">Sizes</h2>
                 <div class="uk-card uk-row">
-                    <Button Class="btn-primary btn-lg">Large</Button>
-                    <Button Class="btn-primary">Medium</Button>
-                    <Button Class="btn-primary btn-sm">Small</Button>
-                    <Button Class="btn-primary btn-xs">XS</Button>
+                    @foreach (var z in BtnSizes) {
+                        <Button Class="@($"btn-primary {z.Cls}")">@z.Label</Button>
+                    }
                 </div>
-                <h2 class="uk-h2">Icon</h2>
+                <h2 class="uk-h2">Text</h2>
                 <div class="uk-card uk-row">
+                    <Button Class="btn-text">Default</Button>
+                    <Button Class="btn-text btn-primary">Primary</Button>
+                    <Button Class="btn-text btn-danger">Danger</Button>
+                    <Button Class="btn-text btn-xxs">XXS</Button>
+                    <Button Class="btn-text" IsDisabled="true">Disabled</Button>
+                </div>
+                <h2 class="uk-h2">Icon &amp; title</h2>
+                <div class="uk-card uk-row">
+                    <Button Class="btn-primary">
+                        <Icon><i class="icon-paper-plane"></i></Icon>
+                        <Title>Send</Title>
+                    </Button>
+                    <Button Class="btn-cancel">
+                        <Icon><i class="icon-at"></i></Icon>
+                        <Title>Mention</Title>
+                    </Button>
+                    <Button Class="btn-primary btn-w-full mt-1">Full width</Button>
+                </div>
+                <h2 class="uk-h2">Square &amp; round</h2>
+                <div class="uk-card uk-row">
+                    <ButtonSquare><i class="icon-close"></i></ButtonSquare>
+                    <ButtonSquare Class="btn-primary"><i class="icon-close"></i></ButtonSquare>
+                    <ButtonSquare Class="btn-danger"><i class="icon-close"></i></ButtonSquare>
                     <ButtonRound><i class="icon-plus"></i></ButtonRound>
-                    <ButtonRound><i class="icon-search"></i></ButtonRound>
-                    <ButtonRound><i class="icon-settings"></i></ButtonRound>
-                    <Button Class="btn-primary"><i class="icon-paper-plane"></i>Send</Button>
+                    <ButtonRound Class="btn-primary"><i class="icon-search"></i></ButtonRound>
+                    <ButtonRound Class="btn-danger"><i class="icon-trash03"></i></ButtonRound>
+                </div>
+                <h2 class="uk-h2">Header</h2>
+                <div class="uk-card uk-row">
+                    <HeaderButton><i class="icon-close text-2xl"></i></HeaderButton>
+                    <HeaderButton Class="btn-sm"><i class="icon-close text-xl"></i></HeaderButton>
+                    <HeaderButton Class="unhovered"><i class="icon-settings text-2xl"></i></HeaderButton>
+                    <HeaderButton IsDisabled="true"><i class="icon-close text-2xl"></i></HeaderButton>
+                </div>
+                <h2 class="uk-h2">Tiles — transparent</h2>
+                <div class="uk-card uk-stack">
+                    @foreach (var v in TileVariants) {
+                        <ButtonTile Class="@v.Cls">
+                            <Icon><i class="icon-at text-2xl"></i></Icon>
+                            <Content>@v.Label tile</Content>
+                        </ButtonTile>
+                    }
+                    <ButtonTile IsDisabled="true">
+                        <Icon><i class="icon-at text-2xl"></i></Icon>
+                        <Content>Disabled</Content>
+                    </ButtonTile>
+                </div>
+                <h2 class="uk-h2">Tiles — filled</h2>
+                <div class="uk-card uk-stack">
+                    @foreach (var v in TileVariants) {
+                        <ButtonTile Class="@v.Cls" Filled="true">
+                            <Icon><i class="icon-at text-2xl"></i></Icon>
+                            <Content>@v.Label tile</Content>
+                        </ButtonTile>
+                    }
+                </div>
+                <h2 class="uk-h2">Timer</h2>
+                <div class="uk-card uk-row">
+                    <TimerCloseButton Delay="3"/>
+                    <TimerCloseButton Delay="5"/>
+                    <TimerCloseButton Delay="3" CircleClass="btn-sm"/>
                 </div>
                 break;
             case "controls":
@@ -135,28 +189,78 @@
                 </div>
                 break;
             case "banners":
-                <div class="uk-card uk-stack">
-                    <div class="uk-banner uk-banner-default">
-                        <i class="icon-info"></i><span>Default banner message.</span>
-                        <button class="uk-banner-btn" type="button">Action</button>
-                    </div>
-                    <div class="uk-banner uk-banner-success">
-                        <i class="icon-checkmark-circle"></i><span>Saved successfully.</span>
-                        <button class="uk-banner-btn" type="button">Undo</button>
-                    </div>
-                    <div class="uk-banner uk-banner-info">
-                        <i class="icon-info"></i><span>A new version is available.</span>
-                        <button class="uk-banner-btn" type="button">Reload</button>
-                    </div>
-                    <div class="uk-banner uk-banner-warning">
-                        <i class="icon-alert-triangle"></i><span>Recording stops in 9s.</span>
-                        <button class="uk-banner-btn" type="button">Keep</button>
-                    </div>
-                    <div class="uk-banner uk-banner-error">
-                        <i class="icon-alert-circle"></i><span>Something went wrong.</span>
-                        <button class="uk-banner-btn" type="button">Retry</button>
-                    </div>
+                <p class="uk-lead">
+                    Real <code>Banner</code> components, one per <code>BannerSeverity</code>.
+                    The primary <code>BannerButton</code> carries the tinted fill; a danger action stays red.
+                </p>
+                <div class="uk-stack">
+                    <Banner Severity="BannerSeverity.Default" ShowDismissButton="true">
+                        <Body>Default banner — neutral surface, dismissible.</Body>
+                        <Buttons>
+                            <BannerButton>Action</BannerButton>
+                        </Buttons>
+                    </Banner>
+                    <Banner Severity="BannerSeverity.Success">
+                        <Body>Saved successfully.</Body>
+                        <Buttons>
+                            <BannerButton>Got it</BannerButton>
+                        </Buttons>
+                    </Banner>
+                    <Banner Severity="BannerSeverity.Info">
+                        <Body>A new version is available.</Body>
+                        <Buttons>
+                            <BannerButton>Reload</BannerButton>
+                            <BannerButton Primary="false">Later</BannerButton>
+                        </Buttons>
+                    </Banner>
+                    <Banner Severity="BannerSeverity.Warning">
+                        <Body>Recording stops in 9s.</Body>
+                        <Buttons>
+                            <BannerButton>Keep</BannerButton>
+                        </Buttons>
+                    </Banner>
+                    <Banner Severity="BannerSeverity.Error">
+                        <Body>Something went wrong while saving.</Body>
+                        <Buttons>
+                            <BannerButton Class="btn-danger">Retry</BannerButton>
+                            <BannerButton Primary="false">Dismiss</BannerButton>
+                        </Buttons>
+                    </Banner>
+                    <Banner Severity="BannerSeverity.Info">
+                        <Body>A plain informational banner with no action buttons.</Body>
+                    </Banner>
                 </div>
+                <h2 class="uk-h2">Banner stack</h2>
+                <p class="uk-lead">
+                    Nudges collapse into a peeking stack. Tap the stack to expand, tap again to collapse —
+                    action buttons keep working while collapsed.
+                </p>
+                <BannerStack>
+                    <Banner Severity="BannerSeverity.Info">
+                        <Body>This chat was copied to the place — publish it when you're ready.</Body>
+                        <Buttons>
+                            <BannerButton>Publish</BannerButton>
+                        </Buttons>
+                    </Banner>
+                    <Banner Severity="BannerSeverity.Warning">
+                        <Body>You're the only person in this chat.</Body>
+                        <Buttons>
+                            <BannerButton>Add members</BannerButton>
+                        </Buttons>
+                    </Banner>
+                    <Banner Severity="BannerSeverity.Info">
+                        <Body>Turn on notifications so you don't miss messages you follow.</Body>
+                        <Buttons>
+                            <BannerButton>Configure</BannerButton>
+                        </Buttons>
+                    </Banner>
+                    <Banner Severity="BannerSeverity.Info">
+                        <Body>Enable your device to use push-to-talk in this chat.</Body>
+                        <Buttons>
+                            <BannerButton>Allow</BannerButton>
+                        </Buttons>
+                    </Banner>
+                </BannerStack>
                 break;
             case "toasts":
                 <p class="uk-lead">These fire the real <code>ToastUI</code>.</p>
@@ -173,6 +277,13 @@
                             Click="@(_ => ToastUI.Show("With action", () => {}, "Undo", ToastDismissDelay.Short))">
                         Action
                     </Button>
+                </div>
+                <h2 class="uk-h2">Error toasts</h2>
+                <p class="uk-lead">These fire the real <code>UICommander.ShowError</code>.</p>
+                <div class="uk-card uk-row">
+                    <Button Class="btn-primary" Click="@(_ => ShowError(1))">Small</Button>
+                    <Button Class="btn-primary" Click="@(_ => ShowError(3))">Medium</Button>
+                    <Button Class="btn-primary" Click="@(_ => ShowError(6))">Big</Button>
                 </div>
                 break;
             case "surfaces":
@@ -240,6 +351,27 @@
         new("hover", "0 2px 8px rgba(0,0,0,.1), 0 12px 32px rgba(0,0,0,.12)"),
         new("modal", "0 25px 50px -12px rgba(0,0,0,.35)"),
     ];
+    private static readonly (string Label, string Cls)[] BtnVariants = [
+        ("Default", ""),
+        ("Primary", "btn-primary"),
+        ("Danger", "btn-danger"),
+        ("Cancel", "btn-cancel"),
+        ("Outline", "btn-outline"),
+        ("Transparent", "btn-transparent"),
+        ("Modal", "btn-modal"),
+    ];
+    private static readonly (string Label, string Cls)[] BtnSizes = [
+        ("LG", "btn-lg"),
+        ("MD", ""),
+        ("SM", "btn-sm"),
+        ("XS", "btn-xs"),
+    ];
+    private static readonly (string Label, string Cls)[] TileVariants = [
+        ("Default", ""),
+        ("Primary", "btn-primary"),
+        ("Danger", "btn-danger"),
+        ("Cancel", "btn-cancel"),
+    ];
 
     private ElementReference _rootRef;
 
@@ -254,6 +386,10 @@
 
     private string NavLinkClass(string key)
         => key == CurrentKey ? "uk-nav-link is-active" : "uk-nav-link";
+
+    private void ShowError(int sentences)
+        => UICommander.ShowError(StandardError.Constraint(
+            string.Concat(Enumerable.Repeat("There's something wrong here! ", sentences)).TrimEnd()));
 
     private sealed record NavGroup(string Title, IReadOnlyList<NavItem> Items);
     private sealed record NavItem(string Key, string Title, string Icon);
