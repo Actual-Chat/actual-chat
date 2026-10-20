@@ -40,8 +40,13 @@
         Click="@SignOut">
     </MenuEntry>
 }
+<MenuEntrySeparator/>
+<MenuEntry
+    Icon="icon-question-mark-circle"
+    Text="@L.Settings_HelpPages"
+    Click="@OnHelpPagesClick">
+</MenuEntry>
 @if (m.Account.IsAdmin) {
-    <MenuEntrySeparator/>
     <MenuEntry
         Icon="icon-alert-triangle"
         Text="@L.Navbar_TestPages"
@@ -90,6 +95,11 @@
     private async Task SignOut() {
         await WhenClosed;
         _ = Hub.AccountUI.SignOut();
+    }
+
+    private async Task OnHelpPagesClick() {
+        await WhenClosed;
+        _ = Hub.ExternalUrlOpener.Open("https://docs.voxt.ai/");
     }
 
     private async Task OnTestPagesClick() {

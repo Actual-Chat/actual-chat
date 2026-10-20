@@ -70,21 +70,21 @@
             : null,
         Content = @<PermissionsSettings/>,
     });
-    tabs.Add(new(SettingsTabId.Documents, L.Documents_PrivacyPolicy) {
-        IconClass = "icon-file-text",
-        Class = "docs-tab",
-        HasSeparatorBefore = true,
-        Content = @<DocumentsPage/>,
-    });
-    tabs.Add(new(SettingsTabId.Documentation, L.Settings_Documentation) {
-        IconClass = "icon-external-link",
-        Click = OpenDocumentation,
-    });
     if (showMyAccount)
         tabs.Add(new(SettingsTabId.ApiKeys, L.Settings_ApiAndApps) {
             IconClass = "icon-key",
             Content = @<ApiAndAppsSettings/>,
         });
+    tabs.Add(new(SettingsTabId.Documentation, L.Settings_HelpPages) {
+        IconClass = "icon-question-mark-circle",
+        HasSeparatorBefore = true,
+        Click = OpenDocumentation,
+    });
+    tabs.Add(new(SettingsTabId.Documents, L.Documents_PrivacyPolicy) {
+        IconClass = "icon-file-text",
+        Class = "docs-tab",
+        Content = @<DocumentsPage/>,
+    });
     tabs.Add(new(SettingsTabId.DevTools, L.Settings_DeveloperTools) {
         IconClass = "icon-eye",
         Content = @<DeveloperTools/>,
