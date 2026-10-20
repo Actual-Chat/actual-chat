@@ -20,7 +20,7 @@
             }
             @if (m.ShowPttSettings) {
                 var pttIconCls = m.PttState switch {
-                    PttChatState.InList => "text-primary",
+                    PttChatState.InList when m.IsPttEnabledOnDevice => "text-primary",
                     PttChatState.NotInList => "text-02",
                     _ => "text-03",
                 };

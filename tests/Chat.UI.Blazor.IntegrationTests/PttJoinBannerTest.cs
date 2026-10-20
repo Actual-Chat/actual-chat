@@ -84,6 +84,101 @@ public sealed class PttJoinBannerTest(ChatAppHostFixture fixture, ITestOutputHel
         (await hub.ChatAudioUI.GetConsentedPttChatIds(CancellationToken.None)).Should().NotContain(chat.Id);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task DeviceOffWarningShouldShowOnlyForAConsentedChatOnADisabledDevice(
+        bool isConsented, bool isDeviceEnabled)
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var chat = await CreatePttChat(tester, hub);
+        if (isConsented)
+            await hub.ChatAudioUI.ConsentPtt(chat.Id, chat.PttEnabledAt!.Value, CancellationToken.None);
+        hub.ChatAudioUI.SetIsPttEnabledOnDevice(isDeviceEnabled);
+        await TestWait.When(async ct =>
+            (await hub.ChatAudioUI.IsPttEnabledOnDevice(ct)).Should().Be(isDeviceEnabled));
+
+        // act
+        var banner = tester.Render<PttDeviceOffBanner>(p => p.AddCascadingValue(new ChatContext(hub, chat)));
+
+        // assert
+        await TestWait.WhenRendered(banner, () => {
+            var view = banner.FindComponent<Banner>().Instance;
+            view.IsVisible.Should().Be(isConsented && !isDeviceEnabled);
+            view.ShowDismissButton.Should().BeFalse("the device-off notice must not be silently dismissed");
+            view.Severity.Should().Be(BannerSeverity.Info);
+        });
+        if (!isConsented || isDeviceEnabled)
+            return;
+
+        banner.Find(".icon-push-to-talk").ClassList.Should().Contain("text-03");
+        banner.Find(".banner-body").TextContent.Trim()
+            .Should().Be(hub.StringLocalizer.Ptt_DeviceOff_Prefix.Trim());
+    }
+
+    [Fact]
+    public async Task JoiningOnADisabledDeviceShouldExposeAnActionThatEnablesPlayback()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var chat = await CreatePttChat(tester, hub);
+        hub.ChatAudioUI.SetIsPttEnabledOnDevice(false);
+        tester.RenderModalHost(hub);
+        var banner = tester.Render<PttDeviceOffBanner>(p => p.AddCascadingValue(new ChatContext(hub, chat)));
+        await TestWait.WhenRendered(banner, () =>
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().BeFalse());
+
+        // act
+        await hub.ChatAudioUI.ConsentPtt(chat.Id, chat.PttEnabledAt!.Value, CancellationToken.None);
+
+        // assert
+        await TestWait.WhenRendered(banner, () => {
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().BeTrue();
+            banner.FindComponent<BannerButton>().Find("button").TextContent.Trim()
+                .Should().Be(hub.StringLocalizer.Common_Allow);
+        });
+        (await hub.ChatAudioUI.IsPttEnabledOnDevice(CancellationToken.None)).Should().BeFalse();
+
+        // act
+        await banner.InvokeAsync(() => banner.FindComponent<BannerButton>().Find("button").Click());
+
+        // assert
+        await TestWait.WhenRendered(banner, () =>
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().BeFalse());
+        await TestWait.When(async ct =>
+            (await hub.ChatAudioUI.GetPttChatIds(ct)).Should().Contain(chat.Id));
+    }
+
+    [Fact]
+    public async Task PausingTheChatShouldHideTheDeviceOffWarning()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        var chat = await CreatePttChat(tester, hub);
+        await hub.ChatAudioUI.ConsentPtt(chat.Id, chat.PttEnabledAt!.Value, CancellationToken.None);
+        hub.ChatAudioUI.SetIsPttEnabledOnDevice(false);
+        var banner = tester.Render<PttDeviceOffBanner>(p => p.AddCascadingValue(new ChatContext(hub, chat)));
+        await TestWait.WhenRendered(banner, () =>
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().BeTrue());
+
+        // act
+        var pauseCmd = new ChatsBackend_Change(chat.Id, null, Change.Update(new ChatDiff { IsPttPaused = true }));
+        await tester.AppServices.Commander().Call(pauseCmd);
+
+        // assert
+        await TestWait.WhenRendered(banner, () =>
+            banner.FindComponent<Banner>().Instance.IsVisible.Should().BeFalse());
+    }
+
     // Private methods
 
     private static async Task<Chat> CreatePttChat(BlazorTester tester, AppUIHub hub)

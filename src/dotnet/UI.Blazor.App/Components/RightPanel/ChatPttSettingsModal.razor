@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.UI.Blazor.Events
 @inherits ComputedStateComponent<AppUIHub, ChatPttSettingsModal.ViewState?>
 @implements IModalView<ChatPttSettingsModal.Model>
 @{
@@ -36,9 +35,9 @@
                 </TileItem>
                 @if (!m.IsDeviceEnabled) {
                     <p class="c-device-off">
-                        @L.Ptt_DeviceOff_Prefix<a class="link" @onclick="@OnOpenSettingsClick"
+                        @L.Ptt_DeviceOff_Prefix<a class="link" @onclick="@OnEnableDeviceClick"
                             @onclick:preventDefault="true"
-                            >@L.Ptt_DeviceOffTarget</a>@L.Ptt_DeviceOff_Suffix
+                            >@L.Ptt_UseOnThisDevice</a>@L.Ptt_DeviceOff_Suffix
                     </p>
                 }
             }
@@ -120,9 +119,9 @@
         }
     }
 
-    private void OnOpenSettingsClick() {
-        Modal.Close();
-        _ = UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Ptt));
+    private Task OnEnableDeviceClick() {
+        Hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
+        return Hub.ChatAudioUI.ShowPttSupportLimits(L.PttSupport_EnabledOnDevice);
     }
 
     // Nested types

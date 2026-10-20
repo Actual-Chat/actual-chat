@@ -7,6 +7,9 @@
 
 @* Urgent, actionable banners stay full-size above the stack *@
 <ReconnectBanner/>
+@if (chat is not null) {
+    <PttDeviceOffBanner @key="chat.Id"/>
+}
 @foreach (var banner in m.Banners.Take(MaxCount)) {
     @banner.View(banner)
 }

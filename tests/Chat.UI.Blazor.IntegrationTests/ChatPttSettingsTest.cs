@@ -164,6 +164,32 @@ public sealed class ChatPttSettingsTest(ChatAppHostFixture fixture, ITestOutputH
     }
 
     [Fact]
+    public async Task ChatSettingsShouldEnableThisDeviceWithoutLeavingTheDialog()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        await tester.SignInAsUniqueBob();
+        var hub = tester.ScopedAppServices.AppUIHub();
+        hub.ChatAudioUI.SetIsPttEnabledOnDevice(false);
+        var (chatId, _) = await tester.CreateChat(true);
+        var chat = await ChangeChat(tester, chatId, new ChatDiff { PttEnabledAt = (Moment?)Moment.EpochStart });
+        await hub.ChatAudioUI.ConsentPtt(chatId, chat.PttEnabledAt!.Value, CancellationToken.None);
+        var host = tester.RenderModalHost(hub);
+        await hub.ModalUI.Show(new ChatPttSettingsModal.Model(chatId));
+        await TestWait.WhenRendered(host, () => host.FindComponent<ChatPttSettingsModal>()
+            .Find(".c-device-off .link").TextContent.Should().Be(hub.StringLocalizer.Ptt_UseOnThisDevice));
+
+        // act
+        await host.InvokeAsync(() => host.FindComponent<ChatPttSettingsModal>().Find(".c-device-off .link").Click());
+
+        // assert
+        await TestWait.WhenRendered(host, () => host.FindComponent<ChatPttSettingsModal>()
+            .FindAll(".c-device-off").Should().BeEmpty());
+        await TestWait.When(async ct =>
+            (await hub.ChatAudioUI.GetPttChatIds(ct)).Should().Contain(chatId));
+    }
+
+    [Fact]
     public async Task SettingsShouldConfirmPauseAndResumeWithoutRejoining()
     {
         // arrange
