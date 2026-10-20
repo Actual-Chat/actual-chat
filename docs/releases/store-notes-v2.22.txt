@@ -1,0 +1,7 @@
+Voice and video calls arrive in Voxt, alongside AI agent integration.
+• Call, share your screen, raise your hand and react with emoji
+• Connect your AI agent to read messages and reply through MCP
+• Import chat history from another messenger with members' consent
+• Explore user and developer guides at docs.voxt.ai
+• Simpler push-to-talk settings and per-chat mute controls
+• Archive chats for yourself, with smoother scrolling and more reliable uploads
