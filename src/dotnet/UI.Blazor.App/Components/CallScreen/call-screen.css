@@ -1011,11 +1011,27 @@ nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expande
    padding and no rounded/clipped container, so it reads as one surface with the chat beside it rather
    than a tile floating in a gap. A hairline separator (added to the chat column below) draws the one
    edge between them. The body[data-has-call-screen-column] prefix keeps this above the
-   body.wide(.side-nav-right-open) full-screen card rules, which are otherwise more specific. */
+   body.wide(.side-nav-right-open) full-screen card rules, which are otherwise more specific.
+   The column spans the window, so the video and the equal-layout tiles run under the top and bottom
+   safe areas, while the bars and the small tiles keep clear of them (--vp-safe-*, as on a phone).
+   Left and right stay 0: the column's sides touch the page and the chat. */
 body[data-has-call-screen-column]
     nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expanded {
     @apply p-0;
     @apply bg-transparent;
+    --vp-safe-top: var(--safe-area-top);
+    --vp-safe-bottom: var(--safe-area-bottom);
+}
+body[data-has-call-screen-column]
+    nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expanded
+    .video-stage.video-stage-layout__sidebar {
+    padding-top: calc(1rem + var(--vp-safe-top));
+    padding-bottom: calc(5rem + var(--vp-safe-bottom));
+}
+/* The wide layout's flat top strip (main.css) is fixed above everything, so it would cover the video's
+   top safe area. Below the call screen (z-10) it still paints over the chat column beside it. */
+body[data-has-call-screen-column] .base-layout::before {
+    z-index: 1;
 }
 body[data-has-call-screen-column]
     nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expanded > .c-container {
