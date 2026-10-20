@@ -48,18 +48,6 @@ public sealed class LanguageSupportTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
-    public void MontenegrinShouldBeUIOnly()
-    {
-        // The case the split exists for: "cnr" is not a code any transcriber knows, so
-        // offering it as a spoken language would hand the user a broken transcription.
-
-        // assert
-        Languages.Montenegrin.Support.Should().Be(LanguageSupport.UI);
-        Languages.AllTranscription.Should().NotContain(Languages.Montenegrin);
-        Languages.AllUI.Should().Contain(Languages.Montenegrin);
-    }
-
-    [Fact]
     public void EveryLanguageShouldSupportSomething()
     {
         // act

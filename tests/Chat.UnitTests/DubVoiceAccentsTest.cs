@@ -24,12 +24,15 @@ public sealed class DubVoiceAccentsTest
     [InlineData("ru-RU", "slavic")]
     [InlineData("uk-UA", "slavic")]
     [InlineData("cnr-ME", "slavic")]
+    [InlineData("sk-SK", "slavic")]
     [InlineData("es-ES", "spanish")]
+    [InlineData("ca-ES", "spanish")]
     [InlineData("es-MX", "latin_american")]
     [InlineData("es-US", "latin_american")]
     [InlineData("pt-PT", "portuguese")]
     [InlineData("pt-BR", "brazilian")]
     [InlineData("hi-IN", "indian")]
+    [InlineData("bn-BD", "indian")]
     [InlineData("en-IN", "indian")]
     [InlineData("en-US", "american")]
     [InlineData("en-GB", "british")]
@@ -38,6 +41,7 @@ public sealed class DubVoiceAccentsTest
     [InlineData("fil-PH", "southeast_asian")]
     [InlineData("tr-TR", "american")]
     [InlineData("kk-KZ", "american")]
+    [InlineData("el-GR", "american")]
     public void MapsLanguageToAccent(string languageTag, string expectedAccent)
         => DubVoiceAccents.ForLanguage(Language.Parse(languageTag)).Should().Be(expectedAccent);
 

@@ -2,8 +2,8 @@ namespace ActualChat;
 
 /// <summary>
 /// What a <see cref="Language"/> is usable for. A language can be one, both or
-/// neither: Montenegrin ships a UI catalog but no transcriber knows its "cnr"
-/// code, and most declared languages are transcription-only.
+/// neither: most declared languages are transcription-only, and the Max
+/// pseudo-locale is neither.
 /// </summary>
 [Flags]
 public enum LanguageSupport
