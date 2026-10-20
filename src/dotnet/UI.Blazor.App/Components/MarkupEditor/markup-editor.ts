@@ -456,6 +456,17 @@ export class MarkupEditor {
             void this.onOpenPrevious();
             ok(); return;
         }
+
+        // WebKit routes Cmd+Z through its native undo stack, which the undo stack writer
+        // leaves empty, and with nothing to undo there beforeinput never sees the key
+        if (DeviceInfo.isWebKit && e.metaKey && e.code === 'KeyZ') {
+            if (e.shiftKey)
+                this.undoStack.redo();
+            else
+                this.undoStack.undo();
+            ok();
+            return;
+        }
     }
 
     private onKeyPress = (e: KeyboardEvent) => {
@@ -587,6 +598,11 @@ export class MarkupEditor {
 
     private onBeforeInput = (e: InputEvent) => {
         debugLog?.log(`onBeforeInput, event:`, e)
+        // WebKit raises beforeinput for execCommand too: the undo stack writer's own
+        // execCommand('undo') must run natively instead of re-entering the undo stack
+        if (this.currentTransaction)
+            return;
+
         const ok = () => e.preventDefault();
 
         switch (e.inputType) {

@@ -17,7 +17,7 @@ export class UndoStack<T> {
         public pushThrottleInterval: number,
     ) {
         // eslint-disable-next-line @typescript-eslint/unbound-method
-        this.pushThrottled = throttle(this.push, pushThrottleInterval)
+        this.pushThrottled = throttle(this.push, pushThrottleInterval, 'delayHead')
         this.clear();
 
         // Replacing writer so it temporary disables push.
