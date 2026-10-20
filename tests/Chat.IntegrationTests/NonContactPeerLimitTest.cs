@@ -254,9 +254,15 @@ public class NonContactPeerLimitTest(ChatCollection.AppHostFixture fixture, ITes
         // assert - the cap holds even under concurrent sends.
         successes.Should().BeLessThanOrEqualTo(cap);
 
+        // Entries are counted rather than measured by the LID range: a rejected send has already taken a LID,
+        // so the range of the accepted ones can span the gaps it leaves
         var chats = aliceTester.AppServices.GetRequiredService<IChats>();
         var range = await chats.GetIdRange(aliceTester.Session, peerChatId, CancellationToken.None);
-        (range.End - range.Start).Should().BeLessThanOrEqualTo(cap);
+        var reader = chats.NewEntryReader(aliceTester.Session, peerChatId);
+        var entries = new List<ChatEntry>();
+        await foreach (var entry in reader.Read(range, CancellationToken.None))
+            entries.Add(entry);
+        entries.Count(x => x.Content.StartsWith("race ")).Should().Be(successes);
     }
 
     [Fact]
