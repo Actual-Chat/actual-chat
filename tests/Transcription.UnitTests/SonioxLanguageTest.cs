@@ -5,9 +5,6 @@ public sealed class SonioxLanguageTest(ITestOutputHelper @out) : TestBase(@out)
     [Fact]
     public void OnlyUzbekShouldBeUnsupported()
     {
-        // Montenegrin isn't listed here: it never enters AllTranscription, because
-        // LanguageSupport.UI without Transcription keeps it out of the spoken-language set.
-
         // act
         var unsupported = Languages.AllTranscription
             .Where(x => !SonioxLanguage.Supported.Contains(x))
@@ -24,6 +21,9 @@ public sealed class SonioxLanguageTest(ITestOutputHelper @out) : TestBase(@out)
     [InlineData("zh-TW", "zh")]
     // Soniox exposes Tagalog only, and "fil" would be rejected.
     [InlineData("fil-PH", "tl")]
+    // Soniox knows no "cnr"; Montenegrin goes as Serbian.
+    [InlineData("cnr-ME", "sr")]
+    [InlineData("no-NO", "no")]
     public void ToSonioxShouldMapCodes(string languageId, string expected)
         => Language.Parse(languageId).ToSoniox().Should().Be(expected);
 

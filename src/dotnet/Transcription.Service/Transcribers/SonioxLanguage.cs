@@ -8,10 +8,12 @@ public static class SonioxLanguage
     private static readonly ApiSet<Language> Unsupported = new([
         Languages.Uzbek,
     ]);
-    // Filipino is the standardized register of Tagalog and Soniox exposes only "tl",
-    // so "fil" would be rejected despite the audio being well within the model's reach.
+
+    // Soniox rejects "fil" and "cnr": Filipino is the standard register of Tagalog ("tl"),
+    // and Montenegrin is transcribed as Serbian ("sr"), whose Latin script it shares.
     private static readonly Dictionary<Language, string> CodeOverrides = new() {
         { Languages.Filipino, "tl" },
+        { Languages.Montenegrin, "sr" },
     };
     public static ApiSet<Language> Supported { get; }
         = new(Languages.AllTranscription.Where(x => !Unsupported.Contains(x)));

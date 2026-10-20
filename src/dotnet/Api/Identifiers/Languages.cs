@@ -5,14 +5,16 @@ namespace ActualChat;
 /// </summary>
 public static class Languages
 {
-    // For Arabic, we need RTL support.
-    // public static readonly Language2 Arabic = new("ar-SA", "SA", "Arabic", AssumeValid.Option);
-    // Chinese does support only `chirp` recognition model which does not support streaming.
-    // We need RTL support:
-    // public static readonly Language2 Arabic = new("ar-SA", "AR", "Arabic (Saudi Arabia)");
-    // public static readonly Language2 Bengali = new("bn-BD", "BN", "Bengali", AssumeValid.Option); Not supported
+    // Arabic, Hebrew and Persian are left out until the app supports RTL layout.
+    public static readonly Language Afrikaans = new("af-ZA", "AF", "Afrikaans", "Afrikaans");
+    public static readonly Language Albanian = new("sq-AL", "SQ", "Albanian", "Shqip");
+    public static readonly Language Azerbaijani = new("az-AZ", "AZ", "Azerbaijani", "Azərbaycanca");
+    public static readonly Language Basque = new("eu-ES", "EU", "Basque", "Euskara");
+    public static readonly Language Belarusian = new("be-BY", "BE", "Belarusian", "Беларуская");
+    public static readonly Language Bengali = new("bn-BD", "BN", "Bengali", "বাংলা");
     public static readonly Language Bosnian = new("bs-BA", "BS", "Bosnian", "Bosanski", LanguageSupport.All);
     public static readonly Language Bulgarian = new("bg-BG", "BG", "Bulgarian", "Български", LanguageSupport.All);
+    public static readonly Language Catalan = new("ca-ES", "CA", "Catalan", "Català");
     public static readonly Language Chinese = new("zh-CN", "zh", "Chinese", "中文", LanguageSupport.All);
     public static readonly Language ChineseTW = new("zh-TW", "zh-TW", "Chinese (Taiwan)");
     public static readonly Language Croatian = new("hr-HR", "HR", "Croatian", "Hrvatski", LanguageSupport.All);
@@ -22,49 +24,74 @@ public static class Languages
     public static readonly Language English = new("en-US", "EN", "English (USA)", "English", LanguageSupport.All);
     public static readonly Language EnglishIN = new("en-IN", "EN-IN", "English (India)");
     public static readonly Language EnglishUK = new("en-GB", "EN-GB", "English (UK)");
+    public static readonly Language Estonian = new("et-EE", "ET", "Estonian", "Eesti");
     public static readonly Language Filipino = new("fil-PH", "FIL", "Filipino", "Filipino");
     public static readonly Language Finnish = new("fi-FI", "FI", "Finnish", "Suomi");
     public static readonly Language French = new("fr-FR", "FR", "French", "Français", LanguageSupport.All);
     public static readonly Language FrenchCA = new("fr-CA", "FR-CA", "French (Canada)");
+    public static readonly Language Galician = new("gl-ES", "GL", "Galician", "Galego");
     public static readonly Language German = new("de-DE", "DE", "German", "Deutsch", LanguageSupport.All);
+    public static readonly Language Greek = new("el-GR", "EL", "Greek", "Ελληνικά");
+    public static readonly Language Gujarati = new("gu-IN", "GU", "Gujarati", "ગુજરાતી");
     public static readonly Language Hindi = new("hi-IN", "HI", "Hindi", "हिन्दी", LanguageSupport.All);
+    public static readonly Language Hungarian = new("hu-HU", "HU", "Hungarian", "Magyar");
     public static readonly Language Indonesian =
         new("id-ID", "ID", "Indonesian", "Bahasa Indonesia", LanguageSupport.All);
     public static readonly Language Italian = new("it-IT", "IT", "Italian", "Italiano", LanguageSupport.All);
     public static readonly Language Japanese = new("ja-JP", "JA", "Japanese", "日本語", LanguageSupport.All);
+    public static readonly Language Kannada = new("kn-IN", "KN", "Kannada", "ಕನ್ನಡ");
     public static readonly Language Kazakh = new("kk-KZ", "KK", "Kazakh", "Қазақ тілі");
     public static readonly Language Korean = new("ko-KR", "KO", "Korean", "한국어", LanguageSupport.All);
+    public static readonly Language Latvian = new("lv-LV", "LV", "Latvian", "Latviešu");
+    public static readonly Language Lithuanian = new("lt-LT", "LT", "Lithuanian", "Lietuvių");
+    public static readonly Language Macedonian = new("mk-MK", "MK", "Macedonian", "Македонски");
     public static readonly Language Malay = new("ms-MY", "MS", "Malay", "Bahasa Melayu");
-    public static readonly Language Max = new("max", "MAX", "Max", "Max", LanguageSupport.None);
+    public static readonly Language Malayalam = new("ml-IN", "ML", "Malayalam", "മലയാളം");
     public static readonly Language Marathi = new("mr-IN", "MR", "Marathi", "मराठी");
+    public static readonly Language Max = new("max", "MAX", "Max", "Max", LanguageSupport.None);
     // "cnr" is Montenegrin's ISO 639-2 code, assigned in 2017
-    public static readonly Language Montenegrin = new("cnr-ME", "CNR", "Montenegrin", "Crnogorski", LanguageSupport.UI);
+    public static readonly Language Montenegrin =
+        new("cnr-ME", "CNR", "Montenegrin", "Crnogorski", LanguageSupport.All);
+    public static readonly Language Norwegian = new("no-NO", "NO", "Norwegian", "Norsk");
     public static readonly Language Polish = new("pl-PL", "PL", "Polish", "Polski", LanguageSupport.All);
     public static readonly Language Portuguese = new("pt-PT", "PT", "Portuguese", "Português", LanguageSupport.All);
     public static readonly Language PortugueseBR = new("pt-BR", "PT-BR", "Portuguese (Brazil)");
     public static readonly Language Punjabi = new("pa-IN", "PA", "Punjabi", "ਪੰਜਾਬੀ");
     // public static readonly Language Quechua = new("quz-PE", "qu", "Quechua", "Runa Simi"); No transcriber supports it
+    public static readonly Language Romanian = new("ro-RO", "RO", "Romanian", "Română");
     public static readonly Language Russian = new("ru-RU", "RU", "Russian", "Русский", LanguageSupport.All);
     public static readonly Language Serbian = new("sr-SR", "SR", "Serbian", "Српски", LanguageSupport.All);
+    public static readonly Language Slovak = new("sk-SK", "SK", "Slovak", "Slovenčina");
+    public static readonly Language Slovenian = new("sl-SI", "SL", "Slovenian", "Slovenščina");
     public static readonly Language Spanish = new("es-ES", "ES", "Spanish", "Español", LanguageSupport.All);
     public static readonly Language SpanishMX = new("es-MX", "ES-MX", "Spanish (Mexico)");
     public static readonly Language SpanishUS = new("es-US", "ES-US", "Spanish (USA)");
+    public static readonly Language Swahili = new("sw-KE", "SW", "Swahili", "Kiswahili");
     public static readonly Language Swedish = new("sv-SE", "SV", "Swedish", "Svenska");
     public static readonly Language Tagalog = new("tl-PH", "TL", "Tagalog", "Tagalog");
     // Supports only the Chirp model, in the us-central1 location
     public static readonly Language Tamil = new("ta-IN", "TA", "Tamil", "தமிழ்");
+    public static readonly Language Telugu = new("te-IN", "TE", "Telugu", "తెలుగు");
     public static readonly Language Thai = new("th-TH", "TH", "Thai", "ไทย");
     public static readonly Language Turkish = new("tr-TR", "TR", "Turkish", "Türkçe", LanguageSupport.All);
     public static readonly Language Ukrainian = new("uk-UA", "UK", "Ukrainian", "Українська", LanguageSupport.All);
     public static readonly Language Urdu = new("ur-PK", "UR", "Urdu", "اردو");
     public static readonly Language Uzbek = new("uz-UZ", "UZ", "Uzbek", "Oʻzbekcha");
     public static readonly Language Vietnamese = new("vi-VN", "VI", "Vietnamese", "Tiếng Việt", LanguageSupport.All);
+    public static readonly Language Welsh = new("cy-GB", "CY", "Welsh", "Cymraeg");
 
     public static readonly Language Main = English;
 
     public static readonly Language[] All = [
+        Afrikaans,
+        Albanian,
+        Azerbaijani,
+        Basque,
+        Belarusian,
+        Bengali,
         Bosnian,
         Bulgarian,
+        Catalan,
         Chinese,
         ChineseTW,
         Croatian,
@@ -74,39 +101,56 @@ public static class Languages
         English,
         EnglishIN,
         EnglishUK,
+        Estonian,
         Filipino,
         Finnish,
         French,
         FrenchCA,
+        Galician,
         German,
+        Greek,
+        Gujarati,
         Hindi,
+        Hungarian,
         Indonesian,
         Italian,
         Japanese,
+        Kannada,
         Kazakh,
         Korean,
+        Latvian,
+        Lithuanian,
+        Macedonian,
         Malay,
+        Malayalam,
         Marathi,
         Montenegrin,
+        Norwegian,
         Polish,
         Portuguese,
         PortugueseBR,
         Punjabi,
         // Quechua,
+        Romanian,
         Russian,
         Serbian,
+        Slovak,
+        Slovenian,
         Spanish,
         SpanishMX,
         SpanishUS,
+        Swahili,
         Swedish,
         Tagalog,
         Tamil,
+        Telugu,
         Thai,
         Turkish,
         Ukrainian,
         Urdu,
         Uzbek,
         Vietnamese,
+        Welsh,
     ];
 
     // The order the App-language picker shows them in, so it is declared rather than derived.

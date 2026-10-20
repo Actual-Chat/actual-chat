@@ -1084,9 +1084,9 @@ every listener, so there is exactly one voice per speaker to pick.
 - **Suggestions.** `DubVoiceAccents` (`src/dotnet/Api/Chat/`) maps a
   spoken language to a catalog accent — the regional tag first (`es-MX`,
   `es-US` → `latin_american`; `pt-BR` → `brazilian`; `en-IN` → `indian`;
-  `en-GB` → `british`), then the ISO code (`ru uk pl cs bg hr sr bs cnr`
-  → `slavic`, `es` → `spanish`, `pt` → `portuguese`, `hi mr pa ta ur` →
-  `indian`, `ja`, `ko`, `zh`, `fr`, `de`, `it`, `id ms th vi tl fil` →
+  `en-GB` → `british`), then the ISO code (`ru uk pl cs bg hr sr bs cnr
+  be mk sk sl` → `slavic`, `es ca gl eu` → `spanish`, `pt` → `portuguese`,
+  `hi mr pa ta ur bn gu kn ml te` → `indian`, `ja`, `ko`, `zh`, `fr`, `de`, `it`, `id ms th vi tl fil` →
   `southeast_asian`), anything else → `american`. `Suggest` walks the
   user's `UserLanguageSettings.ListSpoken()` (primary, secondary,
   tertiary): for each accent it takes that accent's voices, conversational
