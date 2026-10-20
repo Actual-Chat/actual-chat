@@ -342,7 +342,13 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
 .video-wrapper .video-plug {
     @apply absolute z-10;
     @apply h-auto;
-    filter: blur(4px) drop-shadow(0px 0px 4px var(--background-01));
+}
+/* A backdrop blur extends the edge pixels instead of fading them into transparency,
+   as filter: blur() does. */
+.video-wrapper .video-plug::after {
+    @apply content-empty;
+    @apply absolute inset-0;
+    backdrop-filter: blur(4px);
 }
 /* JS sizes the plug to the video's fitted box; stretched to the full height, it would
    letterbox the bitmap and leave transparent bands around it. */
