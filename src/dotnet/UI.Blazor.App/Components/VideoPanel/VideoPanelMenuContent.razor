@@ -8,13 +8,12 @@
     var isExpanded = a.Mode == VisualActivityPanelMode.Expanded;
     var isCollapsed = a.Mode == VisualActivityPanelMode.Collapsed;
     var hasLayoutActions = a.CanToggleFullscreen || a.CanToggleIsland || a.CanMinimize;
-    var canRaiseHand = CanReact && ChatId.Kind != ChatKind.Peer;
-    var hasStreamActions = a.CanSwitchCamera || a.CanToggleVideo || a.CanToggleScreenCast || canRaiseHand;
+    var hasStreamActions = a.CanSwitchCamera || a.CanToggleVideo || a.CanToggleScreenCast || CanReact;
     var hasSettingsActions = a.CanShowVideoSettings || a.CanShowVoiceSettings;
     var hasChatActions = a.CanToggleChatPanel;
     var hasDiagnosticsActions = a.CanShowDiagnostics;
-    // A narrow call screen has no room for its own reactions button, so they open here
-    var hasReactionSelect = CanReact && IsNarrow;
+    // A narrow call screen has no room for its own reactions button, so they open here; so do the inline ones
+    var hasReactionSelect = CanReact && (IsNarrow || a.Mode == VisualActivityPanelMode.Inline);
 }
 
 <div class="video-panel-menu">
@@ -71,7 +70,7 @@
                 Text="@(IsOwnScreenCasting ? L.Call_StopScreenShare : L.Call_ShareScreen)"
                 Click="@OnToggleScreenCast"/>
         }
-        @if (canRaiseHand) {
+        @if (CanReact) {
             <MenuEntry
                 Icon="icon-hand"
                 Text="@(IsOwnHandRaised ? L.Call_LowerHand : L.Call_RaiseHand)"
