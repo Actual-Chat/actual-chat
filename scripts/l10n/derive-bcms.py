@@ -173,7 +173,7 @@ KEEP_LATIN = [
     "WebAssembly", "reCAPTCHA", "Microsoft Edge", "Google Chrome", "Apple Safari",
     "Android Auto", "macOS", "Windows", "Android", "iOS", "Google", "Safari", "Chrome", "Edge",
     "Telegram", "Bluetooth", "KLIPY", "GIF", "API", "URL", "SMS", "EXIF", "ID", "QR", "OK",
-    "emoji", "Emoji", "Cookie", "cookie",
+    "emoji", "Emoji", "Cookie", "cookie", "Analytics", "Firebase", "Sentry",
     "Live Activities", "AI", "txt", "MB", "&nbsp;", "&ndash;", "Welcome", "DELETE", "Voxt",
     "OAuth", "Claude", "Cursor", "Webhook", "webhook",
     # Not bare "K" - it would swallow the rest of an ordinary word (e.g. "Kontakt", "Korijenski")

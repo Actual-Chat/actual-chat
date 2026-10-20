@@ -1810,6 +1810,30 @@ public static class LocalizedStringsLocalizerExt
         public string Landing_BackToMainPage => l["Landing_BackToMainPage"].Value;
         public string Landing_Home => l["Landing_Home"].Value;
         public string Landing_Support => l["Landing_Support"].Value;
+        public string Landing_Install => l["Landing_Install"].Value;
+        public string Landing_ForPlatform_Format(object arg0) => l["Landing_ForPlatform_Format", arg0].Value;
+        public string Landing_JustSignIn => l["Landing_JustSignIn"].Value;
+        public string Landing_ForWebApp => l["Landing_ForWebApp"].Value;
+        public string Landing_Terms => l["Landing_Terms"].Value;
+        public string Landing_CookiePreferences => l["Landing_CookiePreferences"].Value;
+        public string Landing_ContactUs => l["Landing_ContactUs"].Value;
+        public string Landing_News => l["Landing_News"].Value;
+
+        public string Cookie_Settings => l["Cookie_Settings"].Value;
+        public string Cookie_SettingsSubtitle_Format(object arg0)
+            => l["Cookie_SettingsSubtitle_Format", arg0].Value;
+        public string Cookie_Necessary => l["Cookie_Necessary"].Value;
+        public string Cookie_NecessaryCaption => l["Cookie_NecessaryCaption"].Value;
+        public string Cookie_AlwaysOn => l["Cookie_AlwaysOn"].Value;
+        public string Cookie_Analytics => l["Cookie_Analytics"].Value;
+        public string Cookie_AnalyticsCaption => l["Cookie_AnalyticsCaption"].Value;
+        public string Cookie_Policy => l["Cookie_Policy"].Value;
+        public string Cookie_PolicyFull => l["Cookie_PolicyFull"].Value;
+        public string Cookie_AcceptSelected => l["Cookie_AcceptSelected"].Value;
+        public string Cookie_AcceptAll => l["Cookie_AcceptAll"].Value;
+        public string Cookie_PillText_Format(object arg0) => l["Cookie_PillText_Format", arg0].Value;
+        public string Cookie_LearnMore => l["Cookie_LearnMore"].Value;
+        public string Cookie_NecessaryOnly => l["Cookie_NecessaryOnly"].Value;
 
         public string SignIn_SignIn => l["SignIn_SignIn"].Value;
         public string SignIn_SignOut => l["SignIn_SignOut"].Value;
