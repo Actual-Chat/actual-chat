@@ -2,6 +2,7 @@
 import './fonts/svgtofont/icon.css';
 import './fonts/tt-commons-pro.css';
 import './fonts/nothing-you-could-do.css';
+import './fonts/marck-script.css';
 import './styles/index.css';
 
 // Libraries
