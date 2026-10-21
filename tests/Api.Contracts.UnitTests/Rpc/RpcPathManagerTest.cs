@@ -262,7 +262,7 @@ public class RpcPathManagerTest(ITestOutputHelper @out) : TestBase(@out), IDispo
         _probe.Fail("main");
         _probe.Pass("kz1", 400);
         _probe.SetAttestation("kz1", "attestation of kz1");
-        await using var manager = new RpcPathManager(Candidates, _store, _networkInfoProvider, _probe, _clock);
+        await using var manager = New();
         manager.AttestationUpdated += (host, _) => { lock (events) events.Add("attestation " + host); };
         manager.CurrentChanged += host => { lock (events) events.Add("current " + host); };
 
@@ -285,7 +285,7 @@ public class RpcPathManagerTest(ITestOutputHelper @out) : TestBase(@out), IDispo
         _probe.Pass("main");
         _probe.Pass("kz1", 400);
         var attestations = new List<string>();
-        await using var manager = new RpcPathManager(Candidates, _store, _networkInfoProvider, _probe, _clock);
+        await using var manager = New();
         manager.AttestationUpdated += (host, _) => { lock (attestations) attestations.Add(host); };
 
         // act
@@ -317,12 +317,40 @@ public class RpcPathManagerTest(ITestOutputHelper @out) : TestBase(@out), IDispo
         });
     }
 
+    [Fact]
+    public async Task RestoredRelayShouldBeLeftForTheOriginThePlanPicks()
+    {
+        // arrange: the app restored the relay from its last run, and the origin is known good
+        var history = new RpcPathHistory();
+        history.Record("main", true, 80, Now.AddHours(-9));
+        history.Record("main", true, 80, Now.AddHours(-1));
+        _store.Seed("net", history);
+        var switches = new List<string>();
+        await using var manager = New("kz1");
+        manager.CurrentChanged += host => { lock (switches) switches.Add(host); };
+
+        // act
+        manager.Start();
+        await TestWait.WhenPolled(() => {
+            manager.CycleCount.Should().BeGreaterThan(0);
+            return Task.CompletedTask;
+        });
+
+        // assert
+        manager.Current.Should().Be("main");
+        lock (switches)
+            switches.Should().Equal(["main"], "whoever holds the restored relay must be told to leave it");
+    }
+
     // Private methods
 
-    private RpcPathManager Start()
+    private RpcPathManager Start(string? current = null)
     {
-        var manager = new RpcPathManager(Candidates, _store, _networkInfoProvider, _probe, _clock);
+        var manager = New(current);
         manager.Start();
         return manager;
     }
+
+    private RpcPathManager New(string? current = null)
+        => new(Candidates, current ?? Candidates[0], _store, _networkInfoProvider, _probe, _clock);
 }

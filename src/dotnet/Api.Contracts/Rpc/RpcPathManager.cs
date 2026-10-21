@@ -7,6 +7,7 @@ namespace ActualChat.Rpc;
 /// </summary>
 public sealed class RpcPathManager(
     IReadOnlyList<string> candidates,
+    string current,
     IRpcPathStore store,
     IRpcNetworkInfoProvider networkInfoProvider,
     IRpcPathProbe probe,
@@ -25,7 +26,11 @@ public sealed class RpcPathManager(
     private string _networkId = "";
     private RpcNetworkInfo? _network;
     private TaskCompletionSource _whenReady = TaskCompletionSourceExt.New();
-    private string _current = candidates[0];
+    // The host the connection is on, which a native app restores from its last run: starting
+    // from the origin instead would make a plan that picks the origin look like no change
+    private string _current = candidates.Contains(current, StringComparer.OrdinalIgnoreCase)
+        ? current
+        : candidates[0];
     private int _cycleCount;
     private TaskCompletionSource<Signal> _signal = TaskCompletionSourceExt.New<Signal>();
     private CancellationTokenSource? _cycleTokenSource;
