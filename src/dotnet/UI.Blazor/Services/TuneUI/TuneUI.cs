@@ -51,6 +51,7 @@ public abstract class TuneUI : ProcessorBase
         // Calls
         [Tune.CallTranscriptionOn] = new ([60, 80, 60], "call-transcription-on", TunePlayMode.VibrateOrSound),
         [Tune.CallTranscriptionOff] = new ([60, 80, 60], "call-transcription-off", TunePlayMode.VibrateOrSound),
+        [Tune.HandRaised] = new ([40, 60, 40], "hand-raised", TunePlayMode.VibrateOrSound),
     };
     // Suppress redundant tactile feedback fired as a side-effect of starting
     // recording: ConfirmRecording (mic-live signal ~0.5–1 s after start) and
@@ -214,6 +215,7 @@ public enum Tune
     RecordingWillStop,
     CallTranscriptionOn,
     CallTranscriptionOff,
+    HandRaised,
 }
 
 // Mode never reaches JS: TuneUI resolves it away before handing the table over.
