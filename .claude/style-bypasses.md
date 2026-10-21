@@ -267,6 +267,13 @@ edited. The reason can be as short as whose decision it was.
   reads as "nothing cached" and the next check overwrites it. Sequential keys beat
   carrying gaps for a value nothing needs to survive.
 
+## src/dotnet/Api/Live/Legacy/LegacyLiveSessionState.cs
+
+- `[DataMember(Order = 22), Key(22)]` on `Outcome`, `[DataMember(Order = 23), Key(23)]` on `HasVideo`
+  — retired `[Key]` ordinals reused — not a reuse: the type *is* the 2.21 wire shape, and these
+  are the 2.21 keys with the 2.21 types. Left as gaps they go out as nil, which 2.20-2.21 can't read
+  as an enum and a bool (#5526); new ordinals would leave the same gaps. Dmitrii Filippov's decision
+
 ## src/dotnet/Chat.Service/Db/DbChatEntry.cs
 
 - L42 `public bool IsRemovedAndPurged { get; set; }`, L66 `ClientSideBeginsAt`, L77 `ContentEndsAt`,

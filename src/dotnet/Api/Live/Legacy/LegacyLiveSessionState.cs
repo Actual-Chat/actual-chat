@@ -1,7 +1,8 @@
 namespace ActualChat.Live;
 
 /// <summary>
-/// The <see cref="LiveSessionState"/> wire shape of 2.21 and older. Keys 22, 23 and 25 are retired.
+/// The <see cref="LiveSessionState"/> wire shape of 2.21 and older. Key 25 is retired; 22 and 23 are
+/// retired too but stay on the wire, as 2.20-2.21 read them as an enum and a bool and can't take a nil gap.
 /// </summary>
 [DataContract, MessagePackObject]
 public sealed partial record LegacyLiveSessionState
@@ -50,6 +51,10 @@ public sealed partial record LegacyLiveSessionState
     public long ContextStartLid { get; init; }
     [DataMember(Order = 21), Key(21)]
     public bool IsExpandedByDefault { get; init; }
+    [DataMember(Order = 22), Key(22)]
+    public CallOutcome Outcome { get; init; }
+    [DataMember(Order = 23), Key(23)]
+    public bool HasVideo { get; init; }
     [DataMember(Order = 24), Key(24)]
     public AuthorId? CallerId { get; init; }
     [DataMember(Order = 26), Key(26)]
