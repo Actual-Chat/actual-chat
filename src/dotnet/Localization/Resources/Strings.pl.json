@@ -679,7 +679,7 @@
   "AudioPlayer_Confirm": "Potwierdź",
 
   "Call_NoActiveCall": "Brak aktywnej rozmowy.",
-  "Call_Dialing": "Dzwonienie…",
+  "Call_Dialing": "Oczekiwanie…",
   "Call_Rules": "Zasady",
   "Call_Manage": "Zarządzaj",
   "Call_Transcription": "Transkrypcja",
@@ -1900,7 +1900,7 @@
   "Call_IncomingVideo": "Przychodzące połączenie wideo",
   "Call_InCall": "W rozmowie",
   "Call_Requesting": "Żądanie…",
-  "Call_Ringing": "Dzwoni…",
+  "Call_Ringing": "Dzwonię…",
   "Call_Connecting": "Łączenie…",
   "Call_NoConnection": "Brak połączenia: nikt cię nie słyszy",
   "Call_NoConnectionShort": "Brak połączenia",

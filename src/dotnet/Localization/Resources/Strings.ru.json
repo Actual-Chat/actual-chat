@@ -679,7 +679,7 @@
   "AudioPlayer_Confirm": "Подтвердить",
 
   "Call_NoActiveCall": "Активного звонка нет.",
-  "Call_Dialing": "Вызов…",
+  "Call_Dialing": "Ожидание…",
   "Call_Rules": "Правила",
   "Call_Manage": "Управление",
   "Call_Transcription": "Транскрипция",
@@ -1900,7 +1900,7 @@
   "Call_IncomingVideo": "Входящий видеозвонок",
   "Call_InCall": "В звонке",
   "Call_Requesting": "Запрос…",
-  "Call_Ringing": "Звонит…",
+  "Call_Ringing": "Вызов…",
   "Call_Connecting": "Соединение…",
   "Call_NoConnection": "Нет связи: вас не слышно",
   "Call_NoConnectionShort": "Нет связи",
