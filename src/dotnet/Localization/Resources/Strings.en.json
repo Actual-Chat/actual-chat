@@ -2247,6 +2247,8 @@
   "Call_Outgoing": "Outgoing call",
   "Call_InCall": "In call",
   "Call_Requesting": "Requesting…",
+  // The caller's status while the peer's phone rings. Avoid a verb that needs a subject:
+  // "he/she is calling" reads as the peer calling you (that's Call_IsCallingYou).
   "Call_Ringing": "Ringing…",
   "Call_Connecting": "Connecting…",
   "Call_NoConnection": "No connection: you can't be heard",
