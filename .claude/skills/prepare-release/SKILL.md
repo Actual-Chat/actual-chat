@@ -188,6 +188,28 @@ git commit -m "docs: add release notes vX.Y"
 git push origin release/vX.Y
 ```
 
+### 6b. Save the release's API contract
+
+`ApiContractTest` (`tests/Core.Server.IntegrationTests`, part of every CI run) checks
+the server against the RPC contract of every released client - the wire ids they call
+and the MessagePack layouts they read and write. This release's clients join that set
+only once their contract is saved. Take it from `release/vX.Y` itself, not from `dev`, which has
+already moved on. It needs the local infrastructure (Postgres, Redis, NATS) running:
+
+```bash
+git switch release/vX.Y
+ActualChat_WriteApiContract=true dotnet test tests/Core.Server.IntegrationTests \
+  --filter "FullyQualifiedName~ApiContractTest"
+git add tests/Core.Server.IntegrationTests/data/api-contract/vX.Y.txt
+git commit -m "test(api): save the API contract of vX.Y"
+git push origin release/vX.Y
+```
+
+The step 7 merge carries the file to `dev`. Check the test printed
+`Written: …vX.Y.txt` - a run that fails before it writes nothing. Contracts are retired
+by raising `SystemProperties.MinCompatibleVersion`: the test then fails until the
+contracts below it are deleted, together with their lines in `exceptions.txt`.
+
 ### 7. Merge the notes into dev, push dev
 
 ```bash
@@ -304,6 +326,7 @@ worth mentioning, ask: "would a user notice or care?" If no, fold it into the
 | Commit log | `git log --format='%s' origin/release/vX.(Y-1)..release/vX.Y` |
 | Notes file | `docs/releases/release-notes-vX.Y.md` |
 | Store notes | `docs/releases/store-notes-vX.Y.txt` — plain text, ≤ 500 chars, committed with the notes |
+| API contract | on `release/vX.Y`: `ActualChat_WriteApiContract=true dotnet test tests/Core.Server.IntegrationTests --filter "FullyQualifiedName~ApiContractTest"`, commit `data/api-contract/vX.Y.txt` |
 | Merge to dev | `git merge --no-ff release/vX.Y`, keep dev's `version.json` |
 | Announce | `mcp__voxt-robokitty__post_message` → `s-pmMsV1UVKG-dCKQXnYpX9`, code-fenced |
 | Publish to stores | not here — `/promote-release` after the builds are tested |

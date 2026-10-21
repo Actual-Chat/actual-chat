@@ -7,9 +7,11 @@ namespace ActualChat.Users;
 
 public class SystemProperties(IServiceProvider services) : ISystemProperties
 {
+    // Public for ApiContractTest: the API contracts of older clients are dropped below it
+    public static readonly Version MinCompatibleVersion = new(2, 15);
+
     private const int MaxEdgeNameLength = 16;
     private const double MaxProbeDurationMs = 600_000;
-    private static readonly Version MinCompatibleVersion = new(2, 15);
     private static readonly Version MinReportableClientVersion = MinCompatibleVersion;
     // Normalized the same way as the client version, so an X.Y match means CompatibilityLevel.Full
     private static readonly Version ApiVersion = VersionExt.ParseBuildVersion(ApiConstants.VersionString);

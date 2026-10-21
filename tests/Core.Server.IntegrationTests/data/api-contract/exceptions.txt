@@ -1,0 +1,19 @@
+# Breaks of an older client's contract that were accepted, one per line:
+#   <client version> <method wire name> [<location>] - <why it may break>
+# Without a location the line covers every problem of the method; with one, such as
+# "result.SinceAt[6]" or "endpoint", only the problems at or below it.
+# ApiContractTest fails on a line that matches no problem, so lines go away by themselves: when
+# compatibility is restored, or when the version's contract is deleted after
+# SystemProperties.MinCompatibleVersion moves past it.
+
+2.21 IChats.OnCopyChat:2 - copying a chat to a Place was removed in 2.22 (d34a8d0311)
+2.21 IChats.OnPublishCopiedChat:2 - same: the copy-chat-to-Place feature is gone
+2.21 IChats.OnSetMaintenance:2 - only DebugUI calls it, a developer tool (removed in fbf35e22cb)
+2.21 IChats.StartEntryStream:4 - only the MCP server calls it, and it ships with the server
+2.21 IChats.StreamEntry:5 - no client calls it
+2.21 ILiveSessions.StartCall:5 - calls on 2.21 are behind the incomplete-UI flag, i.e. dev team only
+2.21 ILiveSessions.AcceptCall:3 - same: calls on 2.21 are dev team only
+2.21 ILiveSessions.CancelCall:3 - same: calls on 2.21 are dev team only
+2.21 ILiveSessions.DeclineCall:3 - same: calls on 2.21 are dev team only
+2.21 ILiveSessions.GetMyCall:2 result.SinceAt[6] - LegacyGetMyCall always answers null, so a UserCall never reaches 2.21 (#5528)
+2.21 IUserSettings.Get:3 - the new StoredSettings members are new keys, which a 2.21 client never asks for
