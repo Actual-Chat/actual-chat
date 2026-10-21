@@ -1,0 +1,2685 @@
+version 2.22
+method 190d3f34 IAccounts.Get:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.UserId) -> type:ActualChat.Users.Account
+method 180f11a1 IAccounts.GetFull:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.UserId) -> type:ActualChat.Users.AccountFull
+method 0253a0a9 IAccounts.GetOwn:2 (opaque:ActualLab.Fusion.Session) -> type:ActualChat.Users.AccountFull
+method 85948239 IAccounts.GetSessionInfo:2 (opaque:ActualLab.Fusion.Session) -> type:ActualChat.Users.SessionInfoFull
+method 57024303 IAccounts.ListOwnSessions:3 (opaque:ActualLab.Fusion.Session, enum:ActualChat.SessionKind:Int32) -> type:ActualLab.Api.ApiList[ActualChat.Users.SessionInfo]
+method 28b7ddd8 IAccounts.OnCancelRegister:2 (type:ActualChat.Users.Accounts_CancelRegister) -> vopaque:System.Reactive.Unit
+method 38aea267 IAccounts.OnConfirmRegister:2 (type:ActualChat.Users.Accounts_ConfirmRegister) -> vopaque:System.Reactive.Unit
+method a7691718 IAccounts.OnCreateApiKey:2 (type:ActualChat.Users.Accounts_CreateApiKey) -> prim:String
+method 46050a6f IAccounts.OnDeactivateAllSessions:2 (type:ActualChat.Users.Accounts_DeactivateAllSessions) -> vopaque:System.Reactive.Unit
+method 72977629 IAccounts.OnDeactivateSession:2 (type:ActualChat.Users.Accounts_DeactivateSession) -> vopaque:System.Reactive.Unit
+method a15f126f IAccounts.OnDeleteOwn:2 (type:ActualChat.Users.Accounts_DeleteOwn) -> vopaque:System.Reactive.Unit
+method 75cb31a0 IAccounts.OnSignOut:2 (type:ActualChat.Users.Accounts_SignOut) -> vopaque:System.Reactive.Unit
+method 3eb26546 IAccounts.OnUpdate:2 (type:ActualChat.Users.Accounts_Update) -> vopaque:System.Reactive.Unit
+method 7bd0fcd6 IAliases.GetPlaceChatIdByAlias:3 (opaque:ActualChat.PlaceId, opaque:ActualChat.AliasId) -> opaque:ActualChat.PlaceChatId
+method 747ee45c IAliases.GetTarget:2 (opaque:ActualChat.AliasId) -> type:ActualChat.Chat.AliasTarget
+method e7d5b924 IAliases.GetUserIdByAlias:2 (opaque:ActualChat.AliasId) -> opaque:ActualChat.UserId
+method a6b52785 IAppUpdates.GetLatestUpdateInfo:2 (enum:ActualChat.Hosting.AppKind:Int32) -> type:ActualChat.Users.AppUpdateInfo
+method 5688af1e IAuthors.Get:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.AuthorId) -> type:ActualChat.Chat.Author
+method 755bcc46 IAuthors.GetAccount:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.AuthorId) -> type:ActualChat.Users.Account
+method c410b2ee IAuthors.GetByUserId:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.UserId) -> type:ActualChat.Chat.Author
+method 0a56e3a5 IAuthors.GetFull:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.AuthorId) -> type:ActualChat.Chat.AuthorFull
+method 8923dc83 IAuthors.GetLastCheckIn:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.AuthorId) -> vopaque:ActualLab.Api.ApiNullable8<vopaque:ActualLab.Time.Moment>
+method 0530a43f IAuthors.GetOwn:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Chat.AuthorFull
+method c9ae9729 IAuthors.GetPresence:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.AuthorId) -> enum:ActualChat.Users.Presence:Int32
+method bf03caab IAuthors.ListAuthorIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<opaque:ActualChat.AuthorId>
+method b461b858 IAuthors.ListUserIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<opaque:ActualChat.UserId>
+method 46c1ae03 IAuthors.OnChangeRole:2 (type:ActualChat.Chat.Authors_ChangeRole) -> vopaque:System.Reactive.Unit
+method 5de55028 IAuthors.OnExclude:2 (type:ActualChat.Chat.Authors_Exclude) -> vopaque:System.Reactive.Unit
+method c018b1ce IAuthors.OnInvite:2 (type:ActualChat.Chat.Authors_Invite) -> vopaque:System.Reactive.Unit
+method c2d921d3 IAuthors.OnJoin:2 (type:ActualChat.Chat.Authors_Join) -> type:ActualChat.Chat.AuthorFull
+method 155eacb7 IAuthors.OnLeave:2 (type:ActualChat.Chat.Authors_Leave) -> vopaque:System.Reactive.Unit
+method e1d85e16 IAuthors.OnRestore:2 (type:ActualChat.Chat.Authors_Restore) -> vopaque:System.Reactive.Unit
+method f89c50fe IAuthors.OnSetAvatar:2 (type:ActualChat.Chat.Authors_SetAvatar) -> vopaque:System.Reactive.Unit
+method 5f376858 IAvatars.Get:3 (opaque:ActualLab.Fusion.Session, vopaque:ActualLab.Text.Symbol) -> type:ActualChat.Users.Avatar
+method 3f49a53a IAvatars.GetOwn:3 (opaque:ActualLab.Fusion.Session, vopaque:ActualLab.Text.Symbol) -> type:ActualChat.Users.AvatarFull
+method f3b7b92d IAvatars.ListOwnAvatarIds:2 (opaque:ActualLab.Fusion.Session) -> list<vopaque:ActualLab.Text.Symbol>
+method 56ea5259 IAvatars.OnChange:2 (type:ActualChat.Users.Avatars_Change) -> type:ActualChat.Users.AvatarFull
+method 561edb56 IAvatars.OnSetDefault:2 (type:ActualChat.Users.Avatars_SetDefault) -> vopaque:System.Reactive.Unit
+method 94cdd78f ICaptcha.Validate:3 (prim:String, prim:String) -> type:ActualChat.Users.RecaptchaValidationResult
+method 4b691676 IChatCallReactions.List:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<type:ActualChat.Live.CallReaction>
+method 7b981bc6 IChatCallReactions.Send:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.Emoji) -> vopaque:System.Reactive.Unit
+method 287c4c9b IChatCoach.GetOwnLiveMarks:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, prim:Int64) -> list<type:ActualChat.Chat.CoachLiveMark>
+method 82b34ae6 IChatCoach.GetOwnMarks:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, vopaque:ActualChat.Mathematics.Range<prim:Int64>) -> list<type:ActualChat.Chat.CoachEntryMarks>
+method 0ed334c3 IChatCoach.IsEnabled:2 (opaque:ActualLab.Fusion.Session) -> prim:Boolean
+method 5d9d411c IChatImports.Get:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Chat.ChatImportSession
+method 666d4d00 IChatImports.GetConsentSummary:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, prim:Int32, prim:Int32) -> type:ActualChat.Chat.ChatImportConsentSummary
+method f229467d IChatImports.HasConsent:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.ChatImportId) -> prim:Boolean
+method bdfbc054 IChatImports.OnCreateUpload:2 (type:ActualChat.Chat.ChatImports_CreateUpload) -> opaque:ActualChat.UploadId
+method cafe645f IChatImports.OnEnd:2 (type:ActualChat.Chat.ChatImports_End) -> vopaque:System.Reactive.Unit
+method 99756abf IChatImports.OnFinalizeUpload:2 (type:ActualChat.Chat.ChatImports_FinalizeUpload) -> type:ActualChat.Media.MediaRef
+method bbbd650f IChatImports.OnImportEntries:2 (type:ActualChat.Chat.ChatImports_ImportEntries) -> list<type:ActualChat.Chat.ChatImportEntryResult>
+method e296c082 IChatImports.OnSetConsent:2 (type:ActualChat.Chat.ChatImports_SetConsent) -> vopaque:System.Reactive.Unit
+method 8e17525e IChatImports.OnStart:2 (type:ActualChat.Chat.ChatImports_Start) -> type:ActualChat.Chat.ChatImportSession
+method 680d8758 IChatPositions.GetOwn:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, enum:ActualChat.Users.ChatPositionKind:Int32) -> type:ActualChat.Users.ChatPosition
+method 68d4150f IChatPositions.OnSet:2 (type:ActualChat.Users.ChatPositions_Set) -> vopaque:System.Reactive.Unit
+method 9eed0acc IChatThreads.GetThreadCreator:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ThreadChatId) -> type:ActualChat.Chat.Author
+method 886a0db4 IChatThreads.GetThreadFollowStatus:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ThreadChatId) -> prim:Boolean
+method 428448a6 IChatThreads.GetThreadStat:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ThreadChatId) -> type:ActualChat.Chat.ThreadStat
+method 0a1029b5 IChatThreads.ListIdsForChat:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<opaque:ActualChat.ThreadChatId>
+method 210b3540 IChatThreads.ListIdsForPlace:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> list<opaque:ActualChat.ThreadChatId>
+method a7ac9329 IChatThreads.OnStart:2 (type:ActualChat.Chat.ChatThreads_Start) -> type:ActualChat.Chat.Chat
+method b78dcfac IChatThreads.OnToggleThreadFollowStatus:2 (type:ActualChat.Chat.ChatThreads_ToggleThreadFollowStatus) -> vopaque:System.Reactive.Unit
+method 243a3ff7 IChatThreads.SuggestThreadTitle:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, list<opaque:ActualChat.ChatEntryId>) -> vopaque:System.ValueTuple<prim:String, prim:String>
+method 84af994f IChatTypingActivities.ListTypingAuthorIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<opaque:ActualChat.AuthorId>
+method f523e118 IChatTypingActivities.SetTyping:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, enum:ActualChat.Live.TypingActivityKind:Int32, prim:TimeSpan) -> vopaque:System.Reactive.Unit
+method 5a293de3 IChatUsages.OnRegisterUsage:2 (type:ActualChat.Users.ChatUsages_RegisterUsage) -> vopaque:System.Reactive.Unit
+method 428d01bd IChats.AppendEntryStream:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.StreamId, prim:Int32, prim:String) -> type:ActualChat.Chat.ChatEntryStreamInfo
+method 31063fa1 IChats.AppendVoiceStream:7 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.StreamId, prim:Int32, prim:String, prim:Bytes, nullable<prim:Double>) -> type:ActualChat.Chat.ChatVoiceStream
+method 9a93c622 IChats.FinishEntryStream:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.StreamId) -> type:ActualChat.Chat.ChatEntryStreamInfo
+method e143b111 IChats.FinishVoiceStream:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.StreamId) -> type:ActualChat.Chat.ChatVoiceStream
+method 9ea0b94d IChats.Get:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Chat.Chat
+method b10a3f43 IChats.GetChatRangeTile:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, prim:Int64) -> type:ActualChat.Chat.ChatRangeTile
+method c569d9f5 IChats.GetContentPeriods:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, enum:ActualChat.Chat.ChatContentKind:Int32, prim:String) -> type:ActualChat.Chat.ChatContentSkeleton
+method 4b7c1b6c IChats.GetFilePeriod:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, prim:String, prim:Int32) -> list<type:ActualChat.Chat.FileItem>
+method 97511609 IChats.GetForwardChatReplacement:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> opaque:ActualChat.ChatId
+method 7f9d41b1 IChats.GetIdRange:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> vopaque:ActualChat.Mathematics.Range<prim:Int64>
+method 093ab30a IChats.GetLinkPeriod:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, prim:String, prim:Int32) -> list<type:ActualChat.Chat.LinkItem>
+method 6927e6f0 IChats.GetNews:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Chat.ChatNews
+method 33ba2c19 IChats.GetReadPositionsStat:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Chat.ReadPositionsStat
+method a0421989 IChats.GetRules:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Chat.AuthorRules
+method ae4ea8ce IChats.GetTile:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, vopaque:ActualChat.Mathematics.Range<prim:Int64>) -> type:ActualChat.Chat.ChatTile
+method 09d55d62 IChats.GetTileNonComputed:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, vopaque:ActualChat.Mathematics.Range<prim:Int64>) -> type:ActualChat.Chat.ChatTile
+method a7433978 IChats.GetVisualMediaPeriod:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, prim:String, prim:Int32) -> list<type:ActualChat.Chat.VisualMediaItem>
+method ad35294d IChats.IsEntryReadByMentionedUser:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatEntryId, opaque:ActualChat.MentionRef) -> prim:Boolean
+method 04610311 IChats.ListMentionableAuthors:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<type:ActualChat.Chat.Author>
+method e95c272b IChats.ListOwnSoleOwnedChatIds:2 (opaque:ActualLab.Fusion.Session) -> list<opaque:ActualChat.ChatId>
+method 9ed75392 IChats.ListPinnedEntries:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<opaque:ActualChat.ChatEntryId>
+method 7ee5e7ea IChats.OnChange:2 (type:ActualChat.Chat.Chats_Change) -> type:ActualChat.Chat.Chat
+method b59f64d4 IChats.OnForwardEntries:2 (type:ActualChat.Chat.Chats_ForwardEntries) -> vopaque:System.Reactive.Unit
+method b7ce2cef IChats.OnGetOrCreateFromTemplate:2 (type:ActualChat.Chat.Chats_GetOrCreateFromTemplate) -> type:ActualChat.Chat.Chat
+method 193c6cd1 IChats.OnRemoveEntries:2 (type:ActualChat.Chat.Chats_RemoveEntries) -> vopaque:System.Reactive.Unit
+method b8b68d79 IChats.OnRemoveEntry:2 (type:ActualChat.Chat.Chats_RemoveEntry) -> vopaque:System.Reactive.Unit
+method fd5b4a66 IChats.OnRestoreEntries:2 (type:ActualChat.Chat.Chats_RestoreEntries) -> vopaque:System.Reactive.Unit
+method ed40f737 IChats.OnRestoreEntry:2 (type:ActualChat.Chat.Chats_RestoreEntry) -> vopaque:System.Reactive.Unit
+method 523e242d IChats.OnSetPinned:2 (type:ActualChat.Chat.Chats_SetPinned) -> vopaque:System.Reactive.Unit
+method 9d6d1e19 IChats.OnUpsertEntry:2 (type:ActualChat.Chat.Chats_UpsertEntry) -> type:ActualChat.Chat.ChatEntry
+method f6105f9d IChats.OnWipeHistory:2 (type:ActualChat.Chat.Chats_WipeHistory) -> vopaque:ActualChat.Mathematics.Range<prim:Int64>
+method b8eab8a8 IChats.StartEntryStream:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, nullable<prim:Int64>, opaque:ActualChat.Language) -> type:ActualChat.Chat.ChatEntryStreamInfo
+method 64ec3d2a IChats.StartVoiceStream:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, nullable<prim:Int64>, opaque:ActualChat.Language) -> type:ActualChat.Chat.ChatVoiceStream
+method fa5884a0 IChats.StreamEntry:6 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, nullable<prim:Int64>, opaque:ActualChat.Language, type:ActualLab.Rpc.RpcStream[System.String]) -> type:ActualChat.Chat.ChatEntry
+method 028b61c4 IChats.StreamVoice:6 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, nullable<prim:Int64>, opaque:ActualChat.Language, type:ActualLab.Rpc.RpcStream[ActualChat.Chat.VoiceStreamPart]) -> type:ActualChat.Chat.ChatEntry
+method 90d76481 ICoach.ExplainOwnScore:3 (opaque:ActualLab.Fusion.Session, prim:String) -> list<type:ActualChat.Users.CoachScorePart>
+method 4e0fa096 ICoach.GetOwnBaselineComparison:6 (opaque:ActualLab.Fusion.Session, enum:ActualChat.Users.CoachMetricKind:Int32, prim:String, enum:ActualChat.Users.CoachHistoryPeriod:Int32, vopaque:ActualLab.Time.Moment) -> type:ActualChat.Users.CoachBaselineComparison
+method 8e680a0e ICoach.GetOwnFocus:3 (opaque:ActualLab.Fusion.Session, prim:String) -> nullable<enum:ActualChat.Users.CoachMetricKind:Int32>
+method 02e2b28d ICoach.GetOwnPaceDetails:4 (opaque:ActualLab.Fusion.Session, enum:ActualChat.Users.CoachWindow:Int32, prim:String) -> type:ActualChat.Users.CoachPaceDetails
+method 5ba8c740 ICoach.GetOwnSkillHistory:6 (opaque:ActualLab.Fusion.Session, enum:ActualChat.Users.CoachMetricKind:Int32, prim:String, enum:ActualChat.Users.CoachHistoryPeriod:Int32, vopaque:ActualLab.Time.Moment) -> type:ActualChat.Users.CoachSkillHistory
+method 7f6052dd ICoach.GetOwnSummary:4 (opaque:ActualLab.Fusion.Session, enum:ActualChat.Users.CoachWindow:Int32, prim:String) -> type:ActualChat.Users.CoachSummary
+method 0972f02a ICoach.GetOwnWeekDeltas:3 (opaque:ActualLab.Fusion.Session, prim:String) -> list<type:ActualChat.Users.CoachWeekDelta>
+method 418a3e27 ICoach.GetPendingTip:2 (opaque:ActualLab.Fusion.Session) -> type:ActualChat.Users.UserCoachTip
+method de9671c2 ICoach.IsEnabled:2 (opaque:ActualLab.Fusion.Session) -> prim:Boolean
+method 4392f86d ICoach.ListOwnConversations:4 (opaque:ActualLab.Fusion.Session, prim:Int32, prim:String) -> list<type:ActualChat.Users.CoachConversation>
+method 044accb8 ICoach.ListOwnDays:4 (opaque:ActualLab.Fusion.Session, vopaque:ActualChat.Mathematics.Range<vopaque:ActualLab.Time.Moment>, prim:String) -> list<type:ActualChat.Users.CoachDay>
+method 9f030203 ICoach.ListOwnLanguages:2 (opaque:ActualLab.Fusion.Session) -> list<type:ActualChat.Users.CoachLanguageInfo>
+method d8eadd1c ICoach.ListOwnMilestones:2 (opaque:ActualLab.Fusion.Session) -> list<type:ActualChat.Users.CoachMilestone>
+method 949892ec ICoach.ListOwnOccurrences:4 (opaque:ActualLab.Fusion.Session, prim:String, enum:ActualChat.Users.CoachWindow:Int32) -> list<type:ActualChat.Users.CoachOccurrence>
+method 7495661d ICoach.ListOwnSkillOccurrences:6 (opaque:ActualLab.Fusion.Session, prim:String, enum:ActualChat.Users.CoachWindow:Int32, prim:String, enum:ActualChat.Users.CoachMetricKind:Int32) -> list<type:ActualChat.Users.CoachOccurrence>
+method 80c2f3ee ICoach.ListOwnSkillOccurrencesInRange:6 (opaque:ActualLab.Fusion.Session, prim:String, vopaque:ActualChat.Mathematics.Range<vopaque:ActualLab.Time.Moment>, prim:String, enum:ActualChat.Users.CoachMetricKind:Int32) -> list<type:ActualChat.Users.CoachOccurrence>
+method 51c06158 ICoach.ListOwnSkillWords:5 (opaque:ActualLab.Fusion.Session, enum:ActualChat.Users.CoachWindow:Int32, prim:String, enum:ActualChat.Users.CoachMetricKind:Int32) -> list<type:ActualChat.Users.CoachChip>
+method 83cca3a3 ICoach.ListOwnWeekScores:4 (opaque:ActualLab.Fusion.Session, prim:Int32, prim:String) -> list<type:ActualChat.Users.CoachWeekScore>
+method 7aa5712c ICoach.OnDeleteOwnData:2 (type:ActualChat.Users.Coach_DeleteOwnData) -> vopaque:System.Reactive.Unit
+method db755798 ICoach.OnDismissTip:2 (type:ActualChat.Users.Coach_DismissTip) -> vopaque:System.Reactive.Unit
+method e66bc640 ICoach.OnExcludeConversation:2 (type:ActualChat.Users.Coach_ExcludeConversation) -> vopaque:System.Reactive.Unit
+method 07a581b2 ICoach.OnRebuildOwnDays:2 (type:ActualChat.Users.Coach_RebuildOwnDays) -> vopaque:System.Reactive.Unit
+method 10afd049 ICoach.OnSetBaseline:2 (type:ActualChat.Users.Coach_SetBaseline) -> vopaque:System.Reactive.Unit
+method 8543abd0 ICoach.OnSetChatCoaching:2 (type:ActualChat.Users.Coach_SetChatCoaching) -> vopaque:System.Reactive.Unit
+method 7a35a17b ICoach.OnSetFocus:2 (type:ActualChat.Users.Coach_SetFocus) -> vopaque:System.Reactive.Unit
+method 95e701cb ICoach.OnSetLanguageLevel:2 (type:ActualChat.Users.Coach_SetLanguageLevel) -> vopaque:System.Reactive.Unit
+method c8babd34 IContacts.Get:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ContactId) -> type:ActualChat.Contacts.Contact
+method 3d3365e4 IContacts.GetArchivedCount:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> prim:Int32
+method 3d1a9dab IContacts.GetForChat:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Contacts.Contact
+method 9e796b89 IContacts.ListArchivedIds:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId, type:ActualChat.Mathematics.Tile[System.Int32]) -> list<opaque:ActualChat.ContactId>
+method 9e1e174f IContacts.ListBlockedIds:2 (opaque:ActualLab.Fusion.Session) -> list<opaque:ActualChat.ContactId>
+method 9aeb33d2 IContacts.ListIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> list<opaque:ActualChat.ContactId>
+method 3b83ae2f IContacts.ListPlaceIds:2 (opaque:ActualLab.Fusion.Session) -> list<opaque:ActualChat.PlaceId>
+method b6b26488 IContacts.OnArchive:2 (type:ActualChat.Contacts.Contacts_Archive) -> vopaque:System.Reactive.Unit
+method 8bf96440 IContacts.OnChange:2 (type:ActualChat.Contacts.Contacts_Change) -> type:ActualChat.Contacts.Contact
+method fbb1b940 IContacts.OnSetIsBlocked:2 (type:ActualChat.Contacts.Contacts_SetIsBlocked) -> vopaque:System.Reactive.Unit
+method a99ea3ff IContacts.OnTouch:2 (type:ActualChat.Contacts.Contacts_Touch) -> vopaque:System.Reactive.Unit
+method 803b7ae6 IContacts.OnUnarchive:2 (type:ActualChat.Contacts.Contacts_Unarchive) -> vopaque:System.Reactive.Unit
+method 8bf3916e IConversations.Get:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ConversationId) -> type:ActualChat.Chat.Conversation
+method 2e7e8469 IConversations.GetTile:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, vopaque:ActualChat.Mathematics.Range<prim:Int64>) -> list<type:ActualChat.Chat.Conversation>
+method 691014fa IConversations.OnReSummarize:2 (type:ActualChat.Chat.Conversations_Summarize) -> vopaque:System.Reactive.Unit
+method a9ab6128 IDiagnostics.GetFlowDetails:3 (opaque:ActualLab.Fusion.Session, prim:String) -> type:ActualChat.Flows.FlowDetails
+method 49526ef5 IDiagnostics.GetFlowStats:2 (opaque:ActualLab.Fusion.Session) -> list<type:ActualChat.Flows.FlowTypeStat>
+method cee8283c IDiagnostics.GetFlows:3 (opaque:ActualLab.Fusion.Session, type:ActualChat.Flows.FlowsQuery) -> list<type:ActualChat.Flows.FlowSummary>
+method 3e575593 IDiagnostics.GetMeshDiagInfo:3 (opaque:ActualLab.Fusion.Session, prim:String) -> type:ActualChat.Chat.MeshDiagInfo
+method 1386b1b1 IEmailAuth.AccountExists:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.Email) -> prim:Boolean
+method b15aba6e IEmailAuth.GetEmailValidationMessage:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.Email, enum:ActualChat.Users.TotpPurpose:Int32) -> prim:String
+method fb0c019d IEmailAuth.OnSendTotp:2 (type:ActualChat.Users.EmailAuth_SendTotp) -> vopaque:ActualLab.Time.Moment
+method 12790c14 IEmailAuth.OnValidateTotp:2 (type:ActualChat.Users.EmailAuth_ValidateTotp) -> prim:Boolean
+method 7cd69563 IEmailAuth.OnVerifyEmail:2 (type:ActualChat.Users.EmailAuth_VerifyEmail) -> prim:Boolean
+method b5d51f01 IEmails.GetDigestPreview:4 (opaque:ActualLab.Fusion.Session, list<opaque:ActualChat.ChatId>, nullable<prim:DateTime>) -> type:ActualChat.Users.DigestPreview
+method ea392987 IEmails.OnSendDigest:2 (type:ActualChat.Users.Emails_SendDigest) -> vopaque:System.Reactive.Unit
+method c58e4a1b IExternalContactHashes.Get:3 (opaque:ActualLab.Fusion.Session, vopaque:ActualLab.Text.Symbol) -> type:ActualChat.Contacts.ExternalContactsHash
+method df06bd2a IExternalContactHashes.OnChange:2 (type:ActualChat.Contacts.ExternalContactHashes_Change) -> type:ActualChat.Contacts.ExternalContactsHash
+method b418374c IExternalContacts.List:3 (opaque:ActualLab.Fusion.Session, vopaque:ActualLab.Text.Symbol) -> list<type:ActualChat.Contacts.ExternalContact>
+method 2d7aab45 IExternalContacts.OnBulkChange:2 (type:ActualChat.Contacts.ExternalContacts_BulkChange) -> list<vopaque:ActualLab.Result<type:ActualChat.Contacts.ExternalContactFull>>
+method fd874b38 IFusionTime.GetMomentsAgo:1 (vopaque:ActualLab.Time.Moment) -> prim:String
+method 6448a3ac IFusionTime.Now:0 () -> vopaque:ActualLab.Time.Moment
+method cf769e1a IFusionTime.Now:1 (prim:TimeSpan) -> vopaque:ActualLab.Time.Moment
+method 538fd025 IGifs.GetTrending:2 (prim:Int32) -> type:ActualChat.Media.GifSearchResult
+method c892d664 IGifs.Search:3 (prim:String, prim:Int32) -> type:ActualChat.Media.GifSearchResult
+method ab2dbe8b IImageSuggestions.CanGenerateForPlace:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> prim:Boolean
+method b0183a24 IImageSuggestions.GetDismissedUntilForChat:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, enum:ActualChat.Chat.ImageSlot:Int32) -> nullable<vopaque:ActualLab.Time.Moment>
+method 690ac075 IImageSuggestions.GetDismissedUntilForPlace:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId, enum:ActualChat.Chat.ImageSlot:Int32) -> nullable<vopaque:ActualLab.Time.Moment>
+method db5694cf IImageSuggestions.GetForChat:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, enum:ActualChat.Chat.ImageSlot:Int32) -> type:ActualChat.Media.ImageSuggestion
+method 12c9e9b4 IImageSuggestions.GetForPlace:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId, enum:ActualChat.Chat.ImageSlot:Int32) -> type:ActualChat.Media.ImageSuggestion
+method 60551c86 IImageSuggestions.GetGenerationStartedAtForChat:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, enum:ActualChat.Chat.ImageSlot:Int32) -> nullable<vopaque:ActualLab.Time.Moment>
+method 4a42d677 IImageSuggestions.OnAcceptForChat:2 (type:ActualChat.Chat.ImageSuggestions_AcceptForChat) -> vopaque:System.Reactive.Unit
+method 3d297a0d IImageSuggestions.OnAcceptForPlace:2 (type:ActualChat.Chat.ImageSuggestions_AcceptForPlace) -> vopaque:System.Reactive.Unit
+method 74f97ba9 IImageSuggestions.OnDismissForChat:2 (type:ActualChat.Chat.ImageSuggestions_DismissForChat) -> vopaque:System.Reactive.Unit
+method d4029d9c IImageSuggestions.OnDismissForPlace:2 (type:ActualChat.Chat.ImageSuggestions_DismissForPlace) -> vopaque:System.Reactive.Unit
+method d676d1ee IImageSuggestions.OnGenerateForChat:2 (type:ActualChat.Chat.ImageSuggestions_GenerateForChat) -> type:ActualChat.Media.ImageSuggestion
+method e9c53d0d IImageSuggestions.OnGenerateForPlace:2 (type:ActualChat.Chat.ImageSuggestions_GenerateForPlace) -> type:ActualChat.Media.ImageSuggestion
+method c2f6110a IInvites.GetInviteChatLinkPreview:3 (opaque:ActualLab.Fusion.Session, prim:String) -> type:ActualChat.Invite.InviteChatLinkPreview
+method 2c7e1fed IInvites.GetOrGenerateChatInvite:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Invite.Invite
+method 8813fad5 IInvites.GetOrGeneratePlaceInvite:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> type:ActualChat.Invite.Invite
+method 3b6545c8 IInvites.ListChatInvites:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<type:ActualChat.Invite.Invite>
+method edcbbade IInvites.ListPlaceInvites:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> list<type:ActualChat.Invite.Invite>
+method 72fbd4dc IInvites.OnGenerate:2 (type:ActualChat.Invite.Invites_Generate) -> type:ActualChat.Invite.Invite
+method 0f01de6e IInvites.OnRevoke:2 (type:ActualChat.Invite.Invites_Revoke) -> vopaque:System.Reactive.Unit
+method ace2f89a IInvites.OnUse:2 (type:ActualChat.Invite.Invites_Use) -> type:ActualChat.Invite.Invite
+method 57bdb85d ILiveAudioStreams.GetListeningStream:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, vopaque:ActualLab.Time.Moment) -> type:ActualLab.Rpc.RpcStream[ActualChat.Live.MuxedAudioStreamItem]
+method a2ea8cc1 ILiveAudioStreams.GetListeningStream:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, vopaque:ActualLab.Time.Moment, opaque:ActualChat.Language) -> type:ActualLab.Rpc.RpcStream[ActualChat.Live.MuxedAudioStreamItem]
+method c143c2bc ILiveAudioStreams.GetReplayStream:6 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, vopaque:ActualLab.Time.Moment, prim:TimeSpan, prim:Double) -> type:ActualLab.Rpc.RpcStream[ActualChat.Live.MuxedAudioStreamItem]
+method 0fce18a6 ILiveAudioStreams.GetReplayStream:7 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, vopaque:ActualLab.Time.Moment, prim:TimeSpan, prim:Double, opaque:ActualChat.Language) -> type:ActualLab.Rpc.RpcStream[ActualChat.Live.MuxedAudioStreamItem]
+method b1c38adc ILiveAudioStreams.GetStream:4 (opaque:ActualLab.Fusion.Session, prim:String, prim:TimeSpan) -> type:ActualLab.Rpc.RpcStream[ActualChat.Audio.AudioFrame]
+method a83f7455 ILiveAudioStreams.GetTranscriptStream:3 (opaque:ActualLab.Fusion.Session, prim:String) -> type:ActualLab.Rpc.RpcStream[ActualChat.Transcription.TranscriptDiff]
+method e60f4fd4 ILiveAudioStreams.List:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<type:ActualChat.Live.LiveAudioStreamInfo>
+method 345983f5 ILiveAudioStreams.PushStream:7 (opaque:ActualLab.Fusion.Session, prim:String, prim:String, prim:Double, prim:Int32, type:ActualLab.Rpc.RpcStream[ActualChat.Audio.AudioFrame]) -> vopaque:System.Reactive.Unit
+method 670b85e1 ILiveAudioStreams.ReportAudioLatency:4 (opaque:ActualLab.Fusion.Session, prim:TimeSpan, nullable<prim:TimeSpan>) -> vopaque:System.Reactive.Unit
+method e8f2988d ILiveAudioStreams.ReportPlayback:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, prim:String, opaque:ActualChat.ChatEntryId) -> vopaque:System.Reactive.Unit
+method bfc91cee ILiveSessions.AcceptCall:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.CallId, prim:String) -> vopaque:System.Reactive.Unit
+method 1b25e53a ILiveSessions.CancelCall:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.CallId) -> vopaque:System.Reactive.Unit
+method 7fbcffb7 ILiveSessions.ConfirmRing:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, enum:ActualChat.Live.RingAck:Int32) -> vopaque:System.Reactive.Unit
+method 73b460c7 ILiveSessions.DeclineCall:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.CallId) -> vopaque:System.Reactive.Unit
+method c435c831 ILiveSessions.Get:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Live.LiveSession
+method 8980223a ILiveSessions.GetAudioStreamingAuthorIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<opaque:ActualChat.AuthorId>
+method 96a9662e ILiveSessions.GetConversation:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ConversationId) -> type:ActualChat.Live.LiveConversation
+method 9b2243d8 ILiveSessions.GetConversationStats:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Live.ConversationStats
+method 8329272f ILiveSessions.GetMyCall:3 (opaque:ActualLab.Fusion.Session, prim:String) -> type:ActualChat.Live.UserCall
+method 887c05c2 ILiveSessions.GetOpenConversation:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Live.LiveConversation
+method d3c0921e ILiveSessions.GetState:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Live.LiveSessionState
+method a26a0ca5 ILiveSessions.HasActivity:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> prim:Boolean
+method 5f7cc966 ILiveSessions.HasRecorder:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> prim:Boolean
+method 72d7c7ff ILiveSessions.LeaveCall:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> vopaque:System.Reactive.Unit
+method 5fd6f2ce ILiveSessions.ListConversations:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<opaque:ActualChat.ConversationId>
+method 3aa25ec3 ILiveSessions.LowerAllHands:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> vopaque:System.Reactive.Unit
+method eebd0eee ILiveSessions.MuteAll:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, prim:Boolean) -> vopaque:System.Reactive.Unit
+method e2028edf ILiveSessions.MutePeer:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.AuthorId, prim:Boolean) -> vopaque:System.Reactive.Unit
+method 9353edf8 ILiveSessions.SetHandRaised:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.AuthorId, prim:Boolean) -> vopaque:System.Reactive.Unit
+method f8eb0cd5 ILiveSessions.SetHost:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.AuthorId) -> vopaque:System.Reactive.Unit
+method 8983d385 ILiveSessions.SetParticipation:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, enum:ActualChat.Live.ParticipationKind:Int32, prim:Boolean) -> vopaque:System.Reactive.Unit
+method 2ffd34d7 ILiveSessions.SetRules:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, type:ActualChat.Live.SessionRules) -> vopaque:System.Reactive.Unit
+method d7dab656 ILiveSessions.StartCall:6 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, list<opaque:ActualChat.AuthorId>, prim:Boolean, prim:String) -> opaque:ActualChat.CallId
+method f5b548ae ILiveVideoStreams.ChangePlaybackQuality:4 (opaque:ActualLab.Fusion.Session, type:ActualLab.Api.ApiMap[System.String,ActualChat.Streaming.ReceiveQuality], type:ActualChat.Streaming.PlaybackQualityInfo) -> vopaque:System.Reactive.Unit
+method 5186dfa1 ILiveVideoStreams.ChangeRecordingQuality:4 (opaque:ActualLab.Fusion.Session, type:ActualChat.Streaming.RecordingQualityState, type:ActualChat.Streaming.RecordingQualityInfo) -> vopaque:System.Reactive.Unit
+method 8a9ce64d ILiveVideoStreams.DemandInfo:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.StreamId) -> type:ActualChat.Streaming.StreamDemandInfo
+method ab254663 ILiveVideoStreams.GetDemandStats:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.StreamId) -> type:ActualChat.Streaming.StreamDemandStats
+method be658873 ILiveVideoStreams.GetMemberCount:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> prim:Int32
+method f8e63370 ILiveVideoStreams.GetStream:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.StreamId) -> type:ActualLab.Rpc.RpcStream[ActualChat.Video.VideoFrame]
+method 76a47a81 ILiveVideoStreams.GetStreamWithCapabilities:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.StreamId, list<prim:String>) -> type:ActualLab.Rpc.RpcStream[ActualChat.Video.VideoFrame]
+method 21aa8241 ILiveVideoStreams.GetSupportedCodecs:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<prim:String>
+method 1cb3e428 ILiveVideoStreams.LastKeyframeRequestAt:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.StreamId) -> vopaque:ActualLab.Time.Moment
+method 976027a4 ILiveVideoStreams.List:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<type:ActualChat.Video.VideoStreamInfo>
+method 58bad41d ILiveVideoStreams.PushStream:7 (opaque:ActualLab.Fusion.Session, prim:String, prim:Double, type:ActualChat.Video.VideoFormat, enum:ActualChat.Media.VideoSourceKind:Byte, type:ActualLab.Rpc.RpcStream[ActualChat.Video.VideoFrameBundle]) -> vopaque:System.Reactive.Unit
+method 99ac0b95 ILiveVideoStreams.RegisterMember:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, list<prim:String>) -> vopaque:System.Reactive.Unit
+method 9a1d6aea ILiveVideoStreams.RequestKeyFrame:3 (opaque:ActualLab.Fusion.Session, prim:String) -> vopaque:System.Reactive.Unit
+method 9f8295fd ILiveVideoStreams.UnregisterMember:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> vopaque:System.Reactive.Unit
+method cbd0d9ca IMediaLinkPreviews.Get:2 (vopaque:ActualLab.Text.Symbol) -> type:ActualChat.Media.LinkPreview
+method 32d841ac IMedias.GetContent:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.MediaId) -> type:ActualChat.Media.MediaRef
+method 9440c7ec IMedias.GetProgress:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.MediaId) -> type:ActualChat.Media.MediaProgress
+method 9289cb4f IMedias.OnGenerate:2 (type:ActualChat.Media.Media_Generate) -> type:ActualChat.Media.MediaRef
+method 82fdd794 IMedias.OnProcessUpload:2 (type:ActualChat.Media.Media_ProcessUpload) -> type:ActualChat.Media.MediaRef
+method 52621bd4 IMedias.OnRemoveMedia:2 (type:ActualChat.Media.Media_RemoveMedia) -> vopaque:System.Reactive.Unit
+method ff5138cb IMedias.OnReserveMedia:2 (type:ActualChat.Media.Media_ReserveMedia) -> opaque:ActualChat.MediaId
+method 18d620c9 IMedias.OnUpdateProgress:2 (type:ActualChat.Media.Media_UpdateProgress) -> vopaque:System.Reactive.Unit
+method 5677dda4 IMentions.GetLastOwn:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> type:ActualChat.Chat.Mention
+method aa4329ad IMobileSessions.CreateSession:2 (prim:String) -> opaque:ActualLab.Fusion.Session
+method 117a9d84 IMobileSessions.ValidateSession:3 (opaque:ActualLab.Fusion.Session, prim:String) -> opaque:ActualLab.Fusion.Session
+method 8c9b94a3 INativeAuth.OnSignInApple:2 (type:ActualChat.Users.NativeAuth_SignInApple) -> vopaque:System.Reactive.Unit
+method 808fe597 INativeAuth.OnSignInGoogle:2 (type:ActualChat.Users.NativeAuth_SignInGoogle) -> vopaque:System.Reactive.Unit
+method f7c1f11c INativeAuth.OnSignOut:2 (type:ActualChat.Users.NativeAuth_SignOut) -> vopaque:System.Reactive.Unit
+method aea0fd46 INotifications.GetHistoryVersion:2 (opaque:ActualLab.Fusion.Session) -> prim:Int64
+method b265e997 INotifications.ListActive:2 (opaque:ActualLab.Fusion.Session) -> list<type:ActualChat.Notifications.Notification>
+method 9db28591 INotifications.ListHistory:3 (opaque:ActualLab.Fusion.Session, type:ActualChat.Notifications.NotificationHistoryQuery) -> list<type:ActualChat.Notifications.NotificationHistoryItem>
+method 789f5bc7 INotifications.ListMentionedMemberAlerts:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatEntryId) -> list<type:ActualChat.Notifications.MentionAlertStatus>
+method 9a409acf INotifications.OnDeregisterDevice:2 (type:ActualChat.Notifications.Notifications_DeregisterDevice) -> vopaque:System.Reactive.Unit
+method 01f9c1a4 INotifications.OnDismiss:2 (type:ActualChat.Notifications.Notifications_Dismiss) -> vopaque:System.Reactive.Unit
+method d6646a3c INotifications.OnDismissAll:2 (type:ActualChat.Notifications.Notifications_DismissAll) -> vopaque:System.Reactive.Unit
+method 61b5718d INotifications.OnNotifyMembers:2 (type:ActualChat.Notifications.Notifications_NotifyMembers) -> vopaque:System.Reactive.Unit
+method b77cf42f INotifications.OnNotifyMentionedMembers:2 (type:ActualChat.Notifications.Notifications_NotifyMentionedMembers) -> vopaque:System.Reactive.Unit
+method a5d8310d INotifications.OnRegisterDevice:2 (type:ActualChat.Notifications.Notifications_RegisterDevice) -> vopaque:System.Reactive.Unit
+method d941b614 IOAuthGrants.GetClient:3 (opaque:ActualLab.Fusion.Session, prim:String) -> type:ActualChat.OAuth.OAuthClientInfo
+method a9a7f072 IOAuthGrants.List:2 (opaque:ActualLab.Fusion.Session) -> list<type:ActualChat.OAuth.OAuthGrant>
+method a804c826 IOAuthGrants.OnApprove:2 (type:ActualChat.OAuth.OAuthGrants_Approve) -> prim:String
+method c09eddb9 IOAuthGrants.OnRevoke:2 (type:ActualChat.OAuth.OAuthGrants_Revoke) -> vopaque:System.Reactive.Unit
+method 8657b2d7 IOwnVoices.GetOwnVoiceStatus:2 (opaque:ActualLab.Fusion.Session) -> type:ActualChat.Users.OwnVoiceStatus
+method 17c7ec15 IPasskeyAuth.GetRpId:1 () -> prim:String
+method 1e458d0f IPasskeyAuth.IsEnabled:1 () -> prim:Boolean
+method dc4376ff IPasskeyAuth.ListOwn:2 (opaque:ActualLab.Fusion.Session) -> list<type:ActualChat.Users.Passkey>
+method 7759c50b IPasskeyAuth.OnBeginRegistration:2 (type:ActualChat.Users.PasskeyAuth_BeginRegistration) -> prim:String
+method ba55ee8e IPasskeyAuth.OnBeginSignIn:2 (type:ActualChat.Users.PasskeyAuth_BeginSignIn) -> prim:String
+method 8e2f9976 IPasskeyAuth.OnCompleteRegistration:2 (type:ActualChat.Users.PasskeyAuth_CompleteRegistration) -> type:ActualChat.Users.Passkey
+method 5e2b0cd3 IPasskeyAuth.OnCompleteSignIn:2 (type:ActualChat.Users.PasskeyAuth_CompleteSignIn) -> prim:Boolean
+method cabe9441 IPasskeyAuth.OnDelete:2 (type:ActualChat.Users.PasskeyAuth_Delete) -> vopaque:System.Reactive.Unit
+method b75cdd10 IPasskeyAuth.OnRename:2 (type:ActualChat.Users.PasskeyAuth_Rename) -> vopaque:System.Reactive.Unit
+method 6cdcce97 IPhoneAuth.AccountExists:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.Phone) -> prim:Boolean
+method 1844e306 IPhoneAuth.CheckIfBlocked:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.Phone, enum:ActualChat.Users.TotpPurpose:Int32) -> prim:String
+method 668b12f0 IPhoneAuth.IsEnabled:1 () -> prim:Boolean
+method b6f356ae IPhoneAuth.OnSendCode:2 (type:ActualChat.Users.PhoneAuth_SendCode) -> type:ActualChat.Users.TotpSendResult
+method 6bde3833 IPhoneAuth.OnValidateTotp:2 (type:ActualChat.Users.PhoneAuth_ValidateTotp) -> prim:Boolean
+method 18d8a829 IPhoneAuth.OnVerifyPhone:2 (type:ActualChat.Users.PhoneAuth_VerifyPhone) -> prim:Boolean
+method 9b8a8c33 IPhones.GetExampleCountryPhone:2 (opaque:ActualLab.Fusion.Session) -> opaque:ActualChat.Phone
+method f3c4be7f IPhones.Parse:2 (prim:String) -> opaque:ActualChat.Phone
+method a42288dc IPhones.ParseWithCountryFallback:3 (opaque:ActualLab.Fusion.Session, prim:String) -> opaque:ActualChat.Phone
+method 4d9af7c3 IPlaces.Get:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> type:ActualChat.Chat.Place
+method 17deeb27 IPlaces.Get:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId, opaque:ActualChat.AuthorId) -> type:ActualChat.Chat.Author
+method 11c03ac6 IPlaces.GetOwn:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> type:ActualChat.Chat.AuthorFull
+method f78948cb IPlaces.GetRules:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> type:ActualChat.Chat.PlaceRules
+method 25d40070 IPlaces.GetWelcomeChatId:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> opaque:ActualChat.PlaceChatId
+method 8aa6eec4 IPlaces.ListAuthorIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> list<opaque:ActualChat.AuthorId>
+method 366f33b0 IPlaces.ListModeratorIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> list<opaque:ActualChat.AuthorId>
+method 8d976c01 IPlaces.ListOwnerIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> list<opaque:ActualChat.AuthorId>
+method 641aeb14 IPlaces.ListUserIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.PlaceId) -> list<opaque:ActualChat.UserId>
+method 7b5d2aa1 IPlaces.OnChange:2 (type:ActualChat.Chat.Places_Change) -> type:ActualChat.Chat.Place
+method efeefeff IPlaces.OnChangeRole:2 (type:ActualChat.Chat.Places_ChangeRole) -> vopaque:System.Reactive.Unit
+method 9a7b7124 IPlaces.OnExclude:2 (type:ActualChat.Chat.Places_Exclude) -> vopaque:System.Reactive.Unit
+method cec88d00 IPlaces.OnInvite:2 (type:ActualChat.Chat.Places_Invite) -> vopaque:System.Reactive.Unit
+method 69a585e6 IPlaces.OnJoin:2 (type:ActualChat.Chat.Places_Join) -> vopaque:System.Reactive.Unit
+method c76d05fb IPlaces.OnLeave:2 (type:ActualChat.Chat.Places_Leave) -> vopaque:System.Reactive.Unit
+method c2fae4ff IPlaces.OnRestore:2 (type:ActualChat.Chat.Places_Restore) -> vopaque:System.Reactive.Unit
+method 32549ecf IReactions.Get:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatEntryId) -> type:ActualChat.Chat.Reaction
+method b9825e35 IReactions.ListSummaries:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatEntryId) -> list<type:ActualChat.Chat.ReactionSummary>
+method 4bac024b IReactions.OnReact:2 (type:ActualChat.Chat.Reactions_React) -> vopaque:System.Reactive.Unit
+method 7b61bec7 IRoles.Get:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.RoleId) -> type:ActualChat.Chat.Role
+method 553698ae IRoles.List:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<type:ActualChat.Chat.Role>
+method 115f0b02 IRoles.ListAuthorIds:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.RoleId) -> list<opaque:ActualChat.AuthorId>
+method 8e38a20f IRoles.ListModeratorIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<opaque:ActualChat.AuthorId>
+method c732ca53 IRoles.ListOwnerIds:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<opaque:ActualChat.AuthorId>
+method 9e3a89a2 IRoles.OnChange:2 (type:ActualChat.Chat.Roles_Change) -> type:ActualChat.Chat.Role
+method 80fa7da0 IRpcChecks.GetPayload:3 (type:ActualChat.Rpc.RelayRef, prim:Int32) -> prim:Bytes
+method cf5b1434 IRpcChecks.Ping:2 (type:ActualChat.Rpc.RelayRef) -> vopaque:System.Reactive.Unit
+method 6eb5840f ISecureTokens.CreateForSession:2 (opaque:ActualLab.Fusion.Session) -> type:ActualChat.Security.SecureToken
+method ce4ebfa5 IServerFeatures.Get:2 (any) -> any
+method 83f5f5fa IServerFeatures.GetData:2 (vopaque:ActualLab.Reflection.TypeRef) -> prim:Bytes
+method c98f8492 IServerKvas.Get:3 (opaque:ActualLab.Fusion.Session, prim:String) -> prim:Bytes
+method 72a7e753 IServerKvas.OnMigrateGuestKeys:2 (type:ActualChat.Kvas.ServerKvas_MigrateGuestKeys) -> vopaque:System.Reactive.Unit
+method a6dbc6cd IServerKvas.OnSet:2 (type:ActualChat.Kvas.ServerKvas_Set) -> vopaque:System.Reactive.Unit
+method fd4f212c IServerKvas.OnSetMany:2 (type:ActualChat.Kvas.ServerKvas_SetMany) -> vopaque:System.Reactive.Unit
+method 583a35b8 ISessionTemporals.Get:3 (opaque:ActualLab.Fusion.Session, prim:String) -> prim:String
+method d31eb501 ISessionTemporals.OnSet:2 (type:ActualChat.Users.SessionTemporals_Set) -> vopaque:System.Reactive.Unit
+method 9f084220 ISharedLocations.Get:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, opaque:ActualChat.SharedLocationId) -> type:ActualChat.Chat.SharedLocation
+method a45eb05d ISharedLocations.ListLive:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId) -> list<type:ActualChat.Chat.SharedLocation>
+method 86c75f00 ISharedLocations.OnChange:2 (type:ActualChat.Chat.SharedLocations_Change) -> type:ActualChat.Chat.SharedLocation
+method 3c63a3bf ISystemProperties.GetServerApiInfo:2 (prim:String) -> type:ActualChat.Users.ServerApiInfo
+method 75a50852 ISystemProperties.GetServerApiInfoNC:2 (prim:String) -> type:ActualChat.Users.ServerApiInfo
+method faf93ebf ISystemProperties.GetTime:1 () -> prim:Double
+method c2752635 ISystemProperties.OnInvalidateEverything:2 (type:ActualChat.Users.SystemProperties_InvalidateEverything) -> vopaque:System.Reactive.Unit
+method 3ad75679 ISystemProperties.OnPruneComputedGraph:2 (type:ActualChat.Users.SystemProperties_PruneComputedGraph) -> vopaque:System.Reactive.Unit
+method ea76b86e ISystemProperties.ReportRpcEndpoint:2 (type:ActualChat.Users.RpcEndpointReport) -> vopaque:System.Reactive.Unit
+method 3fa9573a ITimeZones.ConvertWindowsToIana:2 (prim:String) -> prim:String
+method e5491a47 ITimeZones.FindDisplayName:3 (prim:String, prim:String) -> prim:String
+method a32d65ce ITimeZones.List:2 (prim:String) -> list<type:ActualChat.Users.TimeZone>
+method 3d574c25 ITranslations.Get:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.TranslationId, prim:Boolean) -> type:ActualChat.Chat.Translation
+method b23e3255 ITranslations.GetDubVoicePreview:4 (opaque:ActualLab.Fusion.Session, prim:String, opaque:ActualChat.Language) -> prim:Bytes
+method 454ebc1c ITranslations.GetLanguageTile:4 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.ChatId, vopaque:ActualChat.Mathematics.Range<prim:Int64>) -> type:ActualChat.Chat.ChatLanguageTile
+method f93a4762 ITranslations.GetTranslatedUIText:5 (opaque:ActualLab.Fusion.Session, prim:String, opaque:ActualChat.Language, enum:ActualChat.Chat.UITextKind:Int32) -> prim:String
+method 9f7ebc21 ITranslations.ListDubVoices:2 (opaque:ActualLab.Fusion.Session) -> list<type:ActualChat.Chat.DubVoice>
+method 65abbab8 ITranslations.ListSuggestedDubVoices:2 (opaque:ActualLab.Fusion.Session) -> list<type:ActualChat.Chat.DubVoice>
+method 8337ca39 IUploads.AppendStream:5 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.UploadId, prim:Int64, type:ActualLab.Rpc.RpcStream[System.Byte[]]) -> prim:Int64
+method fdb1d7cc IUploads.GetOffset:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.UploadId) -> prim:Int64
+method bdcd767a IUploads.OnAppend:2 (type:ActualChat.Media.Uploads_Append) -> prim:Int64
+method 5933c2aa IUploads.OnConvertToMediaContent:2 (type:ActualChat.Media.Uploads_ConvertToMediaRef) -> type:ActualChat.Media.MediaRef
+method 3bde0fde IUploads.OnCreate:2 (type:ActualChat.Media.Uploads_Create) -> opaque:ActualChat.UploadId
+method a1ffb510 IUploads.OnRemove:2 (type:ActualChat.Media.Uploads_Remove) -> vopaque:System.Reactive.Unit
+method ecc5008f IUploads.OnStartProcessUpload:2 (type:ActualChat.Media.Uploads_StartProcessUpload) -> vopaque:System.Reactive.Unit
+method b73b9694 IUsage.GetOwnReviewPromptHistory:2 (opaque:ActualLab.Fusion.Session) -> type:ActualChat.Users.AppReviewPromptState
+method 1ff8b360 IUsage.GetOwnSummary:2 (opaque:ActualLab.Fusion.Session) -> type:ActualChat.Users.UsageSummary
+method 704db30e IUsage.GetPendingReviewPrompt:2 (opaque:ActualLab.Fusion.Session) -> type:ActualChat.Users.PendingReviewPrompt
+method 520539bd IUsage.GetReviewPromptState:2 (opaque:ActualLab.Fusion.Session) -> type:ActualChat.Users.ReviewPromptState
+method 7b75ad75 IUsage.OnRebuildOwnDays:2 (type:ActualChat.Users.Usage_RebuildOwnDays) -> vopaque:System.Reactive.Unit
+method 7f26bd7a IUsage.OnRecordFunnelEvent:2 (type:ActualChat.Users.Usage_RecordFunnelEvent) -> vopaque:System.Reactive.Unit
+method a739f61c IUsage.OnRecordOnboardingStep:2 (type:ActualChat.Users.Usage_RecordOnboardingStep) -> vopaque:System.Reactive.Unit
+method 8dd2dc10 IUsage.OnRecordReviewPrompt:2 (type:ActualChat.Users.Usage_RecordReviewPrompt) -> vopaque:System.Reactive.Unit
+method 8ea0ce53 IUsage.OnResetReviewPrompt:2 (type:ActualChat.Users.Usage_ResetReviewPrompt) -> vopaque:System.Reactive.Unit
+method 797df74e IUserPresences.Get:2 (opaque:ActualChat.UserId) -> enum:ActualChat.Users.Presence:Int32
+method cad772a4 IUserPresences.GetLastCheckIn:2 (opaque:ActualChat.UserId) -> vopaque:ActualLab.Api.ApiNullable8<vopaque:ActualLab.Time.Moment>
+method e9ca3a31 IUserPresences.OnCheckIn:2 (type:ActualChat.Users.UserPresences_CheckIn) -> vopaque:System.Reactive.Unit
+method 17ed9497 IUserSettings.Get:3 (opaque:ActualLab.Fusion.Session, prim:String) -> type:ActualChat.StoredSettings
+method f3a950b4 IUserSettings.OnSet:2 (type:ActualChat.Users.UserSettings_Set) -> vopaque:System.Reactive.Unit
+method e1027b79 IWebHooks.Get:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.WebHookId) -> type:ActualChat.WebHooks.WebHook
+method de1efd5f IWebHooks.List:4 (opaque:ActualLab.Fusion.Session, enum:ActualChat.WebHooks.WebHookScope:Int32, prim:String) -> list<type:ActualChat.WebHooks.WebHook>
+method 13e2181d IWebHooks.ListDeliveries:3 (opaque:ActualLab.Fusion.Session, opaque:ActualChat.WebHookId) -> list<type:ActualChat.WebHooks.WebHookDelivery>
+method 184b7e9b IWebHooks.ListMine:2 (opaque:ActualLab.Fusion.Session) -> list<type:ActualChat.WebHooks.WebHook>
+method fa1f6f3c IWebHooks.OnChange:2 (type:ActualChat.WebHooks.WebHooks_Change) -> type:ActualChat.WebHooks.WebHookChangeResult
+method 4c9f399a IWebHooks.OnRedeliver:2 (type:ActualChat.WebHooks.WebHooks_Redeliver) -> vopaque:System.Reactive.Unit
+method ee41182f IWebHooks.OnRotateSecret:2 (type:ActualChat.WebHooks.WebHooks_RotateSecret) -> prim:String
+method ddaeed09 IWebHooks.OnTest:2 (type:ActualChat.WebHooks.WebHooks_Test) -> type:ActualChat.WebHooks.WebHookTestResult
+method 760a0a23 VirtualListTestService.GetItem:2 (opaque:ActualChat.UI.Blazor.App.Testing.TestListItemRef) -> opaque:ActualChat.UI.Blazor.App.Testing.TestListItem
+method a2f30566 VirtualListTestService.GetItemKeys:6 (opaque:ActualChat.UI.Blazor.Components.VirtualListDataQuery, nullable<prim:Int32>, nullable<prim:Int32>, enum:ActualChat.UI.Blazor.Components.VirtualListEdge:Int32, opaque:ActualChat.UI.Blazor.App.Testing.VirtualListTestItemOptions) -> opaque:ActualChat.UI.Blazor.Components.VirtualListData<opaque:ActualChat.UI.Blazor.App.Testing.TestListItemRef>
+method b187dfb1 VirtualListTestService.GetSeed:3 (prim:Int32, prim:Double) -> prim:Int32
+object ActualChat.Audio.AudioFormat
+  10 ChannelCount: prim:Int16
+  11 CodecKind: enum:ActualChat.Audio.AudioCodecKind:Int32
+  12 CodecSettings: prim:String
+  13 SampleRate: prim:Int32
+  14 PreSkip: prim:Int32
+struct ActualChat.Audio.SpeechPaceDistribution
+  0 BelowMilliseconds: prim:Int64
+  1 WithinMilliseconds: prim:Int64
+  2 AboveMilliseconds: prim:Int64
+struct ActualChat.Audio.SpeechPaceSegment
+  0 TextRange: vopaque:ActualChat.Mathematics.Range<prim:Int32>
+  1 TimeRange: vopaque:ActualChat.Mathematics.Range<prim:Int32>
+  2 Words: prim:Int32
+object ActualChat.Chat.AddChatMembersBannerUserSettings
+  0 DismissedAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Chat.AliasTarget
+  0 Kind: enum:ActualChat.Chat.AliasKind:Int32
+  1 TargetId: prim:String
+object ActualChat.Chat.Author
+  0 Id: opaque:ActualChat.AuthorId
+  1 Version: prim:Int64
+  2 AvatarId: vopaque:ActualLab.Text.Symbol
+  3 IsAnonymous: prim:Boolean
+  4 HasLeft: prim:Boolean
+  5 Avatar: type:ActualChat.Users.Avatar
+object ActualChat.Chat.AuthorFull
+  0 Id: opaque:ActualChat.AuthorId
+  1 Version: prim:Int64
+  2 AvatarId: vopaque:ActualLab.Text.Symbol
+  3 IsAnonymous: prim:Boolean
+  4 HasLeft: prim:Boolean
+  5 Avatar: type:ActualChat.Users.Avatar
+  10 UserId: opaque:ActualChat.UserId
+  11 RoleIds: list<opaque:ActualChat.RoleId>
+  12 CreatedAt: vopaque:ActualLab.Time.Moment
+  13 IsPlaceAuthor: prim:Boolean
+object ActualChat.Chat.AuthorReadPosition
+  0 AuthorId: opaque:ActualChat.AuthorId
+  1 EntryLid: prim:Int64
+object ActualChat.Chat.AuthorRules
+  0 ChatId: opaque:ActualChat.ChatId
+  1 Author: type:ActualChat.Chat.AuthorFull
+  2 Account: type:ActualChat.Users.AccountFull
+  3 Permissions: enum:ActualChat.Chat.ChatPermissions:Int32
+  4 IsPeerContactPending: prim:Boolean
+  5 HasReachedPeerMessageLimit: prim:Boolean
+object ActualChat.Chat.Authors_ChangeRole
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AuthorId: opaque:ActualChat.AuthorId
+  3 SystemRole: enum:ActualChat.Chat.SystemRole:Int32
+  4 IsInRole: prim:Boolean
+object ActualChat.Chat.Authors_Exclude
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AuthorId: opaque:ActualChat.AuthorId
+object ActualChat.Chat.Authors_Invite
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 UserIds: list<opaque:ActualChat.UserId>
+  4 JoinAnonymously: nullable<prim:Boolean>
+object ActualChat.Chat.Authors_Join
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 AvatarId: vopaque:ActualLab.Text.Symbol
+  4 JoinAnonymously: nullable<prim:Boolean>
+object ActualChat.Chat.Authors_Leave
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+object ActualChat.Chat.Authors_Restore
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AuthorId: opaque:ActualChat.AuthorId
+object ActualChat.Chat.Authors_SetAvatar
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 AvatarId: vopaque:ActualLab.Text.Symbol
+object ActualChat.Chat.CallEntry
+  0 Id: opaque:ActualChat.ChatEntryId
+  1 Version: prim:Int64
+  2 Flags: enum:ActualChat.Chat.ChatEntryFlags:Int32
+  3 AuthorId: opaque:ActualChat.AuthorId
+  4 BeginsAt: vopaque:ActualLab.Time.Moment
+  5 EndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  6 Content: prim:String
+  7 ContentHash: vopaque:ActualChat.Hashing.HashString
+  8 ContentStreamId: prim:String
+  9 RepliedEntryLid: nullable<prim:Int64>
+  10 Forwarded: type:ActualChat.Chat.ChatEntryForwarded
+  11 Audio: type:ActualChat.Chat.ChatEntryAudio
+  12 LinkPreviewMode: enum:ActualChat.Media.LinkPreviewMode:Int32
+  13 LinkPreviewIds: list<vopaque:ActualLab.Text.Symbol>
+  14 LinkPreviews: list<type:ActualChat.Media.LinkPreview>
+  15 ClientId: prim:String
+  16 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  17 LocationId: opaque:ActualChat.SharedLocationId
+  18 QuotedText: prim:String
+  20 CallerId: opaque:ActualChat.AuthorId
+  21 CallerName: prim:String
+  22 Outcome: enum:ActualChat.Chat.CallOutcome:Int32
+  23 InviteeIds: list<opaque:ActualChat.AuthorId>
+  24 HasVideo: prim:Boolean
+  25 ConversationId: opaque:ActualChat.ConversationId
+object ActualChat.Chat.Chat
+  0 Id: opaque:ActualChat.ChatId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 CreatedAt: vopaque:ActualLab.Time.Moment
+  4 IsPublic: prim:Boolean
+  5 IsTemplate: prim:Boolean
+  6 TemplateId: opaque:ActualChat.ChatId
+  7 TemplatedForUserId: opaque:ActualChat.UserId
+  8 AllowGuestAuthors: prim:Boolean
+  9 AllowAnonymousAuthors: prim:Boolean
+  10 MediaId: opaque:ActualChat.MediaId
+  11 Rules: type:ActualChat.Chat.AuthorRules
+  12 Picture: type:ActualChat.Media.Media
+  13 SystemTag: vopaque:ActualLab.Text.Symbol
+  14 IsFrozen: prim:Boolean
+  15 Description: prim:String
+  16 AliasId: opaque:ActualChat.AliasId
+  17 IsSummarized: nullable<prim:Boolean>
+  18 PttEnabledAt: nullable<vopaque:ActualLab.Time.Moment>
+  19 MaintenanceMode: enum:ActualChat.MaintenanceMode:Int32
+  20 IsPttPaused: prim:Boolean
+  21 RetentionPeriod: nullable<prim:TimeSpan>
+object ActualChat.Chat.ChatContentPeriod
+  0 PeriodKey: prim:String
+  1 PageCount: prim:Int32
+object ActualChat.Chat.ChatContentSkeleton
+  0 Periods: list<type:ActualChat.Chat.ChatContentPeriod>
+  1 NextPeriodKey: prim:String
+mapobject ActualChat.Chat.ChatDiff
+  AliasId AliasId: opaque:ActualChat.AliasId
+  AllowAnonymousAuthors AllowAnonymousAuthors: nullable<prim:Boolean>
+  AllowGuestAuthors AllowGuestAuthors: nullable<prim:Boolean>
+  Description Description: prim:String
+  IsFrozen IsFrozen: nullable<prim:Boolean>
+  IsPttPaused IsPttPaused: nullable<prim:Boolean>
+  IsPublic IsPublic: nullable<prim:Boolean>
+  IsSummarized IsSummarized: vopaque:ActualLab.Option<nullable<prim:Boolean>>
+  IsTemplate IsTemplate: nullable<prim:Boolean>
+  Kind Kind: nullable<enum:ActualChat.ChatKind:Int32>
+  MediaId MediaId: opaque:ActualChat.MediaId
+  PlaceId PlaceId: opaque:ActualChat.PlaceId
+  PttEnabledAt PttEnabledAt: vopaque:ActualLab.Option<nullable<vopaque:ActualLab.Time.Moment>>
+  RetentionPeriod RetentionPeriod: vopaque:ActualLab.Option<nullable<prim:TimeSpan>>
+  SystemTag SystemTag: nullable<vopaque:ActualLab.Text.Symbol>
+  TemplateId TemplateId: vopaque:ActualLab.Option<opaque:ActualChat.ChatId>
+  TemplatedForUserId TemplatedForUserId: vopaque:ActualLab.Option<opaque:ActualChat.UserId>
+  Title Title: prim:String
+union ActualChat.Chat.ChatEntry tolerant
+  0 type:ActualChat.Chat.TextEntry
+  1 type:ActualChat.Chat.MembersChangedEntry
+  2 type:ActualChat.Chat.NotifyMembersEntry
+  100 type:ActualChat.Chat.UnsupportedSystemEntry
+  101 type:ActualChat.Chat.CallEntry
+  102 type:ActualChat.Chat.HistoryChangedEntry
+  103 type:ActualChat.Chat.TranscriptionChangedEntry
+  104 type:ActualChat.Chat.HandRaisedEntry
+object ActualChat.Chat.ChatEntryAttachment
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 EntryId: opaque:ActualChat.ChatEntryId
+  3 Index: prim:Int32
+  4 MediaId: opaque:ActualChat.MediaId
+  5 Media: type:ActualChat.Media.Media
+  6 ThumbnailMediaId: opaque:ActualChat.MediaId
+  7 ThumbnailMedia: type:ActualChat.Media.Media
+object ActualChat.Chat.ChatEntryAudio
+  0 MediaId: opaque:ActualChat.MediaId
+  1 BlobId: prim:String
+  2 StreamId: prim:String
+  3 BeginsAt: vopaque:ActualLab.Time.Moment
+  4 TimeMap: type:ActualChat.Mathematics.LinearMap
+  5 EndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  6 ContentEndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  7 ClientSideBeginsAt: nullable<vopaque:ActualLab.Time.Moment>
+object ActualChat.Chat.ChatEntryForwarded
+  0 ChatEntryId: opaque:ActualChat.ChatEntryId
+  1 AuthorId: opaque:ActualChat.AuthorId
+  2 BeginsAt: vopaque:ActualLab.Time.Moment
+  3 ChatTitle: prim:String
+  4 AuthorName: prim:String
+object ActualChat.Chat.ChatEntryLanguage
+  0 Id: opaque:ActualChat.ChatEntryId
+  1 Version: prim:Int64
+  2 Languages: list<opaque:ActualChat.Language>
+  3 CreatedAt: prim:DateTime
+  4 ModifiedAt: prim:DateTime
+  5 EntryContentHash: vopaque:ActualChat.Hashing.HashString
+object ActualChat.Chat.ChatEntryStreamInfo
+  0 Id: opaque:ActualChat.StreamId
+  1 EntryId: opaque:ActualChat.ChatEntryId
+  2 Offset: prim:Int32
+  3 IsCompleted: prim:Boolean
+  4 SpeechBacklog: nullable<prim:TimeSpan>
+object ActualChat.Chat.ChatImportConsentSummary
+  0 ConsentingCount: prim:Int32
+  1 NonConsentingCount: prim:Int32
+  2 NonConsentingUserIds: list<opaque:ActualChat.UserId>
+object ActualChat.Chat.ChatImportEntry
+  0 UserId: opaque:ActualChat.UserId
+  1 BeginsAt: vopaque:ActualLab.Time.Moment
+  2 Content: prim:String
+  3 UploadIds: list<opaque:ActualChat.UploadId>
+  4 RepliedEntryLid: nullable<prim:Int64>
+object ActualChat.Chat.ChatImportEntryResult
+  0 EntryId: opaque:ActualChat.ChatEntryId
+  1 Error: type:ActualLab.Serialization.ExceptionInfo
+object ActualChat.Chat.ChatImportSession
+  0 ImportId: opaque:ActualChat.ChatImportId
+  1 StartedBy: opaque:ActualChat.UserId
+  2 StartedAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Chat.ChatImports_CreateUpload
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 ImportId: opaque:ActualChat.ChatImportId
+  4 UserId: opaque:ActualChat.UserId
+  5 Length: prim:Int64
+  6 FileName: prim:String
+  7 ContentType: prim:String
+object ActualChat.Chat.ChatImports_End
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 ImportId: opaque:ActualChat.ChatImportId
+object ActualChat.Chat.ChatImports_FinalizeUpload
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 ImportId: opaque:ActualChat.ChatImportId
+  4 UploadId: opaque:ActualChat.UploadId
+object ActualChat.Chat.ChatImports_ImportEntries
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 ImportId: opaque:ActualChat.ChatImportId
+  4 Entries: list<type:ActualChat.Chat.ChatImportEntry>
+object ActualChat.Chat.ChatImports_SetConsent
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 ImportId: opaque:ActualChat.ChatImportId
+  4 HasConsent: prim:Boolean
+object ActualChat.Chat.ChatImports_Start
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+object ActualChat.Chat.ChatLanguageTile
+  0 LidTileRange: vopaque:ActualChat.Mathematics.Range<prim:Int64>
+  1 Entries: list<type:ActualChat.Chat.ChatEntryLanguage>
+object ActualChat.Chat.ChatListSettings
+  0 Order: enum:ActualChat.Chat.ChatListOrder:Int32
+  1 FilterId: vopaque:ActualLab.Text.Symbol
+object ActualChat.Chat.ChatNews
+  0 TextEntryLidRange: vopaque:ActualChat.Mathematics.Range<prim:Int64>
+  1 LastTextEntry: type:ActualChat.Chat.ChatEntry
+object ActualChat.Chat.ChatRangeTile
+  0 LidRange: vopaque:ActualChat.Mathematics.Range<prim:Int64>
+  1 EntryLidRanges: list<vopaque:ActualChat.Mathematics.Range<prim:Int64>>
+  2 ConversationRanges: list<vopaque:ActualChat.Mathematics.Range<prim:Int64>>
+  3 MinCount: prim:Int32
+  4 PreviousLidTileStart: nullable<prim:Int64>
+  5 NextLidTileStart: nullable<prim:Int64>
+object ActualChat.Chat.ChatThreads_Start
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ParentChatId: opaque:ActualChat.ChatId
+  3 Title: prim:String
+  4 Description: prim:String
+  5 EntryIds: list<opaque:ActualChat.ChatEntryId>
+object ActualChat.Chat.ChatThreads_ToggleThreadFollowStatus
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ThreadChatId: opaque:ActualChat.ThreadChatId
+object ActualChat.Chat.ChatTile
+  0 LidTileRange: vopaque:ActualChat.Mathematics.Range<prim:Int64>
+  1 IncludesRemoved: prim:Boolean
+  2 BeginsAtRange: vopaque:ActualChat.Mathematics.Range<vopaque:ActualLab.Time.Moment>
+  3 Entries: list<type:ActualChat.Chat.ChatEntry>
+object ActualChat.Chat.ChatUserSettings
+  0 Language: opaque:ActualChat.Language
+  1 NotificationMode: enum:ActualChat.Users.ChatNotificationMode:Int32
+  2 VoiceMode: enum:ActualChat.Users.VoiceMode:Int32
+  3 ListeningMode: prim:Int32
+  4 MustTranslate: nullable<prim:Boolean>
+  5 TranslationTargetLanguage: opaque:ActualChat.Language
+  6 IsTranslationSubHeaderVisible: nullable<prim:Boolean>
+  7 MustTranslateOwnMessages: nullable<prim:Boolean>
+  8 IsTranslatedVoiceEnabled: nullable<prim:Boolean>
+  9 IsMarkedUnread: prim:Boolean
+  10 IsCoachingEnabled: nullable<prim:Boolean>
+object ActualChat.Chat.ChatVoiceStream
+  0 Id: opaque:ActualChat.StreamId
+  1 EntryId: opaque:ActualChat.ChatEntryId
+  2 TextOffset: prim:Int32
+  3 AudioBytes: prim:Int64
+  4 IsCompleted: prim:Boolean
+  5 AudioDuration: prim:TimeSpan
+object ActualChat.Chat.Chats_Change
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 ExpectedVersion: nullable<prim:Int64>
+  4 Change: opaque:ActualChat.Change<type:ActualChat.Chat.ChatDiff>
+object ActualChat.Chat.Chats_ForwardEntries
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 ChatEntries: list<opaque:ActualChat.ChatEntryId>
+  4 DestinationChatIds: list<opaque:ActualChat.ChatId>
+object ActualChat.Chat.Chats_GetOrCreateFromTemplate
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 TemplateChatId: opaque:ActualChat.ChatId
+object ActualChat.Chat.Chats_RemoveEntries
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 LocalIds: list<prim:Int64>
+object ActualChat.Chat.Chats_RemoveEntry
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 LocalId: prim:Int64
+object ActualChat.Chat.Chats_RestoreEntries
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 LocalIds: list<prim:Int64>
+object ActualChat.Chat.Chats_RestoreEntry
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 LocalId: prim:Int64
+object ActualChat.Chat.Chats_SetPinned
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 EntryId: opaque:ActualChat.ChatEntryId
+  3 MustPin: prim:Boolean
+object ActualChat.Chat.Chats_UpsertEntry
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 LocalId: nullable<prim:Int64>
+  4 Text: prim:String
+  5 RepliedEntryLid: vopaque:ActualLab.Option<nullable<prim:Int64>>
+  6 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  7 HasUploadingAttachments: prim:Boolean
+  8 ClientId: prim:String
+  9 Forwarded: type:ActualChat.Chat.ChatEntryForwarded
+  10 LocationId: opaque:ActualChat.SharedLocationId
+  11 QuotedText: prim:String
+object ActualChat.Chat.Chats_WipeHistory
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 MinEntryLid: prim:Int64
+object ActualChat.Chat.CoachEntryMarks
+  0 EntryLid: prim:Int64
+  1 Spans: list<type:ActualChat.Chat.SpeechSpan>
+object ActualChat.Chat.CoachLiveMark
+  0 Kind: enum:ActualChat.Chat.SpeechSpanKind:Int32
+  1 Word: prim:String
+  2 Occurrence: prim:Int32
+  3 Synonyms: list<prim:String>
+object ActualChat.Chat.Conversation
+  0 Id: opaque:ActualChat.ConversationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Description: prim:String
+  4 Summary: prim:String
+  5 EndEntryLid: prim:Int64
+  6 StartsAt: vopaque:ActualLab.Time.Moment
+  7 EndsAt: vopaque:ActualLab.Time.Moment
+  8 MessageCount: prim:Int32
+  9 AuthorIds: list<opaque:ActualChat.AuthorId>
+  10 AttachmentCount: prim:Int32
+  11 AttachmentIds: list<vopaque:ActualLab.Text.Symbol>
+  12 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  13 IsExpandedByDefault: prim:Boolean
+  15 CallerId: opaque:ActualChat.AuthorId
+object ActualChat.Chat.Conversations_Summarize
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ConversationId: opaque:ActualChat.ConversationId
+object ActualChat.Chat.DubVoice
+  0 Id: prim:String
+  1 Description: prim:String
+  2 Gender: prim:String
+  3 Age: prim:String
+  4 Accent: prim:String
+  5 UseCase: list<prim:String>
+  6 Style: list<prim:String>
+object ActualChat.Chat.FileItem
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 EntryId: opaque:ActualChat.ChatEntryId
+  3 LocalIndex: prim:Int32
+  4 At: vopaque:ActualLab.Time.Moment
+  5 MediaId: opaque:ActualChat.MediaId
+  6 BlobId: prim:String
+  7 ContentType: prim:String
+  8 FileName: prim:String
+  9 Size: prim:Int64
+object ActualChat.Chat.HandRaisedEntry
+  0 Id: opaque:ActualChat.ChatEntryId
+  1 Version: prim:Int64
+  2 Flags: enum:ActualChat.Chat.ChatEntryFlags:Int32
+  3 AuthorId: opaque:ActualChat.AuthorId
+  4 BeginsAt: vopaque:ActualLab.Time.Moment
+  5 EndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  6 Content: prim:String
+  7 ContentHash: vopaque:ActualChat.Hashing.HashString
+  8 ContentStreamId: prim:String
+  9 RepliedEntryLid: nullable<prim:Int64>
+  10 Forwarded: type:ActualChat.Chat.ChatEntryForwarded
+  11 Audio: type:ActualChat.Chat.ChatEntryAudio
+  12 LinkPreviewMode: enum:ActualChat.Media.LinkPreviewMode:Int32
+  13 LinkPreviewIds: list<vopaque:ActualLab.Text.Symbol>
+  14 LinkPreviews: list<type:ActualChat.Media.LinkPreview>
+  15 ClientId: prim:String
+  16 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  17 LocationId: opaque:ActualChat.SharedLocationId
+  18 QuotedText: prim:String
+  20 TargetAuthorId: opaque:ActualChat.AuthorId
+  21 TargetAuthorName: prim:String
+  22 IsHandRaised: prim:Boolean
+object ActualChat.Chat.HistoryChangedEntry
+  0 Id: opaque:ActualChat.ChatEntryId
+  1 Version: prim:Int64
+  2 Flags: enum:ActualChat.Chat.ChatEntryFlags:Int32
+  3 AuthorId: opaque:ActualChat.AuthorId
+  4 BeginsAt: vopaque:ActualLab.Time.Moment
+  5 EndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  6 Content: prim:String
+  7 ContentHash: vopaque:ActualChat.Hashing.HashString
+  8 ContentStreamId: prim:String
+  9 RepliedEntryLid: nullable<prim:Int64>
+  10 Forwarded: type:ActualChat.Chat.ChatEntryForwarded
+  11 Audio: type:ActualChat.Chat.ChatEntryAudio
+  12 LinkPreviewMode: enum:ActualChat.Media.LinkPreviewMode:Int32
+  13 LinkPreviewIds: list<vopaque:ActualLab.Text.Symbol>
+  14 LinkPreviews: list<type:ActualChat.Media.LinkPreview>
+  15 ClientId: prim:String
+  16 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  17 LocationId: opaque:ActualChat.SharedLocationId
+  18 QuotedText: prim:String
+  20 TargetAuthorId: opaque:ActualChat.AuthorId
+  21 TargetAuthorName: prim:String
+  22 HistoryChange: enum:ActualChat.Chat.HistoryChangeKind:Int32
+  23 HistoryPeriod: nullable<prim:TimeSpan>
+object ActualChat.Chat.ImageSuggestions_AcceptForChat
+  0 Session: opaque:ActualLab.Fusion.Session
+  1 ChatId: opaque:ActualChat.ChatId
+  2 Slot: enum:ActualChat.Chat.ImageSlot:Int32
+object ActualChat.Chat.ImageSuggestions_AcceptForPlace
+  0 Session: opaque:ActualLab.Fusion.Session
+  1 PlaceId: opaque:ActualChat.PlaceId
+  2 Slot: enum:ActualChat.Chat.ImageSlot:Int32
+object ActualChat.Chat.ImageSuggestions_DismissForChat
+  0 Session: opaque:ActualLab.Fusion.Session
+  1 ChatId: opaque:ActualChat.ChatId
+  2 Slot: enum:ActualChat.Chat.ImageSlot:Int32
+object ActualChat.Chat.ImageSuggestions_DismissForPlace
+  0 Session: opaque:ActualLab.Fusion.Session
+  1 PlaceId: opaque:ActualChat.PlaceId
+  2 Slot: enum:ActualChat.Chat.ImageSlot:Int32
+object ActualChat.Chat.ImageSuggestions_GenerateForChat
+  0 Session: opaque:ActualLab.Fusion.Session
+  1 ChatId: opaque:ActualChat.ChatId
+  2 Slot: enum:ActualChat.Chat.ImageSlot:Int32
+  3 ImageDescription: prim:String
+  4 IsExplicit: prim:Boolean
+  5 Style: nullable<enum:ActualChat.Media.ImageStyle:Int32>
+object ActualChat.Chat.ImageSuggestions_GenerateForPlace
+  0 Session: opaque:ActualLab.Fusion.Session
+  1 PlaceId: opaque:ActualChat.PlaceId
+  2 Slot: enum:ActualChat.Chat.ImageSlot:Int32
+  3 ImageDescription: prim:String
+  4 IsExplicit: prim:Boolean
+  5 Style: nullable<enum:ActualChat.Media.ImageStyle:Int32>
+object ActualChat.Chat.LinkItem
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 EntryId: opaque:ActualChat.ChatEntryId
+  3 LocalIndex: prim:Int32
+  4 At: vopaque:ActualLab.Time.Moment
+  5 Url: prim:String
+  6 LinkPreviewId: vopaque:ActualLab.Text.Symbol
+  7 LinkPreview: type:ActualChat.Media.LinkPreview
+object ActualChat.Chat.MembersChangedEntry
+  0 Id: opaque:ActualChat.ChatEntryId
+  1 Version: prim:Int64
+  2 Flags: enum:ActualChat.Chat.ChatEntryFlags:Int32
+  3 AuthorId: opaque:ActualChat.AuthorId
+  4 BeginsAt: vopaque:ActualLab.Time.Moment
+  5 EndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  6 Content: prim:String
+  7 ContentHash: vopaque:ActualChat.Hashing.HashString
+  8 ContentStreamId: prim:String
+  9 RepliedEntryLid: nullable<prim:Int64>
+  10 Forwarded: type:ActualChat.Chat.ChatEntryForwarded
+  11 Audio: type:ActualChat.Chat.ChatEntryAudio
+  12 LinkPreviewMode: enum:ActualChat.Media.LinkPreviewMode:Int32
+  13 LinkPreviewIds: list<vopaque:ActualLab.Text.Symbol>
+  14 LinkPreviews: list<type:ActualChat.Media.LinkPreview>
+  15 ClientId: prim:String
+  16 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  17 LocationId: opaque:ActualChat.SharedLocationId
+  18 QuotedText: prim:String
+  20 TargetAuthorId: opaque:ActualChat.AuthorId
+  21 TargetAuthorName: prim:String
+  22 HasLeft: prim:Boolean
+object ActualChat.Chat.Mention
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 EntryId: opaque:ActualChat.ChatEntryId
+  2 MentionRef: opaque:ActualChat.MentionRef
+object ActualChat.Chat.MeshDiagInfo
+  0 ThisNodeId: prim:String
+  1 Tag: prim:String
+  2 Timestamp: vopaque:ActualLab.Time.Moment
+  3 Nodes: list<type:ActualChat.Chat.NodeDiagInfo>
+  4 RpcPeers: list<type:ActualChat.Chat.RpcPeerDiagInfo>
+  5 MeshRpcRefs: list<type:ActualChat.Chat.MeshRpcRefDiagInfo>
+  6 Others: list<type:ActualChat.Chat.MeshDiagInfo>
+  7 Extra: prim:String
+object ActualChat.Chat.MeshRpcRefDiagInfo
+  0 MeshRef: prim:String
+  1 Route: prim:String
+  2 Address: prim:String
+  3 NodeId: prim:String
+  4 Version: prim:Int32
+  5 Extra: prim:String
+object ActualChat.Chat.NodeDiagInfo
+  0 Id: prim:String
+  1 Endpoint: prim:String
+  2 State: prim:String
+  3 IsThis: prim:Boolean
+  4 Roles: prim:String
+  5 Extra: prim:String
+object ActualChat.Chat.NotifyMembersEntry
+  0 Id: opaque:ActualChat.ChatEntryId
+  1 Version: prim:Int64
+  2 Flags: enum:ActualChat.Chat.ChatEntryFlags:Int32
+  3 AuthorId: opaque:ActualChat.AuthorId
+  4 BeginsAt: vopaque:ActualLab.Time.Moment
+  5 EndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  6 Content: prim:String
+  7 ContentHash: vopaque:ActualChat.Hashing.HashString
+  8 ContentStreamId: prim:String
+  9 RepliedEntryLid: nullable<prim:Int64>
+  10 Forwarded: type:ActualChat.Chat.ChatEntryForwarded
+  11 Audio: type:ActualChat.Chat.ChatEntryAudio
+  12 LinkPreviewMode: enum:ActualChat.Media.LinkPreviewMode:Int32
+  13 LinkPreviewIds: list<vopaque:ActualLab.Text.Symbol>
+  14 LinkPreviews: list<type:ActualChat.Media.LinkPreview>
+  15 ClientId: prim:String
+  16 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  17 LocationId: opaque:ActualChat.SharedLocationId
+  18 QuotedText: prim:String
+  20 TargetAuthorId: opaque:ActualChat.AuthorId
+  21 TargetAuthorName: prim:String
+object ActualChat.Chat.Place
+  0 Id: opaque:ActualChat.PlaceId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 CreatedAt: vopaque:ActualLab.Time.Moment
+  4 IsPublic: prim:Boolean
+  5 MediaId: opaque:ActualChat.MediaId
+  6 BackgroundMediaId: opaque:ActualChat.MediaId
+  7 Description: prim:String
+  8 Rules: type:ActualChat.Chat.PlaceRules
+  9 Picture: type:ActualChat.Media.Media
+  10 Background: type:ActualChat.Media.Media
+  11 AliasId: opaque:ActualChat.AliasId
+mapobject ActualChat.Chat.PlaceDiff
+  AliasId AliasId: opaque:ActualChat.AliasId
+  BackgroundMediaId BackgroundMediaId: opaque:ActualChat.MediaId
+  Description Description: prim:String
+  IsPublic IsPublic: nullable<prim:Boolean>
+  MediaId MediaId: opaque:ActualChat.MediaId
+  Title Title: prim:String
+object ActualChat.Chat.PlaceRules
+  0 PlaceId: opaque:ActualChat.PlaceId
+  1 Author: type:ActualChat.Chat.AuthorFull
+  2 Account: type:ActualChat.Users.AccountFull
+  3 Permissions: enum:ActualChat.Chat.PlacePermissions:Int32
+object ActualChat.Chat.Places_Change
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 PlaceId: opaque:ActualChat.PlaceId
+  3 ExpectedVersion: nullable<prim:Int64>
+  4 Change: opaque:ActualChat.Change<type:ActualChat.Chat.PlaceDiff>
+object ActualChat.Chat.Places_ChangeRole
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AuthorId: opaque:ActualChat.AuthorId
+  3 SystemRole: enum:ActualChat.Chat.SystemRole:Int32
+  4 IsInRole: prim:Boolean
+object ActualChat.Chat.Places_Exclude
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AuthorId: opaque:ActualChat.AuthorId
+object ActualChat.Chat.Places_Invite
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 PlaceId: opaque:ActualChat.PlaceId
+  3 UserIds: list<opaque:ActualChat.UserId>
+object ActualChat.Chat.Places_Join
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 PlaceId: opaque:ActualChat.PlaceId
+  3 AvatarId: vopaque:ActualLab.Text.Symbol
+object ActualChat.Chat.Places_Leave
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 PlaceId: opaque:ActualChat.PlaceId
+object ActualChat.Chat.Places_Restore
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AuthorId: opaque:ActualChat.AuthorId
+object ActualChat.Chat.PttJoinBannerUserSettings
+  0 DismissedAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Chat.PttMutedBannerUserSettings
+  0 DismissedMutedAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Chat.Reaction
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 AuthorId: opaque:ActualChat.AuthorId
+  3 EntryId: opaque:ActualChat.ChatEntryId
+  4 Emoji: opaque:ActualChat.Emoji
+  5 ModifiedAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Chat.ReactionSummary
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 EntryId: opaque:ActualChat.ChatEntryId
+  3 Emoji: opaque:ActualChat.Emoji
+  4 Count: prim:Int64
+  5 FirstAuthorIds: list<opaque:ActualChat.AuthorId>
+object ActualChat.Chat.Reactions_React
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Reaction: type:ActualChat.Chat.Reaction
+object ActualChat.Chat.ReadPositionsStat
+  0 ChatId: opaque:ActualChat.ChatId
+  1 StartTrackingEntryLid: prim:Int64
+  2 TopReadPositions: list<type:ActualChat.Chat.AuthorReadPosition>
+object ActualChat.Chat.RecentGif
+  0 Slug: prim:String
+  1 PreviewUrl: prim:String
+  2 PreviewWidth: prim:Int32
+  3 PreviewHeight: prim:Int32
+  4 Url: prim:String
+object ActualChat.Chat.RecentGifs
+  0 Origin: prim:String
+  1 Items: list<type:ActualChat.Chat.RecentGif>
+object ActualChat.Chat.RecentMention
+  0 Id: opaque:ActualChat.MentionRef
+  1 Uses: list<vopaque:ActualLab.Time.Moment>
+object ActualChat.Chat.RecentMentions
+  0 Origin: prim:String
+  1 Items: list<type:ActualChat.Chat.RecentMention>
+object ActualChat.Chat.Role
+  0 Id: opaque:ActualChat.RoleId
+  1 Version: prim:Int64
+  2 Picture: prim:String
+  3 Permissions: enum:ActualChat.Chat.ChatPermissions:Int32
+  4 Name: prim:String
+  5 SystemRole: enum:ActualChat.Chat.SystemRole:Int32
+mapobject ActualChat.Chat.RoleDiff
+  AuthorIds AuthorIds: vopaque:ActualChat.Diff.SetDiff<list<opaque:ActualChat.AuthorId>, opaque:ActualChat.AuthorId>
+  Name Name: prim:String
+  Permissions Permissions: nullable<enum:ActualChat.Chat.ChatPermissions:Int32>
+  Picture Picture: prim:String
+  SystemRole SystemRole: nullable<enum:ActualChat.Chat.SystemRole:Int32>
+object ActualChat.Chat.Roles_Change
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 RoleId: opaque:ActualChat.RoleId
+  4 ExpectedVersion: nullable<prim:Int64>
+  5 Change: opaque:ActualChat.Change<type:ActualChat.Chat.RoleDiff>
+object ActualChat.Chat.RpcPeerDiagInfo
+  0 Id: prim:String
+  1 Peer: prim:String
+  2 ConnectionKind: prim:String
+  3 ConnectionStateKind: enum:ActualLab.Rpc.Infrastructure.RpcPeerConnectionStateKind:Int32
+  4 ConnectionInfo: prim:String
+  5 Extra: prim:String
+object ActualChat.Chat.SharedLocation
+  0 Id: opaque:ActualChat.SharedLocationId
+  1 Version: prim:Int64
+  2 AuthorId: opaque:ActualChat.AuthorId
+  3 Point: type:ActualChat.GeoPoint
+  4 CreatedAt: vopaque:ActualLab.Time.Moment
+  5 ModifiedAt: vopaque:ActualLab.Time.Moment
+  6 Duration: prim:TimeSpan
+  7 StoppedAt: nullable<vopaque:ActualLab.Time.Moment>
+  8 IsPlace: prim:Boolean
+mapobject ActualChat.Chat.SharedLocationDiff
+  IsPlace IsPlace: prim:Boolean
+  LiveDuration LiveDuration: nullable<prim:TimeSpan>
+  Point Point: type:ActualChat.GeoPoint
+object ActualChat.Chat.SharedLocations_Change
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 Id: opaque:ActualChat.SharedLocationId
+  4 Change: opaque:ActualChat.Change<type:ActualChat.Chat.SharedLocationDiff>
+object ActualChat.Chat.SpeechPaceSummary
+  0 Version: prim:Int32
+  1 BinWidth: prim:Int32
+  2 Durations: type:ActualLab.Api.ApiMap[System.Int32,System.Int64]
+  3 MeasuredEntries: prim:Int64
+  4 AudioMilliseconds: prim:Int64
+  5 ValidWords: prim:Int64
+  6 RejectedWords: prim:Int64
+  7 UnclassifiedWords: prim:Int64
+  8 UnclassifiedMilliseconds: prim:Int64
+  9 PauseMilliseconds: prim:Int64
+  10 UnmappedMilliseconds: prim:Int64
+object ActualChat.Chat.SpeechSpan
+  0 Kind: enum:ActualChat.Chat.SpeechSpanKind:Int32
+  1 Word: prim:String
+  2 Start: prim:Int32
+  3 Length: prim:Int32
+  4 Synonyms: list<prim:String>
+object ActualChat.Chat.TextEntry
+  0 Id: opaque:ActualChat.ChatEntryId
+  1 Version: prim:Int64
+  2 Flags: enum:ActualChat.Chat.ChatEntryFlags:Int32
+  3 AuthorId: opaque:ActualChat.AuthorId
+  4 BeginsAt: vopaque:ActualLab.Time.Moment
+  5 EndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  6 Content: prim:String
+  7 ContentHash: vopaque:ActualChat.Hashing.HashString
+  8 ContentStreamId: prim:String
+  9 RepliedEntryLid: nullable<prim:Int64>
+  10 Forwarded: type:ActualChat.Chat.ChatEntryForwarded
+  11 Audio: type:ActualChat.Chat.ChatEntryAudio
+  12 LinkPreviewMode: enum:ActualChat.Media.LinkPreviewMode:Int32
+  13 LinkPreviewIds: list<vopaque:ActualLab.Text.Symbol>
+  14 LinkPreviews: list<type:ActualChat.Media.LinkPreview>
+  15 ClientId: prim:String
+  16 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  17 LocationId: opaque:ActualChat.SharedLocationId
+  18 QuotedText: prim:String
+object ActualChat.Chat.ThreadStat
+  0 MessageCount: prim:Int64
+  1 TopAuthorIds: list<opaque:ActualChat.AuthorId>
+  2 AuthorCount: prim:Int32
+  3 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+object ActualChat.Chat.TranscriptionChangedEntry
+  0 Id: opaque:ActualChat.ChatEntryId
+  1 Version: prim:Int64
+  2 Flags: enum:ActualChat.Chat.ChatEntryFlags:Int32
+  3 AuthorId: opaque:ActualChat.AuthorId
+  4 BeginsAt: vopaque:ActualLab.Time.Moment
+  5 EndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  6 Content: prim:String
+  7 ContentHash: vopaque:ActualChat.Hashing.HashString
+  8 ContentStreamId: prim:String
+  9 RepliedEntryLid: nullable<prim:Int64>
+  10 Forwarded: type:ActualChat.Chat.ChatEntryForwarded
+  11 Audio: type:ActualChat.Chat.ChatEntryAudio
+  12 LinkPreviewMode: enum:ActualChat.Media.LinkPreviewMode:Int32
+  13 LinkPreviewIds: list<vopaque:ActualLab.Text.Symbol>
+  14 LinkPreviews: list<type:ActualChat.Media.LinkPreview>
+  15 ClientId: prim:String
+  16 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  17 LocationId: opaque:ActualChat.SharedLocationId
+  18 QuotedText: prim:String
+  20 TargetAuthorId: opaque:ActualChat.AuthorId
+  21 TargetAuthorName: prim:String
+  22 IsTranscriptionOn: prim:Boolean
+object ActualChat.Chat.Translation
+  0 Id: opaque:ActualChat.TranslationId
+  1 Version: prim:Int64
+  2 Content: prim:String
+  3 SourceContentHash: vopaque:ActualChat.Hashing.HashString
+  4 CreatedAt: vopaque:ActualLab.Time.Moment
+  5 ModifiedAt: vopaque:ActualLab.Time.Moment
+  6 StreamId: opaque:ActualChat.StreamId
+  7 DubMediaId: opaque:ActualChat.MediaId
+  8 DubContentHash: vopaque:ActualChat.Hashing.HashString
+object ActualChat.Chat.UnsupportedSystemEntry
+  0 Id: opaque:ActualChat.ChatEntryId
+  1 Version: prim:Int64
+  2 Flags: enum:ActualChat.Chat.ChatEntryFlags:Int32
+  3 AuthorId: opaque:ActualChat.AuthorId
+  4 BeginsAt: vopaque:ActualLab.Time.Moment
+  5 EndsAt: nullable<vopaque:ActualLab.Time.Moment>
+  6 Content: prim:String
+  7 ContentHash: vopaque:ActualChat.Hashing.HashString
+  8 ContentStreamId: prim:String
+  9 RepliedEntryLid: nullable<prim:Int64>
+  10 Forwarded: type:ActualChat.Chat.ChatEntryForwarded
+  11 Audio: type:ActualChat.Chat.ChatEntryAudio
+  12 LinkPreviewMode: enum:ActualChat.Media.LinkPreviewMode:Int32
+  13 LinkPreviewIds: list<vopaque:ActualLab.Text.Symbol>
+  14 LinkPreviews: list<type:ActualChat.Media.LinkPreview>
+  15 ClientId: prim:String
+  16 Attachments: list<type:ActualChat.Chat.ChatEntryAttachment>
+  17 LocationId: opaque:ActualChat.SharedLocationId
+  18 QuotedText: prim:String
+object ActualChat.Chat.VisualMediaItem
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 EntryId: opaque:ActualChat.ChatEntryId
+  3 LocalIndex: prim:Int32
+  4 At: vopaque:ActualLab.Time.Moment
+  5 MediaId: opaque:ActualChat.MediaId
+  6 BlobId: prim:String
+  7 ThumbnailMediaId: opaque:ActualChat.MediaId
+  8 ThumbnailBlobId: prim:String
+  9 ContentType: prim:String
+  10 FileName: prim:String
+  11 Size: prim:Int64
+  12 DurationMs: prim:Int64
+object ActualChat.Contacts.Contact
+  0 Id: opaque:ActualChat.ContactId
+  1 Version: prim:Int64
+  2 UserId: opaque:ActualChat.UserId
+  3 TouchedAt: vopaque:ActualLab.Time.Moment
+  4 IsPinned: prim:Boolean
+  5 Account: type:ActualChat.Users.Account
+  6 Chat: type:ActualChat.Chat.Chat
+  7 PeerContactName: prim:String
+  8 SystemTag: vopaque:ActualLab.Text.Symbol
+  9 ExternalContactName: prim:String
+  10 State: enum:ActualChat.Contacts.ContactState:Int32
+  11 IsBlockedByPeer: prim:Boolean
+  12 ArchivedAt: nullable<vopaque:ActualLab.Time.Moment>
+object ActualChat.Contacts.Contacts_Archive
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: opaque:ActualChat.ContactId
+object ActualChat.Contacts.Contacts_Change
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: opaque:ActualChat.ContactId
+  3 ExpectedVersion: nullable<prim:Int64>
+  4 Change: opaque:ActualChat.Change<type:ActualChat.Contacts.Contact>
+object ActualChat.Contacts.Contacts_SetIsBlocked
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: opaque:ActualChat.ContactId
+  3 IsBlocked: prim:Boolean
+object ActualChat.Contacts.Contacts_Touch
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: opaque:ActualChat.ContactId
+object ActualChat.Contacts.Contacts_Unarchive
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: opaque:ActualChat.ContactId
+object ActualChat.Contacts.ExternalContact
+  0 Id: opaque:ActualChat.ExternalContactId
+  1 Version: prim:Int64
+  2 Hash: vopaque:ActualChat.Hashing.HashString
+object ActualChat.Contacts.ExternalContactChange
+  0 Id: opaque:ActualChat.ExternalContactId
+  1 ExpectedVersion: nullable<prim:Int64>
+  2 Change: opaque:ActualChat.Change<type:ActualChat.Contacts.ExternalContactFull>
+object ActualChat.Contacts.ExternalContactFull
+  0 Id: opaque:ActualChat.ExternalContactId
+  1 Version: prim:Int64
+  2 Hash: vopaque:ActualChat.Hashing.HashString
+  5 DisplayName: prim:String
+  6 GivenName: prim:String
+  7 FamilyName: prim:String
+  8 MiddleName: prim:String
+  9 NamePrefix: prim:String
+  10 NameSuffix: prim:String
+  11 PhoneHashes: type:ActualLab.Api.ApiSet[System.String]
+  12 EmailHashes: type:ActualLab.Api.ApiSet[System.String]
+  13 CreatedAt: vopaque:ActualLab.Time.Moment
+  14 ModifiedAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Contacts.ExternalContactHashes_Change
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 DeviceId: vopaque:ActualLab.Text.Symbol
+  3 ExpectedVersion: nullable<prim:Int64>
+  4 Change: opaque:ActualChat.Change<type:ActualChat.Contacts.ExternalContactsHash>
+object ActualChat.Contacts.ExternalContactsHash
+  0 Id: opaque:ActualChat.UserDeviceId
+  1 Version: prim:Int64
+  2 CreatedAt: vopaque:ActualLab.Time.Moment
+  3 ModifiedAt: vopaque:ActualLab.Time.Moment
+  4 Hash: vopaque:ActualChat.Hashing.HashString
+object ActualChat.Contacts.ExternalContacts_BulkChange
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Changes: list<type:ActualChat.Contacts.ExternalContactChange>
+object ActualChat.FakeDeviceContactOptions
+  0 ContactCount: prim:Int32
+  1 ContactStartIndex: prim:Int32
+  2 PhoneCount: prim:Int32
+  3 EmailCount: prim:Int32
+  4 Seed: prim:Int32
+object ActualChat.Flows.FlowDetails
+  0 Console: prim:String
+  1 Error: prim:String
+object ActualChat.Flows.FlowSummary
+  0 FlowId: prim:String
+  1 Name: prim:String
+  2 Status: enum:ActualChat.Flows.FlowStatus:Int32
+  3 Version: prim:Int64
+  4 UpdatedAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Flows.FlowTypeStat
+  0 Name: prim:String
+  1 Completed: prim:Int32
+  2 Failed: prim:Int32
+  3 Scheduled: prim:Int32
+  4 Stuck: prim:Int32
+  5 Idle: prim:Int32
+object ActualChat.Flows.FlowsQuery
+  0 Name: prim:String
+  1 ProblematicOnly: prim:Boolean
+  2 Limit: prim:Int32
+  3 HideCompleted: prim:Boolean
+object ActualChat.GeoPoint
+  0 Latitude: prim:Double
+  1 Longitude: prim:Double
+  2 Accuracy: nullable<prim:Single>
+  3 Bearing: nullable<prim:Single>
+object ActualChat.Invite.ChatInvite
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 CreatedBy: prim:String
+  3 CreatedAt: vopaque:ActualLab.Time.Moment
+  4 ExpiresOn: vopaque:ActualLab.Time.Moment
+  5 Remaining: prim:Int32
+  10 ChatId: opaque:ActualChat.ChatId
+object ActualChat.Invite.ChatInviteSettings
+  0 InviteId: prim:String
+union ActualChat.Invite.Invite tolerant
+  0 type:ActualChat.Invite.ChatInvite
+  1 type:ActualChat.Invite.PlaceInvite
+  2 type:ActualChat.Invite.UserInvite
+object ActualChat.Invite.InviteChatLinkPreview
+  0 Chat: type:ActualChat.Chat.Chat
+  1 Place: type:ActualChat.Chat.Place
+object ActualChat.Invite.Invites_Generate
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Invite: type:ActualChat.Invite.Invite
+object ActualChat.Invite.Invites_Revoke
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 InviteId: prim:String
+object ActualChat.Invite.Invites_Use
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 InviteId: prim:String
+object ActualChat.Invite.PlaceInvite
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 CreatedBy: prim:String
+  3 CreatedAt: vopaque:ActualLab.Time.Moment
+  4 ExpiresOn: vopaque:ActualLab.Time.Moment
+  5 Remaining: prim:Int32
+  10 PlaceId: opaque:ActualChat.PlaceId
+object ActualChat.Invite.UserInvite
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 CreatedBy: prim:String
+  3 CreatedAt: vopaque:ActualLab.Time.Moment
+  4 ExpiresOn: vopaque:ActualLab.Time.Moment
+  5 Remaining: prim:Int32
+object ActualChat.Kvas.ServerKvas_MigrateGuestKeys
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Kvas.ServerKvas_Set
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Key: prim:String
+  3 Value: prim:Bytes
+object ActualChat.Kvas.ServerKvas_SetMany
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Items: list<vopaque:System.ValueTuple<prim:String, prim:Bytes>>
+object ActualChat.Live.CallReaction
+  0 AuthorId: opaque:ActualChat.AuthorId
+  1 Emoji: opaque:ActualChat.Emoji
+  2 SentAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Live.ConversationStats
+  0 Duration: prim:TimeSpan
+  1 SpeechDurations: type:ActualLab.Api.ApiMap[ActualChat.AuthorId,System.Double]
+  2 TranscriptSizes: type:ActualLab.Api.ApiMap[ActualChat.AuthorId,System.Int32]
+object ActualChat.Live.LiveAudioStreamInfo
+  0 ChatId: opaque:ActualChat.ChatId
+  1 AuthorId: opaque:ActualChat.AuthorId
+  2 StreamId: prim:String
+  3 BeginsAt: vopaque:ActualLab.Time.Moment
+  4 Format: type:ActualChat.Audio.AudioFormat
+  5 EntryId: opaque:ActualChat.ChatEntryId
+  6 SourceBeginsAt: vopaque:ActualLab.Time.Moment
+  7 IsTextOnly: prim:Boolean
+  8 Languages: list<opaque:ActualChat.Language>
+  9 DubLanguage: opaque:ActualChat.Language
+  10 IsSynthesized: prim:Boolean
+object ActualChat.Live.LiveConversation
+  0 Id: opaque:ActualChat.ConversationId
+  1 ContextStartLid: prim:Int64
+  2 SummaryEndLid: prim:Int64
+  3 EndLid: prim:Int64
+  4 StartedAt: vopaque:ActualLab.Time.Moment
+  5 EndedAt: vopaque:ActualLab.Time.Moment
+  6 SummarizedAt: vopaque:ActualLab.Time.Moment
+  7 Title: prim:String
+  8 Description: prim:String
+  9 Summary: prim:String
+  10 SummarizedEntryCount: prim:Int32
+  11 AuthorIds: list<opaque:ActualChat.AuthorId>
+  12 IsExpandedByDefault: prim:Boolean
+  13 CallerId: opaque:ActualChat.AuthorId
+  14 Version: prim:Int64
+  15 ParticipantIds: list<opaque:ActualChat.AuthorId>
+object ActualChat.Live.LiveSession
+  0 ChatId: opaque:ActualChat.ChatId
+  1 Host: opaque:ActualChat.AuthorId
+  2 StartedAt: vopaque:ActualLab.Time.Moment
+  3 Rules: type:ActualChat.Live.SessionRules
+  4 Members: list<type:ActualChat.Live.LiveSessionMember>
+  5 Conversation: type:ActualChat.Chat.Conversation
+  6 Version: prim:Int64
+  7 TranscriptionOn: prim:Boolean
+  8 Kind: enum:ActualChat.Live.LiveSessionKind:Int32
+object ActualChat.Live.LiveSessionMember
+  0 AuthorId: opaque:ActualChat.AuthorId
+  1 Group: enum:ActualChat.Live.MemberGroup:Int32
+  2 IsMicOpen: prim:Boolean
+  3 HasCamera: prim:Boolean
+  4 HasScreenShare: prim:Boolean
+  5 IsListening: prim:Boolean
+  6 MicMuted: prim:Boolean
+  7 JoinedAt: vopaque:ActualLab.Time.Moment
+  8 HandRaisedAt: nullable<vopaque:ActualLab.Time.Moment>
+object ActualChat.Live.LiveSessionState
+  0 ChatId: opaque:ActualChat.ChatId
+  1 FirstSpeechLid: prim:Int64
+  2 FirstSpeechAt: vopaque:ActualLab.Time.Moment
+  3 AuthorIds: list<opaque:ActualChat.AuthorId>
+  4 IsTranscriptionOn: prim:Boolean
+  5 StartNotificationSent: prim:Boolean
+  6 Version: prim:Int64
+  8 QuietSince: nullable<vopaque:ActualLab.Time.Moment>
+  9 HostAuthorId: opaque:ActualChat.AuthorId
+  10 Rules: type:ActualChat.Live.SessionRules
+  11 Kind: enum:ActualChat.Live.LiveSessionKind:Int32
+  12 CallerId: opaque:ActualChat.AuthorId
+  13 HasTranscript: prim:Boolean
+  14 OpenConversation: type:ActualChat.Live.LiveConversation
+object ActualChat.Live.SessionRules
+  0 VoiceModeOverride: nullable<enum:ActualChat.Users.VoiceMode:Int32>
+  1 VideoAllowed: prim:Boolean
+object ActualChat.Live.UserCall
+  0 ChatId: opaque:ActualChat.ChatId
+  2 Role: enum:ActualChat.Live.CallRole:Int32
+  3 Phase: enum:ActualChat.Live.CallPhase:Int32
+  4 PeerId: opaque:ActualChat.AuthorId
+  5 HasVideo: prim:Boolean
+  9 CallId: opaque:ActualChat.CallId
+  10 Outcome: enum:ActualChat.Chat.CallOutcome:Int32
+  11 IsPeerRinging: prim:Boolean
+object ActualChat.LocalAppSettings
+  0 IsLogViewerEnabled: nullable<prim:Boolean>
+  1 SelectedCameraDeviceId: prim:String
+  2 IsBackgroundBlurEnabled: nullable<prim:Boolean>
+  3 CameraMirrorOverrides: type:ActualLab.Api.ApiMap[System.String,System.Boolean]
+  5 LocationAccuracy: nullable<enum:ActualChat.GeoTrackingAccuracy:Int32>
+  7 DismissedPermissionWarnings: prim:String
+object ActualChat.LocalOnboardingSettings
+  0 IsPermissionsStepCompleted: prim:Boolean
+  1 AreCookiesAccepted: prim:Boolean
+struct ActualChat.Mathematics.LinearMap
+  0 Data: list<prim:Single>
+mapstruct ActualChat.Mathematics.Tile[System.Int32]
+  Range Range: vopaque:ActualChat.Mathematics.Range<prim:Int32>
+object ActualChat.Media.GifItem
+  0 Slug: prim:String
+  1 Title: prim:String
+  2 PreviewUrl: prim:String
+  3 PreviewWidth: prim:Int32
+  4 PreviewHeight: prim:Int32
+  5 Url: prim:String
+  6 Width: prim:Int32
+  7 Height: prim:Int32
+  8 BlurPreview: prim:String
+object ActualChat.Media.GifSearchResult
+  0 Items: list<type:ActualChat.Media.GifItem>
+  1 HasNext: prim:Boolean
+object ActualChat.Media.ImageSuggestion
+  0 Key: prim:String
+  1 MediaId: opaque:ActualChat.MediaId
+  2 ImageDescription: prim:String
+  3 CreatedAt: vopaque:ActualLab.Time.Moment
+  4 Version: prim:Int64
+  5 Media: type:ActualChat.Media.Media
+object ActualChat.Media.LinkPreview
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Url: prim:String
+  2 PreviewMediaId: opaque:ActualChat.MediaId
+  3 Title: prim:String
+  4 Description: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 ModifiedAt: vopaque:ActualLab.Time.Moment
+  7 PreviewMedia: type:ActualChat.Media.Media
+  8 Version: prim:Int64
+  9 Metadata: vopaque:ActualLab.Collections.PropertyBag<opaque:ActualChat.Serialization.MetadataSchema>
+object ActualChat.Media.Media
+  0 Id: opaque:ActualChat.MediaId
+  1 BlobId: prim:String
+  2 Version: prim:Int64
+  3 Kind: enum:ActualChat.Media.MediaKind:Int32
+  4 Metadata: vopaque:ActualLab.Collections.PropertyBag<opaque:ActualChat.Serialization.MetadataSchema>
+  5 Placeholder: prim:Bytes
+object ActualChat.Media.MediaProgress
+  0 Id: opaque:ActualChat.MediaId
+  1 Version: prim:Int64
+  2 Stage: enum:ActualChat.Media.MediaProcessingStage:Int32
+  3 StageProgress: prim:Double
+  4 Error: prim:String
+object ActualChat.Media.MediaRef
+  0 MediaId: opaque:ActualChat.MediaId
+  1 BlobId: prim:String
+  2 ThumbnailMediaId: opaque:ActualChat.MediaId
+  3 ThumbnailBlobId: prim:String
+object ActualChat.Media.Media_Generate
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Scope: prim:String
+  3 Description: prim:String
+  4 Style: enum:ActualChat.Media.ImageStyle:Int32
+  5 Kind: enum:ActualChat.Media.MediaKind:Int32
+  6 IsBackground: prim:Boolean
+object ActualChat.Media.Media_ProcessUpload
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 MediaId: opaque:ActualChat.MediaId
+  3 UploadId: opaque:ActualChat.UploadId
+object ActualChat.Media.Media_RemoveMedia
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 MediaId: opaque:ActualChat.MediaId
+object ActualChat.Media.Media_ReserveMedia
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Scope: prim:String
+  3 Metadata: vopaque:ActualLab.Collections.PropertyBag<opaque:ActualChat.Serialization.MetadataSchema>
+  4 Kind: enum:ActualChat.Media.MediaKind:Int32
+  5 Placeholder: prim:Bytes
+object ActualChat.Media.Media_UpdateProgress
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 MediaId: opaque:ActualChat.MediaId
+  3 ExpectedVersion: nullable<prim:Int64>
+  4 Stage: enum:ActualChat.Media.MediaProcessingStage:Int32
+  5 StageProgress: prim:Double
+  6 Error: prim:String
+struct ActualChat.Media.Size2D
+  0 Width: prim:Int32
+  1 Height: prim:Int32
+object ActualChat.Media.Uploads_Append
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 UploadId: opaque:ActualChat.UploadId
+  3 Offset: prim:Int64
+  4 Chunk: prim:Bytes
+object ActualChat.Media.Uploads_ConvertToMediaRef
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 UploadId: opaque:ActualChat.UploadId
+object ActualChat.Media.Uploads_Create
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Length: nullable<prim:Int64>
+  3 Tag: prim:String
+  4 Metadata: vopaque:ActualLab.Collections.PropertyBag<opaque:ActualChat.Serialization.MetadataSchema>
+object ActualChat.Media.Uploads_Remove
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 UploadId: opaque:ActualChat.UploadId
+object ActualChat.Media.Uploads_StartProcessUpload
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 UploadId: opaque:ActualChat.UploadId
+  3 MediaId: opaque:ActualChat.MediaId
+object ActualChat.Notifications.AttentionNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+object ActualChat.Notifications.CallNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  9 HasVideo: prim:Boolean
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+object ActualChat.Notifications.ConversationNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  9 StartEntryLid: prim:Int64
+  10 EndEntryLid: prim:Int64
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+object ActualChat.Notifications.InvitationNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+object ActualChat.Notifications.LegacyThreadNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  9 EntryLid: prim:Int64
+  10 StartEntryLid: prim:Int64
+  11 UnreadCount: prim:Int32
+  12 AuthorIds: list<opaque:ActualChat.AuthorId>
+  13 LeadText: prim:String
+  14 BeepCount: prim:Int32
+  15 LastBeepAt: vopaque:ActualLab.Time.Moment
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  17 LeadCount: prim:Int32
+  18 RecentMessages: list<type:ActualChat.Notifications.NotificationMessage>
+  19 BeepGroup: prim:String
+  20 LastBeepGroup: prim:String
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+object ActualChat.Notifications.MentionAlertStatus
+  0 AuthorId: opaque:ActualChat.AuthorId
+  1 UserId: opaque:ActualChat.UserId
+  2 IsNotified: prim:Boolean
+  3 IsRead: prim:Boolean
+object ActualChat.Notifications.MentionNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+object ActualChat.Notifications.MessageNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  9 EntryLid: prim:Int64
+  10 StartEntryLid: prim:Int64
+  11 UnreadCount: prim:Int32
+  12 AuthorIds: list<opaque:ActualChat.AuthorId>
+  13 LeadText: prim:String
+  14 BeepCount: prim:Int32
+  15 LastBeepAt: vopaque:ActualLab.Time.Moment
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  17 LeadCount: prim:Int32
+  18 RecentMessages: list<type:ActualChat.Notifications.NotificationMessage>
+  19 BeepGroup: prim:String
+  20 LastBeepGroup: prim:String
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+union ActualChat.Notifications.Notification tolerant
+  1 type:ActualChat.Notifications.MessageNotification
+  2 type:ActualChat.Notifications.ReplyNotification
+  3 type:ActualChat.Notifications.InvitationNotification
+  4 type:ActualChat.Notifications.MentionNotification
+  5 type:ActualChat.Notifications.ReactionNotification
+  6 type:ActualChat.Notifications.AttentionNotification
+  7 type:ActualChat.Notifications.LegacyThreadNotification
+  8 type:ActualChat.Notifications.ConversationNotification
+  9 type:ActualChat.Notifications.CallNotification
+  10 type:ActualChat.Notifications.ThreadNotification
+object ActualChat.Notifications.NotificationAction
+  0 Kind: enum:ActualChat.Notifications.NotificationActionKind:Int32
+  1 Title: prim:String
+  2 Target: prim:String
+object ActualChat.Notifications.NotificationHistoryItem
+  0 Seq: prim:Int64
+  1 Kind: enum:ActualChat.NotificationKind:Int32
+  2 SentAt: vopaque:ActualLab.Time.Moment
+  3 ChatId: opaque:ActualChat.ChatId
+  4 EntryId: opaque:ActualChat.ChatEntryId
+  5 AuthorId: opaque:ActualChat.AuthorId
+  6 Title: prim:String
+  7 Text: prim:String
+  8 NotificationId: opaque:ActualChat.NotificationId
+object ActualChat.Notifications.NotificationHistoryQuery
+  0 Kinds: list<enum:ActualChat.NotificationKind:Int32>
+  1 AfterSeq: prim:Int64
+  2 Limit: prim:Int32
+  3 IsNewestFirst: prim:Boolean
+object ActualChat.Notifications.NotificationMessage
+  0 AuthorId: opaque:ActualChat.AuthorId
+  1 AuthorName: prim:String
+  2 Text: prim:String
+  3 EntryLid: prim:Int64
+  4 SentAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Notifications.Notifications_DeregisterDevice
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 DeviceId: vopaque:ActualLab.Text.Symbol
+object ActualChat.Notifications.Notifications_Dismiss
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 NotificationId: opaque:ActualChat.NotificationId
+object ActualChat.Notifications.Notifications_DismissAll
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Notifications.Notifications_NotifyMembers
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+object ActualChat.Notifications.Notifications_NotifyMentionedMembers
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatEntryId: opaque:ActualChat.ChatEntryId
+  3 AuthorIds: list<opaque:ActualChat.AuthorId>
+object ActualChat.Notifications.Notifications_RegisterDevice
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 DeviceId: vopaque:ActualLab.Text.Symbol
+  3 DeviceType: enum:ActualChat.Notifications.DeviceType:Int32
+  4 IsPttEnabled: prim:Boolean
+object ActualChat.Notifications.ReactionNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  9 AuthorIds: list<opaque:ActualChat.AuthorId>
+  10 Emojis: list<opaque:ActualChat.Emoji>
+  11 QuotedText: prim:String
+  12 LastEmoji: opaque:ActualChat.Emoji
+  13 DisplaySenderName: prim:String
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+object ActualChat.Notifications.ReplyNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  9 EntryLid: prim:Int64
+  10 StartEntryLid: prim:Int64
+  11 UnreadCount: prim:Int32
+  12 AuthorIds: list<opaque:ActualChat.AuthorId>
+  13 LeadText: prim:String
+  14 BeepCount: prim:Int32
+  15 LastBeepAt: vopaque:ActualLab.Time.Moment
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  17 LeadCount: prim:Int32
+  18 RecentMessages: list<type:ActualChat.Notifications.NotificationMessage>
+  19 BeepGroup: prim:String
+  20 LastBeepGroup: prim:String
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+object ActualChat.Notifications.ThreadNotification
+  0 Id: opaque:ActualChat.NotificationId
+  1 Version: prim:Int64
+  2 Title: prim:String
+  3 Text: prim:String
+  4 IconUrl: prim:String
+  5 CreatedAt: vopaque:ActualLab.Time.Moment
+  6 SentAt: vopaque:ActualLab.Time.Moment
+  8 AuthorId: opaque:ActualChat.AuthorId
+  16 Actions: list<type:ActualChat.Notifications.NotificationAction>
+  21 SenderName: prim:String
+  22 GroupTitle: prim:String
+object ActualChat.OAuth.OAuthClientInfo
+  0 ClientId: prim:String
+  1 ClientName: prim:String
+  2 RedirectHosts: list<prim:String>
+  3 IsLoopback: prim:Boolean
+  4 Scopes: list<prim:String>
+object ActualChat.OAuth.OAuthGrant
+  0 Id: prim:String
+  1 ClientId: prim:String
+  2 ClientName: prim:String
+  3 Scopes: list<prim:String>
+  4 CreatedAt: vopaque:ActualLab.Time.Moment
+  5 LastUsedAt: vopaque:ActualLab.Time.Moment
+  6 ExpiresAt: vopaque:ActualLab.Time.Moment
+object ActualChat.OAuth.OAuthGrants_Approve
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ClientId: prim:String
+  3 Scopes: list<prim:String>
+object ActualChat.OAuth.OAuthGrants_Revoke
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AuthorizationId: prim:String
+object ActualChat.Rpc.RelayRef
+  0 Host: prim:String
+  1 Attempt: prim:Int32
+object ActualChat.Security.SecureToken
+  0 Token: prim:String
+  1 ExpiresAt: vopaque:ActualLab.Time.Moment
+union ActualChat.StoredSettings
+  0 type:ActualChat.Users.UserAppSettings
+  1 type:ActualChat.Users.UserEmailsSettings
+  2 type:ActualChat.Users.UserLanguageSettings
+  3 type:ActualChat.Users.UserListeningSettings
+  4 type:ActualChat.Users.UserNavbarSettings
+  5 type:ActualChat.Users.UserReactionSettings
+  6 type:ActualChat.Users.UserAvatarSettings
+  7 type:ActualChat.Users.UserTranscriptionEngineSettings
+  8 type:ActualChat.Users.UserOnboardingSettings
+  9 type:ActualChat.Users.UserBubbleSettings
+  10 type:ActualChat.Users.UserChatRecordingDetectedLanguage
+  11 type:ActualChat.Chat.ChatListSettings
+  12 type:ActualChat.Users.UserTranscodingTestSettings
+  13 type:ActualChat.FakeDeviceContactOptions
+  14 type:ActualChat.Users.UserReplaySettings
+  15 type:ActualChat.Chat.RecentMentions
+  16 type:ActualChat.Chat.RecentGifs
+  17 type:ActualChat.Users.UserPttSettings
+  19 type:ActualChat.Users.UserCarAudioSettings
+  20 type:ActualChat.Users.UserImageStyleSettings
+  21 type:ActualChat.Users.AppReviewPromptState
+  50 type:ActualChat.Chat.ChatUserSettings
+  51 type:ActualChat.Invite.ChatInviteSettings
+  52 type:ActualChat.Chat.AddChatMembersBannerUserSettings
+  53 type:ActualChat.Chat.PttJoinBannerUserSettings
+  54 type:ActualChat.Chat.PttMutedBannerUserSettings
+  55 type:ActualChat.Users.UserCoachSettings
+  56 type:ActualChat.Users.UserCoachTip
+  57 type:ActualChat.Users.UserCoachWeeklyNote
+  58 type:ActualChat.Users.UserAndroidSettings
+  100 type:ActualChat.LocalAppSettings
+  101 type:ActualChat.LocalOnboardingSettings
+object ActualChat.Streaming.PlaybackQualityInfo
+  0 EstimatedCapacityBytesPerSec: prim:Int64
+  1 AggregateHealth: prim:Double
+  2 Reason: enum:ActualChat.Streaming.PlaybackQualityReason:Int32
+  3 IsColdStart: prim:Boolean
+  4 Streams: type:ActualLab.Api.ApiMap[System.String,ActualChat.Streaming.PlaybackStreamInfo]
+  5 StallNote: prim:String
+object ActualChat.Streaming.RecordingQualityInfo
+  0 Reason: enum:ActualChat.Streaming.RecordingQualityReason:Int32
+  1 SenderFrameDropRatioEma: prim:Double
+  2 LastAckAgeMs: prim:Double
+  3 ThermalLevel: enum:ActualChat.Hosting.ThermalLevel:Int32
+  4 IsHardwareAccelerated: prim:Boolean
+object ActualChat.Streaming.RecordingQualityState
+  0 TargetLayerCount: prim:Int32
+  1 EffectiveLayerCount: prim:Int32
+object ActualChat.Streaming.StreamDemandInfo
+  0 Mask: prim:Int32
+  1 ThumbnailViewersOnly: prim:Boolean
+object ActualChat.Streaming.StreamDemandStats
+  0 ViewerCount: prim:Int32
+  1 PausedCount: prim:Int32
+object ActualChat.Users.Account
+  0 Id: opaque:ActualChat.UserId
+  1 Version: prim:Int64
+  2 Status: enum:ActualChat.Users.AccountStatus:Int32
+  3 Avatar: type:ActualChat.Users.Avatar
+object ActualChat.Users.AccountFull
+  0 Id: opaque:ActualChat.UserId
+  1 Version: prim:Int64
+  2 Status: enum:ActualChat.Users.AccountStatus:Int32
+  3 Avatar: type:ActualChat.Users.Avatar
+  10 IsAdmin: prim:Boolean
+  11 SyncContacts: prim:Boolean
+  12 Email: prim:String
+  13 Name: prim:String
+  14 Phone: opaque:ActualChat.Phone
+  15 IsGreetingCompleted: prim:Boolean
+  16 CreatedAt: vopaque:ActualLab.Time.Moment
+  17 TimeZone: prim:String
+  18 AliasId: opaque:ActualChat.AliasId
+  19 Claims: type:ActualLab.Api.ApiMap[System.String,System.String]
+  20 FormatVersion: prim:Int32
+  21 JsonCompatibleIdentities: type:ActualLab.Api.ApiMap[System.String,System.String]
+  22 IsBot: prim:Boolean
+object ActualChat.Users.Accounts_CancelRegister
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Token: prim:String
+object ActualChat.Users.Accounts_ConfirmRegister
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Token: prim:String
+object ActualChat.Users.Accounts_CreateApiKey
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Name: prim:String
+  3 ExpiresInDays: prim:Int32
+object ActualChat.Users.Accounts_DeactivateAllSessions
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Kinds: list<enum:ActualChat.SessionKind:Int32>
+object ActualChat.Users.Accounts_DeactivateSession
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 IdPrefix: prim:String
+object ActualChat.Users.Accounts_DeleteOwn
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Users.Accounts_SignOut
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Deactivate: prim:Boolean
+object ActualChat.Users.Accounts_Update
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Account: type:ActualChat.Users.AccountFull
+  3 ExpectedVersion: nullable<prim:Int64>
+object ActualChat.Users.AppReviewPromptState
+  0 Origin: prim:String
+  1 LastPromptedAt: nullable<vopaque:ActualLab.Time.Moment>
+  2 PromptCount: prim:Int32
+  3 DeclineCount: prim:Int32
+  4 Outcome: enum:ActualChat.Users.ReviewPromptOutcome:Int32
+  5 PendingSince: nullable<vopaque:ActualLab.Time.Moment>
+  6 PendingChatId: opaque:ActualChat.ChatId
+object ActualChat.Users.AppUpdateInfo
+  0 AppKind: enum:ActualChat.Hosting.AppKind:Int32
+  1 VersionString: prim:String
+  2 StoreVersionString: prim:String
+  3 ReleasedAt: vopaque:ActualLab.Time.Moment
+  4 DetectedAt: vopaque:ActualLab.Time.Moment
+object ActualChat.Users.Avatar
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 Name: prim:String
+  3 PictureUrl: prim:String
+  4 MediaId: opaque:ActualChat.MediaId
+  5 Bio: prim:String
+  6 AvatarKey: prim:String
+  7 Media: type:ActualChat.Media.Media
+mapobject ActualChat.Users.AvatarDiff
+  AvatarKey AvatarKey: prim:String
+  Bio Bio: prim:String
+  IsAnonymous IsAnonymous: nullable<prim:Boolean>
+  LegacyMediaId LegacyMediaId: opaque:ActualChat.MediaId
+  MediaId MediaId: vopaque:ActualLab.Option<opaque:ActualChat.MediaId>
+  Name Name: prim:String
+  PictureUrl PictureUrl: prim:String
+  UserId UserId: opaque:ActualChat.UserId
+object ActualChat.Users.AvatarFull
+  0 Id: vopaque:ActualLab.Text.Symbol
+  1 Version: prim:Int64
+  2 Name: prim:String
+  3 PictureUrl: prim:String
+  4 MediaId: opaque:ActualChat.MediaId
+  5 Bio: prim:String
+  6 AvatarKey: prim:String
+  7 Media: type:ActualChat.Media.Media
+  10 UserId: opaque:ActualChat.UserId
+  11 IsAnonymous: prim:Boolean
+object ActualChat.Users.Avatars_Change
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AvatarId: vopaque:ActualLab.Text.Symbol
+  3 ExpectedVersion: nullable<prim:Int64>
+  4 Change: opaque:ActualChat.Change<type:ActualChat.Users.AvatarDiff>
+object ActualChat.Users.Avatars_SetDefault
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AvatarId: vopaque:ActualLab.Text.Symbol
+object ActualChat.Users.ChatPosition
+  0 EntryLid: prim:Int64
+  1 Origin: prim:String
+object ActualChat.Users.ChatPositions_Set
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 Kind: enum:ActualChat.Users.ChatPositionKind:Int32
+  4 Position: type:ActualChat.Users.ChatPosition
+object ActualChat.Users.ChatUsages_RegisterUsage
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Kind: enum:ActualChat.Users.ChatUsageListKind:Int32
+  3 ChatId: opaque:ActualChat.ChatId
+  4 AccessTime: nullable<prim:DateTime>
+object ActualChat.Users.CoachBaseline
+  0 Id: prim:String
+  1 Language: prim:String
+  2 Kind: enum:ActualChat.Users.CoachMetricKind:Int32
+  3 SourceRange: vopaque:ActualChat.Mathematics.Range<vopaque:ActualLab.Time.Moment>
+  4 CapturedAt: vopaque:ActualLab.Time.Moment
+  5 Value: prim:Double
+  6 Numerator: prim:Int64
+  7 Denominator: prim:Int64
+  8 History: type:ActualChat.Users.CoachSkillHistory
+  9 MeasurementVersion: prim:Int32
+  10 Sources: list<type:ActualChat.Users.CoachBaselineSource>
+  11 InvalidatedAt: nullable<vopaque:ActualLab.Time.Moment>
+  12 Slow: prim:Double
+  13 Fast: prim:Double
+  14 OmittedSeconds: prim:Double
+object ActualChat.Users.CoachBaselineComparison
+  0 Baseline: type:ActualChat.Users.CoachBaseline
+  1 History: type:ActualChat.Users.CoachSkillHistory
+  2 IsBetter: nullable<prim:Boolean>
+  3 Change: nullable<prim:Double>
+  4 HasRangeChanged: prim:Boolean
+  5 OmittedSeconds: prim:Double
+object ActualChat.Users.CoachBaselineSource
+  0 SourceId: prim:String
+  1 Version: prim:Int64
+object ActualChat.Users.CoachChip
+  0 Word: prim:String
+  1 Count: prim:Int32
+object ActualChat.Users.CoachConversation
+  0 ChatId: opaque:ActualChat.ChatId
+  1 StartEntryLid: prim:Int64
+  2 StartedAt: vopaque:ActualLab.Time.Moment
+  3 EndedAt: vopaque:ActualLab.Time.Moment
+  4 Language: prim:String
+  5 SecondaryLanguage: prim:String
+  6 Words: prim:Int32
+  7 SpeechSeconds: prim:Double
+  8 Fillers: prim:Int32
+  9 WeakWords: prim:Int32
+  10 Pace: nullable<prim:Double>
+  11 TalkShare: nullable<prim:Double>
+  12 LongestMonologueSeconds: nullable<prim:Double>
+  13 FillerCounts: type:ActualLab.Api.ApiMap[System.String,System.Int32]
+  14 WeakWordCounts: type:ActualLab.Api.ApiMap[System.String,System.Int32]
+  15 PaceBand: enum:ActualChat.Users.CoachBand:Int32
+  16 TalkShareBand: enum:ActualChat.Users.CoachBand:Int32
+  17 MonologueBand: enum:ActualChat.Users.CoachBand:Int32
+  18 Participants: prim:Int32
+  19 FillerBand: enum:ActualChat.Users.CoachBand:Int32
+  20 IsExcluded: prim:Boolean
+object ActualChat.Users.CoachDay
+  0 Day: vopaque:ActualLab.Time.Moment
+  1 Entries: prim:Int32
+  2 TaggedEntries: prim:Int32
+  3 Words: prim:Int32
+  4 Sentences: prim:Int32
+  5 Questions: prim:Int32
+  6 Repetitions: prim:Int32
+  7 Pauses: prim:Int32
+  8 FilledPauses: prim:Int32
+  9 Fillers: prim:Int32
+  10 WeakWords: prim:Int32
+  11 Profanities: prim:Int32
+  12 Runs: prim:Int32
+  13 OwnTurns: prim:Int32
+  14 TotalTurns: prim:Int32
+  15 Responses: prim:Int32
+  16 Interruptions: prim:Int32
+  17 DurationSeconds: prim:Double
+  18 SpeechSeconds: prim:Double
+  19 PauseSeconds: prim:Double
+  20 VocabularyWords: prim:Double
+  21 VocabularyDistinct: prim:Double
+  22 OwnSpeechSeconds: prim:Double
+  23 TotalSpeechSeconds: prim:Double
+  24 FairShareSeconds: prim:Double
+  25 LongestMonologueSeconds: prim:Double
+  26 ResponseGapSeconds: prim:Double
+  27 FillerCounts: type:ActualLab.Api.ApiMap[System.String,System.Int32]
+  28 WeakWordCounts: type:ActualLab.Api.ApiMap[System.String,System.Int32]
+  29 TaggedWords: prim:Int32
+  30 Language: prim:String
+  31 Pace: type:ActualChat.Chat.SpeechPaceSummary
+object ActualChat.Users.CoachLanguageInfo
+  0 Iso: prim:String
+  1 Level: enum:ActualChat.Users.CoachLanguageLevel:Int32
+  2 Words30Days: prim:Int32
+  3 IsWordSplittable: prim:Boolean
+object ActualChat.Users.CoachMetric
+  0 Kind: enum:ActualChat.Users.CoachMetricKind:Int32
+  1 Value: nullable<prim:Double>
+  2 Rate: nullable<prim:Double>
+  3 Band: enum:ActualChat.Users.CoachBand:Int32
+  4 Chips: list<type:ActualChat.Users.CoachChip>
+object ActualChat.Users.CoachMilestone
+  0 Kind: enum:ActualChat.Users.CoachMilestoneKind:Int32
+  1 AchievedAt: nullable<vopaque:ActualLab.Time.Moment>
+object ActualChat.Users.CoachOccurrence
+  0 ChatId: opaque:ActualChat.ChatId
+  1 EntryLid: prim:Int64
+  2 Start: prim:Int32
+  3 Length: prim:Int32
+  4 At: vopaque:ActualLab.Time.Moment
+object ActualChat.Users.CoachPaceDetails
+  0 Summary: type:ActualChat.Chat.SpeechPaceSummary
+  1 Distribution: type:ActualChat.Audio.SpeechPaceDistribution
+  2 Moments: list<type:ActualChat.Users.CoachPaceMoment>
+  3 IsTruncated: prim:Boolean
+  4 Slow: prim:Double
+  5 Fast: prim:Double
+object ActualChat.Users.CoachPaceMoment
+  0 Occurrence: type:ActualChat.Users.CoachOccurrence
+  1 Segment: type:ActualChat.Audio.SpeechPaceSegment
+object ActualChat.Users.CoachScorePart
+  0 Kind: enum:ActualChat.Users.CoachMetricKind:Int32
+  1 Weight: prim:Int32
+  2 Band: enum:ActualChat.Users.CoachBand:Int32
+  3 Points: prim:Double
+  4 MaxPoints: prim:Double
+object ActualChat.Users.CoachSkillDay
+  0 Day: vopaque:ActualLab.Time.Moment
+  1 Value: prim:Double
+  2 MeasuredWords: prim:Int64
+  3 MeasuredSeconds: prim:Double
+  4 GapDays: prim:Int32
+object ActualChat.Users.CoachSkillHistory
+  0 Range: vopaque:ActualChat.Mathematics.Range<vopaque:ActualLab.Time.Moment>
+  1 Summary: type:ActualChat.Users.CoachSummary
+  2 Days: list<type:ActualChat.Users.CoachSkillDay>
+  3 Pace: type:ActualChat.Users.CoachPaceDetails
+  4 Words: list<type:ActualChat.Users.CoachChip>
+  5 Value: nullable<prim:Double>
+  6 MeasuredWords: prim:Int64
+  7 MeasuredSeconds: prim:Double
+  8 MinimumWords: prim:Int32
+  9 SpeakingDays: prim:Int32
+object ActualChat.Users.CoachSummary
+  0 Window: enum:ActualChat.Users.CoachWindow:Int32
+  1 Score: nullable<prim:Int32>
+  2 ScoreDelta: nullable<prim:Int32>
+  3 Words: prim:Int32
+  4 Entries: prim:Int32
+  5 TaggedEntries: prim:Int32
+  6 Metrics: list<type:ActualChat.Users.CoachMetric>
+  7 PaceSlow: prim:Double
+  8 PaceFast: prim:Double
+  9 FillerGood: prim:Double
+  10 TaggedWords: prim:Int32
+object ActualChat.Users.CoachWeekDelta
+  0 Kind: enum:ActualChat.Users.CoachMetricKind:Int32
+  1 Previous: nullable<prim:Double>
+  2 Current: nullable<prim:Double>
+  3 Band: enum:ActualChat.Users.CoachBand:Int32
+  4 IsBetter: nullable<prim:Boolean>
+object ActualChat.Users.CoachWeekScore
+  0 WeekStart: vopaque:ActualLab.Time.Moment
+  1 Score: nullable<prim:Int32>
+object ActualChat.Users.Coach_DeleteOwnData
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Users.Coach_DismissTip
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Users.Coach_ExcludeConversation
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 StartEntryLid: prim:Int64
+  4 Language: prim:String
+  5 IsExcluded: prim:Boolean
+object ActualChat.Users.Coach_RebuildOwnDays
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Users.Coach_SetBaseline
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Language: prim:String
+  3 Kind: enum:ActualChat.Users.CoachMetricKind:Int32
+  4 Period: nullable<enum:ActualChat.Users.CoachHistoryPeriod:Int32>
+  5 Anchor: vopaque:ActualLab.Time.Moment
+object ActualChat.Users.Coach_SetChatCoaching
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 ChatId: opaque:ActualChat.ChatId
+  3 IsEnabled: nullable<prim:Boolean>
+object ActualChat.Users.Coach_SetFocus
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Language: prim:String
+  3 Kind: nullable<enum:ActualChat.Users.CoachMetricKind:Int32>
+object ActualChat.Users.Coach_SetLanguageLevel
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Language: prim:String
+  3 Level: enum:ActualChat.Users.CoachLanguageLevel:Int32
+object ActualChat.Users.DigestPreview
+  0 Chats: list<type:ActualChat.Users.DigestPreviewChat>
+  1 OtherUnreadCount: prim:Int32
+  2 RenderedHtml: prim:String
+  3 UnsubscribeLink: prim:String
+object ActualChat.Users.DigestPreviewChat
+  0 ChatId: prim:String
+  1 Name: prim:String
+  2 Link: prim:String
+  3 UnreadCount: prim:Int64
+  4 BulletPoints: list<prim:String>
+object ActualChat.Users.EmailAuth_SendTotp
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Email: opaque:ActualChat.Email
+  3 Purpose: enum:ActualChat.Users.TotpPurpose:Int32
+  4 CaptchaToken: prim:String
+  5 CaptchaAction: prim:String
+object ActualChat.Users.EmailAuth_ValidateTotp
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Email: opaque:ActualChat.Email
+  3 Totp: prim:Int32
+object ActualChat.Users.EmailAuth_VerifyEmail
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Email: opaque:ActualChat.Email
+  3 Token: prim:Int32
+object ActualChat.Users.Emails_SendDigest
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Users.NativeAuth_SignInApple
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 UserId: prim:String
+  3 Code: prim:String
+  4 Email: prim:String
+  5 Name: prim:String
+object ActualChat.Users.NativeAuth_SignInGoogle
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Code: prim:String
+object ActualChat.Users.NativeAuth_SignOut
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Users.OwnVoiceStatus
+  0 IsEnabled: prim:Boolean
+  1 Status: enum:ActualChat.Users.UserVoiceStatus:Int32
+  2 Failure: enum:ActualChat.Users.VoiceSampleFailure:Int32
+  3 MissingDuration: nullable<prim:TimeSpan>
+  4 HasExplicitSample: prim:Boolean
+object ActualChat.Users.Passkey
+  0 Id: prim:String
+  1 Name: prim:String
+  2 CreatedAt: vopaque:ActualLab.Time.Moment
+  3 LastUsedAt: nullable<vopaque:ActualLab.Time.Moment>
+  4 IsSynced: prim:Boolean
+object ActualChat.Users.PasskeyAuth_BeginRegistration
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Purpose: enum:ActualChat.Users.PasskeyPurpose:Int32
+  3 Name: prim:String
+object ActualChat.Users.PasskeyAuth_BeginSignIn
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Users.PasskeyAuth_CompleteRegistration
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AttestationJson: prim:String
+object ActualChat.Users.PasskeyAuth_CompleteSignIn
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 AssertionJson: prim:String
+object ActualChat.Users.PasskeyAuth_Delete
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: prim:String
+object ActualChat.Users.PasskeyAuth_Rename
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: prim:String
+  3 Name: prim:String
+object ActualChat.Users.PendingReviewPrompt
+  0 ChatId: opaque:ActualChat.ChatId
+  1 Since: vopaque:ActualLab.Time.Moment
+object ActualChat.Users.PhoneAuth_SendCode
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Phone: opaque:ActualChat.Phone
+  3 Purpose: enum:ActualChat.Users.TotpPurpose:Int32
+  4 CaptchaToken: prim:String
+  5 CaptchaAction: prim:String
+  6 Channel: nullable<enum:ActualChat.Users.TotpChannel:Int32>
+object ActualChat.Users.PhoneAuth_ValidateTotp
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Phone: opaque:ActualChat.Phone
+  3 Totp: prim:Int32
+object ActualChat.Users.PhoneAuth_VerifyPhone
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Phone: opaque:ActualChat.Phone
+  3 Totp: prim:Int32
+object ActualChat.Users.PttChat
+  0 ChatId: opaque:ActualChat.ChatId
+  1 JoinedAt: vopaque:ActualLab.Time.Moment
+  2 MutedAt: nullable<vopaque:ActualLab.Time.Moment>
+  3 MutedUntil: nullable<vopaque:ActualLab.Time.Moment>
+object ActualChat.Users.RecaptchaValidationResult
+  0 Success: prim:Boolean
+  1 ErrorMessage: prim:String
+  2 Score: nullable<prim:Single>
+object ActualChat.Users.ReviewPromptState
+  0 CanPrompt: prim:Boolean
+  1 Reason: prim:String
+object ActualChat.Users.RpcEndpointReport
+  0 Endpoint: prim:String
+  1 Reason: enum:ActualChat.Users.RpcEndpointReason:Int32
+  2 OriginProbeMs: prim:Double
+  3 EndpointProbeMs: prim:Double
+object ActualChat.Users.ServerApiInfo
+  0 CompatibilityLevel: enum:ActualChat.CompatibilityLevel:Int32
+  1 VersionString: prim:String
+  2 FullVersionString: prim:String
+  3 DisplayVersionString: prim:String
+  4 MinReportableClientVersion: prim:String
+object ActualChat.Users.SessionInfoFull
+  0 IdPrefix: prim:String
+  1 Version: prim:Int64
+  2 IsActive: prim:Boolean
+  3 CreatedAt: vopaque:ActualLab.Time.Moment
+  4 LastSeenAt: vopaque:ActualLab.Time.Moment
+  5 ExpiresAt: vopaque:ActualLab.Time.Moment
+  6 AuthenticatedIdentity: vopaque:ActualChat.Users.UserIdentity
+  7 UserId: opaque:ActualChat.UserId
+  8 Description: prim:String
+  9 IPAddress: prim:String
+  10 Session: opaque:ActualLab.Fusion.Session
+  12 IsCurrent: prim:Boolean
+  13 GuestId: opaque:ActualChat.UserId
+object ActualChat.Users.SessionTemporals_Set
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Key: prim:String
+  3 Value: prim:String
+object ActualChat.Users.SystemProperties_InvalidateEverything
+  0 Session: opaque:ActualLab.Fusion.Session
+  1 Everywhere: prim:Boolean
+object ActualChat.Users.SystemProperties_PruneComputedGraph
+  0 Session: opaque:ActualLab.Fusion.Session
+  1 Everywhere: prim:Boolean
+object ActualChat.Users.TimeZone
+  0 Id: prim:String
+  1 IanaName: prim:String
+  2 UtcOffsetMinutes: prim:Int32
+  3 City: prim:String
+  4 CountryCode: prim:String
+  5 CountryName: prim:String
+object ActualChat.Users.TotpSendResult
+  0 NextSendAt: vopaque:ActualLab.Time.Moment
+  1 Channel: nullable<enum:ActualChat.Users.TotpChannel:Int32>
+object ActualChat.Users.UsageSummary
+  0 ActiveDays: prim:Int32
+  1 SpeechMs: prim:Int64
+  2 SpeechEntries: prim:Int32
+  3 Messages: prim:Int32
+  4 LiveSessions: prim:Int32
+  5 Friends: prim:Int32
+  6 FirstActiveDay: nullable<vopaque:ActualLab.Time.Moment>
+  7 LastActiveDay: nullable<vopaque:ActualLab.Time.Moment>
+object ActualChat.Users.Usage_RebuildOwnDays
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Users.Usage_RecordFunnelEvent
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Event: enum:ActualChat.Users.FunnelEvent:Int32
+object ActualChat.Users.Usage_RecordOnboardingStep
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Step: prim:String
+  3 IsCompleted: prim:Boolean
+object ActualChat.Users.Usage_RecordReviewPrompt
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Outcome: enum:ActualChat.Users.ReviewPromptOutcome:Int32
+object ActualChat.Users.Usage_ResetReviewPrompt
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+object ActualChat.Users.UserAndroidSettings
+  0 Origin: prim:String
+  1 RecordingStart: enum:ActualChat.Users.RecordingStartMode:Int32
+object ActualChat.Users.UserAppSettings
+  0 IsDataCollectionEnabled: nullable<prim:Boolean>
+  1 Origin: prim:String
+  2 AreExperimentalFeaturesEnabled: nullable<prim:Boolean>
+  3 IsIncompleteUIEnabled: nullable<prim:Boolean>
+  5 IsAuthorColorsEnabled: nullable<prim:Boolean>
+  6 IsVideoDiagnosticsEnabled: nullable<prim:Boolean>
+  7 IsAudioDiagnosticsEnabled: nullable<prim:Boolean>
+  9 IsFaceDownMicStopDisabled: nullable<prim:Boolean>
+  10 IsVirtualListOverlayEnabled: nullable<prim:Boolean>
+object ActualChat.Users.UserAvatarSettings
+  0 AvatarIds: list<vopaque:ActualLab.Text.Symbol>
+  1 DefaultAvatarId: vopaque:ActualLab.Text.Symbol
+object ActualChat.Users.UserBubbleSettings
+  0 ReadBubbles: list<vopaque:ActualLab.Text.Symbol>
+  1 Origin: prim:String
+object ActualChat.Users.UserCarAudioSettings
+  0 Origin: prim:String
+  1 Microphone: enum:ActualChat.Users.CarAudioDevice:Int32
+  2 Output: enum:ActualChat.Users.CarAudioDevice:Int32
+  3 Link: enum:ActualChat.Users.CarLink:Int32
+object ActualChat.Users.UserChatRecordingDetectedLanguage
+  0 Timestamp: vopaque:ActualLab.Time.Moment
+  1 ChatId: opaque:ActualChat.ChatId
+  2 Language: opaque:ActualChat.Language
+object ActualChat.Users.UserCoachSettings
+  0 Origin: prim:String
+  1 IsCoachingEnabled: prim:Boolean
+  2 AreLiveTipsEnabled: prim:Boolean
+  3 TipInterval: prim:TimeSpan
+  4 SkipPeerChats: prim:Boolean
+  5 Languages: type:ActualLab.Api.ApiMap[System.String,ActualChat.Users.CoachLanguageLevel]
+  6 FocusByLanguage: type:ActualLab.Api.ApiMap[System.String,ActualChat.Users.CoachMetricKind]
+  7 SelectedLanguage: prim:String
+  8 AreMarksDisabled: prim:Boolean
+  9 IsWeeklySummaryDisabled: prim:Boolean
+  10 SwitchedOff: list<opaque:ActualChat.ChatId>
+object ActualChat.Users.UserCoachTip
+  0 Origin: prim:String
+  1 Kind: enum:ActualChat.Users.CoachTipKind:Int32
+  2 ChatId: opaque:ActualChat.ChatId
+  3 EntryLid: prim:Int64
+  4 Word: prim:String
+  5 Count: prim:Int32
+  6 Wpm: prim:Int32
+  7 Synonyms: list<prim:String>
+  8 ShownAt: vopaque:ActualLab.Time.Moment
+  9 IsDismissed: prim:Boolean
+  10 LastTipAt: vopaque:ActualLab.Time.Moment
+  11 PaceSlowWpm: prim:Int32
+  12 PaceFastWpm: prim:Int32
+  13 WindowMinutes: prim:Int32
+  14 WordTipAt: type:ActualLab.Api.ApiMap[System.String,ActualLab.Time.Moment]
+  15 CleanTipDay: vopaque:ActualLab.Time.Moment
+object ActualChat.Users.UserCoachWeeklyNote
+  0 Origin: prim:String
+  1 WeekStart: vopaque:ActualLab.Time.Moment
+  2 ScoreDelta: nullable<prim:Int32>
+  3 FocusKind: nullable<enum:ActualChat.Users.CoachMetricKind:Int32>
+  4 FocusDelta: nullable<prim:Double>
+  5 BestChatId: opaque:ActualChat.ChatId
+  6 BestStartLid: prim:Int64
+  7 IsSeen: prim:Boolean
+object ActualChat.Users.UserEmailsSettings
+  0 Origin: prim:String
+  1 DigestTime: prim:TimeSpan
+  2 IsDigestEnabled: prim:Boolean
+  3 DigestLanguage: opaque:ActualChat.Language
+object ActualChat.Users.UserImageStyleSettings
+  0 Style: enum:ActualChat.Media.ImageStyle:Int32
+  1 Origin: prim:String
+object ActualChat.Users.UserLanguageSettings
+  0 Primary: opaque:ActualChat.Language
+  1 Secondary: opaque:ActualChat.Language
+  2 Origin: prim:String
+  3 Tertiary: opaque:ActualChat.Language
+  4 UILanguage: opaque:ActualChat.Language
+  5 DetectedUILanguage: opaque:ActualChat.Language
+  6 IsTranslatedVoiceEnabled: prim:Boolean
+  7 DubVoice: prim:String
+  8 IsOwnVoiceEnabled: prim:Boolean
+  9 OwnVoiceSampleEntryId: opaque:ActualChat.ChatEntryId
+  10 IsSpokenTextDisabled: prim:Boolean
+object ActualChat.Users.UserListeningSettings
+  0 AlwaysListenedChatIds: list<opaque:ActualChat.ChatId>
+  1 Origin: prim:String
+  2 ListeningLinger: enum:ActualChat.Users.ListeningLinger:Int32
+object ActualChat.Users.UserNavbarSettings
+  0 Origin: prim:String
+  1 PinnedChats: list<opaque:ActualChat.ChatId>
+  2 PlacesOrder: list<opaque:ActualChat.PlaceId>
+object ActualChat.Users.UserOnboardingSettings
+  0 IsAvatarStepCompleted: prim:Boolean
+  1 Origin: prim:String
+  2 IsCreateChatsStepCompleted: prim:Boolean
+  3 IsVerifyPhoneStepCompleted: prim:Boolean
+  4 IsVerifyEmailStepCompleted: prim:Boolean
+  5 IsTimeZoneStepCompleted: prim:Boolean
+  6 IsDataCollectionStepCompleted: prim:Boolean
+  7 IsTranscriptionTutorialStepCompleted: prim:Boolean
+  8 IsTranscriptReplayTutorialStepCompleted: prim:Boolean
+  9 IsPlacesTutorialStepCompleted: prim:Boolean
+  10 IsLanguagesStepCompleted: prim:Boolean
+  11 IsSummarizationTutorialStepCompleted: prim:Boolean
+  12 PasskeyNudgeDeclineCount: prim:Int32
+object ActualChat.Users.UserPresences_CheckIn
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 IsActive: prim:Boolean
+  3 MustExtendSession: prim:Boolean
+object ActualChat.Users.UserPttSettings
+  0 PttChatIds: list<opaque:ActualChat.ChatId>
+  1 Origin: prim:String
+  2 IsFlipToTalkEnabled: prim:Boolean
+  3 IsDoubleShakeEnabled: prim:Boolean
+  4 ShakeSensitivity: enum:ActualChat.Users.ShakeSensitivity:Int32
+  5 AreGesturesAlwaysOn: prim:Boolean
+  6 HotWindow: prim:TimeSpan
+  7 AreAudibleCuesEnabled: prim:Boolean
+  8 IsHeadsetButtonEnabled: nullable<prim:Boolean>
+  9 IsPttTransmitEnabled: nullable<prim:Boolean>
+  10 PttChats: list<type:ActualChat.Users.PttChat>
+  11 AnswerWindow: prim:TimeSpan
+  12 HushDuration: prim:TimeSpan
+  13 IsHushGestureEnabled: nullable<prim:Boolean>
+object ActualChat.Users.UserReactionSettings
+  0 EmojiRanks: map<prim:String, prim:Int32>
+object ActualChat.Users.UserReplaySettings
+  0 Speed: prim:Double
+  1 Origin: prim:String
+object ActualChat.Users.UserSettings_Set
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Key: prim:String
+  3 Value: type:ActualChat.StoredSettings
+object ActualChat.Users.UserTranscodingTestSettings
+  0 FileName: prim:String
+  1 UploadId: opaque:ActualChat.UploadId
+  2 MediaId: opaque:ActualChat.MediaId
+object ActualChat.Users.UserTranscriptionEngineSettings
+  1 Origin: prim:String
+  4 Transcriber: prim:String
+object ActualChat.Video.VideoFormat
+  10 Codec: prim:String
+  11 CodecSettings: prim:String
+  12 LayerId: prim:Byte
+  13 Size: type:ActualChat.Media.Size2D
+  14 SourceSize: type:ActualChat.Media.Size2D
+object ActualChat.Video.VideoStreamInfo
+  0 StreamId: opaque:ActualChat.StreamId
+  1 ChatId: opaque:ActualChat.ChatId
+  2 AuthorId: opaque:ActualChat.AuthorId
+  3 Format: type:ActualChat.Video.VideoFormat
+  4 StartedAt: vopaque:ActualLab.Time.Moment
+  5 SourceKind: enum:ActualChat.Media.VideoSourceKind:Byte
+  6 SourceStartedAt: vopaque:ActualLab.Time.Moment
+  7 SourceClockDeltaMs: nullable<prim:Double>
+object ActualChat.WebHooks.WebHook
+  0 Id: opaque:ActualChat.WebHookId
+  1 Version: prim:Int64
+  2 Scope: enum:ActualChat.WebHooks.WebHookScope:Int32
+  3 ScopeId: prim:String
+  4 Kind: enum:ActualChat.WebHooks.WebHookKind:Int32
+  5 Name: prim:String
+  6 CreatedBy: opaque:ActualChat.UserId
+  7 CreatedAt: vopaque:ActualLab.Time.Moment
+  8 ModifiedAt: vopaque:ActualLab.Time.Moment
+  9 IsEnabled: prim:Boolean
+  10 DisabledReason: enum:ActualChat.WebHooks.WebHookDisabledReason:Int32
+  11 LastActivityAt: nullable<vopaque:ActualLab.Time.Moment>
+  12 Url: prim:String
+  13 Events: enum:ActualChat.WebHooks.WebHookEvents:Int64
+  14 IncludeText: prim:Boolean
+  15 ChatIds: list<opaque:ActualChat.ChatId>
+  16 SubscribeNotifications: prim:Boolean
+  17 CustomHeaderName: prim:String
+  18 ConsecutiveFailures: prim:Int32
+  19 LastStatusCode: nullable<prim:Int32>
+  20 LastError: prim:String
+object ActualChat.WebHooks.WebHookChangeResult
+  0 WebHook: type:ActualChat.WebHooks.WebHook
+  1 Secret: prim:String
+object ActualChat.WebHooks.WebHookDelivery
+  0 Id: prim:String
+  1 WebHookId: opaque:ActualChat.WebHookId
+  2 Seq: prim:Int64
+  3 EventType: prim:String
+  4 Status: enum:ActualChat.WebHooks.WebHookDeliveryStatus:Int32
+  5 Attempts: prim:Int32
+  6 NextAttemptAt: nullable<vopaque:ActualLab.Time.Moment>
+  7 LastStatusCode: nullable<prim:Int32>
+  8 LastError: prim:String
+  9 LastLatencyMs: nullable<prim:Int32>
+  10 CreatedAt: vopaque:ActualLab.Time.Moment
+  11 CompletedAt: nullable<vopaque:ActualLab.Time.Moment>
+mapobject ActualChat.WebHooks.WebHookDiff
+  AvatarMediaId AvatarMediaId: vopaque:ActualLab.Option<opaque:ActualChat.MediaId>
+  ChatIds ChatIds: nullable<list<opaque:ActualChat.ChatId>>
+  CustomHeaderName CustomHeaderName: prim:String
+  CustomHeaderValue CustomHeaderValue: prim:String
+  DisplayName DisplayName: prim:String
+  Events Events: nullable<enum:ActualChat.WebHooks.WebHookEvents:Int64>
+  IncludeText IncludeText: nullable<prim:Boolean>
+  IsEnabled IsEnabled: nullable<prim:Boolean>
+  Kind Kind: nullable<enum:ActualChat.WebHooks.WebHookKind:Int32>
+  Name Name: prim:String
+  SubscribeNotifications SubscribeNotifications: nullable<prim:Boolean>
+  Url Url: prim:String
+object ActualChat.WebHooks.WebHookTestResult
+  0 IsSuccess: prim:Boolean
+  1 StatusCode: nullable<prim:Int32>
+  2 Error: prim:String
+  3 LatencyMs: prim:Int32
+object ActualChat.WebHooks.WebHooks_Change
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Scope: enum:ActualChat.WebHooks.WebHookScope:Int32
+  3 ScopeId: prim:String
+  4 Id: opaque:ActualChat.WebHookId
+  5 ExpectedVersion: nullable<prim:Int64>
+  6 Change: opaque:ActualChat.Change<type:ActualChat.WebHooks.WebHookDiff>
+object ActualChat.WebHooks.WebHooks_Redeliver
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: opaque:ActualChat.WebHookId
+  3 DeliveryId: prim:String
+object ActualChat.WebHooks.WebHooks_RotateSecret
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: opaque:ActualChat.WebHookId
+object ActualChat.WebHooks.WebHooks_Test
+  0 Uuid: prim:String
+  1 Session: opaque:ActualLab.Fusion.Session
+  2 Id: opaque:ActualChat.WebHookId
+object ActualLab.Api.ApiList[ActualChat.Users.SessionInfo]
+object ActualLab.Api.ApiMap[ActualChat.AuthorId,System.Double]
+object ActualLab.Api.ApiMap[ActualChat.AuthorId,System.Int32]
+object ActualLab.Api.ApiMap[System.Int32,System.Int64]
+object ActualLab.Api.ApiMap[System.String,ActualChat.Streaming.PlaybackStreamInfo]
+object ActualLab.Api.ApiMap[System.String,ActualChat.Streaming.ReceiveQuality]
+object ActualLab.Api.ApiMap[System.String,ActualChat.Users.CoachLanguageLevel]
+object ActualLab.Api.ApiMap[System.String,ActualChat.Users.CoachMetricKind]
+object ActualLab.Api.ApiMap[System.String,ActualLab.Time.Moment]
+object ActualLab.Api.ApiMap[System.String,System.Boolean]
+object ActualLab.Api.ApiMap[System.String,System.Int32]
+object ActualLab.Api.ApiMap[System.String,System.String]
+object ActualLab.Api.ApiSet[System.String]
+struct ActualLab.Rpc.Infrastructure.RpcObjectId
+  0 HostId: prim:Guid
+  1 LocalId: prim:Int64
+mapobject ActualLab.Rpc.RpcStream[ActualChat.Audio.AudioFrame]
+  AckAdvance AckAdvance: prim:Int32
+  AckPeriod AckPeriod: prim:Int32
+  AllowReconnect AllowReconnect: prim:Boolean
+  IsRealTime IsRealTime: prim:Boolean
+  SerializedId SerializedId: type:ActualLab.Rpc.Infrastructure.RpcObjectId
+mapobject ActualLab.Rpc.RpcStream[ActualChat.Chat.VoiceStreamPart]
+  AckAdvance AckAdvance: prim:Int32
+  AckPeriod AckPeriod: prim:Int32
+  AllowReconnect AllowReconnect: prim:Boolean
+  IsRealTime IsRealTime: prim:Boolean
+  SerializedId SerializedId: type:ActualLab.Rpc.Infrastructure.RpcObjectId
+mapobject ActualLab.Rpc.RpcStream[ActualChat.Live.MuxedAudioStreamItem]
+  AckAdvance AckAdvance: prim:Int32
+  AckPeriod AckPeriod: prim:Int32
+  AllowReconnect AllowReconnect: prim:Boolean
+  IsRealTime IsRealTime: prim:Boolean
+  SerializedId SerializedId: type:ActualLab.Rpc.Infrastructure.RpcObjectId
+mapobject ActualLab.Rpc.RpcStream[ActualChat.Transcription.TranscriptDiff]
+  AckAdvance AckAdvance: prim:Int32
+  AckPeriod AckPeriod: prim:Int32
+  AllowReconnect AllowReconnect: prim:Boolean
+  IsRealTime IsRealTime: prim:Boolean
+  SerializedId SerializedId: type:ActualLab.Rpc.Infrastructure.RpcObjectId
+mapobject ActualLab.Rpc.RpcStream[ActualChat.Video.VideoFrameBundle]
+  AckAdvance AckAdvance: prim:Int32
+  AckPeriod AckPeriod: prim:Int32
+  AllowReconnect AllowReconnect: prim:Boolean
+  IsRealTime IsRealTime: prim:Boolean
+  SerializedId SerializedId: type:ActualLab.Rpc.Infrastructure.RpcObjectId
+mapobject ActualLab.Rpc.RpcStream[ActualChat.Video.VideoFrame]
+  AckAdvance AckAdvance: prim:Int32
+  AckPeriod AckPeriod: prim:Int32
+  AllowReconnect AllowReconnect: prim:Boolean
+  IsRealTime IsRealTime: prim:Boolean
+  SerializedId SerializedId: type:ActualLab.Rpc.Infrastructure.RpcObjectId
+mapobject ActualLab.Rpc.RpcStream[System.Byte[]]
+  AckAdvance AckAdvance: prim:Int32
+  AckPeriod AckPeriod: prim:Int32
+  AllowReconnect AllowReconnect: prim:Boolean
+  IsRealTime IsRealTime: prim:Boolean
+  SerializedId SerializedId: type:ActualLab.Rpc.Infrastructure.RpcObjectId
+mapobject ActualLab.Rpc.RpcStream[System.String]
+  AckAdvance AckAdvance: prim:Int32
+  AckPeriod AckPeriod: prim:Int32
+  AllowReconnect AllowReconnect: prim:Boolean
+  IsRealTime IsRealTime: prim:Boolean
+  SerializedId SerializedId: type:ActualLab.Rpc.Infrastructure.RpcObjectId
+mapstruct ActualLab.Serialization.ExceptionInfo
+  Message Message: prim:String
+  TypeRef TypeRef: vopaque:ActualLab.Reflection.TypeRef
