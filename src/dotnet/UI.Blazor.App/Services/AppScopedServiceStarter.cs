@@ -66,8 +66,7 @@ public sealed class AppScopedServiceStarter
             // Must happen before anything renders: the string localizer reads it synchronously,
             // and a component rendered before it lands stays English until it re-renders.
             // A headless scope never gets here, so its LocalizationUI keeps the English default.
-            Hub.LocalizationUI.SetLanguage(browserInfo.UILanguage);
-            Hub.LanguageUI.Start();
+            await ResolveUILanguage(browserInfo).ConfigureAwait(false);
             Hub.Services.GetRequiredService<ThemeUI>().Start();
             var dateTimeConverter = Hub.DateTimeConverter;
             if (dateTimeConverter is ServerSideDateTimeConverter serverSideDateTimeConverter)
@@ -195,6 +194,27 @@ public sealed class AppScopedServiceStarter
         _ = hub.TuneUI;
         _ = hub.VoiceActivityUI;
         hub.GestureUI.Start();
+    }
+
+    // Protected/internal methods
+
+    internal async Task ResolveUILanguage(BrowserInfo browserInfo)
+    {
+        if (browserInfo.UILanguageOverride is not null) {
+            await Hub.LocalizationUI.SetLanguage(browserInfo.UILanguage).ConfigureAwait(false);
+            return;
+        }
+
+        var settings = Hub.LanguageUI.Settings;
+        try {
+            await settings.WhenFirstTimeRead.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            await Hub.LocalizationUI.SetLanguage(browserInfo.UILanguage).ConfigureAwait(false);
+            return;
+        }
+
+        await Hub.LocalizationUI.SetLanguage(settings.Value.UILanguage, mustPersist: true).ConfigureAwait(false);
     }
 
     // Private methods
