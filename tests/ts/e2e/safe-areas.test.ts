@@ -94,7 +94,7 @@ describe('safe areas', () => {
         try {
             // act — the chat side panel first: its header is the reference the coach's has to match
             await page.locator('.chat-header-center').first().click();
-            const modes = page.locator('.right-panel-mode-switch .btn-mode');
+            const modes = page.locator('.right-panel-mode-switch .btn-segment');
             await modes.first().click();
             const chatHeader = page.locator('.chat-side-panel .c-header').first();
             await chatHeader.waitFor({ state: 'visible', timeout: 15_000 });
