@@ -16,4 +16,7 @@
 2.21 ILiveSessions.CancelCall:3 - same: calls on 2.21 are dev team only
 2.21 ILiveSessions.DeclineCall:3 - same: calls on 2.21 are dev team only
 2.21 ILiveSessions.GetMyCall:2 result.SinceAt[6] - LegacyGetMyCall always answers null, so a UserCall never reaches 2.21 (#5528)
-2.21 IUserSettings.Get:3 - the new StoredSettings members are new keys, which a 2.21 client never asks for
+2.21 IUserSettings.Get:3 result<55> - UserCoachSettings has its own key, which 2.21 never asks for
+2.21 IUserSettings.Get:3 result<56> - UserCoachTip has its own key and is read only via ICoach.GetPendingTip
+2.21 IUserSettings.Get:3 result<57> - UserCoachWeeklyNote has its own key, which 2.21 never asks for
+2.21 IUserSettings.Get:3 result<58> - UserAndroidSettings has its own key, which 2.21 never asks for
