@@ -87,8 +87,7 @@
                 <i class="icon-voice-to-text-message text-lg"></i>
             </HeaderButton>
         }
-        @* A narrow screen has it in the ⋮ menu: here a third control on a side pushes the recorder off centre *@
-        @if (m.CanReact && !isMobileOrNarrow) {
+        @if (m.CanReact) {
             <HeaderButton
                 Class="@("btn-glass btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
                 data-menu="@reactionsMenuRef"
