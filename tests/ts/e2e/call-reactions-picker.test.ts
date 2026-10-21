@@ -1,8 +1,8 @@
 /**
  * E2E test: any emoji as a call reaction (#4918).
  *
- * Bob opens the reactions in a video call with Alice - the React menu, or the ⋮ menu on a phone, which has
- * no room for a React button. The reactions start as the six quick emojis plus
+ * Bob opens the reactions in a video call with Alice from the React button in the call screen's header.
+ * The reactions start as the six quick emojis plus
  * a chevron; the chevron expands it to the whole picker, and an emoji from there (💩 - never in the
  * old preset) floats over Alice's video panel. Once on a wide viewport, once on a phone-sized one,
  * with a screenshot of each menu state. The expanded picker has to stay inside the window: the menu
@@ -92,8 +92,7 @@ describe('call reactions picker', () => {
     }, 300_000);
 
     async function pickFromFullPicker(layout: 'wide' | 'narrow') {
-        // arrange - Bob expands the panel and opens the reactions (the React button in its footer, the ⋮ menu
-        // on a narrow screen): six quick emojis and the chevron
+        // arrange - Bob expands the panel and opens the reactions from its header: six quick emojis and the chevron
         await expandVideoPanel(bob);
         const menu = await openReactionsMenu(bob, 20_000);
         if (!menu)
@@ -128,17 +127,19 @@ describe('call reactions picker', () => {
     }
 });
 
-/** The whole menu box is on screen, and on a wide layout above the footer button it opened from. */
+/** The whole menu box is on screen, and on a wide layout below the header button it opened from. */
 async function expectMenuInsideViewport(page: Page, menu: Locator, layout: 'wide' | 'narrow') {
     const geometry = await menu.evaluate(el => {
         const box = (el.closest('.ac-menu') ?? el).getBoundingClientRect();
-        const trigger = document.querySelector('.call-screen-footer .btn-react')?.getBoundingClientRect();
-        return { top: box.top, bottom: box.bottom, viewportHeight: window.innerHeight, triggerTop: trigger?.top };
+        const trigger = document.querySelector('.call-screen-header .btn-react')?.getBoundingClientRect();
+        return {
+            top: box.top, bottom: box.bottom, viewportHeight: window.innerHeight, triggerBottom: trigger?.bottom,
+        };
     });
     expect(geometry.top, 'menu top').toBeGreaterThanOrEqual(0);
     expect(geometry.bottom, 'menu bottom').toBeLessThanOrEqual(geometry.viewportHeight);
     if (layout === 'wide')
-        expect(geometry.bottom, 'menu bottom vs. the React button').toBeLessThanOrEqual(geometry.triggerTop!);
+        expect(geometry.top, 'menu top vs. the React button').toBeGreaterThanOrEqual(geometry.triggerBottom!);
 }
 
 /** The menu fades in over 200ms and its emojis are SVG images that arrive one by one, so a screenshot
