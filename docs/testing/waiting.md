@@ -9,7 +9,8 @@ waiting on a budget that only fits an idle machine.
 Naming, FluentAssertions and the AAA layout are in
 [CODING_STYLE.md → Test Conventions](../CODING_STYLE.md#test-conventions); how
 to run the suites is in [Overview](./overview.md). This page is only about the
-wait itself.
+wait itself; for a failure you already have, start from
+[Flake patterns](./flake-patterns.md).
 
 ## One entry point: `TestWait`
 
