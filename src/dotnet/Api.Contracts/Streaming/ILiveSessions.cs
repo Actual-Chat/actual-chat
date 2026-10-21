@@ -126,4 +126,11 @@ public interface ILiveSessions : IComputeService
     [LegacyName(nameof(GetState), "2.21.9999")]
     [Obsolete("2026.10: Use GetState - this one serves the 2.21 LiveSessionState layout to older clients.")]
     Task<LegacyLiveSessionState?> LegacyGetState(Session session, ChatId chatId, CancellationToken cancellationToken);
+    // 2.21 clients poll the clientId-less GetMyCall for every user; without an endpoint they retry it
+    // every few seconds. Their calls are broken anyway (dev-only there), so "no call" is the whole answer.
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [LegacyName(nameof(GetMyCall), "2.21.9999")]
+    [Obsolete("2026.10: 2.21 clients only. Always null. Remove once no installed app version calls it.")]
+    Task<UserCall?> LegacyGetMyCall(Session session, CancellationToken cancellationToken);
 }

@@ -54,6 +54,24 @@ public class LegacyLiveSessionsRoutingTest(ITestOutputHelper @out) : TestBase(@o
     }
 
     [Fact]
+    public void TheClientIdLessGetMyCallShouldAnswerToAnOldPeer()
+    {
+        // arrange
+        var legacyMethod = typeof(ILiveSessions).GetMethod(nameof(ILiveSessions.LegacyGetMyCall))!;
+
+        // act
+        var oldPeer = LegacyNameOf(legacyMethod, LastOldPeer);
+        var newPeer = LegacyNameOf(legacyMethod, FirstNewPeer);
+
+        // assert
+        oldPeer?.Name.Should().Be("GetMyCall");
+        newPeer.Should().BeNull();
+        legacyMethod.GetParameters().Select(p => p.ParameterType).Should().Equal(
+            [typeof(Session), typeof(CancellationToken)],
+            "the wire name carries the parameter count, and 2.21 calls GetMyCall:2");
+    }
+
+    [Fact]
     public void ALegacyStateShouldKeepTheOldMeaningOfTheFields()
     {
         // arrange
