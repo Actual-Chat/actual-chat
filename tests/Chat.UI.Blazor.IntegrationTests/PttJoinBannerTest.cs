@@ -107,18 +107,20 @@ public sealed class PttJoinBannerTest(ChatAppHostFixture fixture, ITestOutputHel
         var banner = tester.Render<PttDeviceOffBanner>(p => p.AddCascadingValue(new ChatContext(hub, chat)));
 
         // assert
+        var isExpectedVisible = isConsented && !isDeviceEnabled;
         await TestWait.WhenRendered(banner, () => {
             var view = banner.FindComponent<Banner>().Instance;
-            view.IsVisible.Should().Be(isConsented && !isDeviceEnabled);
+            view.IsVisible.Should().Be(isExpectedVisible);
             view.ShowDismissButton.Should().BeFalse("the device-off notice must not be silently dismissed");
             view.Severity.Should().Be(BannerSeverity.Info);
-        });
-        if (!isConsented || isDeviceEnabled)
-            return;
+            if (!isExpectedVisible)
+                return;
 
-        banner.Find(".icon-push-to-talk").ClassList.Should().Contain("text-03");
-        banner.Find(".banner-body").TextContent.Trim()
-            .Should().Be(hub.StringLocalizer.Ptt_DeviceOff_Prefix.Trim());
+            // IsVisible is assigned before Banner renders, so the markup is checked in the same pass
+            banner.Find(".icon-push-to-talk").ClassList.Should().Contain("text-03");
+            banner.Find(".banner-body").TextContent.Trim()
+                .Should().Be(hub.StringLocalizer.Ptt_DeviceOff_Prefix.Trim());
+        });
     }
 
     [Fact]
