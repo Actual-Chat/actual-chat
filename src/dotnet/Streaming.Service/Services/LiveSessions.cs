@@ -357,6 +357,11 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
         return await Backend.LegacyGetState(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    [Obsolete("2026.10: 2.21 clients only. Always null. Remove once no installed app version calls it.")]
+    public virtual Task<UserCall?> LegacyGetMyCall(Session session, CancellationToken cancellationToken)
+        => Task.FromResult<UserCall?>(null);
+
     // Protected methods
 
     // Session-less for the same reason as GetAudioStreamingAuthorIdsByChat. Every read below is
