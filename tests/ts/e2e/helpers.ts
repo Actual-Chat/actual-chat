@@ -495,6 +495,33 @@ export async function openChat(page: Page, chatUrl: string = withUILanguage(DEFA
     await waitForEditor(page);
 }
 
+/** Posts the text from the chat's editor and waits until the message shows in the chat. */
+export async function sendMessage(page: Page, text: string) {
+    const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
+    await messageInput.click({ force: true });
+    await messageInput.evaluate(el => {
+        el.innerHTML = '';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.keyboard.type(text);
+    await messageInput.dispatchEvent('keypress', {
+        key: 'Enter', code: 'Enter', bubbles: true, cancelable: true,
+    });
+    await entryLidOf(page, text);
+}
+
+/** Waits for the message with this text to show in the chat and returns its local id - the
+ *  chat's own counter, so a later message always has a greater one. */
+export async function entryLidOf(page: Page, text: string, timeout = 15_000): Promise<number> {
+    const entry = page.locator(`[data-chat-entry-id]:has(.chat-message-markup:has-text("${text}"))`).first();
+    await entry.waitFor({ state: 'visible', timeout });
+    const entryId = await entry.getAttribute('data-chat-entry-id');
+    if (!entryId)
+        throw new Error(`entryLidOf: the message "${text}" has no data-chat-entry-id`);
+
+    return Number(entryId.split(':').pop());
+}
+
 // Call it after waitForChatReady: isVisible doesn't wait, so the footer has to have
 // rendered by now - and that's exactly what waitForChatReady waited for.
 export async function joinChat(page: Page) {
