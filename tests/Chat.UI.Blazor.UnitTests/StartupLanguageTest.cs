@@ -37,6 +37,30 @@ public class StartupLanguageTest
     }
 
     [Fact]
+    public async Task StartupShouldNotWaitForJavaScriptLanguageUpdate()
+    {
+        // arrange
+        await using var context = NewContext(null, "en", "de");
+        var pendingCall = context.JSInterop.SetupVoid("window.LocalizationUI.setDocumentLanguage", _ => true);
+        var hub = context.Services.GetRequiredService<AppUIHub>();
+        var starter = new AppScopedServiceStarter(hub);
+
+        // act
+        var resolveTask = starter.ResolveUILanguage(hub.BrowserInfo);
+
+        // assert
+        try {
+            resolveTask.IsCompletedSuccessfully.Should().BeTrue();
+            hub.LocalizationUI.WhenReady.IsCompletedSuccessfully.Should().BeTrue();
+            hub.LocalizationUI.Language.Should().Be(Languages.German);
+            pendingCall.Invocations.Should().ContainSingle();
+        }
+        finally {
+            pendingCall.SetVoidResult();
+        }
+    }
+
+    [Fact]
     public async Task OverrideShouldApplyWithoutReadingOrPersistingSettings()
     {
         // arrange
