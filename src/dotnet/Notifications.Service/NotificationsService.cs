@@ -25,6 +25,17 @@ public class NotificationsService(IServiceProvider services) : INotifications
     }
 
     // [ComputeMethod]
+    [Obsolete("2026.10: Use ListMentionedMemberAlerts. Pre-2.22 clients only.")]
+    public virtual async Task<bool> HasNotifiedMentionedMembers(
+        Session session,
+        ChatEntryId chatEntryId,
+        CancellationToken cancellationToken)
+    {
+        var alerts = await ListMentionedMemberAlerts(session, chatEntryId, cancellationToken).ConfigureAwait(false);
+        return alerts.Any(a => a.IsNotified);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ApiArray<MentionAlertStatus>> ListMentionedMemberAlerts(
         Session session,
         ChatEntryId chatEntryId,
@@ -47,6 +58,10 @@ public class NotificationsService(IServiceProvider services) : INotifications
         var mentionIds = await GetMentionIds(chatEntry, cancellationToken).ConfigureAwait(false);
         var mentioned = await GetMentionedMembers(chatId, mentionIds, ownUserId, cancellationToken)
             .ConfigureAwait(false);
+        // Before v2.22 one record per entry meant "everyone mentioned was alerted"
+        var legacyNotificationId = GetExplicitNotificationIdForNotifyMentionedMembers(ownUserId, chatEntryId);
+        var legacyNotification = await Backend.GetExplicit(legacyNotificationId, cancellationToken)
+            .ConfigureAwait(false);
         var statuses = new List<MentionAlertStatus>(mentioned.Count);
         foreach (var (authorId, userId, mentionRef) in mentioned) {
             var notificationId = GetExplicitNotificationIdForNotifyMentionedMember(ownUserId, chatEntryId, authorId);
@@ -54,7 +69,8 @@ public class NotificationsService(IServiceProvider services) : INotifications
             var hasRead = await Chats
                 .IsEntryReadByMentionedUser(session, chatEntryId, mentionRef, cancellationToken)
                 .ConfigureAwait(false);
-            statuses.Add(new MentionAlertStatus(authorId, userId, notification is not null, hasRead == true));
+            var isNotified = notification is not null || legacyNotification is not null;
+            statuses.Add(new MentionAlertStatus(authorId, userId, isNotified, hasRead == true));
         }
         return statuses.ToApiArray();
     }
@@ -259,6 +275,10 @@ public class NotificationsService(IServiceProvider services) : INotifications
             return (mentionRef, null);
         }
     }
+
+    private static ExplicitNotificationId GetExplicitNotificationIdForNotifyMentionedMembers(
+        UserId ownUserId, ChatEntryId chatEntryId)
+        => ExplicitNotificationId.New(ownUserId, ExplicitNotificationKind.NotifyMentionedMembers, chatEntryId.Value);
 
     private static ExplicitNotificationId GetExplicitNotificationIdForNotifyMentionedMember(
         UserId ownUserId, ChatEntryId chatEntryId, AuthorId authorId)
