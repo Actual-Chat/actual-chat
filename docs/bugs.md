@@ -275,7 +275,7 @@ Second scan: 2026-10-09 18:54 UTC, 4 new messages in Bugs and 3 in Bugs (Mobile)
 - **Messages:** [B26227](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26227), [B26274](https://voxt.ai/chat/s-pmMsV1UVKG-v3m8jr8kuj?n=26274)
 - **GitHub:** —
 - **What it is:** Logging in with Google from the prod app against the dev server fails with 'request invalid'; email login works and the reverse direction works. Alex suspects the redirect list configured at Google.
-- **Notes:** Code check (2026-10-09): no defect found. On a host override the prod app skips native Google sign-in and uses the web flow on the dev host with the dev server's own Google client; the voxt scheme is accepted since late July. Most likely a Google redirect_uri_mismatch: the dev OAuth client must list https://<override host>/signin-google. Check the error page (Google or the plain 'Invalid request.' text from MauiAuthController.Start).
+- **Notes:** Code check (2026-10-09): no defect found. On a host override the prod app skips native Google sign-in and uses the web flow on the dev host with the dev server's own Google client; the voxt scheme is accepted since late July. Most likely a Google redirect_uri_mismatch: the dev OAuth client must list `https://<override host>/signin-google`. Check the error page (Google or the plain 'Invalid request.' text from MauiAuthController.Start).
 
 ### B26279 — Menu items have different font weights (400 vs 500)
 
