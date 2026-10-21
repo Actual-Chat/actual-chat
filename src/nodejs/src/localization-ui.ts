@@ -38,8 +38,10 @@ export class LocalizationUI {
     }
 
     // Called with the effective language - i.e. the detected one when nothing is selected.
-    public static setDocumentLanguage(language: string): void {
+    public static setDocumentLanguage(language: string, mustPersist = false, selected: string | null = null): void {
         document.documentElement.lang = language;
+        if (mustPersist)
+            this.set(selected);
     }
 }
 
