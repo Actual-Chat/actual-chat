@@ -201,7 +201,7 @@ public sealed class AppScopedServiceStarter
     internal async Task ResolveUILanguage(BrowserInfo browserInfo)
     {
         if (browserInfo.UILanguageOverride is not null) {
-            await Hub.LocalizationUI.SetLanguage(browserInfo.UILanguage).ConfigureAwait(false);
+            _ = Hub.LocalizationUI.SetLanguage(browserInfo.UILanguage);
             return;
         }
 
@@ -210,11 +210,11 @@ public sealed class AppScopedServiceStarter
             await settings.WhenFirstTimeRead.WaitAsync(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
         }
         catch (TimeoutException) {
-            await Hub.LocalizationUI.SetLanguage(browserInfo.UILanguage).ConfigureAwait(false);
+            _ = Hub.LocalizationUI.SetLanguage(browserInfo.UILanguage);
             return;
         }
 
-        await Hub.LocalizationUI.SetLanguage(settings.Value.UILanguage, mustPersist: true).ConfigureAwait(false);
+        _ = Hub.LocalizationUI.SetLanguage(settings.Value.UILanguage, mustPersist: true);
     }
 
     // Private methods

@@ -34,15 +34,14 @@ public class LocalizationUI : UIServiceBase<AppUIHub>, IUITextLocalizer, IComput
     public ValueTask DisposeAsync()
         => _localizations.DisposeSilentlyAsync($"{GetType().GetName()}._localizations", Log);
 
-    public async Task SetLanguage(Language? language, bool mustPersist = false)
+    public Task SetLanguage(Language? language, bool mustPersist = false)
     {
         if (WhenReady.IsCompleted)
-            return;
+            return Task.CompletedTask;
 
         Language = language ?? Languages.DetectUILanguage(Hub.BrowserInfo.ClientLanguages);
         _whenReadySource.TrySetResult();
-        await JS.InvokeVoidAsync(JSSetDocumentLanguageMethod, Language.Value, mustPersist, language?.Value)
-            .ConfigureAwait(false);
+        return JS.InvokeVoidAsync(JSSetDocumentLanguageMethod, Language.Value, mustPersist, language?.Value).AsTask();
     }
 
     [ComputeMethod]
