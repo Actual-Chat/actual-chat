@@ -64,7 +64,8 @@ public sealed class RpcEndpointMonitor : UIWorkerBase<UIHub>
             ConnectivityUI, ActivityState, selector, settings.GetNetworkId);
         var probe = new RpcPathProbe(Services);
         await using var manager = new RpcPathManager(
-            settings.Candidates, settings.Store, networkInfoProvider, probe, Clocks.SystemClock, Log);
+            settings.Candidates, selector.Current,
+            settings.Store, networkInfoProvider, probe, Clocks.SystemClock, Log);
         _manager = manager;
         manager.CurrentChanged += OnCurrentChanged;
         manager.Updated += OnUpdated;
