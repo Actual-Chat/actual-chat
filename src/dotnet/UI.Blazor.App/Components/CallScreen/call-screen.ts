@@ -524,12 +524,15 @@ export class CallScreen {
         return canvas; // fallback
     }
 
-    // Toolbar toggle fires only on the focused (big) tile. Small tiles are
-    // reserved for pin-on-tap (handled in Blazor), so a tap there must not
-    // toggle the header/footer.
-    private isOnFocusedTile(target: HTMLElement): boolean {
-        return target.closest('.remote-video-container.item-focused') != null
-            && !target.closest('.call-screen-toolbar');
+    // The header/footer toggle on a tap over the focused (big) tile or the empty panel area.
+    // A small tile is reserved for focus-on-tap and a control for its own click, so a tap
+    // there must not toggle the bars.
+    private isOnBarsToggleZone(target: HTMLElement): boolean {
+        if (target.closest('.call-screen-toolbar'))
+            return false;
+
+        const tile = target.closest('.video-track-player');
+        return tile == null || tile.classList.contains('item-focused');
     }
 
     private isOnScreenCast(target: HTMLElement): boolean {
@@ -588,7 +591,7 @@ export class CallScreen {
                     if (performance.now() - this.lastMouseDragEndTime < 300)
                         return false;
 
-                    return this.isOnFocusedTile(e.target as HTMLElement);
+                    return this.isOnBarsToggleZone(e.target as HTMLElement);
                 })
             )
             .subscribe(() => this.toggleBars());
@@ -671,7 +674,7 @@ export class CallScreen {
 
     private onTouchStart(e: TouchEvent): void {
         const target = e.target as HTMLElement;
-        const onVideo = this.isOnFocusedTile(target);
+        const inToggleZone = this.isOnBarsToggleZone(target);
         const onScreenCast = this.isOnScreenCast(target);
 
         // Track screencast touches for move/end filtering
@@ -717,8 +720,8 @@ export class CallScreen {
             }
         }
 
-        // ── Tap tracking (any 1-finger touch on video) ──
-        if (onVideo && e.touches.length === 1) {
+        // ── Tap tracking (any 1-finger touch in the toggle zone) ──
+        if (inToggleZone && e.touches.length === 1) {
             this.tapTouchId = e.touches[0].identifier;
             this.tapMoved = false;
             this.tapStartX = e.touches[0].clientX;
