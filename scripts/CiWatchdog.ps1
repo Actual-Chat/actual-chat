@@ -36,6 +36,10 @@ $script:MaxErrorLength = 500
 # GitHub rejects a comment over 65536 characters, and a collapsed run fails thousands of tests.
 $script:JournalTestLimit = 30
 
+# Waits before each re-download of a log that came back without its test output.
+# Their sum has to fit the workflow's 10-minute limit.
+$script:LogRetryDelaysSeconds = @(60, 120)
+
 function Get-CiFailureCategory {
     <#
     .SYNOPSIS
@@ -551,29 +555,51 @@ function New-CiRunRecord {
 }
 
 function Get-CiRunRecord {
-    param([Parameter(Mandatory)][string]$RunId)
+    param(
+        [Parameter(Mandatory)][string]$RunId,
+        [int[]]$LogRetryDelaysSeconds = $script:LogRetryDelaysSeconds)
 
     $run = Invoke-CiGh @('api', "repos/$script:Repo/actions/runs/$RunId") | ConvertFrom-Json
     $jobs = (Invoke-CiGh @('api', "repos/$script:Repo/actions/runs/$RunId/jobs?per_page=100") | ConvertFrom-Json).jobs
     $failed = @($jobs | Where-Object { $_.conclusion -eq 'failure' })
 
     $needsLog = @($failed | Where-Object { (Get-CiFailureCategory (Get-CiFailedStepName $_)) -eq 'Test' }).Count -gt 0
-    $log = ''
-    $flakes = @()
-    if ($needsLog) {
-        # `workflow_run: completed` arrives while GitHub is often still
-        # archiving the logs, and a download that 404s must not cost the run
-        # its triage: no log degrades to Unparsed, which a human then reads.
-        try {
-            $log = (Invoke-CiGh @('run', 'view', $RunId, '--repo', $script:Repo, '--log-failed')) -join "`n"
-        }
-        catch {
-            Write-Warning "Could not download the log of run ${RunId}: $_"
-        }
-        $flakes = @(Get-CiKnownFlakes)
+    if (-not $needsLog) {
+        return New-CiRunRecord $run $failed '' @()
     }
 
-    return New-CiRunRecord $run $failed $log $flakes
+    # `workflow_run: completed` arrives while GitHub is often still archiving
+    # the logs. The job that finished last may 404, or worse, download fine
+    # without its test output - so a test job with neither failed tests nor
+    # totals is read as a log not ready yet, and fetched again. A log that
+    # never completes degrades to Unparsed, which a human then reads.
+    $flakes = @(Get-CiKnownFlakes)
+    $record = New-CiRunRecord $run $failed (Get-CiFailedLog $RunId) $flakes
+    foreach ($delay in $LogRetryDelaysSeconds) {
+        $unread = @($record.Jobs | Where-Object {
+            $_.Category -eq 'Test' -and @($_.Tests).Count -eq 0 -and @($_.Totals).Count -eq 0
+        })
+        if ($unread.Count -eq 0) {
+            break
+        }
+
+        Write-Warning "No test output yet for $($unread.Name -join ', '); fetching the log again in $delay s."
+        Start-Sleep -Seconds $delay
+        $record = New-CiRunRecord $run $failed (Get-CiFailedLog $RunId) $flakes
+    }
+    return $record
+}
+
+function Get-CiFailedLog {
+    param([Parameter(Mandatory)][string]$RunId)
+
+    try {
+        return (Invoke-CiGh @('run', 'view', $RunId, '--repo', $script:Repo, '--log-failed')) -join "`n"
+    }
+    catch {
+        Write-Warning "Could not download the log of run ${RunId}: $_"
+        return ''
+    }
 }
 
 function Get-CiRecordPath {

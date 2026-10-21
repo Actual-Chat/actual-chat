@@ -539,6 +539,69 @@ Describe "CiWatchdog.ps1" {
         }
     }
 
+    Context "Get-CiRunRecord" {
+        BeforeAll {
+            $script:e2eRun = [PSCustomObject]@{
+                id = 39531379699; run_attempt = 1; name = 'Run nightly tests'; head_branch = 'dev'
+                head_sha = '1a15629152bc4c4236c3188aec403c3c60c4dd42'; event = 'schedule'
+                display_title = 'Run nightly tests'; created_at = '2026-10-21T02:08:53Z'
+                html_url = 'https://github.com/Actual-Chat/actual-chat/actions/runs/39531379699'
+            }
+            $script:e2eJobs = [PSCustomObject]@{
+                jobs = @([PSCustomObject]@{
+                    name = 'TS E2E Tests / TS E2E tests results'; conclusion = 'failure'
+                    html_url = 'https://example.invalid/job/5'
+                    steps = @([PSCustomObject]@{ name = 'Run tests'; conclusion = 'failure'; number = 1 })
+                })
+            }
+            # What the last job's log looks like before GitHub has archived it: it
+            # downloads without an error, but the test output isn't there yet.
+            $script:unfinishedLog = New-JobLog -Job 'TS E2E Tests / TS E2E tests results' @(
+                '##[group]Run ./b e2e-tests'
+            )
+
+            function Set-GhResponses {
+                param([string[]]$Logs)
+                $script:logResponses = [System.Collections.Generic.Queue[string]]::new([string[]]$Logs)
+                $script:logDownloads = 0
+                Mock Get-CiKnownFlakes { @() }
+                Mock Start-Sleep { }
+                Mock Invoke-CiGh {
+                    if ($GhArgs[0] -eq 'run') {
+                        $script:logDownloads++
+                        return $script:logResponses.Dequeue()
+                    }
+                    if ($GhArgs[1] -match '/jobs') {
+                        return $script:e2eJobs | ConvertTo-Json -Depth 5
+                    }
+                    return $script:e2eRun | ConvertTo-Json
+                }
+            }
+        }
+
+        It "reads the log once when it already carries the test output" {
+            Set-GhResponses @($script:vitestLog)
+            $record = Get-CiRunRecord '39531379699' -LogRetryDelaysSeconds @(0, 0)
+            $script:logDownloads | Should -Be 1
+            $record.Verdict | Should -Be 'NewFailure'
+        }
+
+        It "fetches the log again when a test job came back without its test output" {
+            Set-GhResponses @($script:unfinishedLog, $script:vitestLog)
+            $record = Get-CiRunRecord '39531379699' -LogRetryDelaysSeconds @(0, 0) -WarningAction SilentlyContinue
+            $script:logDownloads | Should -Be 2
+            @($record.Jobs[0].Tests).Count | Should -Be 3
+            $record.Verdict | Should -Be 'NewFailure'
+        }
+
+        It "settles for Unparsed once the retries run out" {
+            Set-GhResponses @($script:unfinishedLog, $script:unfinishedLog, $script:unfinishedLog)
+            $record = Get-CiRunRecord '39531379699' -LogRetryDelaysSeconds @(0, 0) -WarningAction SilentlyContinue
+            $script:logDownloads | Should -Be 3
+            $record.Verdict | Should -Be 'Unparsed'
+        }
+    }
+
     Context "Format-CiJournalNote" {
         It "mentions a re-run only when the record carries one" {
             $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownFlakes
