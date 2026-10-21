@@ -14,10 +14,13 @@
     var hasPinToggle = m.RemoteAuthorCount > 1;
     // Speaker view hides the speaker's tile label (the name is in the header), so its hand moves here too
     var hasFocusedHand = isExpanded && m.IsFocusedHandRaised;
-    // The inline video has no reactions footer, so its ⋮ menu is the only way in - add the fullscreen
-    // footer's reaction button next to it.
-    var hasInlineReact = isInline && m.CanReact;
-    var reactionsMenuRef = hasInlineReact ? MenuRef.New<CallReactionsMenu>(Chat.Id.Value).ToString() : "";
+    // The reaction button always docks at the right of the second row, under the hang-up - the same place
+    // inline or fullscreen, phone or desktop, so it never jumps between layouts. Only with video on screen:
+    // a dialing or audio-only call has none to react over.
+    var hasSecondRowReact = m.CanReact && m.HasVideo && (isInline || isExpanded);
+    var reactionsMenuRef = hasSecondRowReact
+        ? MenuRef.New<CallReactionsMenu>(Chat.Id.Value).ToString()
+        : "";
 }
 
 @* Expanded, the screen covers every window-drag region of the page, so its header becomes one *@
@@ -70,17 +73,6 @@
         }
 
         <div class="c-right">
-            @if (hasInlineReact) {
-                <HeaderButton
-                    Class="@("btn-glass btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
-                    StopPropagation="true"
-                    PreventDefault="true"
-                    data-menu="@reactionsMenuRef"
-                    data-menu-trigger="Primary"
-                    data-menu-placement="@(FloatingPosition.Bottom.ToPositionString())">
-                    <i class="@(m.IsOwnHandRaised ? "icon-hand" : "icon-add-reaction") text-lg"></i>
-                </HeaderButton>
-            }
             @if (!isIsland) {
                 <HeaderButton
                     Class="btn-glass btn-video-menu"
@@ -114,22 +106,39 @@
 
     @* Pin toggle: fixes the focused (big) tile on a chosen author instead of auto-following the
        active speaker. Only in the default (non-equal) layout, and only with two remote authors or more:
-       a single one is always the one in focus. *@
-    @if ((hasPinToggle || hasFocusedHand) && !m.IsEqualLayout && !isIsland) {
+       a single one is always the one in focus. The reaction button shares this row, pushed to
+       the right so it sits under the hang-up. *@
+    @{
+        var hasPinRow = (hasPinToggle || hasFocusedHand) && !m.IsEqualLayout && !isIsland;
+    }
+    @if (hasPinRow || hasSecondRowReact) {
         <div class="header-row header-row-pin">
-            @if (hasPinToggle) {
+            @if (hasPinRow) {
+                @if (hasPinToggle) {
+                    <HeaderButton
+                        Class="@("btn-glass btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
+                        StopPropagation="true"
+                        PreventDefault="true"
+                        Click="@OnTogglePinClick">
+                        <i class="icon-pin text-lg"></i>
+                    </HeaderButton>
+                }
+                @if (hasFocusedHand) {
+                    <div class="btn-glass btn-h btn-hand on">
+                        <i class="icon-hand text-lg"></i>
+                    </div>
+                }
+            }
+            @if (hasSecondRowReact) {
                 <HeaderButton
-                    Class="@("btn-glass btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
+                    Class="@("btn-glass btn-react c-react-dock " + (m.IsOwnHandRaised ? "on" : ""))"
                     StopPropagation="true"
                     PreventDefault="true"
-                    Click="@OnTogglePinClick">
-                    <i class="icon-pin text-lg"></i>
+                    data-menu="@reactionsMenuRef"
+                    data-menu-trigger="Primary"
+                    data-menu-placement="@(FloatingPosition.Bottom.ToPositionString())">
+                    <i class="@(m.IsOwnHandRaised ? "icon-hand" : "icon-add-reaction") text-lg"></i>
                 </HeaderButton>
-            }
-            @if (hasFocusedHand) {
-                <div class="btn-glass btn-h btn-hand on">
-                    <i class="icon-hand text-lg"></i>
-                </div>
             }
         </div>
     }

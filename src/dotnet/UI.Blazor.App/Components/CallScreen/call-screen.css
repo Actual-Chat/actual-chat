@@ -280,6 +280,10 @@ body.wide .call-screen.expanded > .c-container {
 .call-screen .call-screen-header .header-row-pin {
     @apply justify-start gap-2;
 }
+/* Right-aligned so it sits under the hang-up, whether or not the pin controls share the row */
+.call-screen .call-screen-header .header-row-pin .c-react-dock {
+    @apply ml-auto;
+}
 .call-screen .call-screen-header .c-left,
 .call-screen .call-screen-header .c-right {
     @apply flex-x items-center gap-2;
