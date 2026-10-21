@@ -74,6 +74,8 @@ export default withMermaid(defineConfig({
   ],
   srcExclude: [
     "node_modules",
+    // The style-review hook's generated copy of CODING_STYLE.md, not a page for readers
+    "CODING_STYLE.AGENTS.md",
   ],
   // Links to repo files outside docs/ and to local dev servers can't resolve in the rendered site
   ignoreDeadLinks: [
@@ -82,6 +84,8 @@ export default withMermaid(defineConfig({
     /\.\.\/src\//,
     /\.\.\/tests\//,
     /\.\.\/scripts\//,
+    /\.\.\/\.claude\//,
+    /\/CODING_STYLE\.AGENTS$/,
   ],
   appearance: 'dark',
   // The site is also served at https://docs.local.voxt.ai by the local nginx container,
