@@ -25,17 +25,11 @@
                 @L.Translation_TranslateToColon
                 <span @onclick="@OnOpenLanguageSettings" class="c-edit" role="button" tabindex="0"> @L.Translation_Setup</span>
             </div>
-            <div class="c-languages" role="listbox">
-                @foreach (var l in m.Languages) {
-                    <button
-                        class="@(l == m.Selected ? "active" : "")"
-                        role="option"
-                        aria-selected="@((l == m.Selected) ? "true" : "false")"
-                        @onclick="@(() => OnClick(l))">
-                        @l.Title
-                    </button>
-                }
-            </div>
+            <SegmentedSwitch
+                Class="pill"
+                Items="@BuildItems(m.Languages)"
+                SelectedId="@m.Selected.Value"
+                SelectedIdChanged="@OnLanguageIdChanged"/>
         </div>
 
         <TileItem Click="@OnTranslateOwnMessagesClick">
@@ -83,9 +77,14 @@
         return new(languages, translationLanguage, chatId, translateOwnMessages, isTranslatedVoiceOn, translatedVoiceOverride);
     }
 
-    private async Task OnClick(Language language) {
+    private IReadOnlyList<SegmentedSwitchItem> BuildItems(IReadOnlyCollection<Language> languages) {
+        var useShortTitle = languages.Count > 2;
+        return languages.Select(l => new SegmentedSwitchItem(l.Value, useShortTitle ? l.ShortTitle : l.Title)).ToList();
+    }
+
+    private async Task OnLanguageIdChanged(string id) {
         if (State.Value is { } m) {
-            await TranslationUI.SetTargetLanguage(m.ChatId, language, CancellationToken.None);
+            await TranslationUI.SetTargetLanguage(m.ChatId, Language.Parse(id), CancellationToken.None);
             Modal.Close();
         }
     }

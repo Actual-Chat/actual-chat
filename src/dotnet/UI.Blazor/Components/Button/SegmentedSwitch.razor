@@ -1,7 +1,7 @@
 @namespace ActualChat.UI.Blazor.Components
 
 @{
-    var activeIndex = 0;
+    var activeIndex = -1;
     for (var i = 0; i < Items.Count; i++) {
         if (Items[i].Id == SelectedId) {
             activeIndex = i;
@@ -11,7 +11,9 @@
 }
 
 <div class="segmented-switch @Class" role="tablist" style="--seg-count: @Items.Count; --seg-index: @activeIndex;">
-    <div class="c-thumb"></div>
+    @if (activeIndex >= 0) {
+        <div class="c-thumb"></div>
+    }
     @foreach (var item in Items) {
         var isOn = item.Id == SelectedId;
         <button
