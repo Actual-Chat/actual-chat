@@ -48,7 +48,9 @@ public partial class AccountUI
             if (oldAccount.Id == newAccount.Id)
                 continue; // Only account properties have changed
 
-            Log.LogInformation("Account is changed to: {Account}", newAccount);
+            // Not the whole account: Information goes to Sentry as a breadcrumb, with its email and phone
+            Log.LogInformation("Account is changed to: {AccountId} (guest: {IsGuest})",
+                newAccount.Id, newAccount.IsGuest);
             _lastChangedAt.Value = CpuClock.Now;
             await SaveSignedInState(newAccount).ConfigureAwait(false);
             await Hub.WhenInitialized.WaitAsync(cancellationToken).ConfigureAwait(false);
