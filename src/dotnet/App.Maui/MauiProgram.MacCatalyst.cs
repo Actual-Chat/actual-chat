@@ -31,5 +31,5 @@ public static partial class MauiProgram
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
-    { }
+        => events.AddiOS(ios => ios.WillTerminate(_ => MauiAppExit.LeaveLiveSessions()));
 }

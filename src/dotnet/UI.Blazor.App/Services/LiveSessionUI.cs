@@ -240,6 +240,17 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         return ChatVideoUI.WatchingChatId == chatId;
     }
 
+    public async Task LeaveAll(CancellationToken cancellationToken)
+    {
+        // For the app's exit: the leaves the scope's teardown sends (see ClearParticipations), awaited so
+        // the exit hook can hold the process for them. Nothing local changes - the process takes the media.
+        var participations = await GetMyParticipations(cancellationToken).ConfigureAwait(false);
+        await participations
+            .Select(p => SetParticipation(p.Key, p.Value, false, cancellationToken))
+            .Collect()
+            .ConfigureAwait(false);
+    }
+
     public Task SetParticipation(
         ChatId chatId,
         ParticipationKind kind,

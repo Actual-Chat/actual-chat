@@ -188,6 +188,15 @@ public sealed class AndroidActivitiesForegroundService : Service
         ReleaseMediaSession();
         base.OnDestroy();
     }
+
+    public override void OnTaskRemoved(Intent? rootIntent)
+    {
+        // The swipe in the recents screen: this service keeps the process alive through it, and the
+        // activity's own teardown runs later, once it may have discarded the Blazor scope already.
+        MauiAppExit.LeaveLiveSessions();
+        base.OnTaskRemoved(rootIntent);
+    }
+
     public override IBinder? OnBind(Intent? intent) => null;
     public override StartCommandResult OnStartCommand(Intent? intent, StartCommandFlags flags, int startId)
     {

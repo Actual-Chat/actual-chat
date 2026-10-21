@@ -176,6 +176,16 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         SystemCallUI.OnOutgoingCallStarted(chatId, callId, hasVideo);
     }
 
+    public async Task LeaveOnExit(CancellationToken cancellationToken)
+    {
+        // The app is closing: the server hears what a hang-up tells it, before the process goes with the
+        // media. A placed call that nobody answered yet is cancelled, so the callee stops ringing.
+        var liveSessionUI = Hub.LiveSessionUI;
+        if (_activeCall.Value is { Role: CallRole.Caller, Phase: CallPhase.Dialing } call)
+            await CancelCall(call.ChatId, cancellationToken).ConfigureAwait(false);
+        await liveSessionUI.LeaveAll(cancellationToken).ConfigureAwait(false);
+    }
+
     public Task CancelCall(ChatId chatId, CancellationToken cancellationToken)
     {
         Task whenCancelled;

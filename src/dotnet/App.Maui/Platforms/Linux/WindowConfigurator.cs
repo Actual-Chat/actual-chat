@@ -1,3 +1,4 @@
+using ActualChat.App.Maui.Services;
 using ActualChat.Maui.Services;
 
 namespace ActualChat.App.Maui;
@@ -32,6 +33,7 @@ internal static class WindowConfigurator
         window.SetSizeRequest(MinWidth, MinHeight);
         window.SetDefaultSize(DefaultWidth, DefaultHeight);
         window.OnNotify += OnNotify;
+        window.OnCloseRequest += OnCloseRequest;
         UpdateHiddenState();
     }
 
@@ -44,6 +46,13 @@ internal static class WindowConfigurator
     {
         if (args.Pspec.GetName() == "suspended")
             UpdateHiddenState();
+    }
+
+    private static bool OnCloseRequest(Gtk.Window sender, EventArgs args)
+    {
+        // The window is the app here: closing it quits, with nothing minimizing in its place
+        MauiAppExit.LeaveLiveSessions();
+        return false;
     }
 
     private static void UpdateHiddenState()
