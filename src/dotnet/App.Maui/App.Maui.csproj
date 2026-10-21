@@ -1181,4 +1181,6 @@
     <WindowsPackageType Condition="$(TargetFramework.Contains('-windows'))">None</WindowsPackageType>
   </PropertyGroup>
 
+  <Import Project="Platforms/Windows/VCRuntime.targets" Condition="$(TargetFramework.Contains('-windows'))" />
+
 </Project>

@@ -1,0 +1,44 @@
+<Project>
+  <Target Name="AddWindowsVCRuntime" BeforeTargets="AssignTargetPaths" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_VCRuntimeArch>$([System.String]::Copy('$(RuntimeIdentifier)').Replace('win10-', '').Replace('win-', ''))</_VCRuntimeArch>
+      <_VCRuntimeArch Condition="'$(_VCRuntimeArch)' == ''">$(PlatformTarget)</_VCRuntimeArch>
+      <_VCRuntimeArch Condition="'$(_VCRuntimeArch)' == '' or '$(_VCRuntimeArch)' == 'AnyCPU'">x64</_VCRuntimeArch>
+      <_VCRedistRoot>$(VCToolsRedistDir)</_VCRedistRoot>
+      <_VSWhere>$(MSBuildProgramFiles32)\Microsoft Visual Studio\Installer\vswhere.exe</_VSWhere>
+    </PropertyGroup>
+    <Error Condition="'$(_VCRuntimeArch)' != 'x64' and '$(_VCRuntimeArch)' != 'x86' and '$(_VCRuntimeArch)' != 'arm64'"
+           Text="Unsupported Windows VC++ runtime architecture '$(_VCRuntimeArch)'." />
+    <Error Condition="'$(WindowsVCRuntimeDir)' == '' and '$(_VCRedistRoot)' == '' and !Exists('$(_VSWhere)')"
+           Text="Install Visual Studio C++ build tools or set WindowsVCRuntimeDir to the target architecture's redistributable Microsoft.VC*.CRT directory." />
+    <Exec Condition="'$(WindowsVCRuntimeDir)' == '' and '$(_VCRedistRoot)' == ''"
+          Command="&quot;$(_VSWhere)&quot; -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath"
+          ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_VCRuntimeVSDir" />
+    </Exec>
+    <Error Condition="'$(WindowsVCRuntimeDir)' == '' and '$(_VCRedistRoot)' == '' and !Exists('$(_VCRuntimeVSDir)\VC\Auxiliary\Build\Microsoft.VCRedistVersion.default.txt')"
+           Text="Visual C++ redistributable files were not found. Install Visual Studio C++ build tools or set WindowsVCRuntimeDir." />
+    <ReadLinesFromFile Condition="'$(WindowsVCRuntimeDir)' == '' and '$(_VCRedistRoot)' == ''"
+                       File="$(_VCRuntimeVSDir)\VC\Auxiliary\Build\Microsoft.VCRedistVersion.default.txt">
+      <Output TaskParameter="Lines" PropertyName="_VCRedistVersion" />
+    </ReadLinesFromFile>
+    <PropertyGroup Condition="'$(WindowsVCRuntimeDir)' == '' and '$(_VCRedistRoot)' == ''">
+      <_VCRedistRoot>$(_VCRuntimeVSDir)\VC\Redist\MSVC\$(_VCRedistVersion)</_VCRedistRoot>
+    </PropertyGroup>
+    <ItemGroup>
+      <_VCRuntimeFiles Include="$(_VCRedistRoot)\$(_VCRuntimeArch)\Microsoft.VC*.CRT\*.dll" Condition="'$(WindowsVCRuntimeDir)' == ''" />
+      <_VCRuntimeFiles Include="$(WindowsVCRuntimeDir)\*.dll" Condition="'$(WindowsVCRuntimeDir)' != ''" />
+      <_RequiredVCRuntime Include="msvcp140.dll;msvcp140_1.dll;vcruntime140.dll" />
+      <_RequiredVCRuntime Include="vcruntime140_1.dll" Condition="'$(_VCRuntimeArch)' != 'x86'" />
+      <_MissingVCRuntime Include="@(_RequiredVCRuntime)" Exclude="@(_VCRuntimeFiles->'%(Filename)%(Extension)')" />
+    </ItemGroup>
+    <Error Condition="'@(_MissingVCRuntime)' != ''"
+           Text="Missing @(_MissingVCRuntime) for $(_VCRuntimeArch). Install the matching Visual C++ redistributable build tools or set WindowsVCRuntimeDir." />
+    <ItemGroup>
+      <Content Include="@(_VCRuntimeFiles)"
+               Link="%(Filename)%(Extension)"
+               CopyToOutputDirectory="PreserveNewest"
+               CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+</Project>
