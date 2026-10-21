@@ -34,16 +34,15 @@ public class LocalizationUI : UIServiceBase<AppUIHub>, IUITextLocalizer, IComput
     public ValueTask DisposeAsync()
         => _localizations.DisposeSilentlyAsync($"{GetType().GetName()}._localizations", Log);
 
-    public void SetLanguage(Language language)
+    public async Task SetLanguage(Language? language, bool mustPersist = false)
     {
         if (WhenReady.IsCompleted)
             return;
 
-        Language = language;
+        Language = language ?? Languages.DetectUILanguage(Hub.BrowserInfo.ClientLanguages);
         _whenReadySource.TrySetResult();
-        // Not awaited: <html lang> is cosmetic next to the render that's about to happen,
-        // and this runs on the dispatcher right before the first render.
-        _ = JS.InvokeVoidAsync(JSSetDocumentLanguageMethod, language.Value);
+        await JS.InvokeVoidAsync(JSSetDocumentLanguageMethod, Language.Value, mustPersist, language?.Value)
+            .ConfigureAwait(false);
     }
 
     [ComputeMethod]

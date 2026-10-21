@@ -8,7 +8,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// Owns <see cref="Settings"/> - the account's spoken languages and its UI language - and mirrors
 /// the UI language into the device cache.
 /// </summary>
-public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
+public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
 {
     private const string JSSetMethod = "window.LocalizationUI.set";
     private BannerDef? _ownVoiceSampleBanner;
@@ -106,7 +106,15 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
 
     public async Task UpdateUILanguage(Language? language)
     {
-        await UpdateSettings(x => x with { UILanguage = language }).ConfigureAwait(false);
+        if (language is null)
+            await BrowserInfo.WhenReady.ConfigureAwait(false);
+
+        await UpdateSettings(x => x with {
+            UILanguage = language,
+            DetectedUILanguage = language is null
+                ? Languages.DetectUILanguage(BrowserInfo.ClientLanguages)
+                : x.DetectedUILanguage,
+        }).ConfigureAwait(false);
         await SetStoredLanguage(language).ConfigureAwait(false);
     }
 
@@ -124,45 +132,7 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
         _ownVoiceSampleBanner = null;
     }
 
-    // Protected/internal methods
-
-    protected override Task OnRun(CancellationToken cancellationToken)
-    {
-        var baseChains = new[] {
-            AsyncChain.From(SyncUILanguage),
-            AsyncChain.From(SyncDetectedUILanguage),
-        };
-        var retryDelays = RetryDelaySeq.Exp(0.1, 1);
-        return (
-            from chain in baseChains
-            select chain
-                .Log(LogLevel.Debug, Log)
-                .RetryForever(retryDelays, Log)
-            ).RunIsolated(cancellationToken);
-    }
-
     // Private methods
-
-    private async Task SyncUILanguage(CancellationToken cancellationToken)
-    {
-        await WhenReady.ConfigureAwait(false);
-        var changes = Settings.Computed.Changes(cancellationToken);
-        await foreach (var (settings, _) in changes.ConfigureAwait(false))
-            await SetStoredLanguage(settings.UILanguage).ConfigureAwait(false);
-    }
-
-    private async Task SyncDetectedUILanguage(CancellationToken cancellationToken)
-    {
-        await WhenReady.ConfigureAwait(false);
-        await BrowserInfo.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
-        // Not LocalizationUI.Language: that folds in the non-persistent ?ui-language= override.
-        var detected = Languages.DetectUILanguage(BrowserInfo.ClientLanguages);
-        // The guard stops the loop: UpdateSettings fires the Changes SyncUILanguage listens to.
-        if (Settings.Value.DetectedUILanguage == detected)
-            return;
-
-        await UpdateSettings(x => x with { DetectedUILanguage = detected }).ConfigureAwait(false);
-    }
 
     private async Task SetStoredLanguage(Language? language)
         => await JS.InvokeVoidAsync(JSSetMethod, language?.Value).ConfigureAwait(false);
@@ -179,8 +149,6 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
             Primary = languages.Count > 0 ? languages[0] : Languages.Main,
             Secondary = languages.Count > 1 ? (Language?) languages[1] : null,
             Tertiary = languages.Count > 2 ? (Language?) languages[2] : null,
-            // Set here, not left to SyncDetectedUILanguage: on a first visit its write races the one in
-            // EnsureUserLanguageSettingsPersisted and loses, and the server words a guest's sign-in mail from this.
             DetectedUILanguage = Languages.DetectUILanguage(BrowserInfo.ClientLanguages),
         };
     }
@@ -188,6 +156,12 @@ public class LanguageUI : UIWorkerBase<AppUIHub>, IComputeService, IDisposable
     private async Task EnsureUserLanguageSettingsPersisted(CancellationToken cancellationToken = default)
     {
         await WhenReady.ConfigureAwait(false);
+        if (Settings.Value.DetectedUILanguage is null) {
+            await BrowserInfo.WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
+            await UpdateSettings(x => x.DetectedUILanguage is not null ? x : x with {
+                DetectedUILanguage = Languages.DetectUILanguage(BrowserInfo.ClientLanguages),
+            }).ConfigureAwait(false);
+        }
         var serverValue = await UserSettingsUI
             .Get(UserLanguageSettings.KvasKey, cancellationToken)
             .ConfigureAwait(false);
