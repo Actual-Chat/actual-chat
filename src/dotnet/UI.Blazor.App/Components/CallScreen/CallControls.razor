@@ -13,7 +13,6 @@
     var isMobileOrNarrow = !m.IsDesktopLayout;
     var cameraMenuRef = MenuRef.New<CameraMenu>(CallScreen.CameraMenuRequester, m.SelectedCameraDeviceId ?? "")
         .ToString();
-    var reactionsMenuRef = MenuRef.New<CallReactionsMenu>(chat.Id.Value).ToString();
     RenderFragment videoToggle =
         @<HeaderButton
             Click="@(() => OnVideoClick(!m.IsCameraOn))"
@@ -87,15 +86,6 @@
                 <i class="icon-voice-to-text-message text-lg"></i>
             </HeaderButton>
         }
-        @if (m.CanReact) {
-            <HeaderButton
-                Class="@("btn-glass btn-react " + (m.IsOwnHandRaised ? "on" : ""))"
-                data-menu="@reactionsMenuRef"
-                data-menu-trigger="@MenuTrigger.Primary"
-                data-menu-placement="@(FloatingPosition.Top.ToPositionString())">
-                <i class="@(m.IsOwnHandRaised ? "icon-hand" : "icon-add-reaction") text-lg"></i>
-            </HeaderButton>
-        }
     </div>
     @* Out of flow, at the right edge *@
     @if (!isMobileOrNarrow && m.HasVideo) {
@@ -133,8 +123,6 @@
         var outputRoutes = await Hub.CallUI.GetOutputRoutes(cancellationToken).ConfigureAwait(false);
         var isCameraOn = await ChatVideoUI.IsOwnCameraRecording(chatId, cancellationToken).ConfigureAwait(false);
         var isScreenCasting = await ChatVideoUI.IsOwnScreenCasting(chatId, cancellationToken).ConfigureAwait(false);
-        var canReact = await LiveSessionUI.CanReact(chatId, cancellationToken).ConfigureAwait(false);
-        var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
         var selectedCameraDeviceId = await Hub.CameraUI.GetSelectedDeviceId(cancellationToken).ConfigureAwait(false);
         var isTranscriptionOn = await LiveSessionUI.IsTranscriptionOn(chatId, cancellationToken).ConfigureAwait(false);
         var canToggleTranscription = await LiveSessionUI
@@ -148,8 +136,6 @@
             OutputRoutes = outputRoutes,
             IsCameraOn = isCameraOn,
             IsScreenCasting = isScreenCasting,
-            CanReact = canReact,
-            IsOwnHandRaised = isOwnHandRaised,
             SelectedCameraDeviceId = selectedCameraDeviceId,
             IsTranscriptionOn = isTranscriptionOn,
             CanToggleTranscription = canToggleTranscription,
@@ -204,8 +190,6 @@
         public AudioOutputRoutes OutputRoutes { get; init; } = AudioOutputRoutes.None;
         public bool IsCameraOn { get; init; }
         public bool IsScreenCasting { get; init; }
-        public bool CanReact { get; init; }
-        public bool IsOwnHandRaised { get; init; }
         public string? SelectedCameraDeviceId { get; init; }
         public bool IsTranscriptionOn { get; init; } = true;
         public bool CanToggleTranscription { get; init; }
