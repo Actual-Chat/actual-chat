@@ -7,6 +7,12 @@ public interface INotifications : IComputeService
 {
     [ComputeMethod(MinCacheDuration = 30)]
     Task<ApiArray<Notification>> ListActive(Session session, CancellationToken cancellationToken);
+
+    [ComputeMethod(MinCacheDuration = 10)]
+    [Obsolete("2026.10: Use ListMentionedMemberAlerts. Pre-2.22 clients only.")]
+    Task<bool> HasNotifiedMentionedMembers(
+        Session session, ChatEntryId chatEntryId, CancellationToken cancellationToken);
+
     // Per mentioned author in an own message: whether they've been alerted and whether they've read it.
     // Returns empty for messages that aren't the caller's own.
     [ComputeMethod(MinCacheDuration = 10)]
