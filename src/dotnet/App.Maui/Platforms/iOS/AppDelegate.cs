@@ -34,9 +34,7 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
             var dismissedTags = GetValue(userInfo, Constants.Notification.MessageDataKeys.DismissedTags);
             if (!dismissedIds.IsNullOrEmpty() || !dismissedTags.IsNullOrEmpty()) {
                 var tags = Split(dismissedTags);
-#if IS_DEV_MAUI
                 EndDismissedCalls(tags);
-#endif
                 RemoveDeliveredNotifications(Split(dismissedIds), tags);
                 completionHandler(UIBackgroundFetchResult.NewData);
                 return;
@@ -65,7 +63,6 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
 
     // Private methods
 
-#if IS_DEV_MAUI
     private static void EndDismissedCalls(IReadOnlyCollection<string> dismissedTags)
     {
         // An independent path to the reactive LiveSessionUI one: the server's cancel dismissal
@@ -76,7 +73,6 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
                 IosCalls.Instance.EndRingingCall(callId.ChatId, callId);
         }
     }
-#endif
 
     private static void RemoveDeliveredNotifications(
         IReadOnlyCollection<string> dismissedIds,
