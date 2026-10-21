@@ -19,8 +19,8 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
-    BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, screenshot, setIncompleteUI,
-    type BrowserConnection,
+    BASE_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, entryLidOf, newUserContext, screenshot, sendMessage,
+    setIncompleteUI, type BrowserConnection,
 } from './helpers';
 import {
     SPEECH_WAV, collapseVideoPanel, expandVideoPanel, hangUpIfAny, openCallChat, openCallTab,
@@ -31,11 +31,15 @@ const shot = (name: string) => screenshot('e2e-hand-system-entry', name);
 
 const HAND_LINES = /(raised|lowered) a hand/;
 
-/** The hand lines on screen, newest last - the chat drops older lines as it scrolls, so only the tail counts. */
-async function getHandLines(page: Page): Promise<string[]> {
-    const lines = await page.locator('.chat-view .system-entry .chat-message-markup')
-        .filter({ hasText: HAND_LINES }).allInnerTexts();
-    return lines.map(x => x.replace(/\s+/g, ' ').trim());
+/** The hand lines on screen posted after the entry with `afterLid`, newest last. */
+async function getHandLines(page: Page, afterLid: number): Promise<string[]> {
+    const lines = await page.locator('.chat-view .system-entry[data-chat-entry-id]')
+        .filter({ hasText: HAND_LINES })
+        .evaluateAll(els => els.map(el => ({
+            lid: Number(el.getAttribute('data-chat-entry-id')!.split(':').pop()),
+            text: el.querySelector('.chat-message-markup')?.textContent ?? '',
+        })));
+    return lines.filter(x => x.lid > afterLid).map(x => x.text.replace(/\s+/g, ' ').trim());
 }
 
 /** Bob's own hand: the React button in the expanded footer toggles it, lit while it's up. */
@@ -92,22 +96,28 @@ describe('hand system entry', () => {
         // arrange - Alice starts first, so she is the host
         await openCallChat(alice);
         await openCallChat(bob);
+        // The chat is shared across runs and keeps their hand lines, so only lines after this one count.
+        // Waiting for it on both pages also means both have rendered the chat's tail.
+        const baselineText = `hand-system-entry baseline ${Date.now()}`;
+        await sendMessage(alice, baselineText);
+        const baselineLid = await entryLidOf(alice, baselineText);
+        await entryLidOf(bob, baselineText, 30_000);
         await startSession(alice, bob);
         const bobName = (await alice.locator('.call-screen .remote-video-container .video-participant-label span')
             .first().innerText()).trim();
         expect(bobName.length).toBeGreaterThan(0);
         // The fake mic never stops talking, and a hand lowers itself once its owner says a few words
         await stopRecording(bob);
-        const linesBefore = (await getHandLines(alice)).length;
 
         // act - Bob raises his hand
         await toggleOwnHand(bob);
 
         // assert - both chats get the line, and it names Bob
         for (const page of [alice, bob])
-            await expect.poll(() => getHandLines(page), { timeout: 15_000 })
-                .toHaveLength(linesBefore + 1);
-        expect((await getHandLines(alice)).at(-1)).toBe(`${bobName} raised a hand.`);
+            await expect.poll(() => getHandLines(page, baselineLid), { timeout: 15_000 })
+                .toHaveLength(1);
+        const raisedLines = await getHandLines(alice, baselineLid);
+        expect(raisedLines).toEqual([`${bobName} raised a hand.`]);
         await alice.screenshot({ path: shot('1-raised-alice') });
         await bob.screenshot({ path: shot('2-raised-bob') });
 
@@ -119,22 +129,24 @@ describe('hand system entry', () => {
 
         // assert - the line still names Bob: it's his hand, whoever put it down
         for (const page of [alice, bob])
-            await expect.poll(() => getHandLines(page), { timeout: 15_000 })
-                .toHaveLength(linesBefore + 2);
-        expect((await getHandLines(bob)).at(-1)).toBe(`${bobName} lowered a hand.`);
+            await expect.poll(() => getHandLines(page, baselineLid), { timeout: 15_000 })
+                .toHaveLength(2);
+        const loweredLines = await getHandLines(bob, baselineLid);
+        expect(loweredLines.at(-1)).toBe(`${bobName} lowered a hand.`);
         await alice.screenshot({ path: shot('3-lowered-by-host-alice') });
         await bob.screenshot({ path: shot('4-lowered-by-host-bob') });
 
         // act - Bob raises it again and lowers it himself
         await toggleOwnHand(bob);
-        await expect.poll(() => getHandLines(bob), { timeout: 15_000 }).toHaveLength(linesBefore + 3);
+        await expect.poll(() => getHandLines(bob, baselineLid), { timeout: 15_000 }).toHaveLength(3);
         await toggleOwnHand(bob);
 
         // assert
         for (const page of [alice, bob])
-            await expect.poll(() => getHandLines(page), { timeout: 15_000 })
-                .toHaveLength(linesBefore + 4);
-        expect((await getHandLines(alice)).slice(-4)).toEqual([
+            await expect.poll(() => getHandLines(page, baselineLid), { timeout: 15_000 })
+                .toHaveLength(4);
+        const allLines = await getHandLines(alice, baselineLid);
+        expect(allLines).toEqual([
             `${bobName} raised a hand.`,
             `${bobName} lowered a hand.`,
             `${bobName} raised a hand.`,
@@ -148,7 +160,8 @@ describe('hand system entry', () => {
         const lastLine = alice.locator('.chat-view .system-entry').filter({ hasText: HAND_LINES }).last();
         await lastLine.scrollIntoViewIfNeeded();
         await alice.waitForTimeout(1_000);
-        expect((await getHandLines(alice)).slice(-4)).toHaveLength(4);
+        const linesAfterCall = await getHandLines(alice, baselineLid);
+        expect(linesAfterCall).toHaveLength(4);
         await alice.screenshot({ path: shot('6-after-the-call-alice') });
     }, 300_000);
 });
