@@ -198,8 +198,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             CanShowDiagnostics: isDiagnosticsEnabled,
             CanShowVoiceSettings: true,
             CanShowVideoSettings: isVideoAvailable,
-            HasReactButton: mode == VisualActivityPanelMode.Inline
-                || (mode == VisualActivityPanelMode.Expanded && isDesktopLayout));
+            HasReactButton: mode is VisualActivityPanelMode.Inline or VisualActivityPanelMode.Expanded);
     }
 
     [ComputeMethod]

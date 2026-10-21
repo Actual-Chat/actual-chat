@@ -157,8 +157,11 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     [ComputeMethod(ConsolidationDelay = 0)]
     public virtual async Task<bool> CanReact(ChatId chatId, CancellationToken cancellationToken)
     {
+        // Reacting goes with being in the conversation, not with streaming: a member who muted the mic
+        // (so IsPresent is false and the session groups them as Exited) is still a member and may react.
+        // GetOwnMember returns null when there's no session, so this also covers "the session exists".
         var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
-        return me is { IsPresent: true };
+        return me is not null;
     }
 
     [ComputeMethod(ConsolidationDelay = 0)]
