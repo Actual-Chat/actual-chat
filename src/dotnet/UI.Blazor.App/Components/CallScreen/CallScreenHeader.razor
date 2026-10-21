@@ -67,6 +67,12 @@
                     }
                 </div>
             </div>
+        } else if (isInline && m.HasVideo && !m.FocusedAuthorName.IsNullOrEmpty()) {
+            @* The chat's own header already shows the chat title, so inline the center names the
+               focused speaker instead (the on-tile caption is hidden in this mode) *@
+            <div class="c-center c-center-speaker">
+                <div class="c-chat-title">@m.FocusedAuthorName</div>
+            </div>
         }
 
         <div class="c-right">
@@ -186,6 +192,12 @@
         var pinnedAuthorId = await LayoutCalculator.GetPinnedAuthor(chatId, cancellationToken)
             .ConfigureAwait(false);
         var focusedAuthorId = layout.GetFocusedAuthorId(remoteStreams);
+        var focusedAuthorName = "";
+        if (focusedAuthorId is { } focusedId) {
+            var focusedAuthor = await Hub.Authors.Get(Hub.Session, chatId, focusedId, cancellationToken)
+                .ConfigureAwait(false);
+            focusedAuthorName = focusedAuthor?.Avatar.Name ?? "";
+        }
         var canReact = await LiveSessionUI.CanReact(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
         bool isFocusedHandRaised;
@@ -201,6 +213,7 @@
             TileCount = layout.TileCount,
             MemberCount = memberCount,
             FocusedAuthorId = focusedAuthorId,
+            FocusedAuthorName = focusedAuthorName,
             IsPinned = pinnedAuthorId is not null,
             IsFocusedHandRaised = isFocusedHandRaised,
             CanReact = canReact,
@@ -239,6 +252,7 @@
         public bool IsEqualLayout { get; init; }
         // Author shown in the big tile right now - what the pin button pins when toggled on
         public AuthorId? FocusedAuthorId { get; init; }
+        public string FocusedAuthorName { get; init; } = "";
         public bool IsPinned { get; init; }
         public bool IsFocusedHandRaised { get; init; }
         public bool CanReact { get; init; }

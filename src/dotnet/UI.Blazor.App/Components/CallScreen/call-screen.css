@@ -314,6 +314,16 @@ body.wide .call-screen.expanded > .c-container {
     @apply flex-x items-center gap-1;
     @apply font-normal leading-tight text-white whitespace-nowrap;
 }
+/* The focused speaker's name rides in the header only on mobile inline; on desktop (any mode) and in
+   mobile full screen it stays in the tile badge. So hide it by default and bring it back only there. */
+.call-screen .call-screen-header .c-center.c-center-speaker {
+    @apply hidden;
+}
+body.narrow .call-screen:not(.expanded):not(.collapsed) .call-screen-header .c-center.c-center-speaker {
+    @apply flex-y flex-1;
+    @apply min-w-0 min-h-10;
+    @apply px-2;
+}
 .call-screen .call-screen-header .btn-hand {
     @apply pointer-events-none;
 }
@@ -938,6 +948,12 @@ body.narrow .call-screen:not(.layout-equal) .video-stage .video-track-player.ite
 body.narrow .video-stage .video-track-player.pip-overlay .video-participant-label {
     @apply hidden;
 }
+/* Mobile inline names the focused speaker in the header (c-center-speaker), so its on-tile caption is
+   dropped there - avoids showing the name twice, and frees the bottom-left spot for a corner tile.
+   Desktop and full screen keep the badge. */
+body.narrow .call-screen:not(.expanded):not(.collapsed) .video-track-player.item-focused .video-tile-caption {
+    @apply hidden;
+}
 /* Raised hand: right of the label, except on a small tile (top-left corner) and on the speaker in
    speaker view (a button-sized indicator in the header instead, see .btn-hand) */
 .call-screen .video-track-player .video-hand-badge {
@@ -1150,6 +1166,12 @@ body[data-has-call-screen-column] .page-with-header-and-footer > .side-nav.side-
 }
 .call-screen.expanded .video-stage.video-stage-layout__sidebar {
     @apply gap-2 p-4 pb-20;
+}
+/* Inline on mobile: small tiles sit along the bottom edge as a row (bottom-left to bottom-right)
+   instead of a right column, so they never slide up under the header buttons. */
+body.narrow .call-screen:not(.expanded):not(.collapsed) .video-stage.video-stage-layout__sidebar {
+    @apply flex-row;
+    @apply items-end justify-between;
 }
 
 /* ── Equal layout: split the content box into N equal regions instead of
