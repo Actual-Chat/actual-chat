@@ -85,9 +85,9 @@ describe('raise hand and reactions in a video call', () => {
         // The fake mic never stops talking, and a hand lowers itself once its owner says a few words
         await stopRecording(bob);
 
-        // act - Bob expands the panel (the React button lives in its footer) and raises his hand
+        // act - Bob expands the panel (the React button lives in its header) and raises his hand
         await expandVideoPanel(bob);
-        const reactButton = bob.locator('.call-screen-footer .btn-react').first();
+        const reactButton = bob.locator('.call-screen-header .btn-react').first();
         await reactButton.waitFor({ state: 'visible', timeout: 20_000 });
         await reactButton.click();
         const bobMenu = bob.locator('.call-reactions-menu').first();
@@ -169,7 +169,7 @@ describe('raise hand and reactions in a video call', () => {
         await stopRecording(bob);
         const aliceBobTile = alice.locator('.call-screen .remote-video-container').first();
         const aliceBadge = aliceBobTile.locator('.video-tile-caption .video-hand-badge');
-        const reactButton = bob.locator('.call-screen-footer .btn-react').first();
+        const reactButton = bob.locator('.call-screen-header .btn-react').first();
         await expandVideoPanel(bob);
         await reactButton.waitFor({ state: 'visible', timeout: 20_000 });
         await reactButton.click();

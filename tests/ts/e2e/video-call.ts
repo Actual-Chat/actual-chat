@@ -133,38 +133,18 @@ export async function countVideoElements(page: Page): Promise<{ marked: number; 
 }
 
 /**
- * Opens the reactions on the expanded call screen: from the footer's React button, or on a narrow screen,
- * which has no room for it, from the ⋮ menu. Null when the call offers no reactions (yet), menu closed again.
+ * Opens the reactions on the expanded call screen from the React button in the header's second row - at any
+ * width, the ⋮ menu has none there. Null when the call offers no reactions (yet).
  */
 export async function openReactionsMenu(page: Page, timeout = 10_000): Promise<Locator | null> {
-    if ((page.viewportSize()?.width ?? 0) >= 768) {
-        const reactButton = page.locator('.call-screen-footer .btn-react').first();
-        if (!await reactButton.waitFor({ state: 'visible', timeout }).then(() => true, () => false))
-            return null;
+    const reactButton = page.locator('.call-screen-header .btn-react').first();
+    if (!await reactButton.waitFor({ state: 'visible', timeout }).then(() => true, () => false))
+        return null;
 
-        await reactButton.click();
-        const menu = page.locator('.call-reactions-menu').first();
-        await menu.waitFor({ state: 'visible', timeout: 10_000 });
-        return menu;
-    }
-
-    // The ⋮ menu is laid out when it opens, so a call that can react only later needs it reopened
-    const videoMenu = page.locator('.video-panel-menu').first();
-    const deadline = Date.now() + timeout;
-    for (;;) {
-        await page.locator('.call-screen-header .btn-video-menu').first().click();
-        await videoMenu.waitFor({ state: 'visible', timeout: 10_000 });
-        const menu = videoMenu.locator('.call-reactions-menu').first();
-        if (await menu.isVisible())
-            return menu;
-
-        await page.keyboard.press('Escape');
-        await videoMenu.waitFor({ state: 'hidden', timeout: 10_000 });
-        if (Date.now() >= deadline)
-            return null;
-
-        await page.waitForTimeout(1_000);
-    }
+    await reactButton.click();
+    const menu = page.locator('.call-reactions-menu').first();
+    await menu.waitFor({ state: 'visible', timeout: 10_000 });
+    return menu;
 }
 
 export async function collapseVideoPanel(page: Page) {
