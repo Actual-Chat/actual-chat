@@ -221,9 +221,25 @@ public class ComputedKvasTest(ITestOutputHelper @out) : TestBase(@out)
     private static void Trace<T>(SyncedState<T> state, string name, ConcurrentQueue<string> journal)
         where T : class?
     {
-        state.ReadState.Invalidated += (_, _) => journal.Enqueue($"{name}.read invalidated");
-        state.ReadState.Updated += (_, _) => journal.Enqueue($"{name}.read = {state.ReadState.ValueOrDefault}");
+        var readState = state.ReadState;
+        readState.UpdateDelayer = new JournalingUpdateDelayer(readState.UpdateDelayer, name, journal);
+        readState.Invalidated += (_, _) => journal.Enqueue($"{name}.read invalidated");
+        readState.Updating += (_, _) => journal.Enqueue($"{name}.read updating");
+        readState.Updated += (_, _) => journal.Enqueue($"{name}.read = {readState.ValueOrDefault}");
         state.Updated += (_, _) => journal.Enqueue($"{name} = {state.ValueOrDefault}");
+    }
+
+    // Nested types
+
+    private sealed class JournalingUpdateDelayer(IUpdateDelayer inner, string name, ConcurrentQueue<string> journal)
+        : IUpdateDelayer
+    {
+        public async Task Delay(int retryCount, CancellationToken cancellationToken = default)
+        {
+            journal.Enqueue($"{name}.read delay, retry {retryCount}");
+            await inner.Delay(retryCount, cancellationToken).ConfigureAwait(false);
+            journal.Enqueue($"{name}.read delayed");
+        }
     }
 }
 
