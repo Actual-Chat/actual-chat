@@ -10,6 +10,9 @@ public class ChatTypingActivitiesTest(AppHostFixture fixture, ITestOutputHelper 
     private IChatTypingActivitiesBackend Backend
         => AppHost.Services.GetRequiredService<IChatTypingActivitiesBackend>();
 
+    private IChatTypingActivities ChatTypingActivities
+        => AppHost.Services.GetRequiredService<IChatTypingActivities>();
+
     [Fact]
     public async Task ListsTypingAuthor()
     {
@@ -128,6 +131,22 @@ public class ChatTypingActivitiesTest(AppHostFixture fixture, ITestOutputHelper 
         await StartTyping(chatId, authorId, TimeSpan.FromHours(1));
 
         await WhenNobodyIsTyping(chatId, TimeSpan.FromSeconds(20));
+    }
+
+    [Fact]
+    public async Task ListForInvisibleChatShouldBeEmpty()
+    {
+        // arrange
+        var chatId = await CreateTestChat("InvisibleChat");
+        await StartTyping(chatId, AuthorId.New(chatId, 1));
+        var outsider = Session.New();
+        _ = await AppHost.SignIn(outsider, new AccountFull("InvisibleChatOutsider"));
+
+        // act
+        var authorIds = await ChatTypingActivities.ListTypingAuthorIds(outsider, chatId, CancellationToken.None);
+
+        // assert
+        authorIds.Should().BeEmpty("a chat the user can't see must not throw, and must not reveal its typists");
     }
 
     // Private methods
