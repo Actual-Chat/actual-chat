@@ -197,14 +197,6 @@ public class RpcSwitchingClientTest
 
     // Nested types
 
-    private sealed class ManualClock : MomentClock
-    {
-        // Starts well past the epoch: HandleDisconnected reads default(Moment) as
-        // "never connected", so a clock at zero would make every connection look failed.
-        public Moment Time { get; set; } = new(new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
-        public override Moment Now => Time;
-    }
-
     private sealed class StubRpcClient(IServiceProvider services) : RpcClient(services)
     {
         public override Task<RpcConnection> ConnectRemote(

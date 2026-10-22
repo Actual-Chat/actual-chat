@@ -63,7 +63,7 @@ public class CancellingDebouncer<T> : WorkerBase
             whenReadyToRead = reader.WaitToReadAsync(cancellationToken).AsTask();
             var delay = Interval - (Clock.Now - item.QueuedAt);
             if (delay > TimeSpan.Zero) {
-                var delayTask = Task.Delay(delay, cancellationToken);
+                var delayTask = Clock.Delay(delay, cancellationToken);
                 await Task.WhenAny(whenReadyToRead, delayTask).ConfigureAwait(false);
             }
             if (whenReadyToRead.IsCompleted)
