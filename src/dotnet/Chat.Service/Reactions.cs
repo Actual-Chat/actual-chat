@@ -46,6 +46,7 @@ public class Reactions(IServiceProvider services) : IReactions
             return;
 
         reaction = reaction with { AuthorId = author.Id };
-        await Commander.Call(new ReactionsBackend_React(reaction), true, cancellationToken).ConfigureAwait(false);
+        var reactCmd = new ReactionsBackend_React(reaction, command.MustRemove);
+        await Commander.Call(reactCmd, true, cancellationToken).ConfigureAwait(false);
     }
 }

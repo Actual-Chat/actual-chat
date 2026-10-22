@@ -214,10 +214,11 @@ public class ChatBackendCommandSerializationTest(ITestOutputHelper @out) : TestB
             EntryId = entryId,
             Emoji = Emojis.ThumbsUp,
         };
-        var cmd = new ReactionsBackend_React(reaction);
+        var cmd = new ReactionsBackend_React(reaction, MustRemove: false);
         cmd.AssertPassesThroughSerializers(
             (deserialized, original) => {
                 deserialized.Reaction.Id.Should().Be(original.Reaction.Id);
+                deserialized.MustRemove.Should().Be(original.MustRemove);
             }, Out);
     }
 
