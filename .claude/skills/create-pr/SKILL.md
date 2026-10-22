@@ -49,13 +49,41 @@ to `/prepare-merge`.
 |---|---|---|
 | On a feature branch, not `dev`/`master`/`release/*` | `git branch --show-current` | Stop. Ask what to branch. |
 | Working tree clean | `git status --short` | Commit or stash first — never PR a dirty tree. |
-| Branch has commits over the base | `git log --oneline origin/dev..HEAD` | Nothing to PR. Stop. |
+| Base is known | `BASE=$(git config --get "branch.$(git branch --show-current).base" \|\| echo dev)` | See *Base branch* below. |
+| Branch has commits over the base | `git log --oneline origin/$BASE..HEAD` | Nothing to PR. Stop. |
 | No PR already open for it | `gh pr list --head "$(git branch --show-current)" --json url,state,isDraft` | One exists → do **not** open a second, and do **not** re-announce it. The exception: a draft the user wants ready now → `gh pr ready <n>`, then step 4 (it was never announced). Use `pr list`, not `pr view` — `pr view` errors on a branch with no upstream. |
 | Build/tests actually run | — | You may still PR, but the Testing section must say plainly what was not run. |
 | Branch is linked to its issue | `git config --get "branch.$(git branch --show-current).issue"` | Empty → ask once, via `AskUserQuestion`: run `/track-issue` now, or open the PR without an issue. Never invent a number from the branch name. |
 
 Branch names follow the commit prefixes: `feat/…`, `fix/…`, `refactor/…` — never
 `feature/…`.
+
+### Base branch
+
+`branch.<name>.base` is set by `/start-task --release` (and `/track-issue` when it
+branches off a `release/*`); without it the base is `dev`. A release fix cut by hand
+has no setting, so check before trusting the default: take the newest
+`origin/release/v*` and compare `git rev-list --count origin/<release>..HEAD` with
+`git rev-list --count origin/dev..HEAD`. Fewer commits over the release branch means
+the branch was cut from it — ask once via `AskUserQuestion` (that release branch or
+`dev`), then `git config "branch.<name>.base" <answer>` unless the answer is `dev`.
+
+**A release base needs `Closes #N` in a commit message, not just the PR body.**
+GitHub acts on closing keywords in a PR only when it merges into the default branch
+(`dev`), so a PR into `release/*` closes nothing. What does close the issue is a
+*commit* whose message says `Closes #N` reaching `dev` — which happens when the
+release branch is merged forward. Before pushing, check:
+
+```bash
+git log --format=%B "origin/$BASE..HEAD" | grep -iE "^(close[sd]?|fix(e[sd])?|resolve[sd]?) #<N>([^0-9]|$)"
+```
+
+No match → add a `Closes #<N>` line above the trailers of the commit that carries
+the fix (normally the last one): `git commit --amend` with the edited message, via
+`-F tmp/msg.txt`, never an editor. If the branch is already on origin, amending means
+a force-push, which this skill does not do — ask via `AskUserQuestion`:
+amend + `git push --force-with-lease`, or leave it and close the issue by hand after
+the merge (say so in the report).
 
 ## 1. Offer `/prepare-merge` first
 
@@ -89,7 +117,7 @@ Write the body to a file under the project's `tmp/`, never to the repo root, and
 pass a multi-KB body inline:
 
 ```bash
-gh pr create --base dev --title "type(scope): summary" --body-file tmp/pr-body.md --assignee @me
+gh pr create --base "$BASE" --title "type(scope): summary" --body-file tmp/pr-body.md --assignee @me
 ```
 
 - **Draft only when the user asked for one** — add `--draft`. It decides step 4, so
@@ -99,8 +127,9 @@ gh pr create --base dev --title "type(scope): summary" --body-file tmp/pr-body.m
   GraphQL deprecation error, in which case fall back to the REST call
   `gh api -X POST repos/<owner>/<repo>/issues/<n>/assignees -f 'assignees[]=<login>'`.
 
-- **Base is the repo's default branch** (`dev` on actual-chat) — confirm with
-  `gh repo view --json defaultBranchRef` rather than assuming.
+- **Base is `$BASE`** from the preconditions: the repo's default branch (`dev` on
+  actual-chat — confirm with `gh repo view --json defaultBranchRef` rather than
+  assuming) unless the branch was cut from a release branch.
 - **Title describes the whole branch**, as `type(scope): summary`. One commit (or a
   branch `/prepare-merge` just collapsed to one) → use its subject verbatim. Several
   commits → write the line the squashed commit would carry; do not just lift the
@@ -110,7 +139,10 @@ gh pr create --base dev --title "type(scope): summary" --body-file tmp/pr-body.m
   break), `## Testing` (what ran, green or not, and what is still owed — device passes,
   manual verification). Then a line `Closes #<N>` with the issue from the preconditions
   check — that is what moves the issue to Done on merge — and your harness's
-  attribution footer, if it gives you one. No linked issue → no `Closes` line.
+  attribution footer, if it gives you one. No linked issue → no `Closes` line. On a
+  release base keep the line too, but it is the commit message that closes the issue,
+  when the release branch is merged into `dev` (see *Base branch*); say so in the
+  report.
 - **Issue still in ToDo?** The PR is proof the work is in progress. Check and move it:
 
   ```bash
@@ -209,7 +241,8 @@ their own confirmation. Never fold one into this step.
 | `gh pr create --fill` | Write a real Summary/Fix/Testing body |
 | PR left unassigned | `--assignee @me`, then verify with `gh pr view --json assignees` |
 | Body file in the repo root | Put it in `tmp/` |
-| Base branch assumed | `gh repo view --json defaultBranchRef` |
+| Base branch assumed | `branch.<name>.base`, else `dev` after the release-branch check |
+| Release PR with `Closes #N` only in its body | The issue stays open; the commit message must carry it |
 | `Closes #N` guessed from the branch name | Only `branch.<name>.issue` counts; otherwise ask about `/track-issue` |
 | Second PR opened for a branch that already has one | `gh pr list --head` first |
 | "All tests pass" without running them | State what ran and what is owed |

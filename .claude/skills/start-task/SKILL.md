@@ -34,6 +34,9 @@ working tree, never re-assigns an issue away from someone else.
 - `--assignee <login>` or "assign to <login>" / "for <login>" naming a GitHub
   login — the assignee of a **newly created** issue. Without it the issue is
   assigned to the current user. It does not change an existing issue.
+- `--release`, or "for the release" / "into the release" — branch from the
+  newest `release/v*` instead of `dev`; the PR will target that release branch.
+  `--base <branch>` names the base explicitly.
 
 ## Steps
 
@@ -43,6 +46,12 @@ working tree, never re-assigns an issue away from someone else.
 gh auth status
 ME=$(gh api user --jq .login)
 git fetch origin --quiet
+BASE=dev
+# --release only:
+BASE=$(git branch -r --list 'origin/release/v*' --sort=-version:refname \
+  | head -1 | sed 's#^ *origin/##')
+# --base <branch> only: BASE=<branch>
+git rev-parse --verify --quiet "origin/$BASE"   # must exist, else stop
 ```
 
 Run from the main checkout (`~/actual/ActualChat`), whatever branch it is on.
@@ -146,13 +155,15 @@ the user most likely wants to run. Do not create a second branch for the same is
 
 ### 6. Create the branch, linked to the issue
 
-Primary path — GitHub creates the branch on `origin` at the head of `dev` and
+Primary path — GitHub creates the branch on `origin` at the head of `$BASE` and
 records it under the issue's *Development* panel in one call. A PR opened from
 a branch linked this way is attached to the issue and closes it on merge even
-without a `Closes #N` line:
+without a `Closes #N` line — but only a PR into `dev`. A release fix closes
+its issue when its commit reaches `dev`, which is why `/prepare-merge` and
+`/create-pr` put `Closes #N` into the commit message on a release base:
 
 ```bash
-OID=$(git rev-parse origin/dev)
+OID=$(git rev-parse "origin/$BASE")
 gh api graphql -F issueId=<issue node id> -F repositoryId=<repository id> \
   -F oid="$OID" -F name="$NAME" -f query='
   mutation($issueId:ID!,$repositoryId:ID!,$oid:GitObjectID!,$name:String!){
@@ -166,14 +177,16 @@ Fallback — if the mutation fails (permissions, name rejected), create the
 branch locally only and say the GitHub-side link was not made:
 
 ```bash
-git branch "$NAME" origin/dev
+git branch "$NAME" "origin/$BASE"
 ```
 
 Either way, persist the local link that `/create-pr` reads to add
-`Closes #N` and `/prepare-merge` uses to find the issue:
+`Closes #N` and `/prepare-merge` uses to find the issue, and on a release
+base the base that both of them rebase onto and target:
 
 ```bash
 git config "branch.$NAME.issue" <N>
+[ "$BASE" = dev ] || git config "branch.$NAME.base" "$BASE"
 ```
 
 `git branch`, never `git checkout -b`: the branch must not be checked out
@@ -194,6 +207,7 @@ branch.
 Issue    #4321 Login page redirects in a loop (Bug) — https://github.com/Actual-Chat/actual-chat/issues/4321
 Assignee frolyo (created)                     | frolyo (existing) | frolyo (claimed, was unassigned)
 Branch   bugfix/4321-login-page-redirects ← origin/dev, linked on GitHub, branch.<name>.issue = 4321
+                                        | ← origin/release/v2.22, …, branch.<name>.base = release/v2.22
 Board    Team project · In Progress
 Next     ai bwt bugfix/4321-login-page-redirects       # Docker (sandboxed)
          ai os bwt bugfix/4321-login-page-redirects    # host OS
@@ -220,5 +234,6 @@ branch that already exists).
 | Re-assigning an issue away from its assignee | Never; stop |
 | Assigning a new issue to someone else on a hunch | Only an explicit `--assignee`/"assign to" wins; default is the current user |
 | `Closes #N` left to memory | `branch.<name>.issue` is set every time |
+| Cutting a release fix by hand with `git branch … origin/release/…` | `--release`: the branch gets the GitHub link and `branch.<name>.base` |
 | Trying to run `ai fwt` / `ai os fwt` from here | Print both; the user pastes one |
 | Printing only the `os` variant | Always both lines, Docker first |
