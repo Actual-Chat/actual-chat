@@ -36,6 +36,10 @@ $script:MaxErrorLength = 500
 # GitHub rejects a comment over 65536 characters, and a collapsed run fails thousands of tests.
 $script:JournalTestLimit = 30
 
+# How far past vstest's "Test host process crashed" line its "Results File" and blame lines are
+# looked for. vstest prints the abort again on stderr without them, and that repeat is no new loss.
+$script:HostLossLookahead = 4
+
 # Waits before each re-download of a log that came back without its test output.
 # Their sum has to fit the workflow's 10-minute limit.
 $script:LogRetryDelaysSeconds = @(60, 120)
@@ -378,12 +382,78 @@ function Get-CiAssemblyTotals {
     })
 }
 
+function Get-CiHostLosses {
+    <#
+    .SYNOPSIS
+        Finds the test hosts a job lost: crashed, or killed by the blame collector as hung.
+    .DESCRIPTION
+        vstest reports both as "Test host process crashed", and a lost host fails
+        no test, so the job would otherwise carry no test names at all. A hang is
+        told apart by the blame collector's inactivity message next to the abort;
+        its test is the last one xUnit reported as long-running in that assembly.
+    #>
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$LogText)
+
+    $lines = @($LogText -split "`r?`n" | ForEach-Object { ConvertTo-CiPlainText $_ })
+    $longRunning = @{}
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        if ($line -match "(?<source>[\w.]+): \[Long Running Test\] '(?<test>[^']+)'") {
+            $longRunning[$Matches.source] = $Matches.test
+            continue
+        }
+        if ($line -notmatch 'The active test run was aborted\. Reason: Test host process crashed') {
+            continue
+        }
+
+        $assembly = ''
+        $isHang = $false
+        for ($j = $i + 1; $j -lt [Math]::Min($i + 1 + $script:HostLossLookahead, $lines.Count); $j++) {
+            if ($lines[$j] -match 'inactivity time of .+ has elapsed') {
+                $isHang = $true
+            }
+            elseif ($lines[$j] -match 'Results File: .*/tests/(?<assembly>[^/]+)/TestResults/') {
+                $assembly = $Matches.assembly
+                break
+            }
+        }
+        if (-not $assembly) {
+            continue
+        }
+
+        # xUnit names the source by its assembly, with the ActualChat. prefix the folder lacks.
+        $source = @($longRunning.Keys | Where-Object { $_ -eq $assembly -or $_.EndsWith(".$assembly") })[0]
+        [PSCustomObject]@{
+            Assembly = $assembly
+            Kind = if ($isHang) { 'Hang' } else { 'Crash' }
+            Test = if ($isHang -and $source) { $longRunning[$source] } else { $null }
+        }
+    }
+}
+
+function Get-CiKernelFaults {
+    <#
+    .SYNOPSIS
+        The kernel's lines on a killed or faulted process, from the job's crash diagnostics step.
+    .DESCRIPTION
+        Only `dmesg -T` output counts, which starts with a bracketed date: the same
+        words also appear in the step's own command line.
+    #>
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$LogText)
+
+    return @($LogText -split "`r?`n" | ForEach-Object { ConvertTo-CiPlainText $_ } | ForEach-Object {
+        if ($_ -match '^\[\w{3} \w{3} +\d+ [\d:]+ \d{4}\] (?<message>.*(traps:|segfault|killed process|out of memory|oom-kill).*)$') {
+            Limit-CiText $Matches.message.Trim() $script:MaxErrorLength
+        }
+    })
+}
+
 function Get-CiRunVerdict {
     <#
     .SYNOPSIS
         Reduces the per-job findings of one run to a single verdict.
     .PARAMETER Jobs
-        Objects with .Category and .Tests, as produced by Get-CiRunRecord.
+        Objects with .Category, .Tests and .HostLosses, as produced by Get-CiRunRecord.
     #>
     param(
         [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Jobs,
@@ -408,6 +478,15 @@ function Get-CiRunVerdict {
         return $categories[0]
     }
 
+    # A lost host takes every test it had not run yet with it, so the tests that
+    # did fail beside it say less than the loss itself.
+    $losses = @($real | ForEach-Object { $_.HostLosses } | Where-Object { $_ })
+    if (@($losses | Where-Object { $_.Kind -eq 'Crash' }).Count -gt 0) {
+        return 'HostCrash'
+    }
+    if ($losses.Count -gt 0) {
+        return 'HostHang'
+    }
     if (@($real | Where-Object { @($_.Tests).Count -ge $script:CollapseThreshold }).Count -gt 0) {
         return 'Collapse'
     }
@@ -517,6 +596,8 @@ function New-CiRunRecord {
         # returned straight from a call would not.
         $tests = @()
         $totals = @()
+        $hostLosses = @()
+        $kernelFaults = @()
         if ($category -eq 'Test') {
             $jobLog = $sections[$job.name]
             if ($null -eq $jobLog) {
@@ -525,6 +606,8 @@ function New-CiRunRecord {
             }
             $tests = @(Get-CiFailedTests $jobLog $Flakes)
             $totals = @(Get-CiAssemblyTotals $jobLog)
+            $hostLosses = @(Get-CiHostLosses $jobLog)
+            $kernelFaults = @(Get-CiKernelFaults $jobLog)
         }
 
         [PSCustomObject]@{
@@ -533,6 +616,8 @@ function New-CiRunRecord {
             Category = $category
             Tests = $tests
             Totals = $totals
+            HostLosses = $hostLosses
+            KernelFaults = $kernelFaults
             Url = $job.html_url
         }
     })
@@ -570,14 +655,15 @@ function Get-CiRunRecord {
 
     # `workflow_run: completed` arrives while GitHub is often still archiving
     # the logs. The job that finished last may 404, or worse, download fine
-    # without its test output - so a test job with neither failed tests nor
-    # totals is read as a log not ready yet, and fetched again. A log that
-    # never completes degrades to Unparsed, which a human then reads.
+    # without its test output - so a test job with no failed tests, no totals
+    # and no lost host is read as a log not ready yet, and fetched again. A log
+    # that never completes degrades to Unparsed, which a human then reads.
     $flakes = @(Get-CiKnownFlakes)
     $record = New-CiRunRecord $run $failed (Get-CiFailedLog $RunId) $flakes
     foreach ($delay in $LogRetryDelaysSeconds) {
         $unread = @($record.Jobs | Where-Object {
-            $_.Category -eq 'Test' -and @($_.Tests).Count -eq 0 -and @($_.Totals).Count -eq 0
+            $_.Category -eq 'Test' -and @($_.Tests).Count -eq 0 -and @($_.Totals).Count -eq 0 -and
+                @($_.HostLosses).Count -eq 0
         })
         if ($unread.Count -eq 0) {
             break
@@ -688,6 +774,18 @@ function Format-CiJournalNote {
     $lines.Add('')
     foreach ($job in $Record.Jobs) {
         $lines.Add("- **$($job.Name)** — $($job.Category), failed at ``$($job.FailedStep)``")
+        foreach ($loss in @($job.HostLosses)) {
+            if ($loss.Kind -eq 'Crash') {
+                $lines.Add("  - test host of ``$($loss.Assembly)`` **crashed**")
+            }
+            else {
+                $hungTest = if ($loss.Test) { ", last long-running test ``$($loss.Test)``" } else { '' }
+                $lines.Add("  - test host of ``$($loss.Assembly)`` **hung** and was killed by the blame collector$hungTest")
+            }
+        }
+        foreach ($fault in @($job.KernelFaults)) {
+            $lines.Add("  - kernel: ``$fault``")
+        }
         foreach ($test in @($job.Tests | Select-Object -First $script:JournalTestLimit)) {
             $flag = if ($test.KnownFlake) {
                 "known flake #$($test.FlakeIssue)"
@@ -763,7 +861,8 @@ function Invoke-CiWatchdog {
     # A re-run that could not be started leaves red nobody was told about, so
     # it is worth a note even though its verdict on its own is not.
     $notable = $record.Branch -eq 'dev' -and $record.Verdict -in @(
-        'NewFailure', 'RepeatedFlake', 'Collapse', 'Build', 'Deploy', 'Mixed', 'Unparsed', 'Unknown')
+        'NewFailure', 'RepeatedFlake', 'HostCrash', 'HostHang', 'Collapse', 'Build', 'Deploy', 'Mixed', 'Unparsed',
+        'Unknown')
     if ((-not $DryRun) -and ($notable -or $record.Rerun -or $rerunFailed)) {
         $journal = Get-CiJournalIssue
         if ($journal -eq 0) {
