@@ -199,6 +199,12 @@ turned down. A decision that changes one of these adds or replaces its entry in 
 
 ### Around the watchdog
 
+- **2026-10-22 — `[FlakyFact]` and `[FlakyTheory]` are gone, and so is `FlakyTest.XUnit`.** Under
+  Xunit.DependencyInjection they never retried: it runs a test case by its base type,
+  `XunitTestCase`, and never calls the retrying `FlakyTestCase.RunAsync`. A runner wrapper that makes
+  them retry was written and kept off `dev`: retries would hide flakes from the watchdog, which sees
+  red runs only, and the registry already says which tests are flaky. Rejected: keeping the
+  attributes as markers, since merging the wrapper later would silently turn all 16 into retries.
 - **2026-10-22 — Test and flake fixes are not cherry-picked to release branches:** a release
   branch is rebuilt only for hotfixes and not re-run after, so a flake there costs at most one
   extra re-run. Product fixes are decided case by case.

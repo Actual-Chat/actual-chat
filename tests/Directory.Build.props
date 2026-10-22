@@ -56,7 +56,6 @@
     <PackageReference Include="ActualLab.Fusion" />
     <PackageReference Include="ActualLab.Testing" />
     <PackageReference Include="AwesomeAssertions" />
-    <PackageReference Include="FlakyTest.XUnit" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Moq" />
     <PackageReference Include="Moq.Analyzers" PrivateAssets="all" />
@@ -80,7 +79,6 @@
     <Using Include="ActualLab.Testing" />
     <Using Include="ActualLab.Fusion.Testing" />
     <Using Include="AwesomeAssertions" />
-    <Using Include="FlakyTest.XUnit.Attributes" />
     <Using Include="Moq" />
     <Using Include="Xunit" />
     <Using Include="Xunit.Abstractions" />

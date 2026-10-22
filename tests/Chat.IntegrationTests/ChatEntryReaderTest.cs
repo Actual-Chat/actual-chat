@@ -8,7 +8,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
 {
     private ChatId TestChatId { get; } = ChatId.Parse("the-actual-one");
 
-    [FlakyFact("Flaky")]
+    [Fact]
     public async Task BasicTest()
     {
         var appHost = AppHost;
@@ -50,7 +50,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         entry!.Content.Should().Be("it was a teenage wedding and the all folks wished them well");
     }
 
-    [FlakyFact("Flaky")]
+    [Fact]
     public async Task FindByMinBeginsAtTest()
     {
         var appHost = AppHost;
@@ -93,7 +93,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         }
     }
 
-    [FlakyFact("Flaky")]
+    [Fact]
     public async Task ReadTilesTest()
     {
         var appHost = AppHost;
@@ -167,7 +167,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
                 "back in black i hit the sack");
     }
 
-    [FlakyTheory("Flaky")]
+    [Theory]
     [InlineData(0, "it was a teenage wedding and the all folks wished them well")]
     [InlineData(1, "rape me rape me my friend")]
     [InlineData(2, "back in black i hit the sack")]
@@ -213,7 +213,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         entry?.Content.Should().Be(expected);
     }
 
-    [FlakyFact("Flaky")]
+    [Fact]
     public async Task ObserveTest1()
     {
         var appHost = AppHost;
@@ -262,7 +262,7 @@ public class ChatEntryReaderTest(ChatCollection.AppHostFixture fixture, ITestOut
         }
     }
 
-    [FlakyFact("Flaky")]
+    [Fact]
     public async Task ObserveTest2()
     {
         var appHost = AppHost;
