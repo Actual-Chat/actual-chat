@@ -989,9 +989,10 @@ export class InfiniteList extends VirtualList {
     // against the live position the fold is still at the chain's old end.
     private get pinnedScrollOffset(): number {
         const edge = this.pinnedEdge;
-        if (edge == null)
-            return this.scrollOffset;
+        return edge == null ? this.scrollOffset : this.getEdgeScrollOffset(edge);
+    }
 
+    private getEdgeScrollOffset(edge: VirtualListEdge): number {
         return edge === VirtualListEdge.End
             ? this.chainEnd + this.endAnchorSize - this.ref.clientHeight
             : this.chainStart;
@@ -1050,6 +1051,13 @@ export class InfiniteList extends VirtualList {
             this.isInitiallyPlaced = true;
             this.setPinnedEdge(this.defaultEdge);
             this.repinEdge('initial');
+            return;
+        }
+
+        // A list still loading shows nothing but the skeletons in its spacers, and they sit around the
+        // chain - half the scroll space away from the scroller's own start, where it stays until placed.
+        if (!this.isInitiallyPlaced && this.items.length === 0) {
+            this.setScrollOffset(this.getEdgeScrollOffset(this.defaultEdge));
             return;
         }
 

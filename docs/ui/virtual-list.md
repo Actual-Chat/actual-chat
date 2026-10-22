@@ -1722,7 +1722,10 @@ following it.
 While the list has no items, the markup sets `data-is-empty` and CSS keeps the two spacers (and the
 skeletons in them) `visibility: visible` inside the hidden wrapper, so a chat that is still loading
 shows skeletons instead of a blank area. Rendering the first items clears the attribute and the
-wrapper's own rule takes over again.
+wrapper's own rule takes over again. Visible is not enough on its own: the spacers sit around the
+chain, half the scroll space away from where the scroller starts, so every render of a list not yet
+placed and still empty also scrolls it to where its `DefaultEdge` would put it — the chain start for
+`Start`, the end anchor's bottom for `End`.
 
 ### 3.12 Rules that came from painful debugging
 
