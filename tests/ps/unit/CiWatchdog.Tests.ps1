@@ -61,6 +61,36 @@ Describe "CiWatchdog.ps1" {
 
         # Stands in for what Get-CiKnownFlakes reads off the open ci-flaky issues.
         $script:knownFlakes = @(New-Flake '*.FailingThrottledUpdateFlowTest.*')
+
+        # Lines of Slow tests run 39679039694: a test host that died of a fault inside the GC.
+        $script:hostCrashLog = New-JobLog @(
+            'Passed!  - Failed:     0, Passed:     1, Skipped:     0, Total:     1, Duration: 36 s - ActualChat.Chat.IntegrationTests.dll (net11.0)'
+            'The active test run was aborted. Reason: Test host process crashed : Process path: /usr/share/dotnet/dotnet'
+            'Results File: /home/runner/work/actual-chat/actual-chat/tests/Core.Server.IntegrationTests/TestResults/Results.trx'
+            ''
+            'Test Run Aborted.'
+            'Passed!  - Failed:     0, Passed:    47, Skipped:     1, Total:    48, Duration: 1 m 33 s - ActualChat.Core.Server.IntegrationTests.dll (net11.0)'
+            'Standard error:'
+            'The active test run was aborted. Reason: Test host process crashed : Process path: /usr/share/dotnet/dotnet'
+            'Test Run Aborted.'
+            "`e[36;1msudo dmesg -T | grep -iE 'killed process|out of memory|oom-kill|segfault|traps:' || echo `"(none)`"`e[0m"
+            '--- Kernel: OOM kills and segfaults'
+            '[Wed Oct 21 21:48:56 2026] traps: .NET BGC[28066] general protection fault ip:7f149ade4d32 sp:7f0b44faf830 error:0 in libcoreclr.so[1e3d32,7f149ad40000+3a7000]'
+            '--- Memory'
+        )
+
+        # Lines of Integration tests run 39393703693: the blame collector killed a hung host,
+        # which vstest reports as a crash too.
+        $script:hungTest = 'ActualChat.Chat.UI.Blazor.IntegrationTests.LiveConversationDisplayTest.NavigatingToOwnNewEntryShouldKeepACollapsedLiveBlockCollapsed(keepsCollapsed: True)'
+        $script:hostHangLog = New-JobLog @(
+            "[xUnit.net 00:06:00.53] ActualChat.Chat.UI.Blazor.IntegrationTests: [Long Running Test] '$script:hungTest', Elapsed: 00:04:59"
+            'The active test run was aborted. Reason: Test host process crashed : Process path: /usr/share/dotnet/dotnet'
+            "Data collector 'Blame' message: The specified inactivity time of 5 minutes has elapsed. Collecting hang dumps from testhost and its child processes."
+            'Results File: /home/runner/work/actual-chat/actual-chat/tests/Chat.UI.Blazor.IntegrationTests/TestResults/Results.trx'
+            ''
+            'Passed!  - Failed:     0, Passed:    77, Skipped:     1, Total:    78, Duration: 1 m 10 s - ActualChat.Chat.UI.Blazor.IntegrationTests.dll (net11.0)'
+            'Test Run Aborted.'
+        )
     }
 
     Context "Get-CiFailureCategory" {
@@ -356,11 +386,46 @@ Describe "CiWatchdog.ps1" {
         }
     }
 
+    Context "Get-CiHostLosses" {
+        It "names the assembly whose host crashed, once, however often vstest repeats the abort" {
+            $losses = @(Get-CiHostLosses $script:hostCrashLog)
+            $losses.Count | Should -Be 1
+            $losses[0].Assembly | Should -Be 'Core.Server.IntegrationTests'
+            $losses[0].Kind | Should -Be 'Crash'
+            $losses[0].Test | Should -BeNullOrEmpty
+        }
+
+        It "tells a host the blame collector killed as hung from a crash, and names the hung test" {
+            $losses = @(Get-CiHostLosses $script:hostHangLog)
+            $losses.Count | Should -Be 1
+            $losses[0].Assembly | Should -Be 'Chat.UI.Blazor.IntegrationTests'
+            $losses[0].Kind | Should -Be 'Hang'
+            $losses[0].Test | Should -Be $script:hungTest
+        }
+
+        It "finds nothing in a log where every host finished" {
+            @(Get-CiHostLosses $script:oneFailureLog).Count | Should -Be 0
+        }
+    }
+
+    Context "Get-CiKernelFaults" {
+        It "takes the kernel's own line, not the step's command that greps for it" {
+            $faults = @(Get-CiKernelFaults $script:hostCrashLog)
+            $faults.Count | Should -Be 1
+            $faults[0] | Should -BeLike 'traps: .NET BGC`[28066`] general protection fault*libcoreclr.so*'
+        }
+
+        It "finds nothing when the kernel reported nothing" {
+            @(Get-CiKernelFaults $script:oneFailureLog).Count | Should -Be 0
+        }
+    }
+
     Context "Get-CiRunVerdict" {
         BeforeAll {
             function New-Job {
-                param([string]$Category, [object[]]$Tests = @())
-                return [PSCustomObject]@{ Category = $Category; Tests = $Tests }
+                param([string]$Category, [object[]]$Tests = @(), [string[]]$HostLosses = @())
+                $losses = @($HostLosses | ForEach-Object { [PSCustomObject]@{ Assembly = 'a.Tests'; Kind = $_ } })
+                return [PSCustomObject]@{ Category = $Category; Tests = $Tests; HostLosses = $losses }
             }
             function New-Test {
                 param([string]$Name, [bool]$KnownFlake)
@@ -420,6 +485,23 @@ Describe "CiWatchdog.ps1" {
 
         It "says Unparsed when a test job yields no test names" {
             Get-CiRunVerdict @((New-Job 'Test')) | Should -Be 'Unparsed'
+        }
+
+        It "says HostCrash for a lost host, even beside failed tests" {
+            Get-CiRunVerdict @((New-Job 'Test' -HostLosses 'Crash')) | Should -Be 'HostCrash'
+            $job = New-Job 'Test' @((New-Test 'a.TimerFlowTest.X' $true)) -HostLosses 'Crash'
+            Get-CiRunVerdict @($job) | Should -Be 'HostCrash'
+        }
+
+        It "says HostHang only when no host crashed outright" {
+            Get-CiRunVerdict @((New-Job 'Test' -HostLosses 'Hang')) | Should -Be 'HostHang'
+            Get-CiRunVerdict @((New-Job 'Test' -HostLosses 'Hang'), (New-Job 'Test' -HostLosses 'Crash')) |
+                Should -Be 'HostCrash'
+        }
+
+        It "keeps a lost host out of the re-run a known flake gets" {
+            Test-CiRerunAllowed 'dev' 1 'HostCrash' 'abc' 'abc' | Should -BeFalse
+            Test-CiRerunAllowed 'dev' 1 'HostHang' 'abc' 'abc' | Should -BeFalse
         }
 
         It "says None when no job failed" {
@@ -527,6 +609,21 @@ Describe "CiWatchdog.ps1" {
             $record.Verdict | Should -Be 'NewFailure'
         }
 
+        It "gives a crashed host a verdict instead of Unparsed, with the kernel's word on it" {
+            $record = New-CiRunRecord $script:run @($script:testJob) $script:hostCrashLog @()
+            $record.Verdict | Should -Be 'HostCrash'
+            $back = $record | ConvertTo-Json -Depth 8 | ConvertFrom-Json
+            @($back.Jobs[0].HostLosses).Count | Should -Be 1
+            $back.Jobs[0].HostLosses[0].Assembly | Should -Be 'Core.Server.IntegrationTests'
+            @($back.Jobs[0].KernelFaults).Count | Should -Be 1
+        }
+
+        It "keeps HostLosses and KernelFaults as arrays even when empty or single" {
+            $json = New-CiRunRecord $script:run @($script:testJob) $script:hostHangLog @() | ConvertTo-Json -Depth 8 -Compress
+            $json | Should -Match '"HostLosses":\[\{'
+            $json | Should -Match '"KernelFaults":\[\]'
+        }
+
         It "leaves a job unparsed when the log has no section for it" {
             $job = [PSCustomObject]@{
                 name = 'Run Integration tests (mlsearch)'
@@ -594,6 +691,14 @@ Describe "CiWatchdog.ps1" {
             $record.Verdict | Should -Be 'NewFailure'
         }
 
+        It "takes a lost host for a complete log, not one to fetch again" {
+            $crash = $script:hostCrashLog -replace 'Run Slow tests / Slow tests results', 'TS E2E Tests / TS E2E tests results'
+            Set-GhResponses @($crash, $script:vitestLog)
+            $record = Get-CiRunRecord '39531379699' -LogRetryDelaysSeconds @(0, 0)
+            $script:logDownloads | Should -Be 1
+            $record.Verdict | Should -Be 'HostCrash'
+        }
+
         It "settles for Unparsed once the retries run out" {
             Set-GhResponses @($script:unfinishedLog, $script:unfinishedLog, $script:unfinishedLog)
             $record = Get-CiRunRecord '39531379699' -LogRetryDelaysSeconds @(0, 0) -WarningAction SilentlyContinue
@@ -603,6 +708,17 @@ Describe "CiWatchdog.ps1" {
     }
 
     Context "Format-CiJournalNote" {
+        It "says whose host was lost, how, and what the kernel saw" {
+            $note = Format-CiJournalNote (New-CiRunRecord $script:run @($script:testJob) $script:hostCrashLog @())
+            $note | Should -Match '\*\*HostCrash\*\*'
+            $note | Should -Match 'test host of `Core\.Server\.IntegrationTests` \*\*crashed\*\*'
+            $note | Should -Match 'kernel: `traps: \.NET BGC'
+
+            $note = Format-CiJournalNote (New-CiRunRecord $script:run @($script:testJob) $script:hostHangLog @())
+            $note | Should -Match '\*\*hung\*\*'
+            $note | Should -Match ([regex]::Escape($script:hungTest))
+        }
+
         It "mentions a re-run only when the record carries one" {
             $record = New-CiRunRecord $script:run @($script:testJob) $script:oneFailureLog $script:knownFlakes
             Format-CiJournalNote $record | Should -Not -Match 're-run automatically'
