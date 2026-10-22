@@ -292,6 +292,14 @@ Search for `<Using>` to get the full list. Avoid adding explicit usings for glob
   that is never `Use`d) is `FooNonComputed`; the compute method keeps the bare
   name. Established by `ChatAudioUI.GetListenerNonComputed` /
   `GetReplayerNonComputed` (`UI.Blazor.App/Services/ChatAudioUI.Players.cs`).
+- **Services**: refer to a service by its type name, never by a shorthand. In a component
+  or service that has a hub, reuse the member the base class already gives
+  (`Hub.ChatAudioUI`, `Session`, `ModalUI`) or declare a private property named after the
+  type (`private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;`) and use it throughout. If a
+  local is still needed - say, to read the service once before an `await` - the local is the
+  type name in camelCase (`chatAudioUI`, `uiCommander`, `videoQualityUI`). Not `audio`, `ui`,
+  `svc`, `commander`, `qualityUi`: one service must have one name in every file. The one
+  exception is the string localizer: `L` in Razor and `l` as a local (`var l = Hub.StringLocalizer;`).
 
 ### Braces and Formatting
 
