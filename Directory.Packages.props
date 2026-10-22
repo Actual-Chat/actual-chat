@@ -21,8 +21,10 @@
     <NpgsqlVersion>10.0.3</NpgsqlVersion>
     <!-- 3.1 is the floor on .NET 11: earlier versions read MulticastDelegate._invocationList via
          UnsafeAccessor, and preview 7 replaced that field, so a multi-handler event inside
-         StackExchange.Redis throws MissingFieldException on a thread pool thread and kills the process -->
-    <RedisVersion>3.1.31</RedisVersion>
+         StackExchange.Redis throws MissingFieldException on a thread pool thread and kills the process.
+         3.2.1 is the floor for the heap: earlier versions write a command past a short recycled buffer
+         segment, which corrupted the GC heap and crashed test hosts (#5486) -->
+    <RedisVersion>3.2.15</RedisVersion>
     <SystemNetHttpJsonVersion>$(AspNetCoreVersion)</SystemNetHttpJsonVersion>
     <OpenTelemetryVersion>1.15.3</OpenTelemetryVersion>
     <OpenTelemetryInstrumentationAspNetCoreVersion>1.15.1</OpenTelemetryInstrumentationAspNetCoreVersion>
