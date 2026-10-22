@@ -127,6 +127,28 @@ day budgets were scaled.
 **Fix:** see [Guards fire in order, and the ceiling does not scale](./waiting.md#guards-fire-in-order-and-the-ceiling-does-not-scale).
 Never by raising a wait budget to make a red test green.
 
+### A first host pays the cold start
+
+**Looks like:** a `TaskCanceledException` from the test's own `CancellationTokenSource`, in
+a test that starts its own app hosts inside that deadline. The failing line is late in the
+test, often where it only just began a step that takes a second.
+
+**Why:** the first app host built in a test process loads and JIT-compiles the whole server,
+and on CI the other collections are building their first hosts at the same moment, on a
+runner already short of CPU. In #5565 the first host of `ShardedComputeServiceBaseTest` took
+22 s and 17.5 s of a 30 s deadline, most of it inside `AppHost.Start()` before
+`App.Server is starting`, while its second host started in 2.4 s under a heavier load. The
+step the test exists for got under a second.
+
+**Confirm:** in the test output, the time from `-> NewAppHost` to `<- NewAppHost` of the
+first host against the second, and the heartbeat's `run` and `loadavg` across both. A first
+host many times slower than the second, with the load no lower, is this pattern; both slow
+is a starved runner.
+
+**Fix:** start the deadline once the hosts are up (`cts.CancelAfter(…)` after the last
+`NewAppHost`), so it covers only what the test checks. Not by raising the deadline: the
+cold start grows with the server and with the runner's load. Fixed this way for #5565.
+
 ## Open mechanisms
 
 Failures whose mechanism is not established yet. Each lists what the evidence shows so far,
