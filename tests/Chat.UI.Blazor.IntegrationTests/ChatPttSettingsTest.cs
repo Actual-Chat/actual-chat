@@ -177,10 +177,10 @@ public sealed class ChatPttSettingsTest(ChatAppHostFixture fixture, ITestOutputH
         var host = tester.RenderModalHost(hub);
         await hub.ModalUI.Show(new ChatPttSettingsModal.Model(chatId));
         await TestWait.WhenRendered(host, () => host.FindComponent<ChatPttSettingsModal>()
-            .Find(".c-device-off .link").TextContent.Should().Be(hub.StringLocalizer.Ptt_UseOnThisDevice));
+            .Find(".c-device-off button").TextContent.Trim().Should().Be(hub.StringLocalizer.Common_Allow));
 
         // act
-        await host.InvokeAsync(() => host.FindComponent<ChatPttSettingsModal>().Find(".c-device-off .link").Click());
+        await host.InvokeAsync(() => host.FindComponent<ChatPttSettingsModal>().Find(".c-device-off button").Click());
 
         // assert
         await TestWait.WhenRendered(host, () => host.FindComponent<ChatPttSettingsModal>()

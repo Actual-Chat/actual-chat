@@ -110,7 +110,7 @@ public sealed class PttJoinBannerTest(ChatAppHostFixture fixture, ITestOutputHel
         await TestWait.WhenRendered(banner, () => {
             var view = banner.FindComponent<Banner>().Instance;
             view.IsVisible.Should().Be(isConsented && !isDeviceEnabled);
-            view.ShowDismissButton.Should().BeFalse("the device-off notice must not be silently dismissed");
+            view.ShowDismissButton.Should().BeTrue("the device-off notice can be hidden for the device");
             view.Severity.Should().Be(BannerSeverity.Info);
         });
         if (!isConsented || isDeviceEnabled)
