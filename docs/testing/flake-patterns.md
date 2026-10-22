@@ -207,3 +207,7 @@ What would confirm it: <the one observation that would settle it, or "confirmed 
 - One card per signature: a second failure with the same signature links the first card
   rather than repeating it.
 - The draft is a proposal. Nothing runs it before a person picks it up.
+- Once a card's outcome is known, a person reacts to the card: 👍 the proposed change (or an
+  equivalent) fixed it, 😕 the mechanism was right but the fix was different, 👎 the cause was
+  something else. No reaction means no outcome yet. The watchdog doesn't read them: they are
+  collected later to measure how often the cards are right (#5546).
