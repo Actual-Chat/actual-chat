@@ -2,8 +2,9 @@
 
 The mechanisms behind the test failures CI has actually shown, and what to do about each.
 It serves two readers: a person looking at a red test, and the CI watchdog, which matches
-failures against this page and writes a triage card for each one it reports (format at the
-end).
+failures against this page and writes a triage card for each one it reports. The card's
+format is in
+[`.github/ci-watchdog/card.md`](https://github.com/Actual-Chat/actual-chat/blob/dev/.github/ci-watchdog/card.md).
 
 [Waiting in tests](./waiting.md) covers how to write a wait. This page starts from the
 other end: a failure you already have.
@@ -224,43 +225,3 @@ It may **not** hide the failure:
 A change that makes a red test green by asking less of the product turns a signal into a
 blind spot. When in doubt between "the test is wrong" and "the product is wrong", the action
 is instrumentation.
-
-## Triage card
-
-The CI watchdog posts one per failure it triages, as a comment on the issue the failure
-concerns. A person writing up a failure by hand can use the same shape.
-
-````markdown
-<!-- watchdog-triage -->
-**Triage** — `<FullyQualifiedTestName>` · [run <id>](<url>) · `<branch>` @ `<sha>`
-Signature: `<test name> | <first line of the error, at most 80 chars>`
-
-**What failed.** <the assertion or exception, and the line it came from>
-
-**Evidence.** <the 3–8 log lines that matter, with timestamps>
-
-**Mechanism (confidence: high | medium | low).** <how it fails, in terms of the code; the
-pattern from this page, if one fits>
-What would confirm it: <the one observation that would settle it, or "confirmed by the log above">
-
-**Already fixed?** <"no: nothing after <sha> touches <files>" | the commit or PR that does>
-
-**Proposed action:** fix-test | instrument | product-bug | wait | none — <one line why>
-
-<details><summary>Draft change (untested)</summary>
-
-```diff
-<unified diff against origin/dev, files under tests/ only>
-```
-</details>
-````
-
-- `confidence: high` only when the log or the code settles the mechanism, not when it is
-  merely plausible. At `low`, the action is `instrument` or `none`, never `fix-test`.
-- One card per signature: a second failure with the same signature links the first card
-  rather than repeating it.
-- The draft is a proposal. Nothing runs it before a person picks it up.
-- Once a card's outcome is known, a person reacts to the card: 👍 the proposed change (or an
-  equivalent) fixed it, 😕 the mechanism was right but the fix was different, 👎 the cause was
-  something else. No reaction means no outcome yet. The watchdog doesn't read them: they are
-  collected later to measure how often the cards are right (#5546).
