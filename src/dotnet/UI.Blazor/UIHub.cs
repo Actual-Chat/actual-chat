@@ -68,6 +68,7 @@ public class UIHub : CircuitHub, IDispatcherResolver
     public ReloadUI ReloadUI => field ??= Services.GetRequiredService<ReloadUI>();
     public AppUpdateUI AppUpdateUI => field ??= Services.GetRequiredService<AppUpdateUI>();
     public ReconnectUI ReconnectUI => field ??= Services.GetRequiredService<ReconnectUI>();
+    public CommandQueueUI CommandQueueUI => field ??= Services.GetRequiredService<CommandQueueUI>();
     public AccountUI AccountUI => field ??= Services.GetRequiredService<AccountUI>();
     public AutoNavigationUI AutoNavigationUI => field ??= Services.GetRequiredService<AutoNavigationUI>();
     public UserActivityUI UserActivityUI => field ??= Services.GetRequiredService<UserActivityUI>();

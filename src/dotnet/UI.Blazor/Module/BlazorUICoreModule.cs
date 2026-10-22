@@ -160,6 +160,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
         services.AddScoped<IPasskeyClient>(c => new WebPasskeyClient(c.UIHub()));
         fusion.AddService<LogUI>(ServiceLifetime.Scoped);
         fusion.AddService<AppUpdateUI>(ServiceLifetime.Scoped);
+        fusion.AddService<CommandQueueUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new ReportUI(c.UIHub()));
 
         // Host-specific services
