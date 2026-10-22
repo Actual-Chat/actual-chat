@@ -357,6 +357,113 @@ Describe "CiWatchdog.ps1" {
         }
     }
 
+    Context "Get-CiTestDetails" {
+        BeforeAll {
+            # The shape of the ShardedComputeServiceBaseTest failures (runs 39630941518, 39040616896):
+            # another assembly's live output cuts into the section, and the xUnit marker's error line
+            # is not where the parser looks for it.
+            $script:detailedLog = New-JobLog @(
+                '[xUnit.net 00:00:35.85]     ActualChat.Core.Server.IntegrationTests.Sharding.ShardedComputeServiceBaseTest.BasicTest [FAIL]'
+                '[xUnit.net 00:00:35.89] ActualChat.Core.Server.IntegrationTests: <26.011s> AppHost[13, ''flow-inbox'']: alive: at 16:12:17.827, tick 1.009s'
+                '  Failed ActualChat.Core.Server.IntegrationTests.Sharding.ShardedComputeServiceBaseTest.BasicTest [32 s]'
+                '  Error Message:'
+                '   System.Threading.Tasks.TaskCanceledException : A task was canceled.'
+                '  Stack Trace:'
+                '     at ActualLab.Locking.AsyncLockSet`1.<Lock>g__CompleteAsync|12_1(Task task, Entry entry) in /_/src/ActualLab.Core/Locking/AsyncLockSet.cs:line 61'
+                '[xUnit.net 00:00:42.52] ActualChat.Transcription.IntegrationTests: <41.026s> AppHost[1, ''transcription'']: alive: at 14:34:35.581'
+                '   at ActualChat.Core.Server.IntegrationTests.Sharding.ShardedComputeServiceBaseTest.BasicTest() in /home/runner/work/ShardedComputeServiceBaseTest.cs:line 77'
+                '  Standard Output Messages:'
+                ' [2026-10-21 16:11:45.104+00:00] info: TestAppHostFactory[0]'
+                "       -> NewAppHost, instance 'x-ShardedComputeServiceBaseTest'"
+                " <1.187s> AppHost[2, 'x-ShardedComputeServiceBaseTest']: alive: at 16:11:46.285, tick 1.18s, machine cpu 100%"
+                ' [2026-10-21 16:11:48.827+00:00] info: ActualChat.BackendServiceDefs[0]'
+                '       BackendServiceDefs:'
+                '       - IAccountsBackend -> AccountsBackend as Local'
+                ' [2026-10-21 16:12:08.690+00:00] info: ActualChat.Sharding.ShardOwner@TestBackend[0]'
+                '       Shards @ 2s8mtrp6: 111111111111'
+                @(1..7 | ForEach-Object {
+                    " [2026-10-21 16:12:09.27$_+00:00] fail: Microsoft.EntityFrameworkCore.Database.Connection[0]"
+                    "       An error occurred using the connection to database 'ac_x_$_' on server 'tcp://localhost:5432'."
+                    ' Npgsql.PostgresException (0x80004005): 3D000: database "ac_x" does not exist'
+                    ' --- End of stack trace from previous location ---'
+                })
+                ' !!!! Shard: 6'
+                ' Check, iteration 0'
+                '  Passed ActualChat.Core.Server.IntegrationTests.Flows.TimerFlowTest.X [1 s]'
+                ' [2026-10-21 16:12:20.000+00:00] info: NotThisTest[0]'
+                '       after the section'
+            )
+            $script:detailed = @(Get-CiFailedTests $script:detailedLog @())[0]
+        }
+
+        It "recovers the error from the vstest section when the marker's line is lost" {
+            $script:detailed.Error | Should -Be 'System.Threading.Tasks.TaskCanceledException : A task was canceled.'
+        }
+
+        It "keeps the stack, without another assembly's lines cutting into it" {
+            $stack = $script:detailed.Stack -split "`n"
+            $stack.Count | Should -Be 2
+            $stack[0] | Should -BeLike 'at ActualLab.Locking.AsyncLockSet*'
+            $stack[1] | Should -BeLike '*BasicTest() in *:line 77'
+        }
+
+        It "condenses each log record to one line with its time, level and category" {
+            $script:detailed.Output | Should -Match "(?m)^16:11:45\.104 info TestAppHostFactory: -> NewAppHost, instance 'x-ShardedComputeServiceBaseTest'$"
+            $script:detailed.Output | Should -Match '(?m)^16:12:08\.690 info ShardOwner@TestBackend: Shards @ 2s8mtrp6'
+            $script:detailed.Output | Should -Not -Match 'IAccountsBackend'
+        }
+
+        It "keeps the test's own lines and drops the text of logged exceptions" {
+            $script:detailed.Output | Should -Match '(?m)^» !!!! Shard: 6$'
+            $script:detailed.Output | Should -Match '(?m)^» Check, iteration 0$'
+            $script:detailed.Output | Should -Not -Match 'PostgresException|End of stack trace'
+        }
+
+        It "keeps a record repeated with other names a few times, and says how many it dropped" {
+            $fails = @($script:detailed.Output -split "`n" | Where-Object { $_ -match ' fail Connection: ' })
+            $fails.Count | Should -Be $script:MaxSimilarOutputLines
+            $script:detailed.Output | Should -Match '… 2 more records like the ones above, dropped'
+        }
+
+        It "keeps every host heartbeat's time, but only one in ten of them" {
+            $script:detailed.Output | Should -Match '(?m)^16:11:46\.285 alive: tick 1\.18s, machine cpu 100%$'
+        }
+
+        It "stops at the next test's result" {
+            $script:detailed.Output | Should -Not -Match 'NotThisTest|after the section'
+        }
+
+        It "cuts the middle of an output that is still too long, keeping how it started and how it ended" {
+            $lines = @(1..3000 | ForEach-Object { " step $_ of a long test" })
+            $output = ConvertTo-CiTestOutput $lines
+            $output.Length | Should -BeLessOrEqual ($script:MaxOutputLength + 100)
+            $output | Should -Match '(?m)^» step 1 of a long test$'
+            $output | Should -Match '(?m)^» step 3000 of a long test$'
+            $output | Should -Match '… \d+ characters cut …'
+        }
+
+        It "details only the first tests of a job, which is all a collapsed run needs" {
+            $count = $script:DetailedTestLimit + 2
+            $log = New-JobLog @(1..$count | ForEach-Object {
+                "  Failed ActualChat.Chat.IntegrationTests.T$_ [1 s]"
+                '  Error Message:'
+                "   boom $_"
+                '  Stack Trace:'
+                "     at T$_()"
+            })
+            $tests = @(Get-CiFailedTests $log @())
+            $tests.Count | Should -Be $count
+            $tests[0].Stack | Should -Be 'at T1()'
+            $tests[-1].Stack | Should -BeNullOrEmpty
+        }
+
+        It "leaves a vitest failure without details" {
+            $tests = @(Get-CiFailedTests $script:vitestLog @())
+            $tests[0].Stack | Should -BeNullOrEmpty
+            $tests[0].Output | Should -BeNullOrEmpty
+        }
+    }
+
     Context "Get-CiAssemblyTotals" {
         It "captures the denominator, not just the failures" {
             $totals = Get-CiAssemblyTotals $script:oneFailureLog
