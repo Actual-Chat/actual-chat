@@ -168,6 +168,13 @@ recreated the WebView off the UI thread and took the process down.
 - **A recreated WebView terminates the old page's web process.** Each WebKit view runs its page
   in a process of its own, which keeps running scripts for as long as anything references the
   view; `LinuxCustomBlazorWebViewHandler.DisconnectHandler` ends it explicitly.
+- **A crashed web process recreates the WebView.** WebKitGTK leaves a blank view that ignores
+  input after its web process dies, so `MauiWebView.OnWebProcessTerminated` replaces the view
+  unless the app terminated the process itself.
+- **Camera capture copies frames through a canvas.** WebKitGTK has no `MediaStreamTrackProcessor`,
+  `requestVideoFrameCallback` doesn't fire for a camera `<video>`, and `VideoEncoder` rejects
+  frames built from the element after the first one. So `VideoRecorder.startWorker` draws the
+  element into an `OffscreenCanvas` on a timer and sends `VideoFrame`s of the canvas (#5409).
 - **Sign-in** uses the Windows and macOS flow: the default browser plus a `voxt-dev://`
   callback (`voxt://` in a prod-flavour build). The desktop entry the app writes to
   `~/.local/share/applications/` on start claims the scheme, so the entry always points at

@@ -40,6 +40,7 @@ public partial class MauiWebView
         webView.OnDecidePolicy += OnDecidePolicy;
         webView.OnCreate += OnCreate;
         webView.OnPermissionRequest += OnPermissionRequest;
+        webView.OnWebProcessTerminated += OnWebProcessTerminated;
     }
 
     public partial void HardNavigateTo(string url)
@@ -109,5 +110,22 @@ public partial class MauiWebView
         else
             request.Deny();
         return true;
+    }
+
+    private static void OnWebProcessTerminated(
+        WebKit.WebView webView,
+        WebKit.WebView.WebProcessTerminatedSignalArgs args)
+    {
+        // A crashed web process leaves a blank window that ignores input, so the view is replaced.
+        // TerminatedByApi is LinuxCustomBlazorWebViewHandler dropping a view it disconnects.
+        var reason = args.Reason;
+        Log.LogWarning("Web process terminated: {Reason}", reason);
+        if (reason == WebProcessTerminationReason.TerminatedByApi || !IsCurrent(webView, out var mauiWebView))
+            return;
+
+        BeginDispatchToMainThread(() => {
+            if (Current == mauiWebView)
+                MainPage.Current.RecreateWebView();
+        }, allowInline: false);
     }
 }
