@@ -285,7 +285,9 @@ jobs:
           ${{secrets.GCP_KEY_JSON}}
           EOF
 
-          ./run-build.cmd ${{ inputs.build-target }} --configuration Debug
+          # --dumps: a full dump of a test host that crashes or hangs. The crashes in #5486 are faults
+          # inside the GC, so the dump's heap is the only place that shows which object got corrupted.
+          ./run-build.cmd ${{ inputs.build-target }} --configuration Debug --dumps
 
       - name: Show crash diagnostics
         if: ${{ failure() }}
@@ -305,6 +307,7 @@ jobs:
           # Sequence_*.xml is the blame collector's list of tests the crashed host had started, in order
           path: |
             tests/**/TestResults/**/Sequence_*.xml
+            tests/**/TestResults/**/*.dmp
             tmp/memory-samples.log
           if-no-files-found: ignore
           retention-days: 7
