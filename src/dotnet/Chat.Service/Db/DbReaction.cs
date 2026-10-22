@@ -1,10 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 using ActualLab.Versioning;
 
 namespace ActualChat.Chat.Db;
 
+// Rows written before an author could leave several reactions on one entry carry the
+// "{entryId}:{authorId}" id, so rows are looked up by (EntryId, AuthorId), never by a composed id.
 [Table("Reactions")]
+[Index(nameof(EntryId), nameof(AuthorId))]
 [SuppressMessage("ReSharper", "EntityFramework.ModelValidation.UnlimitedStringLength")]
 public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
 {
@@ -19,8 +23,8 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
         set => field = value.DefaultKind(DateTimeKind.Utc);
     }
 
-    public static string ComposeId(ChatEntryId entryId, AuthorId authorId)
-        => $"{entryId}:{authorId}";
+    public static string ComposeId(ChatEntryId entryId, AuthorId authorId, Emoji emoji)
+        => $"{entryId}:{authorId}:{emoji.Value}";
 
     public DbReaction() { }
     public DbReaction(Reaction model) => UpdateFrom(model);
@@ -37,7 +41,7 @@ public class DbReaction : IHasId<string>, IHasVersion<long>, IRequirementTarget
 
     public void UpdateFrom(Reaction model)
     {
-        var id = ComposeId(model.EntryId, model.AuthorId);
+        var id = ComposeId(model.EntryId, model.AuthorId, model.Emoji);
         this.RequireSameOrEmptyId(id);
         model.RequireVersion();
 

@@ -52,7 +52,7 @@ public partial class WebHooksBackend
         var (reaction, entry, _, reactionAuthor, changeKind) = eventCommand;
         var e = changeKind == ChangeKind.Remove ? WebHookEvents.ReactionRemoved : WebHookEvents.ReactionAdded;
         var hooks = await HooksForChat(entry.ChatId, cancellationToken).ConfigureAwait(false);
-        // The id is (entry, author), so it's the version that tells a re-added reaction from the first one
+        // The id is (entry, author, emoji), so it's the version that tells a re-added reaction from the first one
         await Enqueue(hooks, e, $"{reaction.Id.Value}:{reaction.Version}",
                 hook => Payloads.Reaction(hook, e, reaction, entry, reactionAuthor, cancellationToken),
                 cancellationToken)

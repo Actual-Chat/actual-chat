@@ -102,7 +102,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new AppReviewUI(c.UIHub()));
         fusion.AddService<AppReviewPromptUI>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new SentContentStorage());
-        services.AddScoped(_ => new OptimisticReactions());
+        services.AddScoped(c => new OptimisticReactions(c.AppUIHub()));
 
         // Live stream UI
         fusion.AddService<LiveStreamUI>(ServiceLifetime.Scoped);

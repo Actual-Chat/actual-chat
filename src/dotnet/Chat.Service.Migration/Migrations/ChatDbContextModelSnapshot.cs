@@ -17,7 +17,7 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261015090936_RenameChatIsArchivedToIsFrozen";
+    public override string LastMigrationId => "20261020142242_AddReactionEntryAuthorIndex";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -1321,6 +1321,9 @@ partial class ChatDbContextModelSnapshot : ModelSnapshot
 
                 b.HasKey("Id")
                     .HasName("pk_reactions");
+
+                b.HasIndex("EntryId", "AuthorId")
+                    .HasDatabaseName("ix_reactions_entry_id_author_id");
 
                 b.ToTable("reactions");
             });

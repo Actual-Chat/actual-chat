@@ -7,8 +7,11 @@ namespace ActualChat.Chat;
 /// </summary>
 public interface IReactionsBackend : IComputeService, IBackendService
 {
+    [Obsolete("2026.10: Old pods only, during a rolling update. Returns the latest of ListByAuthor.")]
     [ComputeMethod]
     Task<Reaction?> Get(ChatEntryId entryId, AuthorId authorId, CancellationToken cancellationToken);
+    [ComputeMethod]
+    Task<Reaction[]> ListByAuthor(ChatEntryId entryId, AuthorId authorId, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<ReactionSummary[]> List(ChatEntryId entryId, CancellationToken cancellationToken);
 
@@ -17,7 +20,7 @@ public interface IReactionsBackend : IComputeService, IBackendService
 }
 
 /// <summary>
-/// Command to add or remove a reaction on a chat entry.
+/// Command to toggle one emoji reaction of an author on a chat entry.
 /// </summary>
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
