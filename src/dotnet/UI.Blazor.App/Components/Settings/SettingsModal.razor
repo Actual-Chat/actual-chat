@@ -53,12 +53,12 @@
     });
     if (showMyAccount) {
         tabs.Add(new(SettingsTabId.Sessions, L.Settings_Sessions) {
-            IconClass = "icon-lock",
+            IconClass = "icon-sessions",
             HasSeparatorBefore = true,
             Content = @<SessionSettings/>,
         });
         tabs.Add(new(SettingsTabId.Privacy, L.Settings_Privacy) {
-            IconClass = "icon-lock",
+            IconClass = "icon-privacy",
             Content = @<PrivacySettings/>,
         });
     }
@@ -72,7 +72,7 @@
     });
     if (showMyAccount)
         tabs.Add(new(SettingsTabId.ApiKeys, L.Settings_ApiAndApps) {
-            IconClass = "icon-key",
+            IconClass = "icon-api-apps",
             Content = @<ApiAndAppsSettings/>,
         });
     tabs.Add(new(SettingsTabId.Documentation, L.Settings_HelpPages) {
