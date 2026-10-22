@@ -506,6 +506,13 @@ body.hoverable .author-list-tab .avatar-badge:hover {
 .thread-list-tab .c-empty {
     @apply p-8 text-center;
 }
+/* Thread rows carry no avatar, only the title and the last message */
+.thread-list-tab .thread-list-skeleton .message-avatar-wrapper-skeleton {
+    @apply hidden;
+}
+.thread-list-tab .thread-list-skeleton .c-container {
+    @apply py-2;
+}
 .thread-list-tab .c-content .c-description {
     @apply flex-1 flex-y items-start justify-start gap-1;
     @apply w-full;
@@ -572,13 +579,17 @@ body.hoverable .thread-list-item:hover {
     @apply px-3 pt-3 pb-1;
     @apply text-sm font-semibold;
 }
-.content-list-tab .c-skeleton {
-    @apply m-1 h-16 rounded-lg;
-    @apply bg-skeleton animate-pulse;
-}
-.content-list-grid .c-media-row {
+.content-list-grid .c-media-row,
+.content-list-grid .c-media-skeleton {
     @apply grid grid-cols-3 gap-px;
     @apply w-full;
+}
+.content-list-grid .c-media-skeleton {
+    @apply pb-px;
+}
+.content-list-grid .c-media-skeleton > div {
+    @apply bg-skeleton;
+    aspect-ratio: 1 / 1;
 }
 .content-list-grid .image-attachment {
     @apply relative w-full;
@@ -614,7 +625,8 @@ body.hoverable .content-list-grid .image-attachment:hover image-skeleton {
 .content-list-grid .c-video .c-duration:empty {
     @apply hidden;
 }
-.content-list-rows .c-file-row {
+.content-list-rows .c-file-row,
+.content-list-rows .c-file-skeleton {
     @apply flex items-center gap-2;
     @apply w-full px-3 py-1;
     @apply h-14 overflow-hidden;
@@ -679,6 +691,22 @@ body.hoverable .content-list-rows .c-file-row:hover,
 .content-list-rows .c-file-row .c-progress {
     @apply w-full h-2 mt-0.5;
 }
+.content-list-rows .c-file-skeleton .c-file-icon {
+    @apply bg-skeleton;
+}
+.content-list-rows .c-file-skeleton .c-file-info {
+    @apply gap-y-1.5;
+}
+.content-list-rows .c-file-skeleton .c-line {
+    @apply h-3 rounded-full;
+    @apply bg-skeleton;
+}
+.content-list-rows .c-file-skeleton .c-size {
+    @apply w-10;
+}
+.content-list-rows .c-file-skeleton .c-date {
+    @apply w-28;
+}
 .content-list-links .item {
     @apply px-2 py-1;
 }
@@ -720,6 +748,28 @@ body.narrow .content-list-links .link-preview:not(.local-link) {
 }
 .content-list-links .link-preview:not(.local-link) .c-description {
     @apply hidden;
+}
+.content-list-links .c-link-skeleton {
+    @apply flex-x items-center gap-x-3;
+    @apply mx-2 my-1 p-2;
+    @apply rounded-2xl border border-separator;
+    @apply bg-03;
+}
+.content-list-links .c-link-skeleton .c-thumbnail {
+    @apply flex-none;
+    @apply w-24 h-16 rounded-lg;
+    @apply bg-skeleton;
+}
+.content-list-links .c-link-skeleton .c-info {
+    @apply flex-1 flex-y gap-y-2;
+    @apply min-w-0;
+}
+.content-list-links .c-link-skeleton .c-line {
+    @apply h-3 rounded-full;
+    @apply bg-skeleton;
+}
+.content-list-links .c-link-skeleton .c-domain {
+    @apply w-1/3;
 }
 
 /* Notification mode menu (ChatNotificationModeMenu) */

@@ -19,7 +19,9 @@
 <div class="author-list-tab">
     @* Not before the authors are in: the initial model is empty, and displaying the panel on it
        would show an empty list that then fills. *@
-    @if (!State.IsInitial(out _)) {
+    @if (State.IsInitial(out _)) {
+        <chat-list-skeleton count="8"></chat-list-skeleton>
+    } else {
         <ContentSwapDisplay/>
     }
     <div class="c-content">

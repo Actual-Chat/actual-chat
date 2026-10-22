@@ -5,7 +5,9 @@
 }
 
 <div class="thread-list-tab">
-    @if (m is not null) {
+    @if (m is null) {
+        <chat-list-skeleton count="8" messageCls="thread-list-skeleton"></chat-list-skeleton>
+    } else {
         <ContentSwapDisplay/>
     }
     @if (m is { ThreadChats.Count: 0 }) {

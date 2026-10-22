@@ -14,6 +14,8 @@ internal static class ContentListPlumbing
     // is no anchor and no MoveRange. Subsequent scroll requests are sized by MoveRange.
     public const int TargetRowsColdInit = 25;
 
+    private static readonly int[] SkeletonWidths = [72, 54, 63, 45, 68, 50, 60, 57];
+
     public sealed record Block(string PeriodKey, int PageIndex);
 
     private sealed record RowSpec<TItem>(
@@ -83,6 +85,10 @@ internal static class ContentListPlumbing
 
     public static ContentListItem GroupHeader(string key, string title)
         => new() { Key = $"g:{key}", IsHeader = true, GroupTitle = title };
+
+    public static int SkeletonWidth(int index)
+        // In %: varied, but the same for a given row on every render
+        => SkeletonWidths[index % SkeletonWidths.Length];
 
     public static long SumVersion(IReadOnlyList<IChatContentItem> items)
     {

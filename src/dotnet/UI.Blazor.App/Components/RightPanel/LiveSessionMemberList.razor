@@ -5,6 +5,13 @@
 @{
     var m = State.Value;
     var live = m.Session;
+    if (State.IsInitial(out _)) {
+        <div class="live-session-member-list">
+            <chat-list-skeleton count="8"></chat-list-skeleton>
+        </div>
+        return;
+    }
+
     if (live is null) {
         <div class="live-session-member-list">
             @if (!State.IsInitial(out _)) {

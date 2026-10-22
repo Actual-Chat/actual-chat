@@ -46,7 +46,15 @@
         }
     </Item>
     <Skeleton>
-        <div class="c-skeleton"></div>
+        @{ var width = ContentListPlumbing.SkeletonWidth(context); }
+        <div class="c-file-skeleton" aria-hidden="true">
+            <div class="c-file-icon animated-skeleton"></div>
+            <div class="c-file-info">
+                <div class="c-line animated-skeleton" style="width: @(width)%"></div>
+                <div class="c-line c-size animated-skeleton"></div>
+                <div class="c-line c-date animated-skeleton"></div>
+            </div>
+        </div>
     </Skeleton>
 </InfiniteList>
 </div>
