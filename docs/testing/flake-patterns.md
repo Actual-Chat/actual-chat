@@ -27,7 +27,14 @@ Before naming a mechanism, collect what the run already recorded:
   and the same against the release branch. A fix may already be in.
 
 A log that cannot tell two mechanisms apart is a finding in itself: the action is to make
-the next failure tell — `instrument` in [Actions](#actions).
+the next failure tell — `instrument` in [Actions](#actions). But first name the action each
+answer would lead to. If every answer leads to the same one, the measurement decides nothing:
+take that action now. In #5564 the question left open was why the runtime starved one thread
+and not another, and either answer led to the same test fix.
+
+Before keeping two candidates, check each against the code. A candidate the code rules out is
+not a second mechanism. In #5564 the card weighed "the timer ran the watchdog's ticks back to
+back", but each tick starts its next delay only after it has run.
 
 ## Patterns
 
@@ -149,6 +156,28 @@ is a starved runner.
 `NewAppHost`), so it covers only what the test checks. Not by raising the deadline: the
 cold start grows with the server and with the runner's load. Fixed this way for #5565.
 
+### A test that measures the scheduler
+
+**Looks like:** a unit test with no I/O fails once every week or two, on unrelated branches
+and SHAs, never twice on one. It runs a background `Task.Run` loop or a short `Task.Delay`
+next to the code under test, and its assertion depends on that loop keeping pace in real
+time.
+
+**Why:** a build agent runs the whole suite on a few cores, with dozens of runnable threads
+queued at once. Any thread can wait hundreds of milliseconds for a core, so a loop meant to
+run every few milliseconds can miss whole intervals of the code under test. In #5564 a
+producer that bumped a counter every ~2 ms didn't run once in ~300 ms, and
+`StreamSilenceWatchdog` read three empty 100 ms intervals as a dead stream.
+
+**Confirm:** read the code under test, not the log: the failure has to follow from the helper
+thread missing its turns, with nothing else able to cause it. There is usually no output to
+read, and none is needed.
+
+**Fix:** feed the code under test a deterministic input in place of the helper thread, and
+wait for the event the test is about rather than sleeping a fixed time. The assertions stay
+as they are. Fixed this way for #5564: every tick sees a frame, and the test waits for six
+ticks, twice the silence limit.
+
 ## Open mechanisms
 
 Failures whose mechanism is not established yet. Each lists what the evidence shows so far,
@@ -181,6 +210,8 @@ A test fix may only make the check **stricter or equivalent**:
 - move a read into the wait that guards it;
 - wait for the markup or the final event instead of a parameter or an intermediate flag;
 - count the result instead of measuring a side channel;
+- replace threads and timers in the test's own harness (never in product code) with a
+  deterministic input, keeping the assertions;
 - add a journal or a dump printed on failure.
 
 It may **not** hide the failure:

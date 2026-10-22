@@ -33,46 +33,35 @@ public class StreamSilenceWatchdogTest
     public async Task SteadyFrameFlow_NoCancel()
     {
         // arrange
-        var watchdogInterval = TimeSpan.FromMilliseconds(100);
         using var cts = new CancellationTokenSource();
         using var stopCts = new CancellationTokenSource();
-        var counter = 0;
+        var tickCount = 0;
         var detectionCount = 0;
 
-        // Drive a steady producer: increment every ~2 ms, ≈50× faster than the
-        // watchdog's 100 ms interval, so a scheduler hiccup can't starve an entire tick.
-        var producer = Task.Run(async () => {
-            while (!stopCts.IsCancellationRequested) {
-                Interlocked.Increment(ref counter);
-                try { await Task.Delay(2, stopCts.Token); }
-                catch (OperationCanceledException) { break; }
-            }
-        });
-
-        // Wait until the producer is actually scheduled and ticking before we
-        // arm the watchdog — otherwise the first interval can race with Task.Run startup.
-        while (Volatile.Read(ref counter) == 0)
-            await Task.Delay(1);
-
         // act
+        // Every tick sees a frame. A producer thread feeding a counter made this test measure how a
+        // loaded build agent schedules threads: one starved for ~300 ms looked like silence (#5564)
         var watchdog = StreamSilenceWatchdog.Run(
-            consumeFrameCount: () => Interlocked.Exchange(ref counter, 0),
+            consumeFrameCount: () => {
+                Interlocked.Increment(ref tickCount);
+                return 1;
+            },
             onSilenceCts: cts,
-            interval: watchdogInterval,
+            interval: ShortInterval,
             maxConsecutiveZeroIntervals: 3,
             onSilenceDetected: _ => Interlocked.Increment(ref detectionCount),
             cancellationToken: stopCts.Token);
+        // Twice the zero-interval limit: a watchdog that ignored the frames would have fired by then
+        await TestWait.WhenPolled(
+            () => tickCount.Should().BeGreaterThanOrEqualTo(6),
+            TimeSpan.FromSeconds(1));
 
-        // Run for ~5 watchdog intervals.
-        await Task.Delay(watchdogInterval * 5);
-
-        // assert: still no cancellation.
+        // assert
         cts.IsCancellationRequested.Should().BeFalse();
         detectionCount.Should().Be(0);
 
         // teardown
         await stopCts.CancelAsync();
-        await producer;
         await watchdog;
     }
 
