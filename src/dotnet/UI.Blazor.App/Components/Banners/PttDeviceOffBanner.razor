@@ -1,7 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, bool>
 
-<Banner IsVisible="@State.Value" Severity="BannerSeverity.Info" ShowDismissButton="false">
+<Banner
+    IsVisible="@State.Value"
+    Severity="BannerSeverity.Info"
+    ShowDismissButton="true"
+    Dismiss="@OnDismiss">
     <Icon>
         <i class="icon-push-to-talk text-2xl text-03"></i>
     </Icon>
@@ -14,6 +18,8 @@
 </Banner>
 
 @code {
+    private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+
     [CascadingParameter] public ChatContext ChatContext { get; set; } = null!;
 
     protected override ComputedState<bool>.Options GetStateOptions()
@@ -29,17 +35,31 @@
         if (!chat.IsMember())
             return false;
 
-        var audio = Hub.ChatAudioUI;
-        var isDeviceEnabled = await audio.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
+        if (await ChatAudioUI.IsPttDeviceOffBannerHidden(cancellationToken).ConfigureAwait(false))
+            return false;
+
+        var isDeviceEnabled = await ChatAudioUI.IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false);
         if (isDeviceEnabled)
             return false;
 
-        var state = await audio.GetPttChatState(chat.Id, cancellationToken).ConfigureAwait(false);
+        var state = await ChatAudioUI.GetPttChatState(chat.Id, cancellationToken).ConfigureAwait(false);
         return state == PttChatState.InList;
     }
 
     private Task OnEnableClick() {
-        Hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
-        return Hub.ChatAudioUI.ShowPttSupportLimits(L.PttSupport_EnabledOnDevice);
+        ChatAudioUI.SetIsPttEnabledOnDevice(true);
+        return ChatAudioUI.ShowPttSupportLimits(L.PttSupport_EnabledOnDevice);
     }
+
+    private void OnDismiss() {
+        var text = L.Ptt_HideDeviceOffText_Format(L.Common_Settings, L.Settings_Ptt);
+        var model = new ConfirmModal.Model(false, text, Hide) {
+            Title = L.Ptt_HideDeviceOffTitle,
+            ConfirmButtonText = L.Common_Hide,
+        };
+        _ = ModalUI.Show(model);
+    }
+
+    private void Hide()
+        => ChatAudioUI.SetIsPttDeviceOffBannerHidden(true);
 }

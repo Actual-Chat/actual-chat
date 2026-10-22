@@ -1,5 +1,7 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, ChatPttSettingsModal.ViewState?>
+@using ActualChat.UI.Blazor.App.Components.Settings
+@using ActualChat.UI.Blazor.Events
 @implements IModalView<ChatPttSettingsModal.Model>
 @{
     if (State.Value is not { } m)
@@ -10,9 +12,17 @@
     var isAtCapacity = !m.IsInList && m.ListCount >= UserPttSettings.MaxChatCount;
 }
 
-<DialogFrame Class="chat-ptt-settings-modal modal-sm" Title="@L.VoiceSettings_Ptt">
+<DialogFrame Class="chat-ptt-settings-modal compact-header modal-sm" Title="@L.VoiceSettings_Ptt">
     <Body>
         <FormBlock>
+            @if (isModeOn && !m.IsDeviceEnabled) {
+                <Banner Class="c-device-off" Severity="BannerSeverity.Info">
+                    <Body>@L.Ptt_DeviceOff_Prefix.TrimEnd()</Body>
+                    <Buttons>
+                        <BannerButton Click="@OnEnableDeviceClick">@L.Common_Allow</BannerButton>
+                    </Buttons>
+                </Banner>
+            }
             <TileItem IsHoverable="@m.CanManage"
                       ToggleValue="@isModeOn"
                       ToggleValueChanged="@OnModeChanged"
@@ -33,13 +43,11 @@
                             : L.Ptt_InMyListCaption)
                     </Caption>
                 </TileItem>
-                @if (!m.IsDeviceEnabled) {
-                    <p class="c-device-off">
-                        @L.Ptt_DeviceOff_Prefix<a class="link" @onclick="@OnEnableDeviceClick"
-                            @onclick:preventDefault="true"
-                            >@L.Ptt_UseOnThisDevice</a>@L.Ptt_DeviceOff_Suffix
-                    </p>
-                }
+                <p class="c-tune-on-device">
+                    @L.Ptt_TuneOnDevice_Prefix<a class="link" @onclick="@OnOpenSettingsClick"
+                        @onclick:preventDefault="true"
+                        >@L.Common_Settings</a>@L.Ptt_TuneOnDevice_Suffix
+                </p>
             }
         </FormBlock>
     </Body>
@@ -122,6 +130,11 @@
     private Task OnEnableDeviceClick() {
         Hub.ChatAudioUI.SetIsPttEnabledOnDevice(true);
         return Hub.ChatAudioUI.ShowPttSupportLimits(L.PttSupport_EnabledOnDevice);
+    }
+
+    private void OnOpenSettingsClick() {
+        Modal.Close();
+        _ = UIEventHub.Publish(new ShowSettingsEvent(SettingsTabId.Ptt));
     }
 
     // Nested types
