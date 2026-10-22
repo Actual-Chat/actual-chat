@@ -72,7 +72,7 @@ the branch was cut from it — ask once via `AskUserQuestion` (that release bran
 GitHub acts on closing keywords in a PR only when it merges into the default branch
 (`dev`), so a PR into `release/*` closes nothing. What does close the issue is a
 *commit* whose message says `Closes #N` reaching `dev` — which happens when the
-release branch is merged forward. Before pushing, check:
+release branch is merged forward (`/merge-release-to-dev`). Before pushing, check:
 
 ```bash
 git log --format=%B "origin/$BASE..HEAD" | grep -iE "^(close[sd]?|fix(e[sd])?|resolve[sd]?) #<N>([^0-9]|$)"
