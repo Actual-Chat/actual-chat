@@ -52,6 +52,10 @@ public sealed class MauiModule(IServiceProvider moduleServices)
         services.Replace(ServiceDescriptor.Singleton(c
             => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c)));
 
+        // Content downloads follow RPC to its edge node whichever client makes them
+        services.ConfigureHttpClientDefaults(http
+            => http.AddHttpMessageHandler(c => new ContentHostHandler(c.UrlMapper())));
+
         // Sharing
 #if IOS
         var fusion = services.AddFusion();

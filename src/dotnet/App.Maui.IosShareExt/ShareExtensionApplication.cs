@@ -47,6 +47,7 @@ public sealed class ShareExtensionApplication : IHasServices, IAsyncDisposable
             // to land the session ahead of ShareUI's first Accounts.GetOwn.
             RefreshSessionAndConnection(services, log);
             var app = new ShareExtensionApplication(services.CreateAsyncScope());
+            app.Services.GetRequiredService<RpcEndpointFollower>().Start();
             // Nothing tells us the previous share sheet is gone - UIKit just drops its
             // controller - so a new session is the only point where the old one can be
             // released. Leaking it piles up another RPC client, another set of workers,
