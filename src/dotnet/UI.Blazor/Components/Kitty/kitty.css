@@ -185,3 +185,9 @@
 .theme-dark .kitty-app-review-sad-farewell {
     background-image: url("images/kitties/app-review-sad-farewell-dark.svg");
 }
+
+/* The upgrade cover keeps its colored background in both themes. */
+.client-upgrade-cover .kitty-upgrade-app-cat,
+.theme-dark .client-upgrade-cover .kitty-upgrade-app-cat {
+    background-image: url("images/kitties/upgrade-app-cat-on-gradient-dark.svg");
+}
