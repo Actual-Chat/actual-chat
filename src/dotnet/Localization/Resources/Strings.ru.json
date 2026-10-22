@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "Включить диагностику видео",
   "DevTools_EnableAudioDiagnostics": "Включить диагностику звука",
   "DevTools_EnableFileLog": "Записывать журнал в файл",
+  "DevTools_OpenLogFile": "Открыть файл журнала",
   "Diagnostics_Video": "Диагностика видео",
   "Diagnostics_Audio": "Диагностика звука",
 

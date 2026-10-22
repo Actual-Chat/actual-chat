@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "ビデオ診断を有効にする",
   "DevTools_EnableAudioDiagnostics": "オーディオ診断を有効にする",
   "DevTools_EnableFileLog": "ログをファイルに書き込む",
+  "DevTools_OpenLogFile": "ログファイルを開く",
   "Diagnostics_Video": "ビデオ診断",
   "Diagnostics_Audio": "オーディオ診断",
 

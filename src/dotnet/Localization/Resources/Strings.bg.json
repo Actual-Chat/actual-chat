@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "Включете видеодиагностиката",
   "DevTools_EnableAudioDiagnostics": "Включете аудиодиагностиката",
   "DevTools_EnableFileLog": "Записвайте логовете във файл",
+  "DevTools_OpenLogFile": "Отворете файла с дневника",
   "Diagnostics_Video": "Видеодиагностика",
   "Diagnostics_Audio": "Аудиодиагностика",
 

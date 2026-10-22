@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "Aktifkan diagnostik video",
   "DevTools_EnableAudioDiagnostics": "Aktifkan diagnostik audio",
   "DevTools_EnableFileLog": "Tulis log ke file",
+  "DevTools_OpenLogFile": "Buka file log",
   "Diagnostics_Video": "Diagnostik video",
   "Diagnostics_Audio": "Diagnostik audio",
 

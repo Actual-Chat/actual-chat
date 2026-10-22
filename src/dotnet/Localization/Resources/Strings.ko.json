@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "비디오 진단 사용",
   "DevTools_EnableAudioDiagnostics": "오디오 진단 사용",
   "DevTools_EnableFileLog": "로그를 파일에 기록",
+  "DevTools_OpenLogFile": "로그 파일 열기",
   "Diagnostics_Video": "비디오 진단",
   "Diagnostics_Audio": "오디오 진단",
 

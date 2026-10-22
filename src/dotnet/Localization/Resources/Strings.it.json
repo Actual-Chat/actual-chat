@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "Abilita la diagnostica video",
   "DevTools_EnableAudioDiagnostics": "Abilita la diagnostica audio",
   "DevTools_EnableFileLog": "Salva i log su file",
+  "DevTools_OpenLogFile": "Apri file di registro",
   "Diagnostics_Video": "Diagnostica video",
   "Diagnostics_Audio": "Diagnostica audio",
 

@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "वीडियो डायग्नोस्टिक्स चालू करें",
   "DevTools_EnableAudioDiagnostics": "ऑडियो डायग्नोस्टिक्स चालू करें",
   "DevTools_EnableFileLog": "लॉग को फ़ाइल में लिखें",
+  "DevTools_OpenLogFile": "लॉग फ़ाइल खोलें",
   "Diagnostics_Video": "वीडियो डायग्नोस्टिक्स",
   "Diagnostics_Audio": "ऑडियो डायग्नोस्टिक्स",
 

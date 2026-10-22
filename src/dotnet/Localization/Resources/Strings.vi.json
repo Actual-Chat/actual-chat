@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "Bật chẩn đoán video",
   "DevTools_EnableAudioDiagnostics": "Bật chẩn đoán âm thanh",
   "DevTools_EnableFileLog": "Ghi nhật ký vào tệp",
+  "DevTools_OpenLogFile": "Mở tệp nhật ký",
   "Diagnostics_Video": "Chẩn đoán video",
   "Diagnostics_Audio": "Chẩn đoán âm thanh",
 
