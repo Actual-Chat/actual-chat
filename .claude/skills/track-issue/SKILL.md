@@ -166,7 +166,9 @@ never `feature/…`; the slug is the title lowercased, non-alphanumerics
 collapsed to `-`, cut to the first four or five words. If a branch of that
 name already exists, append the issue number. On
 "create": `git checkout -b <name>`, then (d). On "stay": say plainly that the
-link is not stored and the skill must be re-run once a branch exists.
+link is not stored and the skill must be re-run once a branch exists. When the
+branch was created from `release/*`, also record its base, which `/prepare-merge`
+and `/create-pr` read: `git config "branch.<name>.base" <release branch>`.
 
 ### 7. Create path
 

@@ -28,11 +28,25 @@ count and no target to squash down to.
 
 When the user types `/prepare-merge`, run this skill.
 
+## Base branch
+
+`dev`, unless the branch targets a release: `/start-task --release` and `/create-pr`
+record that as `branch.<name>.base`.
+
+```bash
+BASE=$(git config --get "branch.$(git branch --show-current).base" || echo dev)
+```
+
+Every `origin/dev` below means `origin/$BASE`. Rebasing a release fix onto `dev`
+drags dev's unreleased work into the release PR — if the setting is missing but the
+branch has far fewer commits over the newest `origin/release/v*` than over
+`origin/dev`, ask which base it is before step 2.
+
 ## Preconditions (abort and tell the user if violated)
 
 - Current branch is a feature branch — not `dev`, `master`, or `release/*`.
 - Working tree is clean (`git status --short` empty).
-- `git fetch origin dev` succeeded.
+- `git fetch origin "$BASE"` succeeded.
 
 One more check that **warns rather than aborts**: `git config --get
 "branch.$(git branch --show-current).issue"`. Empty means the branch was never
@@ -109,6 +123,12 @@ Messages follow repo convention: `type(scope): summary`, scopes as used
 on this branch and recent dev history; when folding several commits loses
 important detail, keep the summary line and add a short body naming what
 was folded in.
+
+On a release base, the commit that carries the fix ends its message with a
+`Closes #<N>` line (from `branch.<name>.issue`) above the trailers. A PR into
+`release/*` closes nothing on merge; the issue closes when this commit reaches
+`dev` through the release merge-forward. Show the line in the plans, and pass
+messages with a body through `git commit -F tmp/msg.txt`.
 
 ### 4. Identify superpowers docs to drop
 
@@ -187,3 +207,5 @@ for all merged ones at once.
 | Pushing before the user confirms the result | Ask first, then push the branch only |
 | Pushing a `-bak` branch to origin | Never: backups stay local |
 | Overwriting an existing `-bak` on a rerun | It holds the true original; leave it untouched |
+| Rebasing a release fix onto `dev` | `branch.<name>.base` decides; ask when it is missing and the branch looks release-based |
+| Release fix squashed without `Closes #N` in its message | The issue then never closes; the fix commit carries the line |
