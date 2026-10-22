@@ -1,0 +1,1 @@
+{"RunId":"39793792412","RunAttempt":1,"Workflow":"Run slow tests","Branch":"dev","HeadSha":"e03a9431805930fbae2d5c4b9f056bf3e676b851","Event":"push","Title":"test(core): run CancellingDebouncerTest on a manual clock","CreatedAt":"2026-10-22T14:13:08Z","Url":"https://github.com/Actual-Chat/actual-chat/actions/runs/39793792412","Jobs":[],"Verdict":"None","Rerun":false}
