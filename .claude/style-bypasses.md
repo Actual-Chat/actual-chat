@@ -280,3 +280,25 @@ edited. The reason can be as short as whose decision it was.
   L83 `Duration`, L87 `Kind`, L97 `AudioEntryId`
   — member comment above the declaration — auto-properties (and the column notes on the
   other ones) have no body to host it; Alex Yakunin's decision
+
+## src/dotnet/UI.Blazor.App/Services/ReactionsUI.cs
+
+- L9 `public class ReactionsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService`
+  — type not sealed — required: Fusion generates a proxy over the `[ComputeMethod]`
+  members, so a sealed type fails with CS0549 (same as VirtualListTestService above)
+
+## src/dotnet/UI.Blazor.App/Components/ChatView/Items/ChatEntryMessageView.razor
+
+Pre-existing violations, surfaced by the reactions-overlay work (2026-08-27) but
+unrelated to it — Dmitrii's decision to keep the hot chat component untouched:
+
+- 16 lines over the 120-char maximum (L45, 94, 356, 367, 376, 387, 389, 396, 440,
+  446, 465, 475, 487, 519, 550, 563) — pre-existing
+- missing `.ConfigureAwait(false)` at L306, 307, 524, 544, 569 — pre-existing
+- `protected override async Task OnParametersSetAsync()` — Allman brace instead of
+  the razor K&R brace — pre-existing
+- `protected override void OnInitialized()` — block body where an expression-bodied
+  member is preferred — pre-existing
+- `ShouldRender` continuation lines indented 3 spaces instead of 4 — pre-existing
+- local-function section not introduced by an explicit `return;` marker — pre-existing
+- blank lines splitting a run of local declarations in `ComputeState` — pre-existing

@@ -187,7 +187,7 @@
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private ChatPinsUI ChatPinsUI => Hub.ChatPinsUI;
     private FileDownloadUI FileDownloadUI => Hub.FileDownloadUI;
-    private OptimisticReactions OptimisticReactions => Hub.OptimisticReactions;
+    private ReactionsUI ReactionsUI => Hub.ReactionsUI;
 
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ChatEntry ChatEntry { get; set; } = null!;
@@ -223,17 +223,6 @@
     private void ShowAllReactions()
         => _showAllReactions = true;
 
-    private async Task React(Emoji emoji) {
-        _ = TuneUI.Play(Tune.React);
-        OptimisticReactions.AddPendingAnimation(ChatEntry.Id.Value, emoji.Id.Value);
-        OptimisticReactions.Set(ChatEntry.Id, emoji, false);
-        var reaction = new Reaction {
-            Id = Symbol.Empty,
-            AuthorId = null!,
-            EntryId = ChatEntry.Id,
-            Emoji = emoji,
-        };
-        _ = Hub.UserSettingsUI.UserReactionSettings().Update(s => s.WithBubbleUp(emoji.Id.Value));
-        await UICommander.Run(new Reactions_React { Session = Session, Reaction = reaction });
-    }
+    private void React(Emoji emoji)
+        => ReactionsUI.React(ChatEntry.Id, emoji);
 }
