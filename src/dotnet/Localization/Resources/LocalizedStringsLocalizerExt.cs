@@ -1467,6 +1467,11 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_InMyListCaption => l["Ptt_InMyListCaption"].Value;
         public string Ptt_DeviceOff_Prefix => l["Ptt_DeviceOff_Prefix"].Value;
         public string Ptt_DeviceOffTarget => l["Ptt_DeviceOffTarget"].Value;
+        public string Ptt_HideDeviceOffTitle => l["Ptt_HideDeviceOffTitle"].Value;
+        public string Ptt_HideDeviceOffText_Format(object arg0, object arg1)
+            => l["Ptt_HideDeviceOffText_Format", arg0, arg1].Value;
+        public string Ptt_TuneOnDevice_Prefix => l["Ptt_TuneOnDevice_Prefix"].Value;
+        public string Ptt_TuneOnDevice_Suffix => l["Ptt_TuneOnDevice_Suffix"].Value;
         public string Ptt_DeviceOff_Suffix => l["Ptt_DeviceOff_Suffix"].Value;
         public string Ptt_PauseForEveryone => l["Ptt_PauseForEveryone"].Value;
         public string Ptt_TurnOffTitle => l["Ptt_TurnOffTitle"].Value;

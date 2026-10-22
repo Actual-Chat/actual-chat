@@ -26,6 +26,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ImmutableDictionary<ChatId, Moment>> _stopListeningAtMap;
     private readonly MutableState<NextBeepState?> _nextBeep;
     private readonly StoredState<Box<bool>> _isPttEnabledOnDevice;
+    private readonly StoredState<Box<bool>> _isPttDeviceOffBannerHidden;
     private readonly MutableState<bool> _isDeviceQuiet;
     private readonly AsyncTaskMethodBuilder _whenEnabledSource = AsyncTaskMethodBuilderExt.New();
     // Boxed because Volatile.Read/Write take a reference; null means "no override".
@@ -96,6 +97,11 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             new(hub.LocalSettings, Ptt.IsEnabledOnDeviceKey) {
                 InitialValue = Box.New(false),
                 Category = StateCategories.Get(type, nameof(IsPttEnabledOnDevice)),
+            });
+        _isPttDeviceOffBannerHidden = stateFactory.NewKvasStored<Box<bool>>(
+            new(hub.LocalSettings, Ptt.IsDeviceOffBannerHiddenKey) {
+                InitialValue = Box.New(false),
+                Category = StateCategories.Get(type, nameof(IsPttDeviceOffBannerHidden)),
             });
         _isDeviceQuiet = stateFactory.NewMutable(
             false,
@@ -411,12 +417,31 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         return box.Value;
     }
 
+    [ComputeMethod] // Synced
+    public virtual async Task<bool> IsPttDeviceOffBannerHidden(CancellationToken cancellationToken)
+    {
+        if (!_isPttDeviceOffBannerHidden.WhenRead.IsCompleted)
+            await _isPttDeviceOffBannerHidden.WhenRead.ConfigureAwait(false);
+
+        var box = await _isPttDeviceOffBannerHidden.Use(cancellationToken).ConfigureAwait(false);
+        return box.Value;
+    }
+
+    public void SetIsPttDeviceOffBannerHidden(bool isHidden)
+    {
+        if (_isPttDeviceOffBannerHidden.Value.Value != isHidden)
+            _isPttDeviceOffBannerHidden.Value = Box.New(isHidden);
+    }
+
     public void SetIsPttEnabledOnDevice(bool isEnabled)
     {
         if (_isPttEnabledOnDevice.Value.Value == isEnabled)
             return;
 
         _isPttEnabledOnDevice.Value = Box.New(isEnabled);
+        // Enabling the device is the answer the banner asks for, so a later switch-off warns again
+        if (isEnabled)
+            SetIsPttDeviceOffBannerHidden(false);
         // The server-side wake fan-out filters on the flag stored with the device registration,
         // so a silent flip here would leave the server waking (or never waking) this device.
         _ = Hub.Services.GetRequiredService<NotificationUI>()

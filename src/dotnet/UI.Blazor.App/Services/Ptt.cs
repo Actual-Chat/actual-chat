@@ -5,6 +5,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 public static class Ptt
 {
     public const string IsEnabledOnDeviceKey = "Ptt.IsEnabledOnDevice";
+    public const string IsDeviceOffBannerHiddenKey = "Ptt.IsDeviceOffBannerHidden";
 
     // For code outside the UI scope (e.g. the MAUI token-refresh path); scoped code
     // reads ChatAudioUI.IsPttEnabledOnDevice instead.
