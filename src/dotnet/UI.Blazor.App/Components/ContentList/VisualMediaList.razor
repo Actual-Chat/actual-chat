@@ -60,7 +60,11 @@
         }
     </Item>
     <Skeleton>
-        <div class="c-skeleton"></div>
+        <div class="c-media-skeleton" aria-hidden="true">
+            @for (var i = 0; i < GridColumns; i++) {
+                <div class="animated-skeleton"></div>
+            }
+        </div>
     </Skeleton>
 </InfiniteList>
 </div>
