@@ -155,6 +155,13 @@ turned down. A decision that changes one of these adds or replaces its entry in 
 
 ### The daily agent
 
+- **2026-10-22 — A returned flake is checked against the fix that closed it, gets a priority 2
+  card, and its fix's author decides whether to reopen.** Why: the agent only commented on the
+  closed issue, so the test stayed out of the registry and nobody owned the decision; #4862
+  returned on 2026-10-20 and was reopened by hand two days later. A failure on a commit without
+  the fix is only an old branch, not a return. Rejected: letting the agent reopen, because a
+  bare timeout doesn't show the old mechanism is back, and a person picks between reopening and
+  a new issue.
 - **2026-10-22 — The card cap stays at three; priority 5 takes any entry without a card that
   failed in the last 14 days, counting only failures on a commit that contains the test file's
   latest change,** oldest first. Why: entries that missed the cap were dropped the next day

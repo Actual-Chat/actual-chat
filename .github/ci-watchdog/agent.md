@@ -110,7 +110,7 @@ Three traps:
      > Closing: no failure matching this entry in the last 14 days (last one: <date, or "never">). If the test fails again, the watchdog reports it under "Returned".
 6. **Comment a triage card** on the issue it concerns (§5a). A card for a failure that has no issue goes into the report instead (§5a).
 
-Before opening anything, check that no such issue exists — among closed ones too, and by the test's name in any issue, not only `ci-flaky` ones: a failing test may already have a plain issue with the `ci` label. An open one: add a comment instead. A **closed** one whose test is failing again is an **important finding**: the fix did not hold. Do not reopen it yourself — comment there with the evidence and give it its own line in the report.
+Before opening anything, check that no such issue exists — among closed ones too, and by the test's name in any issue, not only `ci-flaky` ones: a failing test may already have a plain issue with the `ci` label. An open one: add a comment instead. A **closed** one whose test is failing again may be an **important finding**: the fix did not hold. Check that first. Find the commit that closed the issue (its `closed` event, or the merge of the PR that says `Closes #N`) and run `git merge-base --is-ancestor <fix> <failure sha>`, fetching the failure's SHA with `git fetch origin <sha>` if your checkout lacks it. A failure on a commit without the fix is not a return, only a branch older than the fix: list it under `Returned` as "predates the fix" and do nothing else. A real return: do not reopen it yourself. Comment there with the evidence, give it its own line in the report, and give it a card (priority 2) on the closed issue. The card's proposed action ends with the decision left to a person, and names the author of the fix with an @-mention, since they decide: reopen, when the error matches what the issue was filed for, or file a new issue, when it does not.
 
 **Strictly forbidden**: changing repository files by any means, including the shell (`>`, `tee`, `sed -i`) and any file-writing MCP tool; committing or pushing; creating branches or PRs; re-running workflow runs (the workflow does that); touching the `ci-watchdog-data` branch; reopening or editing registry issues, or closing them other than under action 5 (whoever fixed the test closes it from the fixing PR); editing timeouts in tests. The only directory you may write to is `/tmp`. If a fix looks obvious to you, put it in a triage card as a draft and leave it to a person.
 
@@ -121,7 +121,7 @@ A card is a comment that turns a failure into one decision for a person: what fa
 **Which failures get a card**, highest priority first:
 
 1. a regression on `dev` (the `ci-regression` issue);
-2. a REPEATED FLAKE or a NEW SYMPTOM;
+2. a REPEATED FLAKE, a NEW SYMPTOM, or a real return of a closed issue's test (§5);
 3. any failure on a `release/*` branch, even a single one;
 4. a new flake you filed in this run;
 5. a registry entry that has no card yet and failed in the last 14 days, not only in the window. Count only failures on a commit that already contains the latest change to the test's file: take that change with `git log -1 --format=%H origin/dev -- <test file>` and check it with `git merge-base --is-ancestor <change> <failure sha>`. A failure from before the test last changed shows nothing about the test as it is now. It may predate a fix, or instrumentation a person added and is waiting on, as #5523 is for #5497. The entry whose oldest such failure is earliest goes first, so a flake that fails every few days still reaches the front of the queue instead of losing the cap to fresher failures every time.
@@ -167,7 +167,7 @@ Below threshold (watching):
 - <name — failures, branches, run links; for a held filing, the fix candidate — or "none">
 
 Returned (issue closed, test failing again):
-- <name — when it was closed, how many failures since — or "none">
+- <name — when it was closed and by which commit, how many failures since and whether each ran with that commit, or "predates the fix" — or "none">
 
 Chronic flakes in the window:
 - <name — how many times, noisiest first, at most five lines, then "+N more: #issue, #issue">
