@@ -33,6 +33,19 @@ $script:CollapseThreshold = 5
 # One error line is kept per failed test; the names are what the record is for.
 $script:MaxErrorLength = 500
 
+# The stack and the test's own output are kept so that whoever triages the failure later needs no
+# job log: the GitHub tools return only its last 5000 lines, and the cloud agent cannot download
+# the rest. Only the first tests of a job get them, which is all a collapsed run needs.
+$script:DetailedTestLimit = 10
+$script:MaxStackLines = 30
+# The output keeps one line per log record; a test that starts two app hosts writes about 750.
+$script:MaxOutputLength = 48000
+$script:MaxOutputLineLength = 220
+# A failing background loop logs the same record over and over; the test's own lines are never cut.
+$script:MaxSimilarOutputLines = 5
+# A host logs a heartbeat every second; one in this many is enough to show the machine's load.
+$script:AliveLineStride = 10
+
 # GitHub rejects a comment over 65536 characters, and a collapsed run fails thousands of tests.
 $script:JournalTestLimit = 30
 
@@ -252,6 +265,140 @@ function Limit-CiText {
     return $Text.Substring(0, $MaxLength) + '…'
 }
 
+function ConvertTo-CiTestOutput {
+    <#
+    .SYNOPSIS
+        Condenses a test's "Standard Output Messages" to one line per log record.
+    .DESCRIPTION
+        A logger record takes two lines, a "[date time] level: Category[id]" header
+        and its message; it becomes "time level Category: message". The message's
+        own continuation lines are dropped, records that differ only in numbers
+        and quoted names are kept $script:MaxSimilarOutputLines times, and only
+        every $script:AliveLineStride-th host heartbeat stays. The test's own
+        lines are kept as they are, marked "»". What is still over
+        $script:MaxOutputLength loses its middle: the start shows how the test set
+        up, the end how it failed.
+    #>
+    param([Parameter(Mandatory)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines)
+
+    $condensed = [System.Collections.Generic.List[string]]::new()
+    $header = $null
+    $aliveCount = 0
+    foreach ($line in $Lines) {
+        if ($line -match '^\s*\[\d{4}-\d\d-\d\d (?<time>[\d:.]+)[^\]]*\] (?<level>\w+): (?<category>[^\s\[]+)(\[\d+\])?\s*$') {
+            if ($header) {
+                $condensed.Add($header)
+            }
+            $category = ($Matches.category -split '\.')[-1]
+            $header = "$($Matches.time) $($Matches.level) ${category}:"
+            continue
+        }
+        if ($header) {
+            $condensed.Add("$header $($line.Trim())")
+            $header = $null
+            continue
+        }
+        if ($line -match 'AppHost\[[^\]]*\]: alive: at (?<time>[\d:.]+), (?<rest>.*)$') {
+            if ($aliveCount++ % $script:AliveLineStride -eq 0) {
+                $condensed.Add("$($Matches.time) alive: $($Matches.rest)")
+            }
+            continue
+        }
+        if ($line -match '^\s*<[^>]+> AppHost\[') {
+            $condensed.Add($line.Trim())
+            continue
+        }
+        # What the test itself writes sits one column in, like a record's header; a record's
+        # message lines sit further in, except for the text of an exception it logged.
+        if ($line -match '^ \S' -and $line -notmatch '^ (--- End of|at |[\w.]+(Exception|Error)\b|Exception data:)') {
+            $condensed.Add("» $($line.Trim())")
+        }
+    }
+    if ($header) {
+        $condensed.Add($header)
+    }
+
+    $kept = [System.Collections.Generic.List[string]]::new()
+    $seen = @{}
+    $dropped = 0
+    foreach ($line in $condensed) {
+        # Time, numbers and quoted names differ between records that say the same thing.
+        $key = $line -replace '^[\d:.]+ ', '' -replace "'[^']*'|`"[^`"]*`"", "''" -replace '\d+', '0'
+        if (-not $line.StartsWith('» ') -and ++$seen[$key] -gt $script:MaxSimilarOutputLines) {
+            $dropped++
+            continue
+        }
+        $kept.Add((Limit-CiText $line $script:MaxOutputLineLength))
+    }
+    if ($dropped -gt 0) {
+        $kept.Add("… $dropped more records like the ones above, dropped")
+    }
+
+    $text = $kept -join "`n"
+    if ($text.Length -le $script:MaxOutputLength) {
+        return $text
+    }
+    $headLength = [int]($script:MaxOutputLength / 4)
+    $tailLength = $script:MaxOutputLength - $headLength
+    $head = $text.Substring(0, $text.LastIndexOf("`n", $headLength))
+    $tail = $text.Substring($text.IndexOf("`n", $text.Length - $tailLength) + 1)
+    $cut = $text.Length - $head.Length - $tail.Length
+    return "$head`n… $cut characters cut …`n$tail"
+}
+
+function Get-CiTestDetails {
+    <#
+    .SYNOPSIS
+        Reads the error, stack and output vstest prints under "Failed <test> [<duration>]".
+    .DESCRIPTION
+        Assemblies run in parallel and their lines interleave, so the section is
+        read as its indented lines only: everything vstest writes for the test is
+        indented, while another assembly's live output starts at the first column.
+        The section ends at the next test's result or at the assembly summary.
+    #>
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][AllowEmptyString()][string[]]$Lines,
+        [Parameter(Mandatory)][int]$Start)
+
+    $message = [System.Collections.Generic.List[string]]::new()
+    $stack = [System.Collections.Generic.List[string]]::new()
+    $output = [System.Collections.Generic.List[string]]::new()
+    $part = ''
+    for ($i = $Start + 1; $i -lt $Lines.Count; $i++) {
+        $line = $Lines[$i]
+        if ($line -match '^\s{2}(Failed|Passed|Skipped) \S' -or
+            $line -match '^(Failed|Passed|Skipped)!\s' -or
+            $line -match '^(Results File:|Standard error:|Test Run )') {
+            break
+        }
+        if ($line -notmatch '^\s') {
+            continue
+        }
+
+        if ($line -match '^\s+(?<part>Error Message|Stack Trace|Standard Output Messages):\s*$') {
+            $part = $Matches.part
+        }
+        elseif ($part -eq 'Standard Output Messages') {
+            $output.Add($line)
+        }
+        elseif (-not $line.Trim()) {
+            continue
+        }
+        elseif ($part -eq 'Error Message') {
+            $message.Add($line.Trim())
+        }
+        elseif ($part -eq 'Stack Trace' -and $stack.Count -lt $script:MaxStackLines) {
+            $stack.Add($line.Trim())
+        }
+    }
+
+    return [PSCustomObject]@{
+        Error = $message -join ' '
+        Stack = $stack -join "`n"
+        Output = ConvertTo-CiTestOutput $output
+    }
+}
+
 function Get-CiFailedTests {
     <#
     .SYNOPSIS
@@ -264,6 +411,9 @@ function Get-CiFailedTests {
         the error on the next line, and its duration on a separate progress line
         that names the test alone. The build tool prefixes every vitest line
         with its target ("e2e: "), which is cut off the error.
+
+        The first $script:DetailedTestLimit xUnit failures also get their stack
+        and condensed output (Get-CiTestDetails).
     #>
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string]$LogText,
@@ -274,6 +424,7 @@ function Get-CiFailedTests {
     $errors = @{}
     $order = [System.Collections.Generic.List[string]]::new()
     $vitestDurations = @{}
+    $sections = @{}
 
     for ($i = 0; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
@@ -334,6 +485,18 @@ function Get-CiFailedTests {
             if (-not $durations.ContainsKey($name)) {
                 $durations[$name] = $Matches.duration.Trim()
             }
+            if ($line -match '^\s{2}Failed\s' -and -not $sections.ContainsKey($name)) {
+                $sections[$name] = $i
+            }
+        }
+    }
+
+    $details = @{}
+    foreach ($name in @($order | Where-Object { $sections.ContainsKey($_) } | Select-Object -First $script:DetailedTestLimit)) {
+        $details[$name] = Get-CiTestDetails $lines $sections[$name]
+        # The xUnit marker's error line sits among other assemblies' output and can be lost there.
+        if (-not $errors.ContainsKey($name) -and $details[$name].Error) {
+            $errors[$name] = $details[$name].Error
         }
     }
 
@@ -352,6 +515,8 @@ function Get-CiFailedTests {
             Error = Limit-CiText $errors[$_] $script:MaxErrorLength
             KnownFlake = $flake.Known
             FlakeIssue = $flake.Issue
+            Stack = $details[$_].Stack
+            Output = $details[$_].Output
         }
     })
 }
