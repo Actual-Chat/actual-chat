@@ -302,3 +302,14 @@ unrelated to it — Dmitrii's decision to keep the hot chat component untouched:
 - `ShouldRender` continuation lines indented 3 spaces instead of 4 — pre-existing
 - local-function section not introduced by an explicit `return;` marker — pre-existing
 - blank lines splitting a run of local declarations in `ComputeState` — pre-existing
+
+## src/dotnet/UI.Blazor/Services/DebugUI/debug-ui.ts
+
+Pre-existing violations, surfaced while adding `suspendCommandQueue` (2026-08-30) but
+unrelated to it — same call as for ChatEntryMessageView: leave the file alone.
+
+- 12 `/** */` doc blocks on members / a type alias instead of `//` comments
+  (L25, 98, 115, 158, 188, 196, 215, 249, 255, 288, 302, 429) — pre-existing;
+  they are the file's established style for the debug console API
+- L106-108 single-statement `else` block with braces — pre-existing
+- L488 exceeds the 120-char line limit (122 chars) — pre-existing

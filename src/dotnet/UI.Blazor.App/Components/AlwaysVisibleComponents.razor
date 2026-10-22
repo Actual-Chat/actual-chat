@@ -18,6 +18,7 @@
 @if (HostInfo.IsDevelopmentInstance) {
     <Hotkey Keys="ctrl+shift+l s" AriaLabel="@L.Shortcuts_ToggleSafeAreas" OnTrigger="OnToggleSafeAreas" IsGlobal="true"/>
 }
+<Hotkey Keys="ctrl+shift+l q" AriaLabel="Suspend the command queue" OnTrigger="OnSuspendCommandQueue" IsGlobal="true"/>
 @if (!BrowserInfo.IsTouchCapable) {
     <TooltipHost />
 }
@@ -74,6 +75,22 @@
 
     private Task OnToggleSafeAreas()
         => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.DebugUI.toggleSafeAreas").AsTask();
+
+    private void OnSuspendCommandQueue() {
+        // Checked on the keypress rather than around the Hotkey: the account isn't loaded yet
+        // when this component first renders, and it never re-renders to pick the change up
+        if (!AccountUI.OwnAccount.Value.IsAdmin)
+            return;
+
+        var queue = Hub.CommandQueueUI;
+        if (queue.IsPaused)
+            queue.Resume();
+        else
+            queue.Pause();
+        ToastUI.Show(
+            queue.IsPaused ? "Command queue paused" : "Command queue running",
+            ToastDismissDelay.Short);
+    }
 
     private async Task OnShortcutsHelp() {
         if (_isShortcutsHelpOpen)
