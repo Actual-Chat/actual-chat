@@ -45,10 +45,12 @@ public static partial class MauiProgram
         services.AddScoped<ActivitiesBackend>(c => new IosActivitiesBackend(
             c.AppUIHub(),
             c.GetRequiredService<IosUploadKeepAlive>()));
-        services.AddScoped(c => new IosCallsBridge(c.AppUIHub()));
-        services.AddScoped(c => new IosCallIntents(c.AppUIHub()));
-        services.AddScoped<IIncomingCallsBridge>(c => c.GetRequiredService<IosCallsBridge>());
-        services.AddScoped<ISystemCallUI>(c => c.GetRequiredService<IosCallsBridge>());
+        if (IosCallKit.IsAvailable) {
+            services.AddScoped(c => new IosCallsBridge(c.AppUIHub()));
+            services.AddScoped(c => new IosCallIntents(c.AppUIHub()));
+            services.AddScoped<IIncomingCallsBridge>(c => c.GetRequiredService<IosCallsBridge>());
+            services.AddScoped<ISystemCallUI>(c => c.GetRequiredService<IosCallsBridge>());
+        }
     }
 
     private static partial void ConfigurePlatformLifecycleEvents(ILifecycleBuilder events)
@@ -62,7 +64,9 @@ public static partial class MauiProgram
             CrossFirebaseAnalytics.Current.IsAnalyticsCollectionEnabled = isDataCollectionEnabled;
             FirebaseCloudMessagingImplementation.Initialize();
             IosPtt.Initialize();
-            IosVoipPushes.Instance.Initialize();
+            // Without a VoIP token the server has no CallKit device to ring and sends the regular call push.
+            if (IosCallKit.IsAvailable)
+                IosVoipPushes.Instance.Initialize();
 #endif
             return false;
         }));

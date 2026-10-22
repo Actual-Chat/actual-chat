@@ -1,9 +1,9 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
-using ActualChat.App.Maui.Services;
 using ActualChat.ContentCaching;
 using ActualChat.Maui;
+using ActualChat.Maui.Services;
 using ActualChat.Rpc;
 using ActualLab.IO;
 using Microsoft.Maui.Storage;

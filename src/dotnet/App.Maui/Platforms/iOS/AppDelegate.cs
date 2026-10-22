@@ -34,7 +34,8 @@ public class AppDelegate : MauiUIApplicationDelegate, IMessagingDelegate
             var dismissedTags = GetValue(userInfo, Constants.Notification.MessageDataKeys.DismissedTags);
             if (!dismissedIds.IsNullOrEmpty() || !dismissedTags.IsNullOrEmpty()) {
                 var tags = Split(dismissedTags);
-                EndDismissedCalls(tags);
+                if (IosCallKit.IsAvailable)
+                    EndDismissedCalls(tags);
                 RemoveDeliveredNotifications(Split(dismissedIds), tags);
                 completionHandler(UIBackgroundFetchResult.NewData);
                 return;

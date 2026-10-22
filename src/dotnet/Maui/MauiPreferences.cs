@@ -23,6 +23,7 @@ public static class MauiPreferences
     private const string InstallationIdKey = "installation_id";
     private const string IsFileLogEnabledKey = "is_file_log_enabled";
     private const string AppleAttributionFirstTryAtKey = "apple_attribution_first_try_at";
+    private static readonly string[] SharedKeys = [RpcEndpointKey, ThemeKey, ThemeColorsKey, UILanguageKey];
 
     private static readonly Lock Lock = new();
     private static readonly ConcurrentDictionary<string, object?> Cache = new();
@@ -48,8 +49,8 @@ public static class MauiPreferences
         set => Set(HostOverrideKey, value ?? "");
     }
     public static string? RpcEndpoint {
-        get => Get<string>(RpcEndpointKey).NullIfEmpty();
-        set => Set(RpcEndpointKey, value ?? "");
+        get => Get<string>(RpcEndpointKey, sharedName: SharedName).NullIfEmpty();
+        set => Set(RpcEndpointKey, value ?? "", SharedName);
     }
 
     public static bool? IsDataCollectionEnabled {
@@ -111,6 +112,13 @@ public static class MauiPreferences
     public static Moment? AppleAttributionFirstTryAt {
         get => Get<long?>(AppleAttributionFirstTryAtKey) is { } ticks ? new Moment(ticks) : null;
         set => Set(AppleAttributionFirstTryAtKey, value?.EpochOffsetTicks);
+    }
+
+    public static void InvalidateShared()
+    {
+        // The app writes these from its own process, and a share extension process outlives the shares that read them
+        foreach (var key in SharedKeys)
+            RemoveCached(key);
     }
 
     public static string? GetHostIp(string hostName)
