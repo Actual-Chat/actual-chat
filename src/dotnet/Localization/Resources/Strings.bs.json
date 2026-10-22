@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "Uključite video dijagnostiku",
   "DevTools_EnableAudioDiagnostics": "Uključite audio dijagnostiku",
   "DevTools_EnableFileLog": "Upisujte zapise u fajlove",
+  "DevTools_OpenLogFile": "Otvorite fajl dnevnika",
   "Diagnostics_Video": "Video dijagnostika",
   "Diagnostics_Audio": "Audio dijagnostika",
 

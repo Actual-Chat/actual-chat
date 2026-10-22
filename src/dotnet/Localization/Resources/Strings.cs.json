@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "Zapnout diagnostiku videa",
   "DevTools_EnableAudioDiagnostics": "Zapnout diagnostiku zvuku",
   "DevTools_EnableFileLog": "Ukládat logy do souboru",
+  "DevTools_OpenLogFile": "Otevřít soubor protokolu",
   "Diagnostics_Video": "Diagnostika videa",
   "Diagnostics_Audio": "Diagnostika zvuku",
 

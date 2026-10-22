@@ -1,7 +1,9 @@
+using ActualChat.Localization;
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
 using ActualLab.Fusion.UI;
+using Microsoft.Extensions.Localization;
 
 namespace ActualChat.App.Maui;
 
@@ -10,6 +12,7 @@ public sealed class WindowsLogAccessor : IMauiLogAccessor
     private readonly IServiceProvider _services;
     private readonly ILogger _log;
 
+    private IStringLocalizer L => field ??= _services.GetRequiredService<IStringLocalizer>();
     private ToastUI ToastUI => field ??= _services.GetRequiredService<ToastUI>();
     private UICommander UICommander => field ??= _services.GetRequiredService<UICommander>();
 
@@ -23,7 +26,7 @@ public sealed class WindowsLogAccessor : IMauiLogAccessor
 
     public Func<Task>? GetLogFile { get; }
 #pragma warning disable CA1822
-    public string ActionName => "Open log file";
+    public string ActionName => L.DevTools_OpenLogFile;
     public bool? IsFileLogEnabled => null;
 
     public void SetFileLogEnabled(bool isEnabled)

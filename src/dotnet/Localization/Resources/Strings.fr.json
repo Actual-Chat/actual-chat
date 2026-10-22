@@ -295,6 +295,7 @@
   "DevTools_EnableVideoDiagnostics": "Activer le diagnostic vidéo",
   "DevTools_EnableAudioDiagnostics": "Activer le diagnostic audio",
   "DevTools_EnableFileLog": "Enregistrer le journal dans un fichier",
+  "DevTools_OpenLogFile": "Ouvrir le fichier journal",
   "Diagnostics_Video": "Diagnostic vidéo",
   "Diagnostics_Audio": "Diagnostic audio",
 
