@@ -77,7 +77,7 @@ public sealed class SonioxTranscriber : ITranscriber
             keepAliveTask = KeepAlive(sender, cts.Token);
             await TaskExt.WhenPushAndRead(
                     PushAudio(sender, audioSource, cts.Token),
-                    ReadTranscripts(webSocket, output, audioStreamId, cts.Token),
+                    ReadTranscripts(webSocket, options, output, audioStreamId, cts.Token),
                     cts)
                 .ConfigureAwait(false);
         }
@@ -212,11 +212,12 @@ public sealed class SonioxTranscriber : ITranscriber
 
     private async Task ReadTranscripts(
         ClientWebSocket webSocket,
+        TranscriptionOptions options,
         ChannelWriter<Transcript> output,
         string audioStreamId,
         CancellationToken cancellationToken)
     {
-        var builder = new SonioxTranscriptBuilder(Settings.SonioxStableTokenAge);
+        var builder = new SonioxTranscriptBuilder(Settings.SonioxStableTokenAge, options.GetExpectedLanguages());
         var buffer = new ArraySegment<byte>(new byte[16 * 1024]);
         var message = new StringBuilder();
         var hasFinished = false;

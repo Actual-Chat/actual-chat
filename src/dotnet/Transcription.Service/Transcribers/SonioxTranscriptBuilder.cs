@@ -23,10 +23,11 @@ namespace ActualChat.Transcription;
 // by the next messages and the eventual finals for it are ignored, and a late revision of a
 // promoted word is lost - offline re-transcription fixes the stored text.
 
-public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
+public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge, IReadOnlyList<Language>? expectedLanguages = null)
 {
     private const string EndpointToken = "<end>";
     private readonly long _stableTokenAgeMs = (long)stableTokenAge.TotalMilliseconds;
+    private readonly IReadOnlyList<Language> _expectedLanguages = expectedLanguages ?? [];
     private readonly StringBuilder _finalText = new();
     private readonly List<Language> _languages = [];
     private readonly List<SonioxToken> _finalTimingTokens = [];
@@ -165,7 +166,7 @@ public sealed class SonioxTranscriptBuilder(TimeSpan stableTokenAge)
 
     private void AddLanguage(string? code)
     {
-        var language = Language.TryParse(code, true);
+        var language = SonioxLanguage.FromSoniox(code, _expectedLanguages);
         if (language != null && !_languages.Contains(language))
             _languages.Add(language);
     }

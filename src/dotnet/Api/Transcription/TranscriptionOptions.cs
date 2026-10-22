@@ -7,14 +7,12 @@ public sealed record TranscriptionOptions
     public Language[] LanguageCandidates { get; init; } = [];
     public TranscriptionContext Context { get; init; } = TranscriptionContext.None;
 
+    public Language[] GetExpectedLanguages()
+        // The chat's language, or the speaker's spoken languages when the chat has none (possibly none at all).
+        => DetectLanguage ? LanguageCandidates : [Language];
+
     public string[] GetLanguageHints(Func<Language, string>? toCode = null)
-    {
-        // Detection mode hints with the chat's candidates, which may legitimately be none.
-        toCode ??= static x => x.IsoCode;
-        return DetectLanguage
-            ? LanguageCandidates.Select(toCode).Distinct().ToArray()
-            : [toCode(Language)];
-    }
+        => [.. GetExpectedLanguages().Select(toCode ?? (static x => x.IsoCode)).Distinct()];
 
     public static TranscriptionOptions AutoDetectLanguage(Language[] languageCandidates)
         => new() {
