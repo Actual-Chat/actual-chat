@@ -1,6 +1,6 @@
 using ActualChat.Rpc;
 
-namespace ActualChat.App.Maui.Services;
+namespace ActualChat.Maui.Services;
 
 /// <summary>
 /// Sends a request for our own content to the content host RPC uses, which may be an edge node's.

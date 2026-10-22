@@ -383,9 +383,6 @@ public static partial class MauiProgram
             services.AddSingleton<IHttpClientFactory>(c => c.GetRequiredService<MauiHttpClientFactory>());
             services.AddSingleton<IHttpMessageHandlerFactory>(c => c.GetRequiredService<MauiHttpClientFactory>());
         }
-        // Content downloads follow RPC to its edge node whichever client makes them
-        services.ConfigureHttpClientDefaults(http
-            => http.AddHttpMessageHandler(c => new ContentHostHandler(c.UrlMapper())));
 
         // All other (module) services
         ClientStartup.ConfigureServices(services, Constants.HostInfo, c => [

@@ -13,6 +13,8 @@ public class ShareViewController : UIViewController
 
     public override void LoadView()
     {
+        // Ahead of everything else that reads the theme, the language or the RPC endpoint
+        MauiPreferences.InvalidateShared();
         ApplyTheme();
         _app = ShareExtensionApplication.Bootstrap(this);
         // Leaving View unset makes UIKit throw NSInvalidArgumentException ("attempt to insert nil
