@@ -22,6 +22,9 @@ public sealed class NotificationMaintenanceTest(AppHostFixture fixture, ITestOut
             owner.Id, deviceId, DeviceType.WebBrowser, Symbol.Empty));
         await Commander.Call(new NotificationsBackend_Notify(notification));
         (await tester.NotificationsBackend.GetUserNotificationInfo(owner.Id, default)).Items.Should().ContainSingle();
+        // The push goes out through the event forwarder, so without this wait it may land after sink.Clear() (#5188)
+        await TestWait.WhenPolled(() => sink.Messages.Should()
+            .Contain(x => !x.IsDismissal && x.DeviceIds.Contains(deviceId)));
         await Commander.Call(new MaintenancesBackend_Set(chatId.ToMaintenanceKey(), mode));
         sink.Clear();
 
