@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
 /// Prevents the device screen from sleeping during active audio playback or recording,
-/// and turns it off at the ear during an earpiece call.
+/// and turns it off at the ear during an earpiece call or a replay.
 /// </summary>
 public class KeepAwakeUI(UIHub hub)
 {

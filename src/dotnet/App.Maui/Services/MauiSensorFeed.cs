@@ -128,7 +128,7 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
     public override bool IsProximityAvailable
         => GetProximitySensor() is not null;
 
-    public override void StartProximity()
+    protected override void StartProximityCore()
     {
         lock (_lock) {
             if (_isProximityOn)
@@ -152,7 +152,7 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
         }
     }
 
-    public override void StopProximity()
+    protected override void StopProximityCore()
     {
         lock (_lock) {
             if (!_isProximityOn)
@@ -197,7 +197,7 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
 
     public override bool IsProximityAvailable => true;
 
-    public override void StartProximity()
+    protected override void StartProximityCore()
     {
         lock (_lock) {
             if (_isProximityOn)
@@ -216,13 +216,13 @@ public sealed class MauiSensorFeed(AppUIHub hub) : SensorFeed
             }
             catch (Exception e) {
                 // No rollback of the flag from here: it leaves proximity dead rather than live,
-                // and GestureUI's next disarm clears the flag so the next arm retries.
+                // and the last holder's stop clears the flag so the next start retries.
                 Log.LogWarning(e, "Failed to start proximity monitoring");
             }
         });
     }
 
-    public override void StopProximity()
+    protected override void StopProximityCore()
     {
         lock (_lock) {
             if (!_isProximityOn)
