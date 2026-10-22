@@ -16,7 +16,7 @@ public class ShardedComputeServiceBaseTest(ITestOutputHelper @out)
     [Fact]
     public async Task BasicTest()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource();
         var cancellationToken = cts.Token;
 
         var timeout = TimeSpan.FromSeconds(5);
@@ -32,6 +32,8 @@ public class ShardedComputeServiceBaseTest(ITestOutputHelper @out)
         c1.Value!.Value.Elapsed.Should().BeLessThan(maxRecentDelta);
 
         await using var h2 = await NewAppHost();
+        // The deadline starts only now: the first host of a test process starts cold, 17-22 s on a build agent (#5565)
+        cts.CancelAfter(TimeSpan.FromSeconds(30));
         var o2 = h2.Services.ShardOwner(shardScheme);
         var s2 = h2.Services.GetRequiredService<TestShardComputeService>();
         await TestWait.When(async ct => {
