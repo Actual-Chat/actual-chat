@@ -818,11 +818,15 @@ body.narrow .content-list-links .link-preview:not(.local-link) {
 /* ── Push-to-talk modal ── */
 
 .chat-ptt-settings-modal .c-device-off {
+    @apply mb-2;
+}
+.chat-ptt-settings-modal .c-tune-on-device {
     @apply px-4 pt-2;
     @apply text-caption text-03;
 }
-.chat-ptt-settings-modal .c-device-off .link {
+.chat-ptt-settings-modal .c-tune-on-device .link {
     @apply text-primary;
     @apply underline;
     @apply cursor-pointer;
 }
+

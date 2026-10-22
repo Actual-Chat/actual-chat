@@ -49,9 +49,13 @@ consent.
 
 **Device activation is explicit and visible.** A chat can be in the account's PTT
 list while PTT is disabled on this device, including after reinstalling the app.
-`PttDeviceOffBanner` then shows a short, non-dismissible informational notice above
+`PttDeviceOffBanner` then shows a short informational notice above
 the collapsed banner stack: PTT is off on this device. Its Allow button enables
-this device without changing the chat's account-level consent.
+this device without changing the chat's account-level consent. Its close button asks
+for confirmation, then hides the notice for every chat on this device (a device-local
+flag, `Ptt.IsDeviceOffBannerHiddenKey`, owned by `ChatAudioUI`); enabling PTT on the
+device clears it, so a later switch-off warns again. Settings > Push-to-Talk stays the way
+to turn the device on.
 The chat's PTT settings also offer that activation directly, rather than sending
 the user to general Settings. Adding a chat never silently enables the device;
 the warning appears as soon as the chat joins the list.
