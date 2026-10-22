@@ -127,7 +127,7 @@ was folded in.
 On a release base, the commit that carries the fix ends its message with a
 `Closes #<N>` line (from `branch.<name>.issue`) above the trailers. A PR into
 `release/*` closes nothing on merge; the issue closes when this commit reaches
-`dev` through the release merge-forward. Show the line in the plans, and pass
+`dev` through the release merge-forward (`/merge-release-to-dev`). Show the line in the plans, and pass
 messages with a body through `git commit -F tmp/msg.txt`.
 
 ### 4. Identify superpowers docs to drop
