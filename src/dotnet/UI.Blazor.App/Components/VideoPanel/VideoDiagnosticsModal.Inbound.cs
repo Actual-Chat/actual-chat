@@ -6,16 +6,16 @@ namespace ActualChat.UI.Blazor.App.Components.VideoPanel;
 public partial class VideoDiagnosticsModal
 {
     private RenderFragment RenderInboundQualityControl() => builder => {
-        var qualityUi = Hub.VideoQualityUI;
-        var bw = qualityUi.InboundBandwidthEstimator;
-        var snap = qualityUi.PlaybackSnapshot;
+        var videoQualityUI = Hub.VideoQualityUI;
+        var bw = videoQualityUI.InboundBandwidthEstimator;
+        var snap = videoQualityUI.PlaybackSnapshot;
 
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "diag-section");
         builder.AddMarkupContent(2, "<div class=\"diag-section-header\">Quality Control</div>");
         AppendCeilingAndSignal(builder, 100, bw);
-        AppendInboundInputs(builder, 200, snap, qualityUi.InboundDecoderCapStreamCount);
-        AppendDecisionLog(builder, 300, qualityUi.InboundDecisionLog, "Dl", "Dec");
+        AppendInboundInputs(builder, 200, snap, videoQualityUI.InboundDecoderCapStreamCount);
+        AppendDecisionLog(builder, 300, videoQualityUI.InboundDecisionLog, "Dl", "Dec");
         builder.CloseElement();
     };
 

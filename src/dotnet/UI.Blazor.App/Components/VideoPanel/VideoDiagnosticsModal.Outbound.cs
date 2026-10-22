@@ -7,13 +7,13 @@ namespace ActualChat.UI.Blazor.App.Components.VideoPanel;
 public partial class VideoDiagnosticsModal
 {
     private RenderFragment RenderOutboundQualityControl(ComputedModel m) => builder => {
-        var qualityUi = Hub.VideoQualityUI;
-        var bw = qualityUi.OutboundBandwidthEstimator;
-        var encLayers = qualityUi.OutboundEncodingLayers;
-        var bwLayers = qualityUi.OutboundBandwidthLayers;
+        var videoQualityUI = Hub.VideoQualityUI;
+        var bw = videoQualityUI.OutboundBandwidthEstimator;
+        var encLayers = videoQualityUI.OutboundEncodingLayers;
+        var bwLayers = videoQualityUI.OutboundBandwidthLayers;
         var activeKinds = m.OwnSourceKinds;
         var statsByKind = activeKinds
-            .Select(k => (Kind: k, Stats: qualityUi.GetRecordingSnapshot(k).Health))
+            .Select(k => (Kind: k, Stats: videoQualityUI.GetRecordingSnapshot(k).Health))
             .Where(x => x.Stats is not null)
             .ToDictionary(x => x.Kind, x => x.Stats!);
 
@@ -24,12 +24,12 @@ public partial class VideoDiagnosticsModal
         AppendOutboundInputs(builder, 200, activeKinds, statsByKind);
         AppendCapReadout(builder, 300, "Encoding cap", encLayers, activeKinds);
         AppendCapReadout(builder, 400, "Bandwidth cap", bwLayers, activeKinds);
-        var thermal = qualityUi.ThermalCap;
+        var thermal = videoQualityUI.ThermalCap;
         AppendRow(builder, 450, "Thermal cap",
             thermal.MaxFps == 0
                 ? $"{thermal.Level} (no cap)"
                 : $"{thermal.Level} → cam ≤{thermal.CameraLayers}, fps ≤{thermal.MaxFps}");
-        AppendDecisionLog(builder, 500, qualityUi.OutboundDecisionLog, "Enc", "Up");
+        AppendDecisionLog(builder, 500, videoQualityUI.OutboundDecisionLog, "Enc", "Up");
         builder.CloseElement();
     };
 
