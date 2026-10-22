@@ -27,6 +27,30 @@ public sealed class SonioxLanguageTest(ITestOutputHelper @out) : TestBase(@out)
     public void ToSonioxShouldMapCodes(string languageId, string expected)
         => Language.Parse(languageId).ToSoniox().Should().Be(expected);
 
+    [Theory]
+    [InlineData("sr", "cnr-ME", "cnr-ME")]
+    [InlineData("sr", "sr-SR,cnr-ME", "cnr-ME")]
+    [InlineData("sr", "", "sr-SR")]
+    [InlineData("sr", "en-US", "sr-SR")]
+    [InlineData("tl", "fil-PH", "fil-PH")]
+    [InlineData("ru", "cnr-ME", "ru-RU")]
+    // Only the override languages are told apart: "zh" stays Chinese for a zh-TW speaker.
+    [InlineData("zh", "zh-TW", "zh-CN")]
+    public void FromSonioxShouldPreferAnExpectedOverrideLanguage(string code, string expectedLanguages, string expected)
+    {
+        // arrange
+        var languages = expectedLanguages
+            .Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Language.Parse)
+            .ToArray();
+
+        // act
+        var language = SonioxLanguage.FromSoniox(code, languages);
+
+        // assert
+        language.Should().Be(Language.Parse(expected));
+    }
+
     [Fact]
     public void EverySupportedLanguageShouldMapToNonEmptyCode()
     {

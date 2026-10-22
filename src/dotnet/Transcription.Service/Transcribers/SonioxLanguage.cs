@@ -19,4 +19,10 @@ public static class SonioxLanguage
         = new(Languages.AllTranscription.Where(x => !Unsupported.Contains(x)));
     public static string ToSoniox(this Language language)
         => CodeOverrides.GetValueOrDefault(language) ?? language.IsoCode;
+
+    // Soniox tags tokens with the code it was sent, so an override language comes back as "sr"
+    // or "tl" and must be told apart from Serbian and Tagalog by the languages the speech is expected in.
+    public static Language? FromSoniox(string? code, IReadOnlyList<Language> expectedLanguages)
+        => expectedLanguages.FirstOrDefault(x => CodeOverrides.GetValueOrDefault(x) == code)
+            ?? Language.TryParse(code, true);
 }

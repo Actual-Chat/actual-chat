@@ -175,6 +175,17 @@ public class SonioxTranscriptBuilderTest(ITestOutputHelper @out) : TestBase(@out
     }
 
     [Fact]
+    public void LanguagesShouldMapBackToAnExpectedOverrideLanguage()
+    {
+        // act
+        var transcript = new SonioxTranscriptBuilder(StableTokenAge, [Languages.Montenegrin])
+            .Update([Token("Dobro jutro", 0, 500, true, "sr")], 500)[^1];
+
+        // assert
+        transcript.Languages.Should().Equal([Languages.Montenegrin]);
+    }
+
+    [Fact]
     public void LanguagesShouldComeFromSettledTokensOnly()
     {
         // arrange
