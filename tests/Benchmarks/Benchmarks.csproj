@@ -17,7 +17,6 @@
     <Using Remove="ActualLab.Testing" />
     <Using Remove="ActualLab.Fusion.Testing" />
     <Using Remove="AwesomeAssertions" />
-    <Using Remove="FlakyTest.XUnit.Attributes" />
     <Using Remove="Moq" />
     <Using Remove="Xunit" />
     <Using Remove="Xunit.Abstractions" />

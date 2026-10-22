@@ -256,7 +256,7 @@ public class SharedResourcePoolTest(ITestOutputHelper @out) : TestBase(@out)
         await rentTask.WaitAsync(WaitTimeout);
     }
 
-    [FlakyFact("AY: Time-dependent", 3, Timeout = TestTimeoutMs)]
+    [Fact(Timeout = TestTimeoutMs)]
     public async Task ShouldNotStuckWhenCancellationTokenIsFired()
     {
         // arrange

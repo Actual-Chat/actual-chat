@@ -4,7 +4,7 @@ namespace ActualChat.Core.UnitTests;
 
 public class DebouncerTest(ITestOutputHelper @out) : TestBase(@out)
 {
-    [FlakyFact("AY: Time dependent", 3)]
+    [Fact]
     public async Task DebounceTest()
     {
         var results = new List<int>();
@@ -72,7 +72,7 @@ public class DebouncerTest(ITestOutputHelper @out) : TestBase(@out)
         results[1].Should().Be(4);
     }
 
-    [FlakyFact("AY: Time dependent", 3)]
+    [Fact]
     public async Task ThrottleTest()
     {
         var results = new List<int>();

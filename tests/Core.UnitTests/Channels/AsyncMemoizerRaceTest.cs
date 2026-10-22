@@ -129,7 +129,7 @@ public abstract class AsyncMemoizerRaceTestBase(ITestOutputHelper @out) : TestBa
     // The consumer must observe items in order and exactly once, regardless of
     // how the producer's appends interleave with the consumer's wait/walk loop.
 
-    [FlakyFact("AY: Timing-dependent race test", 5)]
+    [Fact]
     public async Task Replay_ProducerActiveDuringIteration_NoLossNoDuplication()
     {
         for (var attempt = 0; attempt < 5_000; attempt++) {

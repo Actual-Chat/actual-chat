@@ -65,7 +65,7 @@ public class StreamSilenceWatchdogTest
         await watchdog;
     }
 
-    [FlakyFact("AY: CI timer slack", 3, Timeout = 5_000)]
+    [Fact(Timeout = 5_000)]
     public async Task ZeroFrames_CancelsAfterMaxConsecutiveIntervals()
     {
         // arrange

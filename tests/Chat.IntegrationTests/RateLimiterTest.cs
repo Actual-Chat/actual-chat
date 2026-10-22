@@ -10,7 +10,7 @@ namespace ActualChat.Chat.IntegrationTests;
 public class RateLimiterTest(ChatCollection.AppHostFixture fixture, ITestOutputHelper @out)
     : SharedAppHostTestBase<AppHostFixture>(fixture, @out)
 {
-    [FlakyFact("AY: Time dependent", 3)]
+    [Fact]
     public async Task SlidingWindowShouldAllowUpToItsLimit()
     {
         // arrange
@@ -57,7 +57,7 @@ public class RateLimiterTest(ChatCollection.AppHostFixture fixture, ITestOutputH
         }
     }
 
-    [FlakyFact("AY: Time dependent", 3)]
+    [Fact]
     public async Task RequestsRateShouldBeLimited()
     {
         // arrange
