@@ -73,9 +73,9 @@
     }
 
     private async Task SendDigest() {
-        var commander = Hub.UICommander;
+        var uiCommander = Hub.UICommander;
         var sendDigestCommand = new Emails_SendDigest { Session = Hub.Session };
-        var (_, error) = await commander.Run(sendDigestCommand, CancellationToken.None).ConfigureAwait(false);
+        var (_, error) = await uiCommander.Run(sendDigestCommand, CancellationToken.None).ConfigureAwait(false);
         if (error is not null) {
             Hub.ToastUI.Show($"Error: {error.Message}", ToastDismissDelay.Long);
         } else {
