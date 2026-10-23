@@ -55,10 +55,9 @@ public class SonioxSweeperTest(ITestOutputHelper @out, ILogger<SonioxSweeperTest
 
         // act - the default retention must protect an upload a transcription is still using
         var sweeper = NewSweeper(services, new SonioxSweeper.Options().Retention);
-        var deleted = await sweeper.Sweep(CancellationToken.None);
+        await sweeper.Sweep(CancellationToken.None);
 
-        // assert
-        deleted.Should().Be(0);
+        // assert - not the deleted count: the account is shared, and other runs' expired leftovers are fair game
         var remaining = await client.ListFiles(null, 1000, CancellationToken.None);
         (remaining.Files ?? []).Should().Contain(x => x.Id == keptId);
 
