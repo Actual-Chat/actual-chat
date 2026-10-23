@@ -162,9 +162,14 @@ turned down. A decision that changes one of these adds or replaces its entry in 
   the fix is only an old branch, not a return. Rejected: letting the agent reopen, because a
   bare timeout doesn't show the old mechanism is back, and a person picks between reopening and
   a new issue.
+- **2026-10-23 — Priority 5 orders by the number of eligible failures, then by the oldest one.**
+  Why: oldest-first alone carded #5427 (2 failures) and #5310 (1) while #5417, the most frequent
+  entry with 4, waited a second day. The 2026-10-22 order came along with widening the window and
+  was never weighed against the count: the 14-day window is what keeps a missed entry from being
+  dropped, not the order. Starvation doesn't come back: a carded entry leaves priority 5.
 - **2026-10-22 — The card cap stays at three; priority 5 takes any entry without a card that
   failed in the last 14 days, counting only failures on a commit that contains the test file's
-  latest change,** oldest first. Why: entries that missed the cap were dropped the next day
+  latest change,** oldest first (the order was replaced on 2026-10-23). Why: entries that missed the cap were dropped the next day
   unless they failed again, and a failure from before the test last changed shows nothing new
   (#5523 for #5497). Rejected: raising the cap to 5, and excluding entries under "Open
   mechanisms".
