@@ -739,6 +739,17 @@ public partial class ChatView : ComponentBase, IVirtualListDataSource<ChatMessag
         // Content on screen spends it too, not just an accepted position: a region that flips back over
         // a full viewport emits no report, so the retire in OnItemVisibilityChanged never runs.
         var usedActivation = scrollToKey != null || !itemVisibility.IsEmpty ? activation : null;
+        if (isFirstRender || activation != null)
+            Log.LogInformation(
+                "GetData: #{ChatId} open: firstRender={IsFirstRender}, activation={HasActivation}, "
+                + "emptyView={IsEmptyView}, read={ReadEntryLid}, view={ViewEntryLid}, last={LastEntryLid}, "
+                + "items={First}..{Last}, nav={NavEntryLid} (restore={IsRestore}, mustScroll={MustScroll}), "
+                + "newLine={HasNewMessagesLine}, firstUnread={FirstUnreadKey} -> scrollTo={ScrollToKey}",
+                chatId, isFirstRender, activation != null,
+                itemVisibility.IsEmpty, readEntryLid, viewEntryLid, chatIdRange.End - 1,
+                items.Count > 0 ? items[0].Id : 0, items.Count > 0 ? items[^1].Id : 0,
+                nav?.EntryLid, nav?.ShouldRestoreViewPosition, mustScrollToEntry,
+                newMessagesLineIndex >= 0, firstUnreadKey, scrollToKey);
 
         var buildMs = (long)buildStartedAt.Elapsed.TotalMilliseconds;
         if (buildMs > 1000)
