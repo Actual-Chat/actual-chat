@@ -142,38 +142,38 @@ public class NotificationModeTest(AppHostFixture fixture, ITestOutputHelper @out
     [InlineData(ChatNotificationMode.Muted)]
     public async Task ReactionIsDeliveredOnlyInDefaultMode(ChatNotificationMode suppressingMode)
     {
+        // arrange
         var bob = await Tester.SignInAsBob();
         var alice = await Tester.SignInAsAlice();
-        var (chatId, _) = await Tester.CreateChat(false, $"Reaction {suppressingMode} chat");
-        await Tester.InviteToChat(chatId, bob);
+        var (suppressedChatId, _) = await Tester.CreateChat(false, $"Reaction {suppressingMode} chat");
+        var (sentinelChatId, _) = await Tester.CreateChat(false, $"Reaction {suppressingMode} sentinel chat");
+        await Tester.InviteToChat(suppressedChatId, bob);
+        await Tester.InviteToChat(sentinelChatId, bob);
         var deviceId = await RegisterDevice(alice.Id);
 
-        var entry1 = await Tester.CreateTextEntry(chatId, "first");
-        var entry2 = await Tester.CreateTextEntry(chatId, "second");
-        await SetNotificationMode(chatId, suppressingMode);
+        var suppressedEntry = await Tester.CreateTextEntry(suppressedChatId, "suppressed");
+        var sentinelEntry = await Tester.CreateTextEntry(sentinelChatId, "sentinel");
+        await SetNotificationMode(suppressedChatId, suppressingMode);
         Sink.Clear();
 
-        // Suppressed reaction first, then a delivered one after flipping back to Default —
-        // the delivered one doubles as the drain sentinel for the absence assertion.
+        // act - the handler reads the mode when it runs, not when the reaction is made, so the mode must not
+        // change while the suppressed reaction is in flight; the sentinel chat's reaction drains the pipeline
         await Tester.SignIn(bob);
-        await Tester.React(entry1.Id, Emojis.Love);
+        await Tester.React(suppressedEntry.Id, Emojis.Love);
+        await Tester.React(sentinelEntry.Id, Emojis.Love);
 
-        await Tester.SignIn(alice);
-        await SetNotificationMode(chatId, ChatNotificationMode.Default);
-        await Tester.SignIn(bob);
-        await Tester.React(entry2.Id, Emojis.Love);
-
+        // assert
         await TestWait.WhenPolled(async () => {
             var info = await Tester.NotificationsBackend.GetUserNotificationInfo(alice.Id, CancellationToken.None);
             var notification = info.Items.Should().ContainSingle().Subject
                 .Should().BeOfType<ReactionNotification>().Subject;
-            notification.EntryLid.Should().Be(entry2.LocalId);
+            notification.EntryId.Should().Be(sentinelEntry.Id);
         }, TimeSpan.FromSeconds(10));
         Sink.Messages
             .Where(m => !m.IsDismissal && m.DeviceIds.Contains(deviceId))
             .Select(m => m.Notification)
             .OfType<ReactionNotification>()
-            .Should().NotContain(r => r.EntryLid == entry1.LocalId);
+            .Should().NotContain(r => r.EntryId == suppressedEntry.Id);
     }
 
     private async Task SetNotificationMode(ChatId chatId, ChatNotificationMode mode)
