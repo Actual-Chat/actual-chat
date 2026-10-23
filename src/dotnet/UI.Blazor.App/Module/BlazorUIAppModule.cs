@@ -96,7 +96,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<IActivitySource>(c => c.GetRequiredService<UploadActivitySource>());
         services.AddScoped(c => new ChatPrefetcher(c.AppUIHub()));
         services.AddScoped(c => new SelectionUI(c.AppUIHub()));
-        services.AddScoped(c => new ChatPinsUI(c.AppUIHub()));
+        fusion.AddService<ChatPinsUI>(ServiceLifetime.Scoped);
         services.AddScoped(c => new ActiveChatsUI(c.AppUIHub()));
         services.AddScoped(c => new IncomingShareUI(c.AppUIHub()));
         services.AddScoped(c => new AppReviewUI(c.UIHub()));
@@ -202,6 +202,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
             .Add<ChatHistoryRetentionModal.Model, ChatHistoryRetentionModal>()
             .Add<WipeChatHistoryModal.Model, WipeChatHistoryModal>()
             .Add<ArchiveChatModal.Model, ArchiveChatModal>()
+            .Add<PinMessageModal.Model, PinMessageModal>()
             .Add<VideoDiagnosticsModal.Model, VideoDiagnosticsModal>()
             .Add<AudioDiagnosticsModal.Model, AudioDiagnosticsModal>()
             .Add<CallModal.Model, CallModal>()

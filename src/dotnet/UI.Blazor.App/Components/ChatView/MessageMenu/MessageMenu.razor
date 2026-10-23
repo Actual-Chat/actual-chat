@@ -14,8 +14,9 @@
         CanModerate="m.CanModerate"
         IsPeerChat="m.IsPeerChat"
         CanWrite="m.CanWrite"
-        CanPin="m.CanPin"
-        IsPinned="m.IsPinned"
+        CanPinForEveryone="m.CanPinForEveryone"
+        Pin="m.Pin"
+        PeerName="@m.PeerName"
         IsSystem="m.IsSystem"
         SelectedText="@m.SelectedText">
     </MessageMenuContent>
@@ -36,6 +37,7 @@
     private IChats Chats => Hub.Chats;
     private IAuthors Authors => Hub.Authors;
     private IRoles Roles => Hub.Roles;
+    private ChatPinsUI ChatPinsUI => Hub.ChatPinsUI;
     private SendingMessages SendingMessages => Hub.SendingMessages;
 
     protected override void OnParametersSet() {
@@ -97,8 +99,10 @@
                     .Contains(chatEntry.AuthorId);
             var isPeerChat = chatEntry.ChatId.Kind == ChatKind.Peer;
             // Owner immunity doesn't apply to pinning - an Owner's message can be pinned too.
-            var canPin = rules.CanModerate() || isPeerChat;
-            var pinnedEntries = await Chats.ListPinnedEntries(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
+            var canPinForEveryone = await ChatPinsUI.CanPinForEveryone(chatEntry.ChatId, cancellationToken)
+                .ConfigureAwait(false);
+            var pin = await ChatPinsUI.Get(chatEntry.Id, cancellationToken).ConfigureAwait(false);
+            var chat = await Chats.Get(Session, chatEntry.ChatId, cancellationToken).ConfigureAwait(false);
 
             var messageModel = new MessageModel() {
                 Link = link,
@@ -110,8 +114,9 @@
                 CanWrite = rules.CanWrite(),
                 CanModerate = rules.CanModerate() && !isEntryByOwner,
                 IsPeerChat = isPeerChat,
-                CanPin = canPin,
-                IsPinned = pinnedEntries.Contains(chatEntry.Id),
+                CanPinForEveryone = canPinForEveryone,
+                Pin = pin,
+                PeerName = isPeerChat ? chat?.Title : null,
                 IsOwnEntry = requestAuthor != null && requestAuthor.Id == chatEntry.AuthorId,
             };
             return new Model { Message = messageModel };
@@ -164,8 +169,9 @@
         public bool CanWrite { get; init; }
         public bool CanModerate { get; init; }
         public bool IsPeerChat { get; init; }
-        public bool CanPin { get; init; }
-        public bool IsPinned { get; init; }
+        public bool CanPinForEveryone { get; init; }
+        public ChatPin Pin { get; init; } = null!;
+        public string? PeerName { get; init; }
         public ChatEntry ChatEntry { get; init; } = null!;
     }
 

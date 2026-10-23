@@ -1227,32 +1227,23 @@ public partial class Chats(IServiceProvider services) : IChats
         // isOutermost: this write lives in the Users DB, so it can't share Chat DB's operation scope.
         var chatKvas = ServerKvasBackend.ForChat(chatId, isOutermost: true);
         var stored = await chatKvas.Get<ChatPinnedEntries>(cancellationToken).ConfigureAwait(false);
-
-        // Re-normalize the stored list on every change: keep distinct, in-chat, still-present entries.
-        // This drops ids of messages removed since the last write, so they never linger against the cap.
-        var normalized = new List<ChatEntryId>(ChatPinnedEntries.MaxCount);
-        foreach (var id in stored?.EntryIds ?? default) {
-            if (id.LocalId <= 0 || id.ChatId != chatId || id == entryId || normalized.Contains(id))
-                continue;
-            var e = await this.GetEntry(session, id, cancellationToken).ConfigureAwait(false);
-            if (e is { IsRemoved: false })
-                normalized.Add(id);
-        }
-
-        if (mustPin) {
-            var entry = await this.GetEntry(session, entryId, cancellationToken).ConfigureAwait(false);
-            if (entry is not { IsRemoved: false })
-                throw StandardError.Constraint("This message no longer exists.");
-            if (normalized.Count >= ChatPinnedEntries.MaxCount)
-                throw StandardError.Constraint($"You can pin up to {ChatPinnedEntries.MaxCount} messages.");
-            normalized.Add(entryId);
-        }
-
-        // Order is always by message chronology (Telegram-style); pins can't be reordered manually.
-        normalized.Sort((a, b) => a.LocalId.CompareTo(b.LocalId));
+        var entryIds = await ChatPinnedEntries.Apply(
+            stored?.EntryIds ?? default,
+            entryId,
+            mustPin,
+            ChatPinnedEntries.MaxCount,
+            IsPresent,
+            cancellationToken
+            ).ConfigureAwait(false);
         await chatKvas
-            .Set(new ChatPinnedEntries { EntryIds = new ApiArray<ChatEntryId>(normalized) }, cancellationToken)
+            .Set(new ChatPinnedEntries { EntryIds = entryIds }, cancellationToken)
             .ConfigureAwait(false);
+        return;
+
+        async Task<bool> IsPresent(ChatEntryId id, CancellationToken ct) {
+            var entry = await this.GetEntry(session, id, ct).ConfigureAwait(false);
+            return entry is { IsRemoved: false };
+        }
     }
 
     // Protected/internal methods

@@ -2138,6 +2138,9 @@
   "Replay_ConfirmText": "Възпроизвеждането ще спре слушането и ще го възобнови, след като приключите. Да продължим ли?",
   "Pin_MessagePinned": "メッセージを固定しました",
   "Pin_MessageUnpinned": "メッセージの固定を解除しました",
+  "Pin_MessagePinnedForYou": "自分用にメッセージを固定しました",
+  "Pin_AlsoForPeer_Format": "Также закрепить для {0}",
+  "Pin_AlsoForEveryone": "Также закрепить для всех участников",
 
   // Freezing a chat: it stays readable for owners, but nobody can write to it or join it.
   // Chat_Unfreeze* is the chat settings entry that lifts it.

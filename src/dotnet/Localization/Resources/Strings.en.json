@@ -2133,11 +2133,16 @@
   "Members_NowModerator_Format": "{0} is now a Moderator",
   "Members_NoLongerModerator_Format": "{0} is no longer a Moderator",
 
-  // The prompt before starting a replay, and the pin/unpin toasts.
+  // The prompt before starting a replay, and the pin/unpin toasts. A message pinned "for you" is seen
+  // only by you; the "Also pin for" checkbox in the Pin message dialog makes the pin visible to the
+  // other person in a one-on-one chat ({0} is their name) or to every member of a group.
   "Replay_ConfirmTitle": "Start replay?",
   "Replay_ConfirmText": "Replay will pause listening, then resume it after you stop replay. Continue?",
   "Pin_MessagePinned": "Message pinned",
   "Pin_MessageUnpinned": "Message unpinned",
+  "Pin_MessagePinnedForYou": "Message pinned for you",
+  "Pin_AlsoForPeer_Format": "Also pin for {0}",
+  "Pin_AlsoForEveryone": "Also pin for all members",
 
   // Freezing a chat: it stays readable for owners, but nobody can write to it or join it.
   // Chat_Unfreeze* is the chat settings entry that lifts it.

@@ -9,6 +9,10 @@ public static class UserSettingsUIExt
         this UserSettingsUI settingsUI, ChatId chatId)
         => new(settingsUI, Chat.ChatUserSettings.GetKey(chatId));
 
+    public static UserSettingsAccessor<ChatUserPinnedEntries> ChatUserPinnedEntries(
+        this UserSettingsUI settingsUI, ChatId chatId)
+        => new(settingsUI, Chat.ChatUserPinnedEntries.GetKey(chatId));
+
     public static UserSettingsAccessor<UserEmailsSettings> UserEmailsSettings(this UserSettingsUI settingsUI)
         => new(settingsUI, nameof(UserEmailsSettings));
 

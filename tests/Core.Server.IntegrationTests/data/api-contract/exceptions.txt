@@ -20,3 +20,5 @@
 2.21 IUserSettings.Get:3 result<56> - UserCoachTip has its own key and is read only via ICoach.GetPendingTip
 2.21 IUserSettings.Get:3 result<57> - UserCoachWeeklyNote has its own key, which 2.21 never asks for
 2.21 IUserSettings.Get:3 result<58> - UserAndroidSettings has its own key, which 2.21 never asks for
+2.21 IUserSettings.Get:3 result<59> - ChatUserPinnedEntries has its own key, which 2.21 never asks for
+2.22 IUserSettings.Get:3 result<59> - same: ChatUserPinnedEntries has its own key, which 2.22 never asks for

@@ -1896,6 +1896,9 @@ public static class LocalizedStringsLocalizerExt
         public string Replay_ConfirmText => l["Replay_ConfirmText"].Value;
         public string Pin_MessagePinned => l["Pin_MessagePinned"].Value;
         public string Pin_MessageUnpinned => l["Pin_MessageUnpinned"].Value;
+        public string Pin_MessagePinnedForYou => l["Pin_MessagePinnedForYou"].Value;
+        public string Pin_AlsoForPeer_Format(object arg0) => l["Pin_AlsoForPeer_Format", arg0].Value;
+        public string Pin_AlsoForEveryone => l["Pin_AlsoForEveryone"].Value;
         public string Chat_FreezeTitle => l["Chat_FreezeTitle"].Value;
         public string Chat_Freeze => l["Chat_Freeze"].Value;
         public string Chat_FreezeWarning_Format(object arg0) => l["Chat_FreezeWarning_Format", arg0].Value;

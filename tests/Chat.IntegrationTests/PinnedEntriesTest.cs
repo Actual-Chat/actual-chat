@@ -160,6 +160,32 @@ public class PinnedEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutpu
         pins.Should().Equal(entry.Id);
     }
 
+    [Fact]
+    public async Task MemberPersonalPinsRoundTripAndStayPrivate()
+    {
+        // arrange
+        var (chatId, _, _) = await ArrangeChat();
+        var entry = await Owner.CreateTextEntry(chatId, "for me");
+        var key = ChatUserPinnedEntries.GetKey(chatId);
+        var userSettings = Member.AppServices.GetRequiredService<IUserSettings>();
+
+        // act
+        await Member.Commander.Call(new UserSettings_Set {
+            Session = Member.Session,
+            Key = key,
+            Value = new ChatUserPinnedEntries { EntryIds = ApiArray.New(entry.Id) },
+        });
+
+        // assert - the type resolves from the key, and the chat's shared list is untouched
+        await TestWait.When(async ct => {
+            var value = await userSettings.Get(Member.Session, key, ct);
+            value.Should().BeOfType<ChatUserPinnedEntries>()
+                .Which.EntryIds.Should().Equal(entry.Id);
+        });
+        var sharedPins = await WaitPins(Owner, chatId, 0);
+        sharedPins.Should().BeEmpty();
+    }
+
     // Private methods
 
     private async Task<(ChatId ChatId, AuthorId ModeratorAuthorId, AuthorId MemberAuthorId)> ArrangeChat()
