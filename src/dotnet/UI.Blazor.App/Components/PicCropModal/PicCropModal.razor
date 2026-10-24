@@ -18,106 +18,102 @@
     BodyClass="no-scrollbar"
     HasCloseButton="true">
     <Body>
-        @if (_hasError) {
-            <div class="c-error">
-                <i class="icon-warning text-2xl"></i>
-                <span>@L.PicCrop_LoadFailed</span>
-            </div>
-        } else {
-            <div class="c-crop">
-                <div class="c-content">
-                    <div class="c-canvas-container">
-                        @if (IsMarbleState) {
-                            <div class="c-marble">@GeneratedAvatar</div>
-                        }
-                        <canvas @ref="_canvasRef" width="400"
-                                height="@(ModalModel.ViewportAspectRatio > 0 ? (int)(400 / ModalModel.ViewportAspectRatio) : 400)"></canvas>
-                        <div class="c-angle" hidden></div>
-                        @if (IsMarbleState) {
-                            <div class="c-hint">@L.PicCrop_MarbleHint</div>
-                        } else if (!_hasSource) {
-                            <div class="c-placeholder">
-                                <i class="icon-image text-3xl"></i>
-                                <span>@L.PicCrop_MarbleHint</span>
-                            </div>
-                        }
-                        @if (_isGenerating) {
-                            <div class="c-generating">
-                                <Spinner/>
-                            </div>
-                        }
-                    </div>
+        <div class="c-crop">
+            <div class="c-content">
+                <div class="c-canvas-container">
+                    @if (IsMarbleState) {
+                        <div class="c-marble">@GeneratedAvatar</div>
+                    }
+                    <canvas @ref="_canvasRef" width="400"
+                            height="@(ModalModel.ViewportAspectRatio > 0 ? (int)(400 / ModalModel.ViewportAspectRatio) : 400)"></canvas>
+                    <div class="c-angle" hidden></div>
+                    @if (IsMarbleState) {
+                        <div class="c-hint">@L.PicCrop_MarbleHint</div>
+                    } else if (!_hasSource) {
+                        <div class="c-placeholder">
+                            <i class="icon-image text-3xl"></i>
+                            <span>@L.PicCrop_MarbleHint</span>
+                        </div>
+                    }
+                    @if (_isGenerating) {
+                        <div class="c-generating">
+                            <Spinner/>
+                        </div>
+                    }
                 </div>
-                @* Wallpaper needs no size previews: its canvas is already a full-width, blurred WYSIWYG. *@
-                @if (ModalModel.ViewportAspectRatio <= 0) {
-                    <div class="c-preview">
-                        <canvas width="48" height="48"></canvas>
-                        <canvas width="40" height="40"></canvas>
-                        <canvas width="32" height="32"></canvas>
-                        @* The canvases stay in the DOM (JS captures them once); a marble has no crop source,
-                           so it's shown as its own elements and the empty canvases are hidden via CSS. *@
-                        @if (IsMarbleState) {
-                            <div class="c-marble-preview w-[48px] h-[48px]">@GeneratedAvatar</div>
-                            <div class="c-marble-preview w-[40px] h-[40px]">@GeneratedAvatar</div>
-                            <div class="c-marble-preview w-[32px] h-[32px]">@GeneratedAvatar</div>
-                        }
-                    </div>
-                }
             </div>
-            <div class="c-actions-row">
-                <Button Class="@($"btn-outline {ActionBtnSize}")" Click="@OnOpenGeneration" IsDisabled="@(_isSaving || _isGenerating)">
-                    <i class="icon-ai-stars text-lg"></i>
-                    <span>@L.PicCrop_Create</span>
-                </Button>
-                <Button Class="@($"btn-outline {ActionBtnSize}")" Click="@OnUploadClick" IsDisabled="@_isSaving">
-                    <i class="icon-upload text-lg"></i>
-                    <span>@L.PicCrop_Upload</span>
-                </Button>
-            </div>
-            <div class="c-controls">
-                <div class="c-tools-row">
-                    <ButtonRound Class="btn-rotate-ccw btn-sm" Tooltip="@L.PicCrop_RotateLeft" IsDisabled="@(!_hasSource || _isSaving)">
-                        <i class="icon-refresh text-xl c-flip"></i>
-                    </ButtonRound>
-                    <ButtonRound Class="btn-rotate-cw btn-sm" Tooltip="@L.PicCrop_RotateRight" IsDisabled="@(!_hasSource || _isSaving)">
-                        <i class="icon-refresh text-xl"></i>
-                    </ButtonRound>
-                    <ButtonRound Class="btn-mirror btn-sm" Click="@OnMirror" Tooltip="@L.PicCrop_Mirror" IsDisabled="@(!_hasSource || _isSaving)">
-                        <i class="icon-mirror-video text-xl"></i>
-                    </ButtonRound>
-                    <ButtonRound Class="btn-reset btn-sm" Click="@OnReset" Tooltip="@L.PicCrop_Reset" IsDisabled="@(!_hasSource || _isSaving)">
-                        <i class="icon-sync text-xl"></i>
-                    </ButtonRound>
-                    <ButtonRound Class="btn-revert btn-sm" Click="@OnRevert" Tooltip="@L.PicCrop_RevertPrevious" IsDisabled="@(!_hasSource || _isSaving)">
-                        <i class="icon-forward text-xl c-flip"></i>
-                    </ButtonRound>
+            @* Wallpaper needs no size previews: its canvas is already a full-width, blurred WYSIWYG. *@
+            @if (ModalModel.ViewportAspectRatio <= 0) {
+                <div class="c-preview">
+                    <canvas width="48" height="48"></canvas>
+                    <canvas width="40" height="40"></canvas>
+                    <canvas width="32" height="32"></canvas>
+                    @* The canvases stay in the DOM (JS captures them once); a marble has no crop source,
+                       so it's shown as its own elements and the empty canvases are hidden via CSS. *@
+                    @if (IsMarbleState) {
+                        <div class="c-marble-preview w-[48px] h-[48px]">@GeneratedAvatar</div>
+                        <div class="c-marble-preview w-[40px] h-[40px]">@GeneratedAvatar</div>
+                        <div class="c-marble-preview w-[32px] h-[32px]">@GeneratedAvatar</div>
+                    }
                 </div>
+            }
+        </div>
+        <div class="c-actions-row">
+            <Button Class="@($"btn-outline {ActionBtnSize}")" Click="@OnOpenGeneration" IsDisabled="@(_isSaving || _isGenerating)">
+                <i class="icon-ai-stars text-lg"></i>
+                <span>@L.PicCrop_Create</span>
+            </Button>
+            <Button Class="@($"btn-outline {ActionBtnSize}")" Click="@OnUploadClick" IsDisabled="@_isSaving">
+                <i class="icon-upload text-lg"></i>
+                <span>@L.PicCrop_Upload</span>
+            </Button>
+        </div>
+        <div class="c-controls">
+            <div class="c-tools-row">
+                <ButtonRound Class="btn-rotate-ccw btn-sm" Tooltip="@L.PicCrop_RotateLeft" IsDisabled="@(!_hasSource || _isSaving)">
+                    <i class="icon-refresh text-xl c-flip"></i>
+                </ButtonRound>
+                <ButtonRound Class="btn-rotate-cw btn-sm" Tooltip="@L.PicCrop_RotateRight" IsDisabled="@(!_hasSource || _isSaving)">
+                    <i class="icon-refresh text-xl"></i>
+                </ButtonRound>
+                <ButtonRound Class="btn-mirror btn-sm" Click="@OnMirror" Tooltip="@L.PicCrop_Mirror" IsDisabled="@(!_hasSource || _isSaving)">
+                    <i class="icon-mirror-video text-xl"></i>
+                </ButtonRound>
+                <ButtonRound Class="btn-reset btn-sm" Click="@OnReset" Tooltip="@L.PicCrop_Reset" IsDisabled="@(!_hasSource || _isSaving)">
+                    <i class="icon-sync text-xl"></i>
+                </ButtonRound>
+                <ButtonRound Class="btn-revert btn-sm" Click="@OnRevert" Tooltip="@L.PicCrop_RevertPrevious" IsDisabled="@(!_hasSource || _isSaving)">
+                    <i class="icon-forward text-xl c-flip"></i>
+                </ButtonRound>
+            </div>
+            <div class="c-labeled-slider">
+                <div class="c-slider">
+                    <div class="c-track"></div>
+                    <div class="c-fill"></div>
+                    <div class="c-thumb"></div>
+                    <input type="range" class="zoom-range dialog-unstyled" min="100" max="400" step="1" value="100"
+                           disabled="@(!_hasSource || _isSaving)" />
+                </div>
+                <span class="c-slider-label">@L.PicCrop_Zoom</span>
+            </div>
+            @if (ModalModel.HasBlur) {
                 <div class="c-labeled-slider">
                     <div class="c-slider">
                         <div class="c-track"></div>
                         <div class="c-fill"></div>
                         <div class="c-thumb"></div>
-                        <input type="range" class="zoom-range dialog-unstyled" min="100" max="400" step="1" value="100"
-                               disabled="@(!_hasSource || _isSaving)" />
+                        <input type="range" class="blur-range dialog-unstyled" min="0" max="16" step="1" value="0" />
                     </div>
-                    <span class="c-slider-label">@L.PicCrop_Zoom</span>
+                    <span class="c-slider-label">@L.PicCrop_Blur</span>
                 </div>
-                @if (ModalModel.HasBlur) {
-                    <div class="c-labeled-slider">
-                        <div class="c-slider">
-                            <div class="c-track"></div>
-                            <div class="c-fill"></div>
-                            <div class="c-thumb"></div>
-                            <input type="range" class="blur-range dialog-unstyled" min="0" max="16" step="1" value="0" />
-                        </div>
-                        <span class="c-slider-label">@L.PicCrop_Blur</span>
-                    </div>
-                }
-                @if (_hasGenerationError) {
-                    <div class="c-status c-generation-error">@L.PicCrop_GenerationFailed</div>
-                }
-            </div>
-        }
+            }
+            @if (_hasError) {
+                <div class="c-status c-generation-error">@L.PicCrop_LoadFailed</div>
+            }
+            @if (_hasGenerationError) {
+                <div class="c-status c-generation-error">@L.PicCrop_GenerationFailed</div>
+            }
+        </div>
         <input @ref="_fileInputRef" type="file" accept="image/*" @onchange="@OnFileSelected" hidden />
     </Body>
     <Buttons>
@@ -320,6 +316,8 @@
     [JSInvokable("OnSourceChanged")]
     public void OnSourceChanged(bool hasSource) {
         _hasSource = hasSource;
+        if (hasSource)
+            _hasError = false;
         StateHasChanged();
     }
 
