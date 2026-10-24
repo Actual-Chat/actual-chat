@@ -4,7 +4,7 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <PropertyGroup>
-    <ActualLabFusionVersion>15.0.17</ActualLabFusionVersion>
+    <ActualLabFusionVersion>15.0.21</ActualLabFusionVersion>
     <!-- Runtime, ASP.NET Core, and Extensions packages share this prerelease build number. -->
     <DotNetVersion>11.0.0-rc.2.26504.105</DotNetVersion>
     <AspNetCoreVersion>$(DotNetVersion)</AspNetCoreVersion>
