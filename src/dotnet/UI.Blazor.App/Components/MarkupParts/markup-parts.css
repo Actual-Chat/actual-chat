@@ -221,7 +221,7 @@ body.hoverable .mention-markup.mention-markup-alertable:hover .c-mention-state.i
 .playable-word-flash {
     @apply absolute z-modal-overlay;
     @apply pointer-events-none;
-    @apply rounded-md;
+    border-radius: 5px;
     @apply opacity-0;
     will-change: transform, opacity;
     contain: layout paint style;
@@ -243,14 +243,14 @@ body.hoverable .mention-markup.mention-markup-alertable:hover .c-mention-state.i
 }
 
 /* Hover hint is a weaker, persistent version of the click flash: paler (steady 0.7 opacity + a lower
-   color mix set in TS) and smaller (scale 0.85, while the click flash overshoots to 1.1). It fades in,
-   then stays under the word and glides to the next one the cursor settles on until the cursor leaves. */
+   color mix set in TS). It is the size of the playing-word highlight (1px past the text, 5px corners),
+   so starting the replay doesn't change the outline. It fades in, then stays under the word
+   and glides to the next one the cursor settles on until the cursor leaves. */
 .playable-word-hover {
     @apply absolute z-modal-overlay;
     @apply pointer-events-none;
-    @apply rounded-md;
+    border-radius: 5px;
     opacity: 0.7;
-    transform: scale(0.85);
     contain: layout paint style;
     animation: word-hover-in 0.15s ease-out;
     transition: top 0.1s ease-out, left 0.1s ease-out, width 0.1s ease-out, height 0.1s ease-out;
@@ -258,65 +258,81 @@ body.hoverable .mention-markup.mention-markup-alertable:hover .c-mention-state.i
 @keyframes word-hover-in {
     from {
         opacity: 0;
-        transform: scale(0.7);
     }
     to {
         opacity: 0.7;
-        transform: scale(0.85);
     }
 }
 
-.playable-text-markup .played-run {
+/* Two layers: the frames, and above them the text (.run-text). Without the second layer the browser
+   paints each line's text right after that line's frame, so the next line's frame cuts the descenders.
+   A positioned element paints after all the non-positioned frames.
+   One frame per stretch of played and playing words. It is opaque (the author color blended into
+   --background-01), so overlapping lines don't darken. Lines are 20px apart with a 20px content area,
+   so the frames of two lines tile with no gap; the vertical padding adds only the overlap that closes the
+   notch between two rounded corners (at least twice the radius), and a frame must not reach further: it
+   would run under the author name above it. The sideways extension is two box-shadows offset
+   horizontally, which add no height, and neither moves the text. */
+.playable-text-markup .run-text {
+    @apply relative;
+}
+.playable-text-markup .pt-frame {
+    --pt-grow: 2px;
     @apply bg-[var(--pt-played)];
-    border-radius: 6px;
+    padding-block: var(--pt-grow);
+    border-radius: 5px;
+    box-shadow: calc(var(--pt-grow) * -1) 0 0 0 var(--pt-played), var(--pt-grow) 0 0 0 var(--pt-played);
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
 }
+/* The playing word is inscribed in the frame: 1px smaller, with rounder corners. */
 .playable-text-markup .playing-run {
     @apply bg-[var(--pt-playing)];
-    border-radius: 6px;
+    padding-block: calc(var(--pt-grow) - 1px);
+    border-radius: 5px;
+    box-shadow: -1px 0 0 0 var(--pt-playing), 1px 0 0 0 var(--pt-playing);
     -webkit-box-decoration-break: clone;
     box-decoration-break: clone;
 }
 .playable-text-color-1 {
-    --pt-playing: color-mix(in srgb, var(--author-color-1) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-1) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-1) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-1) 20%, var(--background-01));
 }
 .playable-text-color-2 {
-    --pt-playing: color-mix(in srgb, var(--author-color-2) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-2) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-2) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-2) 20%, var(--background-01));
 }
 .playable-text-color-3 {
-    --pt-playing: color-mix(in srgb, var(--author-color-3) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-3) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-3) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-3) 20%, var(--background-01));
 }
 .playable-text-color-4 {
-    --pt-playing: color-mix(in srgb, var(--author-color-4) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-4) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-4) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-4) 20%, var(--background-01));
 }
 .playable-text-color-5 {
-    --pt-playing: color-mix(in srgb, var(--author-color-5) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-5) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-5) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-5) 20%, var(--background-01));
 }
 .playable-text-color-6 {
-    --pt-playing: color-mix(in srgb, var(--author-color-6) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-6) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-6) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-6) 20%, var(--background-01));
 }
 .playable-text-color-7 {
-    --pt-playing: color-mix(in srgb, var(--author-color-7) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-7) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-7) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-7) 20%, var(--background-01));
 }
 .playable-text-color-8 {
-    --pt-playing: color-mix(in srgb, var(--author-color-8) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-8) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-8) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-8) 20%, var(--background-01));
 }
 .playable-text-color-9 {
-    --pt-playing: color-mix(in srgb, var(--author-color-9) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-9) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-9) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-9) 20%, var(--background-01));
 }
 .playable-text-color-10 {
-    --pt-playing: color-mix(in srgb, var(--author-color-10) 40%, transparent);
-    --pt-played: color-mix(in srgb, var(--author-color-10) 20%, transparent);
+    --pt-playing: color-mix(in srgb, var(--author-color-10) 25%, transparent);
+    --pt-played: color-mix(in srgb, var(--author-color-10) 20%, var(--background-01));
 }
 .preformatted-text-markup {
     @apply bg-02;
