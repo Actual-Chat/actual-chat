@@ -107,6 +107,7 @@ export class PicCropModal implements Disposable, IUploadStreamSource {
         this.img.crossOrigin = 'anonymous';
         this.img.onload = () => this.onImageLoaded();
         this.img.onerror = () => {
+            this.clearImage();
             void blazorRef.invokeMethodAsync('OnImageLoadError');
         };
         if (blobUrl)

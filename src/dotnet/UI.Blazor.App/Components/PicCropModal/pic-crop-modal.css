@@ -231,15 +231,6 @@
     @apply text-caption text-03;
 }
 
-/* ── Error ── */
-
-.pic-crop-modal .c-error {
-    @apply flex-y items-center justify-center gap-2;
-    @apply w-full;
-    @apply py-16;
-    @apply text-caption text-danger;
-}
-
 /* ── Generation ── */
 
 /* Match the round viewport: dim only the circle, otherwise the square container's corners fall
