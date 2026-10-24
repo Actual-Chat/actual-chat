@@ -81,12 +81,12 @@
         Click = () => _ = OpenDocumentation(),
     });
     tabs.Add(new(SettingsTabId.Documents, L.Documents_PrivacyPolicy) {
-        IconClass = "icon-file-text",
+        IconClass = "icon-file-shield",
         Class = "docs-tab",
         Content = @<DocumentsPage/>,
     });
     tabs.Add(new(SettingsTabId.DevTools, L.Settings_DeveloperTools) {
-        IconClass = "icon-eye",
+        IconClass = "icon-code",
         Content = @<DeveloperTools/>,
     });
     if (m.ShowLogViewer)

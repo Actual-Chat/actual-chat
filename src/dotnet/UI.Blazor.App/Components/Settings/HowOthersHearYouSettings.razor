@@ -10,7 +10,7 @@
     @if (m.OwnVoice is { } ownVoice) {
         <TileItem ToggleValue="@m.IsOwnVoiceEnabled"
                   ToggleValueChanged="@(_ => OnToggleOwnVoice())">
-            <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
+            <Icon><i class="icon-own-voice text-2xl"></i></Icon>
             <Content>@L.Transcription_OwnVoice</Content>
             <Caption>
                 @L.Transcription_OwnVoiceCaption
@@ -20,7 +20,7 @@
         @if (m.IsOwnVoiceEnabled) {
             @if (m.NotesChatId is { } notesChatId) {
                 <TileItem Click="@(() => OnRecordSampleClick(notesChatId))">
-                    <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
+                    <Icon><i class="icon-record-sample text-2xl"></i></Icon>
                     <Content>
                         @(ownVoice.HasExplicitSample
                             ? L.Transcription_OwnVoiceRerecord
@@ -40,7 +40,7 @@
         }
     }
     <TileItem Click="@OnDubVoiceClick">
-        <Icon><i class="icon-mic-2 text-2xl"></i></Icon>
+        <Icon><i class="icon-own-voice-translation text-2xl"></i></Icon>
         <Content>@L.Transcription_DubVoice</Content>
         <Caption>
             @(m.IsOwnVoiceEnabled
