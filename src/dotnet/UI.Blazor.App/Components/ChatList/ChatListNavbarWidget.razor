@@ -27,7 +27,7 @@
     tabs.Add(NewTab(ArchiveTabId, L.ChatList_TabArchive, null));
 }
 
-<div class="c-container">
+<div class="c-container c-with-create-button" data-children="active-chats ptt-chats">
     <div class="c-all-chats">
         @if (mustShowFilters) {
             <TabPanel

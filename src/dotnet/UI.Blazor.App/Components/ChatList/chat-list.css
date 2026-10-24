@@ -373,8 +373,18 @@ body.hoverable .navbar-chats .chat-list-sort-btn.btn:hover .btn-content {
     @apply flex-1;
     @apply p-2;
 }
-.chat-list.chat-list-all .c-last {
+/* A constant inset below the last row, on the scroller and not on the row: FiniteList's model counts
+   every row as one size, so extra height on the last row would resize the list as it enters the window.
+   It lets the last row scroll clear of the safe area and the create button floating over the list. */
+.chat-list.chat-list-all {
     padding-bottom: var(--safe-area-bottom);
+}
+/* With a dock under the list it already stands between the list and the safe area; the inset only has
+   to clear the part of the button that hangs over the list (the 1.75rem it tucks above the dock).
+   Without one the button just floats over the end of the list, as it always has. */
+.c-with-create-button[data-has-active-chats] .chat-list.chat-list-all,
+.c-with-create-button[data-has-ptt-chats] .chat-list.chat-list-all {
+    padding-bottom: 1.75rem;
 }
 .chat-list.chat-list-skeleton {
     @apply flex-1;
