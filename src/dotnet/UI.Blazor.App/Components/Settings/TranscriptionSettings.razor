@@ -83,13 +83,13 @@
 <Tile>
     <TileItem ToggleValue="@(!m.Languages.IsSpokenTextDisabled)"
               ToggleValueChanged="@(_ => OnToggleSpokenText())">
-        <Icon><i class="icon-volume-up-2 text-2xl"></i></Icon>
+        <Icon><i class="icon-read-aloud text-2xl"></i></Icon>
         <Content>@L.Transcription_SpokenText</Content>
         <Caption>@L.Transcription_SpokenTextCaption</Caption>
     </TileItem>
     <TileItem ToggleValue="@m.Languages.IsTranslatedVoiceEnabled"
               ToggleValueChanged="@(_ => OnToggleTranslatedVoice())">
-        <Icon><i class="icon-translation text-2xl"></i></Icon>
+        <Icon><i class="icon-hear-translations text-2xl"></i></Icon>
         <Content>@L.Transcription_TranslatedVoice</Content>
         <Caption>@L.Transcription_TranslatedVoiceCaption</Caption>
     </TileItem>
