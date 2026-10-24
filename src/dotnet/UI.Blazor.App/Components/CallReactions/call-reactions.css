@@ -55,3 +55,30 @@
         10%, 80% { opacity: 1; }
     }
 }
+
+/* ── Raised hands counter ── */
+
+.raised-hands-counter {
+    @apply relative flex-x items-center gap-1 flex-none;
+    @apply h-6 px-2 rounded-full;
+    @apply bg-pal-orange-50 text-white text-sm font-semibold;
+}
+.raised-hands-counter > i {
+    animation: hand-wave 15s ease-in-out infinite;
+    transform-origin: 70% 90%;
+}
+.raised-hands-counter::after {
+    content: "";
+    @apply absolute inset-0 rounded-full;
+    @apply border-2 border-pal-orange-50;
+    @apply pointer-events-none;
+    animation: hand-wave-ring 15s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .raised-hands-counter > i {
+        animation: none;
+    }
+    .raised-hands-counter::after {
+        @apply hidden;
+    }
+}

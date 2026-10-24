@@ -93,11 +93,20 @@ body.hoverable .live-session-member-list .c-host-btn:hover {
 .live-session-member-list .btn-lower-hand {
     @apply flex items-center justify-center;
     @apply rounded-full;
-    @apply text-primary;
+    @apply text-pal-orange-50;
 }
 body.hoverable .live-session-member-list .btn-lower-hand:hover {
     @apply bg-hover;
 }
+.live-session-member-list .c-member-state .btn-lower-hand i,
 .live-session-member-list .c-member-state i.c-hand {
-    @apply text-primary;
+    @apply text-pal-orange-50;
+    animation: hand-wave 15s ease-in-out infinite;
+    transform-origin: 70% 90%;
+}
+@media (prefers-reduced-motion: reduce) {
+    .live-session-member-list .c-member-state .btn-lower-hand i,
+    .live-session-member-list .c-member-state i.c-hand {
+        animation: none;
+    }
 }

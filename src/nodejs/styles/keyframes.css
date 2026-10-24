@@ -9,3 +9,35 @@
     95% { transform: rotate(360deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* A raised hand waves for ~4 s, swinging less and less until it settles, then rests: run it over 15 s, infinite,
+   to repeat the wave while the hand stays up */
+@keyframes hand-wave {
+    0% { transform: rotate(0deg); }
+    2% { transform: rotate(18deg); }
+    4% { transform: rotate(-10deg); }
+    6% { transform: rotate(18deg); }
+    8% { transform: rotate(-10deg); }
+    10% { transform: rotate(18deg); }
+    12% { transform: rotate(-10deg); }
+    14% { transform: rotate(16deg); }
+    16% { transform: rotate(-8deg); }
+    18% { transform: rotate(12deg); }
+    20% { transform: rotate(-6deg); }
+    22% { transform: rotate(8deg); }
+    24% { transform: rotate(-3deg); }
+    26% { transform: rotate(3deg); }
+    28%, 100% { transform: rotate(0deg); }
+}
+/* Three pulses alongside the wave, each fainter; a ring shrinks back only while it's invisible */
+@keyframes hand-wave-ring {
+    0% { transform: scale(1); opacity: 0; }
+    1% { transform: scale(1); opacity: 0.8; }
+    9% { transform: scale(1.8); opacity: 0; }
+    9.5% { transform: scale(1); opacity: 0; }
+    10.5% { transform: scale(1); opacity: 0.6; }
+    18.5% { transform: scale(1.8); opacity: 0; }
+    19% { transform: scale(1); opacity: 0; }
+    20% { transform: scale(1); opacity: 0.4; }
+    28%, 100% { transform: scale(1.8); opacity: 0; }
+}

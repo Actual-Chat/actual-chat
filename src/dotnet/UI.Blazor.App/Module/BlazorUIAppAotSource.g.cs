@@ -76,6 +76,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallModalHeader>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallReactionSelect>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallReactionsContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallReactionsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallReactionsOverlay>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.CallScreen>();
@@ -408,6 +409,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttAnswerWindowSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttChatAvatar>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttChats>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttDeviceOffBanner>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttGestureIcon>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttHushDurationSettings>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttJoinBanner>();
@@ -420,6 +422,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttSupportModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.PttTurnOffModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.QrScanView>();
+        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.RaisedHandsCounter>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionBadge>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ReactionNotificationHistoryItem>();
@@ -974,6 +977,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallModalHeader), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallReactionSelect), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.CallReactionsContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallReactionsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallReactionsOverlay), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.CallScreen), AotTypeKind.Component),
@@ -1306,6 +1310,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttAnswerWindowSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttChatAvatar), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttChats), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.PttDeviceOffBanner), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttGestureIcon), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttHushDurationSettings), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttJoinBanner), AotTypeKind.Component),
@@ -1318,6 +1323,7 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttSupportModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.PttTurnOffModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.QrScanView), AotTypeKind.Component),
+            (typeof(global::ActualChat.UI.Blazor.App.Components.RaisedHandsCounter), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionAuthorsMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionBadge), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ReactionNotificationHistoryItem), AotTypeKind.Component),

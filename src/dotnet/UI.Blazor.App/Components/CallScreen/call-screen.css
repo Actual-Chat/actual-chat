@@ -258,6 +258,9 @@ body.wide .call-screen.expanded > .c-container {
 .call-screen .call-screen-body .c-timer {
     @apply text-base text-white opacity-70;
 }
+.call-screen .call-screen-body .raised-hands-counter {
+    @apply mt-2;
+}
 .call-screen .call-screen-body .c-status.offline {
     @apply text-warning opacity-100;
 }
@@ -513,7 +516,6 @@ body.hoverable .btn-glass.btn-h:hover {
 .btn-glass.btn-h.btn-chat.on,
 .btn-glass.btn-h.btn-layout-toggle.on,
 .btn-glass.btn-h.btn-pin-toggle.on,
-.btn-glass.btn-h.btn-hand.on,
 .btn-glass.btn-h.btn-react.on,
 .btn-glass.btn-h.btn-transcription.on,
 /* Lit whenever the sound leaves the earpiece: speaker, headset or car. */
@@ -521,6 +523,16 @@ body.hoverable .btn-glass.btn-h:hover {
 .btn-glass.btn-h.btn-primary {
     @apply bg-pal-blue-50-50;
     @apply text-pal-blue-95;
+}
+/* Someone else's raised hand is a call for attention, not a lit control: solid, as the shorthand
+   also clears the glass gradient that would darken it */
+.btn-glass.btn-h.btn-hand.on {
+    @apply text-white;
+    background: var(--orange-50);
+}
+.btn-glass.btn-h.btn-hand.on i {
+    animation: hand-wave 15s ease-in-out infinite;
+    transform-origin: 70% 90%;
 }
 .btn-glass.btn-h.talking,
 .btn-glass.btn-h.btn-danger {
@@ -945,9 +957,20 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
 /* Raised hand: right of the label, except on a small tile (top-left corner) and on the speaker in
    speaker view (a button-sized indicator in the header instead, see .btn-hand) */
 .call-screen .video-track-player .video-hand-badge {
-    @apply flex items-center justify-center;
+    @apply relative flex items-center justify-center;
     @apply w-6 h-6 rounded-full;
-    @apply bg-primary text-white text-sm;
+    @apply bg-pal-orange-50 text-white text-sm;
+}
+.call-screen .video-track-player .video-hand-badge i {
+    animation: hand-wave 15s ease-in-out infinite;
+    transform-origin: 70% 90%;
+}
+.call-screen .video-track-player .video-hand-badge::after {
+    content: "";
+    @apply absolute inset-0 rounded-full;
+    @apply border-2 border-pal-orange-50;
+    @apply pointer-events-none;
+    animation: hand-wave-ring 15s ease-out infinite;
 }
 .call-screen .video-track-player .video-hand-badge.corner {
     @apply absolute top-1 left-1 z-10 hidden;
@@ -966,7 +989,16 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
     @apply w-5 h-5 text-xs;
 }
 .call-screen:not(.layout-equal) .video-track-player.item-x.hand-raised:not(.speaking)::after {
-    @apply border-primary opacity-100;
+    @apply border-pal-orange-50 opacity-100;
+}
+@media (prefers-reduced-motion: reduce) {
+    .btn-glass.btn-h.btn-hand.on i,
+    .call-screen .video-track-player .video-hand-badge i {
+        animation: none;
+    }
+    .call-screen .video-track-player .video-hand-badge::after {
+        @apply hidden;
+    }
 }
 /* Connecting overlay */
 .call-screen .connecting-overlay {
