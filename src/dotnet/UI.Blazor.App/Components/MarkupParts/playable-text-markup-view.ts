@@ -290,10 +290,10 @@ export class PlayableTextMarkupView {
 
     private positionOverlay(el: HTMLElement, rect: DOMRect) {
         Object.assign(el.style, {
-            top: `${rect.top + window.scrollY - 2}px`,
-            left: `${rect.left + window.scrollX - 5}px`,
-            width: `${rect.width + 10}px`,
-            height: `${rect.height + 4}px`,
+            top: `${rect.top + window.scrollY - 1}px`,
+            left: `${rect.left + window.scrollX - 1}px`,
+            width: `${rect.width + 2}px`,
+            height: `${rect.height + 2}px`,
         });
     }
 }

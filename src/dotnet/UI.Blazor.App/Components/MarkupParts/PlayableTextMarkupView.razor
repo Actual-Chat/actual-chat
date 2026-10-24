@@ -13,12 +13,26 @@
         @Markup.Text
     } else {
         var wordCount = Markup.Words.Length;
-        foreach (var run in BuildRuns(m.Map ?? new WordPlayback[wordCount], wordCount)) {
-            var c0 = Markup.Words[run.Start].TextRange.Start;
-            var c1 = Markup.Words[run.End].TextRange.End;
-            <span class="@RunClass(run)"
-                  data-c0="@c0"
-                  @attributes="@MarkAttributes(run.Start)">@Markup.Text[c0..c1]</span>
+        var runs = BuildRuns(m.Map ?? new WordPlayback[wordCount], wordCount);
+        foreach (var group in GroupByFrame(runs)) {
+            if (group[0].Fill == WordPlayback.None) {
+                foreach (var run in group) {
+                    @RenderRun(run, Markup.Words[run.End].TextRange.End)
+                }
+                continue;
+            }
+
+            // The frame stops at the last letter: the trailing space goes after it, in a span of its own
+            var lastRun = group[^1];
+            var lastEnd = Markup.Words[lastRun.End].TextRange.End;
+            var lastStart = Markup.Words[lastRun.Start].TextRange.Start;
+            var tailStart = Math.Max(Markup.Text[..lastEnd].TrimEnd().Length, lastStart);
+            <span class="pt-frame">@foreach (var run in group) {
+                @RenderRun(run, run == lastRun ? tailStart : Markup.Words[run.End].TextRange.End)
+            }</span>
+            if (tailStart < lastEnd) {
+                <span data-c0="@tailStart">@Markup.Text[tailStart..lastEnd]</span>
+            }
         }
     }
 </span>
@@ -185,12 +199,27 @@
         return runs;
     }
 
+    private static List<List<Run>> GroupByFrame(List<Run> runs) {
+        var groups = new List<List<Run>>();
+        foreach (var run in runs) {
+            if (groups.Count > 0 && (groups[^1][0].Fill != WordPlayback.None) == (run.Fill != WordPlayback.None))
+                groups[^1].Add(run);
+            else
+                groups.Add([run]);
+        }
+        return groups;
+    }
+
+    private RenderFragment RenderRun(Run run, int c1) {
+        var c0 = Markup.Words[run.Start].TextRange.Start;
+        var text = Markup.Text[c0..c1];
+        return @<span class="@RunClass(run)"
+                      data-c0="@c0"
+                      @attributes="@MarkAttributes(run.Start)"><span class="run-text">@text</span></span>;
+    }
+
     private static string RunClass(Run run) {
-        var cls = run.Fill switch {
-            WordPlayback.Playing => "playing-run",
-            WordPlayback.Played => "played-run",
-            _ => "",
-        };
+        var cls = run.Fill == WordPlayback.Playing ? "playing-run" : "";
         if (run.Highlighted)
             cls = cls.Length == 0 ? "highlight" : cls + " highlight";
         if (run.Mark.Length != 0)
