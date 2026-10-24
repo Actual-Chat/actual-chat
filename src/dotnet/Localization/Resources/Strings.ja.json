@@ -1419,7 +1419,6 @@
   "Ptt_UseOnThisDevice": "この端末でプッシュ・トゥ・トークを使う",
   "Ptt_UseOnThisDeviceCaption": "オフにすると、この端末はプッシュ・トゥ・トークの音声で起動・再生・送信しません。",
   "Ptt_UseOnDesktopCaption": "プッシュ・トゥ・トークはアプリの実行中に利用できます。アプリを終了すると停止します。",
-  "Ptt_ChatsTopic": "プッシュ・トゥ・トークのチャット",
   "Ptt_ChatsTopicLimit_Format": "プッシュ・トゥ・トークのチャット（最大 {0} 件）",
   "Ptt_NoPttChats": "プッシュ・トゥ・トーク モードのチャットはまだありません。オーナーがチャット内でオンにします。",
   "Ptt_AvailableTopic": "プッシュ・トゥ・トーク リストに未追加",

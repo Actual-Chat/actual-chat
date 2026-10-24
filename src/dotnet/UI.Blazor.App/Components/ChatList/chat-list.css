@@ -141,15 +141,15 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
 .c-active-chats .navbar-item.active .navbar-item-content {
     @apply font-normal;
 }
-/* The PTT mute control on a live PTT chat's Active Chats row: the push-to-talk glyph replaces the
-   listen toggle, a tap opens the mute menu, and a muted chat shows a draining countdown ring. */
+/* The PTT mute control on a live PTT chat's Active Chats row: a volume-up icon replaces the
+   listen toggle and opens the mute menu; a muted chat shows a gray volume-off icon in a draining ring. */
 .c-active-chats .c-ptt-badge {
     @apply text-primary;
 }
 .c-active-chats .c-ptt-mute-trigger {
     @apply flex items-center justify-center;
 }
-/* Muted: the ring drains over the whole mute period around a struck-out gray glyph that
+/* Muted: the ring drains over the whole mute period around a gray volume-off glyph that
    alternates with the remaining time, mirroring the listening countdown ring. */
 .c-active-chats .c-ptt-muted {
     @apply relative;
@@ -175,40 +175,16 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
 .c-active-chats .c-ptt-muted .c-ptt-badge {
     @apply relative text-03 text-lg;
 }
-.c-active-chats .c-ptt-muted .c-ptt-badge::after {
-    @apply absolute top-1/2 left-1/2 rounded-full;
-    content: "";
-    width: 1.3em;
-    height: 0.1em;
-    background: currentColor;
-    transform: translate(-50%, -50%) rotate(-45deg);
-}
 .c-active-chats .c-ptt-muted .c-timer-text {
     @apply text-03 text-xxs font-semibold leading-none tabular-nums;
 }
 
 /* ── Push-to-talk dock ──
    A preview row of PTT chat avatars docked above Active Chats; a click opens the PTT settings, where
-   the full list lives. The outer .ptt-chats is only the enter/exit animator (grid 0fr↔1fr + slide +
-   fade, kept mounted so it can fold away when the last PTT chat leaves - display is transitioned with
-   allow-discrete); .c-inner is the visible card. */
+   the full list lives. It appears and disappears without animation: the panel is re-created on every
+   place/chats switch, so an enter animation would replay each time. */
 .ptt-chats {
     @apply grid;
-    grid-template-rows: 0fr;
-    @apply opacity-0;
-    transform: translateY(0.5rem);
-    transition: grid-template-rows 220ms ease, opacity 220ms ease, transform 220ms ease, display 220ms;
-    transition-behavior: allow-discrete;
-}
-.ptt-chats.open {
-    grid-template-rows: 1fr;
-    @apply opacity-100;
-    transform: translateY(0);
-    @starting-style {
-        grid-template-rows: 0fr;
-        opacity: 0;
-        transform: translateY(0.5rem);
-    }
 }
 .ptt-chats:not(.open) {
     @apply hidden;
@@ -233,66 +209,56 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
     @apply relative;
 }
 /* Full-panel click target behind the content: a tap anywhere opens PTT settings. The content above is
-   pointer-events-none so clicks fall through to here; only a speaking avatar opts back in (it owns its
-   own tap - the mute menu - and isn't a descendant of this layer, so that tap never reaches it). */
+   pointer-events-none so clicks fall through to here. */
 .ptt-chats .c-settings-hit {
     @apply absolute inset-0 z-0;
     @apply cursor-pointer;
 }
-.ptt-chats .c-title {
-    @apply px-2 pb-2;
-    @apply text-sm font-medium;
-    @apply pointer-events-none;
+/* Without Active Chats above, the create button tucks over this row's top-right corner; keep the row
+   clear of it. */
+.c-active-chats:not([data-has-active-chats]) .ptt-chats > .c-inner {
+    padding-right: 5.5rem;
 }
-/* A left-aligned row of chat avatars that overlap by 0.5rem. */
+/* One row: the chat avatars, the push-to-talk circle as the last item, then a chevron. */
 .ptt-chats .c-preview {
     @apply flex-x items-center;
     @apply pl-2;
     @apply pointer-events-none;
 }
+/* The stack fills the row; its items (2rem circles) overlap just enough to fit - the step between
+   their left edges is the free width split evenly, between 0.625rem and 1.5rem. --ptt-count is the
+   item count, always >= 2 (the PTT circle plus at least one chat). */
+.ptt-chats .c-stack {
+    @apply flex-x items-center;
+    @apply flex-initial min-w-0;
+    width: calc(2rem + (var(--ptt-count) - 1) * 1.5rem);
+    container-type: inline-size;
+    --ptt-overlap: calc(2rem - clamp(0.625rem, (100cqw - 2rem) / (var(--ptt-count) - 1), 1.5rem));
+}
 /* Avatars overlap; later ones paint on top (like the activity panel), so the first/left one sits
    lowest. Each carries an inline ascending z-index (positioned) so a later avatar's 2px ring lands
    cleanly over its left neighbour instead of the neighbour's inner image leaking over it. The ring is
    a box-shadow in the panel's own colour - no layout cost. */
-.ptt-chats .c-avatar {
+.ptt-chats .c-ptt-avatar {
     @apply relative;
     @apply flex-none;
-    @apply -ml-2 first:ml-0;
+    @apply first:ml-0;
+    margin-left: calc(-1 * var(--ptt-overlap));
     @apply rounded-full;
     @apply pointer-events-none;
     box-shadow: 0 0 0 2px var(--background-01);
-    transition: transform 180ms ease, opacity 180ms ease, box-shadow 400ms ease, margin-right 180ms ease;
-    @starting-style {
-        opacity: 0;
-        transform: scale(0.6);
-    }
+    transition: box-shadow 400ms ease;
 }
-/* Live speech in the chat: the ring snaps to the accent blue the instant someone talks, then fades
-   back over 400ms once they stop (the compute signal already lingers ~0.2s, so a one-word burst still
-   registers). Instant on, slow off - no loop, which suits short push-to-talk bursts.
-   A speaking chat is sorted to the front (left) by PttChats, and each speaking avatar nudges the
-   avatars after it a little to the right, peeling itself out of the overlap just enough to be tapped
-   on its own. */
-.ptt-chats .c-avatar.speaking {
-    @apply mr-4;
-    @apply cursor-pointer pointer-events-auto;
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 70%, var(--background-01));
-    transition: transform 180ms ease, opacity 180ms ease, box-shadow 0ms, margin-right 180ms ease;
+/* Audio is playing in the chat right now: the ring snaps to the accent blue, then fades back over 400ms
+   once it stops. Instant on, slow off - no loop, which suits short push-to-talk bursts. */
+.ptt-chats .c-ptt-avatar.playing {
+    box-shadow: 0 0 0 2px var(--primary);
+    transition: box-shadow 0ms;
 }
-/* State + tap target on a speaking avatar: a speaker glyph pinned bottom-right. Blue filled disc with
-   volume-up = you hear this chat (tap to mute); danger disc with volume-off (struck through) = muted
-   (tap to unmute). The ring cuts it out from the avatar. Sized for legibility, like the language badge. */
-.ptt-chats .c-avatar .c-mute-badge {
-    @apply absolute -bottom-0.5 -right-0.5 z-10;
-    @apply flex items-center justify-center;
-    @apply w-5 h-5;
-    @apply rounded-full;
-    @apply bg-primary;
-    @apply text-white text-sm;
-    box-shadow: 0 0 0 1.5px var(--background-01);
-}
-.ptt-chats .c-avatar .c-mute-badge.c-muted {
-    @apply bg-danger;
+/* The user is recording in the chat (hot microphone): the same red the recording controls use. */
+.ptt-chats .c-ptt-avatar.recording {
+    box-shadow: 0 0 0 2px var(--danger-light);
+    transition: box-shadow 0ms;
 }
 /* "+N" tail: how many PTT chats aren't shown. Overlaps the last avatar; an explicit top z-index keeps
    it above every avatar (the avatars' inner content makes DOM order alone unreliable). Kept muted (a
@@ -301,24 +267,34 @@ body.narrow .navbar-chats .chat-list.virtual-list::-webkit-scrollbar {
     @apply relative z-10;
     @apply flex-none flex items-center justify-center;
     @apply w-8 h-8;
-    @apply -ml-2;
+    margin-left: calc(-1 * var(--ptt-overlap));
     @apply rounded-full;
     @apply bg-04;
     @apply text-02 text-sm font-medium;
     box-shadow: 0 0 0 2px var(--background-01);
 }
-/* Affordance pinned to the right edge: the push-to-talk glyph + a right chevron, in the accent blue,
-   to make it obvious the card is tappable (it opens PTT settings). */
-.ptt-chats .c-open-hint {
-    @apply flex-x items-center;
-    @apply ml-auto;
-    @apply text-primary;
+/* The last item of the stack: a bluish marble-like circle with the push-to-talk glyph, so the row reads
+   as "these are push-to-talk chats". Painted above every avatar. */
+.ptt-chats .c-ptt-circle {
+    @apply relative z-20;
+    @apply flex-none flex items-center justify-center;
+    @apply w-8 h-8;
+    margin-left: calc(-1 * var(--ptt-overlap));
+    @apply rounded-full;
+    @apply text-white text-xl;
+    background:
+        radial-gradient(circle at 28% 24%, #9fd0ff 0, transparent 55%),
+        radial-gradient(circle at 78% 82%, #5b4fd6 0, transparent 60%),
+        #3d8bff;
+    box-shadow: 0 0 0 2px var(--background-01);
 }
-.ptt-chats .c-open-hint .c-rac {
-    @apply text-2xl;
+.ptt-chats .c-ptt-circle:first-child {
+    @apply ml-0;
 }
-.ptt-chats .c-open-hint .c-chevron {
-    @apply text-lg;
+/* Right-edge affordance: the whole row opens PTT settings. */
+.ptt-chats .c-chevron {
+    @apply flex-none ml-1;
+    @apply text-lg text-primary;
 }
 
 /* PTT mute menu (PttMuteMenu) */

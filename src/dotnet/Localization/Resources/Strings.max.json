@@ -1634,7 +1634,6 @@
   "Ptt_UseOnThisDevice": "Използвайте Натисни и говори на това устройство",
   "Ptt_UseOnThisDeviceCaption": "Когато е изключено, това устройство няма да се събужда, възпроизвежда или предава глас с Натисни и говори.",
   "Ptt_UseOnDesktopCaption": "Le push-to-talk fonctionne tant que l’application est en cours d’exécution. Il s’arrête quand vous quittez l’application.",
-  "Ptt_ChatsTopic": "プッシュ・トゥ・トークのチャット",
   "Ptt_ChatsTopicLimit_Format": "プッシュ・トゥ・トークのチャット（最大 {0} 件）",
   "Ptt_NoPttChats": "Aucune conversation n’est encore en mode Push-to-Talk : son propriétaire l’active dans la conversation elle-même.",
   "Ptt_AvailableTopic": "Không có trong danh sách Nhấn để nói của bạn",

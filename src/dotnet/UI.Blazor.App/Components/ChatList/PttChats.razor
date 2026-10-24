@@ -11,6 +11,7 @@
     var showCount = total <= MaxSlots ? total : MaxSlots - 1;
     var previewChats = hasChats ? chats!.Take(showCount).ToList() : [];
     var moreCount = total - showCount;
+    var itemCount = showCount + (moreCount > 0 ? 1 : 0) + 1;
     var cls = $"ptt-chats {(hasChats ? "open" : "")}";
 }
 
@@ -18,39 +19,38 @@
     <div class="c-inner">
         @if (hasChats) {
             @* The whole panel opens PTT settings via this backing layer: everything above it is
-               pointer-events-none so clicks fall through, while a speaking avatar opts back in to own
-               its own tap (the mute menu). *@
+               pointer-events-none so clicks fall through to it. *@
             <div class="c-settings-hit" @onclick="@OnOpenSettings"></div>
-            <div class="c-title">@L.Ptt_ChatsTopic</div>
             <div class="c-preview">
-                @for (var i = 0; i < previewChats.Count; i++) {
-                    var chat = previewChats[i];
-                    <PttChatAvatar Chat="@chat" ZIndex="@(i + 1)" @key="@chat.Id"/>
-                }
-                @if (moreCount > 0) {
-                    <div class="c-more">+@moreCount</div>
-                }
-                <div class="c-open-hint">
-                    <i class="icon-push-to-talk c-rac"></i>
-                    <i class="icon-chevron-right c-chevron"></i>
+                <div class="c-stack" style="--ptt-count: @itemCount">
+                    @for (var i = 0; i < previewChats.Count; i++) {
+                        var chat = previewChats[i];
+                        <PttChatAvatar Chat="@chat" ZIndex="@(i + 1)" @key="@chat.Id"/>
+                    }
+                    @if (moreCount > 0) {
+                        <div class="c-more">+@moreCount</div>
+                    }
+                    <div class="c-ptt-circle">
+                        <i class="icon-push-to-talk"></i>
+                    </div>
                 </div>
+                <i class="icon-chevron-right c-chevron"></i>
             </div>
         }
     </div>
 </div>
 
 @code {
-    private const int MaxSlots = 5;
-    private const string MruKey = "PttChats.SpokeOrder";
+    private const int MaxSlots = 10;
+    private const string MruKey = "PttChats.RecordedOrder";
 
-    // Chat ids most-recently-spoke-first; the speaking chat moves to the front (left) and holds there
-    // once silent. Persisted to local settings so the order survives a page refresh - loaded once.
+    // Chat ids most-recently-recorded-in first: recording in a chat moves it to the front (left) and
+    // it holds there afterwards. Persisted to local settings so the order survives a page refresh.
     private List<ChatId> _mru = [];
     private bool _mruLoaded;
 
     private IChats Chats => Hub.Chats;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
-    private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
 
     protected override async Task<List<Chat>> ComputeState(CancellationToken cancellationToken) {
         if (!_mruLoaded) {
@@ -66,21 +66,15 @@
                 .ConfigureAwait(false))
             .SkipNullItems()
             .ToList();
-        var isSpeaking = await chats
-            .Select(chat => LiveStreamUI.IsAnyoneStreamingAudio(chat.Id, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-        // Move each chat that currently has speech to the front, so the most recent speaker stays
-        // leftmost and holds there once silent. Drop ids that have left the PTT set. Persist on change.
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        // The chat being recorded in moves to the front of the recency list and holds there afterwards.
+        // Drop ids that have left the PTT set. Persist on change.
         var changed = false;
-        for (var i = 0; i < chats.Count; i++) {
-            if (!isSpeaking[i])
-                continue;
-            var chatId = chats[i].Id;
-            if (_mru.Count != 0 && _mru[0] == chatId)
-                continue;
-            _mru.Remove(chatId);
-            _mru.Insert(0, chatId);
+        if (recordingChatId is { } recordingId
+            && chats.Any(c => c.Id == recordingId)
+            && (_mru.Count == 0 || _mru[0] != recordingId)) {
+            _mru.Remove(recordingId);
+            _mru.Insert(0, recordingId);
             changed = true;
         }
         var liveIds = chats.Select(c => c.Id).ToHashSet();
@@ -88,7 +82,9 @@
         if (changed)
             _ = LocalSettings.Set(MruKey, _mru.ToArray(), CancellationToken.None);
         return chats
-            .OrderBy(chat => MruIndex(chat.Id))
+            .OrderBy(chat => chat.Id != recordingChatId)
+            .ThenBy(chat => MruIndex(chat.Id))
+            .ThenBy(chat => chat.Title)
             .ToList();
     }
 

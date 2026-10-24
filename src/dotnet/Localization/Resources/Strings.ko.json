@@ -1419,7 +1419,6 @@
   "Ptt_UseOnThisDevice": "이 기기에서 푸시 투 토크 사용",
   "Ptt_UseOnThisDeviceCaption": "끄면 이 기기는 푸시 투 토크 음성으로 깨어나거나 재생·전송하지 않습니다.",
   "Ptt_UseOnDesktopCaption": "푸시투토크는 앱이 실행 중일 때 작동합니다. 앱을 종료하면 중지됩니다.",
-  "Ptt_ChatsTopic": "푸시 투 토크 채팅",
   "Ptt_ChatsTopicLimit_Format": "푸시 투 토크 채팅 (최대 {0}개)",
   "Ptt_NoPttChats": "아직 푸시 투 토크 모드인 채팅이 없습니다. 소유자가 채팅에서 직접 켭니다.",
   "Ptt_AvailableTopic": "내 푸시 투 토크 목록에 없음",

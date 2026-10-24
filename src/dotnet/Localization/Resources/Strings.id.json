@@ -1419,7 +1419,6 @@
   "Ptt_UseOnThisDevice": "Gunakan Tekan untuk bicara di perangkat ini",
   "Ptt_UseOnThisDeviceCaption": "Saat mati, perangkat ini tidak akan bangun, memutar, atau mengirim suara Tekan untuk bicara.",
   "Ptt_UseOnDesktopCaption": "Push-to-talk berfungsi selama aplikasi berjalan. Fitur ini berhenti saat Anda keluar dari aplikasi.",
-  "Ptt_ChatsTopic": "Chat Tekan untuk bicara",
   "Ptt_ChatsTopicLimit_Format": "Chat Tekan untuk bicara (maks. {0})",
   "Ptt_NoPttChats": "Belum ada chat dalam mode Tekan untuk bicara - pemiliknya mengaktifkannya di chat itu sendiri.",
   "Ptt_AvailableTopic": "Tidak ada di daftar Tekan untuk bicara Anda",

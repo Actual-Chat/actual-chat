@@ -177,7 +177,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     public virtual async Task<List<ChatId>> GetMutedPttChatIds(CancellationToken cancellationToken)
     {
         // The consented chats GetPttChatIds leaves out only because they're muted: still listed in
-        // Active Chats (with the muted badge), still inert for every other consumer.
+        // the push-to-talk row and, while someone talks, Active Chats, still inert for every other consumer.
         if (!await IsPttEnabledOnDevice(cancellationToken).ConfigureAwait(false))
             return [];
 
