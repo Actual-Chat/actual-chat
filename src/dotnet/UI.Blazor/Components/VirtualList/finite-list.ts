@@ -87,17 +87,15 @@ export class FiniteList extends VirtualList {
 
     protected onRender(rs: VirtualListRenderState): void {
         this.observeItems();
-        this.measureItemSize();
-        this.measureSeparatorSize();
         this.separatorIndexes = rs.separatorIndexes ?? [];
+        // Spacers first, from the last measured sizes: a measurement forces layout, and with the dropped
+        // rows gone but their spacer unwritten the content is short, so the bottom gets clamped.
+        this.updateSpacers(rs);
+        const hasItemSizeChanged = this.measureItemSize();
+        const hasSeparatorSizeChanged = this.measureSeparatorSize();
+        if (hasItemSizeChanged || hasSeparatorSizeChanged)
+            this.updateSpacers(rs);
 
-        const beforeCount = rs.beforeCount ?? 0;
-        const itemCount = beforeCount + rs.count + (rs.afterCount ?? 0);
-        // Both spacers stand for items nobody has rendered, so their heights come from the model - and
-        // the model now counts the separators among them. Sitting in the same flex column as the items,
-        // each also contributes a row gap that the position it stands for does not.
-        this.setSpacerSize(this.spacerRef, this.topOf(beforeCount));
-        this.setSpacerSize(this.endSpacerRef, this.topOf(itemCount) - this.topOf(beforeCount + rs.count));
         // The only scroll this list ever writes: an explicit request to show a given item. A window
         // move cannot shift what is on screen - position is a function of index - so nothing else has
         // anything to correct, and a correction here would be indistinguishable from the user's own
@@ -150,6 +148,15 @@ export class FiniteList extends VirtualList {
 
     // Private methods
 
+    // Both spacers stand for unrendered items, so their heights come from the model (separators
+    // included); each also adds a row gap that the position it stands for does not.
+    private updateSpacers(rs: VirtualListRenderState): void {
+        const beforeCount = rs.beforeCount ?? 0;
+        const itemCount = beforeCount + rs.count + (rs.afterCount ?? 0);
+        this.setSpacerSize(this.spacerRef, this.topOf(beforeCount));
+        this.setSpacerSize(this.endSpacerRef, this.topOf(itemCount) - this.topOf(beforeCount + rs.count));
+    }
+
     // Wrapper coordinates of the item at `index`, counting the separators that come before it.
     private topOf(index: number): number {
         return index * this.itemSize + this.separatorsBefore(index) * this.separatorSize;
@@ -193,17 +200,18 @@ export class FiniteList extends VirtualList {
     // The size source is any regular item; irregular ones (block separators) carry extra height and
     // would poison the estimate. Sticking to one key while it stays rendered keeps the value from
     // flapping between two rows that differ by a sub-pixel.
-    private measureItemSize(): void {
+    private measureItemSize(): boolean {
         const sizeSource = this.containerRef.querySelector<HTMLElement>(':scope > li.item[data-vl-size-source]');
         if (!sizeSource)
-            return;
+            return false;
 
         const size = sizeSource.getBoundingClientRect().height + this.rowGap;
         if (size <= 0 || Math.abs(size - this.itemSize) < ItemSizeEpsilon)
-            return;
+            return false;
 
         debugLog?.log(`[${this.identity}] measureItemSize: ${this.itemSize} -> ${size}`);
         this.itemSize = size;
+        return true;
     }
 
     private setSpacerSize(spacerRef: HTMLElement, size: number): void {
@@ -220,21 +228,22 @@ export class FiniteList extends VirtualList {
     // The separator is rendered once off-layout so it can be measured even when every item carrying
     // one is outside the loaded window. Its margins are part of what it costs, and they are not in
     // the element's own box.
-    private measureSeparatorSize(): void {
+    private measureSeparatorSize(): boolean {
         const measureRef = this.containerRef
             .querySelector<HTMLElement>(':scope > .c-separator-measure > *');
         if (measureRef == null)
-            return;
+            return false;
 
         const style = getComputedStyle(measureRef);
         const size = measureRef.getBoundingClientRect().height
             + (parseFloat(style.marginTop) || 0)
             + (parseFloat(style.marginBottom) || 0);
         if (size < 0 || Math.abs(size - this.separatorSize) < ItemSizeEpsilon)
-            return;
+            return false;
 
         debugLog?.log(`[${this.identity}] measureSeparatorSize: ${this.separatorSize} -> ${size}`);
         this.separatorSize = size;
+        return true;
     }
 
     private scrollToKey(key: string, isInTheMiddle: boolean): void {

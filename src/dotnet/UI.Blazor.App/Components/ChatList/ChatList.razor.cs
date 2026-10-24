@@ -111,7 +111,7 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
                 minVisibleIndex - (tileSize * 2),
                 maxVisibleIndex + (tileSize * 2)),
             // Query is there, so data is irrelevant
-            _ => query.KeyRange.ToIntRange().Move(query.MoveRange),
+            _ => GetQueryRange(query.KeyRange, query.MoveRange),
         };
 
         // Fit to existing chat count
@@ -184,6 +184,14 @@ public partial class ChatList : IVirtualListDataSource<ChatListItemModel>, IDisp
     }
 
     // Protected/internal methods
+
+    // The key range is inclusive and the move is relative to the loaded window's exclusive end;
+    // reading the last key as that end would lose the final row of every forward load.
+    internal static Range<int> GetQueryRange(Range<string> keyRange, Range<int> moveRange)
+    {
+        var range = keyRange.ToIntRange();
+        return new Range<int>(range.Start, range.End + 1).Move(moveRange);
+    }
 
     // It's internal to be accessible from tests
     internal static (IReadOnlyList<int> SeparatorIndexes, int TotalCount) AppendHistory(
