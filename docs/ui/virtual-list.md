@@ -2204,6 +2204,24 @@ Spacer heights come straight out of `topOf`, minus one row gap each: sitting in 
 the items, a spacer contributes a gap that the position it stands for does not. Both are written only
 when they change, for the same clamp reason as above.
 
+**Order inside a render matters at the bottom.** `onRender` writes the spacers *first*, from the sizes
+measured last time, and only then measures the item and separator sizes (writing the spacers again if a
+size changed). A measurement reads `getBoundingClientRect()` and so forces layout; with the rows the
+window just dropped already gone and the spacer standing in for them not yet written, the content is
+momentarily shorter, and a list scrolled to the bottom has its `scrollTop` clamped down by that
+shortfall - with nothing to put it back. The visible symptom was a list that could not be scrolled to
+its last rows: it stopped short and sprang back as soon as the bottom was reached.
+
+**A fixed inset below the last row belongs on the scroller, not on the row.** The model counts every
+row as one size, so extra height on the last row (a safe-area gap, room for a floating button) would
+be missing from the spacers until that row entered the window, and the total would change as it did.
+The chat list therefore pads the scroller itself (`.chat-list-all`), which the model never sees.
+
+**The data source's window is a half-open index range; the key range sent with a query is inclusive.**
+A source that reads the last key as the exclusive end loses the final row of every forward load, which
+the tile padding normally hides - but at the true end of a list there is none, and the list then asks
+for the last row forever and shows its skeleton (`ChatList.GetData`).
+
 Visibility bookkeeping keeps its state across renders rather than re-observing from scratch: clearing
 the set on every render would report an empty viewport each time, which reads downstream as "the user
 can see no chats at all".
