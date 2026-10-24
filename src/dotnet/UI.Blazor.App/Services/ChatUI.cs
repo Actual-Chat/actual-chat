@@ -64,6 +64,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
     private TranslationUI TranslationUI => Hub.TranslationUI;
     private ChatListUI ChatListUI => Hub.ChatListUI;
+    private CommandQueueUI CommandQueueUI => Hub.CommandQueueUI;
     private LocationUI LocationUI => Hub.LocationUI;
     private SelectionUI SelectionUI => Hub.SelectionUI;
     private KeepAwakeUI KeepAwakeUI => Hub.KeepAwakeUI;
@@ -508,12 +509,13 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
                 _ = UICommander.Run(new Notifications_Dismiss { Session = Session, NotificationId = n.Id });
         }
         await SetMarkedUnread(chatId, false).ConfigureAwait(false);
-        await UICommander.Run(new ChatPositions_Set {
+        var setPositionCmd = new ChatPositions_Set {
             Session = Session,
             ChatId = chatId,
             Kind = ChatPositionKind.Read,
             Position = new ChatPosition(long.MaxValue), // ChatPositions.OnSet clamps it to the last entry
-        }).ConfigureAwait(false);
+        };
+        CommandQueueUI.Enqueue(setPositionCmd);
     }
 
     public Task MarkAsUnread(ChatId chatId)
@@ -1020,12 +1022,16 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         return new Trimmed<int>(unreadCount, ChatInfo.MaxUnreadCount);
     }
 
-    private async Task<SyncedState<ReadPosition>> CreateReadPositionState(ChatId chatId, CancellationToken cancellationToken)
+    private async Task<SyncedState<ReadPosition>> CreateReadPositionState(
+        ChatId chatId, CancellationToken cancellationToken)
     {
-        // Commander use here is intended: this "action" shouldn't be counted as user action
-        var writeDebouncer = Debouncer.New<ICommand>(
+        // Not UICommander on purpose: this "action" shouldn't be counted as user action
+        var writeDebouncer = Debouncer.New<ChatPositions_Set>(
             TimeSpan.FromSeconds(1),
-            command => Commander.Run(command, CancellationToken.None));
+            command => {
+                CommandQueueUI.Enqueue(command);
+                return Task.CompletedTask;
+            });
 
         ChatSwitchTracer.Mark("ChatUI.CreateReadPositionState: Chats.Get -> in", chatId);
         var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);

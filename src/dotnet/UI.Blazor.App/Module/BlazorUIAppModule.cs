@@ -37,8 +37,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddAlias<IUITextLocalizer, LocalizationUI>(ServiceLifetime.Scoped);
         // Replaces the base UIActionFailureTracker (registered by fusion.AddBlazor) with one that
         // localizes failure messages before publishing them.
-        services.AddScoped<UIActionFailureTracker>(c => new
-            LocalizingUIActionFailureTracker(
+        services.AddScoped<UIActionFailureTracker>(c => new LocalizingUIActionFailureTracker(
             c.GetRequiredService<UIActionFailureTracker.Options>(), c));
 
         // Singletons
@@ -102,7 +101,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped(c => new AppReviewUI(c.UIHub()));
         fusion.AddService<AppReviewPromptUI>(ServiceLifetime.Scoped);
         services.AddScoped(_ => new SentContentStorage());
-        services.AddScoped(_ => new OptimisticReactions());
+        fusion.AddService<ReactionsUI>(ServiceLifetime.Scoped);
 
         // Live stream UI
         fusion.AddService<LiveStreamUI>(ServiceLifetime.Scoped);

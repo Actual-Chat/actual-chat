@@ -44,21 +44,6 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
         _blazorRef = null;
     }
 
-    // Private methods
-
-    private async Task RestoreVirtualListOverlay()
-    {
-        try {
-            await WhenReady.ConfigureAwait(false);
-            var settings = await Hub.UserSettingsUI.UserAppSettings().Get().ConfigureAwait(false);
-            if (settings.IsVirtualListOverlayEnabled == true)
-                await JS.InvokeVoidAsync(JSApplyVirtualListOverlayMethod, true).ConfigureAwait(false);
-        }
-        catch (Exception e) {
-            Log.LogWarning(e, "RestoreVirtualListOverlay failed");
-        }
-    }
-
     [JSInvokable]
     public void StopServer()
     {
@@ -71,6 +56,7 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
             Log.LogWarning("StopServer: IHostApplicationLifetime is unavailable");
             return;
         }
+
         appLifetime.StopApplication();
         // Same hard-exit watchdog the HTTP /health/stop endpoint uses.
         // Without it a hung disposer leaves the process running while
@@ -143,9 +129,12 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
         count = Math.Clamp(count, 1, 200);
         lineCount = Math.Clamp(lineCount, 1, 200);
         var testLog = Services.LoggerFactory().CreateLogger("ActualChat.DebugUI.TestLog");
-        var line = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+        var line = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, "
+            + "sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
         for (var i = 0; i < count; i++) {
-            var body = lineCount == 1 ? line : string.Join('\n', Enumerable.Range(0, lineCount).Select(n => $"L{n + 1}: {line}"));
+            var body = lineCount == 1
+                ? line
+                : string.Join('\n', Enumerable.Range(0, lineCount).Select(n => $"L{n + 1}: {line}"));
             testLog.LogInformation("TestLog #{Index}/{Count} ({Lines} lines):\n{Body}", i + 1, count, lineCount, body);
         }
     }
@@ -155,5 +144,20 @@ public sealed partial class DebugUI : UIServiceBase<UIHub>, IDisposable
     {
         TestVideoPlaybackQualityChangeHandler?.Invoke(periodSeconds);
         Log.LogInformation("TestVideoPlaybackQualityChange({Period}s): done", periodSeconds);
+    }
+
+    // Private methods
+
+    private async Task RestoreVirtualListOverlay()
+    {
+        try {
+            await WhenReady.ConfigureAwait(false);
+            var settings = await Hub.UserSettingsUI.UserAppSettings().Get().ConfigureAwait(false);
+            if (settings.IsVirtualListOverlayEnabled == true)
+                await JS.InvokeVoidAsync(JSApplyVirtualListOverlayMethod, true).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "RestoreVirtualListOverlay failed");
+        }
     }
 }

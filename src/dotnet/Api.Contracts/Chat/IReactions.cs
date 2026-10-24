@@ -20,7 +20,17 @@ public interface IReactions : IComputeService
 
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
-public sealed partial record Reactions_React : ApiCommand<Unit>
+public sealed partial record Reactions_React : ApiCommand<Unit>, IQueuedCommand
 {
     [DataMember(Order = 2), Key(2)] public required Reaction Reaction { get; init; }
+    // Null toggles the reaction, which is all the clients released before this field can ask for
+    [DataMember(Order = 3), Key(3)] public bool? MustRemove { get; init; }
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public string PartitionKey => Reaction.EntryId.Value;
+
+    [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
+    public QueuedCommandCoalescing Coalescing
+        // Only safe because the queued commands state their intent: collapsing toggles would flip the outcome
+        => MustRemove is null ? QueuedCommandCoalescing.None : QueuedCommandCoalescing.ReplaceWaiting;
 }
