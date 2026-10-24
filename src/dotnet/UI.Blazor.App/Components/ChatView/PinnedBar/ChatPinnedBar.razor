@@ -8,6 +8,11 @@
     var count = m.Entries.Count;
     var index = m.Index;
     var entry = m.Entries[index];
+    var pin = m.Pins[index];
+    var isManageable = pin.IsPersonal || (pin.IsShared && m.CanPinForEveryone);
+    // Telegram-style: at most MaxSegmentCount segments, the window slides to keep the active one visible.
+    var segmentCount = Math.Min(count, MaxSegmentCount);
+    var firstSegment = Math.Clamp(index - 1, 0, count - segmentCount);
     var markupHub = ChatMarkupHubFactory[Chat.Id];
     var text = markupHub.GetMarkup(entry, MarkupConsumer.QuoteView).ToReadableText(MarkupConsumer.QuoteView);
     var menuRef = MenuRef.New<ChatPinnedBarMenu>(entry.Id.Value).ToString();
@@ -16,13 +21,13 @@
 <div class="pinned-bar">
     <button type="button" class="c-cycle" @onclick="OnBarClick">
         <div class="c-indicator">
-            @for (var i = 0; i < count; i++) {
+            @for (var i = firstSegment; i < firstSegment + segmentCount; i++) {
                 <span class="c-seg @(i == index ? "active" : "")"></span>
             }
         </div>
         <div class="c-text">@text</div>
     </button>
-    @if (m.CanManage) {
+    @if (isManageable) {
         <HeaderButton
             Class="c-pin-btn btn-sm"
             data-menu="@menuRef"
@@ -37,11 +42,14 @@
 </div>
 
 @code {
+    private const int MaxSegmentCount = 4;
+
     // Reactive cursor: ComputeState reads it via .Use(), so advancing it recomputes the model
     // and reliably re-renders the bar (a plain field wouldn't drive a ComputedStateComponent render).
     private MutableState<int> _cursor = null!;
 
     private IChats Chats => Hub.Chats;
+    private ChatPinsUI ChatPinsUI => Hub.ChatPinsUI;
     private ChatUI ChatUI => Hub.ChatUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private KeyedFactory<IChatMarkupHub, ChatId> ChatMarkupHubFactory => Hub.ChatMarkupHubFactory;
@@ -64,26 +72,32 @@
         if (await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false))
             return Model.None;
 
-        var pinnedIds = await Chats.ListPinnedEntries(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (pinnedIds.Count == 0)
+        var allPins = await ChatPinsUI.List(chatId, cancellationToken).ConfigureAwait(false);
+        if (allPins.Count == 0)
             return Model.None;
 
-        var entries = new List<ChatEntry>(pinnedIds.Count);
-        foreach (var entryId in pinnedIds) {
-            var entry = await Chats.GetEntry(Session, entryId, cancellationToken).ConfigureAwait(false);
-            if (entry is { IsRemoved: false })
-                entries.Add(entry);
+        var entries = new List<ChatEntry>(allPins.Count);
+        var pins = new List<ChatPin>(allPins.Count);
+        foreach (var pin in allPins) {
+            var entry = await Chats.GetEntry(Session, pin.EntryId, cancellationToken).ConfigureAwait(false);
+            if (entry is not { IsRemoved: false })
+                continue;
+
+            entries.Add(entry);
+            pins.Add(pin);
         }
         if (entries.Count == 0)
             return Model.None;
 
-        // Same gate as the message menu's Pin item: moderators/owners, or any peer-chat participant.
-        var rules = await Chats.GetRules(Session, chatId, cancellationToken).ConfigureAwait(false);
-        var canManage = rules.CanModerate() || chatId.Kind == ChatKind.Peer;
-
+        var canPinForEveryone = await ChatPinsUI.CanPinForEveryone(chatId, cancellationToken).ConfigureAwait(false);
         var cursor = await _cursor.Use(cancellationToken).ConfigureAwait(false);
         var index = ((cursor % entries.Count) + entries.Count) % entries.Count;
-        return new Model { Entries = entries.ToApiArray(), Index = index, CanManage = canManage };
+        return new Model {
+            Entries = entries.ToApiArray(),
+            Pins = pins.ToApiArray(),
+            Index = index,
+            CanPinForEveryone = canPinForEveryone,
+        };
     }
 
     private void OnBarClick() {
@@ -98,7 +112,8 @@
     public sealed record Model {
         public static readonly Model None = new();
         public ApiArray<ChatEntry> Entries { get; init; }
+        public ApiArray<ChatPin> Pins { get; init; }
         public int Index { get; init; }
-        public bool CanManage { get; init; }
+        public bool CanPinForEveryone { get; init; }
     }
 }
