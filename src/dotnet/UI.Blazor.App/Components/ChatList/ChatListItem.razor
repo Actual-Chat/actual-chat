@@ -108,7 +108,7 @@
                     // PTT implies listening, so the badge replaces the listen toggle; click = mute
                     // for a period or leave PTT, and a muted badge counts the mute down.
                     // An ongoing recording takes over: the mic control is what stops it.
-                    <ChatListPttToggle ChatId="@chat.Id" Class="ending-btn"/>
+                    <PttMuteButton ChatId="@chat.Id" Class="ending-btn"/>
                 } else {
                     <ChatAudioControls
                         Chat="@chat"

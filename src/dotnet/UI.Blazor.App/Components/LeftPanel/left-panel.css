@@ -168,6 +168,28 @@ body.narrow .left-panel-content-header::before {
     background-repeat: no-repeat;
     background-size: 100% var(--c-search-tint-h);
 }
+/* The dock sits under the search results and takes its space from their bottom; only the create
+   button floats over both. Its own surface fills the corners its rounded top leaves, which would
+   otherwise show the darker panel base. */
+.left-panel-content-dock {
+    @apply flex-none flex-y;
+    @apply bg-03;
+}
+/* With a populated dock the create button sits over the dock's top edge and only its 1.75rem overhang
+   reaches the results; their own bottom padding is then just an empty strip above the dock, and goes.
+   Without one the button floats over the end of the results, as over the chat list. */
+.left-panel-content-search:has(+ .left-panel-content-dock:is([data-has-active-chats], [data-has-ptt-chats]))
+    .left-place-search-overlay-panel {
+    padding-bottom: 0;
+}
+.left-panel-content-search:has(+ .left-panel-content-dock:is([data-has-active-chats], [data-has-ptt-chats]))
+    .left-place-search-overlay-panel .tab-panel .tab {
+    padding-bottom: 0;
+}
+.left-panel-content-search:has(+ .left-panel-content-dock:is([data-has-active-chats], [data-has-ptt-chats]))
+    .left-place-search-overlay-panel :is(.tab > .c-container, .c-search-tab.c-container) {
+    padding-bottom: 1.75rem;
+}
 /* A swap layer paints --content-swap-bg to occlude the layer under it, and a flat colour cannot
    match a gradient - so the tint went missing for the length of every tab swap. The swap host
    repaints the band, shifted up by the tab strip standing above it, and the layer inherits that:

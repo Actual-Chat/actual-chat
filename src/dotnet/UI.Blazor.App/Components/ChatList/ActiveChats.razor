@@ -33,15 +33,29 @@
     protected override async Task<List<Chat>> ComputeState(CancellationToken cancellationToken) {
         DebugLog?.LogDebug("-> ComputeState: {List}", ChatListKind.Active);
         var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
-        // PTT-armed and muted chats have moved to their own PttChats section above this one, so they
-        // drop out here - otherwise a PTT chat that's also live would show in both lists at once.
+        // A PTT chat always listens in the background, so it's listed only while someone talks in it or
+        // the user listens or records in it - muted or not (a mute stops auto-playing, not voice activity).
         var pttChatIds = await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
         var mutedPttChatIds = await ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
         var pttSet = pttChatIds.Concat(mutedPttChatIds).ToHashSet();
-        var chatIds = activeChats
-            .Select(ac => ac.ChatId)
-            .Where(id => !pttSet.Contains(id))
-            .ToList();
+        var liveStreamUI = Hub.LiveStreamUI;
+        var chatIds = new List<ChatId>();
+        foreach (var activeChat in activeChats) {
+            var chatId = activeChat.ChatId;
+            if (!pttSet.Contains(chatId) || activeChat.IsRecording || activeChat.IsListeningExplicitly)
+                chatIds.Add(chatId);
+        }
+        // A muted chat may have no active-chat entry at all, so every PTT chat is checked for talk
+        foreach (var chatId in pttSet) {
+            if (chatIds.Contains(chatId))
+                continue;
+
+            var isTalking = await liveStreamUI
+                .IsAnyoneStreamingAudio(chatId, cancellationToken)
+                .ConfigureAwait(false);
+            if (isTalking)
+                chatIds.Add(chatId);
+        }
         var chats = (await chatIds
                 .Select(chatId => Chats.Get(Session, chatId, cancellationToken))
                 .Collect(cancellationToken)

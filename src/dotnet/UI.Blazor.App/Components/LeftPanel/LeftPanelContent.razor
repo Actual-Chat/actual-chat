@@ -28,6 +28,14 @@
                     <div class="left-panel-content-search">
                         <LeftPlaceSearchOverlayPanel/>
                     </div>
+                    @* The dock (Active Chats, push-to-talk row, create button) stays while searching *@
+                    <div class="navbar-chats left-panel-content-dock" data-children="active-chats ptt-chats">
+                        <div class="c-active-chats" data-children="active-chats ptt-chats">
+                            <ActiveChats/>
+                            <PttChats/>
+                            <ChatListCreateButton/>
+                        </div>
+                    </div>
                 } else {
                     <div class="left-panel-content-main">
                         @if (ScreenSize.IsNarrow()) {

@@ -3,48 +3,29 @@
 
 <div class="ptt-mute-menu">
     <div class="c-title">
-        @(_isMuted ? L.ChatList_UnmutePtt : L.ChatList_MutePtt)
+        @L.ChatList_MutePtt
     </div>
     <Divider/>
-    @if (_isMuted) {
+    @foreach (var duration in Constants.Audio.PttMuteDurations) {
         <MenuEntry
-            Icon="icon-volume-up"
-            Text="@L.ChatList_UnmutePtt"
-            Click="@OnUnmute">
+            Icon="icon-volume-off"
+            Text="@DurationLabel(duration)"
+            Click="@(() => OnMute(duration))">
         </MenuEntry>
-    } else {
-        @foreach (var duration in Constants.Audio.PttMuteDurations) {
-            <MenuEntry
-                Icon="icon-clock"
-                Text="@DurationLabel(duration)"
-                Click="@(() => OnMute(duration))">
-            </MenuEntry>
-        }
     }
 </div>
 
 @code {
     private ChatId? _chatId;
-    private bool _isMuted;
 
-    protected override void OnParametersSet() {
-        _chatId = ChatId.TryParse(Arguments.ElementAtOrDefault(0));
-        _isMuted = Arguments.ElementAtOrDefault(1) == PttChatAvatar.MutedArg;
-    }
+    protected override void OnParametersSet()
+        => _chatId = ChatId.TryParse(Arguments.ElementAtOrDefault(0));
 
     private Task OnMute(TimeSpan duration) {
         if (_chatId is not { } chatId)
             return Task.CompletedTask;
 
         return UICommander.RunLocal(ct => Hub.ChatAudioUI.MutePtt(chatId, duration, ct));
-    }
-
-    private Task OnUnmute() {
-        if (_chatId is not { } chatId)
-            return Task.CompletedTask;
-
-        return UICommander.RunLocal(ct
-            => UserSettingsUI.UserPttSettings().Update(x => x.WithPttChatUnmuted(chatId), ct));
     }
 
     private string DurationLabel(TimeSpan duration)
