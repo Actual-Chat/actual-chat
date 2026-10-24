@@ -1419,7 +1419,6 @@
   "Ptt_UseOnThisDevice": "Utiliser le Push-to-Talk sur cet appareil",
   "Ptt_UseOnThisDeviceCaption": "Si désactivé, cet appareil ne se réveillera pas, ne lira pas et ne transmettra pas la voix Push-to-Talk.",
   "Ptt_UseOnDesktopCaption": "Le push-to-talk fonctionne tant que l’application est en cours d’exécution. Il s’arrête quand vous quittez l’application.",
-  "Ptt_ChatsTopic": "Conversations Push-to-Talk",
   "Ptt_ChatsTopicLimit_Format": "Conversations Push-to-Talk (jusqu’à {0})",
   "Ptt_NoPttChats": "Aucune conversation n’est encore en mode Push-to-Talk : son propriétaire l’active dans la conversation elle-même.",
   "Ptt_AvailableTopic": "Pas dans votre liste Push-to-Talk",

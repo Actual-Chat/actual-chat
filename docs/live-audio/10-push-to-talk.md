@@ -43,9 +43,9 @@ restores their players once the audio workers are enabled. `ChatAudioUI.GetPttCh
 single armed-set choke point: it joins `PttChats` with `Chats.Get` and applies
 the epoch and pause predicates, so an owner's availability change propagates to every consumer
 (gestures, reply resolver, iOS PTT channel, `AudioActivitySource`, Active
-Chats) through ordinary invalidation. Armed chats also always appear in the
-**Active Chats** list with a PTT badge, and removing one there also revokes
-consent.
+Chats) through ordinary invalidation. An armed chat is in the **Active Chats** list only while someone talks in it
+or the user listens or records there, with the mute button on its row; the
+push-to-talk row under the list always shows every armed or muted chat.
 
 **Device activation is explicit and visible.** A chat can be in the account's PTT
 list while PTT is disabled on this device, including after reinstalling the app.
@@ -104,14 +104,16 @@ car routes retain their communication playback through
 `CarAudioRoute.UseCommunicationPlayback`.
 
 **Muting** is a timed pause of an armed chat that keeps the consent:
-`ChatListPttToggle`, the Active Chats badge, opens `PttMuteMenu` (15 min / 1 h /
+`PttMuteButton`, the Active Chats badge, opens `PttMuteMenu` (15 min / 1 h /
 8 h from `Constants.Audio.PttMuteDurations`, or "turn off" = `WithoutPttChat`),
 and `WithPttChatMuted` stamps `MutedAt`/`MutedUntil` on the entry with the server
 clock. `GetPttChatIds` leaves muted chats out and self-invalidates at the
 earliest `MutedUntil`, so a lapsed mute re-arms everything downstream with no
 settings write; `GetMutedPttChatIds` is the complement, read only by Active
-Chats (the row stays listed, with a gray struck-out badge whose ring drains over
-the mute period and alternates with the remaining time) and by the wake gate.
+Chats and the push-to-talk row (a muted chat is still listed in both while
+someone talks in it; its Active Chats button shows a gray volume-off icon whose
+ring drains over the mute period and alternates with the remaining time) and by
+the wake gate.
 Tapping the muted badge unmutes (`WithPttChatUnmuted`); re-arming through
 `WithPttChat` replaces the entry and so clears a mute too. Arming paths that
 rewrite the set with `WithOnlyPttChats` must feed it `GetConsentedPttChatIds`,
