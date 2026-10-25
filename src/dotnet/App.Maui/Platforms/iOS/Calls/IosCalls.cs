@@ -247,21 +247,34 @@ public sealed class IosCalls : CXProviderDelegate
     {
         // The system call UI's video button is no CXAction: it brings the app up with a call intent - the
         // legacy INStartVideoCallIntent, per callservicesd's "does not declare support for any dialing
-        // intents"; a Recents or Siri callback carries the current INStartCallIntent. Answered calls only.
+        // intents". A Recents or Siri callback may be legacy too, hence INStartAudioCallIntent as well.
         var (contacts, hasVideo) = intent switch {
             INStartCallIntent x => (x.Contacts, x.CallCapability == INCallCapability.VideoCall),
+            INStartAudioCallIntent x => (x.Contacts, false),
             INStartVideoCallIntent x => (x.Contacts, true),
             _ => (null, false),
         };
         var handle = contacts?.FirstOrDefault()?.PersonHandle?.Value;
-        if (ChatId.TryParse(handle, allowNull: true) is not { } chatId || !hasVideo || !HasAnsweredCall(chatId)) {
-            Log.LogInformation("ContinueCall: ignored {Intent}, handle={Handle}, hasVideo={HasVideo}",
-                intent.GetType().Name, handle, hasVideo);
+        if (ChatId.TryParse(handle, allowNull: true) is not { } chatId) {
+            Log.LogInformation("ContinueCall: ignored {Intent}, handle={Handle}", intent.GetType().Name, handle);
             return;
         }
 
-        Log.LogInformation("ContinueCall: video for chat #{ChatId}", chatId);
-        _ = DispatchToBlazor(c => StartVideoLocally(c, chatId), "ContinueCall");
+        if (_calls.Values.Any(x => x.ChatId == chatId)) {
+            // The chat's call is up already: only an answered one has a video to turn on.
+            if (!hasVideo || !HasAnsweredCall(chatId)) {
+                Log.LogInformation("ContinueCall: ignored {Intent} for chat #{ChatId} in a call, hasVideo={HasVideo}",
+                    intent.GetType().Name, chatId, hasVideo);
+                return;
+            }
+
+            Log.LogInformation("ContinueCall: video for chat #{ChatId}", chatId);
+            _ = DispatchToBlazor(c => StartVideoLocally(c, chatId), "ContinueCall");
+            return;
+        }
+
+        Log.LogInformation("ContinueCall: calling chat #{ChatId}, hasVideo={HasVideo}", chatId, hasVideo);
+        _ = DispatchToBlazor(c => StartCallLocally(c, chatId, hasVideo), "ContinueCall", whenRendered: true);
     }
 
     public (ChatId ChatId, CallId? CallId)[] ListRings()
@@ -429,6 +442,10 @@ public sealed class IosCalls : CXProviderDelegate
     private static Task SetMutedLocally(IServiceProvider services, ChatId chatId, bool isMuted)
         // The same switch the in-app recorder toggle flips: a call is muted by not recording into it.
         => services.GetRequiredService<ChatAudioUI>().SetRecordingChatId(isMuted ? null : chatId).AsTask();
+
+    private static Task StartCallLocally(IServiceProvider services, ChatId chatId, bool hasVideo)
+        // The same as the chat header's call button: the call screen opens over whatever is shown.
+        => services.GetRequiredService<CallUI>().StartCall(chatId, default, hasVideo, CancellationToken.None);
 
     private static Task StartVideoLocally(IServiceProvider services, ChatId chatId)
         // The same as the call screen's own video button; the video opens on the call screen.
