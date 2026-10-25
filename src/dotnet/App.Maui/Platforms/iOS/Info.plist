@@ -146,6 +146,7 @@
 	<array>
 		<string>INSendMessageIntent</string>
 		<string>INStartCallIntent</string>
+		<string>INStartAudioCallIntent</string>
 		<string>INStartVideoCallIntent</string>
 		<string>ai.voxt.viewChat</string>
 	</array>

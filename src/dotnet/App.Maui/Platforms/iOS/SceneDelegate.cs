@@ -35,7 +35,7 @@ public sealed class SceneDelegate : MauiUISceneDelegate
     public override bool ContinueUserActivity(UIScene scene, NSUserActivity userActivity)
     {
         var intent = userActivity.GetInteraction()?.Intent;
-        if (IosCallKit.IsAvailable && intent is INStartCallIntent or INStartVideoCallIntent)
+        if (IosCallKit.IsAvailable && intent is INStartCallIntent or INStartAudioCallIntent or INStartVideoCallIntent)
             IosCalls.Instance.ContinueCall(intent);
         else {
             var url = userActivity.GetAppLinkUrl();
