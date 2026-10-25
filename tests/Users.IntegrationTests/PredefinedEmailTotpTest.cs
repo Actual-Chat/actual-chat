@@ -109,4 +109,37 @@ public class PredefinedEmailTotpTest(AppHostFixture fixture, ITestOutputHelper @
         isAdmin.Should().BeFalse();
         isAdminWithoutSetting.Should().BeTrue("without the setting it's a regular team email");
     }
+
+    [Fact]
+    public void ParseAdminEmailsShouldExpandNamesToTeamDomain()
+    {
+        // act
+        var emails = AccountsBackend.ParseAdminEmails("Jane.Doe; john@example.com,\n bob ");
+
+        // assert
+        emails.Should().HaveCount(3);
+        emails.Contains("jane.doe@actual.chat").Should().BeTrue("emails are compared ignoring case");
+        emails.Contains("john@example.com").Should().BeTrue();
+        emails.Contains("bob@actual.chat").Should().BeTrue("a name expands to the team domain");
+    }
+
+    [Fact]
+    public void ProductionShouldHonorOnlyListedAdminEmails()
+    {
+        // arrange
+        var listed = new AccountFull("").WithEmailIdentity(ActualChat.Email.Parse("jane.doe@actual.chat"));
+        var unlisted = new AccountFull("").WithEmailIdentity(ActualChat.Email.Parse("john.roe@actual.chat"));
+        var totps = ImmutableDictionary<string, int>.Empty;
+        var adminEmails = AccountsBackend.ParseAdminEmails("jane.doe");
+
+        // act
+        var isListedAdmin = AccountsBackend.IsAdmin(listed, false, totps, totps, adminEmails, true);
+        var isUnlistedAdminOnProd = AccountsBackend.IsAdmin(unlisted, false, totps, totps, adminEmails, true);
+        var isUnlistedAdminElsewhere = AccountsBackend.IsAdmin(unlisted, false, totps, totps, adminEmails, false);
+
+        // assert
+        isListedAdmin.Should().BeTrue();
+        isUnlistedAdminOnProd.Should().BeFalse("production admins are only the listed emails");
+        isUnlistedAdminElsewhere.Should().BeTrue("any team email is admin outside production");
+    }
 }

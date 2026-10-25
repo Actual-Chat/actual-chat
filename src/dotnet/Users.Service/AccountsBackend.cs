@@ -19,11 +19,6 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
 {
     private const string AdminEmailDomain = Constants.Team.EmailDomain;
     private const int ReserveUserIdAttemptCount = 5;
-    private static HashSet<string> AdminEmails { get; } = [
-        "alex.yakunin@gmail.com",
-        "ustinovas@gmail.com",
-        "crui3er@gmail.com",
-    ];
 
     private ISessionsBackend SessionsBackend => field ??= Services.GetRequiredService<ISessionsBackend>();
     private ISessionTemporalsBackend SessionTemporalsBackend => field ??= Services.GetRequiredService<ISessionTemporalsBackend>();
@@ -36,6 +31,7 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
     private AccountNameValidator AccountNameValidator => field ??= Services.GetRequiredService<AccountNameValidator>();
     private ISecureTokensBackend SecureTokensBackend => field ??= Services.GetRequiredService<ISecureTokensBackend>();
     private HostInfo HostInfo => field ??= Services.HostInfo();
+    private HashSet<string> AdminEmails => field ??= ParseAdminEmails(UsersSettings.AdminEmails);
 
     // [ComputeMethod]
     public virtual async Task<AccountFull?> Get(UserId userId, CancellationToken cancellationToken)
@@ -526,13 +522,17 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
             // become an admin there just by signing in.
             HostInfo.IsLocalDevInstance() && !HostInfo.IsTested,
             UsersSettings.PredefinedTotps,
-            UsersSettings.PredefinedEmailTotps);
+            UsersSettings.PredefinedEmailTotps,
+            AdminEmails,
+            HostInfo.IsProductionInstance);
 
     internal static bool IsAdmin(
         AccountFull account,
         bool areTestAgentsAdmins,
         IReadOnlyDictionary<string, int> predefinedTotps,
-        IReadOnlyDictionary<string, int> predefinedEmailTotps)
+        IReadOnlyDictionary<string, int> predefinedEmailTotps,
+        IReadOnlySet<string>? adminEmails = null,
+        bool isProduction = false)
     {
         // TODO(AY): Remove the check relying on test/internal auth providers in the production code
         if (account.Identities.HasInternalIdentity() && account.Id == Constants.User.Admin.UserId)
@@ -566,13 +566,21 @@ public class AccountsBackend(IServiceProvider services) : DbServiceBase<UsersDbC
                 continue;
             }
 
-            if (AdminEmails.Contains(email))
-                return true; // Predefined admin email
-            if (emailAddress.Host == AdminEmailDomain)
-                return true; // company email
+            // On production only the listed emails are admins, elsewhere any company email is too
+            if (adminEmails?.Contains(email) == true)
+                return true;
+            if (!isProduction && emailAddress.Host == AdminEmailDomain)
+                return true;
         }
         return false;
     }
+
+    internal static HashSet<string> ParseAdminEmails(string value)
+        // Entries without '@' are names on the team domain; the rest are full emails
+        => value
+            .Split([';', ',', ' ', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => x.Contains('@') ? x : x + Constants.Team.EmailSuffix)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     // Private methods
 
