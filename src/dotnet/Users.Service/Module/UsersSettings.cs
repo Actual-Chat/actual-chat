@@ -33,6 +33,8 @@ public sealed class UsersSettings
     public TimeSpan? TelegramGatewayTtl { get; set; }
     public string BlockedPhonePrefixes { get; set; } = "";
     public string SkipTelegramPhonePrefixes { get; set; } = "";
+    // ';' or ',' separated emails; a name without '@' means <name>@actual.chat. The only admins on production
+    public string AdminEmails { get; set; } = "";
     public IReadOnlyDictionary<string, int> PredefinedTotps { get; set; } = ImmutableDictionary<string, int>.Empty;
     // Keys are the lowercase <prefix> of <prefix>+<suffix>@actual.chat.
     // Unlike PredefinedTotps, these are never honored on production.
