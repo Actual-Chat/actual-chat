@@ -422,8 +422,11 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             || Bridge is null
             || await Bridge.OnCallHandled(chatId, callId, true).ConfigureAwait(true);
         Log.LogInformation("Accept: chat #{ChatId}, canStartAudio={CanStartAudio}", chatId, canStartAudio);
+        // The chat opens beside the audio, never ahead of it: it needs the page, and an iOS answer from
+        // the background can find that page stalled or still loading - the call has to connect regardless.
         if (!isOverLock)
-            await OpenChat(chatId).ConfigureAwait(true);
+            _ = OpenChat(chatId)
+                .WithErrorLog(StopToken, Log, "Couldn't open the chat of the accepted call #{ChatId}", chatId);
         if (canStartAudio)
             await CallUI.StartCallAudio(chatId, CancellationToken.None).ConfigureAwait(true);
     }
@@ -451,11 +454,15 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
 
     private async Task OpenChat(ChatId chatId)
     {
-        // The panels hide on a URL change, so the chat they were opened over has to hide them itself
+        // The panels hide on a URL change, so the chat they were opened over has to hide them itself - once
+        // BrowserInfo is ready, which a call answered from the background can come before.
         var isChatOpen = Hub.History.LocalUrl.IsChat(out var openChatId) && openChatId == chatId;
         await Hub.History.NavigateTo(Links.Chat(chatId)).ConfigureAwait(true);
-        if (isChatOpen)
-            Hub.PanelsUI.HidePanels();
+        if (!isChatOpen)
+            return;
+
+        await Hub.BrowserInfo.WhenReady.WaitAsync(StopToken).ConfigureAwait(true);
+        Hub.PanelsUI.HidePanels();
     }
 
     private void ShowToast(string text)
