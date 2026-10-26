@@ -3,7 +3,8 @@
  *
  * Two users (Alice, Bob) turn their cameras on in the same chat, which starts a
  * live session - a hand exists only while there is one. Then:
- *   - Bob raises his hand -> Alice sees the hand badge on Bob's tile.
+ *   - Bob raises his hand -> Alice sees the hand badge on Bob's tile and a counter in the header, and as
+ *     the host she hears it (#5521).
  *   - Bob sends an emoji -> it floats over Alice's video panel with his name.
  *   - Alice, the host (she streamed first), lowers Bob's hand from the Call tab
  *     -> the badge goes away and Bob is told his hand was lowered.
@@ -96,11 +97,27 @@ describe('raise hand and reactions in a video call', () => {
         const bobVideoCount = await markVideoElements(bob);
         expect(aliceVideoCount).toBeGreaterThan(0);
         expect(bobVideoCount).toBeGreaterThan(0);
+        const isHandRaisedSound = (url: string) => url.includes('/sounds/hand-raised.');
+        const bobSoundUrls: string[] = [];
+        bob.on('request', request => {
+            if (isHandRaisedSound(request.url()))
+                bobSoundUrls.push(request.url());
+        });
+        const whenAliceHearsHand = alice.waitForRequest(r => isHandRaisedSound(r.url()), { timeout: 15_000 });
         await bobMenu.locator('.ac-menu-item:has(.icon-hand)').first().click();
 
         // assert - inline panel: the hand sits right of Bob's label on Alice's side
-        await aliceBobTile.locator('.video-tile-caption .video-hand-badge')
-            .waitFor({ state: 'visible', timeout: 15_000 });
+        const aliceBadge = aliceBobTile.locator('.video-tile-caption .video-hand-badge');
+        await aliceBadge.waitFor({ state: 'visible', timeout: 15_000 });
+        // Solid blue rather than a lit control's tint, and the hand waves
+        const badgeBackground = await aliceBadge.evaluate(el => getComputedStyle(el).backgroundColor);
+        const handAnimation = await aliceBadge.locator('i').evaluate(el => getComputedStyle(el).animationName);
+        expect(badgeBackground).toBe('rgb(51, 149, 255)');
+        expect(handAnimation).toBe('hand-wave');
+
+        // assert - Alice, the host, hears the hand go up; Bob, whose hand it is, doesn't
+        await whenAliceHearsHand;
+        expect(bobSoundUrls).toEqual([]);
         await expect.poll(async () => reactButton.getAttribute('class'), { timeout: 10_000 }).toContain('on');
         await alice.screenshot({ path: shot('1-inline-next-to-label') });
 
@@ -117,6 +134,9 @@ describe('raise hand and reactions in a video call', () => {
         await expandVideoPanel(alice);
         await alice.locator('.call-screen-header .btn-hand').waitFor({ state: 'visible', timeout: 10_000 });
         await expect.poll(async () => aliceBobTile.locator('.video-hand-badge:visible').count()).toBe(0);
+        const headerCounter = alice.locator('.call-screen-header .c-member-count .raised-hands-counter');
+        await headerCounter.waitFor({ state: 'visible', timeout: 10_000 });
+        expect((await headerCounter.locator('.c-count').innerText()).trim()).toBe('1');
         await alice.screenshot({ path: shot('3-speaker-view-header') });
 
         // assert - gallery view: back right of the label

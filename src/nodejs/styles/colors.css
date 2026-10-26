@@ -307,6 +307,8 @@
     --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
+    --raised-hand: var(--primary);
+    --raised-hand-text: var(--white);
 
     /* Banners */
     --background-banner-default: var(--gray-95);
@@ -592,6 +594,8 @@
     --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
+    --raised-hand: var(--primary);
+    --raised-hand-text: var(--white);
 
     /* Banners */
     --background-banner-default: var(--ash-22);
@@ -874,6 +878,8 @@
     --danger-light: var(--magenta-70);
     --success: var(--green-40);
     --warning: var(--sienna-40);
+    --raised-hand: var(--primary);
+    --raised-hand-text: var(--white);
 
     /* Banners */
     --background-banner-default: var(--gray-95);

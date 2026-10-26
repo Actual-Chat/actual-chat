@@ -1,0 +1,39 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, RaisedHandsCounter.Model>
+@{
+    var m = State.Value;
+    if (m.Count == 0)
+        return;
+}
+
+@* Keyed by the newest hand, so it waves again for each hand that goes up *@
+<div @key="@m.NewestAuthorId" class="raised-hands-counter" title="@L.Call_HandRaised">
+    <i class="icon-hand"></i>
+    <span class="c-count">@m.Count</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ChatId ChatId { get; set; }
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options() {
+                InitialValue = Model.None,
+                UpdateDelayer = FixedDelayer.NextTick,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var authorIds = await Hub.LiveSessionUI.ListRaisedHandAuthorIds(ChatId, cancellationToken)
+            .ConfigureAwait(false);
+        return authorIds.Count == 0
+            ? Model.None
+            : new Model(authorIds.Count, authorIds[^1]);
+    }
+
+    // Nested types
+
+    public sealed record Model(int Count, AuthorId? NewestAuthorId) {
+        public static readonly Model None = new(0, null);
+    }
+}

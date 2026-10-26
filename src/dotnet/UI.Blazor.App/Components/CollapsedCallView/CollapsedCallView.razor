@@ -4,7 +4,7 @@
 @inherits ComputedStateComponent<AppUIHub, CollapsedCallView.ComputedModel>
 @{
     var m = State.Value;
-    if (m.ChatId is null)
+    if (m.ChatId is not { } chatId)
         return;
 }
 
@@ -22,6 +22,7 @@
                 <span>·</span>
                 <LiveDuration Class="c-timer" StartedAt="@joinedAt"/>
             }
+            <RaisedHandsCounter ChatId="@chatId"/>
             <i class="icon-expand text-xl"></i>
         </div>
     } else {

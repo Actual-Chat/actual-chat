@@ -130,6 +130,8 @@ module.exports = {
         'danger': 'var(--danger)',
         'success': 'var(--success)',
         'warning': 'var(--warning)',
+        'raised-hand': 'var(--raised-hand)',
+        'raised-hand-text': 'var(--raised-hand-text)',
 
         'transparent': 'var(--transparent)',
         'counter': 'var(--counter)',
