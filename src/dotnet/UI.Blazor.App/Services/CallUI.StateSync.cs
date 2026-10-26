@@ -192,7 +192,7 @@ public partial class CallUI
     private async Task StartAnsweredCallAudio(ChatId chatId)
     {
         try {
-            await StartCallAudio(chatId, CancellationToken.None).ConfigureAwait(false);
+            await StartCallAudio(chatId, StopToken).ConfigureAwait(false);
         }
         catch (Exception e) when (e is not OperationCanceledException) {
             Log.LogWarning(e, "Couldn't join the answered call in chat #{ChatId}", chatId);

@@ -32,20 +32,59 @@ public sealed class IncomingCallAcceptTest(ChatAppHostFixture fixture, ITestOutp
         var bobAuthor = await Bob.GetOwnAuthor(chatId);
         var aliceAuthor = await Alice.GetOwnAuthor(chatId);
         var backend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
-        var callScreensUI = Alice.ScopedAppServices.AppUIHub().CallScreensUI;
+        var aliceHub = Alice.ScopedAppServices.AppUIHub();
+        ((TestMicrophonePermissionHandler)aliceHub.AudioRecorder.MicrophonePermission).GetResult = true;
+        Alice.InitializeHub();
 
         // act - the ring exists server-side; Alice answers without her client having read it
-        // (the join itself can fail in a test host - there is no audio there)
         var callId = await backend.StartCall(
             chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
-        await callScreensUI.Accept(chatId, callId).SilentAwait();
+        await aliceHub.CallScreensUI.Accept(chatId, callId);
 
-        // assert - the ring was answered rather than called over
+        // assert - the ring was answered rather than called over, and Alice is on the line
         await TestWait.When(async ct => {
             var invite = (await backend.ListInvites(chatId, ct)).FirstOrDefault(x => x.InviteeId == aliceAuthor.Id);
             invite.Should().NotBeNull();
             invite!.Status.Should().Be(CallInviteStatus.Accepted);
         });
+        var recordingChatId = await aliceHub.ChatAudioUI.GetRecordingChatId();
+        recordingChatId.Should().Be(chatId);
+    }
+
+    [Fact]
+    public async Task AcceptShouldNotRecordWhenTheCallEndsDuringTheMicPrompt()
+    {
+        // arrange - the mic answer waits for the page, which an answer from the background can come before
+        await Bob.SignInAsUniqueBob();
+        await Alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await Bob.CreateChat(false);
+        await Alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await Bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await Alice.GetOwnAuthor(chatId);
+        var liveSessionsBackend = AppHost.Services.GetRequiredService<ILiveSessionsBackend>();
+        var aliceHub = Alice.ScopedAppServices.AppUIHub();
+        ((TestMicrophonePermissionHandler)aliceHub.AudioRecorder.MicrophonePermission).GetResult = true;
+        var callId = await liveSessionsBackend.StartCall(
+            chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        var whenAccepted = aliceHub.CallScreensUI.Accept(chatId, callId);
+        await TestWait.When(async _ => {
+            var listeningChatIds = await aliceHub.ChatAudioUI.GetListeningChatIds();
+            listeningChatIds.Should().Contain(chatId);
+        });
+
+        // act - Alice hangs up before the page lets the mic answer
+        await aliceHub.CallScreensUI.HangUp(chatId);
+        Alice.InitializeHub();
+        // Polled: Accept finishing is a side effect, nothing invalidates on it
+        await TestWait.WhenPolled(() => {
+            whenAccepted.IsCompleted.Should().BeTrue();
+            return Task.CompletedTask;
+        });
+        await whenAccepted;
+
+        // assert
+        var recordingChatId = await aliceHub.ChatAudioUI.GetRecordingChatId();
+        recordingChatId.Should().BeNull("the call ended before the mic was granted");
     }
 
     [Fact]

@@ -2,9 +2,12 @@ using ActualChat.App.Server;
 using ActualChat.Notifications;
 using ActualChat.Search;
 using ActualChat.UI;
+using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.Services;
+using ActualLab.Fusion.Blazor;
 using ActualLab.Versioning;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 
 namespace ActualChat.Testing.Host;
 
@@ -88,4 +91,17 @@ public class BlazorTester : BunitContext, IWebTester
         else
             _serviceScope.DisposeSilently();
     }
+
+    public void InitializeHub(ComponentBase? rootComponent = null)
+    {
+        // What AppBase does for the real app: until the hub has a root component's dispatcher,
+        // everything that runs on it - modals, navigation, permission prompts - waits forever
+        Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        rootComponent ??= Render<EmptyRootComponent>().Instance;
+        ScopedAppServices.UIHub().Initialize(rootComponent, RenderModeDef.GetOrDefault(""));
+    }
+
+    // Nested types
+
+    private sealed class EmptyRootComponent : ComponentBase;
 }
