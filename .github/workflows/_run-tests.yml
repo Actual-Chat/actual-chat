@@ -304,10 +304,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: crash-diagnostics-${{ inputs.report-name }}
-          # Sequence_*.xml is the blame collector's list of tests the crashed host had started, in order
+          # Sequence_*.xml is the blame collector's list of tests the crashed host had started, in order.
+          # In/ is the TRX logger's copy of the same attachments, so it would ship every dump twice.
           path: |
             tests/**/TestResults/**/Sequence_*.xml
             tests/**/TestResults/**/*.dmp
+            !tests/**/TestResults/**/In/**
             tmp/memory-samples.log
           if-no-files-found: ignore
           retention-days: 7
