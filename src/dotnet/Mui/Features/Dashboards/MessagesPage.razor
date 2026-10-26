@@ -30,9 +30,12 @@
             + UserEntries + " and coalesce(audio_id, '') <> ''",
             Description: "Total speech time of voice messages, in minutes: the sum of ends_at - begins_at "
                 + "over the voice messages of the window. Entries without ends_at count as zero."),
-        new("active_authors", "Active authors",
-            "select count(distinct author_id) " + UserEntries,
-            Description: "Distinct author_id among text and voice messages of the window. An author is a "
-                + "person's identity in one chat, so someone who wrote in two chats counts twice."),
+        new("active_users", "Active users",
+            "select count(distinct a.user_id) from chat_entries e join authors a on a.id = e.author_id"
+            + " where not e.is_system_entry and not e.is_imported"
+            + " and e.begins_at >= {from} and e.begins_at < {to}",
+            Description: "Distinct users among the authors of text and voice messages of the window: "
+                + "chat_entries joined with authors by author_id, counting authors.user_id, so someone who "
+                + "wrote in two chats counts once. Entries whose author row is missing are not counted."),
     ];
 }

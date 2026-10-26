@@ -28,11 +28,11 @@ mode, or mobile layout.
 
 | Section | What it holds |
 |---------|---------------|
-| **Dashboards** (`/m`, `/m/dashboards/...`) | The main section; its first page, Overview (`/m`), will show key metrics. One dashboard per area: Chats, Messages, Notifications, Sessions, Uploads, Users (user activity first: texts, voice, uploads, new chats and places). Places and other areas can follow. A dashboard runs SQL (sometimes with post-processing in code) and shows how a few metrics trend, so it is possible to follow what is happening. See "Dashboards" below. |
+| **Dashboards** (`/m/dashboards/...`) | The main section. One dashboard per area: Chats, Messages, Notifications, Sessions, Uploads, Users (user activity first: texts, voice, uploads, new chats and places). Places and other areas can follow. A dashboard runs SQL (sometimes with post-processing in code) and shows how a few metrics trend, so it is possible to follow what is happening. See "Dashboards" below. |
 | **Marketing** (`/m/marketing/...`) | Where users come from and how far they get: Campaigns and Keywords (users per ad campaign and per keyword, one chart for each that brought someone in the latest window), Milestones (users who reached each milestone, next to sign-ups). Same period control and charts as the dashboards. |
 | **System** (`/m/system/...`) | One page per subsystem or tool (Digest, Events, Flows, Host, Mesh, Operations, SQL). A page shows the subsystem's reports **and** offers its actions next to them, so one page answers "what is going on" and "let me fix it". |
 
-Within a group the pages are alphabetical; Overview is first. A section registers itself (see
+Within a group the pages are alphabetical. `/m` itself has no page of its own: it redirects to Host. A section registers itself (see
 "Adding a section").
 
 ## Key design decisions
@@ -203,9 +203,8 @@ actions instead of handling exceptions per page.
 
 | Page | Route | What it does |
 |------|-------|--------------|
-| Overview | `/m` | Placeholder for key metrics |
 | Chats | `/m/dashboards/chats` | New group chats, direct chats, threads, place chats, places, chat joins |
-| Messages | `/m/dashboards/messages` | Text messages, voice messages, voice minutes, active authors |
+| Messages | `/m/dashboards/messages` | Text messages, voice messages, voice minutes, active users |
 | Notifications | `/m/dashboards/notifications` | Notifications sent, new devices, active devices |
 | Sessions | `/m/dashboards/sessions` | Active sessions, active signed-in sessions, new sessions (logins), sign-outs, compared over time |
 | Uploads | `/m/dashboards/uploads` | Pictures, videos, files and links added to chats |
