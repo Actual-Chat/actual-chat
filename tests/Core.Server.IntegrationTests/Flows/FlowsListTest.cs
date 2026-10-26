@@ -47,28 +47,33 @@ public class FlowsListTest(ITestOutputHelper @out)
         // event is classified as Stuck. The synthetic {prefix}A flows are not registered, hence Idle.
         var stuckId = $"DigestFlow:{prefix}";
         var suspId = $"{prefix}A:susp";
-        var seededIds = new[] { $"{prefix}A:ok", $"{prefix}A:bad", $"{prefix}A:idle", suspId, stuckId };
+        var legacySuspId = $"{prefix}A:legacy-susp";
+        var seededIds = new[] { $"{prefix}A:ok", $"{prefix}A:bad", $"{prefix}A:idle", suspId, legacySuspId, stuckId };
         var seed = new[] {
             NewDbFlow($"{prefix}A:ok", ticks, isCompleted: true, isFailed: false),
             NewDbFlow($"{prefix}A:bad", ticks, isCompleted: true, isFailed: true),
             NewDbFlow($"{prefix}A:idle", ticks, isCompleted: false, isFailed: false),
             NewDbFlow(suspId, ticks, isCompleted: false, isFailed: false),
+            NewDbFlow(legacySuspId, ticks, isCompleted: false, isFailed: false),
             NewDbFlow(stuckId, ticks, isCompleted: false, isFailed: false),
         };
         await using (var dbContext = await dbHub.CreateDbContext(true, cancellationToken)) {
             dbContext.Flows.AddRange(seed);
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            // A pending resume event makes {prefix}A:susp count as Scheduled. delay_until must be
-            // in the future, otherwise the AppHost's DbEventProcessor picks it up mid-test and the
-            // event stops being pending.
-            var suspUuid = $"FlowResumeEvent({suspId})-at-test";
+            // A pending resume event makes {prefix}A:susp count as Scheduled - an own one here, and an
+            // external one in the format events had before "r(...)" for {prefix}A:legacy-susp.
+            // delay_until must be in the future, otherwise the AppHost's DbEventProcessor picks it
+            // up mid-test and the event stops being pending.
+            var suspUuid = $"r({suspId})-self-at-test";
+            var legacySuspUuid = $"FlowResumeEvent({legacySuspId})-at-test";
             var nowDt = now.ToDateTime();
             var futureDt = (now + TimeSpan.FromDays(1)).ToDateTime();
             var emptyJson = "{}";
             await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO _events (uuid, version, state, logged_at, delay_until, value_json)
-                VALUES ({suspUuid}, 1, 0, {nowDt}, {futureDt}, {emptyJson})
+                VALUES ({suspUuid}, 1, 0, {nowDt}, {futureDt}, {emptyJson}),
+                       ({legacySuspUuid}, 1, 0, {nowDt}, {futureDt}, {emptyJson})
                 """, cancellationToken);
         }
 
@@ -77,7 +82,7 @@ public class FlowsListTest(ITestOutputHelper @out)
         var aggA = stats.Single(a => a.Name == $"{prefix}A");
         aggA.Completed.Should().Be(1);
         aggA.Failed.Should().Be(1);
-        aggA.Scheduled.Should().Be(1);
+        aggA.Scheduled.Should().Be(2);
         aggA.Idle.Should().Be(1);
         aggA.Stuck.Should().Be(0);
 
@@ -87,6 +92,7 @@ public class FlowsListTest(ITestOutputHelper @out)
         rowById[$"{prefix}A:bad"].Status.Should().Be(FlowStatus.Failed);
         rowById[$"{prefix}A:idle"].Status.Should().Be(FlowStatus.Idle);
         rowById[suspId].Status.Should().Be(FlowStatus.Scheduled);
+        rowById[legacySuspId].Status.Should().Be(FlowStatus.Scheduled);
         rowById[stuckId].Status.Should().Be(FlowStatus.Stuck);
 
         var problematic = await backend.List(default, new FlowsQuery(ProblematicOnly: true, Limit: 10_000), cancellationToken);
@@ -96,7 +102,7 @@ public class FlowsListTest(ITestOutputHelper @out)
         var typeA = await backend.List(default, new FlowsQuery(Name: $"{prefix}A", Limit: 10_000), cancellationToken);
         typeA.Should().OnlyContain(r => r.Name == $"{prefix}A");
         typeA.Select(r => r.FlowId).Should()
-            .BeEquivalentTo([$"{prefix}A:ok", $"{prefix}A:bad", $"{prefix}A:idle", suspId]);
+            .BeEquivalentTo([$"{prefix}A:ok", $"{prefix}A:bad", $"{prefix}A:idle", suspId, legacySuspId]);
     }
 
     private static DbFlow NewDbFlow(string id, long version, bool isCompleted, bool isFailed)
