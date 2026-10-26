@@ -100,15 +100,48 @@ public partial class CallUI
 
             var isVideoStarted = activity.IsCallActive && !activity.HasVideo && nextActivity.HasVideo;
             activity = nextActivity;
+            var hasRemoteVideoStarted = false;
             // The pick belongs to the call that just ended; the next one starts from the defaults.
             if (!activity.IsCallActive)
                 _pickedOutputRouteId.Value = null;
-            else if (isVideoStarted && _pickedOutputRouteId.Value == AudioOutputRoute.PhoneId) {
-                Log.LogInformation("Video started mid-call, dropping the earpiece pick");
-                _pickedOutputRouteId.Value = null;
-            }
+            else if (isVideoStarted)
+                hasRemoteVideoStarted = await OnVideoStartedMidCall(cancellationToken).ConfigureAwait(false);
             await AudioFocusUI.SetCallActive(activity.IsCallActive, activity.HasVideo).ConfigureAwait(false);
+            if (hasRemoteVideoStarted)
+                _ = NotifyOfRemoteVideo(cancellationToken);
         }
+    }
+
+    private async Task<bool> OnVideoStartedMidCall(CancellationToken cancellationToken)
+    {
+        var call = await GetActiveCall(cancellationToken).ConfigureAwait(false);
+        var hasRemoteVideo = false;
+        if (call is not null)
+            hasRemoteVideo = await ChatVideoUI.HasRemoteStreams(call.ChatId, cancellationToken).ConfigureAwait(false);
+        Log.LogInformation("Video started mid-call, remote: {HasRemoteVideo}", hasRemoteVideo);
+        if (_pickedOutputRouteId.Value == AudioOutputRoute.PhoneId) {
+            Log.LogInformation("Video started mid-call, dropping the earpiece pick");
+            _pickedOutputRouteId.Value = null;
+        }
+        return hasRemoteVideo;
+    }
+
+    private async Task NotifyOfRemoteVideo(CancellationToken cancellationToken)
+    {
+        // Otherwise the switch to the speaker is the only sign of someone else's video at the ear. Played
+        // once the switch has settled: a tone at the earpiece mid-call is too faint to notice.
+        if (AudioFocusUI.OutputRoutes is { } outputRoutes) {
+            var cRoutes = await Computed
+                .Capture(() => outputRoutes.Use(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            await cRoutes.When(x => x.Current?.Kind != AudioOutputKind.Phone, cancellationToken)
+                .WaitAsync(TimeSpan.FromSeconds(3), cancellationToken)
+                .SilentAwait(false);
+            // The route is reported before the audio engines restart on it, and the restart cuts off a tune
+            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
+        }
+        Log.LogInformation("Video started mid-call, playing the notice");
+        await Hub.TuneUI.Play(Tune.CallVideoStarted).ConfigureAwait(false);
     }
 
     private async Task SyncOutputRoute(CancellationToken cancellationToken)
