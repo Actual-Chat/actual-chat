@@ -23,6 +23,8 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     // How long an own raise / lower shows ahead of the server echo; a raise the server ignored
     // (no session started yet) snaps back once it runs out.
     private static readonly TimeSpan PendingOwnHandTimeout = TimeSpan.FromSeconds(5);
+    // Hands going up together ring once
+    private static readonly TimeSpan HandRaisedTuneInterval = TimeSpan.FromSeconds(3);
 
     private readonly ConcurrentDictionary<ChatId, LiveConversation?> _lastOpenConversations = new();
     private readonly ConcurrentDictionary<ChatId, bool> _ownHandIntents = new();
@@ -257,6 +259,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         var baseChains = new[] {
             AsyncChain.From(SyncParticipations),
             AsyncChain.From(StopRecordingWhenMuted),
+            AsyncChain.From(NotifyWhenHandRaised),
             AsyncChain.From(NotifyWhenHandLowered),
             AsyncChain.From(LowerOwnHandWhenSpoken),
             AsyncChain.From(NotifyWhenTranscriptionChanged),
@@ -351,6 +354,50 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         // ValueOrDefault, not Value: an errored computed would throw and take the whole worker down.
         static bool IsMuted(Computed<ChatId?> computed)
             => computed.ValueOrDefault is { } chatId && !chatId.Value.IsNullOrEmpty();
+    }
+
+    private async Task NotifyWhenHandRaised(CancellationToken cancellationToken)
+    {
+        // A raised hand waits on a host or whoever is speaking, so they hear it go up.
+        var cHands = await Computed
+            .Capture(() => GetOthersRaisedHands(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        var hands = cHands.ValueOrDefault ?? new Dictionary<ChatId, AuthorId[]>();
+        var lastTuneAt = default(CpuTimestamp);
+        await foreach (var change in cHands.Changes(cancellationToken).ConfigureAwait(false)) {
+            // ValueOrDefault is null only when the computed errored: keep the last known hands until it recovers.
+            if (change.ValueOrDefault is not { } next)
+                continue;
+
+            foreach (var (chatId, authorIds) in next) {
+                // Hands already up in a call I've just joined aren't news
+                if (!hands.TryGetValue(chatId, out var oldAuthorIds) || authorIds.All(oldAuthorIds.Contains))
+                    continue;
+                if (lastTuneAt.Elapsed < HandRaisedTuneInterval)
+                    continue;
+
+                var mustHear = await MustHearRaisedHand(chatId, cancellationToken).ConfigureAwait(false);
+                if (!mustHear)
+                    continue;
+
+                lastTuneAt = CpuTimestamp.Now;
+                _ = Hub.TuneUI.Play(Tune.HandRaised);
+            }
+            hands = next;
+        }
+    }
+
+    private async Task<bool> MustHearRaisedHand(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
+        if (me is null)
+            return false;
+        if (me.Group == MemberGroup.Host)
+            return true;
+
+        return await Hub.LiveStreamUI
+            .IsAuthorStreamingAudio(chatId, me.AuthorId, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private async Task NotifyWhenHandLowered(CancellationToken cancellationToken)
@@ -513,6 +560,23 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
                 result.Add(chatId);
         }
         return result.ToImmutable();
+    }
+
+    [ComputeMethod]
+    protected virtual async Task<IReadOnlyDictionary<ChatId, AuthorId[]>> GetOthersRaisedHands(
+        CancellationToken cancellationToken)
+    {
+        var participations = await GetMyParticipations(cancellationToken).ConfigureAwait(false);
+        var result = new Dictionary<ChatId, AuthorId[]>();
+        foreach (var chatId in participations.Keys) {
+            var me = await GetOwnMember(chatId, cancellationToken).ConfigureAwait(false);
+            if (me is null)
+                continue;
+
+            var authorIds = await ListRaisedHandAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+            result[chatId] = authorIds.Where(x => x != me.AuthorId).ToArray();
+        }
+        return result;
     }
 
     [ComputeMethod]
