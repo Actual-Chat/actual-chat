@@ -64,6 +64,11 @@ public class ReactionsBackend(IServiceProvider services)
         var dbReaction = await dbContext.Reactions.ForUpdate()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
             .ConfigureAwait(false);
+        // A stated intent turns the toggle into "make it so", so a repeat of it changes nothing
+        var isSameEmoji = dbReaction is not null && emoji.Id == dbReaction.Emoji;
+        if (command.MustRemove is { } mustRemove && mustRemove != isSameEmoji)
+            return;
+
         var mustUpdateHasReactions = true;
         var changeKind = ChangeKind.Create;
 

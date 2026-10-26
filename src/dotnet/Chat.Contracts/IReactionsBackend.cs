@@ -22,7 +22,8 @@ public interface IReactionsBackend : IComputeService, IBackendService
 [DataContract, MessagePackObject]
 // ReSharper disable once InconsistentNaming
 public sealed partial record ReactionsBackend_React(
-    [property: DataMember, Key(0)] Reaction Reaction
+    [property: DataMember, Key(0)] Reaction Reaction,
+    [property: DataMember, Key(1)] bool? MustRemove = null
 ) : ICommand<Unit>, IBackendCommand, IHasShardKey
 {
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
