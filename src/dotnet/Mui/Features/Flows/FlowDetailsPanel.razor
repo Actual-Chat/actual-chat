@@ -6,6 +6,17 @@
     <MudText Color="Color.Secondary">@(State.Computed.IsConsistent() ? "No data." : "Loading…")</MudText>
 }
 else {
+    <MudStack Row="true" Spacing="4" Class="mb-2" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.body2">
+            Delay quanta: @(details.DelayQuanta is { } quanta ? $"{quanta.TotalSeconds:0.###} s" : "auto")
+        </MudText>
+        <MudText Typo="Typo.body2">
+            Max resume gap: @(details.MaxResumeGap is { } gap ? $"{gap.TotalDays:0.###} d" : "none (resumed by events)")
+        </MudText>
+        <MudSpacer/>
+        <MudCheckBox T="bool" @bind-Value="_isSelfResume" Label="As its own resume" Dense="true"/>
+        <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@Resume">Resume now</MudButton>
+    </MudStack>
     @if (!details.Error.IsNullOrEmpty()) {
         <MudAlert Severity="Severity.Error" Class="mb-2" Style="white-space: pre-wrap; font-family: monospace">
             @details.Error
@@ -15,6 +26,8 @@ else {
 }
 
 @code {
+    private bool _isSelfResume;
+
     [Parameter, EditorRequired] public string FlowId { get; set; } = "";
 
     protected override ComputedState<FlowDetails?>.Options GetStateOptions()
@@ -25,4 +38,7 @@ else {
         var diagnostics = Services.GetRequiredService<IDiagnostics>();
         return await diagnostics.GetFlowDetails(Session, FlowId, cancellationToken).ConfigureAwait(false);
     }
+
+    private Task Resume()
+        => Actions.Run(new Diagnostics_ResumeFlow(Session, FlowId, _isSelfResume), "Resume scheduled");
 }

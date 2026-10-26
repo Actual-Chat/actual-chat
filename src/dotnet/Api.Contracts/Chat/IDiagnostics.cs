@@ -15,7 +15,18 @@ public interface IDiagnostics : IComputeService
     Task<FlowSummary[]> GetFlows(Session session, FlowsQuery query, CancellationToken cancellationToken);
     [ComputeMethod]
     Task<FlowDetails?> GetFlowDetails(Session session, string flowId, CancellationToken cancellationToken);
+
+    [CommandHandler]
+    Task OnResumeFlow(Diagnostics_ResumeFlow command, CancellationToken cancellationToken);
 }
+
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Diagnostics_ResumeFlow(
+    [property: DataMember, Key(0)] Session Session,
+    [property: DataMember, Key(1)] string FlowId,
+    [property: DataMember, Key(2)] bool IsSelfResume = false
+) : ISessionCommand<Unit>, IApiCommand;
 
 [DataContract, MessagePackObject]
 public sealed partial record MeshDiagInfo(

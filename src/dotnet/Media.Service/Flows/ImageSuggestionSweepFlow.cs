@@ -7,7 +7,7 @@ namespace ActualChat.Media.Flows;
 // references, so leaving them is a slow leak rather than a correctness problem - hence a periodic
 // sweep rather than a transaction-time delete.
 
-[Flow(DelayQuanta = 60)]
+[Flow(DelayQuanta = 60, MaxResumeGap = 1)]
 [DataContract, MessagePackObject(true)]
 public sealed partial class ImageSuggestionSweepFlow : PeriodicFlow, IMasterFlow
 {

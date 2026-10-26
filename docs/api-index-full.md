@@ -310,6 +310,7 @@ See also: [Condensed API Index](api-index.md), [TypeScript API Index](api-index-
 - `IndexingMasterFlow` (abstract class) - Master indexing flow.
 - `PeriodicFlow` (abstract class) - Periodic execution flow.
 - `ThrottledFlow` (abstract class) - Throttled flow.
+- `IStuckDetectingFlow` - A flow's own stuck check, used by the flows admin list for types with `MaxResumeGap`.
 - `BatchedSweepFlow` (abstract class) - Sweeps a set in batches on request; external resumes during a sweep book one more sweep.
 - `ThrottledUpdateFlow` (abstract class) - Throttled update flow.
 - `IMeshLocks` - Distributed locking.

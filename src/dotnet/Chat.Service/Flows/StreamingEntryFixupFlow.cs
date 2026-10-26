@@ -19,7 +19,7 @@ namespace ActualChat.Chat.Flows;
 // indefinitely (dev had entries stuck since May). MasterFlowStarter re-schedules a master flow
 // on every shard acquisition, and FlowBackend.ListStats reports a periodic flow with no pending
 // resume event as Stuck rather than Idle.
-[Flow(DelayQuanta = 30, ResumeTimeout = 60)]
+[Flow(DelayQuanta = 30, ResumeTimeout = 60, MaxResumeGap = 0.25)]
 [DataContract, MessagePackObject(true)]
 public sealed partial class StreamingEntryFixupFlow : PeriodicFlow, IMasterFlow
 {
