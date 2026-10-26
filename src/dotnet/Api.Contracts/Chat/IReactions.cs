@@ -23,4 +23,6 @@ public interface IReactions : IComputeService
 public sealed partial record Reactions_React : ApiCommand<Unit>
 {
     [DataMember(Order = 2), Key(2)] public required Reaction Reaction { get; init; }
+    // Null toggles the reaction, which is all the clients released before this field can ask for
+    [DataMember(Order = 3), Key(3)] public bool? MustRemove { get; init; }
 }
