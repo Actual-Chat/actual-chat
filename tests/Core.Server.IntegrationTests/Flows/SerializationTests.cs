@@ -47,6 +47,20 @@ public class SimpleBatchedIndexingFlowSerializationTest(ITestOutputHelper @out)
     };
 }
 
+public class SimpleBatchedSweepFlowSerializationTest(ITestOutputHelper @out)
+    : FlowSerializationTestBase<SimpleBatchedSweepFlow>(@out)
+{
+    protected override SimpleBatchedSweepFlow CreatePopulated() => new() {
+        // From BatchedSweepFlow
+        IsSweeping = true,
+        MustSweepAgain = true,
+        NextBatchAt = new Moment(new DateTime(2026, 4, 16, 12, 0, 0, DateTimeKind.Utc)),
+        SweepCount = 3,
+        BatchIndex = 2,
+        TotalBatchCount = 11,
+    };
+}
+
 public class SimpleThrottledUpdateFlowSerializationTest(ITestOutputHelper @out)
     : FlowSerializationTestBase<SimpleThrottledUpdateFlow>(@out)
 {

@@ -248,6 +248,8 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `PeriodicFlow` — periodic execution flow
 - `IndexingFlow` — indexing with cursor tracking
 - `ThrottledFlow` — throttled execution
+- `BatchedSweepFlow` — sweeps a set in batches on request; an external resume during a sweep books one more sweep.
+  Built on `Flow.ResumeEvent.IsSelfResume`, which tells own resumes from external ones
 - `FlowHub` — manages flow instances
 - `IInboxProcessingFlow`, `FlowInbox` — per-flow persistent message inbox; `FlowHub.PostToInbox` /
   `Flows_ChangeInbox` post to it, the flow's commit applies its changes atomically
