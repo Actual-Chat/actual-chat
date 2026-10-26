@@ -35,6 +35,7 @@ interface Menu {
     id: string;
     menuRef: string;
     triggerElement: HTMLElement;
+    triggerRect: DOMRect | null;
     isHoverMenu: boolean;
     placement: Placement;
     position: Vector2D | null;
@@ -180,6 +181,7 @@ export class MenuHost implements Disposable {
             id: nextId(),
             menuRef: menuRef,
             triggerElement: triggerElement,
+            triggerRect: null,
             isHoverMenu: isHoverMenu,
             placement: placement!,
             position: position,
@@ -357,8 +359,14 @@ export class MenuHost implements Disposable {
                 },
             } as VirtualElement;
         } else {
-            // Trigger element relative positioning
-            referenceElement = menu.triggerElement;
+            // Trigger element relative positioning.
+            // A trigger can unrender while its menu stays open - a message's hover buttons do once the
+            // pointer leaves the message - and a detached element's rect is all zeros.
+            const triggerElement = menu.triggerElement;
+            if (triggerElement.isConnected)
+                menu.triggerRect = triggerElement.getBoundingClientRect();
+            const triggerRect = menu.triggerRect;
+            referenceElement = triggerRect ? { getBoundingClientRect: () => triggerRect } : triggerElement;
             middleware.push(offset(6));
         }
         middleware.push(flip());
