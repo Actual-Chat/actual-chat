@@ -43,6 +43,7 @@ export enum Tune {
     CallTranscriptionOn,
     CallTranscriptionOff,
     HandRaised,
+    CallVideoStarted,
 }
 
 export type TuneName = keyof typeof Tune;
