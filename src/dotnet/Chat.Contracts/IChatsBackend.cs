@@ -106,6 +106,13 @@ public partial interface IChatsBackend : IComputeService, IBackendService
         bool includeRemoved,
         CancellationToken cancellationToken);
 
+    // The authors of the last entryCount entries that are neither removed nor system ones
+    [ComputeMethod]
+    Task<ApiSet<AuthorId>> GetLastEntryAuthors(
+        ChatId chatId,
+        int entryCount,
+        CancellationToken cancellationToken);
+
     [ComputeMethod]
     Task<long?> GetMaxEntryVersion(ChatId chatId, CancellationToken cancellationToken);
 

@@ -7,13 +7,11 @@ using AdServices;
 
 namespace ActualChat.App.Maui;
 
-// Apple Ads attribution, in the shape the Play referrer produces. null is a final "not attributed";
+// Apple Ads attribution: Apple's whole answer, which the server parses. null is a final "not attributed";
 // a thrown error is transient and makes AccountUI read again at the next start, which the first-try
 // deadline below bounds to the 24 hours Apple keeps the token and the record for.
 public sealed class IosInstallReferrer(UIHub hub) : UIServiceBase<UIHub>(hub), IInstallReferrer
 {
-    // Apple answers with this payload on every device that has Developer Mode on
-    private const long TestCampaignId = 1234567890;
     private const int MaxAttempts = 3;
     private static readonly TimeSpan Deadline = TimeSpan.FromHours(24);
     private static readonly TimeSpan NotFoundRetryDelay = TimeSpan.FromSeconds(5);
@@ -22,7 +20,9 @@ public sealed class IosInstallReferrer(UIHub hub) : UIServiceBase<UIHub>(hub), I
     private HttpClient HttpClient
         => field ??= Hub.HttpClientFactory.CreateClient(nameof(IosInstallReferrer));
 
-    public async Task<string?> GetQuery(CancellationToken cancellationToken)
+    public AttributionOrigin Origin => AttributionOrigin.AppleAdServices;
+
+    public async Task<string?> Get(CancellationToken cancellationToken)
     {
         var now = Clocks.SystemClock.Now;
         if (MauiPreferences.AppleAttributionFirstTryAt is not { } firstTryAt) {
@@ -38,12 +38,7 @@ public sealed class IosInstallReferrer(UIHub hub) : UIServiceBase<UIHub>(hub), I
         if (token is null)
             return null;
 
-        var campaignId = await ResolveCampaignId(token, cancellationToken).ConfigureAwait(false);
-        if (campaignId is not { } vCampaignId)
-            return null;
-
-        var id = vCampaignId == TestCampaignId ? "asa-test" : $"asa-{vCampaignId}";
-        return $"utm_campaign={id}";
+        return await ResolveAttribution(token, cancellationToken).ConfigureAwait(false);
     }
 
     // Private methods
@@ -62,7 +57,7 @@ public sealed class IosInstallReferrer(UIHub hub) : UIServiceBase<UIHub>(hub), I
         return null;
     }
 
-    private async Task<long?> ResolveCampaignId(string token, CancellationToken cancellationToken)
+    private async Task<string?> ResolveAttribution(string token, CancellationToken cancellationToken)
     {
         for (var attempt = 1;; attempt++) {
             using var content = new StringContent(token, new MediaTypeHeaderValue("text/plain"));
@@ -72,7 +67,8 @@ public sealed class IosInstallReferrer(UIHub hub) : UIServiceBase<UIHub>(hub), I
             switch (response.StatusCode) {
             case HttpStatusCode.OK:
                 var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                return ParseCampaignId(json);
+                Log.LogInformation("Apple Ads attribution: {Payload}", json);
+                return json;
             case HttpStatusCode.BadRequest:
                 Log.LogWarning("Apple Ads attribution: Apple rejected the token");
                 return null;
@@ -87,18 +83,5 @@ public sealed class IosInstallReferrer(UIHub hub) : UIServiceBase<UIHub>(hub), I
                 return null;
             }
         }
-    }
-
-    private long? ParseCampaignId(string json)
-    {
-        Log.LogInformation("Apple Ads attribution: {Payload}", json);
-        using var document = JsonDocument.Parse(json);
-        var root = document.RootElement;
-        if (!root.TryGetProperty("attribution", out var attribution) || attribution.ValueKind != JsonValueKind.True)
-            return null;
-
-        return root.TryGetProperty("campaignId", out var campaignId) && campaignId.TryGetInt64(out var value)
-            ? value
-            : null;
     }
 }

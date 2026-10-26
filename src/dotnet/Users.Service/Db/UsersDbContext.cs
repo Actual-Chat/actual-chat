@@ -22,6 +22,10 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
     public DbSet<DbUsageDay> UsageDays { get; protected set; } = null!;
     public DbSet<DbCoachEvent> CoachEvents { get; protected set; } = null!;
     public DbSet<DbCoachDay> CoachDays { get; protected set; } = null!;
+    public DbSet<DbUserAttribution> UserAttributions { get; protected set; } = null!;
+    public DbSet<DbUserMilestone> UserMilestones { get; protected set; } = null!;
+    public DbSet<DbUserMilestoneDelivery> UserMilestoneDeliveries { get; protected set; } = null!;
+    public DbSet<DbUserAnalyticsClient> UserAnalyticsClients { get; protected set; } = null!;
 
     // ActualLab.Fusion.EntityFramework tables
     public DbSet<DbOperation> Operations { get; protected set; } = null!;
@@ -101,6 +105,24 @@ public class UsersDbContext(DbContextOptions<UsersDbContext> options) : DbContex
         coachDay.HasKey(e => new { e.UserId, e.Day, e.Language });
         coachDay.Property(e => e.UserId).UseCollation("C");
         coachDay.Property(e => e.Language).UseCollation("C");
+
+        var userAttribution = model.Entity<DbUserAttribution>();
+        userAttribution.Property(e => e.UserId).UseCollation("C");
+        userAttribution.Property(e => e.DedupeKey).UseCollation("C");
+        // At most one initial and one latest attribution per user; the index names keep the two apart
+        userAttribution.HasIndex(e => e.UserId, "ix_user_attributions_initial").IsUnique().HasFilter("is_initial");
+        userAttribution.HasIndex(e => e.UserId, "ix_user_attributions_latest").IsUnique().HasFilter("is_latest");
+
+        var userMilestone = model.Entity<DbUserMilestone>();
+        userMilestone.Property(e => e.UserId).UseCollation("C");
+
+        var userMilestoneDelivery = model.Entity<DbUserMilestoneDelivery>();
+        userMilestoneDelivery.Property(e => e.UserId).UseCollation("C");
+
+        // One id per kind of device: the one seen last is the one milestones go out through
+        var userAnalyticsClient = model.Entity<DbUserAnalyticsClient>();
+        userAnalyticsClient.HasKey(e => new { e.UserId, e.Kind });
+        userAnalyticsClient.Property(e => e.UserId).UseCollation("C");
 
         model.IgnoreUnusedOperationsFrameworkColumns(DbLogEntrySerializer.Default);
 

@@ -122,6 +122,7 @@ export default withMermaid(defineConfig({
               { text: "Notifications", link: "/notifications" },
               { text: "Passkeys", link: "/passkeys" },
               { text: "Usage & Funnel Metrics", link: "/usage-metrics" },
+              { text: "Attributions & Milestones", link: "/attribution-and-milestones" },
               { text: "Integrations: web hooks", link: "/integrations/web-hooks" },
             ],
           },

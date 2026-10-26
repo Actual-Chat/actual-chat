@@ -5,6 +5,9 @@ namespace ActualChat.Users;
 
 public class Usage(IServiceProvider services) : IUsage
 {
+    private const int MaxAnalyticsClientIdLength = 128;
+    private static readonly TimeSpan MaxAttributionAge = TimeSpan.FromDays(90);
+
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IUsageBackend Backend { get; } = services.GetRequiredService<IUsageBackend>();
     private IServerKvasBackend ServerKvasBackend { get; } = services.GetRequiredService<IServerKvasBackend>();
@@ -110,10 +113,15 @@ public class Usage(IServiceProvider services) : IUsage
 
         var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
         account.Require(AccountFull.MustNotBeGuest);
-        var usageEvent = UsageEventSource.OnboardingStep(command.Step, command.IsCompleted, Clocks.SystemClock.Now);
+        var now = Clocks.SystemClock.Now;
+        var usageEvent = UsageEventSource.OnboardingStep(command.Step, command.IsCompleted, now);
         await Commander
             .Call(new UsageBackend_Record(account.Id, ApiArray.New(usageEvent)), true, cancellationToken)
             .ConfigureAwait(false);
+        if (command.Step == OnboardingSteps.Finished && command.IsCompleted) {
+            var reachCmd = new UserMilestonesBackend_Reach(account.Id, MilestoneKind.Onboarded, now);
+            await Commander.Call(reachCmd, true, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     // [CommandHandler]
@@ -126,5 +134,33 @@ public class Usage(IServiceProvider services) : IUsage
         var sessionInfo = await Accounts.GetSessionInfo(command.Session, cancellationToken).ConfigureAwait(false);
         AppKindExt.TryParseUserAgent(sessionInfo?.Description, out var appKind);
         FunnelMeters.Record(funnelEvent, appKind);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnAddAttribution(Usage_AddAttribution command, CancellationToken cancellationToken)
+    {
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustNotBeGuest);
+        // The capture time comes from the device clock, so it is only trusted within bounds
+        var now = Clocks.SystemClock.Now;
+        var seenAt = command.SeenAt.Clamp(now - MaxAttributionAge, now);
+        var addCmd = new UserAttributionsBackend_Add(account.Id, command.Origin, command.Raw, seenAt);
+        await Commander.Call(addCmd, true, cancellationToken).ConfigureAwait(false);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnSetAnalyticsClient(
+        Usage_SetAnalyticsClient command, CancellationToken cancellationToken)
+    {
+        var clientId = command.ClientId;
+        if (!Enum.IsDefined(command.Kind) || clientId is not { Length: > 0 and <= MaxAnalyticsClientIdLength }
+            || clientId.Any(char.IsControl))
+            throw StandardError.Constraint("Invalid analytics client id.");
+
+        var account = await Accounts.GetOwn(command.Session, cancellationToken).ConfigureAwait(false);
+        account.Require(AccountFull.MustNotBeGuest);
+        var setClientCmd = new UserMilestonesBackend_SetAnalyticsClient(
+            account.Id, command.Kind, clientId, Clocks.SystemClock.Now);
+        await Commander.Call(setClientCmd, true, cancellationToken).ConfigureAwait(false);
     }
 }

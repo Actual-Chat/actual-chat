@@ -7,7 +7,9 @@ public sealed class AndroidInstallReferrer : IInstallReferrer
 {
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(10);
 
-    public async Task<string?> GetQuery(CancellationToken cancellationToken)
+    public AttributionOrigin Origin => AttributionOrigin.PlayReferrer;
+
+    public async Task<string?> Get(CancellationToken cancellationToken)
     {
         var client = InstallReferrerClient.NewBuilder(Platform.AppContext).Build();
         var listener = new StateListener();

@@ -1,10 +1,12 @@
 namespace ActualChat.UI.Blazor.Services;
 
 /// <summary>
-/// The store's install referrer query (<c>utm_source=...&amp;utm_campaign=...</c>);
-/// registered only on platforms whose store provides one.
+/// The store's install attribution, in the shape <see cref="AttributionParser"/> reads for <see cref="Origin"/>;
+/// registered only on platforms whose store provides one. A thrown error is transient, null is final.
 /// </summary>
 public interface IInstallReferrer
 {
-    Task<string?> GetQuery(CancellationToken cancellationToken);
+    AttributionOrigin Origin { get; }
+
+    Task<string?> Get(CancellationToken cancellationToken);
 }

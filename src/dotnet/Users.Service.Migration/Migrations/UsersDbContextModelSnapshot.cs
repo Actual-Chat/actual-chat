@@ -16,7 +16,7 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
     // If you encounter a merge conflict in the line below, it means you need to
     // discard one of the migration branches and recreate its migrations on top of
     // the other branch. See https://aka.ms/efcore-docs-migrations-conflicts for more info.
-    public override string LastMigrationId => "20261017142713_Remove_ChatUsages";
+    public override string LastMigrationId => "20261026134120_AddUserMilestoneDeliveries";
 
     protected override void BuildModel(ModelBuilder modelBuilder)
     {
@@ -607,6 +607,262 @@ partial class UsersDbContextModelSnapshot : ModelSnapshot
                     .HasDatabaseName("ix_usage_events_user_id_kind_source_id");
 
                 b.ToTable("usage_events");
+            });
+
+        modelBuilder.Entity("ActualChat.Users.Db.DbUserAnalyticsClient", b =>
+            {
+                b.Property<string>("UserId")
+                    .HasColumnType("text")
+                    .HasColumnName("user_id")
+                    .UseCollation("C");
+
+                b.Property<int>("Kind")
+                    .HasColumnType("integer")
+                    .HasColumnName("kind");
+
+                b.Property<string>("ClientId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("client_id");
+
+                b.Property<DateTime>("LastSeenAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("last_seen_at");
+
+                b.HasKey("UserId", "Kind");
+
+                b.ToTable("user_analytics_clients");
+            });
+
+        modelBuilder.Entity("ActualChat.Users.Db.DbUserAttribution", b =>
+            {
+                var id = b.Property<long>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("bigint")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<string>("AdGroup")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("ad_group");
+
+                b.Property<string>("AdId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("ad_id");
+
+                b.Property<string>("Campaign")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("campaign");
+
+                b.Property<string>("Claim")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("claim");
+
+                b.Property<string>("ClickId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("click_id");
+
+                b.Property<int?>("ClickIdKind")
+                    .HasColumnType("integer")
+                    .HasColumnName("click_id_kind");
+
+                b.Property<string>("Country")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("country");
+
+                b.Property<string>("DedupeKey")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("dedupe_key")
+                    .UseCollation("C");
+
+                b.Property<DateTime>("FirstSeenAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("first_seen_at");
+
+                b.Property<string>("InstallKind")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("install_kind");
+
+                b.Property<bool>("IsInitial")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_initial");
+
+                b.Property<bool>("IsLatest")
+                    .HasColumnType("boolean")
+                    .HasColumnName("is_latest");
+
+                b.Property<string>("KeywordId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("keyword_id");
+
+                b.Property<DateTime>("LastSeenAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("last_seen_at");
+
+                b.Property<string>("MatchType")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("match_type");
+
+                b.Property<string>("Medium")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("medium");
+
+                b.Property<int>("Origin")
+                    .HasColumnType("integer")
+                    .HasColumnName("origin");
+
+                b.Property<string>("Platform")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("platform");
+
+                b.Property<string>("Raw")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("raw");
+
+                b.Property<string>("Source")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("source");
+
+                b.Property<string>("Term")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("term");
+
+                b.Property<string>("UserId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("user_id")
+                    .UseCollation("C");
+
+                b.HasKey("Id")
+                    .HasName("pk_user_attributions");
+
+                b.HasIndex("UserId", "DedupeKey")
+                    .IsUnique()
+                    .HasDatabaseName("ix_user_attributions_user_id_dedupe_key");
+
+                b.HasIndex(new[] { "UserId" }, "ix_user_attributions_initial")
+                    .IsUnique()
+                    .HasFilter("is_initial");
+
+                b.HasIndex(new[] { "UserId" }, "ix_user_attributions_latest")
+                    .IsUnique()
+                    .HasFilter("is_latest");
+
+                b.ToTable("user_attributions");
+            });
+
+        modelBuilder.Entity("ActualChat.Users.Db.DbUserMilestone", b =>
+            {
+                var id = b.Property<long>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("bigint")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<long?>("AttributionId")
+                    .HasColumnType("bigint")
+                    .HasColumnName("attribution_id");
+
+                b.Property<int>("Kind")
+                    .HasColumnType("integer")
+                    .HasColumnName("kind");
+
+                b.Property<DateTime>("ReachedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("reached_at");
+
+                b.Property<string>("UserId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("user_id")
+                    .UseCollation("C");
+
+                b.HasKey("Id")
+                    .HasName("pk_user_milestones");
+
+                b.HasIndex("UserId", "Kind")
+                    .IsUnique()
+                    .HasDatabaseName("ix_user_milestones_user_id_kind");
+
+                b.ToTable("user_milestones");
+            });
+
+        modelBuilder.Entity("ActualChat.Users.Db.DbUserMilestoneDelivery", b =>
+            {
+                var id = b.Property<long>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("bigint")
+                    .HasColumnName("id");
+
+                NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(id);
+
+                b.Property<int>("Attempts")
+                    .HasColumnType("integer")
+                    .HasColumnName("attempts");
+
+                b.Property<long?>("AttributionId")
+                    .HasColumnType("bigint")
+                    .HasColumnName("attribution_id");
+
+                b.Property<long>("MilestoneId")
+                    .HasColumnType("bigint")
+                    .HasColumnName("milestone_id");
+
+                b.Property<DateTime?>("NextAttemptAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("next_attempt_at");
+
+                b.Property<string>("Note")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("note");
+
+                b.Property<int>("State")
+                    .HasColumnType("integer")
+                    .HasColumnName("state");
+
+                b.Property<int>("Target")
+                    .HasColumnType("integer")
+                    .HasColumnName("target");
+
+                b.Property<DateTime>("UpdatedAt")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("updated_at");
+
+                b.Property<string>("UserId")
+                    .IsRequired()
+                    .HasColumnType("text")
+                    .HasColumnName("user_id")
+                    .UseCollation("C");
+
+                b.HasKey("Id")
+                    .HasName("pk_user_milestone_deliveries");
+
+                b.HasIndex("UserId")
+                    .HasDatabaseName("ix_user_milestone_deliveries_user_id");
+
+                b.HasIndex("MilestoneId", "Target")
+                    .IsUnique()
+                    .HasDatabaseName("ix_user_milestone_deliveries_milestone_id_target");
+
+                b.ToTable("user_milestone_deliveries");
             });
 
         modelBuilder.Entity("ActualChat.Users.Db.DbUserPresence", b =>

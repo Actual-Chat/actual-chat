@@ -42,6 +42,7 @@ public sealed class UsersSettings
     public AppUpdateSettings AppUpdates { get; set; } = new();
     public ReviewPromptSettings ReviewPrompt { get; set; } = new();
     public UsageSettings Usage { get; set; } = new();
+    public GA4Settings GA4 { get; set; } = new();
     public CoachScoringSettings Coach { get; set; } = new();
     // A kill switch: MauiAuthController.Start assumes every browser component the app can reach
     // reports Sec-Fetch-Site: none. Turn this off if some platform turns out not to.
@@ -96,6 +97,31 @@ public sealed class UsageSettings
 {
     // A live-session member who stayed shorter than this is not counted as having taken part
     public TimeSpan MinLiveSessionParticipation { get; set; } = UsageEventSource.DefaultMinLiveSessionParticipation;
+}
+
+/// <summary>
+/// The GA4 data streams milestones are sent to through the Measurement Protocol; a stream without its API secret
+/// is off. The app streams are addressed by Firebase app id, the web one by measurement id.
+/// </summary>
+public sealed class GA4Settings
+{
+    public string Endpoint { get; set; } = "https://www.google-analytics.com/mp/collect";
+    public string AndroidFirebaseAppId { get; set; } = "";
+    public string AndroidApiSecret { get; set; } = "";
+    public string IosFirebaseAppId { get; set; } = "";
+    public string IosApiSecret { get; set; } = "";
+    public string WebMeasurementId { get; set; } = "";
+    public string WebApiSecret { get; set; } = "";
+    // A milestone is credited to an attribution last seen at most this long before it
+    public TimeSpan AttributionWindow { get; set; } = TimeSpan.FromDays(30);
+
+    public bool IsEnabled(AnalyticsClientKind kind)
+        => kind switch {
+            AnalyticsClientKind.Android => !AndroidFirebaseAppId.IsNullOrEmpty() && !AndroidApiSecret.IsNullOrEmpty(),
+            AnalyticsClientKind.Ios => !IosFirebaseAppId.IsNullOrEmpty() && !IosApiSecret.IsNullOrEmpty(),
+            AnalyticsClientKind.Web => !WebMeasurementId.IsNullOrEmpty() && !WebApiSecret.IsNullOrEmpty(),
+            _ => false,
+        };
 }
 
 /// <summary>

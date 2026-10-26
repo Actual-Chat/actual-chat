@@ -11,4 +11,10 @@ public class WebDataCollectionSettingsUI(IServiceProvider services) : IDataColle
 
     public Task UpdateState(bool isEnabled, CancellationToken cancellationToken)
         => BrowserInit.InitFirebase(isEnabled);
+
+    public async Task<(AnalyticsClientKind Kind, string Id)?> GetAnalyticsClientId(CancellationToken cancellationToken)
+    {
+        var clientId = await BrowserInit.GetAnalyticsClientId().ConfigureAwait(false);
+        return clientId.IsNullOrEmpty() ? null : (AnalyticsClientKind.Web, clientId);
+    }
 }
