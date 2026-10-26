@@ -19,6 +19,9 @@
     <Hotkey Keys="ctrl+shift+l s" AriaLabel="@L.Shortcuts_ToggleSafeAreas" OnTrigger="OnToggleSafeAreas"
             IsGlobal="true"/>
 }
+@if (!UrlMapper.IsVoxt) {
+    <CommandQueueHotkey />
+}
 <TooltipHost />
 <HintHost />
 

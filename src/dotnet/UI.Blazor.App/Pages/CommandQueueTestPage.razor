@@ -1,0 +1,103 @@
+@using ActualChat.UI.Blazor.App.Services
+@inherits ComputedStateComponent<AppUIHub, CommandQueueTestPage.Model>
+@page "/test/command-queue"
+
+<RequireAccount MustBeAdmin="true"/>
+<MainHeader>Command queue</MainHeader>
+
+@{
+    var m = State.Value;
+}
+<div class="command-queue-test-page">
+    <p class="c-hint">
+        Commands this page sent to the server, a lane's in the order they run, then those with no lane.
+        Updates live.
+    </p>
+    <div class="c-toolbar">
+        <Button Click="@OnPauseResumeClick">@(m.IsPaused ? "Resume queue" : "Pause queue")</Button>
+        <span class="c-status @(m.IsPaused ? "paused" : "")">
+            @(m.IsPaused ? "Paused — retried commands pile up as they would with no connection." : "Running.")
+        </span>
+    </div>
+    @if (m.Entries.Count == 0) {
+        <span class="c-hint">No commands sent recently.</span>
+    }
+    else {
+        <div class="c-table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Lane</th>
+                        <th>Command</th>
+                        <th>Source</th>
+                        <th>Stage</th>
+                        <th class="c-number">Retries</th>
+                        <th class="c-time">Started</th>
+                        <th class="c-number">Duration</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var entry in m.Entries) {
+                        <tr>
+                            <td>@entry.PartitionKey</td>
+                            <td>@entry.Command.GetType().Name</td>
+                            <td>@entry.Source</td>
+                            <td>@FormatStage(entry)</td>
+                            <td class="c-number">@entry.TryIndex</td>
+                            <td class="c-time">
+                                @Hub.DateTimeConverter.ToLocalTime(entry.StartedAt).ToString("HH:mm:ss", null)
+                            </td>
+                            <td class="c-number">@entry.Duration?.TotalMilliseconds.ToString("0 ms", null)</td>
+                            <td class="c-error">@entry.Error?.Message</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private CommandQueueUI CommandQueueUI => Hub.CommandQueueUI;
+
+    // Protected/internal methods
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => new() {
+            InitialValue = Model.Empty,
+            UpdateDelayer = FixedDelayer.NextTick,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var commandQueueUI = CommandQueueUI;
+        await commandQueueUI.OnAnyChanged().ConfigureAwait(false);
+        var entries = commandQueueUI.GetEntries()
+            .OrderBy(x => x.PartitionKey is null)
+            .ThenBy(x => x.PartitionKey)
+            .ThenBy(x => x.Index)
+            .ToArray();
+        return new Model(entries, commandQueueUI.IsPaused);
+    }
+
+    // Private methods
+
+    private void OnPauseResumeClick() {
+        if (CommandQueueUI.IsPaused)
+            CommandQueueUI.Resume();
+        else
+            CommandQueueUI.Pause();
+    }
+
+    private static string FormatStage(CommandEntry entry)
+        => entry.WaitReason == CommandWaitReason.None
+            ? entry.Stage.ToString()
+            : $"{entry.Stage}: {entry.WaitReason}";
+
+    // Nested types
+
+    public sealed record Model(IReadOnlyList<CommandEntry> Entries, bool IsPaused) {
+        public static readonly Model Empty = new([], false);
+    }
+}
