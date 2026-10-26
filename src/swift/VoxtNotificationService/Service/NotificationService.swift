@@ -13,8 +13,11 @@ final class NotificationService: UNNotificationServiceExtension {
     private static let activeTagsKey = "activeTags"
     private static let activeVersionKey = "activeVersion"
     // Highest active-set version this extension has pruned against. Its own container, not the
-    // app group: nothing else reads it, and the appex has no group entitlement.
+    // app group: nothing else reads it.
     private static let lastPrunedVersionKey = "voxt.lastPrunedActiveVersion"
+    // The edge node the app's RPC is on, which MauiRpcEndpointSelector writes to the app group;
+    // absent while the app is on the origin.
+    private static let rpcEndpointKey = "rpc_endpoint"
     // The system allows 30s, but a banner that lands seconds late is worse than an iconless
     // one - and these are 128px avatars, so a slow fetch means the network is gone anyway.
     private static let downloadTimeout: TimeInterval = 5
@@ -131,8 +134,41 @@ final class NotificationService: UNNotificationServiceExtension {
     }
 
     private static func iconUrl(of content: UNMutableNotificationContent) -> URL? {
-        guard let icon = content.userInfo[iconKey] as? String, !icon.isEmpty else { return nil }
-        return URL(string: icon)
+        guard let icon = content.userInfo[iconKey] as? String, !icon.isEmpty,
+              let url = URL(string: icon)
+        else { return nil }
+        // The server sends the origin's URL, which a throttled network may not reach - the reason
+        // the app moved its RPC to an edge node in the first place.
+        guard let endpoint = sharedDefaults?.string(forKey: rpcEndpointKey), !endpoint.isEmpty
+        else { return url }
+        return contentUrl(url, endpoint: endpoint)
+    }
+
+    // The app group is named after the app's bundle id, and this appex's is the app's + ".notification".
+    private static let sharedDefaults: UserDefaults? = {
+        guard let bundleId = Bundle.main.bundleIdentifier,
+              let dot = bundleId.lastIndex(of: ".")
+        else { return nil }
+        return UserDefaults(suiteName: "group.\(bundleId[..<dot]).shared")
+    }()
+
+    // Mirrors RpcEndpointSelector: an edge node is <node>.edge.<origin>, it stands in for the origin
+    // itself (generated avatars are under /api), and serves the origin's subdomains under its own
+    // prefix - on kz1.edge.voxt.ai, media.voxt.ai is reached as kz1.edge.media.voxt.ai.
+    private static func contentUrl(_ url: URL, endpoint: String) -> URL {
+        let endpoint = endpoint.lowercased()
+        guard let host = url.host?.lowercased(),
+              let edge = endpoint.range(of: ".edge.")
+        else { return url }
+
+        let prefix = endpoint[..<edge.upperBound]
+        let origin = endpoint[edge.upperBound...]
+        guard host == origin || host.hasSuffix("." + origin),
+              var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else { return url }
+
+        components.host = host == origin ? endpoint : prefix + host
+        return components.url ?? url
     }
 
     private static func imageData(_ data: Data?, _ response: URLResponse?) -> Data? {
