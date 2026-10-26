@@ -907,16 +907,17 @@ public class CoachTest(AppHostFixture fixture, ITestOutputHelper @out)
         await Queues.Enqueue(new CoachEntryAnalyzedEvent(
             Entry(account.Id, chatB, 1, 20, 10, T0 + TimeSpan.FromHours(2)), false));
 
-        // act
+        // act - all three entries stored: with chat A's second one still queued, there are two conversations too
         var conversations = await TestWait.When(async ct => {
             var c = await Coach.ListOwnConversations(tester.Session, 10, null, ct);
-            c.Should().HaveCount(2);
+            c.Sum(x => x.Words).Should().Be(120);
             return c;
         });
 
         // assert
+        conversations.Should().HaveCount(2);
         conversations[0].ChatId.Should().Be(chatB);
-        conversations[1].Words.Should().Be(100);
+        conversations[1].Words.Should().Be(100, "entries 5 minutes apart in one chat are one conversation");
     }
 
     [Fact]
