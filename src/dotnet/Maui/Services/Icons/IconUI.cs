@@ -22,6 +22,8 @@ public class IconUI(IServiceProvider services) : ProcessorBase, IComputeService
 
     public Task<FilePath> FetchImage(string url, CancellationToken cancellationToken)
     {
+        // A cache URL resolves only inside the WebView, and its key changes from launch to launch
+        url = UrlMapper.ToOrigin(url);
         if (url.IsNullOrEmpty())
             return Task.FromResult(FilePath.Empty);
 
