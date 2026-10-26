@@ -130,10 +130,11 @@ describe('raise hand and reactions in a video call', () => {
         expect(await countVideoElements(alice)).toEqual({ marked: aliceVideoCount, unmarked: 0 });
         expect(await countVideoElements(bob)).toEqual({ marked: bobVideoCount, unmarked: 0 });
 
-        // assert - speaker view: Bob is the speaker, so his hand is a button-sized indicator in the header
+        // assert - speaker view: Bob is the speaker, and his hand stays right of his label, not in the header
         await expandVideoPanel(alice);
-        await alice.locator('.call-screen-header .btn-hand').waitFor({ state: 'visible', timeout: 10_000 });
-        await expect.poll(async () => aliceBobTile.locator('.video-hand-badge:visible').count()).toBe(0);
+        await aliceBobTile.locator('.video-tile-caption .video-hand-badge')
+            .waitFor({ state: 'visible', timeout: 10_000 });
+        expect(await alice.locator('.call-screen-header .icon-hand:not(.raised-hands-counter *)').count()).toBe(0);
         const headerCounter = alice.locator('.call-screen-header .c-member-count .raised-hands-counter');
         await headerCounter.waitFor({ state: 'visible', timeout: 10_000 });
         expect((await headerCounter.locator('.c-count').innerText()).trim()).toBe('1');

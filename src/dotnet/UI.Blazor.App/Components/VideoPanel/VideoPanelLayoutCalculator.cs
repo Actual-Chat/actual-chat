@@ -499,9 +499,6 @@ public record VideoPanelLayout(
     public int TileCount
         => (OwnCameraPreviewClass.IsNullOrEmpty() ? 0 : 1) + RemoteStreamPlayerClasses.Length;
 
-    public bool IsOwnCameraFocused
-        => OwnCameraPreviewClass.Contains("item-focused", StringComparison.Ordinal);
-
     public AuthorId? GetFocusedAuthorId(VideoStreamInfo[] remoteStreams)
     {
         var focused = RemoteStreamPlayerClasses

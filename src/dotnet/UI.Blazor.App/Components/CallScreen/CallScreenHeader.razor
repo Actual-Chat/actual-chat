@@ -12,8 +12,6 @@
     var isInline = m.Mode == VisualActivityPanelMode.Inline;
     var isInCall = m.Phase == CallPhase.Active;
     var hasPinToggle = m.RemoteAuthorCount > 1;
-    // Speaker view hides the speaker's tile label (the name is in the header), so its hand moves here too
-    var hasFocusedHand = isExpanded && m.IsFocusedHandRaised;
     // The reaction button always docks at the right of the second row, under the hang-up - the same place
     // inline or fullscreen, phone or desktop, so it never jumps between layouts. Only with video on screen:
     // a dialing or audio-only call has none to react over.
@@ -111,25 +109,18 @@
        a single one is always the one in focus. The reaction button shares this row, pushed to
        the right so it sits under the hang-up. *@
     @{
-        var hasPinRow = (hasPinToggle || hasFocusedHand) && !m.IsEqualLayout && !isIsland;
+        var hasPinRow = hasPinToggle && !m.IsEqualLayout && !isIsland;
     }
     @if (hasPinRow || hasSecondRowReact) {
         <div class="header-row header-row-pin">
             @if (hasPinRow) {
-                @if (hasPinToggle) {
-                    <HeaderButton
-                        Class="@("btn-glass btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
-                        StopPropagation="true"
-                        PreventDefault="true"
-                        Click="@OnTogglePinClick">
-                        <i class="icon-pin text-lg"></i>
-                    </HeaderButton>
-                }
-                @if (hasFocusedHand) {
-                    <div class="btn-glass btn-h btn-hand on">
-                        <i class="icon-hand text-lg"></i>
-                    </div>
-                }
+                <HeaderButton
+                    Class="@("btn-glass btn-pin-toggle " + (m.IsPinned ? "on" : ""))"
+                    StopPropagation="true"
+                    PreventDefault="true"
+                    Click="@OnTogglePinClick">
+                    <i class="icon-pin text-lg"></i>
+                </HeaderButton>
             }
             @if (hasSecondRowReact) {
                 <HeaderButton
@@ -199,21 +190,12 @@
         var focusedAuthorId = layout.GetFocusedAuthorId(remoteStreams);
         var canReact = await LiveSessionUI.CanReact(chatId, cancellationToken).ConfigureAwait(false);
         var isOwnHandRaised = await LiveSessionUI.IsOwnHandRaised(chatId, cancellationToken).ConfigureAwait(false);
-        bool isFocusedHandRaised;
-        if (focusedAuthorId is not null) {
-            var raisedHandAuthorIds = await LiveSessionUI.ListRaisedHandAuthorIds(chatId, cancellationToken)
-                .ConfigureAwait(false);
-            isFocusedHandRaised = raisedHandAuthorIds.Contains(focusedAuthorId);
-        }
-        else
-            isFocusedHandRaised = layout.IsOwnCameraFocused && isOwnHandRaised;
         return m with {
             RemoteAuthorCount = remoteStreams.Select(s => s.AuthorId).Distinct().Count(),
             TileCount = layout.TileCount,
             MemberCount = memberCount,
             FocusedAuthorId = focusedAuthorId,
             IsPinned = pinnedAuthorId is not null,
-            IsFocusedHandRaised = isFocusedHandRaised,
             CanReact = canReact,
             IsOwnHandRaised = isOwnHandRaised,
         };
@@ -251,7 +233,6 @@
         // Author shown in the big tile right now - what the pin button pins when toggled on
         public AuthorId? FocusedAuthorId { get; init; }
         public bool IsPinned { get; init; }
-        public bool IsFocusedHandRaised { get; init; }
         public bool CanReact { get; init; }
         public bool IsOwnHandRaised { get; init; }
     }
