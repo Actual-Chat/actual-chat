@@ -25,6 +25,10 @@ public interface IUsage : IComputeService
     Task OnRecordOnboardingStep(Usage_RecordOnboardingStep command, CancellationToken cancellationToken);
     [CommandHandler]
     Task OnRecordFunnelEvent(Usage_RecordFunnelEvent command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnAddAttribution(Usage_AddAttribution command, CancellationToken cancellationToken);
+    [CommandHandler]
+    Task OnSetAnalyticsClient(Usage_SetAnalyticsClient command, CancellationToken cancellationToken);
 }
 
 [DataContract, MessagePackObject]
@@ -64,4 +68,28 @@ public sealed partial record Usage_RecordOnboardingStep : ApiCommand<Unit>
 public sealed partial record Usage_RecordFunnelEvent : ApiCommand<Unit>
 {
     [DataMember(Order = 2), Key(2)] public required FunnelEvent Event { get; init; }
+}
+
+/// <summary>
+/// An ad or link attribution the client captured; a guest's ones wait on the device until sign-in.
+/// <see cref="SeenAt"/> is when it was captured, which may be well before it is sent.
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Usage_AddAttribution : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AttributionOrigin Origin { get; init; }
+    [DataMember(Order = 3), Key(3)] public required string Raw { get; init; }
+    [DataMember(Order = 4), Key(4)] public required Moment SeenAt { get; init; }
+}
+
+/// <summary>
+/// The id this device's analytics SDK goes by (see <see cref="UserAnalyticsClient"/>).
+/// </summary>
+[DataContract, MessagePackObject]
+// ReSharper disable once InconsistentNaming
+public sealed partial record Usage_SetAnalyticsClient : ApiCommand<Unit>
+{
+    [DataMember(Order = 2), Key(2)] public required AnalyticsClientKind Kind { get; init; }
+    [DataMember(Order = 3), Key(3)] public required string ClientId { get; init; }
 }

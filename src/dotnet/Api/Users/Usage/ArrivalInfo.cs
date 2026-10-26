@@ -9,6 +9,8 @@ namespace ActualChat.Users;
 public readonly partial record struct ArrivalInfo(ArrivalKind Kind, string Id = "")
 {
     public const int MaxIdLength = 64;
+    // Apple answers with this campaign on every device that has Developer Mode on
+    public const string AppleTestCampaignId = "1234567890";
 
     public static ArrivalInfo? New(ArrivalKind kind, string? id = null)
     {
@@ -25,21 +27,22 @@ public readonly partial record struct ArrivalInfo(ArrivalKind Kind, string Id = 
 
     public static ArrivalInfo? FromQuery(string? urlOrQuery)
     {
-        // Accepts a local URL ("/path?a=b"), a bare query ("a=b") or a store install referrer
-        if (urlOrQuery.IsNullOrEmpty())
+        if (AttributionParser.GetQueryItems(urlOrQuery) is not { } items)
             return null;
 
-        var queryStart = urlOrQuery.IndexOf('?');
-        var query = queryStart >= 0 ? urlOrQuery[(queryStart + 1)..] : urlOrQuery;
-        var fragmentStart = query.IndexOf('#');
-        if (fragmentStart >= 0)
-            query = query[..fragmentStart];
-        if (!query.Contains('='))
-            return null;
-
-        var items = UriExt.GetQueryCollection(query);
         var campaign = items["utm_campaign"] ?? items["c"];
         return New(ArrivalKind.Campaign, campaign);
+    }
+
+    public static ArrivalInfo? FromInstallReferrer(AttributionOrigin origin, string? raw)
+    {
+        if (origin != AttributionOrigin.AppleAdServices)
+            return FromQuery(raw);
+        if (AttributionParser.Parse(origin, raw) is not { Campaign.Length: > 0 } details)
+            return null;
+
+        var id = details.Campaign == AppleTestCampaignId ? "test" : details.Campaign;
+        return New(ArrivalKind.Campaign, $"asa-{id}");
     }
 
     public static bool TryParse(string? value, out ArrivalInfo result)

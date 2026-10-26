@@ -350,6 +350,37 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
     }
 
     // [ComputeMethod]
+    public virtual async Task<ApiSet<AuthorId>> GetLastEntryAuthors(
+        ChatId chatId,
+        int entryCount,
+        CancellationToken cancellationToken)
+    {
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(entryCount, 64);
+        var authors = new ApiSet<AuthorId>();
+        if (entryCount <= 0)
+            return authors;
+
+        var minLid = await GetMinLid(chatId, cancellationToken).ConfigureAwait(false);
+        var maxLid = await GetMaxLid(chatId, false, cancellationToken).ConfigureAwait(false);
+        var remainingCount = entryCount;
+        for (var idTile = EntryIdTiles.GetTile(maxLid); remainingCount > 0; idTile = idTile.Prev()) {
+            if (idTile.End <= minLid)
+                break;
+
+            var tile = await GetTile(chatId, idTile.Range, false, cancellationToken).ConfigureAwait(false);
+            for (var i = tile.Entries.Length - 1; i >= 0 && remainingCount > 0; i--) {
+                var entry = tile.Entries[i];
+                if (entry.IsSystemEntry)
+                    continue;
+
+                authors.Add(entry.AuthorId);
+                remainingCount--;
+            }
+        }
+        return authors;
+    }
+
+    // [ComputeMethod]
     public virtual async Task<ChatTile> GetTile(
         ChatId chatId,
         Range<long> lidTileRange,

@@ -17,6 +17,7 @@ public partial class AccountUI
     public async Task SetArrival(ArrivalInfo arrival, CancellationToken cancellationToken = default)
     {
         // Overwrites: the last link a guest opened is the one that led them to sign up
+        _ = AddAttribution(AttributionOrigin.Referral, arrival.Format(), cancellationToken);
         try {
             await WhenReady.WaitAsync(cancellationToken).ConfigureAwait(false);
             if (!OwnAccount.Value.IsGuestOrNull())
@@ -51,6 +52,7 @@ public partial class AccountUI
 
     private async Task MaintainArrival(CancellationToken cancellationToken)
     {
+        await CaptureAttributions(cancellationToken).ConfigureAwait(false);
         await CaptureArrival(cancellationToken).ConfigureAwait(false);
         while (true) {
             await CpuClock.Delay(ArrivalRefreshPeriod, cancellationToken).ConfigureAwait(false);
@@ -90,15 +92,15 @@ public partial class AccountUI
 
     private async Task<ArrivalInfo?> ReadInstallReferrer(CancellationToken cancellationToken)
     {
-        // Once per install: a sign-up after a later sign-out must not be credited to the install campaign
-        if (Services.GetService<IInstallReferrer>() is not { } installReferrer)
+        // Once per install: a sign-up after a later sign-out must not be credited to the install campaign.
+        // CaptureAttributions has just read the referrer; no value means the read failed and is retried later.
+        if (_installReferrer is not { } installReferrer)
             return null;
         if (await LocalStorage.GetString(InstallReferrerReadStorageKey).ConfigureAwait(false) is not null)
             return null;
 
-        var query = await installReferrer.GetQuery(cancellationToken).ConfigureAwait(false);
         await LocalStorage.SetString(InstallReferrerReadStorageKey, "1").ConfigureAwait(false);
-        return ArrivalInfo.FromQuery(query);
+        return ArrivalInfo.FromInstallReferrer(installReferrer.Origin, installReferrer.Raw);
     }
 
     private async Task ForgetArrival()

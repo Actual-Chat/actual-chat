@@ -5,8 +5,12 @@ namespace ActualChat.UI.Blazor.Services;
 
 public sealed class BrowserInit(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
-    private static readonly string JSInitFirebaseMethod = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.initFirebase";
-    private static readonly string JSIsFirebaseConfiguredMethod = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.isFirebaseConfigured";
+    private static readonly string JSInitFirebaseMethod
+        = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.initFirebase";
+    private static readonly string JSIsFirebaseConfiguredMethod
+        = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.isFirebaseConfigured";
+    private static readonly string JSGetAnalyticsClientIdMethod
+        = $"{BlazorUICoreModule.ImportName}.{nameof(BrowserInit)}.getAnalyticsClientId";
 
     private readonly AsyncTaskMethodBuilder _whenInitializedSource = AsyncTaskMethodBuilderExt.New();
 
@@ -66,6 +70,17 @@ public sealed class BrowserInit(UIHub hub) : UIServiceBase<UIHub>(hub)
         catch (Exception e) {
             Log.LogError(e, "An error occurred during InitFirebase call");
             throw;
+        }
+    }
+
+    public async Task<string?> GetAnalyticsClientId()
+    {
+        try {
+            return await JS.InvokeAsync<string?>(JSGetAnalyticsClientIdMethod).ConfigureAwait(false);
+        }
+        catch (Exception e) {
+            Log.LogWarning(e, "An error occurred during GetAnalyticsClientId call");
+            return null;
         }
     }
 }

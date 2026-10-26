@@ -91,6 +91,14 @@ public class UserSettings(IServiceProvider services) : IUserSettings
                     .Schedule(cancellationToken)
                     .ConfigureAwait(false);
         }
+        if (value is UserAppSettings { IsDataCollectionEnabled: true }) {
+            // Milestones held back for consent can go out now
+            var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+            if (!account.IsGuest)
+                await FlowHub.NewResumeEvent<MilestoneDeliveryFlow>(account.Id.Value)
+                    .Schedule(cancellationToken)
+                    .ConfigureAwait(false);
+        }
         if (key == nameof(UserEmailsSettings)) {
             // Otherwise a re-enabled digest waits for the flow's next scheduled check, up to 2 days away
             var account = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);

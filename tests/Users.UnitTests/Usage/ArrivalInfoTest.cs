@@ -87,4 +87,29 @@ public class ArrivalInfoTest
     [InlineData(AppKind.Windows, ArrivalKind.Store)]
     public void FallbackShouldDependOnTheApp(AppKind appKind, ArrivalKind expected)
         => ArrivalInfo.Fallback(appKind).Kind.Should().Be(expected);
+
+    [Theory]
+    [InlineData("""{"attribution":true,"campaignId":542370539}""", "campaign:asa-542370539")]
+    [InlineData("""{"attribution":true,"campaignId":1234567890}""", "campaign:asa-test")]
+    public void AppleAnswerShouldBecomeAppleCampaignArrival(string raw, string expected)
+    {
+        // act
+        var arrival = ArrivalInfo.FromInstallReferrer(AttributionOrigin.AppleAdServices, raw);
+
+        // assert
+        arrival.Should().NotBeNull();
+        arrival!.Value.Format().Should().Be(expected);
+    }
+
+    [Fact]
+    public void PlayReferrerShouldBecomeCampaignArrival()
+    {
+        // act
+        var arrival = ArrivalInfo.FromInstallReferrer(
+            AttributionOrigin.PlayReferrer, "utm_source=google&utm_campaign=exp-walkie-gads");
+
+        // assert
+        arrival.Should().NotBeNull();
+        arrival!.Value.Format().Should().Be("campaign:exp-walkie-gads");
+    }
 }

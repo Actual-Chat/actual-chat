@@ -48,6 +48,10 @@ Keep in mind:
 
 ## Adding a way in (an entry point)
 
+Every way in is also recorded as an attribution, for new and existing users alike, with far more detail
+than the arrival; see [attributions and milestones](./attribution-and-milestones.md). The arrival below is
+still what the `SignUp` event records.
+
 The arrival travels from the client to sign-up in the `c.Arrival` session temporal:
 
 - **A page that is a way in** calls `AccountUI.SetArrival(arrival)` while the visitor is a guest,
@@ -55,7 +59,7 @@ The arrival travels from the client to sign-up in the `c.Arrival` session tempor
 - **The landing URL** (`utm_campaign` or `c`) and the store install referrer are captured by
   `AccountUI` on its own. They only fill an empty arrival, so a link page always wins. On Android
   the referrer is the Play install referrer; on iOS it is Apple Ads attribution (`IosInstallReferrer`),
-  which reports `campaign:asa-<campaignId>` for an Apple Ads install and `campaign:asa-test` on a
+  whose answer the arrival reduces to `campaign:asa-<campaignId>` for an Apple Ads install and `campaign:asa-test` on a
   device with Developer Mode on, where Apple answers with its fixed test payload. Filter the report
   on `campaign:asa-%` for Apple Ads and leave `asa-test` out.
 - `AccountUI` keeps the arrival in local storage until an account exists and re-sends it at start-up,

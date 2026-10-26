@@ -8,7 +8,7 @@ import { AppKind, BrowserInfo, HostKind } from '../BrowserInfo/browser-info';
 import { getLogs } from 'logging';
 import { MainThreadDiagnostics } from 'main-thread-diagnostics';
 import { FirebaseApp, initializeApp } from 'firebase/app';
-import { Analytics, getAnalytics, setAnalyticsCollectionEnabled } from 'firebase/analytics';
+import { Analytics, getAnalytics, getGoogleAnalyticsClientId, setAnalyticsCollectionEnabled } from 'firebase/analytics';
 import { SessionTokens } from '../Security/session-tokens';
 import { Versioning } from 'versioning';
 import { initAppConstants, AppConstants } from 'app-constants';
@@ -182,6 +182,15 @@ export class BrowserInit {
     public static isFirebaseConfigured(): boolean {
         const isAnalyticsEnabled = readSettingToggle(IsAnalyticsEnabledSetting);
         return isAnalyticsEnabled !== null;
+    }
+
+    /** Called from Blazor: GA4's client id, which the server sends milestones under; null while analytics is off */
+    public static async getAnalyticsClientId(): Promise<string | null> {
+        const analytics = BrowserInit.firebaseAnalytics;
+        if (!analytics || readSettingToggle(IsAnalyticsEnabledSetting) !== true)
+            return null;
+
+        return await getGoogleAnalyticsClientId(analytics);
     }
 
     // Private methods

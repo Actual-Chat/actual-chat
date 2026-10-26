@@ -189,6 +189,8 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
         // Usage
         rpcHost.AddApi<IUsage, Usage>();
         rpcHost.AddBackend<IUsageBackend, UsageBackend>();
+        rpcHost.AddBackend<IUserAttributionsBackend, UserAttributionsBackend>();
+        rpcHost.AddBackend<IUserMilestonesBackend, UserMilestonesBackend>();
 
         // Coach
         rpcHost.AddApi<ICoach, Coach>();
@@ -252,13 +254,18 @@ public sealed class UsersServiceModule(IServiceProvider moduleServices)
             services.AddSingleton<ContactGreeter>()
                 .AddHostedService(c => c.GetRequiredService<ContactGreeter>());
             services.AddHttpClient(UserSignInFlow.HttpClientName);
+            services.AddHttpClient(GA4MilestoneSender.HttpClientName);
+            services.AddSingleton<IMilestoneSender>(c => new GA4MilestoneSender(c));
+            services.AddSingleton(c => new MilestoneDeliverer(c));
 
             services.AddFlows()
                 .Add<UserSignInFlow>()
                 .Add<DigestFlow>()
                 .Add<CoachWeeklyNoteFlow>()
                 .Add<AccountMigrationFlow>()
-                .Add<UsageContactsBackfillFlow>();
+                .Add<UsageContactsBackfillFlow>()
+                .Add<UserAttributionsBackfillFlow>()
+                .Add<MilestoneDeliveryFlow>();
         }
 
         // TOTP codes
