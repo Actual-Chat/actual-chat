@@ -413,12 +413,16 @@ On the callee's client, `CallScreensUI.Accept`:
 3. Calls `AcceptCall`.
 4. On Android, dismisses the keyguard, unless the call was accepted over the lock screen.
    Then audio starts without unlocking: the activity shown over the lock counts as
-   foreground, which is what the microphone foreground service needs. The chat then opens,
-   unless the call was accepted over the lock screen; on a narrow screen the full-screen call
-   view covers it.
+   foreground, which is what the microphone foreground service needs. The chat opens beside
+   the audio, unless the call was accepted over the lock screen; on a narrow screen the
+   full-screen call view covers it. Nothing waits for it: it needs the page, and an answer
+   from the background (CallKit on iOS) can find the page still loading - the call connects
+   regardless, and a chat that fails to open is only logged.
 5. Starts listening unconditionally, then requests the microphone and starts recording.
    Listening comes first so that an unanswered OS permission prompt can't fail the connect
-   check below.
+   check below. The request waits for the page as well, so it can outlast the call: recording
+   starts only if the slot still holds this chat's call once the microphone is granted. The
+   wait ends with the scope (`StopToken`), never with the caller.
 
 On the server, `AcceptCall`:
 

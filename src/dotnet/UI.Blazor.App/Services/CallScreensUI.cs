@@ -428,7 +428,7 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             _ = OpenChat(chatId)
                 .WithErrorLog(StopToken, Log, "Couldn't open the chat of the accepted call #{ChatId}", chatId);
         if (canStartAudio)
-            await CallUI.StartCallAudio(chatId, CancellationToken.None).ConfigureAwait(true);
+            await CallUI.StartCallAudio(chatId, StopToken).ConfigureAwait(true);
     }
 
     private async Task CancelCall(ChatId chatId)
