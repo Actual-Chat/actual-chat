@@ -80,8 +80,8 @@ export class CallScreen {
     // Name-badge placement (full-screen video only): a rAF-coalesced relayout fed by a ResizeObserver
     // (stage resize), a MutationObserver (tiles join/leave or change class, name edits, footer
     // buttons appearing, bars-hidden and layout-equal toggles) and the end of the bars' slide.
-    // movedBadges holds the labels carrying inline styles this run, so they can be reset on teardown
-    // or when the layout stops needing them.
+    // movedBadges holds the labels (and the raised hands riding along) carrying inline styles this run,
+    // so they can be reset on teardown or when the layout stops needing them.
     private badgeResizeObserver: ResizeObserver | null = null;
     private badgeMutationObserver: MutationObserver | null = null;
     private badgeRaf = 0;
@@ -244,7 +244,7 @@ export class CallScreen {
             cancelAnimationFrame(this.badgeRaf);
             this.badgeRaf = 0;
         }
-        this.movedBadges.forEach(label => this.resetBadge(label));
+        this.movedBadges.forEach(badge => this.resetBadge(badge));
         this.movedBadges.clear();
     }
 
@@ -258,9 +258,9 @@ export class CallScreen {
         });
     }
 
-    private resetBadge(label: HTMLElement): void {
-        label.style.maxWidth = '';
-        label.style.transform = '';
+    private resetBadge(badge: HTMLElement): void {
+        badge.style.maxWidth = '';
+        badge.style.transform = '';
     }
 
     // Union of the central footer control cluster — not the full-width bar. Excludes the invisible
@@ -304,16 +304,25 @@ export class CallScreen {
             ? Array.from(stage.querySelectorAll<HTMLElement>(
                 '.c-grid > .video-track-player.item-focused, .c-grid > .video-track-player.item-x'))
             : Array.from(stage.querySelectorAll<HTMLElement>('.video-track-player.item-focused'));
+        // A raised hand sits right of the label in the same caption row, so it moves along with it
         const items = tiles
-            .map(tile => ({ tile, label: tile.querySelector<HTMLElement>('.video-participant-label') }))
-            .filter((it): it is { tile: HTMLElement; label: HTMLElement } => it.label != null);
+            .map(tile => ({
+                tile,
+                label: tile.querySelector<HTMLElement>('.video-participant-label'),
+                hand: tile.querySelector<HTMLElement>('.video-tile-caption > .video-hand-badge'),
+            }))
+            .filter((it): it is { tile: HTMLElement; label: HTMLElement; hand: HTMLElement | null } =>
+                it.label != null);
 
         // Reset first: clears any prior run so the css (multi-row) or the base bottom-left take over.
-        for (const it of items)
+        for (const it of items) {
             this.resetBadge(it.label);
-        this.movedBadges.forEach(label => {
-            if (!items.some(it => it.label === label))
-                this.resetBadge(label);
+            if (it.hand)
+                this.resetBadge(it.hand);
+        }
+        this.movedBadges.forEach(badge => {
+            if (!items.some(it => it.label === badge || it.hand === badge))
+                this.resetBadge(badge);
         });
         this.movedBadges = new Set<HTMLElement>();
         if (!this.isExpanded() || items.length === 0)
@@ -361,6 +370,9 @@ export class CallScreen {
             const tileRect = it.tile.getBoundingClientRect();
             it.label.style.maxWidth = `${tileRect.width}px`;
             const rect = it.label.getBoundingClientRect();
+            const handRect = it.hand?.getBoundingClientRect();
+            // Its width plus the caption gap; zero while the hand is down or hidden
+            const handW = handRect && handRect.width > 0 ? handRect.right - rect.right : 0;
             const inset = rect.left - tileRect.left;
             let usableRight = tileRect.right - inset;
             for (const o of rightObstacles) {
@@ -375,7 +387,8 @@ export class CallScreen {
                 anchorLeft: rect.left,
                 anchorBottom: rect.bottom,
                 h: rect.height,
-                naturalW: rect.width,
+                naturalW: rect.width + handW,
+                handW,
             };
         });
         for (const it of measured) {
@@ -396,10 +409,15 @@ export class CallScreen {
                     maxW = it.tileRect.width - 2 * it.inset;
                 }
             }
-            it.label.style.maxWidth = `${Math.max(0, maxW)}px`;
-            if (dx !== 0 || dy !== 0)
+            it.label.style.maxWidth = `${Math.max(0, maxW - it.handW)}px`;
+            if (dx !== 0 || dy !== 0) {
                 it.label.style.transform = `translate(${dx}px, ${dy}px)`;
+                if (it.hand)
+                    it.hand.style.transform = it.label.style.transform;
+            }
             this.movedBadges.add(it.label);
+            if (it.hand)
+                this.movedBadges.add(it.hand);
         }
     }
 

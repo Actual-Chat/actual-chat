@@ -326,9 +326,6 @@ body.wide .call-screen.expanded > .c-container {
     @apply text-xs;
     text-shadow: none;
 }
-.call-screen .call-screen-header .btn-hand {
-    @apply pointer-events-none;
-}
 .call-screen.expanded .call-screen-toolbar {
     @apply flex-x;
     @apply absolute;
@@ -528,16 +525,6 @@ body.hoverable .btn-glass.btn-h:hover {
 .btn-glass.btn-h.btn-primary {
     @apply bg-pal-blue-50-50;
     @apply text-pal-blue-95;
-}
-/* Someone else's raised hand is a call for attention, not a lit control: solid, as the shorthand
-   also clears the glass gradient that would darken it */
-.btn-glass.btn-h.btn-hand.on {
-    @apply text-raised-hand-text;
-    background: var(--raised-hand);
-}
-.btn-glass.btn-h.btn-hand.on i {
-    animation: hand-wave 15s ease-in-out infinite;
-    transform-origin: 70% 90%;
 }
 .btn-glass.btn-h.talking,
 .btn-glass.btn-h.btn-danger {
@@ -959,8 +946,7 @@ body.narrow .call-screen:not(.layout-equal) .video-stage .video-track-player.ite
 body.narrow .video-stage .video-track-player.pip-overlay .video-participant-label {
     @apply hidden;
 }
-/* Raised hand: right of the label, except on a small tile (top-left corner) and on the speaker in
-   speaker view (a button-sized indicator in the header instead, see .btn-hand) */
+/* Raised hand: right of the label, except on a small tile (top-left corner) */
 .call-screen .video-track-player .video-hand-badge {
     @apply relative flex items-center justify-center;
     @apply w-6 h-6 rounded-full;
@@ -986,8 +972,7 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
     @apply flex;
 }
 .call-screen:not(.layout-equal) .video-track-player.item-x .video-tile-caption .video-hand-badge,
-.call-screen .video-track-player.pip-overlay .video-tile-caption .video-hand-badge,
-.call-screen.expanded:not(.layout-equal) .video-track-player.item-focused .video-hand-badge {
+.call-screen .video-track-player.pip-overlay .video-tile-caption .video-hand-badge {
     @apply hidden;
 }
 .call-screen.collapsed .video-track-player .video-hand-badge {
@@ -997,7 +982,6 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
     @apply border-raised-hand opacity-100;
 }
 @media (prefers-reduced-motion: reduce) {
-    .btn-glass.btn-h.btn-hand.on i,
     .call-screen .video-track-player .video-hand-badge i {
         animation: none;
     }
