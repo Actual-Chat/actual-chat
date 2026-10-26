@@ -3,14 +3,14 @@ using MudBlazor;
 
 namespace ActualChat.Mui;
 
-public sealed record FlowsFilter(string? TypeName = null, bool ProblematicOnly = false, bool HideCompleted = true)
+public sealed record FlowsFilter(string? TypeName = null, FlowListScope Scope = FlowListScope.Active)
 {
     public const int RowLimit = 200;
 
-    public bool ShowRows => !TypeName.IsNullOrEmpty() || ProblematicOnly;
+    public bool ShowRows => !TypeName.IsNullOrEmpty() || Scope == FlowListScope.Problematic;
 
     public FlowsQuery ToQuery()
-        => new(TypeName, ProblematicOnly, ShowRows ? RowLimit : 0, HideCompleted);
+        => new(TypeName, ShowRows ? RowLimit : 0, Scope);
 
     public static Color GetStatusColor(FlowStatus status)
         => status switch {

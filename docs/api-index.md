@@ -248,6 +248,8 @@ Backend interfaces follow the pattern `I{Service}Backend` for internal service c
 - `PeriodicFlow` — periodic execution flow
 - `IndexingFlow` — indexing with cursor tracking
 - `ThrottledFlow` — throttled execution
+- `IStuckDetectingFlow` — a flow's own stuck check, asked for flows of types with `[Flow(MaxResumeGap)]` (days)
+  that weren't stored for longer than that; `PeriodicFlow` implements it (stuck = no resume pending and not parked)
 - `BatchedSweepFlow` — sweeps a set in batches on request; an external resume during a sweep books one more sweep.
   Built on `Flow.ResumeEvent.IsSelfResume`, which tells own resumes from external ones
 - `FlowHub` — manages flow instances

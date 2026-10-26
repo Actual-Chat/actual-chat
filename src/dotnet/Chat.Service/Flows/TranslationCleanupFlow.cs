@@ -3,7 +3,7 @@ using ActualChat.Flows;
 
 namespace ActualChat.Chat.Flows;
 
-[Flow(DelayQuanta = 60)]
+[Flow(DelayQuanta = 60, MaxResumeGap = 0.25)]
 [DataContract, MemoryPackable(GenerateType.VersionTolerant), MessagePackObject(true)]
 public partial class TranslationCleanupFlow : PeriodicFlow, IMasterFlow
 {

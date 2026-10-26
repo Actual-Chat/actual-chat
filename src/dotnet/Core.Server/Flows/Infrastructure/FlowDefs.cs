@@ -19,6 +19,7 @@ public sealed class FlowDefs
                     DataVersion = attr?.DataVersion ?? 1,
                     ResumeTimeout = attr?.GetResumeTimeoutAsTimeSpan() ?? QueuesExt.DefaultTimeout,
                     DelayQuanta = attr?.GetDelayQuantaAsTimeSpan(),
+                    MaxResumeGap = attr?.GetMaxResumeGapAsTimeSpan(),
                 };
             }).ToList();
         ByType = flowDefs.ToFrozenDictionary(x => x.Type, x => x);

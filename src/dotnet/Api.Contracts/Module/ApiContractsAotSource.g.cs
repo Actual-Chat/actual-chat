@@ -94,6 +94,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_UpsertEntry>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.Chats_WipeHistory>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.Conversations_Summarize>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Chat.Diagnostics_ResumeFlow>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ImageSuggestions_AcceptForChat>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ImageSuggestions_AcceptForPlace>();
         CodeKeeper.KeepSerializable<global::ActualChat.Chat.ImageSuggestions_DismissForChat>();
@@ -593,6 +594,9 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.Conversations_Summarize>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.Conversations_Summarize>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.Conversations_Summarize>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.Diagnostics_ResumeFlow>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.Diagnostics_ResumeFlow>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.Diagnostics_ResumeFlow>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.DubVoice>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.DubVoice>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Chat.DubVoice>>>>();
@@ -866,6 +870,9 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowDetails>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowDetails>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowDetails>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowListScope>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowListScope>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowListScope>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowStatus>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowStatus>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Flows.FlowStatus>>>>();
@@ -2792,6 +2799,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+CoachLiveMarkFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ConversationFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+Conversations_SummarizeFormatter, ActualChat.Api.Contracts");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+Diagnostics_ResumeFlowFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+DubVoiceFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+FileItemFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Chat+ImageSlotFormatter, ActualChat.Api.Contracts");
@@ -2852,6 +2860,7 @@ internal partial class ApiContractsAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Contacts+ExternalContactsHashFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Contacts+ExternalContacts_BulkChangeFormatter, ActualChat.Api.Contracts");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Flows+FlowDetailsFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Flows+FlowListScopeFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Flows+FlowStatusFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Flows+FlowSummaryFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Flows+FlowTypeStatFormatter, ActualChat.Api");
@@ -3153,6 +3162,7 @@ internal partial class ApiContractsAotSource : IAotSource
             (typeof(global::ActualChat.Chat.Chats_UpsertEntry), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.Chats_WipeHistory), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.Conversations_Summarize), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Chat.Diagnostics_ResumeFlow), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ImageSuggestions_AcceptForChat), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ImageSuggestions_AcceptForPlace), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Chat.ImageSuggestions_DismissForChat), AotTypeKind.Serializable),

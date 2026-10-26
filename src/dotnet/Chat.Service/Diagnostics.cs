@@ -53,7 +53,20 @@ public class Diagnostics(IServiceProvider services) : IDiagnostics
         var flow = flowData.GetFlow(FlowHub);
         var error = flow.UntypedResult?.Error;
         var errorText = error is null ? null : $"{error.GetType().GetName()}: {error.Message}";
-        return new FlowDetails(flowData.Console, errorText);
+        var flowDef = FlowHub.Defs.ByName.GetValueOrDefault(id.Name);
+        return new FlowDetails(flowData.Console, errorText, flowDef?.DelayQuanta, flowDef?.MaxResumeGap);
+    }
+
+    // [CommandHandler]
+    public virtual async Task OnResumeFlow(Diagnostics_ResumeFlow command, CancellationToken cancellationToken)
+    {
+        await RequireAdmin(command.Session, cancellationToken).ConfigureAwait(false);
+
+        var flowId = FlowId.Parse(command.FlowId);
+        await FlowHub.NewResumeEvent(flowId)
+            .WithSelfResume(command.IsSelfResume)
+            .Schedule(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // Private methods
