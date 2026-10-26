@@ -11,6 +11,7 @@ public static class MauiPreferences
     public const string ChatAttentionStateKey = "ChatAttention";
 
     private const string HostOverrideKey = "app_server_instance_override";
+    // VoxtNotificationService (Swift) reads it from the App Group by this name
     private const string RpcEndpointKey = "rpc_endpoint";
     private const string HostIpKeyPrefix = "host_ip_";
     private const string IsDataCollectionEnabledKey = "analytics";

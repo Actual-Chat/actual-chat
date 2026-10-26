@@ -27,9 +27,10 @@ needs — and the whole job is ~150 lines of `URLSession` plus `Intents`. So it 
 ## What it does, per push
 
 1. Reads the `icon` data key. No icon → deliver the push untouched.
-2. Downloads it (5s timeout, 512 KB cap, HTTP cache honoured — the extension process is
+2. Moves its host to the edge node the app's RPC is on, if any (see below).
+3. Downloads it (5s timeout, 512 KB cap, HTTP cache honoured — the extension process is
    reused, so a chatty conversation's avatar is normally already cached).
-3. Builds an `INSendMessageIntent` whose sender's display name is the push's own title, keyed
+4. Builds an `INSendMessageIntent` whose sender's display name is the push's own title, keyed
    (handle and `customIdentifier`) by the chat, carrying the avatar as an `INImage`; donates the
    interaction (so Focus can allow-list the chat), and returns `content.updating(from: intent)`.
    The title is never split back apart: a real name or chat title can contain `" @ "`
@@ -92,12 +93,24 @@ Two things differ from the widget, both because this appex actually carries an e
   team/identity/profile for Debug `iphoneos` builds so `/ios-run` works with no extra
   arguments; CI passes its own via the `VoxtNotificationService*` properties.
 
+## Edge nodes
+
+On a throttled network the app moves its RPC to an edge node (`kz1.edge.voxt.ai`) and fetches
+content through it, but the server's icon URL always names the origin — `media.*`, `cdn.*`,
+or the origin itself for a generated avatar. This extension is a separate process and can't ask
+the app, so it reads the app's choice from the App Group (`group.chat.actual[.dev].app.shared`,
+key `rpc_endpoint`, written by `MauiRpcEndpointSelector`; absent means the origin) and maps the
+icon's host the way `RpcEndpointSelector` does: `voxt.ai` → `kz1.edge.voxt.ai`,
+`media.voxt.ai` → `kz1.edge.media.voxt.ai`. It follows the app's last choice without checking
+it — an edge node that's down costs the banner its icon, as the origin did. Issue #5469.
+
 ## Apple Developer portal setup
 
 Unlike the widget, this extension carries a real capability —
 `com.apple.developer.usernotifications.communication` — and it has to be enabled on the App ID
 behind every profile that signs the appex *and* on the host app's App ID. Set up on
-2026-08-27:
+2026-08-27. The **App Groups** capability, granting `group.chat.actual[.dev].app.shared`, was
+added to both extension App IDs for #5469, and the profiles below regenerated:
 
 | What | Dev | Prod |
 |---|---|---|
