@@ -8,7 +8,7 @@ namespace ActualChat.Users.Flows;
 
 // One note on Monday at the user's digest time, about the week before; it lands in the user's
 // stored settings and the Progress tab shows it
-[Flow(DelayQuanta = 600)] // 10 minutes
+[Flow(DelayQuanta = 600, MaxResumeGap = 9)] // 10 minutes; MaxResumeDelay is 8 days
 [DataContract, MessagePackObject(true)]
 public partial class CoachWeeklyNoteFlow : PeriodicFlow
 {

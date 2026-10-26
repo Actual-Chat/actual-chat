@@ -1,8 +1,10 @@
-﻿namespace ActualChat.Flows;
+﻿using ActualChat.Flows.Infrastructure;
+
+namespace ActualChat.Flows;
 
 // Base class for flows that run periodically.
 // Implements a simple pattern where Run is called at scheduled intervals.
-public abstract class PeriodicFlow : Flow<string>
+public abstract class PeriodicFlow : Flow<string>, IStuckDetectingFlow
 {
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected virtual TimeSpan MaxResumeDelay => TimeSpan.FromDays(7);
@@ -14,6 +16,13 @@ public abstract class PeriodicFlow : Flow<string>
     public Moment LastRunAt { get; set; }
     [DataMember(Order = 2), MemoryPackOrder(2), Key(2)]
     public FlowReadiness LastReadiness { get; set; }
+    [DataMember(Order = 3), MemoryPackOrder(3), Key(3)]
+    public Moment NextRunAt { get; set; }
+
+    public virtual bool IsStuck(FlowResumeEvent? nextResumeEvent)
+        // NextRunAt is Moment.MaxValue once Run parks the flow: it waits for an external resume, which
+        // may never come. Any other one must have its next run pending.
+        => nextResumeEvent is null && NextRunAt != Moment.MaxValue;
 
     // Overridable methods
 
@@ -28,6 +37,7 @@ public abstract class PeriodicFlow : Flow<string>
         if (LastReadiness is { IsSuspended: true } readiness) {
             var resumeDelay = readiness.ResumeDelay ?? MaxResumeDelay;
             var resumeAt = ResumedAt + resumeDelay;
+            NextRunAt = resumeAt;
             Console.Log($"Prepare() -> {readiness}, will resume in {resumeDelay.ToShortString()} mod {FlowDef.DelayQuanta.ToShortString("auto")}");
             Runtime.StageResumeAt(resumeAt);
             return;
@@ -43,17 +53,20 @@ public abstract class PeriodicFlow : Flow<string>
 
         if (nextRunAt == Moment.MaxValue) {
             Console.Log("Run() -> Moment.MaxValue (never run again)");
+            NextRunAt = Moment.MaxValue;
             return;
         }
 
         if (nextRunAt <= Hub.SystemNow) {
             Console.Log("Run() requested immediate resume");
+            NextRunAt = Hub.SystemNow;
             Runtime.StageResume();
             return;
         }
 
         var nextRunIn = (nextRunAt - Hub.SystemNow).Clamp(TimeSpan.Zero, MaxResumeDelay);
         var scheduledAt = Hub.SystemNow + nextRunIn;
+        NextRunAt = scheduledAt;
         Console.Log($"Next run scheduled in {nextRunIn.ToShortString()} mod {FlowDef.DelayQuanta.ToShortString("auto")}");
         Runtime.StageResumeAt(scheduledAt);
     }

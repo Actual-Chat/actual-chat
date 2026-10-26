@@ -9,5 +9,6 @@ public interface IFlowImpl : IHasId<FlowId>
     FlowRuntime? Runtime { get; }
 
     void SetProperties(FlowId id, long version, int dataVersion, IResult? untypedResult, FlowConsole flowConsole);
-    Task HandleResume(FlowHub hub, string? resetReason, CancellationToken cancellationToken);
+    Task HandleResume(
+        FlowHub hub, FlowResumeEvent resumeEvent, string? resetReason, CancellationToken cancellationToken);
 }

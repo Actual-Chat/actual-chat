@@ -17,7 +17,8 @@
 }
 else {
     <MudText Color="Color.Secondary" Class="mb-2">
-        Counts per registered flow type. Click a row to filter the instances below.
+        Counts per registered flow type. In brackets: the failed ones among the completed, and the idle ones past
+        the type's max resume gap, which the instance list below checks one by one. Click a row to list them.
     </MudText>
     <MudDataGrid T="FlowTypeStat" Items="@_stats" Dense="true" Hover="true" Elevation="1"
                  FixedHeader="true" Height="22rem"
@@ -27,20 +28,21 @@ else {
         <Columns>
             <PropertyColumn Property="x => x.Name" Title="Type"/>
             <PropertyColumn Property="x => x.Total" Title="Total"/>
-            <PropertyColumn Property="x => x.Completed" Title="Completed"/>
-            <PropertyColumn Property="x => x.Scheduled" Title="Scheduled"/>
-            <TemplateColumn Title="Idle / Stuck" SortBy="@(x => x.Idle + x.Stuck)">
+            <TemplateColumn Title="Completed (failed)" SortBy="@(x => x.Completed)">
                 <CellTemplate>
-                    <MudText Color="@(context.Item.Stuck > 0 ? Color.Warning : Color.Default)">
-                        @(context.Item.Idle + context.Item.Stuck)
-                    </MudText>
+                    @context.Item.Completed
+                    @if (context.Item.Failed > 0) {
+                        <MudText Inline="true" Color="Color.Error">(@context.Item.Failed)</MudText>
+                    }
                 </CellTemplate>
             </TemplateColumn>
-            <TemplateColumn Title="Failed" SortBy="@(x => x.Failed)">
+            <PropertyColumn Property="x => x.Scheduled" Title="Scheduled"/>
+            <TemplateColumn Title="Idle (stuck?)" SortBy="@(x => x.Idle)">
                 <CellTemplate>
-                    <MudText Color="@(context.Item.Failed > 0 ? Color.Error : Color.Default)">
-                        @context.Item.Failed
-                    </MudText>
+                    @context.Item.Idle
+                    @if (context.Item.MaybeStuck > 0) {
+                        <MudText Inline="true" Color="Color.Warning">(@context.Item.MaybeStuck)</MudText>
+                    }
                 </CellTemplate>
             </TemplateColumn>
         </Columns>
@@ -51,10 +53,13 @@ else {
     Flow instances@(_filter.TypeName.IsNullOrEmpty() ? "" : $" — {_filter.TypeName}")
 </MudText>
 <MudStack Row="true" Spacing="4" Class="mb-2" AlignItems="AlignItems.Center">
-    <MudSwitch T="bool" Value="@_filter.ProblematicOnly" ValueChanged="@OnProblematicChanged"
-               Label="Problematic only" Color="Color.Primary"/>
-    <MudSwitch T="bool" Value="@_filter.HideCompleted" ValueChanged="@OnHideCompletedChanged"
-               Label="Hide completed" Color="Color.Primary"/>
+    <MudSelect T="FlowListScope" Value="@_filter.Scope" ValueChanged="@OnScopeChanged"
+               Label="Show" Dense="true" Style="max-width: 14rem">
+        <MudSelectItem Value="FlowListScope.Active">Active (no result yet)</MudSelectItem>
+        <MudSelectItem Value="FlowListScope.Ended">Ended (has a result)</MudSelectItem>
+        <MudSelectItem Value="FlowListScope.Problematic">Problematic (failed or stuck)</MudSelectItem>
+        <MudSelectItem Value="FlowListScope.All">All</MudSelectItem>
+    </MudSelect>
     @if (_rows is not null && _filter.ShowRows) {
         <MudText Color="Color.Secondary">
             @_rows.Length row(s)@(_rows.Length >= FlowsFilter.RowLimit ? $" (limit {FlowsFilter.RowLimit})" : "")
@@ -64,7 +69,7 @@ else {
 
 @if (!_filter.ShowRows) {
     <MudText Color="Color.Secondary">
-        Select a flow type above, or turn on “Problematic only” to list instances.
+        Select a flow type above, or show “Problematic” flows to list instances.
     </MudText>
 }
 else {
@@ -110,8 +115,7 @@ else {
     private int _rowsGeneration;
 
     [SupplyParameterFromQuery(Name = "type")] public string? TypeName { get; set; }
-    [SupplyParameterFromQuery(Name = "problematic")] public bool ProblematicOnly { get; set; }
-    [SupplyParameterFromQuery(Name = "completed")] public bool? ShowCompleted { get; set; }
+    [SupplyParameterFromQuery(Name = "scope")] public string? Scope { get; set; }
 
     private IDiagnostics Diagnostics => field ??= Services.GetRequiredService<IDiagnostics>();
 
@@ -133,7 +137,8 @@ else {
     }
 
     private FlowsFilter FilterFromQuery()
-        => new(TypeName.NullIfEmpty(), ProblematicOnly, ShowCompleted != true);
+        => new(TypeName.NullIfEmpty(),
+            Enum.TryParse<FlowListScope>(Scope, true, out var scope) ? scope : FlowListScope.Active);
 
     private async Task LoadStats()
     {
@@ -165,19 +170,15 @@ else {
     private Task SelectType(string name)
         => SetFilter(_filter with { TypeName = name == _filter.TypeName ? null : name });
 
-    private Task OnProblematicChanged(bool value)
-        => SetFilter(_filter with { ProblematicOnly = value });
-
-    private Task OnHideCompletedChanged(bool value)
-        => SetFilter(_filter with { HideCompleted = value });
+    private Task OnScopeChanged(FlowListScope value)
+        => SetFilter(_filter with { Scope = value });
 
     private async Task SetFilter(FlowsFilter filter)
     {
         _filter = filter;
         var uri = Nav.GetUriWithQueryParameters(new Dictionary<string, object?> {
             ["type"] = filter.TypeName,
-            ["problematic"] = filter.ProblematicOnly ? true : null,
-            ["completed"] = filter.HideCompleted ? null : true,
+            ["scope"] = filter.Scope == FlowListScope.Active ? null : filter.Scope.ToString().ToLower(),
         });
         Nav.NavigateTo(uri, new NavigationOptions { ReplaceHistoryEntry = true });
         await LoadRows();

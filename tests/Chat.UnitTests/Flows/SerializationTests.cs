@@ -88,6 +88,7 @@ public class TranslationCleanupFlowSerializationTest(ITestOutputHelper @out)
         RunCount = 7,
         LastRunAt = new Moment(new DateTime(2026, 4, 16, 12, 0, 0, DateTimeKind.Utc)),
         LastReadiness = "test-suspension",
+        NextRunAt = new Moment(new DateTime(2026, 4, 16, 12, 30, 0, DateTimeKind.Utc)),
     };
 }
 

@@ -17,16 +17,17 @@ public class FlowsFilterTest
         // assert
         filter.ShowRows.Should().BeFalse();
         query.Limit.Should().Be(0);
-        query.HideCompleted.Should().BeTrue();
+        query.Scope.Should().Be(FlowListScope.Active);
     }
 
     [Theory]
-    [InlineData("MyFlow", false)]
-    [InlineData(null, true)]
-    public void TypeOrProblematicFilterListsRows(string? typeName, bool problematicOnly)
+    [InlineData("MyFlow", FlowListScope.Active)]
+    [InlineData("MyFlow", FlowListScope.Ended)]
+    [InlineData(null, FlowListScope.Problematic)]
+    public void TypeOrProblematicFilterListsRows(string? typeName, FlowListScope scope)
     {
         // arrange
-        var filter = new FlowsFilter(typeName, problematicOnly);
+        var filter = new FlowsFilter(typeName, scope);
 
         // act
         var query = filter.ToQuery();
@@ -35,7 +36,7 @@ public class FlowsFilterTest
         filter.ShowRows.Should().BeTrue();
         query.Limit.Should().Be(FlowsFilter.RowLimit);
         query.Name.Should().Be(typeName);
-        query.ProblematicOnly.Should().Be(problematicOnly);
+        query.Scope.Should().Be(scope);
     }
 
     [Theory]

@@ -18,6 +18,7 @@ namespace ActualChat.Flows;
 public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 {
     private const int MaxListLimit = 1000;
+    private const int MaxStuckCheckCount = 1000;
 
     private readonly AsyncLockSet<FlowId> _resumeLocks = new(LockReentryMode.CheckedPass);
     private readonly VersionedComputeMethodPrimer<FlowId, long, IFlowData?> _flowDataPrimer;
@@ -110,40 +111,39 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     // Regular RPC method! Pinned to a single node via ShardKeyResolver<Unit>.
     public virtual async Task<FlowTypeStat[]> ListStats(Unit unit, CancellationToken cancellationToken)
     {
-        var periodicNameSet = GetPeriodicNames();
-
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
+        // MaybeStuck counts idle flows past their type's MaxResumeGap; List checks them one by one
+        var (names, cutoffs) = GetResumeGapCutoffs(null);
         // Raw SQL here (and in List) because none of these translate to LINQ: split_part to derive
         // the flow type from the id, FILTER aggregates, and most of all the join to _events on the
-        // FlowId — which DbEvent stores only inside its `uuid` ("FlowResumeEvent(<id>)-at-..."), so
-        // it has to be parsed out in SQL. All interpolated values are EF parameters, not string
-        // concatenation. Single shared DB, so one unsharded scan is correct.
+        // FlowId — which DbEvent stores only inside its `uuid` ("r(<id>)...", or "FlowResumeEvent(<id>)..."
+        // for events written before that format), so it has to be parsed out in SQL. All interpolated
+        // values are EF parameters, not string concatenation. Single shared DB, so one unsharded scan
+        // is correct.
         var aggRows = await dbContext.Database
             .SqlQuery<AggRow>($"""
                 SELECT split_part(f.id, ':', 1) AS "Name",
-                       COUNT(*) FILTER (WHERE f.is_completed AND NOT f.is_failed)::int AS "Completed",
+                       COUNT(*) FILTER (WHERE f.is_completed)::int AS "Completed",
                        COUNT(*) FILTER (WHERE f.is_completed AND f.is_failed)::int AS "Failed",
                        COUNT(*) FILTER (WHERE NOT f.is_completed AND r.id IS NOT NULL)::int AS "Scheduled",
-                       COUNT(*) FILTER (WHERE NOT f.is_completed AND r.id IS NULL)::int AS "NoEvent"
+                       COUNT(*) FILTER (WHERE NOT f.is_completed AND r.id IS NULL)::int AS "Idle",
+                       COUNT(*) FILTER (
+                           WHERE NOT f.is_completed AND r.id IS NULL AND f.version < g.cutoff)::int AS "MaybeStuck"
                 FROM _flows f
                 LEFT JOIN (
-                    SELECT DISTINCT split_part(substring(uuid FROM char_length('FlowResumeEvent(') + 1), ')', 1) AS id
+                    SELECT DISTINCT split_part(substring(uuid FROM position('(' IN uuid) + 1), ')', 1) AS id
                     FROM _events
-                    WHERE state = 0 AND uuid LIKE 'FlowResumeEvent(%'
+                    WHERE state = 0 AND (uuid LIKE 'r(%' OR uuid LIKE 'FlowResumeEvent(%')
                 ) r ON r.id = f.id
+                LEFT JOIN unnest({names}, {cutoffs}) AS g(name, cutoff) ON split_part(f.id, ':', 1) = g.name
                 GROUP BY split_part(f.id, ':', 1)
                 """)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return aggRows
-            .Select(a => {
-                var isPeriodic = periodicNameSet.Contains(a.Name);
-                return new FlowTypeStat(a.Name, a.Completed, a.Failed, a.Scheduled,
-                    Stuck: isPeriodic ? a.NoEvent : 0,
-                    Idle: isPeriodic ? 0 : a.NoEvent);
-            })
+            .Select(a => new FlowTypeStat(a.Name, a.Completed, a.Failed, a.Scheduled, a.Idle, a.MaybeStuck))
             .OrderBy(a => a.Name, StringComparer.Ordinal)
             .ToArray();
     }
@@ -151,12 +151,12 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
     // Regular RPC method! Pinned to a single node via ShardKeyResolver<Unit> (the leading Unit arg).
     public virtual async Task<FlowSummary[]> List(Unit unit, FlowsQuery query, CancellationToken cancellationToken)
     {
-        var periodicNameSet = GetPeriodicNames();
-        var periodicNames = periodicNameSet.ToArray();
-
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _1 = dbContext.ConfigureAwait(false);
 
+        var stuck = await FindStuckFlows(dbContext, query.Name.NullIfEmpty(), cancellationToken).ConfigureAwait(false);
+        var stuckIds = stuck.Keys.ToArray();
+        var scope = (int)query.Scope;
         var nameUnset = query.Name.IsNullOrEmpty();
         var namePattern = (query.Name ?? "") + ":%";
         var limit = query.Limit.Clamp(0, MaxListLimit);
@@ -170,15 +170,17 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                        (r.id IS NOT NULL) AS "HasResume"
                 FROM _flows f
                 LEFT JOIN (
-                    SELECT DISTINCT split_part(substring(uuid FROM char_length('FlowResumeEvent(') + 1), ')', 1) AS id
+                    SELECT DISTINCT split_part(substring(uuid FROM position('(' IN uuid) + 1), ')', 1) AS id
                     FROM _events
-                    WHERE state = 0 AND uuid LIKE 'FlowResumeEvent(%'
+                    WHERE state = 0 AND (uuid LIKE 'r(%' OR uuid LIKE 'FlowResumeEvent(%')
                 ) r ON r.id = f.id
                 WHERE ({nameUnset} OR f.id LIKE {namePattern})
-                  AND (NOT {query.HideCompleted} OR NOT f.is_completed)
-                  AND (NOT {query.ProblematicOnly}
-                       OR (f.is_completed AND f.is_failed)
-                       OR (NOT f.is_completed AND r.id IS NULL AND split_part(f.id, ':', 1) = ANY({periodicNames})))
+                  AND CASE {scope}
+                      WHEN 0 THEN NOT f.is_completed
+                      WHEN 1 THEN f.is_completed
+                      WHEN 2 THEN (f.is_completed AND f.is_failed) OR f.id = ANY({stuckIds})
+                      ELSE TRUE
+                  END
                 ORDER BY f.id
                 LIMIT {limit}
                 """)
@@ -190,7 +192,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                 return new FlowSummary(
                     r.Id,
                     name,
-                    GetStatus(r.IsCompleted, r.IsFailed, r.HasResume, periodicNameSet.Contains(name)),
+                    stuck.ContainsKey(r.Id) ? FlowStatus.Stuck : GetStatus(r.IsCompleted, r.IsFailed, r.HasResume),
                     r.Version,
                     new Moment(TimeSpan.FromTicks(r.Version)));
             })
@@ -233,7 +235,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
             // Run the HandleResume method
             using var _ = Computed.BeginIsolation(); // Just in case
-            await flow.HandleResume(FlowHub, initReason, ct).ConfigureAwait(false);
+            await flow.HandleResume(FlowHub, resumeEvent, initReason, ct).ConfigureAwait(false);
             return flow.Version;
         }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
     }
@@ -491,15 +493,106 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         return (Flow)flow;
     }
 
-    // A PeriodicFlow always reschedules itself, so a non-completed one without a pending
-    // resume event has lost its wake-up = genuinely stuck. Other flow types legitimately
-    // rest without an event (e.g. an indexing flow that reached the tail), so for them the
-    // same situation means idle, not stuck.
-    private HashSet<string> GetPeriodicNames()
-        => FlowHub.Defs.ByName.Values
-            .Where(d => typeof(PeriodicFlow).IsAssignableFrom(d.Type))
-            .Select(d => d.Name.Value)
-            .ToHashSet(StringComparer.Ordinal);
+    private async Task<Dictionary<string, bool>> FindStuckFlows(
+        FlowsDbContext dbContext, string? name, CancellationToken cancellationToken)
+    {
+        // Checks the flows of types with MaxResumeGap last stored longer ago than that; the value is
+        // whether a resume is pending. Without IStuckDetectingFlow, "no resume pending" means stuck.
+        var result = new Dictionary<string, bool>();
+        var (names, cutoffs) = GetResumeGapCutoffs(name);
+        if (names.Length == 0)
+            return result;
+
+        var candidateIds = await dbContext.Database
+            .SqlQuery<string>($"""
+                SELECT f.id AS "Value"
+                FROM _flows f
+                JOIN unnest({names}, {cutoffs}) AS g(name, cutoff) ON split_part(f.id, ':', 1) = g.name
+                WHERE NOT f.is_completed AND f.version < g.cutoff
+                ORDER BY f.version
+                LIMIT {MaxStuckCheckCount}
+                """)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (candidateIds.Count == 0)
+            return result;
+
+        var nextResumeEvents = await GetNextResumeEvents(dbContext, candidateIds.ToArray(), cancellationToken)
+            .ConfigureAwait(false);
+        var dbFlows = await dbContext.Flows.AsNoTracking()
+            .Where(x => candidateIds.Contains(x.Id))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        foreach (var dbFlow in dbFlows) {
+            var flowId = FlowId.ParseOrNone(dbFlow.Id);
+            if (flowId.IsNone || !FlowHub.Defs.ByName.TryGetValue(flowId.Name, out var flowDef))
+                continue;
+
+            var nextResumeEvent = nextResumeEvents.GetValueOrDefault(dbFlow.Id);
+            var flow = (Flow?)null;
+            try {
+                flow = dbFlow.ToFlowData(flowDef.Type, flowId)?.GetFlow(FlowHub);
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "`{FlowId}`: its data can't be read, so it's checked as a plain flow", flowId);
+            }
+            var isStuck = flow is IStuckDetectingFlow stuckDetectingFlow
+                ? stuckDetectingFlow.IsStuck(nextResumeEvent)
+                : nextResumeEvent is null;
+            if (isStuck)
+                result[dbFlow.Id] = nextResumeEvent is not null;
+        }
+        return result;
+    }
+
+    private (string[] Names, long[] Cutoffs) GetResumeGapCutoffs(string? name)
+    {
+        // A cutoff is compared to _flows.version, the clock-based epoch ticks of the flow's last store
+        var now = FlowHub.SystemNow;
+        var flowDefs = FlowHub.Defs.ByName.Values
+            .Where(d => d.MaxResumeGap is not null && (name is null || d.Name.Value == name))
+            .ToList();
+        return (
+            flowDefs.Select(d => d.Name.Value).ToArray(),
+            flowDefs.Select(d => (now - d.MaxResumeGap!.Value).EpochOffset.Ticks).ToArray());
+    }
+
+    private async Task<Dictionary<string, FlowResumeEvent>> GetNextResumeEvents(
+        FlowsDbContext dbContext, string[] flowIds, CancellationToken cancellationToken)
+    {
+        var uuids = await dbContext.Database
+            .SqlQuery<string>($"""
+                SELECT uuid AS "Value"
+                FROM _events
+                WHERE state = 0 AND (uuid LIKE 'r(%' OR uuid LIKE 'FlowResumeEvent(%')
+                  AND split_part(substring(uuid FROM position('(' IN uuid) + 1), ')', 1) = ANY({flowIds})
+                """)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var dbEvents = await dbContext.Events.AsNoTracking()
+            .Where(x => uuids.Contains(x.Uuid))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var result = new Dictionary<string, (FlowResumeEvent Event, Moment DelayUntil)>();
+        foreach (var dbEvent in dbEvents) {
+            OperationEvent operationEvent;
+            try {
+                operationEvent = dbEvent.ToModel();
+            }
+            catch (Exception e) {
+                Log.LogWarning(e, "Event '{Uuid}' can't be read", dbEvent.Uuid);
+                continue;
+            }
+
+            if (operationEvent.Value is not FlowResumeEvent resumeEvent)
+                continue;
+
+            var key = resumeEvent.FlowId.Value;
+            if (!result.TryGetValue(key, out var earliest) || operationEvent.DelayUntil < earliest.DelayUntil)
+                result[key] = (resumeEvent, operationEvent.DelayUntil);
+        }
+        return result.ToDictionary(kv => kv.Key, kv => kv.Value.Event);
+    }
 
     private static string GetName(string flowId)
     {
@@ -507,11 +600,10 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         return nameLength <= 0 ? flowId : flowId[..nameLength];
     }
 
-    private static FlowStatus GetStatus(bool isCompleted, bool isFailed, bool hasResume, bool isPeriodic)
+    private static FlowStatus GetStatus(bool isCompleted, bool isFailed, bool hasResume)
         => isCompleted
             ? isFailed ? FlowStatus.Failed : FlowStatus.Completed
-            : hasResume ? FlowStatus.Scheduled
-            : isPeriodic ? FlowStatus.Stuck : FlowStatus.Idle;
+            : hasResume ? FlowStatus.Scheduled : FlowStatus.Idle;
 
     // Nested types
 
@@ -524,7 +616,8 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
         public int Completed { get; set; }
         public int Failed { get; set; }
         public int Scheduled { get; set; }
-        public int NoEvent { get; set; }
+        public int Idle { get; set; }
+        public int MaybeStuck { get; set; }
     }
 
     private sealed class RawRow

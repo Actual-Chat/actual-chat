@@ -50,7 +50,7 @@ public sealed class FlowResumeEventUuidTest(ITestOutputHelper @out)
 
         // assert
         WriteLine($"uuid={uuid}, delayUntil={resumeEvent.DelayUntil:O}");
-        uuid.Should().StartWith($"{nameof(FlowResumeEvent)}-",
+        uuid.Should().StartWith($"r({flowId.Value})-",
             because: "an immediate resume has no slot to coalesce into");
         resumeEvent.DelayUntil.Should().Be(requestedAt,
             because: "rounding it up would make ShardQueueProcessor postpone an immediate resume");
