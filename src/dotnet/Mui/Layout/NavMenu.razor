@@ -17,11 +17,8 @@
 </MudNavMenu>
 
 @code {
-    public const string Home = "/m";
-
     private RenderFragment RenderLink(MuiNavEntry entry)
-        => @<MudNavLink Href="@entry.Href" Icon="@entry.Icon"
-                        Match="@(entry.Href == Home ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+        => @<MudNavLink Href="@entry.Href" Icon="@entry.Icon" Match="NavLinkMatch.Prefix">
             @entry.Title
         </MudNavLink>;
 }

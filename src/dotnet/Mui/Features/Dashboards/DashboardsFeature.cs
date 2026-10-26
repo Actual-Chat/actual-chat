@@ -6,8 +6,6 @@ public static class DashboardsFeature
 {
     public static IServiceCollection AddMuiDashboards(this IServiceCollection services)
         => services
-            .AddMuiNavEntry(new("Overview", NavMenu.Home, Icons.Material.Filled.Dashboard, 0,
-                MuiNavGroups.Dashboards))
             .AddMuiNavEntry(new("Chats", "/m/dashboards/chats", Icons.Material.Filled.Forum,
                 Group: MuiNavGroups.Dashboards))
             .AddMuiNavEntry(new("Messages", "/m/dashboards/messages", Icons.Material.Filled.Message,
