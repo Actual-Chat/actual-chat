@@ -207,6 +207,18 @@ public sealed class IosCalls : CXProviderDelegate
         }
     }
 
+    public void ReportCallVideo()
+    {
+        // CallKit hears of video only when a call is reported, so a camera turned on mid-call is news to it
+        foreach (var (callUuid, call) in _calls) {
+            if (!call.IsAnswered)
+                continue;
+
+            Log.LogInformation("ReportCallVideo: #{ChatId}", call.ChatId);
+            _provider.ReportCall(new NSUuid(callUuid.ToString()), new CXCallUpdate { HasVideo = true });
+        }
+    }
+
     public bool ReportOutgoingCallStatus(ChatId chatId, CallerStatus status)
     {
         // Returns whether CallKit still holds the call - i.e. whether its end has to be watched for,

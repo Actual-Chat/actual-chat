@@ -144,6 +144,10 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         AudioSession.IsCallActive = isCallActive;
         // CallKit sets this for its own calls; an app-owned call only ever reports it here.
         AudioSession.IsCallVideo = hasVideo;
+#if IOS
+        if (isVideoOnlyChange && hasVideo)
+            IosCalls.Instance.ReportCallVideo();
+#endif
         // The pick belongs to the call that just ended; the next one starts from the defaults.
         if (!isCallActive)
             AudioSession.ResetCallRouteLatch();
