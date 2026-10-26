@@ -52,7 +52,10 @@ public sealed class NotificationServiceModule(IServiceProvider moduleServices)
         redisModule.AddRedisDb<NotificationDbContext>(services);
 
         // Flows
-        services.AddFlows().Add<Flows.MentionReminderFlow>().Add<Flows.NotificationConvergeFlow>();
+        services.AddFlows()
+            .Add<Flows.MentionReminderFlow>()
+            .Add<Flows.NotificationConvergeFlow>()
+            .Add<Flows.ChatNotificationConvergeFlow>();
 
         // DB
         var dbModule = Host.GetModule<DbModule>();

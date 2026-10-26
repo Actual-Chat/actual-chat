@@ -280,3 +280,17 @@ edited. The reason can be as short as whose decision it was.
   L83 `Duration`, L87 `Kind`, L97 `AudioEntryId`
   — member comment above the declaration — auto-properties (and the column notes on the
   other ones) have no body to host it; Alex Yakunin's decision
+
+## src/dotnet/Notifications.Service/NotificationsBackend.cs
+
+Pre-existing, reported again on every edit of the file; left as they are to keep #5610's diff
+focused (recorded per CLAUDE.md's rule for recurring violations).
+
+- `if (await IsChatUnderMaintenance(` (several places, also as `|| await IsChatUnderMaintenance(`
+  inside a condition) — await in a condition
+- `if (await ShouldDeferForActiveReader(` — await in a condition
+- `if (!Settings.EnablePttPush || await IsChatUnderMaintenance(` — await in a condition
+- L587 `private async Task<HashSet<UserId>> GetActiveParticipantUserIds(` — private helper among
+  public methods
+- `async Task<(` + `UserNotificationInfo Info,` (the local `Reconcile` in `ApplyHardUpdate`) —
+  local function's opening brace on the next line
