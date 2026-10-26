@@ -57,8 +57,11 @@ public partial class AccountUI
                     _ = AddAttribution(AttributionOrigin.Url, url, CancellationToken.None);
             };
         }
-        await AddAttribution(AttributionOrigin.Url, History.DefaultItem.Url, cancellationToken)
-            .ConfigureAwait(false);
+        var landingUrl = History.DefaultItem.Url;
+        await AddAttribution(AttributionOrigin.Url, landingUrl, cancellationToken).ConfigureAwait(false);
+        // A link that cold-starts an app reaches it only as the initial navigation
+        if (AutoNavigationUI.InitialUrl is { } initialUrl && initialUrl.Value != landingUrl)
+            await AddAttribution(AttributionOrigin.Url, initialUrl.Value, cancellationToken).ConfigureAwait(false);
         await CaptureInstallReferrer(cancellationToken).ConfigureAwait(false);
         await SendPendingAttributions(cancellationToken).ConfigureAwait(false);
     }

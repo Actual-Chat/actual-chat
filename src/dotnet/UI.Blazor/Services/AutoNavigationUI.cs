@@ -16,12 +16,14 @@ public enum AutoNavigationReason
 
 public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 {
-    private volatile List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
+    private List<(LocalUrl Url, AutoNavigationReason Reason)>? _autoNavigationCandidates = new();
     private AttentionHold? _attentionHold;
+
+    public LocalUrl? InitialUrl { get; private set; }
 
     public Task<LocalUrl> GetAutoNavigationUrl()
         => Dispatcher.InvokeAsync(async () => {
-            if (_autoNavigationCandidates == null)
+            if (Volatile.Read(ref _autoNavigationCandidates) == null)
                 throw StandardError.Internal($"{nameof(GetAutoNavigationUrl)} is called twice.");
 
             var defaultUrl = GetDefaultAutoNavigationUrl();
@@ -49,6 +51,8 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
                     .First()
                 : (defaultUrl, AutoNavigationReason.Unknown);
             Log.LogInformation($"{nameof(GetAutoNavigationUrl)}: {{AutoNavigationUrl}}", url);
+            // On an app, a link that started it, not the WebView's start URL
+            InitialUrl = url;
             if (HoldsAttention(reason))
                 HoldAttentionAt(url, reason);
             return url;
@@ -91,7 +95,8 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
     public Task NavigateTo(LocalUrl url, AutoNavigationReason reason, bool mustReplace = false)
     {
         Dispatcher.AssertAccess();
-        if (_autoNavigationCandidates == null) {
+        var candidates = Volatile.Read(ref _autoNavigationCandidates);
+        if (candidates == null) {
             // Initial navigation already happened
             Log.LogInformation("* NavigateTo({Url}, {Reason})", url, reason);
             if (HoldsAttention(reason))
@@ -107,7 +112,7 @@ public sealed class AutoNavigationUI(UIHub hub) : UIServiceBase<UIHub>(hub)
 
         // Initial navigation hasn't happened yet
         Log.LogInformation("+ NavigateTo({Url}, {Reason})", url, reason);
-        _autoNavigationCandidates.Add((url, reason));
+        candidates.Add((url, reason));
         return Task.CompletedTask;
     }
 
