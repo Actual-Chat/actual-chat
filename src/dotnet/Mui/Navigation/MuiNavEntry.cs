@@ -7,6 +7,7 @@ public sealed record MuiNavGroup(string Title, string Icon, int Order);
 public static class MuiNavGroups
 {
     public const string Dashboards = "Dashboards";
+    public const string Marketing = "Marketing";
     public const string System = "System";
 }
 

@@ -29,6 +29,7 @@ mode, or mobile layout.
 | Section | What it holds |
 |---------|---------------|
 | **Dashboards** (`/m`, `/m/dashboards/...`) | The main section; its first page, Overview (`/m`), will show key metrics. One dashboard per area: Chats, Messages, Notifications, Sessions, Uploads, Users (user activity first: texts, voice, uploads, new chats and places). Places and other areas can follow. A dashboard runs SQL (sometimes with post-processing in code) and shows how a few metrics trend, so it is possible to follow what is happening. See "Dashboards" below. |
+| **Marketing** (`/m/marketing/...`) | Where users come from and how far they get: Campaigns and Keywords (users per ad campaign and per keyword, one chart for each that brought someone in the latest window), Milestones (users who reached each milestone, next to sign-ups). Same period control and charts as the dashboards. |
 | **System** (`/m/system/...`) | One page per subsystem or tool (Digest, Events, Flows, Host, Mesh, Operations, SQL). A page shows the subsystem's reports **and** offers its actions next to them, so one page answers "what is going on" and "let me fix it". |
 
 Within a group the pages are alphabetical; Overview is first. A section registers itself (see
@@ -152,6 +153,7 @@ button, "Reset cache" (drops the 10-minute cache) and an "Auto update" switch th
 (when the cache expires). Times are shown in the browser's time zone ("Updated 18:20:30 (just now)", the
 latest window's range), and "X ago" comes from `IFusionTime`. A metric may declare how far back its data
 exists (for example sign-outs); older windows show "-".
+A dynamic dashboard (`MuiDynamicMetricsView`, used by Campaigns and Keywords) first runs a list query over the latest window and makes one metric per row it returns, most important first, at most 30: a campaign or keyword with nothing in the latest window gets no chart. Values in the list (campaign names, keywords) come from users' URLs, so they go into the metric SQL through `MuiMetricSql.Literal`.
 Other intervals can be added to the same control later. System pages show the current state and have no
 period control. Events and Operations are live: per database, sizes and rates (events and operations per
 second over the last 60 s and 5 min), refreshed every 5 s with no cache; Events drills down to the events
@@ -208,6 +210,9 @@ actions instead of handling exceptions per page.
 | Sessions | `/m/dashboards/sessions` | Active sessions, active signed-in sessions, new sessions (logins), sign-outs, compared over time |
 | Uploads | `/m/dashboards/uploads` | Pictures, videos, files and links added to chats |
 | Users | `/m/dashboards/users` | Active users, new accounts (sign-ups), users who sent messages, users who spoke |
+| Campaigns | `/m/marketing/campaigns` | Users whose attribution of each campaign was first seen in the window, per campaign seen in the latest window |
+| Keywords | `/m/marketing/keywords` | The same per keyword: the Google search term or the Apple keyword id |
+| Milestones | `/m/marketing/milestones` | Sign-ups and the users who reached each milestone |
 | Digest | `/m/system/digest` | Digest email preview for the viewer's unread chats or selected chats |
 | Events | `/m/system/events` | Per database: event table size, pending and delayed events, creation rate; drill-down by event type. Refreshes every 5 s, no cache |
 | Flows | `/m/system/flows` | Stats per flow type, instances with filters kept in the query string, console and error per instance |

@@ -1,0 +1,103 @@
+@namespace ActualChat.Mui
+@inherits MuiComponent
+@implements IDisposable
+@inject MuiPeriodState MuiPeriodState
+@inject IMuiDb MuiDb
+
+@if (_error is not null) {
+    <MudAlert Severity="Severity.Error" Class="mb-2" Style="white-space: pre-wrap">@_error</MudAlert>
+}
+@if (_metrics is null) {
+    <MudProgressLinear Indeterminate="true" Class="mb-2"/>
+}
+else if (_metrics.Count == 0) {
+    // No metrics, so no query to run: only the controls, to pick another interval
+    <MudPaper Class="pa-4 mb-4">
+        <PeriodControls/>
+    </MudPaper>
+    <MudText Color="Color.Secondary">@EmptyText</MudText>
+}
+else {
+    @if (_isTruncated) {
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">
+            Only the top @MaxCount of the latest window are shown.
+        </MudText>
+    }
+    <MuiMetricsView @key="@_cacheName" Database="@Database" CacheName="@_cacheName" Metrics="@_metrics"/>
+}
+
+@code {
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(10);
+
+    private readonly CancellationTokenSource _disposeCts = new();
+    private IReadOnlyList<MuiMetric>? _metrics;
+    private string _cacheName = "";
+    private bool _isTruncated;
+    private string? _error;
+    private MuiInterval? _loadedInterval;
+    private int _loadGeneration;
+
+    [Parameter, EditorRequired]
+    public string Database { get; set; } = "";
+    [Parameter, EditorRequired]
+    public string CacheName { get; set; } = "";
+    [Parameter, EditorRequired]
+    public string ListSql { get; set; } = "";
+    [Parameter, EditorRequired]
+    public Func<string?[], int, MuiMetric> CreateMetric { get; set; } = null!;
+    [Parameter]
+    public int MaxCount { get; set; } = 30;
+    [Parameter]
+    public string EmptyText { get; set; } = "Nothing in the latest window.";
+
+    public void Dispose()
+    {
+        MuiPeriodState.Changed -= OnPeriodsChanged;
+        _disposeCts.Cancel();
+        _disposeCts.Dispose();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await MuiPeriodState.EnsureLoaded().ConfigureAwait(true);
+        MuiPeriodState.Changed += OnPeriodsChanged;
+        await Load().ConfigureAwait(true);
+    }
+
+    // Private methods
+
+    private void OnPeriodsChanged()
+        // Only the interval changes the latest window; the step and the count are the metrics view's business
+        => _ = InvokeAsync(() => MuiPeriodState.Settings.Interval != _loadedInterval ? Load() : Task.CompletedTask);
+
+    private async Task Load()
+    {
+        var settings = MuiPeriodState.Settings;
+        _loadedInterval = settings.Interval;
+        var generation = ++_loadGeneration;
+        var window = settings.GetWindows(DateTime.UtcNow)[0];
+        var sql = MuiMetricSql.Apply(ListSql, window);
+        var query = new MuiSqlQuery(Database, sql, MaxCount, 30_000, $"{CacheName}|list|{settings.Interval}");
+        _error = null;
+        try {
+            var result = await MuiDb.Query(Session, query, CacheDuration, _disposeCts.Token).ConfigureAwait(true);
+            if (generation != _loadGeneration)
+                return; // A newer load has been started
+
+            var metrics = result.Rows.Select((row, i) => CreateMetric(row, i)).ToArray();
+            _metrics = metrics;
+            _isTruncated = result.IsTruncated;
+            // Each list gets metrics of its own, so their cached values are kept apart
+            _cacheName = $"{CacheName}|{string.Join("\n", metrics.Select(m => m.Sql)).GetXxHash3L()}";
+        }
+        catch (OperationCanceledException) {
+            return; // The page is gone
+        }
+        catch (Exception e) {
+            _error = e.Message;
+            _metrics ??= [];
+        }
+
+        StateHasChanged();
+    }
+}

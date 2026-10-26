@@ -25,12 +25,14 @@ public sealed class MuiModule(IServiceProvider moduleServices)
         services.AddScoped(c => new MuiPeriodState(c.GetRequiredService<ProtectedLocalStorage>()));
 
         services.AddMuiNavGroup(new(MuiNavGroups.Dashboards, Icons.Material.Filled.Assessment, 10));
-        services.AddMuiNavGroup(new(MuiNavGroups.System, Icons.Material.Filled.Settings, 20));
+        services.AddMuiNavGroup(new(MuiNavGroups.Marketing, Icons.Material.Filled.Campaign, 15));
+        services.AddMuiNavGroup(new(MuiNavGroups.System,Icons.Material.Filled.Settings, 20));
         services.AddMuiDashboards();
         services.AddMuiDigest();
         services.AddMuiEvents();
         services.AddMuiFlows();
         services.AddMuiHost();
+        services.AddMuiMarketing();
         services.AddMuiMesh();
         services.AddMuiOperations();
         services.AddMuiSql();
