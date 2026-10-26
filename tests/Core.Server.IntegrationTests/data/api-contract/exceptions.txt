@@ -20,3 +20,5 @@
 2.21 IUserSettings.Get:3 result<56> - UserCoachTip has its own key and is read only via ICoach.GetPendingTip
 2.21 IUserSettings.Get:3 result<57> - UserCoachWeeklyNote has its own key, which 2.21 never asks for
 2.21 IUserSettings.Get:3 result<58> - UserAndroidSettings has its own key, which 2.21 never asks for
+2.21 IDiagnostics.GetFlowStats:2 - only the /test/flows developer page calls it
+2.22 IDiagnostics.GetFlowStats:2 - no client calls it: the flows page moved to the server-side Mui, and clients no longer register IDiagnostics
