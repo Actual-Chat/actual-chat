@@ -43,5 +43,7 @@ Both entitlements have to be granted by the provisioning profile the build is si
 with, otherwise codesign fails with `MT7140`. Adding one means registering it on the
 Apple Developer portal, enabling it for every member id, and regenerating each of their
 profiles — the Debug ones plus `App Store [Share] [Dev]`. The App Group's members are
-`chat.actual[.dev].app`, `chat.actual[.dev].app.share` and `chat.actual[.dev].app.widget`;
-the widget is provisioned but reads nothing yet, see `src/swift/VoxtActivities/README.md`.
+`chat.actual[.dev].app`, `chat.actual[.dev].app.share`, `chat.actual[.dev].app.widget` and
+`chat.actual[.dev].app.notification`; the notification service extension reads the RPC endpoint
+(see `src/swift/VoxtNotificationService/README.md`), and the widget is provisioned but reads
+nothing yet, see `src/swift/VoxtActivities/README.md`.
