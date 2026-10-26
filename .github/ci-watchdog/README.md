@@ -155,6 +155,12 @@ turned down. A decision that changes one of these adds or replaces its entry in 
 
 ### The daily agent
 
+- **2026-10-26 — The cap is three cards to fill, and an empty window still writes priority 5
+  cards.** Why: on 2026-10-24 and 25 nothing arrived and the prompt said "stop" after the
+  registry, so the queue of four entries waiting since 2026-10-23 lost all six slots of the two
+  quietest days; on 2026-10-26 the agent wrote the regression card alone and called the queue
+  "over the cap" with two slots free. Writing fewer than three now takes a stated reason.
+  Rejected: raising the cap to make up for lost days — a quiet day would still waste it.
 - **2026-10-22 — A returned flake is checked against the fix that closed it, gets a priority 2
   card, and its fix's author decides whether to reopen.** Why: the agent only commented on the
   closed issue, so the test stayed out of the registry and nobody owned the decision; #4862
