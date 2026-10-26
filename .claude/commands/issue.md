@@ -28,16 +28,20 @@ Split the argument on ` -- ` (space-dash-dash-space):
 - Everything before `--` is the **title input**
 - Everything after `--` is the **body** (optional)
 
-**Title must be laconic** — short, punchy, a sentence fragment that starts with a capital letter. Strip filler words. **No `fix:`/`feat:`/`chore:` prefixes** — those are commit and branch conventions, an issue title is plain English (the issue *type* carries the Bug/Feature/Task distinction). Examples:
-- "There is an issue where the login page redirects in a loop" → `Login page redirects in a loop`
-- "We need to add the ability to upload avatars" → `Avatar upload`
-- "The chat message list is very slow when there are many messages" → `Chat list is slow with many messages`
+**Title must be laconic, clear and self-describing** — short, a sentence fragment that starts with a capital letter, and readable on its own in a board column or a search hit: someone who sees only the title knows which part of the app it is about and what it asks for. Name the platform or component where it matters (`iPhone call`, `Mac app`, `share extension`); drop filler words, internal type names, and anything only the body explains. **No `fix:`/`feat:`/`chore:` prefixes** — those are commit and branch conventions, an issue title is plain English (the issue *type* carries the Bug/Feature/Task distinction).
 
-If the user already provided a short title, keep its wording; only capitalize the first letter and drop a commit-style prefix.
+**Decide the type first** (the rule in step 4), then word the title by it:
+
+- `Bug` — the symptom: what goes wrong. "There is an issue where the login page redirects in a loop" → `Login page redirects in a loop`.
+- `Task` / `Feature` — what should exist, as a noun phrase. Nothing is broken, so a title that states an absence or a complaint ("No …", "… is easy to miss") reads as a bug report against an issue typed as work. "We need to add the ability to upload avatars" → `Avatar upload`; "No banner when video starts in a background iPhone call" → `Banner when video starts in a background iPhone call`; "Raised hand is easy to miss" → `More visible raised hand`.
+
+A Task title still names the outcome, not the implementation: `Banner when …`, not `Post a local notification from CallKit`.
+
+If the user already provided a short title, keep its wording; only capitalize the first letter, drop a commit-style prefix, and reword a Task or Feature title that is phrased as a defect.
 
 ### 1b. Craft the body
 
-An issue describes the **problem**, not the solution. Cover the symptom (what's broken, with concrete evidence — logs, crash reports, repro steps) and, when known, the root cause (why). **Do not include a fix, a recommended approach, or a list of files to change** — those belong in the PR. The team picks the approach; the issue tracks the problem.
+An issue describes the **problem**, not the solution. Cover the symptom (what's broken, with concrete evidence — logs, crash reports, repro steps) and, when known, the root cause (why). For a `Task` or `Feature` nothing is broken: cover what happens now and what is missing, not a symptom. **Do not include a fix, a recommended approach, or a list of files to change** — those belong in the PR. The team picks the approach; the issue tracks the problem.
 
 Same laconic register as the title: short sections, no filler. Skip "Open follow-ups" / "Future work" sections unless the user asked for them — separate issues are better than to-do lists tucked inside one.
 

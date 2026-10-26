@@ -83,8 +83,9 @@ wrong `Closes #N` on the PR.
 
 ### 2b. Create path
 
-Run the `/issue` command (`.claude/commands/issue.md`) with a laconic
-capitalized prefix-free title and a problem-only body drafted from the text.
+Run the `/issue` command (`.claude/commands/issue.md`) with a title and a
+problem-only body drafted from the text, both worded by the issue's type as
+`/issue` step 1 says: a symptom for a `Bug`, what should exist for a `Task`.
 It searches for duplicates again, creates the issue, assigns it to the current
 user, sets the type, and puts it on the board in **In Progress**.
 
