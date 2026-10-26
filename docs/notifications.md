@@ -42,6 +42,29 @@ it. Every removal appends to `PendingDismissals` in the same commit, and an entr
 is cleared only once its dismissal push has actually gone out, so a failed send
 is retried rather than lost.
 
+**Removed entries.** A removed entry never comes on screen, so neither a read
+nor a view can clear what anchors at it, and the filter hides it as well
+(`IsAnchorRemoved`). An entry-keyed notification (mention, reaction, ping) goes
+with its entry. A chat-keyed one covers every entry from its `StartEntryLid`, so
+it goes once all of them are removed, or once the reader has seen the last entry
+left in the chat (`GetMaxLid(chatId, includeRemoved: false)`). A thread's ping
+stays, because the thread outlives the entry it hangs off. The lookups (the anchor's
+tile, the chat's min lid) err towards "still there": a value computed just
+before a new entry landed must not read as that entry's removal.
+
+Hiding is enough for whatever reads `ListActive`, but a phone that reads nothing
+keeps its banner and iOS badge until a dismissal push arrives. So a removal also
+resumes `ChatNotificationConvergeFlow` for its chat: `ChatEntryChangedEvent` for a
+single removal, `ChatEntriesPurgedEvent` for retention, wipes and account purges.
+It's a `BatchedSweepFlow`: a sweep resumes `NotificationConvergeFlow` for
+`RemovalCleanupBatchSize` members per `RemovalCleanupBatchPeriod`, and a removal
+during a sweep earns one more sweep after it. An entry removed within
+`UrgentRemovalAge` of being posted resumes it within seconds (a delayed resume, so
+a burst shares one quanta slot); older removals, purges included, share one per
+`RemovalCleanupDelay`.
+As a backstop for anything no trigger reaches, `NotificationConvergeFlow` re-runs
+every `ConvergePeriod` while the user has active notifications.
+
 **History.** Removal is final for the active set but not for the record:
 `OnNotify` enqueues `UserNotifiedEvent` for every notification before the
 dormant and active-reader checks, and `NotificationsBackend.OnUserNotifiedEvent`

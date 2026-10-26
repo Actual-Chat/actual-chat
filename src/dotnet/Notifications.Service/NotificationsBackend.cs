@@ -124,10 +124,12 @@ public class NotificationsBackend(IServiceProvider services)
         // re-invalidates this method whenever a read/heard position or mode setting changes.
         var seenPositions = await GetSeenPositions(userId, info.Items, cancellationToken).ConfigureAwait(false);
         var modes = await GetChatNotificationModes(userId, info.Items, cancellationToken).ConfigureAwait(false);
+        var removedAnchors = await GetRemovedAnchors(info.Items, cancellationToken).ConfigureAwait(false);
         var now = Clocks.SystemClock.Now;
         AutoInvalidateOnNextExpiration(info.Items, now);
         var items = info.Items.Without(n =>
-            IsSeen(n, seenPositions) || IsSuppressedByMode(n, modes) || IsExpired(n, now));
+            IsSeen(n, seenPositions) || IsSuppressedByMode(n, modes) || IsExpired(n, now)
+            || IsAnchorRemoved(n, removedAnchors, seenPositions));
         if (items.Count == info.Items.Count)
             return info;
 
@@ -676,13 +678,7 @@ public class NotificationsBackend(IServiceProvider services)
             return;
 
         if (entry.IsRemoved && oldEntry is not { IsRemoved: true }) {
-            // A removed entry can't come on screen, and a reaction clears only once its entry has been seen.
-            if (!author.UserId.IsGuest) {
-                var reactionId = ReactionNotification.New(author.UserId, entry.Id).Id;
-                await Queues
-                    .Enqueue(new NotificationsBackend_Dismiss(reactionId), cancellationToken)
-                    .ConfigureAwait(false);
-            }
+            await ScheduleRemovalCleanup(entry.ChatId, entry.BeginsAt, cancellationToken).ConfigureAwait(false);
             return;
         }
         if (!ShouldNotify(entry, oldEntry, changeKind))
@@ -721,6 +717,13 @@ public class NotificationsBackend(IServiceProvider services)
             return oldEntry.IsContentStreaming && !entry.IsContentStreaming;
         }
     }
+
+    // [EventHandler]
+    public virtual Task OnChatEntriesPurgedEvent(
+        ChatEntriesPurgedEvent eventCommand,
+        CancellationToken cancellationToken)
+        // Retention, wipes and purges of an account's or a chat's entries: never a message just taken back
+        => ScheduleRemovalCleanup(eventCommand.ChatId, default, cancellationToken);
 
     // [EventHandler]
     public virtual async Task OnReactionChangedEvent(
@@ -950,6 +953,17 @@ public class NotificationsBackend(IServiceProvider services)
 
         var maintenanceMode = await MaintenancesBackend.GetMode(chatId, cancellationToken).ConfigureAwait(false);
         return maintenanceMode != MaintenanceMode.None;
+    }
+
+    private Task ScheduleRemovalCleanup(ChatId chatId, Moment entryBeginsAt, CancellationToken cancellationToken)
+    {
+        // Only a delayed resume coalesces with others in its quanta slot, so even the urgent one is delayed.
+        // A message taken back right after it was posted is likely still on someone's lock screen.
+        var resumeEvent = FlowHub.NewResumeEvent<Flows.ChatNotificationConvergeFlow>(chatId.Value);
+        resumeEvent = Clocks.SystemClock.Now - entryBeginsAt < Settings.UrgentRemovalAge
+            ? resumeEvent.WithDelay(TimeSpan.FromSeconds(1))
+            : resumeEvent.WithDelay(Settings.RemovalCleanupDelay, Settings.RemovalCleanupDelay);
+        return resumeEvent.Schedule(cancellationToken);
     }
 
     private async Task<bool> IsLateCallTranscript(
@@ -1397,6 +1411,81 @@ public class NotificationsBackend(IServiceProvider services)
         return seenEntryLid >= entryLid;
     }
 
+    // A removed entry never comes on screen, so neither a read nor a view clears what anchors at it.
+    // An entry-keyed notification goes with its entry; a chat-keyed one covers every entry from its
+    // start, so it goes once all of them are removed or the reader has seen the last one left.
+    private static bool IsAnchorRemoved(
+        Notification notification, RemovedAnchors removedAnchors, IReadOnlyDictionary<ChatId, long> seenPositions)
+    {
+        if (GetRemovableAnchorId(notification) is not { } anchorId || !removedAnchors.EntryIds.Contains(anchorId))
+            return false;
+        if (notification is ChatEntryNotification)
+            return true;
+
+        var chatId = anchorId.ChatId;
+        var lastEntryLid = removedAnchors.LastEntryLids.GetValueOrDefault(chatId);
+        var startEntryLid = notification switch {
+            ConversationNotification n => n.StartEntryLid,
+            ChatEntryRelatedNotification n => n.StartEntryId.LocalId,
+            _ => anchorId.LocalId,
+        };
+        if (lastEntryLid < startEntryLid)
+            return true;
+
+        var seenEntryLid = seenPositions.GetValueOrDefault(chatId);
+        return seenEntryLid > 0 && seenEntryLid >= lastEntryLid;
+    }
+
+    private async Task<RemovedAnchors> GetRemovedAnchors(
+        IEnumerable<Notification> notifications, CancellationToken cancellationToken)
+    {
+        var anchorIds = notifications
+            .Select(GetRemovableAnchorId)
+            .SkipNullItems()
+            .Distinct()
+            .ToList();
+        if (anchorIds.Count == 0)
+            return RemovedAnchors.None;
+
+        var anchorStates = await anchorIds
+            .Select(async id => (
+                Id: id,
+                IsRemoved: await IsEntryRemoved(id, cancellationToken).ConfigureAwait(false)))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        var removedIds = anchorStates.Where(x => x.IsRemoved).Select(x => x.Id).ToHashSet();
+        if (removedIds.Count == 0)
+            return RemovedAnchors.None;
+
+        var lastEntryLids = await removedIds
+            .Select(id => id.ChatId)
+            .Distinct()
+            .Select(async chatId => (
+                ChatId: chatId,
+                LastEntryLid: await ChatsBackend.GetMaxLid(chatId, false, cancellationToken).ConfigureAwait(false)))
+            .Collect(cancellationToken)
+            .ConfigureAwait(false);
+        return new RemovedAnchors(removedIds, lastEntryLids.ToDictionary(x => x.ChatId, x => x.LastEntryLid));
+    }
+
+    private async Task<bool> IsEntryRemoved(ChatEntryId entryId, CancellationToken cancellationToken)
+    {
+        // Errs towards "still there": a tile or a min lid computed just before a new entry landed must
+        // not read as that entry's removal, or a fresh notification would be dropped as it arrives.
+        var idTile = Constants.Chat.EntryIdTiles.GetTile(entryId.LocalId);
+        var tile = await ChatsBackend
+            .GetTile(entryId.ChatId, idTile.Range, true, cancellationToken)
+            .ConfigureAwait(false);
+        var entry = tile.Entries.FirstOrDefault(e => e.LocalId == entryId.LocalId);
+        if (entry is not null)
+            return entry.IsRemoved;
+
+        // Retention and wipes delete rows outright, and only a lid below the first one left is
+        // known to be one of those - a missing entry may just be newer than the tile.
+        var minLid = await ChatsBackend.GetMinLid(entryId.ChatId, cancellationToken).ConfigureAwait(false);
+        return minLid > entryId.LocalId;
+    }
+
     private async Task<bool> ShouldDeferForActiveReader(
         UserId userId, Notification notification, CancellationToken cancellationToken)
     {
@@ -1563,6 +1652,16 @@ public class NotificationsBackend(IServiceProvider services)
                 .SendPttWake(chatId, startedAt, chat?.Title.NullIfEmpty() ?? "Voxt", pttDeviceIds, cancellationToken)
                 .ConfigureAwait(false);
         }
+    }
+
+    private static ChatEntryId? GetRemovableAnchorId(Notification notification)
+    {
+        // A thread outlives the entry it hangs off (see ChatsBackend.OnPurgeEntries), so its ping does too
+        if (notification is ThreadNotification)
+            return null;
+
+        var (chatId, entryLid) = GetReadAnchor(notification);
+        return chatId is null || entryLid <= 0 ? null : ChatEntryId.New(chatId, entryLid);
     }
 
     private static (ChatId? ChatId, long EntryLid) GetReadAnchor(Notification notification)
@@ -2046,6 +2145,8 @@ public class NotificationsBackend(IServiceProvider services)
             // triggers can't converge: the filter would keep hiding what this leaves committed.
             var modes = await GetChatNotificationModes(userId, committed.Items, cancellationToken)
                 .ConfigureAwait(false);
+            var removedAnchors = await GetRemovedAnchors(committed.Items, cancellationToken)
+                .ConfigureAwait(false);
             var current = committed;
             var dismissed = new List<Notification>();
             // Only the caller-requested removals earn a read-position advance. The filter-driven
@@ -2060,7 +2161,8 @@ public class NotificationsBackend(IServiceProvider services)
                 var isSeen = isRequested || IsSeen(existing, seenPositions);
                 var isGone = isSeen
                     || IsSuppressedByMode(existing, modes)
-                    || IsExpired(existing, now);
+                    || IsExpired(existing, now)
+                    || IsAnchorRemoved(existing, removedAnchors, seenPositions);
                 if (isGone) {
                     current = current with { Items = current.Items.Without(x => x.Id == existing.Id) };
                     dismissed.Add(existing);
@@ -2208,6 +2310,16 @@ public class NotificationsBackend(IServiceProvider services)
     // notifications fall back to the dedup key.
     private static string GetPushGroupKey(Notification notification)
         => notification.GetPushTag() ?? notification.SimilarityKey;
+
+    // Nested types
+
+    // The notifications' anchor entries that are removed, and the last entry left in each of their chats
+    private sealed record RemovedAnchors(
+        IReadOnlySet<ChatEntryId> EntryIds,
+        IReadOnlyDictionary<ChatId, long> LastEntryLids)
+    {
+        public static readonly RemovedAnchors None = new(new HashSet<ChatEntryId>(), new Dictionary<ChatId, long>());
+    }
 
     private sealed class SoftBuffer
     {
