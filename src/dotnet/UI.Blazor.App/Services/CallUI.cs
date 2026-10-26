@@ -245,7 +245,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         var hasMic = await AudioRecorder.MicrophonePermission
             .CheckOrRequest(cancellationToken)
             .ConfigureAwait(true);
-        if (hasMic)
+        // The mic prompt can outlast the call, and the hang-up has already stopped its media by then
+        var isInCall = GetActiveCallNonComputed() is { Phase: CallPhase.Active } call && call.ChatId == chatId;
+        if (hasMic && isInCall)
             await ChatAudioUI.SetRecordingChatId(chatId).ConfigureAwait(true);
     }
 
