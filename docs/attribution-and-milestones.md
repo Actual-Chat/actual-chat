@@ -35,7 +35,7 @@ New fields need no app update, and bad input yields nothing rather than an error
 
 | Origin | Raw value | Captured |
 |---|---|---|
-| `Url` | an app URL with campaign parameters: the first one and every later one | every app start and navigation |
+| `Url` | an app URL with campaign parameters: the page or link that started the app, and every later one | every app start and navigation |
 | `Referral` | `join:<inviteId>` or `user:<userId>`: an invite link or a user page someone shared | when a guest opens one |
 | `PlayReferrer` | the Play install referrer query | once per install |
 | `AppleAdServices` | Apple's whole AdServices answer (JSON) | once per install, within Apple's 24 h |
