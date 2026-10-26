@@ -172,8 +172,8 @@ and `/create-pr` read: `git config "branch.<name>.base" <release branch>`.
 
 ### 7. Create path
 
-Run the `/issue` command with a laconic, capitalized, prefix-free title and a
-problem-only body drafted from step 2, and pass `--todo` when step 5 says ToDo (`/issue` defaults to In
+Run the `/issue` command with a title and a problem-only body drafted from
+step 2, both worded by the issue's type as `/issue` step 1 says, and pass `--todo` when step 5 says ToDo (`/issue` defaults to In
 Progress). `/issue` returns the new number; continue at step 6 (d). Assignment
 and the board are already handled by `/issue` — do not redo (a)–(c).
 
