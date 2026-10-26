@@ -1,0 +1,13 @@
+@namespace ActualChat.Mui
+@page "/m/marketing/keywords"
+
+<MudText Typo="Typo.h5" Class="mb-2">Keywords</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+    Users who came through each ad keyword: one chart per keyword that brought someone in the latest window, most
+    users first. Google sends the search term, Apple only the keyword id.
+</MudText>
+
+<MuiDynamicMetricsView Database="users" CacheName="keywords"
+                       ListSql="@MarketingMetrics.KeywordListSql"
+                       CreateMetric="@MarketingMetrics.CreateKeywordMetric"
+                       EmptyText="No keyword brought anyone in the latest window."/>

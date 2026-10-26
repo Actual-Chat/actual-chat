@@ -1,0 +1,10 @@
+@namespace ActualChat.Mui
+@page "/m/marketing/milestones"
+
+<MudText Typo="Typo.h5" Class="mb-2">Milestones</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+    How many users reached each milestone in the window. These are the steps that predict a user stays, and the
+    events GA4 gets for ad optimization.
+</MudText>
+
+<MuiMetricsView Database="users" CacheName="milestones" Metrics="@MarketingMetrics.Milestones"/>

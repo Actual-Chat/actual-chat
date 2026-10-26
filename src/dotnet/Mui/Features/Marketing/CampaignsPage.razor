@@ -1,0 +1,13 @@
+@namespace ActualChat.Mui
+@page "/m/marketing/campaigns"
+
+<MudText Typo="Typo.h5" Class="mb-2">Campaigns</MudText>
+<MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+    Users who came through each campaign: one chart per campaign that brought someone in the latest window, most
+    users first.
+</MudText>
+
+<MuiDynamicMetricsView Database="users" CacheName="campaigns"
+                       ListSql="@MarketingMetrics.CampaignListSql"
+                       CreateMetric="@MarketingMetrics.CreateCampaignMetric"
+                       EmptyText="No campaign brought anyone in the latest window."/>

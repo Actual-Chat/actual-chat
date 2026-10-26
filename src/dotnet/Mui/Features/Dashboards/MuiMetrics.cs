@@ -24,15 +24,17 @@ public static class MuiMetricSql
     public static string BuildOne(MuiMetric metric, MuiWindow window)
         => Apply(metric.Sql, window);
 
+    public static string Apply(string sql, MuiWindow window)
+        => sql.Replace("{from}", Literal(window.From)).Replace("{to}", Literal(window.To));
+
     public static string Literal(DateTime value)
         => "timestamptz '" + value.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'") + "'";
+
+    public static string Literal(string value)
+        // Data values (campaign names, keywords) come from user-controlled URLs, so they go in as escaped literals
+        => "'" + value.Replace("'", "''") + "'";
 
     // Relative change of the current value against a compared one; null when it can't be computed
     public static double? GetChangePercent(double current, double compared)
         => compared == 0 ? null : (current - compared) / Math.Abs(compared) * 100;
-
-    // Private methods
-
-    private static string Apply(string sql, MuiWindow window)
-        => sql.Replace("{from}", Literal(window.From)).Replace("{to}", Literal(window.To));
 }
