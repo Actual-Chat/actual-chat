@@ -126,7 +126,7 @@ A card is a comment that turns a failure into one decision for a person: what fa
 4. a new flake you filed in this run;
 5. a registry entry that has no card yet and failed in the last 14 days, not only in the window. Count only failures on a commit that already contains the latest change to the test's file: take that change with `git log -1 --format=%H origin/dev -- <test file>` and check it with `git merge-base --is-ancestor <change> <failure sha>`. A failure from before the test last changed shows nothing about the test as it is now. It may predate a fix, or instrumentation a person added and is waiting on, as #5523 is for #5497. The entry with the most such failures goes first; among equals, the one whose oldest such failure is earliest. The count puts the flake that costs the most red runs ahead of a one-off, and the age keeps a flake that fails every few days from losing the cap to fresher failures every time. Nothing starves: an entry that got its card leaves priority 5, so the queue shrinks by up to three a day.
 
-**At most three cards per run**, by that priority; list the rest under `Triage pending` in the report. **One card per signature**: if the issue already has a comment carrying `<!-- watchdog-triage -->` with the same `Signature:` line, do not write another — link the existing one in the report. **Except** when that card's proposed action was `wait` or `instrument` and this failure ran on a commit that contains the change the card was waiting for (the fix or the instrumentation it names): that failure is exactly what the card asked for, so write a new card from it and link the earlier one.
+**Three cards per run**, taken down that priority list until three are written or the list runs out: a regression card does not end the run's cards, the next ones come from the priorities below it, down to 5. List what is left under `Triage pending`. Writing fewer than three while candidates remain needs a reason, given in that line — "over the cap" is only for what did not fit after three. **One card per signature**: if the issue already has a comment carrying `<!-- watchdog-triage -->` with the same `Signature:` line, do not write another — link the existing one in the report. **Except** when that card's proposed action was `wait` or `instrument` and this failure ran on a commit that contains the change the card was waiting for (the fix or the instrumentation it names): that failure is exactly what the card asked for, so write a new card from it and link the earlier one.
 
 A failure in priority 3 that has no issue gets its card **in the report**, under `Urgent`, not in a new issue: the filing bar for a new flake does not change.
 
@@ -158,7 +158,7 @@ Urgent:
 Decisions (one line each; the card has the detail):
 1. <test> — <proposed action> (confidence <x>) — <card link>
 
-Triage pending (over the cap): <test>, … — or "none"
+Triage pending (over the cap | <why fewer than three cards>): <test>, … — or "none"
 
 New flakes:
 - <name — X failures (Y in window), branches, issue link — or "none">
@@ -198,4 +198,4 @@ Rules for the numbers — a digest that contradicts itself is worse than a short
 
 **Push notification.** Send one (`PushNotification`) only when `Urgent` lists something, with that one line and the journal comment link. On any other day send none: the journal is read every morning anyway.
 
-If nothing arrived in the window, say so in two lines, then still print the `Registry` section, and stop. Do not restate what is already in the journal, and do not produce conclusions the records do not support.
+If nothing arrived in the window, say so in two lines, then still write priority 5 cards (§5a) — an empty window is when the queue has the whole cap — and print `Decisions`, `Triage pending`, `Registry`, `Triaged runs: none (empty window)` and `Triaged up to:` unchanged; leave out the other sections. Do not restate what is already in the journal, and do not produce conclusions the records do not support.
