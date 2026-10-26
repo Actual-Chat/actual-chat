@@ -28,3 +28,9 @@ body.hoverable .message-reactions-add {
 .reaction-authors-menu-item-emoji {
     @apply h-5 w-5;
 }
+.message-reactions-pending {
+    @apply opacity-60;
+}
+.message-reactions-failed {
+    @apply opacity-60 line-through;
+}
