@@ -429,20 +429,22 @@ public class DubbingTranslationFlowTest(
         var ct = cts.Token;
         var sourceId = await Tester.RecordVoiceOnlyUtterance(chatId, Languages.Russian, cancellationToken: ct);
         var dubId = StreamId.New(sourceId, Languages.English);
-
-        // act - the two ShareWaitDelay cycles WaitForSourceTranscript spends noticing the audio
-        // ended and then giving it one more pass span roughly [2s, 4s); publish in the middle of
-        // that window for margin against Task.Delay running long under load. The transcript stream
-        // is registered only once PushTranscript is called (not once any content is written to
-        // it), so starting that call itself is what has to land late here.
-        var getAudioTask = backend.GetAudio(dubId, TimeSpan.Zero, ct);
-        await Task.Delay(TimeSpan.FromSeconds(3), ct);
+        var streamingBackend = (AudioStreamingBackend)backend;
         var source = Channel.CreateUnbounded<TranscriptDiff>();
         source.Writer.TryWrite(Stable(SourceText) - Transcript.Empty);
-        var pushSourceTask = BackgroundTask.Run(
-            () => backend.PushTranscript(sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct),
-            ct);
+        var pushSourceTask = TaskCompletionSourceExt.New<Task>();
+        // PushTranscript registers the stream before its first await, so the transcript lands
+        // between the pass that saw the audio end and the grace pass after it
+        streamingBackend.OnSourceTranscriptGracePass = id => {
+            if (id == sourceId)
+                pushSourceTask.TrySetResult(backend.PushTranscript(
+                    sourceId, new RpcStream<TranscriptDiff>(source.Reader.ReadAllAsync(ct)), ct));
+        };
+
+        // act
+        var getAudioTask = backend.GetAudio(dubId, TimeSpan.Zero, ct);
         await backend.WhenTranscriptPublished(sourceId, ct);
+        streamingBackend.OnSourceTranscriptGracePass = null;
         await Tester.CreateStreamingEntry(chatId, Languages.Russian, streamId: sourceId.Value, cancellationToken: ct);
 
         // assert
@@ -452,7 +454,8 @@ public class DubbingTranslationFlowTest(
         chunks.Should().Equal([FakeTranslator.Translated(SourceText, Languages.English)]);
 
         source.Writer.Complete();
-        await pushSourceTask.SilentAwait(false);
+        var pushSource = await pushSourceTask.Task;
+        await pushSource.SilentAwait(false);
     }
 
     [Fact(Timeout = 90_000)]

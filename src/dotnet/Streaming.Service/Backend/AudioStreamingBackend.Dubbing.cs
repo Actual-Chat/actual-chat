@@ -21,6 +21,9 @@ public partial class AudioStreamingBackend
     private ISpeechSynthesizer? SpeechSynthesizer => field ??= Services.GetService<ISpeechSynthesizer>();
     private SpeakerVoices SpeakerVoices => field ??= Services.GetRequiredService<SpeakerVoices>();
 
+    // internal for tests: the grace pass is a real-time window a test can't aim at with a delay
+    internal Action<StreamId>? OnSourceTranscriptGracePass { get; set; }
+
     // Protected/internal methods
 
     // internal for tests
@@ -470,6 +473,8 @@ public partial class AudioStreamingBackend
                 return memoizer;
 
             isAudioEnded = audio?.WhenRunning is not { IsCompleted: false };
+            if (isAudioEnded)
+                OnSourceTranscriptGracePass?.Invoke(sourceStreamId);
         }
     }
 
