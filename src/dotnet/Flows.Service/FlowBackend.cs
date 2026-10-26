@@ -117,9 +117,10 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
         // Raw SQL here (and in List) because none of these translate to LINQ: split_part to derive
         // the flow type from the id, FILTER aggregates, and most of all the join to _events on the
-        // FlowId — which DbEvent stores only inside its `uuid` ("FlowResumeEvent(<id>)-at-..."), so
-        // it has to be parsed out in SQL. All interpolated values are EF parameters, not string
-        // concatenation. Single shared DB, so one unsharded scan is correct.
+        // FlowId — which DbEvent stores only inside its `uuid` ("r(<id>)...", or "FlowResumeEvent(<id>)..."
+        // for events written before that format), so it has to be parsed out in SQL. All interpolated
+        // values are EF parameters, not string concatenation. Single shared DB, so one unsharded scan
+        // is correct.
         var aggRows = await dbContext.Database
             .SqlQuery<AggRow>($"""
                 SELECT split_part(f.id, ':', 1) AS "Name",
@@ -129,9 +130,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                        COUNT(*) FILTER (WHERE NOT f.is_completed AND r.id IS NULL)::int AS "NoEvent"
                 FROM _flows f
                 LEFT JOIN (
-                    SELECT DISTINCT split_part(substring(uuid FROM char_length('FlowResumeEvent(') + 1), ')', 1) AS id
+                    SELECT DISTINCT split_part(substring(uuid FROM position('(' IN uuid) + 1), ')', 1) AS id
                     FROM _events
-                    WHERE state = 0 AND uuid LIKE 'FlowResumeEvent(%'
+                    WHERE state = 0 AND (uuid LIKE 'r(%' OR uuid LIKE 'FlowResumeEvent(%')
                 ) r ON r.id = f.id
                 GROUP BY split_part(f.id, ':', 1)
                 """)
@@ -170,9 +171,9 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
                        (r.id IS NOT NULL) AS "HasResume"
                 FROM _flows f
                 LEFT JOIN (
-                    SELECT DISTINCT split_part(substring(uuid FROM char_length('FlowResumeEvent(') + 1), ')', 1) AS id
+                    SELECT DISTINCT split_part(substring(uuid FROM position('(' IN uuid) + 1), ')', 1) AS id
                     FROM _events
-                    WHERE state = 0 AND uuid LIKE 'FlowResumeEvent(%'
+                    WHERE state = 0 AND (uuid LIKE 'r(%' OR uuid LIKE 'FlowResumeEvent(%')
                 ) r ON r.id = f.id
                 WHERE ({nameUnset} OR f.id LIKE {namePattern})
                   AND (NOT {query.HideCompleted} OR NOT f.is_completed)
@@ -233,7 +234,7 @@ public class FlowBackend : ShardedDbServiceBase<FlowsDbContext>, IFlowBackend
 
             // Run the HandleResume method
             using var _ = Computed.BeginIsolation(); // Just in case
-            await flow.HandleResume(FlowHub, initReason, ct).ConfigureAwait(false);
+            await flow.HandleResume(FlowHub, resumeEvent, initReason, ct).ConfigureAwait(false);
             return flow.Version;
         }, new RetryLogger(Log), cancellationToken).ConfigureAwait(false);
     }

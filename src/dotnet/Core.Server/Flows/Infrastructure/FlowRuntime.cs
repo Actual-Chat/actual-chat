@@ -29,7 +29,7 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
         // must NOT inherit the flow's DelayQuanta — that bucket-Uuid dedup is meant to
         // coalesce external triggers, but it silently drops consecutive self-resumes
         // that fall into the same bucket, breaking Quota-driven Run chains.
-        var e = new FlowResumeEvent(Flow.Id, Hub).WithDelayQuanta(TimeSpan.Zero);
+        var e = new FlowResumeEvent(Flow.Id, Hub).WithDelayQuanta(TimeSpan.Zero).WithSelfResume();
         StagedEvents.Add(e);
         return e;
     }
@@ -84,7 +84,7 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
     private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil)
     {
-        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil);
+        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil).WithSelfResume();
         // Log.LogInformation("Staged event: {Event}", e);
         StagedEvents.Add(e);
         return e;
@@ -92,7 +92,7 @@ public class FlowRuntime(Flow flow, FlowHub hub, CancellationToken cancellationT
 
     private FlowResumeEvent StageResumeAt(FlowId flowId, Moment delayUntil, TimeSpan? delayQuanta)
     {
-        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil, delayQuanta);
+        var e = new FlowResumeEvent(flowId, Hub).WithDelay(delayUntil, delayQuanta).WithSelfResume();
         // Log.LogInformation("Staged event: {Event}", e);
         StagedEvents.Add(e);
         return e;

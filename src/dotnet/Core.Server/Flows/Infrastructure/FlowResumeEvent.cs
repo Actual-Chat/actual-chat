@@ -32,6 +32,12 @@ public sealed partial class FlowResumeEvent :
         private set => field = value is { } q ? q.Positive() : null;
     }
 
+    // Set on the resumes a flow stages for itself, which the flow tells from external ones by it.
+    // Each kind has its own dedup slots, so neither absorbs the other: the Uuid is
+    // "r(<FlowId>)[-self]-at-<slot>", and FlowBackend.List and ListStats read the FlowId from it.
+    [DataMember(Order = 4), Key(4)]
+    public bool IsSelfResume { get; private set; }
+
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]
     public ShardKey ShardKey => FlowId.ShardKey;
 
@@ -51,7 +57,8 @@ public sealed partial class FlowResumeEvent :
         if (delayUntilPart.Length > 0 && DelayQuanta > TimeSpan.Zero)
             delayUntilPart += $" mod {DelayQuanta.ToShortString("auto")}";
         var mustResetPart = MustReset ? $", {nameof(MustReset)} = true" : "";
-        return $"{nameof(FlowResumeEvent)}(`{FlowId}`{delayUntilPart}{mustResetPart})";
+        var isSelfResumePart = IsSelfResume ? $", {nameof(IsSelfResume)} = true" : "";
+        return $"{nameof(FlowResumeEvent)}(`{FlowId}`{delayUntilPart}{mustResetPart}{isSelfResumePart})";
     }
 
     // WithXxx methods
@@ -103,6 +110,13 @@ public sealed partial class FlowResumeEvent :
         return this;
     }
 
+    public FlowResumeEvent WithSelfResume(bool isSelfResume = true)
+    {
+        ThrowIfImmutable();
+        IsSelfResume = isSelfResume;
+        return this;
+    }
+
     // Schedule
 
     public Task Schedule(CancellationToken cancellationToken = default)
@@ -133,13 +147,13 @@ public sealed partial class FlowResumeEvent :
         // Uuid - a constant "-at-0" when DelayUntil was never set - which FlushEvents skips and the
         // queue dedups by. Only a resume scheduled ahead has a slot to coalesce into.
         operationEvent = new OperationEvent("", this);
+        var uuidPrefix = IsSelfResume ? $"r({FlowId.Value})-self" : $"r({FlowId.Value})";
         if (delayQuanta > TimeSpan.Zero && delay > TimeSpan.Zero) {
-            var uuidPrefix = $"{nameof(FlowResumeEvent)}({FlowId.Value})";
             operationEvent.SetDelayUntil(DelayUntil, delayQuanta, uuidPrefix);
             DelayUntil = operationEvent.DelayUntil; // The slot is the schedule - keep the two in sync
         }
         else {
-            operationEvent.Uuid = $"{nameof(FlowResumeEvent)}-{UuidGenerator.Next()}";
+            operationEvent.Uuid = $"{uuidPrefix}-{UuidGenerator.Next()}";
             operationEvent.SetDelayUntil(DelayUntil);
         }
 

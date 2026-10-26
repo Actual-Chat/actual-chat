@@ -57,6 +57,8 @@ public abstract class Flow : IFlowImpl
     public FlowConsole Console { get; private set; } = null!;
     [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
     protected Moment ResumedAt { get; private set; }
+    [IgnoreDataMember, MemoryPackIgnore, IgnoreMember]
+    protected FlowResumeEvent ResumeEvent { get; private set; } = null!;
 
     // IFlowImpl properties
     long IFlowImpl.Version { get => Version; set => Version = value; }
@@ -99,10 +101,12 @@ public abstract class Flow : IFlowImpl
 
     // IFlowImpl methods
 
-    async Task IFlowImpl.HandleResume(FlowHub hub, string? initReason, CancellationToken cancellationToken)
+    async Task IFlowImpl.HandleResume(
+        FlowHub hub, FlowResumeEvent resumeEvent, string? initReason, CancellationToken cancellationToken)
     {
         var runtime = Runtime = CreateRuntime(hub, cancellationToken);
         ResumedAt = runtime.Hub.Clocks.SystemClock.Now;
+        ResumeEvent = resumeEvent;
         try {
             if (this is IInboxProcessingFlow) {
                 var messages = await hub.GetInboxNonComputed(Id, cancellationToken).ConfigureAwait(false);
@@ -119,7 +123,8 @@ public abstract class Flow : IFlowImpl
                 goto exit;
             }
 
-            Console.Log($"[Resume] at {ResumedAt.ToDateTime():yy-MM-dd HH:mm:ss.fff}");
+            var resumeKind = resumeEvent.IsSelfResume ? "Self-Resume" : "Resume";
+            Console.Log($"[{resumeKind}] at {ResumedAt.ToDateTime():yy-MM-dd HH:mm:ss.fff}");
             await Resume(cancellationToken).ConfigureAwait(false);
 
             exit:
