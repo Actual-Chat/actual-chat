@@ -62,8 +62,13 @@
         };
         var modalRef = await ModalUI.Show(model).ConfigureAwait(true);
         await modalRef.WhenClosed.ConfigureAwait(true);
-        if (mustReload)
-            Hub.ReloadUI.Reload();
+        if (!mustReload)
+            return;
+
+        // The reloaded app takes the language from the server copy of the settings and overwrites
+        // the stored one with it, so a reload that beats this write reverts the choice
+        await LanguageUI.Settings.WhenWritten().WaitAsync(TimeSpan.FromSeconds(5)).SilentAwait(true);
+        Hub.ReloadUI.Reload();
     }
 
     public sealed class FormModel {
