@@ -4,53 +4,48 @@
     var keys = m.ApiKeys.OrderByDescending(x => x.CreatedAt).ToList();
 }
 
-<TileTopic Topic="@L.ApiKeys_CreateApiKey"/>
+<TileTopic Topic="@L.Settings_ApiKeys" Description="@L.ApiKeys_Description"/>
 
-<ButtonTile Class="btn-primary" Filled="true" Click="@OnCreateClick">
-    <Content>@L.ApiKeys_CreateApiKey</Content>
-</ButtonTile>
-
-@if (m.ApiKeys.Count > 0) {
-    <TileTopic Topic="@L.ApiKeys_YourApiKeys"/>
-
-    <Tile Class="api-key-tile">
-        @foreach (var key in keys) {
-            <TileItem IsHoverable="false">
-                <Content>
-                    <div class="c-key-info">
-                        @if (!key.IsActive) {
-                            <span class="c-deactivated">@L.ApiKeys_Deactivated</span>
-                        }
-                        <span class="c-key-name">@(key.Description.IsNullOrEmpty() ? L.ApiKeys_UnnamedKey : key.Description)</span>
-                        <span class="c-key-prefix">@key.IdPrefix...</span>
-                    </div>
-                    @if (key.IsActive) {
-                        <div class="c-deactivate">
-                            <ButtonRound
-                                Class="btn-sm btn-danger"
-                                Tooltip="@L.ApiKeys_Deactivate"
-                                Click="@(() => OnDeactivateClick(key.IdPrefix))">
-                                <i class="icon-trash03 text-xl"></i>
-                            </ButtonRound>
-                        </div>
-                    }
-                </Content>
-                <Caption>
-                    <span class="c-key-expires">@L.ApiKeys_Expires_Format(DateTimeConverter.ToLocalTime(key.ExpiresAt.ToDateTime()).ToString("g", DateFormatter))</span>
-                </Caption>
-            </TileItem>
-            @if (key != keys[^1]) {
-                <Divider />
-            }
-        }
-    </Tile>
-}
-
-@if (keys.Any(k => k.IsActive)) {
-    <ButtonTile Class="btn-danger" Filled="true" Click="@OnDeactivateAllClick">
-        <Content>@L.ApiKeys_DeactivateAll</Content>
-    </ButtonTile>
-}
+<Tile Class="tile-flat">
+    @foreach (var key in keys) {
+        <TileItem IsHoverable="false">
+            <Icon><i class="icon-key"></i></Icon>
+            <Content>
+                @KeyLabel(key)
+                <span class="c-dim">@key.IdPrefix...</span>
+            </Content>
+            <Caption>
+                @if (key.IsActive) {
+                    @L.ApiKeys_Expires_Format(ExpiresText(key))
+                } else {
+                    @L.ApiKeys_Deactivated
+                }
+            </Caption>
+            <Right>
+                @if (key.IsActive) {
+                    <HeaderButton
+                        Class="c-danger btn-sm"
+                        Tooltip="@L.ApiKeys_Deactivate"
+                        Click="@(() => OnDeactivateClick(key.IdPrefix))">
+                        <i class="icon-key-off"></i>
+                    </HeaderButton>
+                }
+            </Right>
+        </TileItem>
+    }
+    <TileItem Class="tile-item-action" Click="@OnCreateClick">
+        <Icon><i class="icon-plus"></i></Icon>
+        <Content>@L.Common_Create</Content>
+        <Caption>@L.ApiKeys_CreateCaption</Caption>
+    </TileItem>
+    @if (keys.Any(k => k.IsActive)) {
+        <TileItem Class="tile-item-action item-danger" Click="@OnDeactivateAllClick">
+            <Icon><i class="icon-key-off"></i></Icon>
+            <Content>@L.ApiKeys_DeactivateAll</Content>
+            <Caption>@L.ApiKeys_DeactivateAllCaption</Caption>
+        </TileItem>
+    }
+</Tile>
 
 @code {
     protected override ComputedState<Model>.Options GetStateOptions()
@@ -64,6 +59,12 @@
         var apiKeys = await Hub.Accounts.ListOwnSessions(Session, SessionKind.ApiKey, cancellationToken).ConfigureAwait(false);
         return new Model { ApiKeys = apiKeys };
     }
+
+    private string KeyLabel(SessionInfo key)
+        => key.Description.IsNullOrEmpty() ? L.ApiKeys_UnnamedKey : key.Description;
+
+    private string ExpiresText(SessionInfo key)
+        => DateTimeConverter.ToLocalTime(key.ExpiresAt.ToDateTime()).ToString("d", DateFormatter);
 
     private Task OnCreateClick()
         => Hub.ModalUI.Show(new ApiKeyCreateModal.Model());

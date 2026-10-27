@@ -32,14 +32,13 @@ body.narrow .close-settings-btn {
 .settings-modal .form-block {
     @apply p-0;
 }
+.settings-modal .form label {
+    @apply text-01;
+}
 /* first-tile-item (the account header) keeps the base left-aligned icon; every other form icon,
    which .form left-aligns via justify-start, falls back to the base centered slot. */
 .settings-modal .tile-item:not(.first-tile-item) .ti-left {
     @apply justify-center;
-}
-/* A block of tile rows keeps a little vertical air so it doesn't butt against the section gap. */
-.settings-tab .form-block:has(> .tile-item) {
-    @apply py-1.5;
 }
 
 /* ── Tile descriptions ── */
@@ -48,7 +47,7 @@ body.narrow .close-settings-btn {
    rows it describes */
 .settings-tab .tile > .c-description {
     @apply pl-12 pr-16;
-    @apply text-caption-500;
+    @apply text-caption;
 }
 
 /* A tab-level description sits right under the tab header, outside any tile, so it
@@ -77,26 +76,7 @@ body.narrow .close-settings-btn {
 }
 
 /* ── Push to Talk tab ── */
-
-.settings-tab .ptt-support-notice {
-    @apply flex-x items-center gap-x-2;
-    @apply px-3 py-2;
-    @apply rounded-lg border border-banner-error;
-    @apply bg-banner-error;
-    @apply text-caption-500 text-banner-error;
-    @apply cursor-pointer;
-}
-.settings-tab .ptt-support-notice > i {
-    @apply flex-none;
-    @apply text-xl;
-}
-.settings-tab .ptt-support-notice .c-text {
-    @apply flex-1;
-}
-.settings-tab .ptt-support-notice .c-details {
-    @apply flex-none;
-    @apply underline;
-}
+/* The support notice uses the shared .tile-notice primitive (settings-panel.css). */
 
 /* The tab content's flex gap reaches its direct children only, so this wrapper has to
    repeat it - otherwise every tile-topic's -mb-2 lands on the tile below with nothing
@@ -112,7 +92,7 @@ body.narrow .close-settings-btn {
 .settings-tab .ptt-chats-divider {
     @apply flex-x items-center gap-x-2;
     @apply px-4 pt-3 pb-1;
-    @apply text-caption-500 text-03;
+    @apply text-caption text-01;
 }
 .settings-tab .ptt-chats-divider::before,
 .settings-tab .ptt-chats-divider::after {
@@ -189,7 +169,7 @@ body.narrow .close-settings-btn {
 }
 
 .settings-tab .ptt-reply-window-settings .c-description {
-    @apply text-caption-500 text-03;
+    @apply text-caption text-03;
 }
 
 /* ── App Settings tab ── */
@@ -234,13 +214,6 @@ body.narrow .close-settings-btn {
     @apply whitespace-normal;
     @apply text-caption-500 text-03;
 }
-.clickable.transparent.tile-item:not(.selected):hover label,
-.clickable.transparent.tile-item:not(.selected):hover .ti-caption {
-    @apply text-01;
-}
-.clickable.transparent.tile-item:not(.selected):hover .c-comment {
-    @apply text-02;
-}
 
 /* ── Connection endpoints ── */
 
@@ -284,8 +257,10 @@ body.narrow .close-settings-btn {
 
 /* ── Your Account tab ── */
 
-.your-account-tile .ti-left i {
-    @apply text-xl;
+/* The account header's avatar is taller than a glyph, so top-aligned it sits a touch higher than its
+   own left inset; nudge it down 0.25rem so the gap above it matches the gap to its left. */
+.your-account-tile .first-tile-item .ti-left {
+    @apply mt-1;
 }
 .your-account-tile .c-actions {
     @apply flex-x items-center;
@@ -320,110 +295,34 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
     @apply text-success;
 }
 
-/* ── API Keys tab ── */
-
-.api-key-tile .tile-item {
-    @apply relative;
-}
-.api-key-tile .ti-title {
-    @apply max-h-none;
-}
-.api-key-tile:has(.c-deactivate) .ti-title {
-    @apply pr-12;
-}
-.api-key-tile .ti-caption {
-    @apply flex-y;
-}
-.api-key-tile .c-key-info {
-    @apply flex-x items-end gap-2;
-}
-.api-key-tile .c-key-name {
-    @apply overflow-hidden overflow-ellipsis;
-    @apply font-medium;
-}
-.api-key-tile .c-key-prefix {
-    @apply px-1;
-    @apply rounded-full;
-    @apply bg-banner-info;
-    @apply text-sm font-mono font-normal text-banner-info;
-}
-.api-key-tile .c-key-expires {
-    @apply text-sm font-mono font-normal text-03;
-}
-.api-key-tile .c-deactivated {
-    @apply text-sm font-normal text-danger;
-}
-.api-key-tile .c-deactivate {
-    @apply absolute right-0 top-0;
-}
-.api-key-tile .c-empty {
-    @apply text-sm text-03;
-}
-
 /* ── Connected apps ── */
 
-.connected-apps-tile .tile-item {
-    @apply relative;
-}
-.connected-apps-tile .ti-title,
-.connected-apps-tile .ti-caption {
-    @apply max-h-none;
-    @apply pr-12;
-}
-.connected-apps-tile .c-app-name {
-    @apply truncate;
-    @apply font-medium;
-}
-.connected-apps-tile .c-revoke {
-    @apply absolute right-0 top-0;
-}
-.connected-apps-tile .c-facts {
+.connected-apps-list .c-facts {
     @apply grid gap-x-3 gap-y-0.5;
     grid-template-columns: max-content minmax(0, 1fr);
     @apply text-xs font-normal;
 }
-.connected-apps-tile .c-facts > dt {
+.connected-apps-list .c-facts > dt {
     @apply text-03;
 }
-.connected-apps-tile .c-facts > dd {
+.connected-apps-list .c-facts > dd {
     @apply text-02;
-}
-.connected-apps-tile .c-empty {
-    @apply text-sm text-03;
 }
 
 /* ── Passkeys tab ── */
 
-.passkey-tile .tile-item {
-    @apply relative;
+/* The card opens with a passwordless-sign-in heading and a one-line explanation, above the list. */
+.passkey-tile .passkey-intro {
+    @apply flex-y gap-y-1;
+    @apply px-3 pt-2 pb-1;
 }
-.passkey-tile .ti-title,
-.passkey-tile .ti-caption {
-    @apply max-h-none;
-    @apply pr-12;
+.passkey-tile .passkey-intro .c-title {
+    @apply text-01;
+    @apply font-semibold;
 }
-.passkey-tile .c-name {
-    @apply truncate;
-    @apply font-medium;
-}
-.passkey-tile .c-delete {
-    @apply absolute right-0 top-0;
-}
-.passkey-tile .c-facts {
-    @apply flex-y gap-y-0.5;
-    @apply text-xs font-normal;
-}
-.passkey-tile .c-status {
-    @apply flex-x items-center gap-x-1;
-}
-.passkey-tile .c-status > i {
-    @apply text-sm;
-}
-.passkey-tile .c-status.synced {
-    @apply text-success;
-}
-.passkey-tile .c-status.local {
-    @apply text-warning;
+.passkey-tile .passkey-intro .c-text {
+    @apply text-caption;
+    @apply text-03;
 }
 
 /* ── API Key Create Modal ── */

@@ -1,57 +1,22 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, ListeningLingerSettings.Model>
-@attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
 @{
     if (State.IsInitial(out var m))
         return;
-
-    _formModel.FromModel(m);
+    var selectedId = m.Value.ToString();
 }
 
-<Form Model="@_formModel">
-    <DataAnnotationsValidator/>
-
-    <FormBlock>
-        <InputRadioGroup
-            Name="listening-linger"
-            DisplayName="@L.Transcription_KeepListening"
-            @bind-Value="_formModel.SelectedId">
-
-            @foreach (var item in Items) {
-                var formId = _formModel.GetFormId(item.Id);
-                <TileItem
-                    Class="@GetTileItemClass(item.Id)"
-                    Click="@(_ => OnTileClick(item.Id))">
-                    <Icon>
-                        <FormRadio
-                            Id="@formId"
-                            Value="@item.Id"/>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@formId" Text="@item.Title" IsRequired="true"></Label>
-                    </Content>
-                </TileItem>
-            }
-
-        </InputRadioGroup>
-    </FormBlock>
-</Form>
+<RadioTile Options="@Options" SelectedId="@selectedId" SelectedIdChanged="@OnSelectedIdChanged"/>
 
 @code {
-    private Item[] Items => [
+    private Task _whenUpdatedTask = Task.CompletedTask;
+
+    private IReadOnlyList<RadioTileOption> Options => [
         new(nameof(ListeningLinger.None), L.ListeningLinger_Off),
         new(nameof(ListeningLinger.For5Seconds), L.ListeningLinger_5Seconds),
         new(nameof(ListeningLinger.For10Seconds), L.ListeningLinger_10Seconds),
         new(nameof(ListeningLinger.For30Seconds), L.ListeningLinger_30Seconds),
     ];
-
-    private FormModel _formModel = null!;
-    private Task _whenUpdatedTask = Task.CompletedTask;
-
-    protected override void OnInitialized() {
-        _formModel = new (ComponentIdGenerator);
-        _formModel.SelectedIdChanged += OnSelectedIdChanged;
-    }
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await UserSettingsUI.UserListeningSettings()
@@ -75,40 +40,7 @@
         }
     }
 
-    private void OnTileClick(string id)
-        => _formModel.SelectedId = id;
-
-    private string GetTileItemClass(string id)
-        => _formModel.SelectedId == id ? "selected transparent" : "transparent";
-
     // Nested types
-
-    public sealed record Item(string Id, string Title);
-
-    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
-        private string _selectedId = nameof(ListeningLinger.None);
-
-        private string FormId { get; } = componentIdGenerator.Next("listening-linger-form");
-
-        public string SelectedId {
-            get => _selectedId;
-            set {
-                if (_selectedId == value)
-                    return;
-
-                _selectedId = value;
-                _ = SelectedIdChanged?.Invoke(value);
-            }
-        }
-
-        public event Func<string, Task>? SelectedIdChanged;
-
-        public string GetFormId(string id)
-            => $"{FormId}-{id}";
-
-        public void FromModel(Model model)
-            => _selectedId = model.Value.ToString();
-    }
 
     public sealed record Model(ListeningLinger Value);
 }

@@ -1,0 +1,28 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<div class="@CssClass" role="@(Click.HasDelegate ? "button" : null)" @onclick="@Click">
+    <i class="@Icon"></i>
+    <span class="c-text">@Text</span>
+    @if (!ActionText.IsNullOrEmpty()) {
+        <span class="c-details">@ActionText</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "icon-alert-circle";
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public string ActionText { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public NoticeKind Kind { get; set; } = NoticeKind.Error;
+    [Parameter] public EventCallback Click { get; set; }
+
+    private string CssClass => $"tile-notice tile-notice-{Kind.ToString().ToLowerInvariant()} {Class}";
+
+    // Nested types
+
+    public enum NoticeKind {
+        Error = 0,
+        Info,
+    }
+}

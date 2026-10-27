@@ -1,59 +1,26 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, CarAudioSettings.Model>
 @{
-#pragma warning disable IL2091
     if (State.IsInitial(out var m))
         return;
-
-    _formModel.FromModel(m.Settings);
+    var selectedId = m.Settings.GetCarAudioMode().ToString();
 }
 
 <TileTopic Topic="@L.CarAudio_SectionTitle"/>
 <Tile Class="car-audio-tile">
-    <Form Model="@_formModel">
-        <DataAnnotationsValidator/>
-
-        <FormBlock>
-            <InputRadioGroup
-                TValue="@CarAudioMode"
-                Name="car-audio-mode"
-                DisplayName="@L.CarAudio_Mode"
-                @bind-Value="_formModel.Mode">
-
-                @foreach (var mode in Modes) {
-                    var formId = _formModel.GetFormId(mode);
-                    <TileItem
-                        Class="@GetTileItemClass(mode)"
-                        Caption="@GetCaption(mode)"
-                        Click="@(_ => OnTileClick(mode))">
-                        <Icon>
-                            <FormRadio TValue="@CarAudioMode" Id="@formId" Value="@mode"/>
-                        </Icon>
-                        <Content>
-                            <Label InputId="@formId" Text="@ModeTitle(mode)" IsRequired="true"></Label>
-                        </Content>
-                    </TileItem>
-                }
-
-            </InputRadioGroup>
-        </FormBlock>
-    </Form>
+    <RadioTile Options="@Options" SelectedId="@selectedId" SelectedIdChanged="@OnSelectedIdChanged"/>
 </Tile>
 
 @code {
-    private static readonly CarAudioMode[] Modes =
-        [CarAudioMode.Car, CarAudioMode.CarAssistant, CarAudioMode.CarSpeakers, CarAudioMode.Phone];
-
-    private FormModel _formModel = null!;
-
-
     private ICarConnection? CarConnection => field ??= Hub.Services.GetService<ICarConnection>();
     private ILogger Log => field ??= Services.LogFor(GetType());
 
-    protected override void OnInitialized() {
-        _formModel = new(ComponentIdGenerator);
-        _formModel.ModeChanged += OnModeChanged;
-    }
+    private IReadOnlyList<RadioTileOption> Options => [
+        new(nameof(CarAudioMode.Car), L.CarAudio_Car, L.CarAudio_CarCaption),
+        new(nameof(CarAudioMode.CarAssistant), L.CarAudio_CarAssistant, L.CarAudio_CarAssistantCaption),
+        new(nameof(CarAudioMode.CarSpeakers), L.CarAudio_CarSpeakers, L.CarAudio_CarSpeakersCaption),
+        new(nameof(CarAudioMode.Phone), L.CarAudio_Phone, L.CarAudio_PhoneCaption),
+    ];
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
@@ -63,7 +30,8 @@
         return new(settings);
     }
 
-    private async Task OnModeChanged(CarAudioMode mode) {
+    private async Task OnSelectedIdChanged(string id) {
+        var mode = Enum.Parse<CarAudioMode>(id);
         Log.LogInformation("CarAudioSettings: Mode -> {Mode}", mode);
         if (mode == CarAudioMode.CarAssistant && CarConnection is { } carConnection) {
             var isGranted = await carConnection.RequestAssistantLinkPermission(CancellationToken.None);
@@ -77,62 +45,9 @@
         await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
 
-    private void OnTileClick(CarAudioMode mode)
-        => _formModel.Mode = mode;
-
-    private RenderFragment GetCaption(CarAudioMode mode)
-        => b => b.AddContent(0, ModeCaption(mode));
-
-    private string GetTileItemClass(CarAudioMode mode)
-        => _formModel.Mode == mode ? "selected transparent" : "transparent";
-
-    private string ModeTitle(CarAudioMode mode)
-        => mode switch {
-            CarAudioMode.CarAssistant => L.CarAudio_CarAssistant,
-            CarAudioMode.CarSpeakers => L.CarAudio_CarSpeakers,
-            CarAudioMode.Phone => L.CarAudio_Phone,
-            _ => L.CarAudio_Car,
-        };
-
-    private string ModeCaption(CarAudioMode mode)
-        => mode switch {
-            CarAudioMode.CarAssistant => L.CarAudio_CarAssistantCaption,
-            CarAudioMode.CarSpeakers => L.CarAudio_CarSpeakersCaption,
-            CarAudioMode.Phone => L.CarAudio_PhoneCaption,
-            _ => L.CarAudio_CarCaption,
-        };
-
     // Nested types
 
     public sealed record Model(UserCarAudioSettings Settings) {
         public static readonly Model None = new(new UserCarAudioSettings());
-    }
-
-    public sealed class FormModel {
-        private CarAudioMode _mode;
-
-        private string FormId { get; }
-
-        public CarAudioMode Mode {
-            get => _mode;
-            set {
-                if (_mode == value)
-                    return;
-
-                _mode = value;
-                _ = ModeChanged?.Invoke(value);
-            }
-        }
-
-        public event Func<CarAudioMode, Task>? ModeChanged;
-
-        public FormModel(ComponentIdGenerator componentIdGenerator)
-            => FormId = componentIdGenerator.Next("car-audio-form");
-
-        public string GetFormId(CarAudioMode mode)
-            => $"{FormId}-mode-{mode}";
-
-        public void FromModel(UserCarAudioSettings settings)
-            => _mode = settings.GetCarAudioMode();
     }
 }

@@ -29,6 +29,10 @@
 .form select {
     @apply border outline-none p-1 px-2;
 }
+/* A <select> opens a chooser on click — it reads as interactive, so give it the pointer. */
+.form select:not(:disabled) {
+    @apply cursor-pointer;
+}
 .form input:not([type='checkbox']):not(.dialog-unstyled).invalid,
 .form select.invalid {
     @apply border-danger;
@@ -225,10 +229,6 @@ form .form-section {
 .form .tile-item {
     @apply min-h-10;
     @apply h-auto;
-}
-
-.form .ti-left {
-    @apply justify-start;
 }
 
 .form .ti-center {

@@ -13,7 +13,7 @@
                 <TileItem ToggleValue="@m.IsSummarized"
                           ToggleValueChanged="@OnSummarizeToggleChanged"
                           ToggleDisabled="@(!m.IsOwner)">
-                    <Icon><i class="text-xl icon-ai-stars @iconCls"></i></Icon>
+                    <Icon><i class="icon-ai-stars @iconCls"></i></Icon>
                     <Content>@L.RightPanel_Summarize</Content>
                     <Caption>@GetStateCaption(m.IsSummarized, m.IsOwner)</Caption>
                 </TileItem>
@@ -25,7 +25,7 @@
                     _ => "text-03",
                 };
                 <TileItem Click="@OnPttSettingsClick">
-                    <Icon><i class="text-xl icon-push-to-talk @pttIconCls"></i></Icon>
+                    <Icon><i class="icon-push-to-talk @pttIconCls"></i></Icon>
                     <Content>@L.VoiceSettings_Ptt</Content>
                     <Caption>@GetPttCaption(m)</Caption>
                     <Right><i class="icon-chevron-right text-xl text-03"></i></Right>
@@ -36,7 +36,7 @@
                     Class="item-retention"
                     IsHoverable="@m.CanManageHistory"
                     Click="@OnHistoryRetentionClick">
-                    <Icon><i class="text-xl icon-history text-primary"></i></Icon>
+                    <Icon><i class="icon-history text-primary"></i></Icon>
                     <Content>@L.HistoryRetention_Title</Content>
                     <Caption>@L.PeriodText(retention)</Caption>
                     <Right>

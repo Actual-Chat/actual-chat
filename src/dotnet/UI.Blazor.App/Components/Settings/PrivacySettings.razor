@@ -9,7 +9,7 @@
 <Tile>
     <TileItem Click="@(m.Items.Count == 0 ? default : EventCallback.Factory.Create(this, OnToggleExpand))">
         <Icon>
-            <i class="icon-slash-circle text-2xl"></i>
+            <i class="icon-slash-circle"></i>
         </Icon>
         <Content>@L.Privacy_BlockedUsers</Content>
         <Right>
@@ -23,7 +23,7 @@
 
 @if (_isExpanded && m.Items.Count > 0) {
     <Tile>
-        <div class="max-h-[80svh] overflow-y-auto">
+        <div class="flex-y gap-y-0.5 max-h-[80svh] overflow-y-auto">
             @foreach (var item in m.Items) {
                 <TileItem IsHoverable="false">
                     <Icon>
@@ -41,9 +41,6 @@
                         </ButtonRound>
                     </Right>
                 </TileItem>
-                @if (item != m.Items[^1]) {
-                    <Divider/>
-                }
             }
         </div>
     </Tile>

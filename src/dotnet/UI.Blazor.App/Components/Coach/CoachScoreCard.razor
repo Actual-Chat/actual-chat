@@ -20,7 +20,7 @@
                     <i class="icon-star text-primary"></i>
                 </span>
             } else {
-                <i class="text-xl icon-star text-primary"></i>
+                <i class="icon-star text-primary"></i>
             }
         </Icon>
         <Content>
@@ -44,7 +44,7 @@
     </TileItem>
     @if (Focus is { } focus && s.Score is not null) {
         <TileItem Click="@FocusClick">
-            <Icon><i class="text-xl icon-ai-stars text-primary"></i></Icon>
+            <Icon><i class="icon-ai-stars text-primary"></i></Icon>
             <Content>@L.Coach_WorkingOn_Format(labels.MetricTitle(focus).ToLowerInvariant())</Content>
             <Caption>
                 @labels.FocusHint(focus, s.Metrics.FirstOrDefault(m => m.Kind == focus)?.Chips.FirstOrDefault())

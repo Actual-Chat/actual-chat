@@ -37,7 +37,8 @@
             <Right>
                 <div class="c-actions" @onclick:stopPropagation="true">
                     <CopyToClipboard
-                        ButtonClass="btn-xs btn-transparent tile-hidden-btn"
+                        Kind="CopyButtonKind.Header"
+                        ButtonClass="btn-sm tile-hidden-btn"
                         Text="@(UrlMapper.ToAbsolute(Links.User(account.AliasInfo)))"/>
                 </div>
             </Right>
@@ -56,7 +57,10 @@
         </Caption>
         <Right>
             <div class="c-actions" @onclick:stopPropagation="true">
-                <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@account.Email"/>
+                <CopyToClipboard
+                    Kind="CopyButtonKind.Header"
+                    ButtonClass="btn-sm tile-hidden-btn"
+                    Text="@account.Email"/>
                 <VerificationStatus
                     IsVerified="account.IsEmailVerified()"
                     Class="w-8 h-8"
@@ -72,7 +76,10 @@
         <Right>
             @if (account.Phone != null) {
                 <div class="c-actions" @onclick:stopPropagation="true">
-                    <CopyToClipboard ButtonClass="btn-xs btn-transparent tile-hidden-btn" Text="@readablePhone"/>
+                    <CopyToClipboard
+                        Kind="CopyButtonKind.Header"
+                        ButtonClass="btn-sm tile-hidden-btn"
+                        Text="@readablePhone"/>
                     <VerificationStatus
                         IsVerified="account.IsPhoneVerified()"
                         Class="w-8 h-8"

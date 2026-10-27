@@ -1,0 +1,55 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+@attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are untrimmed.")]
+
+<Form Model="@this">
+    <FormBlock>
+        <InputRadioGroup Name="@_name" @bind-Value="Current">
+            @foreach (var option in Options) {
+                var formId = GetFormId(option.Id);
+                <TileItem
+                    Class="@(option.Id == SelectedId ? "selected" : "")"
+                    Caption="@(option.Description.IsNullOrEmpty() ? null : Caption(option.Description))"
+                    Click="@(_ => OnSelect(option.Id))">
+                    <Icon>
+                        <FormRadio Id="@formId" Value="@option.Id"/>
+                    </Icon>
+                    <Content>
+                        <Label InputId="@formId" Text="@option.Label" IsRequired="true"></Label>
+                    </Content>
+                </TileItem>
+            }
+        </InputRadioGroup>
+    </FormBlock>
+</Form>
+
+@code {
+    private string _name = "";
+
+    [Parameter, EditorRequired] public IReadOnlyList<RadioTileOption> Options { get; set; } = [];
+    [Parameter, EditorRequired] public string SelectedId { get; set; } = "";
+    [Parameter] public EventCallback<string> SelectedIdChanged { get; set; }
+
+    private string Current {
+        get => SelectedId;
+        set => _ = OnSelect(value);
+    }
+
+    protected override void OnInitialized()
+        => _name = ComponentIdGenerator.Next("radio-tile");
+
+    private Task OnSelect(string id)
+        => id == SelectedId ? Task.CompletedTask : SelectedIdChanged.InvokeAsync(id);
+
+    // Option ids may carry characters that aren't valid in an HTML id (':' and '~' in transcriber ids),
+    // so the id used for the radio element and its label is sanitized; the bound value stays the raw id.
+    private string GetFormId(string id) {
+        var suffix = id.IsNullOrEmpty()
+            ? "none"
+            : new string(id.Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-').ToArray());
+        return $"{_name}-{suffix}";
+    }
+
+    private RenderFragment Caption(string text)
+        => b => b.AddContent(0, text);
+}

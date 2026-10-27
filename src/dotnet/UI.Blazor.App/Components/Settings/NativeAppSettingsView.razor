@@ -2,9 +2,12 @@
 
 <Tile Class="app-settings">
     @if (_autoStartState != null) {
-        <TileItem Class="auto-start">
+        <TileItem Class="auto-start"
+                  ToggleValue="@_autoStartState.IsEnabled"
+                  ToggleValueChanged="OnAutoStartChanged"
+                  ToggleDisabled="@(!_autoStartState.CanChange)">
             <Icon>
-                <i class="icon-settings text-xl"></i>
+                <i class="icon-settings"></i>
             </Icon>
             <Content>
                 @L.NativeApp_AutoStart
@@ -16,12 +19,6 @@
                     <span class="disable-reason">@_autoStartState.CanNotChangeReason</span>
                 }
             </Caption>
-            <Right>
-                <Toggle
-                    IsDisabled="@(!_autoStartState.CanChange)"
-                    IsChecked="@_autoStartState.IsEnabled"
-                    IsCheckedChanged="OnAutoStartChanged"/>
-            </Right>
         </TileItem>
     }
 </Tile>

@@ -14,16 +14,15 @@
 }
 
 @if (!isFullySupported) {
-    <div class="ptt-support-notice" @onclick="@OnSupportNoticeClick">
-        <i class="icon-alert-triangle"></i>
-        <span class="c-text">@L.PttSupport_Title</span>
-        <span class="c-details">@L.PttSupport_Details</span>
-    </div>
+    <TileNotice Icon="icon-alert-triangle"
+                Text="@L.PttSupport_Title"
+                ActionText="@L.PttSupport_Details"
+                Click="@OnSupportNoticeClick"/>
 }
 
 <Tile>
     <TileItem Click="@OnToggleDevice">
-        <Icon><i class="icon-push-to-talk text-xl"></i></Icon>
+        <Icon><i class="icon-push-to-talk"></i></Icon>
         <Content>@L.Ptt_UseOnThisDevice</Content>
         <Caption>@(isDesktop ? L.Ptt_UseOnDesktopCaption : L.Ptt_UseOnThisDeviceCaption)</Caption>
         <Right><Toggle IsChecked="@m.IsDeviceEnabled" IsCheckedChanged="@(_ => OnToggleDevice())"/></Right>
@@ -69,8 +68,7 @@
     <TileTopic Topic="@L.Ptt_GesturesTopic">
         <Right>
             @if (showSensorSettings) {
-                <Button Class="btn-outline btn-sm ptt-practice-btn" Click="@OnPracticeClick">
-                    <i class="icon-hand text-lg"></i>
+                <Button Class="btn-text btn-sm ptt-practice-btn" Click="@OnPracticeClick">
                     <span>@L.Ptt_PracticeTopic</span>
                 </Button>
             }
@@ -170,7 +168,7 @@
 <TileTopic Topic="@L.Ptt_CuesTopic"/>
 <Tile>
     <TileItem Click="@OnToggleCues">
-        <Icon><i class="icon-voice-01 text-2xl"></i></Icon>
+        <Icon><i class="icon-voice-01"></i></Icon>
         <Content>@L.Ptt_AudibleCues</Content>
         <Caption>@L.Ptt_AudibleCuesCaption</Caption>
         <Right><Toggle IsChecked="@m.Settings.AreAudibleCuesEnabled" IsCheckedChanged="@(_ => OnToggleCues())"/></Right>

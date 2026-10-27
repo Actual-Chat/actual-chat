@@ -19,3 +19,8 @@
 .edit-account-avatar {
     @apply w-30 h-30 self-center;
 }
+/* The avatar bio is prose, not a setting label, so it reads at normal weight and wraps freely. */
+.avatar-bio-item .ti-title {
+    @apply font-normal;
+    @apply whitespace-normal;
+}

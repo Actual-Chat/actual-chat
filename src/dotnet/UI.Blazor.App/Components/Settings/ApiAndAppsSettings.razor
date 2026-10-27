@@ -4,9 +4,15 @@
     var account = State.Value;
 }
 
-<ApiKeySettings/>
-<WebHookList Scope="WebHookScope.User" ScopeId="@account.Id.Value"/>
-<ConnectedAppsSettings/>
+<div class="settings-section">
+    <ApiKeySettings/>
+</div>
+<div class="settings-section">
+    <WebHookList Scope="WebHookScope.User" ScopeId="@account.Id.Value"/>
+</div>
+<div class="settings-section">
+    <ConnectedAppsSettings/>
+</div>
 
 @code {
     protected override ComputedState<AccountFull>.Options GetStateOptions()

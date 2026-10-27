@@ -2403,5 +2403,17 @@
   "Coach_SegmentPace": "కొలిచిన మాటల భాగాల్లో సగటు వేగం",
   "Coach_HistorySparse": "ఎక్కువ వ్యవధిని ప్రయత్నించండి.",
   "Coach_HistoryDates": "అర్హత ఉన్న మాట్లాడిన రోజులను తేదీలు సూచిస్తాయి; ఖాళీలు సున్నా విలువలు కావు.",
-  "Coach_HistoryGap_Format": "అర్హత ఉన్న కొలతలు లేని రోజులు: {0}"
+  "Coach_HistoryGap_Format": "అర్హత ఉన్న కొలతలు లేని రోజులు: {0}",
+  "ApiKeys_CreateCaption": "New API key",
+  "ApiKeys_DeactivateAllCaption": "All scripts and services lose access immediately",
+  "ApiKeys_Description": "Access Voxt from scripts and services. A key is shown once — copy it right away.",
+  "Common_Repeat": "Repeat",
+  "ConnectedApps_EmptyTitle": "No connected apps yet",
+  "Integrations_AddCaption": "New webhook",
+  "Passkeys_AddCaption": "A passkey for this device",
+  "Passkeys_EmptyText": "You currently sign in with an email code",
+  "Passkeys_EmptyTitle": "No passkeys yet",
+  "Passkeys_Headline": "Passwordless sign-in",
+  "UserInterface_OnboardingDescription": "The intro steps you went through when you first signed in.",
+  "UserInterface_WalkThroughDescription": "Pop-up tips that show how to use Voxt."
 }

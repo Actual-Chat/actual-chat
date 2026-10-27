@@ -384,6 +384,78 @@ Never inline the hex.
 There's an admin-only preview of the palette and buttons at `/test/colors` and
 `/test/buttons`.
 
+## Settings sections
+
+Every settings tab is built from the same primitives (`settings-panel.css`) so all ~26
+tabs read as one UI. A tab is a stack of **sections**; each section is a header
+(`TileTopic` — title + muted description) followed by one or more boxes. Wrap each section
+in `.settings-section` so the rows inside it sit closer (`gap-y-3`) than the sections do
+(the tab's own `gap-y-4`). **No divider lines between sections** — the gap is the separator.
+
+A box is a `Tile` of `TileItem`s. Inside a settings tab a tile is **flat**: it drops its
+card fill and padding, and its items become a hairline-divided list flush to the rounded
+edge. This is automatic — `.settings-tab-content .tile` carries the flat skin, so you just
+use `<Tile>` / `<TileItem>` as everywhere else. (Outside a settings tab — e.g. the webhook
+list reused in a chat/place modal — opt the same look in with `Class="tile-flat"`. A
+`Frameless` tile keeps its box-less input look and is left alone.)
+
+- A `TileItem` is one row: `Icon` (leading), `Content` (ti-title), `Caption` (ti-caption),
+  `Right` (trailing action / toggle / chevron). A named slot can't be wrapped in `@if` — put
+  the condition *inside* the slot (`<Right>@if (…) { … }</Right>`), because `TileItem` has no
+  catch-all child content.
+- `.tile-item-action` turns a row into a full-width action — a standard `TileItem` whose
+  leading `Icon` and `Content` label both take the primary colour, with an optional `Caption`
+  line below the label (e.g. `Create` / "New API key"); add `item-danger` for a destructive one.
+- `.settings-empty` — the box shown in place of the tile when there is nothing yet.
+
+Don't reach for a second row primitive: the flat `Tile` / `TileItem` *is* the settings list.
+`.settings-list` / `.settings-row` were an earlier parallel system and have been removed.
+
+### Row archetypes
+
+A settings row is one of a small set of archetypes. Reuse the primitive for its archetype
+rather than hand-building the markup — a bespoke row drifts from the rest.
+
+| Archetype | What it is | Primitive |
+|---|---|---|
+| **toggle** | a setting flipped in place | `TileItem` with `ToggleValue` (or a `Toggle` in `Right`) |
+| **select (menu)** | pick one value from a popover / bottom-sheet | `SelectTile` + `SelectTileOption` |
+| **select (radio)** | pick one with every option shown, each optionally described | `RadioTile` + `RadioTileOption` |
+| **navigation** | opens a sub-screen or modal; strong label, optional current value, trailing chevron | `NavTile` |
+| **data** | one item of a collection (key, session, webhook) | flat `Tile` / `TileItem` |
+| **action** | a primary call-to-action closing a list, or a lone trigger | `.tile-item-action` (`+ item-danger` for destructive) |
+| **notice** | an icon + line of text (+ optional action), framed as a soft banner | `TileNotice` (`Kind` = `Error` / `Info`) |
+| **info** | a read-only fact | plain `TileItem`, no `Click` |
+| **empty** | shown in place of the tile when a collection is empty | `.settings-empty` |
+
+`SelectTile` and `NavTile` share one look (strong label, muted value before the chevron), so a
+select row and a navigation row read as one family. `RadioTile` encapsulates the inline radio
+group (the `Form` / `InputRadioGroup` / `FormRadio` / `.selected` boilerplate lived copy-pasted
+in ~8 panels) — reach for it when the choices carry per-option descriptions (theme, render mode,
+car audio) or are few enough to show at once; reach for `SelectTile` when the value is better
+tucked behind a tap.
+
+An **edit-field row** — a value shown as the row's `Content` with its label as the `Caption`,
+tapped to edit (account name/email/phone, digest time/zone/language) — is *not* a nav row:
+it keeps the plain `TileItem` look so it stays consistent with its siblings, no chevron.
+
+### Where an action goes — by what it does, not by taste
+
+Placement is a **rule keyed to the action's relationship to the data**, not a per-developer
+choice. Every action is a **row inside a tile** — never a button in the section header, which
+would disconnect it from its content and duplicate the tab's top bar. Classify the action,
+then pick which tile its row joins:
+
+| Action | Placement | Example |
+|---|---|---|
+| **Adds an item to a collection** | the **last row of that collection's tile** — `.tile-item-action` (primary, leading `+`). Keep it even when the list is empty, so the box is never missing. | `+ Create key`, `+ Add passkey` |
+| **Destructive, acts on the whole collection** | a **row in that same tile**, below the add row — one `.tile-item-action.item-danger` row (red icon + label, like "Edit or delete" in the account tile). The red keeps it distinct without a second box; it only shows when the collection is non-empty. | `Revoke all`, `Sign out all sessions` |
+| **A one-off trigger** not tied to a list | its **own tile** with one `.tile-item-action` row. | `Repeat walk-through`, `Leave a review` |
+
+So the only question is which tile the action-row belongs to: *additive* and
+*destructive-bulk* → the collection's own tile, as its closing rows (add first, then the red
+bulk action); *standalone* → its own single-row tile.
+
 ## Scrollbars
 
 ### Hiding scrollbars: `no-scrollbar`

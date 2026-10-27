@@ -64,8 +64,10 @@ public static class LocalizedStringsLocalizerExt
         public string UserInterface_Font => l["UserInterface_Font"].Value;
         public string UserInterface_Theme => l["UserInterface_Theme"].Value;
         public string UserInterface_WalkThrough => l["UserInterface_WalkThrough"].Value;
+        public string UserInterface_WalkThroughDescription => l["UserInterface_WalkThroughDescription"].Value;
         public string UserInterface_RestartWalkThrough => l["UserInterface_RestartWalkThrough"].Value;
         public string UserInterface_Onboarding => l["UserInterface_Onboarding"].Value;
+        public string UserInterface_OnboardingDescription => l["UserInterface_OnboardingDescription"].Value;
         public string UserInterface_RestartOnboarding => l["UserInterface_RestartOnboarding"].Value;
         public string UserInterface_WalkThroughRestarted => l["UserInterface_WalkThroughRestarted"].Value;
         public string UserInterface_OnboardingRestarted => l["UserInterface_OnboardingRestarted"].Value;
@@ -204,6 +206,10 @@ public static class LocalizedStringsLocalizerExt
         public string Sessions_SignOutAllTitle => l["Sessions_SignOutAllTitle"].Value;
 
         public string Passkeys_Intro => l["Passkeys_Intro"].Value;
+        public string Passkeys_Headline => l["Passkeys_Headline"].Value;
+        public string Passkeys_EmptyTitle => l["Passkeys_EmptyTitle"].Value;
+        public string Passkeys_EmptyText => l["Passkeys_EmptyText"].Value;
+        public string Passkeys_AddCaption => l["Passkeys_AddCaption"].Value;
         public string Passkeys_Add => l["Passkeys_Add"].Value;
         public string Passkeys_Unavailable => l["Passkeys_Unavailable"].Value;
         public string Passkeys_YourPasskeys => l["Passkeys_YourPasskeys"].Value;
@@ -227,10 +233,14 @@ public static class LocalizedStringsLocalizerExt
         public string ApiKeys_Deactivate => l["ApiKeys_Deactivate"].Value;
         public string ApiKeys_Expires_Format(object arg0) => l["ApiKeys_Expires_Format", arg0].Value;
         public string ApiKeys_DeactivateAll => l["ApiKeys_DeactivateAll"].Value;
+        public string ApiKeys_Description => l["ApiKeys_Description"].Value;
         public string ApiKeys_DeactivateAllConfirm => l["ApiKeys_DeactivateAllConfirm"].Value;
         public string ApiKeys_DeactivateAllTitle => l["ApiKeys_DeactivateAllTitle"].Value;
+        public string ApiKeys_CreateCaption => l["ApiKeys_CreateCaption"].Value;
+        public string ApiKeys_DeactivateAllCaption => l["ApiKeys_DeactivateAllCaption"].Value;
         public string ConnectedApps_Title => l["ConnectedApps_Title"].Value;
         public string ConnectedApps_Empty => l["ConnectedApps_Empty"].Value;
+        public string ConnectedApps_EmptyTitle => l["ConnectedApps_EmptyTitle"].Value;
         public string ConnectedApps_Connected => l["ConnectedApps_Connected"].Value;
         public string ConnectedApps_LastUsed => l["ConnectedApps_LastUsed"].Value;
         public string ConnectedApps_Access => l["ConnectedApps_Access"].Value;
@@ -241,6 +251,7 @@ public static class LocalizedStringsLocalizerExt
 
         public string Integrations_Title => l["Integrations_Title"].Value;
         public string Integrations_Add => l["Integrations_Add"].Value;
+        public string Integrations_AddCaption => l["Integrations_AddCaption"].Value;
         public string Integrations_EmptyTitle => l["Integrations_EmptyTitle"].Value;
         public string Integrations_EmptyText => l["Integrations_EmptyText"].Value;
         public string Integrations_PersonalEmptyTitle => l["Integrations_PersonalEmptyTitle"].Value;
@@ -921,6 +932,7 @@ public static class LocalizedStringsLocalizerExt
         public string Common_Decline => l["Common_Decline"].Value;
         public string Common_Retry => l["Common_Retry"].Value;
         public string Common_Restart => l["Common_Restart"].Value;
+        public string Common_Repeat => l["Common_Repeat"].Value;
         public string Common_Configure => l["Common_Configure"].Value;
         public string Common_Update => l["Common_Update"].Value;
         public string Common_Skip => l["Common_Skip"].Value;

@@ -51,10 +51,8 @@ body.narrow .edit-settings-modal.narrow-view__modal__position-stretch:has(.chat-
 }
 .edit-settings-modal .form-block.with-input-radio .tile-item {
     @apply h-16;
-    @apply px-4;
-}
-.edit-settings-modal .form-block.with-input-radio .tile-item .ti-left {
-    @apply min-w-8;
+    /* Match the flat tiles below (a Tile's p-1): the old px-4 + min-w-8 pushed the radio right of them. */
+    @apply px-1;
 }
 .edit-settings-modal .form-block.with-input-radio .tile-item .ti-title label,
 .edit-settings-modal .form-block.with-input-radio .tile-item .ti-caption * {
@@ -103,10 +101,6 @@ body.hoverable .chat-settings-container .tile-item:hover {
 
 .form .field-allow-guest .ti-caption {
     @apply text-danger;
-}
-
-.edit-settings-modal .ti-left i {
-    @apply text-2xl;
 }
 
 .chat-type-tile-item .ti-right {

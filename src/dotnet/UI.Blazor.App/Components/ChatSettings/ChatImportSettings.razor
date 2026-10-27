@@ -4,8 +4,8 @@
     var chat = State.Value;
 }
 @if (chat is not null && chat.Rules.IsOwner() && chat.Id is not ThreadChatId && !chat.AllowAnonymousAuthors) {
-    <TileItem Class="item-danger" Click="OnStart" aria-disabled="@(chat.MaintenanceMode != MaintenanceMode.None)">
-        <Icon><i class="icon-cloud-upload text-xl"></i></Icon>
+    <TileItem Class="tile-item-action" Click="OnStart" aria-disabled="@(chat.MaintenanceMode != MaintenanceMode.None)">
+        <Icon><i class="icon-cloud-upload"></i></Icon>
         <Content>@L.ChatImport_Start</Content>
     </TileItem>
 }

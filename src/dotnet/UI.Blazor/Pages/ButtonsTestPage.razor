@@ -155,19 +155,19 @@
                     <span class="text-xs opacity-60">Transparent (intent = colour only)</span>
                     @foreach (var c in colors) {
                         <ButtonTile Class="@c.Cls">
-                            <Icon><i class="icon-at text-2xl"></i></Icon>
+                            <Icon><i class="icon-at text-lg"></i></Icon>
                             <Content>@c.Label tile</Content>
                         </ButtonTile>
                     }
                     <ButtonTile Class="btn-danger">
-                        <Icon><i class="icon-trash03 text-2xl"></i></Icon>
+                        <Icon><i class="icon-trash03 text-lg"></i></Icon>
                         <Content>
                             <span class="c-text">Danger with caption</span>
                             <span class="c-caption">Caption stays muted</span>
                         </Content>
                     </ButtonTile>
                     <ButtonTile IsDisabled="true">
-                        <Icon><i class="icon-at text-2xl"></i></Icon>
+                        <Icon><i class="icon-at text-lg"></i></Icon>
                         <Content>Disabled</Content>
                     </ButtonTile>
                 </div>
@@ -175,12 +175,12 @@
                     <span class="text-xs opacity-60">Filled (btn-tile-filled)</span>
                     @foreach (var c in colors) {
                         <ButtonTile Class="@c.Cls" Filled="true">
-                            <Icon><i class="icon-at text-2xl"></i></Icon>
+                            <Icon><i class="icon-at text-lg"></i></Icon>
                             <Content>@c.Label tile</Content>
                         </ButtonTile>
                     }
                     <ButtonTile Filled="true" IsDisabled="true">
-                        <Icon><i class="icon-at text-2xl"></i></Icon>
+                        <Icon><i class="icon-at text-lg"></i></Icon>
                         <Content>Disabled</Content>
                     </ButtonTile>
                 </div>

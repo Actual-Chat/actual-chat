@@ -7,35 +7,32 @@
         return;
 
     var isPersonal = Scope == WebHookScope.User;
+    var topic = isPersonal ? L.Settings_Webhooks : L.Integrations_Title;
+    var description = isPersonal ? L.Integrations_PersonalEmptyText : "";
 }
 
-<TileTopic Topic="@(isPersonal ? L.Settings_Webhooks : L.Integrations_Title)"/>
+<TileTopic Topic="@topic" Description="@description"/>
 
-@if (ShowAddButton) {
-    <ButtonTile Class="btn-primary" Filled="true" Click="@OnAddClick">
-        <Content>@L.Integrations_Add</Content>
-    </ButtonTile>
-}
-
-<Tile Class="web-hook-tile">
-    @if (m.Rows.Count == 0) {
-        <TileItem IsHoverable="false">
-            <Content>@(isPersonal ? L.Integrations_PersonalEmptyTitle : L.Integrations_EmptyTitle)</Content>
-            <Caption>@(isPersonal ? L.Integrations_PersonalEmptyText : L.Integrations_EmptyText)</Caption>
-        </TileItem>
-    } else {
+@if (m.Rows.Count == 0 && !ShowAddButton) {
+    <div class="settings-empty">@(isPersonal ? L.Integrations_PersonalEmptyTitle : L.Integrations_EmptyTitle)</div>
+} else {
+    <Tile Class="tile-flat web-hook-list">
         @foreach (var row in m.Rows) {
             @if (row.CanManage) {
                 <WebHookRow Row="@row" Click="@(() => OnHookClick(row.Hook.Id))"/>
             } else {
                 <WebHookRow Row="@row"/>
             }
-            @if (row != m.Rows[^1]) {
-                <Divider/>
-            }
         }
-    }
-</Tile>
+        @if (ShowAddButton) {
+            <TileItem Class="tile-item-action" Click="@OnAddClick">
+                <Icon><i class="icon-plus"></i></Icon>
+                <Content>@L.Common_Add</Content>
+                <Caption>@L.Integrations_AddCaption</Caption>
+            </TileItem>
+        }
+    </Tile>
+}
 
 @code {
     [Parameter, EditorRequired] public WebHookScope Scope { get; set; }

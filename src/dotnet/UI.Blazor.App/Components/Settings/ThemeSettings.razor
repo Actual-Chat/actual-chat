@@ -1,126 +1,31 @@
 @inherits ComponentBase<AppUIHub>
-@{
-#pragma warning disable IL2091
-}
-<Form Model="@_formModel">
-    <DataAnnotationsValidator/>
 
-    <FormBlock>
-        <InputRadioGroup
-            Name="theme"
-            DisplayName="@L.UserInterface_Theme"
-            @bind-Value="_formModel.Theme">
-
-            <TileItem
-                Class="@GetTileItemClass(Theme.Light)"
-                Click="@(_ => OnTileClick(Theme.Light))">
-                <Icon>
-                    <FormRadio
-                        Id="@_formModel.LightThemeFormId"
-                        Value="@GetThemeKey(Theme.Light)"/>
-                </Icon>
-                <Content>
-                    <Label InputId="@_formModel.LightThemeFormId" Text="@L.ThemeSettings_Light" IsRequired="true"></Label>
-                </Content>
-            </TileItem>
-
-            <TileItem
-                Class="@GetTileItemClass(Theme.Ash)"
-                Click="@(_ => OnTileClick(Theme.Ash))">
-                <Icon>
-                    <FormRadio
-                        Id="@_formModel.AshThemeFormId"
-                        Value="@GetThemeKey(Theme.Ash)"/>
-                </Icon>
-                <Content>
-                    <Label InputId="@_formModel.AshThemeFormId" Text="@L.ThemeSettings_LightLinkWater" IsRequired="true"></Label>
-                </Content>
-            </TileItem>
-
-            <TileItem
-                Class="@GetTileItemClass(Theme.Dark)"
-                Click="@(_ => OnTileClick(Theme.Dark))">
-                <Icon>
-                    <FormRadio
-                        Id="@_formModel.DarkThemeFormId"
-                        Value="@GetThemeKey(Theme.Dark)"/>
-                </Icon>
-                <Content>
-                    <Label InputId="@_formModel.DarkThemeFormId" Text="@L.ThemeSettings_Dark" IsRequired="true"></Label>
-                </Content>
-            </TileItem>
-
-            <TileItem
-                Class="@GetTileItemClass(null)"
-                Click="@(_ => OnTileClick(null))">
-                <Icon>
-                    <FormRadio
-                        Id="@_formModel.SystemThemeFormId"
-                        Value="@GetThemeKey(null)"/>
-                </Icon>
-                <Content>
-                    <Label InputId="@_formModel.SystemThemeFormId" Text="@L.ThemeSettings_MatchSystem" IsRequired="true"></Label>
-                </Content>
-            </TileItem>
-
-        </InputRadioGroup>
-    </FormBlock>
-</Form>
+<RadioTile Options="@Options" SelectedId="@_selectedId" SelectedIdChanged="@OnSelectedIdChanged"/>
 
 @code {
-    private FormModel _formModel = null!;
+    private string _selectedId = "";
 
     private ThemeUI ThemeUI => Hub.ThemeUI;
-
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
-    protected override void OnInitialized() {
-        _formModel = new (ComponentIdGenerator) {
-            Theme = GetThemeKey(ThemeUI.State.Value.Theme),
-        };
-        _formModel.ThemeChanged += OnCurrentThemeChanged;
-    }
+    private IReadOnlyList<RadioTileOption> Options => [
+        new(nameof(Theme.Light), L.ThemeSettings_Light),
+        new(nameof(Theme.Ash), L.ThemeSettings_LightLinkWater),
+        new(nameof(Theme.Dark), L.ThemeSettings_Dark),
+        new("", L.ThemeSettings_MatchSystem),
+    ];
 
-    private void OnCurrentThemeChanged(string? theme)
-        => ThemeUI.SetTheme(GetTheme(theme)).WithErrorLog(Log, "Failed to change theme to {Theme}", theme);
+    protected override void OnInitialized()
+        => _selectedId = GetThemeKey(ThemeUI.State.Value.Theme);
+
+    private void OnSelectedIdChanged(string themeKey) {
+        _selectedId = themeKey;
+        ThemeUI.SetTheme(GetTheme(themeKey)).WithErrorLog(Log, "Failed to change theme to {Theme}", themeKey);
+    }
 
     private string GetThemeKey(Theme? theme)
         => theme?.ToString() ?? "";
 
     private Theme? GetTheme(string? themeKey)
         => !themeKey.IsNullOrEmpty() && Enum.TryParse<Theme>(themeKey, true, out var v) ? v : null;
-
-    private void OnTileClick(Theme? theme)
-        => _formModel.Theme = GetThemeKey(theme);
-
-    private string GetTileItemClass(Theme? theme)
-        => GetThemeKey(theme) == _formModel.Theme ? "selected transparent" : "transparent";
-
-    public sealed class FormModel {
-        private string FormId { get; }
-        public string LightThemeFormId { get; }
-        public string DarkThemeFormId { get; }
-        public string AshThemeFormId { get; }
-        public string SystemThemeFormId { get; }
-
-        public string? Theme {
-            get;
-            set {
-                if (field == value)
-                    return;
-                field = value;
-                ThemeChanged?.Invoke(value);
-            }
-        }
-
-        public event Action<string?>? ThemeChanged;
-
-        public FormModel(ComponentIdGenerator componentIdGenerator) {
-            FormId = componentIdGenerator.Next("theme-form");
-            LightThemeFormId = $"{FormId}-user-light-theme";
-            DarkThemeFormId = $"{FormId}-user-dark-theme";
-            AshThemeFormId = $"{FormId}-user-ash-theme";
-            SystemThemeFormId = $"{FormId}-user-system-theme";
-        }
-    }
 }

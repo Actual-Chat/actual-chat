@@ -4,7 +4,7 @@
 }
 
 <TileTopic Topic="@L.Settings_UILanguage"/>
-<Tile>
+<Tile Frameless="true">
     <LanguageSettings/>
 </Tile>
 
@@ -23,7 +23,7 @@
 <TileTopic Topic="@L.UserInterface_Chats"/>
 <Tile>
     <TileItem Click="@OnToggleAuthorColors">
-        <Icon><i class="icon-color-swatch text-2xl"></i></Icon>
+        <Icon><i class="icon-color-swatch"></i></Icon>
         <Content>@L.UserInterface_ColorizeAuthorNames</Content>
         <Caption>@(m.IsAuthorColorsEnabled ? L.RightPanel_On : L.RightPanel_Off)</Caption>
         <Right>

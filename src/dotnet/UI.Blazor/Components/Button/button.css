@@ -97,7 +97,7 @@ body.device-ios * {
     @apply text-caption;
 }
 .btn.btn-sm {
-    @apply min-h-10 max-h-10 md:min-h-8 md:max-h-8;
+    @apply min-h-8 max-h-8;
     @apply text-caption-500;
 }
 .btn.btn-lg {

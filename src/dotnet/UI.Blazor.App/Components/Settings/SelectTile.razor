@@ -1,0 +1,40 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using ActualLab.Generators
+@inherits ComponentBase<AppUIHub>
+@implements IDisposable
+
+<TileItem
+    Class="@CssClass"
+    data-menu="@(MenuRef.New<SelectTileMenu>(_id).ToString())"
+    data-menu-trigger="@MenuTrigger.Primary"
+    data-menu-placement="@(FloatingPosition.BottomEnd.ToPositionString())">
+    <Icon>@IconContent</Icon>
+    <Content>@Label</Content>
+    <Right>
+        <span class="c-select-value">@SelectedLabel</span>
+        <i class="icon-chevron-right text-xl text-03"></i>
+    </Right>
+</TileItem>
+
+@code {
+    private readonly string _id = RandomStringGenerator.Default.Next();
+
+    [Parameter] public RenderFragment? IconContent { get; set; }
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter, EditorRequired] public IReadOnlyList<SelectTileOption> Options { get; set; } = [];
+    [Parameter, EditorRequired] public string SelectedId { get; set; } = "";
+    [Parameter] public EventCallback<string> SelectedIdChanged { get; set; }
+
+    private string CssClass => $"select-tile clickable {Class}";
+
+    private string SelectedLabel
+        => Options.FirstOrDefault(o => o.Id == SelectedId)?.Label ?? "";
+
+    protected override void OnParametersSet()
+        => SelectTileMenu.Registry.Set(_id, new SelectTileMenu.Model(
+            SelectedId, Options, id => SelectedIdChanged.InvokeAsync(id)));
+
+    public void Dispose()
+        => SelectTileMenu.Registry.Remove(_id);
+}

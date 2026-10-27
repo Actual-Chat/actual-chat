@@ -17,7 +17,7 @@
 <TileTopic Topic="@L.AppSettings_TelemetryDataCollection"/>
 <Tile Class="data-collection-consent">
     <TileItem Click="@OnEnableTelemetryClick">
-        <Icon><i class="icon-info text-2xl"></i></Icon>
+        <Icon><i class="icon-info"></i></Icon>
         <Content>@L.AppSettings_AllowTelemetry</Content>
         <Caption>@dataCollectionStatus</Caption>
         <Right>
@@ -29,26 +29,30 @@
     </p>
 </Tile>
 
-<TileTopic Topic="@L.UserInterface_WalkThrough"/>
-<ButtonTile Class="btn-primary" Filled="true" Click="@(OnRestartWalkThrough)">
-    <Icon><i class="icon-refresh text-2xl"></i></Icon>
-    <Content>@L.UserInterface_RestartWalkThrough</Content>
-</ButtonTile>
+<TileTopic Topic="@L.Common_Repeat"/>
+<Tile Class="tile-flat">
+    <TileItem Class="tile-item-action" Click="@OnRestartWalkThrough">
+        <Icon><i class="icon-refresh"></i></Icon>
+        <Content>@L.UserInterface_WalkThrough</Content>
+        <Caption>@L.UserInterface_WalkThroughDescription</Caption>
+    </TileItem>
+    @if (m.IsAdmin) {
+        <TileItem Class="tile-item-action" Click="@OnRestartOnboarding">
+            <Icon><i class="icon-refresh"></i></Icon>
+            <Content>@L.UserInterface_Onboarding</Content>
+            <Caption>@L.UserInterface_OnboardingDescription</Caption>
+        </TileItem>
+    }
+</Tile>
 
 @if (AppReviewUI.IsAvailable) {
     <TileTopic Topic="@L.AppSettings_RateApp_Format(CoreConstants.AppName)"/>
-    <ButtonTile Class="btn-primary" Filled="true" Click="@(OnLeaveReview)">
-        <Icon><i class="icon-star text-2xl"></i></Icon>
-        <Content>@L.AppReview_LeaveReview</Content>
-    </ButtonTile>
-}
-
-@if (m.IsAdmin) {
-    <TileTopic Topic="@L.UserInterface_Onboarding"/>
-    <ButtonTile Class="btn-primary" Filled="true" Click="@(OnRestartOnboarding)">
-        <Icon><i class="icon-refresh text-2xl"></i></Icon>
-        <Content>@L.UserInterface_RestartOnboarding</Content>
-    </ButtonTile>
+    <Tile Class="tile-flat">
+        <TileItem Class="tile-item-action" Click="@OnLeaveReview">
+            <Icon><i class="icon-star"></i></Icon>
+            <Content>@L.AppReview_LeaveReview</Content>
+        </TileItem>
+    </Tile>
 }
 
 @code {

@@ -23,7 +23,7 @@
 
     <Tile Class="c-coaching">
         <TileItem Click="@(() => Update(x => x with { IsCoachingEnabled = !x.IsCoachingEnabled }))">
-            <Icon><i class="icon-ai-stars text-2xl"></i></Icon>
+            <Icon><i class="icon-ai-stars"></i></Icon>
             <Content>@L.Coach_Coaching</Content>
             <Caption>@L.Coach_CoachingCaption2</Caption>
             <Right>
@@ -44,7 +44,7 @@
                 <CoachChatToggleCard ChatId="@ChatId"/>
             }
             <TileItem Class="c-skip-peers" Click="@(() => Update(x => x with { SkipPeerChats = !x.SkipPeerChats }))">
-                <Icon><i class="icon-person text-2xl"></i></Icon>
+                <Icon><i class="icon-person"></i></Icon>
                 <Content>@L.Coach_SkipPeerChats</Content>
                 <Caption>@L.Coach_SkipPeerChatsCaption</Caption>
                 <Right>
@@ -54,7 +54,7 @@
             </TileItem>
             @if (s.SwitchedOff.Count > 0) {
                 <TileItem Class="c-switched-off" Click="@OnSwitchedOff">
-                    <Icon><i class="icon-eye-off text-2xl"></i></Icon>
+                    <Icon><i class="icon-eye-off"></i></Icon>
                     <Content>@L.Coach_SwitchedOff</Content>
                     <Right>
                         <span class="text-03">@s.SwitchedOff.Count</span>
@@ -107,7 +107,7 @@
         <TileTopic Topic="@L.Coach_HowYouHear"/>
         <Tile Class="c-hear">
             <TileItem Click="@(() => Update(x => x with { AreMarksDisabled = !x.AreMarksDisabled }))">
-                <Icon><i class="icon-edit text-2xl"></i></Icon>
+                <Icon><i class="icon-edit"></i></Icon>
                 <Content>@L.Coach_Marks</Content>
                 <Caption>@L.Coach_MarksCaption</Caption>
                 <Right>
@@ -117,7 +117,7 @@
             </TileItem>
             <TileItem Class="c-live-tips"
                       Click="@(() => Update(x => x with { AreLiveTipsEnabled = !x.AreLiveTipsEnabled }))">
-                <Icon><i class="icon-star text-2xl"></i></Icon>
+                <Icon><i class="icon-star"></i></Icon>
                 <Content>@L.Coach_LiveTips</Content>
                 <Caption>@L.Coach_LiveTipsCaption</Caption>
                 <Right>
@@ -127,7 +127,7 @@
                 </Right>
             </TileItem>
             <TileItem Click="@(() => Update(x => x with { IsWeeklySummaryDisabled = !x.IsWeeklySummaryDisabled }))">
-                <Icon><i class="icon-email text-2xl"></i></Icon>
+                <Icon><i class="icon-email"></i></Icon>
                 <Content>@L.Coach_WeeklySummary</Content>
                 <Caption>@L.Coach_WeeklySummaryCaption</Caption>
                 <Right>
@@ -160,7 +160,7 @@
     <Tile Class="c-data">
         <div class="c-hint">@L.Coach_YourDataCaption</div>
         <TileItem Class="c-delete item-danger" Click="@OnDelete">
-            <Icon><i class="icon-trash02 text-2xl"></i></Icon>
+            <Icon><i class="icon-trash02"></i></Icon>
             <Content>@L.Coach_DeleteData</Content>
         </TileItem>
     </Tile>

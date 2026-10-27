@@ -18,7 +18,7 @@
         var p = permission;
         var isGranted = m.IsGranted(p.Kind);
         <TileItem Class="permission-item" IsHoverable="false">
-            <Icon><i class="@p.Icon text-2xl"></i></Icon>
+            <Icon><i class="@p.Icon"></i></Icon>
             <Content>@p.Title</Content>
             <Caption>@p.Rationale</Caption>
             <Right>
@@ -38,7 +38,7 @@
 @if (m.IsKnown && !m.HasMissing) {
     <Tile>
         <TileItem Class="info-tile-item" IsHoverable="false">
-            <Icon><i class="icon-checkmark-circle text-xl"></i></Icon>
+            <Icon><i class="icon-checkmark-circle"></i></Icon>
             <Content>@L.Permissions_AllGranted</Content>
         </TileItem>
     </Tile>
@@ -46,7 +46,7 @@
 else if (m.HasMissing && !m.IsWarningDismissed) {
     <Tile>
         <TileItem Class="dismiss-warning-item info-tile-item" Click="@OnDismissWarningClick">
-            <Icon><i class="icon-alert-circle text-2xl"></i></Icon>
+            <Icon><i class="icon-alert-circle"></i></Icon>
             <Content>@L.Permissions_DismissWarning</Content>
         </TileItem>
     </Tile>
