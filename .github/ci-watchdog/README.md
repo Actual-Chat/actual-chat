@@ -155,6 +155,13 @@ turned down. A decision that changes one of these adds or replaces its entry in 
 
 ### The daily agent
 
+- **2026-10-27 — "The test's latest change" is the latest one that changed what the test does,
+  found in whole history.** Why: on 2026-10-27 the agent dated the files of #4994, #4858 and
+  #4655 to 2026-10-22 — commits that touch none of them, most likely the boundary of a shallow
+  checkout — and left them out of priority 5 although they had not changed for weeks. Separately,
+  a7e58109ac, which only dropped `FlakyFact` attributes, would have discarded every earlier
+  failure in every test file it touched. Rejected: dating the change by the test method's own
+  lines with `git log -L` — slower, and blind to a change in a helper the test calls.
 - **2026-10-26 — The cap is three cards to fill, and an empty window still writes priority 5
   cards.** Why: on 2026-10-24 and 25 nothing arrived and the prompt said "stop" after the
   registry, so the queue of four entries waiting since 2026-10-23 lost all six slots of the two
