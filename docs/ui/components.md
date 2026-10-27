@@ -1154,7 +1154,8 @@ directly.
 | `data-render-script-tooltip-auto-show` | Non-empty shows that text with no pointer involved; empty clears it. |
 | `data-tooltip-auto-show-duration` | Milliseconds for the auto-shown tooltip. Absent picks the default for the severity — 3s normal, 10s error; an explicit `0` keeps it up until the value clears. |
 
-Auto-show is the only path that reaches a touch device, and it is a [render script](#render-scripts):
+Auto-show is the only path that reaches a touch device: there the host is mounted with hover turned
+off, since a tap fires `mouseover` too and its tooltip would stick. It is a [render script](#render-scripts):
 its value is the text, so a changed message re-triggers it while a re-render carrying the same one
 does not. Hover always wins for display, and an auto-shown tooltip re-asserts itself once the pointer
 leaves rather than being cancelled by a passing hover. A shown tooltip tracks its trigger's
@@ -1162,7 +1163,9 @@ attributes, so text and severity stay right even while the pointer never moves.
 
 Prefer it over a component-local tooltip: two tooltip systems over one control overlap, because
 pressing a control on a desktop also hovers it. `RecorderToggle` is the worked example — the record
-button auto-shows only a recording failure, and never the healthy path. What counts as a failure is
+button auto-shows a recording failure, and of the healthy path only a mute in a call or a live session
+that keeps the user in it - still listening, with hang-up offered instead of the stop-listening
+countdown (`LiveSessionUI.AmIMuted`, announced by `MustAnnounceMute`). What counts as a failure is
 `ChatAudioUI.GetRecordingStatus`, a compute method, so every recording control can report the same
 thing. A problem the pipeline *named* — `RecorderStartResult`, carried up from `getUserMedia`'s
 DOMException name, Android's `AudioRecord` state or Windows' `AudioDeviceNodeCreationStatus` — is a
@@ -1170,6 +1173,19 @@ verdict and is reported at once. An unnamed one is judged by age instead: it sta
 `Starting`/`Reconnecting` until it outlasts `Constants.Audio.RecordingProblemGracePeriod`, measured
 from the later of the press and the last recorder-pipeline transition, because a healthy start
 passes through the same states on its way up.
+
+### Hints
+
+A hint is the one-off counterpart of an onboarding bubble: painted like one, but neither queued nor
+remembered. One `HintHost` serves the page, and `data-render-script-hint` drives it — non-empty points
+the hint at its element, empty clears it, and any tap dismisses it early. The value's owner decides how
+long it stays and how often it comes back; a hint can be on screen beside a tooltip. A duplicate of the
+element under an overlay never anchors it, the same check auto-shown tooltips use.
+`data-hint-position` takes a `FloatingPosition`, `bottom` by default.
+
+The worked example is the hang-up hint on the first mute of each stay in a conversation, call or not:
+`LiveSessionUI.MustShowHangUpHint` holds it for a few seconds or until the mute ends, and
+`CallScreenState.HasHangUp` decides whether the call screen's hang-up or the chat header's carries it.
 
 ## Component Models
 

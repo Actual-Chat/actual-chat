@@ -24,6 +24,7 @@
 @import './Components/EmbeddedMessageEditor/embedded-message-editor.css';
 @import './Components/Form/form.css';
 @import './Components/Form/toggle.css';
+@import './Components/Hint/hint.css';
 @import './Components/Hotkey/hotkey.css';
 @import './Components/Kitty/kitty.css';
 @import './Components/InviteList/invite-list.css';

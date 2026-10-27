@@ -1,0 +1,25 @@
+@using ActualChat.UI.Blazor.Module
+@namespace ActualChat.UI.Blazor.Components
+@inherits ComponentBase<UIHub>
+@implements IAsyncDisposable
+
+<div class="ac-hint bubble-surface">
+    <div class="ac-hint-text"></div>
+    <div class="ac-hint-arrow bubble-arrow"></div>
+</div>
+
+@code {
+    private static readonly string JSCreateMethod = $"{BlazorUICoreModule.ImportName}.HintHost.create";
+
+    private IJSObjectReference _jsRef = null!;
+
+    public async ValueTask DisposeAsync() {
+        await _jsRef.DisposeSilentlyAsync("dispose").ConfigureAwait(true);
+        _jsRef = null!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender)
+            _jsRef = await JS.InvokeAsync<IJSObjectReference>(JSCreateMethod).ConfigureAwait(true);
+    }
+}

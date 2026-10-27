@@ -700,6 +700,8 @@
   "Call_Recording": "Записує",
   "Call_Listening": "Слухаю",
   "Call_HangUp": "Завершити",
+  "Call_Muted": "Мікрофон вимкнено",
+  "Call_HangUpHint": "Ви все ще в розмові — завершити можна тут",
   "Call_ListeningCountdown": "Слухаєте…",
   "Call_StopListening": "Зупинити прослуховування",
   "Call_CantMutePeer": "В особистому чаті не можна вимкнути мікрофон співрозмовника.",

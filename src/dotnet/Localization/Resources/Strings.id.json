@@ -700,6 +700,8 @@
   "Call_Recording": "Merekam",
   "Call_Listening": "Saya mendengarkan",
   "Call_HangUp": "Akhiri",
+  "Call_Muted": "Dibisukan",
+  "Call_HangUpHint": "Masih dalam percakapan — akhiri di sini",
   "Call_ListeningCountdown": "Mendengarkan...",
   "Call_StopListening": "Hentikan mendengarkan",
   "Call_CantMutePeer": "Anda tidak bisa mematikan mikrofon lawan bicara dalam obrolan satu lawan satu.",

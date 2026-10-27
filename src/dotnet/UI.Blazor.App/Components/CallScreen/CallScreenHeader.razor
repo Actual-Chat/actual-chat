@@ -1,5 +1,4 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@using ActualChat.Live
 @using ActualChat.UI.Blazor.App.Components.VideoPanel
 @inherits ComputedStateComponent<AppUIHub, CallScreenHeader.Model>
 @{
@@ -91,13 +90,13 @@
                     <i class="icon-expand text-lg"></i>
                 </HeaderButton>
             }
-            @* Inline in the chat, its header already has the call's own hang-up *@
-            @if (isExpanded || (isInCall && isIsland)) {
+            @if (m.HasHangUp) {
                 <HeaderButton
                     Class="btn-glass btn-hang-up talking"
                     StopPropagation="true"
                     PreventDefault="true"
-                    Click="@OnHangUpClick">
+                    Click="@OnHangUpClick"
+                    data-render-script-hint="@(m.MustShowHangUpHint ? L.Call_HangUpHint : "")">
                     <i class="icon-phone-off"></i>
                 </HeaderButton>
             }
@@ -167,11 +166,15 @@
         var phase = screen.Call?.Phase;
         var joinedAt = await CallScreensUI.GetCallConnectedAt(chatId, cancellationToken).ConfigureAwait(false);
         var isEqualLayout = await CallScreensUI.IsEqualLayout(cancellationToken).ConfigureAwait(false);
+        var mustShowHangUpHint = await LiveSessionUI.MustShowHangUpHint(chatId, cancellationToken)
+            .ConfigureAwait(false);
         var m = new Model {
             Mode = screen.Mode,
             Phase = phase,
             JoinedAt = joinedAt,
             HasVideo = screen.HasVideo,
+            HasHangUp = screen.HasHangUp,
+            MustShowHangUpHint = screen.HasHangUp && mustShowHangUpHint,
             IsEqualLayout = isEqualLayout,
         };
         if (!screen.HasVideo)
@@ -226,6 +229,8 @@
         public CallPhase? Phase { get; init; }
         public Moment? JoinedAt { get; init; }
         public bool HasVideo { get; init; }
+        public bool HasHangUp { get; init; }
+        public bool MustShowHangUpHint { get; init; }
         public int RemoteAuthorCount { get; init; }
         public int TileCount { get; init; }
         public int MemberCount { get; init; }

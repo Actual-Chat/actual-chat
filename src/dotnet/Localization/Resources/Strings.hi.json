@@ -700,6 +700,8 @@
   "Call_Recording": "रिकॉर्ड कर रहे हैं",
   "Call_Listening": "सुन रहा हूँ",
   "Call_HangUp": "कॉल समाप्त करें",
+  "Call_Muted": "म्यूट है",
+  "Call_HangUpHint": "आप अभी भी बातचीत में हैं — यहाँ से कॉल समाप्त करें",
   "Call_ListeningCountdown": "सुन रहे हैं…",
   "Call_StopListening": "सुनना बंद करें",
   "Call_CantMutePeer": "आमने-सामने की चैट में आप दूसरे व्यक्ति का माइक बंद नहीं कर सकते।",

@@ -1,10 +1,11 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComputedStateComponent<AppUIHub, Moment?>
+@inherits ComputedStateComponent<AppUIHub, ChatAudioControls.Model>
 @{
     var audioState = AudioState ?? ChatAudioState.None;
     var isRecording = audioState.IsRecording;
     var isListening = audioState.IsListening;
-    var stopListeningAt = State.Value;
+    var m = State.Value;
+    var stopListeningAt = m.StopListeningAt;
     const double countdownSeconds = 30;
     const double circumference = 100.531;
     var remainingSeconds = isListening && !isRecording && stopListeningAt.HasValue
@@ -77,7 +78,8 @@
             PreventDefault="true"
             Click="@OnHangUp"
             Tooltip="@L.Call_HangUp"
-            TooltipPosition="FloatingPosition.Top">
+            TooltipPosition="FloatingPosition.Top"
+            data-render-script-hint="@(m.MustShowHangUpHint ? L.Call_HangUpHint : "")">
             <i class="icon-phone-off"></i>
         </HeaderButton>
     }
@@ -85,18 +87,32 @@
 
 @code {
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
+    private CallScreensUI CallScreensUI => Hub.CallScreensUI;
+    private LiveSessionUI LiveSessionUI => Hub.LiveSessionUI;
     private Moment Now => Hub.Clocks.CpuClock.Now;
 
     [Parameter, EditorRequired] public Chat Chat { get; set; } = null!;
     [Parameter, EditorRequired] public ChatAudioState? AudioState { get; set; }
     [Parameter] public bool MustShowHangUp { get; set; }
+    [Parameter] public bool HasHangUpHint { get; set; }
     [Parameter] public bool ShowRecordingToggle { get; set; } = true;
     [Parameter] public string Class { get; set; } = "";
 
-    protected override async Task<Moment?> ComputeState(CancellationToken cancellationToken) {
-        var stopListeningAt = await ChatAudioUI.GetStopListeningAt(Chat.Id, cancellationToken).ConfigureAwait(false);
+    // Protected/internal methods
+
+    protected override ComputedState<Model>.Options GetStateOptions()
+        => ComputedStateComponent.GetStateOptions(GetType(),
+            static t => new ComputedState<Model>.Options {
+                InitialValue = Model.None,
+                Category = GetStateCategory(t),
+            });
+
+    protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
+        var chatId = Chat.Id;
+        var mustShowHangUpHint = await MustShowHangUpHint(chatId, cancellationToken).ConfigureAwait(true);
+        var stopListeningAt = await ChatAudioUI.GetStopListeningAt(chatId, cancellationToken).ConfigureAwait(true);
         if (!stopListeningAt.HasValue)
-            return null;
+            return new Model(null, mustShowHangUpHint);
 
         var remaining = (stopListeningAt.Value - Now).TotalSeconds;
         if (remaining > 0) {
@@ -104,7 +120,21 @@
             var delay = fractional > 0.05 ? fractional : fractional + 1.0;
             Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(delay));
         }
-        return stopListeningAt;
+        return new Model(stopListeningAt, mustShowHangUpHint);
+    }
+
+    // Private methods
+
+    private async Task<bool> MustShowHangUpHint(ChatId chatId, CancellationToken cancellationToken) {
+        // The call screen's own hang-up, when it shows one, is the one the hint points at
+        if (!HasHangUpHint)
+            return false;
+
+        var screen = await CallScreensUI.GetScreen(cancellationToken).ConfigureAwait(false);
+        if (screen is { HasHangUp: true } && screen.ChatId == chatId)
+            return false;
+
+        return await LiveSessionUI.MustShowHangUpHint(chatId, cancellationToken).ConfigureAwait(false);
     }
 
     private void OnStopRecording()
@@ -119,7 +149,13 @@
         // A ring isn't answered by leaving what is live in its chat, so it is left to ring.
         var call = Hub.CallUI.GetActiveCallNonComputed();
         return call is { Phase: not CallPhase.Ringing } && call.ChatId == Chat.Id
-            ? Hub.CallScreensUI.HangUp(Chat.Id)
-            : Hub.CallScreensUI.LeaveLiveSession(Chat.Id);
+            ? CallScreensUI.HangUp(Chat.Id)
+            : CallScreensUI.LeaveLiveSession(Chat.Id);
+    }
+
+    // Nested types
+
+    public sealed record Model(Moment? StopListeningAt = null, bool MustShowHangUpHint = false) {
+        public static readonly Model None = new();
     }
 }

@@ -700,6 +700,8 @@
   "Call_Recording": "Đang ghi âm",
   "Call_Listening": "Tôi đang nghe",
   "Call_HangUp": "Kết thúc",
+  "Call_Muted": "Đã tắt tiếng",
+  "Call_HangUpHint": "Bạn vẫn đang trong cuộc trò chuyện — kết thúc tại đây",
   "Call_ListeningCountdown": "Đang nghe…",
   "Call_StopListening": "Dừng nghe",
   "Call_CantMutePeer": "Trong cuộc trò chuyện riêng, bạn không thể tắt micrô của người kia.",

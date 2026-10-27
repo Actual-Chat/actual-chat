@@ -45,6 +45,12 @@ public sealed record CallScreenState(
     ActiveCall? Call,
     VisualActivityPanelMode Mode,
     bool HasVideo,
-    bool IsOverLock);
+    bool IsOverLock)
+{
+    public bool HasHangUp
+        // Inline in the chat, the screen leaves hanging up to the chat header
+        => Mode == VisualActivityPanelMode.Expanded
+            || (Mode == VisualActivityPanelMode.Collapsed && Call is { Phase: CallPhase.Active });
+}
 
 internal readonly record struct CallScreenFlags(ChatId? CollapsedChatId, ChatId? OverLockChatId);

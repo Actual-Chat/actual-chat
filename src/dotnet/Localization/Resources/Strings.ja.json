@@ -700,6 +700,8 @@
   "Call_Recording": "録音中",
   "Call_Listening": "聞いています",
   "Call_HangUp": "終了",
+  "Call_Muted": "ミュート中",
+  "Call_HangUpHint": "会話はまだ続いています。終了はこちら",
   "Call_ListeningCountdown": "受信中…",
   "Call_StopListening": "聞くのを停止",
   "Call_CantMutePeer": "1対1のチャットでは相手のマイクをオフにできません。",

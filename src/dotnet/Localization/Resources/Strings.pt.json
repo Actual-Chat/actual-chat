@@ -700,6 +700,8 @@
   "Call_Recording": "Gravando",
   "Call_Listening": "Estou ouvindo",
   "Call_HangUp": "Desligar",
+  "Call_Muted": "Silenciado",
+  "Call_HangUpHint": "Você ainda está na conversa — desligue aqui",
   "Call_ListeningCountdown": "Ouvindo…",
   "Call_StopListening": "Parar de ouvir",
   "Call_CantMutePeer": "Em um chat privado, você não pode desligar o microfone da outra pessoa.",

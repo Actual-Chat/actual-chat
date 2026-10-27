@@ -700,6 +700,8 @@
   "Call_Recording": "Nimmt auf",
   "Call_Listening": "Ich höre zu",
   "Call_HangUp": "Auflegen",
+  "Call_Muted": "Stummgeschaltet",
+  "Call_HangUpHint": "Sie sind noch im Gespräch — hier auflegen",
   "Call_ListeningCountdown": "Zuhören …",
   "Call_StopListening": "Zuhören beenden",
   "Call_CantMutePeer": "In einem Einzelchat können Sie das Mikrofon der anderen Person nicht ausschalten.",
