@@ -1,88 +1,37 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<AppUIHub>
-@attribute [UnconditionalSuppressMessage("Trimming", "IL2091", Justification = "UI types are expected to be untrimmed.")]
 
 <TileTopic Topic="@L.RenderMode_Title"/>
 <Tile Class="render-mode-tile">
-    <Form Model="@_formModel">
-        <DataAnnotationsValidator/>
-
-        <FormBlock>
-            <InputRadioGroup
-                TValue="@RenderModeKey"
-                Name="render-mode"
-                DisplayName="@L.RenderMode_Title"
-                @bind-Value="_formModel.ModeKey">
-
-                <TileItem
-                    Class="@GetTileItemClass(RenderModeKey.Auto)"
-                    Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Auto))">
-                    <Icon>
-                        <FormRadio TValue="@RenderModeKey" Id="@_formModel.AutoModeFormId" Value="@RenderModeKey.Auto"/>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@_formModel.AutoModeFormId" Text="@L.RenderMode_Auto" IsRequired="true"></Label>
-                    </Content>
-                    <Caption>
-                        @L.RenderMode_AutoDescription
-                    </Caption>
-                </TileItem>
-
-                <TileItem
-                    Class="@GetTileItemClass(RenderModeKey.Server)"
-                    Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Server))">
-                    <Icon>
-                        <FormRadio TValue="@RenderModeKey" Id="@_formModel.ServerModeFormId" Value="@RenderModeKey.Server"/>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@_formModel.ServerModeFormId" Text="@L.RenderMode_Server" IsRequired="true"></Label>
-                    </Content>
-                    <Caption>
-                        @L.RenderMode_ServerDescription
-                    </Caption>
-                </TileItem>
-
-                <TileItem
-                    Class="@GetTileItemClass(RenderModeKey.Wasm)"
-                    Click="@NoStateHasChanged.EventCallback(() => ChangeMode(RenderModeKey.Wasm))">
-                    <Icon>
-                        <FormRadio TValue="@RenderModeKey" Id="@_formModel.WasmModeFormId" Value="@RenderModeKey.Wasm"/>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@_formModel.WasmModeFormId" Text="@L.RenderMode_Wasm" IsRequired="true"></Label>
-                    </Content>
-                    <Caption>
-                        @L.RenderMode_WasmDescription
-                    </Caption>
-                </TileItem>
-
-            </InputRadioGroup>
-        </FormBlock>
-    </Form>
+    <RadioTile Options="@Options" SelectedId="@_modeKey.ToString()" SelectedIdChanged="@OnSelectedIdChanged"/>
 </Tile>
 
 @code {
     private RenderModeKey _modeKey;
-    private FormModel _formModel = null!;
 
     private RenderModeHelper RenderModeHelper => Services.GetRequiredService<RenderModeHelper>();
 
-    protected override void OnInitialized() {
-        _modeKey = (RenderModeHelper.CurrentMode?.Key[0] ?? 'a') switch {
+    private IReadOnlyList<RadioTileOption> Options => [
+        new(nameof(RenderModeKey.Auto), L.RenderMode_Auto, L.RenderMode_AutoDescription),
+        new(nameof(RenderModeKey.Server), L.RenderMode_Server, L.RenderMode_ServerDescription),
+        new(nameof(RenderModeKey.Wasm), L.RenderMode_Wasm, L.RenderMode_WasmDescription),
+    ];
+
+    protected override void OnInitialized()
+        => _modeKey = (RenderModeHelper.CurrentMode?.Key[0] ?? 'a') switch {
             's' => RenderModeKey.Server,
             'w' => RenderModeKey.Wasm,
             _ => RenderModeKey.Auto,
         };
-        _formModel = new(ComponentIdGenerator) {
-            ModeKey = _modeKey,
-        };
-        _formModel.ModeChanged += ChangeMode;
-    }
+
+    private void OnSelectedIdChanged(string id)
+        => ChangeMode(Enum.Parse<RenderModeKey>(id));
 
     private void ChangeMode(RenderModeKey modeKey) {
         if (_modeKey == modeKey)
             return;
 
+        _modeKey = modeKey;
         var sModeKey = modeKey switch {
             RenderModeKey.Auto => "a",
             RenderModeKey.Server => "s",
@@ -93,38 +42,11 @@
         RenderModeHelper.ChangeMode(renderMode);
     }
 
-    private string GetTileItemClass(RenderModeKey expectedModeKey)
-        => _modeKey == expectedModeKey ? "selected transparent" : "transparent";
-
     // Nested types
 
     public enum RenderModeKey {
         Auto = 0,
         Server,
         Wasm,
-    }
-
-    public sealed class FormModel {
-        private string FormId { get; }
-        public string AutoModeFormId { get; }
-        public string ServerModeFormId { get; }
-        public string WasmModeFormId { get; }
-
-        public RenderModeKey ModeKey {
-            get;
-            set {
-                field = value;
-                ModeChanged?.Invoke(value);
-            }
-        }
-
-        public event Action<RenderModeKey>? ModeChanged;
-
-        public FormModel(ComponentIdGenerator componentIdGenerator) {
-            FormId = componentIdGenerator.Next("render-mode-form");
-            AutoModeFormId = $"{FormId}-auto-mode";
-            ServerModeFormId = $"{FormId}-server-mode";
-            WasmModeFormId = $"{FormId}-wasm-mode";
-        }
     }
 }

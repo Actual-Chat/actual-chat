@@ -1,20 +1,26 @@
 .tile-item {
     @apply flex-x items-center justify-center gap-x-2;
-    @apply min-h-10 w-full;
+    @apply min-h-12 w-full;
     @apply pr-1 pb-1;
     @apply rounded-lg;
 }
-body.hoverable .tile-item.clickable:hover,
-.touch-capable .tile-item.clickable:active {
+body.hoverable .tile-item.clickable:not(.selected):hover,
+.touch-capable .tile-item.clickable:not(.selected):active {
     @apply bg-hover;
 }
+/* A clickable row shows the pointer across its whole area — including the label, radio and text
+   spans — so the cursor never flips to the arrow mid-row. */
 body.hoverable .tile-item.clickable:not(.selected),
+body.hoverable .tile-item.clickable:not(.selected) label,
 body.hoverable .tile-item.clickable:not(.selected) span {
     @apply cursor-pointer;
 }
-body.hoverable .tile-item.clickable.transparent:hover,
-.touch-capable .tile-item.clickable.transparent:active {
-    @apply bg-transparent;
+/* The selected row is the current choice, not an action: it skips the hover fill (above) and keeps
+   the plain arrow everywhere — set explicitly so no inherited pointer leaks onto it. */
+body.hoverable .tile-item.clickable.selected,
+body.hoverable .tile-item.clickable.selected label,
+body.hoverable .tile-item.clickable.selected span {
+    @apply cursor-default;
 }
 body.hoverable .tile-item.clickable.item-danger:hover,
 .touch-capable .tile-item.clickable.item-danger:active {
@@ -28,6 +34,8 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply flex-none flex justify-center;
     @apply min-w-10 max-w-10;
     @apply text-03;
+    /* Default size for a leading icon; an explicit text-* on the <i> still overrides (it inherits this). */
+    @apply text-xl;
 }
 .first-tile-item .ti-left {
     @apply justify-center;
@@ -37,11 +45,12 @@ body.hoverable .tile-item.clickable.item-danger:hover,
 }
 .ti-center {
     @apply grid;
+    @apply self-center;
     @apply min-w-0;
     @apply max-w-full;
 }
 .ti-title {
-    @apply w-full min-h-5 max-h-5;
+    @apply w-full min-h-5;
     @apply truncate;
     @apply text-body-500 text-02;
 }
@@ -82,7 +91,7 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply self-start items-center min-h-8;
 }
 .tile-item:has(.ti-caption) .ti-center > .ti-title {
-    @apply flex items-center min-h-7;
+    @apply flex items-center;
     @apply max-h-none whitespace-normal;
 }
 /* No value slot: the empty flex-1 spacer is gone, so let the body take the full row instead of

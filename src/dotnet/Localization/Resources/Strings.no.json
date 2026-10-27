@@ -2405,5 +2405,17 @@
   "Coach_SegmentPace": "Gjennomsnittlig tempo i målte talesegmenter",
   "Coach_HistorySparse": "Prøv en lengre periode.",
   "Coach_HistoryDates": "Datoene markerer gyldige taledager; hull er ikke nullverdier.",
-  "Coach_HistoryGap_Format": "Dager uten gyldige målinger: {0}"
+  "Coach_HistoryGap_Format": "Dager uten gyldige målinger: {0}",
+  "ApiKeys_CreateCaption": "New API key",
+  "ApiKeys_DeactivateAllCaption": "All scripts and services lose access immediately",
+  "ApiKeys_Description": "Access Voxt from scripts and services. A key is shown once — copy it right away.",
+  "Common_Repeat": "Repeat",
+  "ConnectedApps_EmptyTitle": "No connected apps yet",
+  "Integrations_AddCaption": "New webhook",
+  "Passkeys_AddCaption": "A passkey for this device",
+  "Passkeys_EmptyText": "You currently sign in with an email code",
+  "Passkeys_EmptyTitle": "No passkeys yet",
+  "Passkeys_Headline": "Passwordless sign-in",
+  "UserInterface_OnboardingDescription": "The intro steps you went through when you first signed in.",
+  "UserInterface_WalkThroughDescription": "Pop-up tips that show how to use Voxt."
 }

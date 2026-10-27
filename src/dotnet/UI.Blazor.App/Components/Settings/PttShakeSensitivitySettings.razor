@@ -2,40 +2,19 @@
 @inherits ComputedStateComponent<AppUIHub, PttShakeSensitivitySettings.Model>
 @{
     var m = State.Value;
-    _formModel.Sensitivity = m.Sensitivity;
+    var options = Items.Select(i => new SelectTileOption(i.ToString(), GetLabel(i))).ToList();
 }
 
-<Form Model="@_formModel">
-    <DataAnnotationsValidator/>
-
-    <FormBlock Class="ptt-shake-sensitivity-settings">
-        <FormSection
-            For="() => _formModel.Sensitivity"
-            InputId="@_formModel.SensitivityFormId"
-            IsLabelInsideInput="true"
-            Label="@L.Ptt_ShakeSensitivity"
-            IsRequired="true"
-            HideValidationMessage="true">
-            <InputSelect
-                Value="_formModel.Sensitivity"
-                ValueExpression="@(() => _formModel.Sensitivity)"
-                ValueChanged="@((ShakeSensitivity sensitivity) => OnSensitivityChanged(sensitivity))">
-                @foreach (var item in Items) {
-                    <option value="@item">@GetLabel(item)</option>
-                }
-            </InputSelect>
-        </FormSection>
-    </FormBlock>
-</Form>
+<SelectTile
+    Label="@L.Ptt_ShakeSensitivity"
+    Options="@options"
+    SelectedId="@m.Sensitivity.ToString()"
+    SelectedIdChanged="@OnSensitivityChanged"/>
 
 @code {
+    // Light to strong: a "light" shake is enough at High sensitivity, a "strong" one is needed at Low.
     private static readonly ShakeSensitivity[] Items =
-        [ShakeSensitivity.Low, ShakeSensitivity.Medium, ShakeSensitivity.High];
-
-    private FormModel _formModel = null!;
-
-    protected override void OnInitialized()
-        => _formModel = new FormModel(ComponentIdGenerator);
+        [ShakeSensitivity.High, ShakeSensitivity.Medium, ShakeSensitivity.Low];
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
@@ -45,8 +24,8 @@
         return new(settings.ShakeSensitivity);
     }
 
-    private Task OnSensitivityChanged(ShakeSensitivity sensitivity) {
-        _formModel.Sensitivity = sensitivity;
+    private Task OnSensitivityChanged(string id) {
+        var sensitivity = Enum.Parse<ShakeSensitivity>(id);
         return UserSettingsUI.UserPttSettings()
             .Update(x => x with { ShakeSensitivity = sensitivity }, CancellationToken.None);
     }
@@ -60,11 +39,6 @@
         };
 
     // Nested types
-
-    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
-        public ShakeSensitivity Sensitivity { get; set; }
-        public string SensitivityFormId { get; } = componentIdGenerator.Next("ptt-shake-sensitivity");
-    }
 
     public sealed record Model(ShakeSensitivity Sensitivity = ShakeSensitivity.Medium) {
         public static readonly Model None = new();

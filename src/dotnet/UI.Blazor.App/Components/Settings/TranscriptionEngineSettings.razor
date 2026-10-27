@@ -1,45 +1,16 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComputedStateComponent<AppUIHub, TranscriptionEngineSettings.Model>
 @{
-#pragma warning disable IL2091
     if (State.IsInitial(out var m))
         return;
-
-    _formModel.FromModel(m);
+    var selectedId = m.TranscriberId;
 }
 
-<Form Model="@_formModel">
-    <DataAnnotationsValidator/>
-
-    <FormBlock>
-        <InputRadioGroup
-            Name="transcriber"
-            DisplayName="@L.Transcription_Engines"
-            @bind-Value="_formModel.SelectedId">
-
-            @foreach (var item in Items) {
-                var formId = _formModel.GetFormId(item.Id);
-                <TileItem
-                    Class="@GetTileItemClass(item.Id)"
-                    Click="@(_ => OnTileClick(item.Id))">
-                    <Icon>
-                        <FormRadio
-                            Id="@formId"
-                            Value="@item.Id"/>
-                    </Icon>
-                    <Content>
-                        <Label InputId="@formId" Text="@item.Title"></Label>
-                    </Content>
-                </TileItem>
-            }
-
-        </InputRadioGroup>
-    </FormBlock>
-</Form>
+<RadioTile Options="@Items" SelectedId="@selectedId" SelectedIdChanged="@OnSelectedIdChanged"/>
 
 @code {
     // Transcriber names are brands, so only the composition around them is localized.
-    private Option[] Items => field ??= [
+    private RadioTileOption[] Items => field ??= [
         new("", L.Transcription_Automatic),
         new(TranscriberId.SonioxStream.Value, L.Transcription_NoRetranscription_Format("Soniox")),
         new(TranscriberId.NewPair(TranscriberId.SonioxStream, TranscriberId.SonioxOffline).Value,
@@ -56,13 +27,6 @@
         new(TranscriberId.GoogleStream.Value, "Google Cloud"),
     ];
 
-    private FormModel _formModel = null!;
-
-    protected override void OnInitialized() {
-        _formModel = new (ComponentIdGenerator);
-        _formModel.SelectedIdChanged += OnSelectedIdChanged;
-    }
-
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var settings = await UserSettingsUI.UserTranscriptionEngineSettings()
             .Get(cancellationToken)
@@ -76,45 +40,7 @@
         await State.Recompute(); // Necessary, coz otherwise zero-effect changes won't be reflected
     }
 
-    private void OnTileClick(string transcriberId)
-        => _formModel.SelectedId = transcriberId;
-
-    private string GetTileItemClass(string transcriberId)
-        => _formModel.SelectedId == transcriberId ? "selected transparent" : "transparent";
-
     // Nested types
-
-    public sealed record Option(string Id, string Title);
-
-    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
-        private string _selectedId = "";
-
-        private string FormId { get; } = componentIdGenerator.Next("transcription-engine-form");
-
-        public string SelectedId {
-            get => _selectedId;
-            set {
-                if (_selectedId == value)
-                    return;
-
-                _selectedId = value;
-                _ = SelectedIdChanged?.Invoke(value);
-            }
-        }
-
-        public event Func<string, Task>? SelectedIdChanged;
-
-        // Transcriber ids carry ':' and '~', which aren't usable in an HTML id.
-        public string GetFormId(string transcriberId) {
-            var suffix = transcriberId.IsNullOrEmpty()
-                ? "auto"
-                : new string(transcriberId.Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-').ToArray());
-            return $"{FormId}-{suffix}";
-        }
-
-        public void FromModel(Model model)
-            => _selectedId = model.TranscriberId;
-    }
 
     public sealed record Model(string TranscriberId);
 }

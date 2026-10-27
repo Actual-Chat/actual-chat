@@ -54,7 +54,7 @@
     <FormBlock Title="@L.Chat_TypeTitle" Class="with-input-radio">
         <InputRadioGroup Name="chat_type" DisplayName="@L.Chat_TypeTitle" @bind-Value="_form.IsPublic">
             <TileItem
-                Class="@(_form.IsPublic ? "transparent selected" : "transparent")"
+                Class="@(_form.IsPublic ? "selected" : "")"
                 Click="@(() => OnPublicChatClick(true))">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicTrueFormId" IsDisabled="@(!canChangeChatType)" Value="@true"/>
@@ -67,7 +67,7 @@
                 </Caption>
             </TileItem>
             <TileItem
-                Class="@(!_form.IsPublic ? "transparent selected" : "transparent")"
+                Class="@(!_form.IsPublic ? "selected" : "")"
                 Click="@(() => OnPublicChatClick(false))">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>

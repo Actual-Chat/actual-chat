@@ -1,45 +1,24 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using System.Globalization
 @inherits ComputedStateComponent<AppUIHub, PttReplyWindowSettings.Model>
 @{
     var m = State.Value;
-    _formModel.Seconds = m.Seconds;
+    var options = Items
+        .Select(i => new SelectTileOption(i.ToString(CultureInfo.InvariantCulture), GetLabel(i)))
+        .ToList();
 }
 
 <Tile Class="ptt-reply-window-settings">
-    <Form Model="@_formModel">
-        <DataAnnotationsValidator/>
-
-        <FormBlock>
-            <p class="c-description">
-                @L.Ptt_ReplyWindowCaption
-            </p>
-            <FormSection
-                For="() => _formModel.Seconds"
-                InputId="@_formModel.SecondsFormId"
-                IsLabelInsideInput="true"
-                Label="@L.Ptt_KeepMicOpen"
-                IsRequired="true"
-                HideValidationMessage="true">
-                <InputSelect
-                    Value="_formModel.Seconds"
-                    ValueExpression="@(() => _formModel.Seconds)"
-                    ValueChanged="@((int seconds) => OnSecondsChanged(seconds))">
-                    @foreach (var item in Items) {
-                        <option value="@item">@GetLabel(item)</option>
-                    }
-                </InputSelect>
-            </FormSection>
-        </FormBlock>
-    </Form>
+    <SelectTile
+        Label="@L.Ptt_KeepMicOpen"
+        Options="@options"
+        SelectedId="@m.Seconds.ToString(CultureInfo.InvariantCulture)"
+        SelectedIdChanged="@OnSecondsChanged"/>
+    <p class="c-description">@L.Ptt_ReplyWindowCaption</p>
 </Tile>
 
 @code {
     private static readonly int[] Items = [15, 30, 60];
-
-    private FormModel _formModel = null!;
-
-    protected override void OnInitialized()
-        => _formModel = new FormModel(ComponentIdGenerator);
 
     protected override ComputedState<Model>.Options GetStateOptions()
         => new() { InitialValue = Model.None, Category = GetStateCategory(GetType()) };
@@ -49,8 +28,8 @@
         return new((int)settings.HotWindow.TotalSeconds);
     }
 
-    private Task OnSecondsChanged(int seconds) {
-        _formModel.Seconds = seconds;
+    private Task OnSecondsChanged(string id) {
+        var seconds = int.Parse(id, CultureInfo.InvariantCulture);
         return UserSettingsUI.UserPttSettings()
             .Update(x => x with { HotWindow = TimeSpan.FromSeconds(seconds) }, CancellationToken.None);
     }
@@ -62,11 +41,6 @@
         };
 
     // Nested types
-
-    public sealed class FormModel(ComponentIdGenerator componentIdGenerator) {
-        public int Seconds { get; set; }
-        public string SecondsFormId { get; } = componentIdGenerator.Next("ptt-reply-window");
-    }
 
     public sealed record Model(int Seconds = 60) {
         public static readonly Model None = new();

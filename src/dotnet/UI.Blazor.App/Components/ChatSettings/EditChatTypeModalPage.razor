@@ -51,7 +51,7 @@
                 </Caption>
             </TileItem>
             <TileItem
-                Class="@(_form.IsPublic ? "clickable selected" : "clickable")"
+                Class="@(!_form.IsPublic ? "clickable selected" : "clickable")"
                 Click="@onMakeChatPrivateClick">
                 <Icon>
                     <FormRadio Id="@_form.IsPublicFalseFormId" IsDisabled="@(!canChangeChatType)" Value="@false"/>
@@ -129,7 +129,7 @@
             <Tile>
                 @if (showGuestsToggle) {
                     <TileItem Class="field-allow-guest clickable" IsIconCentered="true" Click="OnAllowGuestAuthorsClick">
-                        <Icon><i class="icon-guest text-2xl"></i></Icon>
+                        <Icon><i class="icon-guest"></i></Icon>
                         <Content>@L.Chat_AllowGuests</Content>
                         <Caption>@L.Chat_AllowGuestsHint</Caption>
                         <Right>
@@ -142,7 +142,7 @@
                         <Divider/>
                     }
                     <TileItem Class="field-allow-anonym clickable" IsIconCentered="true" Click="@OnAllowAnonymousAuthorsClick">
-                        <Icon><i class="icon-anonym text-2xl"></i></Icon>
+                        <Icon><i class="icon-anonym"></i></Icon>
                         <Content>@L.Chat_AllowAnonymous</Content>
                         <Caption>@L.Chat_AllowAnonymousHint</Caption>
                         <Right>
@@ -155,7 +155,7 @@
                         <Divider/>
                     }
                     <TileItem Class="field-is-template clickable" IsIconCentered="true" Click="OnIsTemplateClick">
-                        <Icon><i class="icon-file-text text-2xl"></i></Icon>
+                        <Icon><i class="icon-file-text"></i></Icon>
                         <Content>@L.Chat_UseAsTemplate</Content>
                         <Caption>@L.Chat_UseAsTemplateHint</Caption>
                         <Right>

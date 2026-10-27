@@ -2,36 +2,25 @@
 @using ActualChat.WebHooks
 @inherits ComponentBase<AppUIHub>
 
-<div class="web-hook-test-button">
-    <Button Class="btn-modal btn-outline" IsDisabled="@_isRunning" Click="@OnClick">
-        <Icon><i class="icon-paper-plane text-xl"></i></Icon>
-        <Title>@(IsIncoming ? L.WebHook_PostTest : L.WebHook_SendTest)</Title>
-    </Button>
-    @if (_result is { } result) {
-        <span class="@(result.IsSuccess ? "c-result success" : "c-result failure")">
-            @(result.IsSuccess
-                ? (IsIncoming
-                    ? L.WebHook_PostTestDone
-                    : L.WebHook_TestSucceeded_Format(result.StatusCode?.ToString() ?? "", result.LatencyMs))
-                : L.WebHook_TestFailed_Format(result.Error ?? result.StatusCode?.ToString() ?? ""))
-        </span>
-    }
-</div>
+<TileItem Class="tile-item-action web-hook-test-row" Click="@OnClick">
+    <Icon><i class="icon-paper-plane"></i></Icon>
+    <Content>@(IsIncoming ? L.WebHook_PostTest : L.WebHook_SendTest)</Content>
+</TileItem>
 
 @code {
     private bool _isRunning;
-    private WebHookTestResult? _result;
 
     [Parameter, EditorRequired] public WebHookId WebHookId { get; set; } = null!;
     [Parameter] public bool IsIncoming { get; set; }
 
     private async Task OnClick() {
+        if (_isRunning)
+            return;
+
         _isRunning = true;
-        _result = null;
         try {
-            var result = await UICommander.Run(new WebHooks_Test { Session = Session, Id = WebHookId });
-            if (!result.HasError)
-                _result = result.Value;
+            // The outcome shows up in the deliveries list below, so no inline result is needed here.
+            await UICommander.Run(new WebHooks_Test { Session = Session, Id = WebHookId });
         }
         finally {
             _isRunning = false;

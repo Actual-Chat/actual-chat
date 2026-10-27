@@ -43,7 +43,7 @@
                     @if (_contact.IsBlocked) {
                         <TileItem Click="@OnToggleBlock">
                             <Icon>
-                                <i class="icon-slash-circle text-2xl text-03"></i>
+                                <i class="icon-slash-circle text-03"></i>
                             </Icon>
                             <Content>
                                 @L.PeerContact_UnblockUser
@@ -55,7 +55,7 @@
                     } else {
                         <TileItem Class="item-danger" Click="@OnToggleBlock">
                             <Icon>
-                                <i class="icon-slash-circle text-xl"></i>
+                                <i class="icon-slash-circle"></i>
                             </Icon>
                             <Content>
                                 @L.PeerContact_BlockUser

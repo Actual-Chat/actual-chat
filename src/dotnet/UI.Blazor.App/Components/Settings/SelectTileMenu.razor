@@ -1,0 +1,52 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@using System.Collections.Concurrent
+@inherits Menu<AppUIHub>
+
+@{
+    var model = Registry.Get(_id);
+}
+@if (model != null) {
+    <div class="select-tile-menu">
+        @foreach (var option in model.Options) {
+            var isSelected = option.Id == model.SelectedId;
+            <button type="button"
+                    class="c-item @(isSelected ? "selected" : "")"
+                    @onclick="@(() => OnSelect(option.Id))">
+                <span class="c-label">@option.Label</span>
+                @if (isSelected) {
+                    <i class="icon-checkmark-simple c-check"></i>
+                }
+            </button>
+        }
+    </div>
+}
+
+@code {
+    private string _id = "";
+
+    protected override void OnParametersSet() {
+        if (Arguments is not [var id])
+            throw new ArgumentOutOfRangeException(nameof(Arguments));
+        _id = id;
+    }
+
+    private async Task OnSelect(string id) {
+        await Host.Hide();
+        if (Registry.Get(_id) is { } model)
+            await model.OnSelect(id);
+    }
+
+    // Nested types
+
+    public static class Registry {
+        private static readonly ConcurrentDictionary<string, Model> Items = new(StringComparer.Ordinal);
+        public static void Set(string id, Model model) => Items[id] = model;
+        public static Model? Get(string id) => Items.GetValueOrDefault(id);
+        public static void Remove(string id) => Items.TryRemove(id, out _);
+    }
+
+    public sealed record Model(
+        string SelectedId,
+        IReadOnlyList<SelectTileOption> Options,
+        Func<string, Task> OnSelect);
+}

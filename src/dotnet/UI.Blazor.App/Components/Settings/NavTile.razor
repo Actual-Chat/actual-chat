@@ -1,0 +1,28 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComponentBase<AppUIHub>
+
+<TileItem Class="@CssClass"
+          Caption="@(Caption.IsNullOrEmpty() ? null : CaptionFragment)"
+          Click="@Click">
+    <Icon>@IconContent</Icon>
+    <Content>@Title</Content>
+    <Right>
+        @if (!Value.IsNullOrEmpty()) {
+            <span class="c-nav-value">@Value</span>
+        }
+        <i class="icon-chevron-right text-xl text-03"></i>
+    </Right>
+</TileItem>
+
+@code {
+    [Parameter] public RenderFragment? IconContent { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Caption { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback Click { get; set; }
+
+    private string CssClass => $"nav-tile clickable {Class}";
+
+    private RenderFragment CaptionFragment => b => b.AddContent(0, Caption);
+}

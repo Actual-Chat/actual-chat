@@ -1,6 +1,6 @@
 @namespace ActualChat.UI.Blazor.Components
 
-<div class="tile @Class"
+<div class="tile @(Frameless ? "tile-frameless" : "") @Class"
      tabindex="@(Click.HasDelegate ? 0 : (int?)null)"
      role="@(Click.HasDelegate ? Role : null)"
      @onclick="@Click">
@@ -9,6 +9,7 @@
 
 @code {
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool Frameless { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public EventCallback Click { get; set; }
     [Parameter] public string Role { get; set; } = "button";

@@ -9,7 +9,7 @@
 @if (currentSession != null) {
     <TileTopic Topic="@L.Sessions_CurrentSession"/>
 
-    <Tile>
+    <Tile Class="tile-flat">
         <TileItem IsHoverable="false" Class="sessions-tile-item">
             <Content>
                 <span class="c-description">@currentSession.Description</span>
@@ -28,7 +28,7 @@
 
 <TileTopic Topic="@L.Sessions_Sessions"/>
 
-<Tile>
+<Tile Class="tile-flat">
     @foreach (var session in otherSessions) {
         var activeDaysAgo = (int)(now - session.LastSeenAt).Positive().TotalDays;
         var sActiveDaysAgo = activeDaysAgo == 0
@@ -51,23 +51,19 @@
                 </ButtonRound>
             </Right>
         </TileItem>
-        @if (session != otherSessions[^1]) {
-            <Divider />
-        }
     }
 
     @if (otherSessions.Count == 0) {
         <TileItem IsHoverable="false">
             <Content>@L.Sessions_NoOtherSessions</Content>
         </TileItem>
+    } else {
+        <TileItem Class="tile-item-action item-danger" Click="@OnSignOutAllClick">
+            <Icon><i class="icon-log-out"></i></Icon>
+            <Content>@L.Sessions_SignOutAll</Content>
+        </TileItem>
     }
 </Tile>
-
-@if (otherSessions.Count > 0) {
-    <ButtonTile Class="btn-danger" Filled="true" Click="@OnSignOutAllClick">
-        <Content>@L.Sessions_SignOutAll</Content>
-    </ButtonTile>
-}
 
 @code {
     private MomentClock ServerClock => Hub.Clocks.ServerClock;

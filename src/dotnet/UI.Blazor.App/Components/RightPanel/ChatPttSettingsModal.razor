@@ -27,7 +27,7 @@
                       ToggleValue="@isModeOn"
                       ToggleValueChanged="@OnModeChanged"
                       ToggleDisabled="@(_isChanging || !m.CanManage)">
-                <Icon><i class="icon-push-to-talk text-xl"></i></Icon>
+                <Icon><i class="icon-push-to-talk"></i></Icon>
                 <Content>@L.Ptt_ChatAvailability</Content>
                 <Caption>@(m.CanManage ? L.Ptt_ChatScopeCaption : L.Ptt_ChatReadOnlyCaption)</Caption>
             </TileItem>
@@ -35,7 +35,7 @@
                 <TileItem ToggleValue="@m.IsInList"
                           ToggleValueChanged="@OnInListChanged"
                           ToggleDisabled="@(_isChanging || isAtCapacity)">
-                    <Icon><i class="icon-person text-xl"></i></Icon>
+                    <Icon><i class="icon-person"></i></Icon>
                     <Content>@L.Ptt_InMyList</Content>
                     <Caption>
                         @(isAtCapacity

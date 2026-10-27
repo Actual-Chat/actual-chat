@@ -10,7 +10,7 @@
     @if (m.OwnVoice is { } ownVoice) {
         <TileItem ToggleValue="@m.IsOwnVoiceEnabled"
                   ToggleValueChanged="@(_ => OnToggleOwnVoice())">
-            <Icon><i class="icon-own-voice text-2xl"></i></Icon>
+            <Icon><i class="icon-own-voice"></i></Icon>
             <Content>@L.Transcription_OwnVoice</Content>
             <Caption>
                 @L.Transcription_OwnVoiceCaption
@@ -19,39 +19,32 @@
         </TileItem>
         @if (m.IsOwnVoiceEnabled) {
             @if (m.NotesChatId is { } notesChatId) {
-                <TileItem Click="@(() => OnRecordSampleClick(notesChatId))">
-                    <Icon><i class="icon-record-sample text-2xl"></i></Icon>
-                    <Content>
-                        @(ownVoice.HasExplicitSample
-                            ? L.Transcription_OwnVoiceRerecord
-                            : L.Transcription_OwnVoiceRecord)
-                    </Content>
-                    <Right>
-                        <i class="icon-chevron-right text-xl text-03"></i>
-                    </Right>
-                </TileItem>
+                var recordTitle = ownVoice.HasExplicitSample
+                    ? L.Transcription_OwnVoiceRerecord
+                    : L.Transcription_OwnVoiceRecord;
+                <NavTile Title="@recordTitle" Click="@(() => OnRecordSampleClick(notesChatId))">
+                    <IconContent><i class="icon-record-sample"></i></IconContent>
+                </NavTile>
             }
             @if (ownVoice.HasExplicitSample) {
                 <TileItem Click="@OnRemoveSampleClick">
-                    <Icon><i class="icon-trash03 text-2xl"></i></Icon>
+                    <Icon><i class="icon-trash03"></i></Icon>
                     <Content>@L.Transcription_OwnVoiceRemoveSample</Content>
                 </TileItem>
             }
         }
     }
-    <TileItem Click="@OnDubVoiceClick">
-        <Icon><i class="icon-own-voice-translation text-2xl"></i></Icon>
-        <Content>@L.Transcription_DubVoice</Content>
-        <Caption>
-            @(m.IsOwnVoiceEnabled
-                ? L.Transcription_DubVoiceFallbackCaption
-                : L.Transcription_DubVoiceCaption)
-        </Caption>
-        <Right>
-            <span class="text-03">@FormatDubVoice(m)</span>
-            <i class="icon-chevron-right text-xl text-03"></i>
-        </Right>
-    </TileItem>
+    @{
+        var dubCaption = m.IsOwnVoiceEnabled
+            ? L.Transcription_DubVoiceFallbackCaption
+            : L.Transcription_DubVoiceCaption;
+    }
+    <NavTile Title="@L.Transcription_DubVoice"
+             Caption="@dubCaption"
+             Value="@FormatDubVoice(m)"
+             Click="@OnDubVoiceClick">
+        <IconContent><i class="icon-own-voice-translation"></i></IconContent>
+    </NavTile>
 </Tile>
 
 @code {

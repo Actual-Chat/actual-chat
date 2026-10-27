@@ -1,17 +1,28 @@
 @namespace ActualChat.UI.Blazor.Components
 
-@if (Right is null) {
-    <div class="tile-topic">
-        @Topic
-    </div>
+@if (Description.IsNullOrEmpty()) {
+    @if (Right is null) {
+        <div class="tile-topic">
+            @Topic
+        </div>
+    } else {
+        <div class="tile-topic has-right">
+            <span>@Topic</span>
+            @Right
+        </div>
+    }
 } else {
-    <div class="tile-topic has-right">
-        <span>@Topic</span>
-        @Right
+    <div class="tile-topic has-description @(Right is null ? "" : "has-right")">
+        <div class="c-head-row">
+            <div class="c-title">@Topic</div>
+            @Right
+        </div>
+        <div class="c-description">@Description</div>
     </div>
 }
 
 @code {
     [Parameter] public string Topic { get; set; } = "";
+    [Parameter] public string Description { get; set; } = "";
     [Parameter] public RenderFragment? Right { get; set; }
 }

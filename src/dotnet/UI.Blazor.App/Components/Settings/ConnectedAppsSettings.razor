@@ -4,21 +4,16 @@
     var m = State.Value;
 }
 
-<TileTopic Topic="@L.ConnectedApps_Title"/>
+<TileTopic Topic="@L.ConnectedApps_Title" Description="@L.ConnectedApps_Empty"/>
 
 @if (m.Grants.Count == 0) {
-    <Tile Class="connected-apps-tile"><TileItem IsHoverable="false"><Content><span class="c-empty">@L.ConnectedApps_Empty</span></Content></TileItem></Tile>
+    <div class="settings-empty">@L.ConnectedApps_EmptyTitle</div>
 } else {
-    <Tile Class="connected-apps-tile">
+    <Tile Class="tile-flat connected-apps-list">
         @foreach (var grant in m.Grants) {
             <TileItem IsHoverable="false">
                 <Content>
-                    <span class="c-app-name">@grant.ClientName</span>
-                    <div class="c-revoke">
-                        <ButtonRound Class="btn-sm btn-danger" Tooltip="@L.ConnectedApps_Revoke" Click="@(() => OnRevokeClick(grant))">
-                            <i class="icon-trash03 text-xl"></i>
-                        </ButtonRound>
-                    </div>
+                    <span class="c-label">@grant.ClientName</span>
                 </Content>
                 <Caption>
                     <dl class="c-facts">
@@ -27,13 +22,18 @@
                         <dt>@L.ConnectedApps_LastUsed</dt>
                         <dd>@FormatDate(grant.LastUsedAt)</dd>
                         <dt>@L.ConnectedApps_Access</dt>
-                        <dd>@string.Join(" · ", grant.Scopes.Select(L.OAuthScopeText))</dd>
+                        <dd>@AccessText(grant)</dd>
                     </dl>
                 </Caption>
+                <Right>
+                    <ButtonRound
+                        Class="btn-sm btn-danger"
+                        Tooltip="@L.ConnectedApps_Revoke"
+                        Click="@(() => OnRevokeClick(grant))">
+                        <i class="icon-trash03 text-xl"></i>
+                    </ButtonRound>
+                </Right>
             </TileItem>
-            @if (grant != m.Grants[^1]) {
-                <Divider />
-            }
         }
     </Tile>
 }
@@ -50,9 +50,15 @@
     private string FormatDate(Moment moment)
         => DateTimeConverter.ToLocalTime(moment.ToDateTime()).ToString("g", DateFormatter);
 
+    private string AccessText(OAuthGrant grant)
+        => string.Join(" · ", grant.Scopes.Select(L.OAuthScopeText));
+
     private async Task OnRevokeClick(OAuthGrant grant) {
         var confirmed = false;
-        var model = new ConfirmModal.Model(false, L.ConnectedApps_RevokeConfirm_Format(grant.ClientName), () => { confirmed = true; }) {
+        var model = new ConfirmModal.Model(
+            false,
+            L.ConnectedApps_RevokeConfirm_Format(grant.ClientName),
+            () => { confirmed = true; }) {
             Title = L.ConnectedApps_RevokeTitle,
             ConfirmButtonText = L.Common_Yes,
         };
