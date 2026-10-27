@@ -48,7 +48,9 @@ public class ContactLinker(IServiceProvider services) : ActivatedWorkerBase(serv
             var ownerId = externalContactId.UserDeviceId.OwnerId;
             var linksPerUserId = new Dictionary<UserId, List<DbExternalContactLink>>();
             foreach (var link in links) {
-                var userId = await ExternalContactExt2.FindUser(AccountsBackend, link.Value, cancellationToken).ConfigureAwait(false);
+                var userId = await AccountsBackend
+                    .GetUserIdByExternalContactLink(link.Value, cancellationToken)
+                    .ConfigureAwait(false);
                 if (userId is null || userId == ownerId) {
                     link.IsChecked = true;
                     continue;
