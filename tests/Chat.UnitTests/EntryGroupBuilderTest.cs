@@ -15,6 +15,23 @@ public class EntryGroupBuilderTest
         builder.WordCount.Should().Be(2);
     }
 
+    [Theory]
+    [InlineData("日本語のテスト", 4)]
+    [InlineData("你好世界", 2)]
+    [InlineData("สวัสดีครับ", 2)]
+    public void UnspacedScriptWordCountShouldCountCharacters(string content, int expected)
+    {
+        // arrange
+        var builder = new EntryGroupBuilder();
+        var entry = new ChatEntrySlim(0, content, _authorId, new Moment(DateTime.Now), null, false, null, false);
+
+        // act
+        builder.Add(entry);
+
+        // assert
+        builder.WordCount.Should().Be(expected, "these scripts don't put spaces between words");
+    }
+
     [Fact]
     public void AddEntry_UpdatesAveragePauseBetweenEntries()
     {
