@@ -27,6 +27,8 @@ public sealed class VideoRecorder : IAsyncDisposable
     // StateSync inspects this when an intent fires for an already-warm
     // recorder so it routes through OpenGate instead of StartRecording.
     public bool IsWarmedUp { get; private set; }
+    // The lifecycle stops a recorder only when the intent has moved on, so its stop must not clear the intent
+    public bool IsStopRequested { get; private set; }
 
     private AppUIHub Hub { get; }
     private Session Session => Hub.Session;
@@ -37,6 +39,7 @@ public sealed class VideoRecorder : IAsyncDisposable
     private ILogger Log => field ??= Hub.LogFor(GetType());
 
     public VideoSourceKind Kind { get; }
+    public string CameraDeviceId => _deviceId;
     public Task WhenStopped => _whenStoppedTaskCompletionSource.Task;
 
     public static async Task<VideoRecorder> Create(AppUIHub hub, VideoSourceKind kind = VideoSourceKind.Camera)
@@ -152,7 +155,10 @@ public sealed class VideoRecorder : IAsyncDisposable
     }
 
     public Task StopRecording(CancellationToken cancellationToken)
-        => _jsRef.InvokeVoidAsync("stopRecording", cancellationToken).AsTask();
+    {
+        IsStopRequested = true;
+        return _jsRef.InvokeVoidAsync("stopRecording", cancellationToken).AsTask();
+    }
 
     // Camera & blur
 
@@ -674,9 +680,11 @@ public sealed class VideoRecorder : IAsyncDisposable
         }
 
         [JSInvokable]
-        public void OnRecordingStopped() {
+        public void OnRecordingStopped()
+        {
             videoRecorder.OnRecordingStopped();
-            hub.ChatVideoUI.OnRecordingStopped(kind);
+            if (!videoRecorder.IsStopRequested)
+                hub.ChatVideoUI.OnRecordingStopped(kind);
         }
 
         [JSInvokable]

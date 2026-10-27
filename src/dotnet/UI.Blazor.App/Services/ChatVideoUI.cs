@@ -18,6 +18,8 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
     private readonly MutableState<ChatId?> _recordingChatId;        // camera target chat
     private readonly MutableState<ChatId?> _screenCastChatId;       // screencast target chat
     private readonly MutableState<ChatId?> _lastRecordingChatId;
+    // The camera's chat while its call still dials: the camera is previewed there, but goes out only on the answer
+    private readonly MutableState<ChatId?> _dialingCameraChatId;
     private readonly MutableState<bool> _isBackgroundBlurEnabled;
     private readonly MutableState<string?> _cameraErrorMessage;
     private readonly MutableState<string?> _screenCastErrorMessage;
@@ -58,6 +60,7 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _recordingChatId = StateFactory.NewMutable((ChatId?)null);
         _screenCastChatId = StateFactory.NewMutable((ChatId?)null);
         _lastRecordingChatId = StateFactory.NewMutable((ChatId?)null);
+        _dialingCameraChatId = StateFactory.NewMutable((ChatId?)null);
         _isBackgroundBlurEnabled = StateFactory.NewMutable(false);
         _cameraErrorMessage = StateFactory.NewMutable((string?)null);
         _screenCastErrorMessage = StateFactory.NewMutable((string?)null);
@@ -283,14 +286,15 @@ public partial class ChatVideoUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             if (chat is null || !IsVideoAvailableNonComputed(chat))
                 return;
 
-            // On a call in this chat the camera just joins in, with the last session's camera and blur.
-            // An open mic alone doesn't count: outside a call the preview is the only place to pick them.
-            var isOnCall = Hub.CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Active } call
-                && call.ChatId == chatId;
+            // On a call in this chat the camera just joins in, with the last session's camera and blur -
+            // a call still dialing too. An open mic alone doesn't count: outside a call the preview is the
+            // only place to pick them.
+            var call = Hub.CallUI.GetActiveCallNonComputed();
+            var isOnCall = call is { Phase: CallPhase.Active or CallPhase.Dialing } && call.ChatId == chatId;
             if (isOnCall) {
                 // A call's video opens full-screen - unless its panel is already up, in the mode the
-                // user left it in.
-                var isExpanded = _watchingChatId.Value != chatId;
+                // user left it in. A dialing call is on its own screen already.
+                var isExpanded = call!.Phase == CallPhase.Active && _watchingChatId.Value != chatId;
                 await StartVideoCapture(chatId, isExpanded, cancellationToken).ConfigureAwait(false);
                 return;
             }

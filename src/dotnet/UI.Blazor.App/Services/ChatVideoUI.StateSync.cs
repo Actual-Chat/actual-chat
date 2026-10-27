@@ -12,6 +12,7 @@ public partial class ChatVideoUI
         await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(true);
         var baseChains = new[] {
             AsyncChain.From(SyncCameraLifecycle),
+            AsyncChain.From(SyncDialingCamera),
             AsyncChain.From(StopChatsInMaintenance),
             AsyncChain.From(SyncScreenCastLifecycle),
             AsyncChain.From(MonitorVideoIdleness),
@@ -38,7 +39,8 @@ public partial class ChatVideoUI
 
         var cameraDeviceId = await CameraUI.GetSelectedDeviceId(cancellationToken).ConfigureAwait(false);
         var blurEnabled = await _isBackgroundBlurEnabled.Use(cancellationToken).ConfigureAwait(false);
-        return new CameraRecordingIntent(chatId, cameraDeviceId, blurEnabled);
+        var dialingCameraChatId = await _dialingCameraChatId.Use(cancellationToken).ConfigureAwait(false);
+        return new CameraRecordingIntent(chatId, cameraDeviceId, blurEnabled, dialingCameraChatId != chatId);
     }
 
     [ComputeMethod]
@@ -127,7 +129,26 @@ public partial class ChatVideoUI
             captureIntent: () => GetCameraIntent(cancellationToken),
             startRecorder: (recorder, intent, ct) => StartCamera(recorder, (CameraRecordingIntent)intent, ct),
             updateRecorder: (recorder, intent, ct) => UpdateCamera(recorder, (CameraRecordingIntent)intent, ct),
-            cancellationToken);
+            cancellationToken,
+            mustRestart: (recorder, intent) => MustRewarmCamera(recorder, (CameraRecordingIntent)intent));
+
+    private async Task SyncDialingCamera(CancellationToken cancellationToken)
+    {
+        var cCall = await Computed
+            .Capture(() => Hub.CallUI.GetActiveCall(cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
+        await foreach (var (call, _) in cCall.Changes(cancellationToken).ConfigureAwait(false)) {
+            if (_dialingCameraChatId.Value is not { } chatId)
+                continue;
+            if (call is { Phase: CallPhase.Dialing } && call.ChatId == chatId)
+                continue;
+
+            // The answer lets the camera out; a call that ends unanswered takes it along
+            if (call is not { Phase: CallPhase.Active } || call.ChatId != chatId)
+                StopRecording();
+            _dialingCameraChatId.Value = null;
+        }
+    }
 
     private Task SyncScreenCastLifecycle(CancellationToken cancellationToken)
         => RunRecorderLifecycle(
@@ -143,7 +164,8 @@ public partial class ChatVideoUI
         Func<Task<TIntent?>> captureIntent,
         Func<VideoRecorder, TIntent, CancellationToken, Task> startRecorder,
         Func<VideoRecorder, TIntent, CancellationToken, Task>? updateRecorder,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<VideoRecorder, TIntent, bool>? mustRestart = null)
         where TIntent : RecordingIntent
     {
         var cState = await Computed
@@ -156,7 +178,9 @@ public partial class ChatVideoUI
         try {
             await foreach (var (intent, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
                 var intentChatId = intent?.ChatId;
-                if (intentChatId != activeChatId) {
+                var isRestart = recorder is not null && intent is not null
+                    && mustRestart?.Invoke(recorder, intent) == true;
+                if (intentChatId != activeChatId || isRestart) {
                     if (recorder is not null) {
                         await CompleteRecording(recorder, cancellationToken).ConfigureAwait(false);
                         recorder = null;
@@ -232,11 +256,18 @@ public partial class ChatVideoUI
         if (recorder.IsWarmedUp) {
             // Modal-pre-warmed recorder. Flip the gate; no re-acquire,
             // no fresh HW encoder slot.
-            await recorder
-                .OpenGate(Hub.VideoQualityUI.OutboundCameraCap, ct)
-                .ConfigureAwait(false);
+            if (intent.IsGateOpen)
+                await recorder
+                    .OpenGate(Hub.VideoQualityUI.OutboundCameraCap, ct)
+                    .ConfigureAwait(false);
             return;
         }
+
+        if (!intent.IsGateOpen) {
+            await recorder.Warmup(intent.ChatId, ct).ConfigureAwait(false);
+            return;
+        }
+
         await recorder
             .StartRecording(intent.ChatId, Hub.VideoQualityUI.OutboundCameraCap, ct)
             .ConfigureAwait(false);
@@ -248,15 +279,32 @@ public partial class ChatVideoUI
         // (via the .starting class driven by !hasError) instead of the previous
         // failure message while the new camera is being acquired.
         ClearRecordingError(VideoSourceKind.Camera);
+        if (recorder.IsWarmedUp) {
+            // Switching the camera would take a warm recorder live, so another camera re-warms instead
+            if (!intent.IsGateOpen) {
+                await recorder.ToggleBlur(intent.BlurEnabled, ct).ConfigureAwait(false);
+                return;
+            }
+
+            await recorder.OpenGate(Hub.VideoQualityUI.OutboundCameraCap, ct).ConfigureAwait(false);
+        }
         await recorder.SwitchCamera(intent.CameraDeviceId ?? "", ct).ConfigureAwait(false);
         await recorder.ToggleBlur(intent.BlurEnabled, ct).ConfigureAwait(false);
     }
+
+    private static bool MustRewarmCamera(VideoRecorder recorder, CameraRecordingIntent intent)
+        => recorder.IsWarmedUp
+            && !intent.IsGateOpen
+            && !intent.CameraDeviceId.IsNullOrEmpty()
+            && intent.CameraDeviceId != recorder.CameraDeviceId;
 
     // Nested types
 
     protected abstract record RecordingIntent(ChatId ChatId);
 
-    protected sealed record CameraRecordingIntent(ChatId ChatId, string? CameraDeviceId, bool BlurEnabled)
+    // IsGateOpen is false while the camera only previews: the recorder runs warm and sends nothing
+    protected sealed record CameraRecordingIntent(
+        ChatId ChatId, string? CameraDeviceId, bool BlurEnabled, bool IsGateOpen)
         : RecordingIntent(ChatId);
 
     protected sealed record ScreenCastIntent(ChatId ChatId) : RecordingIntent(ChatId);

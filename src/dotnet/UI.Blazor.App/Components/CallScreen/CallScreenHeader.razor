@@ -57,7 +57,10 @@
             <div class="c-center">
                 <div class="c-chat-title">@Chat.Title</div>
                 <div class="c-member-count">
-                    @if (m.MemberCount > 0) {
+                    @* The video alone would pass for a call in progress *@
+                    @if (m.Phase == CallPhase.Dialing) {
+                        <CallStatus Text="@CallScreensUI.GetStatusText(m.Stage)" IsInProgress="@true"/>
+                    } else if (m.MemberCount > 0) {
                         <span>@L.Chat_Members(m.MemberCount, m.MemberCount)</span>
                     }
                     @if (m.JoinedAt is { } joinedAt) {
@@ -165,12 +168,14 @@
 
         var phase = screen.Call?.Phase;
         var joinedAt = await CallScreensUI.GetCallConnectedAt(chatId, cancellationToken).ConfigureAwait(false);
+        var stage = await CallScreensUI.GetCallStage(chatId, cancellationToken).ConfigureAwait(false);
         var isEqualLayout = await CallScreensUI.IsEqualLayout(cancellationToken).ConfigureAwait(false);
         var mustShowHangUpHint = await LiveSessionUI.MustShowHangUpHint(chatId, cancellationToken)
             .ConfigureAwait(false);
         var m = new Model {
             Mode = screen.Mode,
             Phase = phase,
+            Stage = stage,
             JoinedAt = joinedAt,
             HasVideo = screen.HasVideo,
             HasHangUp = screen.HasHangUp,
@@ -227,6 +232,7 @@
         public VisualActivityPanelMode Mode { get; init; }
         // Null for the video of a chat nobody called in
         public CallPhase? Phase { get; init; }
+        public CallStage Stage { get; init; }
         public Moment? JoinedAt { get; init; }
         public bool HasVideo { get; init; }
         public bool HasHangUp { get; init; }

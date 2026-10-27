@@ -1,3 +1,4 @@
+using ActualChat.Live;
 using ActualChat.Localization;
 using ActualChat.UI.Blazor.App.Components.VideoPanel;
 
@@ -93,6 +94,7 @@ public partial class ChatVideoUI
     public void StopRecording()
     {
         _recordingChatId.Value = null;
+        _dialingCameraChatId.Value = null;
         ClearRecordingError(VideoSourceKind.Camera);
     }
 
@@ -171,7 +173,7 @@ public partial class ChatVideoUI
 
     private void StartVideoStreaming(ChatId chatId, string? cameraDeviceId = null, bool isBackgroundBlurEnabled = false)
     {
-        _recordingChatId.Value = chatId;
+        SetRecordingChatId(chatId);
         _lastRecordingChatId.Value = chatId;
         CameraUI.SetSelectedDevice(cameraDeviceId);
         _isBackgroundBlurEnabled.Value = isBackgroundBlurEnabled;
@@ -184,8 +186,17 @@ public partial class ChatVideoUI
             return;
 
         // Resume recording without overwriting camera/blur settings preserved from the previous recording
-        _recordingChatId.Value = chatId;
+        SetRecordingChatId(chatId);
         await OpenVideoPanelInternal(chatId, cancellationToken: cancellationToken).ConfigureAwait(false);
+    }
+
+    private void SetRecordingChatId(ChatId chatId)
+    {
+        // Set first, so the camera intent never shows this chat ungated while its call dials
+        var isDialing = Hub.CallUI.GetActiveCallNonComputed() is { Phase: CallPhase.Dialing } call
+            && call.ChatId == chatId;
+        _dialingCameraChatId.Value = isDialing ? chatId : null;
+        _recordingChatId.Value = chatId;
     }
 
     private async Task StartVideoCaptureInternal(ChatId chatId, CancellationToken cancellationToken = default)
