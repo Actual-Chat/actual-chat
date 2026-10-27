@@ -66,7 +66,9 @@ public class CancellingDebouncer<T> : WorkerBase
                 var delayTask = Clock.Delay(delay, cancellationToken);
                 await Task.WhenAny(whenReadyToRead, delayTask).ConfigureAwait(false);
             }
-            if (whenReadyToRead.IsCompleted)
+            // The channel completes whenReadyToRead on the thread pool, so it may still be pending
+            // while newer items are already in the queue - TryPeek sees them without waiting for that
+            if (whenReadyToRead.IsCompleted || reader.TryPeek(out _))
                 continue; // There are more items in the queue (or we're stopped), so we continue debouncing
 
             await MaybeCancel(DebouncerCancellationPoints.OnExecuteNext).ConfigureAwait(false);
