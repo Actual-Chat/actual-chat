@@ -9,7 +9,7 @@ public interface IChatTypingActivities : IComputeService
     // Authors currently typing in a chat, ordered by when each started their current typing streak.
     // Consolidated + compared by sequence so an unchanged set isn't pushed to every observer.
     [ComputeMethod(ConsolidationDelay = 0.2, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<ApiArray<AuthorId>> ListTypingAuthorIds(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // ttl is how much longer the author is to be shown as typing - the client renews this lease

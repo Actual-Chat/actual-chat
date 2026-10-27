@@ -305,7 +305,6 @@ public sealed class VideoRecorder : IAsyncDisposable
             var lastMask = int.MinValue;
             bool? lastThumbnailOnly = null;
             var failures = 0;
-            var everWorked = false;
             while (true) {
                 try {
                     var cState = await Computed.Capture(
@@ -314,7 +313,6 @@ public sealed class VideoRecorder : IAsyncDisposable
                     while (true) {
                         cState = await cState.Update(cancellationToken).ConfigureAwait(false);
                         var info = cState.Value;
-                        everWorked = true;
                         failures = 0;
                         // Dedupe state advances only AFTER a successful JS push:
                         // a failed interop call must be retried, not swallowed.
@@ -359,95 +357,18 @@ public sealed class VideoRecorder : IAsyncDisposable
                     throw;
                 }
                 catch (Exception e) {
-                    // Only a server that never once answered is treated as "old" and
-                    // downgraded to the legacy per-question methods; a fault after
-                    // the method has worked is transient — retry.
                     failures++;
-                    if (!everWorked && failures >= 3) {
-                        Log.LogWarning(e,
-                            "SubscribeToDemand: DemandInfo unavailable, falling back to legacy methods");
-                        break;
-                    }
-
                     Log.LogWarning(e,
                         "SubscribeToDemand: DemandInfo faulted (attempt {Attempt}), retrying", failures);
                     await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
                 }
             }
-
-            await Task.WhenAll(
-                    SubscribeToLayerDemandLegacy(ownStreamId, cancellationToken),
-                    SubscribeToThumbnailOnlyLegacy(ownStreamId, cancellationToken))
-                .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
         catch (Exception e) {
             Log.LogWarning(e, "SubscribeToDemand failed");
         }
     }
-
-#pragma warning disable CS0618 // old-server fallback intentionally calls the obsolete methods
-    // Old-server (pre-DemandInfo) chain: RequestedLayersMask, then
-    // MaxRequestedLayerId as the last resort.
-    private async Task SubscribeToLayerDemandLegacy(StreamId ownStreamId, CancellationToken cancellationToken) {
-        var lastMask = int.MinValue;
-        var primaryFailures = 0;
-        var primaryEverWorked = false;
-        while (true) {
-            try {
-                var cState = await Computed.Capture(
-                    () => LiveVideoStreams.RequestedLayersMask(Session, ownStreamId, cancellationToken),
-                    cancellationToken).ConfigureAwait(false);
-                await foreach (var (mask, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
-                    primaryEverWorked = true;
-                    primaryFailures = 0;
-                    if (mask == lastMask)
-                        continue;
-
-                    Log.LogInformation(
-                        "RequestedLayersMask (legacy): stream {StreamId} → {Mask:b}", ownStreamId, mask);
-                    await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
-                    lastMask = mask;
-                }
-                return;
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                throw;
-            }
-            catch (Exception e) {
-                // Only a server that never once answered is downgraded to the legacy
-                // aggregate; a fault after the method has worked is transient — retry,
-                // don't lose demand-set for the session.
-                primaryFailures++;
-                if (!primaryEverWorked && primaryFailures >= 3) {
-                    Log.LogWarning(e,
-                        "SubscribeToLayerDemandLegacy: RequestedLayersMask unavailable, "
-                        + "falling back to MaxRequestedLayerId");
-                    break;
-                }
-
-                Log.LogWarning(e,
-                    "SubscribeToLayerDemandLegacy: RequestedLayersMask faulted (attempt {Attempt}), retrying",
-                    primaryFailures);
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
-            }
-        }
-        var cMax = await Computed.Capture(
-            () => LiveVideoStreams.MaxRequestedLayerId(Session, ownStreamId, cancellationToken),
-            cancellationToken).ConfigureAwait(false);
-        var lastMax = int.MinValue;
-        await foreach (var (maxLayerId, _) in cMax.Changes(cancellationToken).ConfigureAwait(false)) {
-            if (maxLayerId == lastMax)
-                continue;
-
-            var mask = maxLayerId < 0 ? 0 : (1 << (maxLayerId + 1)) - 1;
-            Log.LogInformation(
-                "MaxRequestedLayerId (fallback): stream {StreamId} → {MaxLayerId}", ownStreamId, maxLayerId);
-            await _jsRef.InvokeVoidAsync("setDemandedLayers", cancellationToken, mask).ConfigureAwait(false);
-            lastMax = maxLayerId;
-        }
-    }
-#pragma warning restore CS0618
 
     private async Task RunPerOwnStreamSubscription(
         ChatId chatId,
@@ -516,57 +437,6 @@ public sealed class VideoRecorder : IAsyncDisposable
                 await worker.SilentAwait(false);
         }
     }
-
-#pragma warning disable CS0618 // old-server fallback intentionally calls the obsolete method
-    private async Task SubscribeToThumbnailOnlyLegacy(StreamId ownStreamId, CancellationToken cancellationToken) {
-        // Camera only: screencast never sheds fps.
-        if (Kind != VideoSourceKind.Camera)
-            return;
-
-        bool? lastValue = null;
-        var failures = 0;
-        var everWorked = false;
-        while (true) {
-            try {
-                var cState = await Computed.Capture(
-                    () => LiveVideoStreams.ThumbnailViewersOnly(Session, ownStreamId, cancellationToken),
-                    cancellationToken).ConfigureAwait(false);
-                var changes = cState.Changes(cancellationToken);
-                await foreach (var (thumbnailOnly, _) in changes.ConfigureAwait(false)) {
-                    everWorked = true;
-                    failures = 0;
-                    if (thumbnailOnly == lastValue)
-                        continue;
-
-                    Log.LogInformation(
-                        "ThumbnailViewersOnly (legacy): stream {StreamId} → {Value}", ownStreamId, thumbnailOnly);
-                    await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, thumbnailOnly)
-                        .ConfigureAwait(false);
-                    lastValue = thumbnailOnly;
-                }
-                return;
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                throw;
-            }
-            catch (Exception e) {
-                // Retry transient faults; only a never-answered server disables the
-                // shed (old server → no ThumbnailViewersOnly).
-                failures++;
-                if (!everWorked && failures >= 3) {
-                    Log.LogWarning(e, "SubscribeToThumbnailOnlyLegacy: unavailable, fps shed disabled");
-                    await _jsRef.InvokeVoidAsync("setThumbnailOnly", cancellationToken, false)
-                        .ConfigureAwait(false);
-                    return;
-                }
-
-                Log.LogWarning(e,
-                    "SubscribeToThumbnailOnlyLegacy: faulted (attempt {Attempt}), retrying", failures);
-                await Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
-            }
-        }
-    }
-#pragma warning restore CS0618
 
     // Forwards local voice-activity edges to JS so the sender keeps full fps
     // while the user is speaking, even when no peer is focusing them — pacing

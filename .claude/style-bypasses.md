@@ -29,6 +29,12 @@ These hold everywhere and need no per-file entry.
   "Developer surfaces" in CODING_STYLE.md). Hardcoded English in its `.razor` and
   `.cs` files is not a violation — Alex Yakunin's decision.
 
+- **An RPC interface ends with a `// Legacy methods` section**, read methods
+  included. A `LegacyXxx` method kept only for old clients goes there, after the
+  write methods, rather than among the read methods it would otherwise belong to
+  (`ILiveSessions`, `ILiveAudioStreams`, `ILiveVideoStreams`) — Alex Yakunin's
+  decision.
+
 One `##` subheader per file, one bullet per bypassed violation:
 
 ```

@@ -1693,7 +1693,7 @@ export class VideoRecorder {
      * including LOWER tiers (a focused 1:1 call collapses to the top only).
      *
      * `mask` is the aggregate of `ReceiveQuality.LayerId` bits across all
-     * subscribers, as reported by `LiveVideoStreams.RequestedLayersMask`.
+     * subscribers, as reported by `LiveVideoStreams.DemandInfo`.
      * 0 == nobody is currently subscribed (or every viewer is paused). A brief 0
      * keeps the current ladder (the next joiner pays no restart cost); a sustained
      * 0 collapses to the bottom tier only — see armIdleCollapse.

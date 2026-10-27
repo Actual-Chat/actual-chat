@@ -221,7 +221,14 @@ public partial class ChatVideoUI
         try {
             // Own screencasts don't count: the server replaces them, and one left by a reloaded page
             // stays listed until its silence watchdog fires, with no page left to stop it.
-            var activeStreams = await GetActiveVideoStreams(chatId, cancellationToken).ConfigureAwait(true);
+            // Synchronized: ILiveVideoStreams.List is ReturnDefault, so a first read says "no streams"
+            var cActiveStreams = await Computed
+                .Capture(() => GetActiveVideoStreams(chatId, cancellationToken), cancellationToken)
+                .ConfigureAwait(true);
+            cActiveStreams = await cActiveStreams
+                .Synchronize(ComputedSynchronizer.Default, cancellationToken)
+                .ConfigureAwait(true);
+            var activeStreams = cActiveStreams.Value;
             var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(true);
             var hasForeignScreenCast = activeStreams
                 .Any(s => s.SourceKind == VideoSourceKind.ScreenCast && s.AuthorId != ownAuthor?.Id);

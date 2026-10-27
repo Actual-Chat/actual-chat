@@ -11,7 +11,8 @@ namespace ActualChat.Streaming;
 /// </summary>
 public interface ILiveAudioStreams : IComputeService
 {
-    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [ComputeMethod]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<ApiArray<LiveAudioStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     Task<RpcStream<AudioFrame>?> GetStream(
