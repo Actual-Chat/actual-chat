@@ -93,6 +93,52 @@ export class BubbleHost {
         this.mutationObserver.disconnect();
     }
 
+    /** Places a bubble-styled element and its arrow next to the trigger, inside the safe areas. */
+    public static async place(
+        triggerElement: HTMLElement,
+        bubbleElement: HTMLElement,
+        arrowElement: HTMLElement,
+        position: Placement): Promise<void> {
+        const { x, y, placement, middlewareData } = await computePosition(
+            triggerElement,
+            bubbleElement,
+            {
+                placement: position,
+                middleware: [
+                    offset(6),
+                    flip({ fallbackAxisSideDirection: 'end' }),
+                    shift({ padding: SafeAreas.getPadding(bubbleViewportGap) }),
+                    arrow({ element: arrowElement }),
+                ],
+            });
+
+        Object.assign(bubbleElement.style, {
+            left: `${x}px`,
+            top: `${y}px`,
+        });
+
+        if (!middlewareData.arrow)
+            return;
+
+        const { x: arrowX, y: arrowY } = middlewareData.arrow;
+
+        const staticSide = {
+            top: 'bottom',
+            right: 'left',
+            bottom: 'top',
+            left: 'right',
+        }[placement.split('-')[0]];
+
+        Object.assign(arrowElement.style, {
+            left: arrowX != null ? `${arrowX}px` : '',
+            top: arrowY != null ? `${arrowY}px` : '',
+            right: '',
+            bottom: '',
+            // @ts-expect-error property name
+            [staticSide]: '-4px',
+        });
+    }
+
     private applyOrientationClass(): void {
         const wantLandscape = !ScreenOrientation.isPortrait;
         const hasLandscape = this.bubbleHost.classList.contains('landscape');
@@ -253,49 +299,10 @@ export class BubbleHost {
         bubbleElement: HTMLElement,
         arrowElement: HTMLElement,
         position: Placement): Promise<void> {
-        const { x, y, placement, middlewareData } = await computePosition(
-            triggerElement,
-            bubbleElement,
-            {
-                placement: position,
-                middleware: [
-                    offset(6),
-                    flip({ fallbackAxisSideDirection: 'end' }),
-                    shift({ padding: SafeAreas.getPadding(bubbleViewportGap) }),
-                    arrow({ element: arrowElement }),
-                ],
-            });
-
-        const rect = triggerElement.getBoundingClientRect();
-        if (!this.isElementInDOM(rect)) {
+        if (!this.isElementInDOM(triggerElement.getBoundingClientRect()))
             bubbleElement.style.display = 'none';
-        }
 
-        Object.assign(bubbleElement.style, {
-            left: `${x}px`,
-            top: `${y}px`,
-        });
-
-        if (!middlewareData.arrow)
-            return;
-
-        const { x: arrowX, y: arrowY } = middlewareData.arrow;
-
-        const staticSide = {
-            top: 'bottom',
-            right: 'left',
-            bottom: 'top',
-            left: 'right',
-        }[placement.split('-')[0]];
-
-        Object.assign(arrowElement.style, {
-            left: arrowX != null ? `${arrowX}px` : '',
-            top: arrowY != null ? `${arrowY}px` : '',
-            right: '',
-            bottom: '',
-            // @ts-expect-error property name
-            [staticSide]: '-4px',
-        });
+        await BubbleHost.place(triggerElement, bubbleElement, arrowElement, position);
     }
 
     private updateBubbles(): void {
