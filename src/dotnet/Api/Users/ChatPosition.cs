@@ -21,6 +21,13 @@ public sealed partial record ChatPosition(
     // lid the same way it treats 0, except the unread count, which must tell the two apart.
     public static readonly ChatPosition None = new(-1);
 
+    public static long GetUnreadCount(ChatId chatId, long readEntryLid, long lastEntryLid)
+        // A chat never opened has nothing unread, or its whole history would be; peer chats have no join step
+        // to seed a position, so a missing one counts as 0 there
+        => readEntryLid >= 0 || chatId.Kind == ChatKind.Peer
+            ? Math.Max(0, lastEntryLid - Math.Max(0, readEntryLid))
+            : 0;
+
     public override string ToString()
         => Origin.IsNullOrEmpty()
             ? EntryLid.Format()

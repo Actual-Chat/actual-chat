@@ -62,3 +62,8 @@ Blocked contacts used to live in `Contacts` with `State = Blocked`. Reads ignore
 contact, or marks the already archived one as blocked, and deletes the original. Until it has run, those contacts
 behave as if they never existed. Once it has completed everywhere, retire it into a no-op, as the other migration
 flows were, and drop the `Blocked` filters.
+
+## MCP
+
+`archive_chat`, `unarchive_chat` and `list_archived_chats` (`McpChatTools`) expose the same commands and
+reads to agents.

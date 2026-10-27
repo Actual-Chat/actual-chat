@@ -110,6 +110,10 @@ features:
 - [Integrations: notification history](./integrations/notifications-api.md) — the
   per-user log of addressed notifications, `INotifications.ListHistory`, the
   and the MCP tools that list, await and dismiss active notifications.
+- [Integrations: chat activity](./integrations/chat-activity-api.md) — the MCP
+  tools an agent uses to learn about new messages in all its chats:
+  `wait_for_changes` and its cursor, `list_unread_chats`, `wait_for_unread`, `mark_read`, and the
+  `IContacts.ListChatIdRanges` / `ListUnreadChats` compute methods behind them.
 - [Integrations: streaming writes](./integrations/streaming-writes.md) — opening a
   message and filling it in over time, the MCP start/append/finish tools and the
   offset contract, `IChats.StreamEntry`, and a worked LLM example.

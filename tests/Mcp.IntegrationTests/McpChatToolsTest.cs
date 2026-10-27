@@ -179,6 +179,34 @@ public class McpChatToolsTest(McpCollection.AppHostFixture fixture, ITestOutputH
     }
 
     [Fact]
+    public async Task ArchiveChatShouldMoveItToTheArchiveAndUnarchiveChatBack()
+    {
+        // arrange
+        var alice = await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "To archive");
+        await WaitForContact(ContactId.NewAny(alice.Id, chatId));
+        var client = await CreateClient();
+
+        // act
+        await CallTool(client, "archive_chat", new { chatId = chatId.Value });
+        var archived = await TestWait.WhenPolled(async () => {
+            var result = await CallTool<McpListChatsResult>(client, "list_archived_chats");
+            result.Chats.Should().Contain(c => c.Id == chatId.Value);
+            return result;
+        }, WaitTimeout);
+        await CallTool(client, "unarchive_chat", new { chatId = chatId.Value });
+
+        // assert
+        archived.Chats.Should().ContainSingle(c => c.Id == chatId.Value)
+            .Which.Title.Should().Be("To archive");
+        await TestWait.WhenPolled(async () => {
+            var result = await CallTool<McpListChatsResult>(client, "list_archived_chats");
+            result.Chats.Should().NotContain(c => c.Id == chatId.Value);
+        }, WaitTimeout);
+        await WaitForContact(ContactId.NewAny(alice.Id, chatId));
+    }
+
+    [Fact]
     public async Task ListGroupChats_ReturnsCreatedGroupChat()
     {
         var alice = await Tester.SignInAsUniqueAlice();

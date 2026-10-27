@@ -9,7 +9,7 @@ public enum ContactSubsetKind { All, Chats, Place }
 /// Specifies a subset of contacts to retrieve.
 /// </summary>
 [DataContract, MessagePackObject(true, AllowPrivate = true)]
-public partial class ContactSubset
+public partial class ContactSubset : IEquatable<ContactSubset>
 {
     [property: DataMember] public ContactSubsetKind Kind { get; }
     [property: DataMember] public PlaceId? PlaceId { get; }
@@ -32,4 +32,11 @@ public partial class ContactSubset
         placeId = PlaceId;
         return Kind == ContactSubsetKind.Place;
     }
+
+    // Equality
+
+    public bool Equals(ContactSubset? other)
+        => other is not null && Kind == other.Kind && PlaceId == other.PlaceId;
+    public override bool Equals(object? obj) => Equals(obj as ContactSubset);
+    public override int GetHashCode() => HashCode.Combine(Kind, PlaceId);
 }

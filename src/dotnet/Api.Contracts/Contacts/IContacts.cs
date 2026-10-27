@@ -22,6 +22,14 @@ public interface IContacts : IComputeService
     Task<ContactId[]> ListArchivedIds(
         Session session, PlaceId? placeId, Tile<int> indexTile, CancellationToken cancellationToken);
 
+    [ComputeMethod, RemoteComputeMethod]
+    Task<ApiArray<ChatIdRange>> ListChatIdRanges(
+        Session session, ContactSubset subset, CancellationToken cancellationToken);
+
+    [ComputeMethod, RemoteComputeMethod]
+    Task<ApiArray<UnreadChat>> ListUnreadChats(
+        Session session, ContactSubset subset, CancellationToken cancellationToken);
+
     [CommandHandler]
     Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken);
     [CommandHandler]

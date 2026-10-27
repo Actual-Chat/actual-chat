@@ -39,6 +39,7 @@ public sealed class McpModule(IServiceProvider moduleServices)
             .WithTools<McpConversationTools>(serializerOptions)
             .WithTools<McpSearchTools>(serializerOptions)
             .WithTools<McpNotificationTools>(serializerOptions)
+            .WithTools<McpChatActivityTools>(serializerOptions)
             .WithTools<McpDatabaseTools>(serializerOptions)
             .WithToolErrorFilter();
         services.AddEgressHttpClient(McpMediaTools.HttpClientName, Constants.Attachments.FileSizeLimit);

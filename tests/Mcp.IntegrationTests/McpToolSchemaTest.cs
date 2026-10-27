@@ -11,6 +11,7 @@ public class McpToolSchemaTest(McpCollection.AppHostFixture fixture, ITestOutput
         "list_group_chats", "list_places", "list_place_chats", "list_peer_chats",
         "get_chat", "create_chat", "update_chat",
         "list_members", "add_members", "remove_member", "join_chat", "leave_chat",
+        "archive_chat", "unarchive_chat", "list_archived_chats",
         "create_invite_link", "list_invite_links", "revoke_invite_link",
         "get_place", "create_place", "update_place",
         "list_place_members", "add_place_members", "remove_place_member",
@@ -28,6 +29,7 @@ public class McpToolSchemaTest(McpCollection.AppHostFixture fixture, ITestOutput
         "list_conversations", "get_conversation",
         "search_messages", "search_contacts",
         "list_notifications", "wait_for_notifications", "dismiss_notification", "dismiss_all_notifications",
+        "wait_for_changes", "list_unread_chats", "wait_for_unread", "mark_read",
         "get_database_schema", "run_sql_query",
     ];
 
