@@ -3,6 +3,7 @@ using ActualChat.Chat.Module;
 using ActualChat.Flows;
 using ActualChat.Live;
 using ActualChat.Streaming;
+using ActualChat.Transcription;
 
 namespace ActualChat.Chat.Flows;
 
@@ -69,7 +70,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
 
         var entries = await GetEntries(contextStartLid, maturity, cancellationToken).ConfigureAwait(false);
         var enoughData = entries.Count >= Settings.Summarization.MinLiveConversationEntries
-            && entries.Sum(WordCount) >= Settings.Summarization.MinLiveConversationWords;
+            && entries.Sum(e => e.Content.CountWords()) >= Settings.Summarization.MinLiveConversationWords;
         var hasNew = entries.Count > 0 && entries[^1].LocalId > LastSummaryEndLid;
         var dueForResummary = ResumedAt - liveConversation.SummarizedAt >= Settings.Summarization.LiveResummarizationDelay;
         if (enoughData && hasNew && (neverSummarized || dueForResummary)) {
@@ -91,7 +92,7 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
     {
         var contextStartLid = await EnsureContextStart(live, cancellationToken).ConfigureAwait(false);
         var entries = await GetEntries(contextStartLid, maturity: null, cancellationToken).ConfigureAwait(false);
-        var words = entries.Sum(WordCount);
+        var words = entries.Sum(e => e.Content.CountWords());
 
         // Tier 1: below the first-summary floor - nothing worth keeping; FinalizeSession vanishes it (empty title).
         if (entries.Count < Settings.Summarization.MinLiveConversationEntries
@@ -215,7 +216,4 @@ public sealed partial class LiveConversationSummaryFlow : Flow<Unit>
                 .ToArray(),
             IsExpandedByDefault = isExpandedByDefault,
         };
-
-    private static int WordCount(ChatEntrySlim entry)
-        => entry.Content.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
 }

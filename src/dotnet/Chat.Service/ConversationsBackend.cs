@@ -6,6 +6,7 @@ using ActualChat.Db;
 using ActualChat.Flows;
 using ActualChat.Live;
 using ActualChat.Streaming;
+using ActualChat.Transcription;
 using ActualLab.Fusion.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 
@@ -475,15 +476,12 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         if (messages.Count == 0)
             return (conversation with { MessageCount = 0, IsExpandedByDefault = false }, 0);
 
-        var words = messages.Sum(e => WordCount(e.Content));
+        var words = messages.Sum(e => e.Content.CountWords());
         return (conversation with {
             MessageCount = messages.Count,
             IsExpandedByDefault = Settings.Summarization.IsExpandedByDefault(words, messages.Count),
         }, words);
     }
-
-    private static int WordCount(string content)
-        => content.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
 
     private Conversation KeepCallShape(
         Conversation existing,
@@ -494,7 +492,7 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         // range has to keep covering the CallEntry that closes it, or ChatUI stops treating the entry as
         // drawn by this card and shows it a second time as a system line - hence Max, never the
         // summarizer's end alone. The span is talk time, which the entries' timestamps don't give.
-        var words = entries.Sum(e => WordCount(e.Content));
+        var words = entries.Sum(e => e.Content.CountWords());
         return summarized with {
             CallerId = existing.CallerId,
             EndEntryLid = Math.Max(existing.EndEntryLid, summarized.EndEntryLid),
