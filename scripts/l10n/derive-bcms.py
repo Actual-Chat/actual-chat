@@ -113,6 +113,7 @@ CROATIAN = [
     ("8 sedmica", "8 tjedana"),
     ("sedmic", "tjedn"), ("desilo", "dogodilo"),
     ("dešavanjima", "događanjima"), ("hiljad", "tisuć"),
+    ("Holandski", "Nizozemski"), ("Italijanski", "Talijanski"), ("Španski", "Španjolski"),
 ]
 
 EKAVIAN = [
@@ -159,6 +160,7 @@ EKAVIAN = [
     ("jučer", "juče"), ("Jučer", "Juče"),
     ("djelimično", "delimično"), ("riječ", "reč"), ("Riječ", "Reč"),
     ("proslijeđ", "prosleđ"), ("Proslijeđ", "Prosleđ"),
+    ("Njemač", "Nemač"),
     ("juni", "jun"), ("juli", "jul"), ("august", "avgust"), ("aug", "avg"),
     # Serbian Cyrillic text doesn't leave "chat" in Latin - "čet" is the usual form.
     ("chatovima", "četovima"), ("chatovi", "četovi"), ("chatova", "četova"),
