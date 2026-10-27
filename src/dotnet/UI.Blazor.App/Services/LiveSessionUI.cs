@@ -104,7 +104,15 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         if (live is null)
             return;
 
-        var isOn = !live.Rules.HasText();
+        await SetTranscription(chatId, !live.Rules.HasText(), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SetTranscription(ChatId chatId, bool isOn, CancellationToken cancellationToken)
+    {
+        var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (live is null || live.Rules.HasText() == isOn)
+            return;
+
         _ownTranscriptionIntents[chatId] = isOn;
         try {
             await SetRules(chatId, live.Rules.WithText(isOn), cancellationToken).ConfigureAwait(false);

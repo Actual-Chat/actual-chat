@@ -67,6 +67,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         _pickedOutputRouteId = StateFactory.NewMutable(
             (string?)null,
             StateCategories.Get(GetType(), "PickedOutputRouteId"));
+        _dialingTranscription = StateFactory.NewMutable(
+            ((ChatId ChatId, bool IsOn)?)null,
+            StateCategories.Get(GetType(), "DialingTranscription"));
     }
 
     void INotifyInitialized.Initialized()

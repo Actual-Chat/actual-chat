@@ -75,10 +75,10 @@
                 </HeaderButton>
             }
         }
-        @* A call's own control: the screen is also up for a chat's video with no call around it, and
-           a call being dialed has no session yet to hold the setting.
+        @* A call's own control: the screen is also up for a chat's video with no call around it.
+           A choice made while dialing waits for the answer, as there's no session to hold it yet.
            Shows the call's state to everyone; only who may change it gets a live button. *@
-        @if (m.CallPhase == CallPhase.Active) {
+        @if (m.CallPhase is CallPhase.Active or CallPhase.Dialing) {
             <HeaderButton
                 Click="@OnTranscriptionClick"
                 IsDisabled="@(!m.CanToggleTranscription)"
@@ -128,6 +128,14 @@
         var canToggleTranscription = await LiveSessionUI
             .CanToggleTranscription(chatId, cancellationToken)
             .ConfigureAwait(false);
+        if (screen?.Call?.Phase == CallPhase.Dialing) {
+            // Nothing holds the setting before the answer, so the dialing call's own choice stands in for it
+            var isDialingTranscriptionOn = await Hub.CallUI
+                .GetDialingTranscription(chatId, cancellationToken)
+                .ConfigureAwait(false);
+            isTranscriptionOn = isDialingTranscriptionOn ?? isTranscriptionOn;
+            canToggleTranscription = true;
+        }
         return new Model {
             CallPhase = screen?.Call?.Phase,
             HasVideo = screen?.HasVideo ?? false,
@@ -144,8 +152,14 @@
 
     // Private methods
 
-    private Task OnTranscriptionClick()
-        => LiveSessionUI.ToggleTranscription(Chat.Id, CancellationToken.None);
+    private Task OnTranscriptionClick() {
+        var m = State.Value;
+        if (m.CallPhase != CallPhase.Dialing)
+            return LiveSessionUI.ToggleTranscription(Chat.Id, CancellationToken.None);
+
+        Hub.CallUI.SetDialingTranscription(Chat.Id, !m.IsTranscriptionOn);
+        return Task.CompletedTask;
+    }
 
     private void OnVideoClick(bool mustEnable) {
         var chat = Chat;
