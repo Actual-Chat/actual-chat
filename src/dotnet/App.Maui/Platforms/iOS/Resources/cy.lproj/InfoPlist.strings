@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Mae angen mynediad i'r meicroffon i recordio negeseuon llais";
+"NSCameraUsageDescription" = "Mae angen mynediad i'r camera i dynnu lluniau a'u rhannu gyda defnyddwyr eraill.";
+"NSPhotoLibraryUsageDescription" = "Llwythwch ddelweddau i fyny i'w rhannu gyda defnyddwyr eraill neu i newid eich afatar.";
+"NSPhotoLibraryAddUsageDescription" = "Rhannwch luniau a fideos o'ch oriel.";
+"NSContactsUsageDescription" = "Rydyn ni'n casglu'r wybodaeth hon i'ch helpu i ddod o hyd i ffrindiau yn eich rhestr gysylltiadau sydd eisoes yn defnyddio Voxt. Os byddwch yn caniatáu mynediad i gysylltiadau, rydyn ni'n anfon enwau cysylltiadau a stwnsh o rifau ffôn a chyfeiriadau e-bost i'n gweinyddion.";
+"NSLocationWhenInUseUsageDescription" = "Rhannwch eich lleoliad byw gydag aelodau'r sgwrs pan fydd rhannu lleoliad wedi'i alluogi.";
+"NSLocationUsageDescription" = "Rhannwch eich lleoliad byw gydag aelodau'r sgwrs pan fydd rhannu lleoliad wedi'i alluogi.";
+"NSFocusStatusUsageDescription" = "Yn gadael i Voxt weld pan fydd Ffocws, fel Cwsg neu Peidiwch ag Aflonyddu, ymlaen, fel bod Pwyso i siarad yn aros yn dawel yn hytrach na chwarae sain yn uchel.";

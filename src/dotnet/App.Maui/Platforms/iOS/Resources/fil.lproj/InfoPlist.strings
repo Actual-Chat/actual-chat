@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Kailangan ang access sa mikropono para mag-record ng mga voice message";
+"NSCameraUsageDescription" = "Kailangan ang access sa camera para kumuha ng mga litrato at ibahagi ang mga ito sa ibang user.";
+"NSPhotoLibraryUsageDescription" = "Mag-upload ng mga larawan para ibahagi sa ibang user o para palitan ang avatar mo.";
+"NSPhotoLibraryAddUsageDescription" = "Magbahagi ng mga litrato at video mula sa gallery mo.";
+"NSContactsUsageDescription" = "Kinokolekta namin ang impormasyong ito para matulungan kang mahanap sa listahan ng contact mo ang mga kaibigang gumagamit na ng Voxt. Kung papayagan mo ang access sa mga contact, ipapadala namin sa mga server namin ang mga pangalan ng contact at mga hash ng mga numero ng telepono at email address.";
+"NSLocationWhenInUseUsageDescription" = "Ibahagi ang live na lokasyon mo sa mga miyembro ng chat kapag naka-on ang pagbabahagi ng lokasyon.";
+"NSLocationUsageDescription" = "Ibahagi ang live na lokasyon mo sa mga miyembro ng chat kapag naka-on ang pagbabahagi ng lokasyon.";
+"NSFocusStatusUsageDescription" = "Pinapayagan ang Voxt na makita kung naka-on ang isang Focus, gaya ng Sleep o Do Not Disturb, para manatiling tahimik ang Pindutin at magsalita sa halip na magpatugtog nang malakas.";

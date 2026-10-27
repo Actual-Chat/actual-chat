@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Qasja në mikrofon nevojitet për të regjistruar mesazhe zanore";
+"NSCameraUsageDescription" = "Qasja në kamerë nevojitet për të bërë fotografi dhe për t'i ndarë me përdorues të tjerë.";
+"NSPhotoLibraryUsageDescription" = "Ngarkoni imazhe për t'i ndarë me përdorues të tjerë ose për të ndryshuar avatarin tuaj.";
+"NSPhotoLibraryAddUsageDescription" = "Ndani foto dhe video nga galeria juaj.";
+"NSContactsUsageDescription" = "E mbledhim këtë informacion për t'ju ndihmuar të gjeni në listën e kontakteve miq që tashmë përdorin Voxt. Nëse lejoni qasjen në kontakte, dërgojmë në serverët tanë emrat e kontakteve dhe hash-et e numrave të telefonit dhe adresave të email-it.";
+"NSLocationWhenInUseUsageDescription" = "Ndani vendndodhjen tuaj të drejtpërdrejtë me anëtarët e bisedës kur ndarja e vendndodhjes është aktive.";
+"NSLocationUsageDescription" = "Ndani vendndodhjen tuaj të drejtpërdrejtë me anëtarët e bisedës kur ndarja e vendndodhjes është aktive.";
+"NSFocusStatusUsageDescription" = "Lejon Voxt të shohë kur është aktiv një Fokus, si Gjumi ose Mos shqetëso, që \"Shtyp dhe fol\" të mbetet i heshtur në vend që të luajë zë me volum të lartë.";

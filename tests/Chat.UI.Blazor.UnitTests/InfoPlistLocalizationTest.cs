@@ -16,9 +16,11 @@ public class InfoPlistLocalizationTest
         "src/dotnet/App.Maui/Platforms/MacCatalyst/Info.plist",
         "src/dotnet/App.Maui/Platforms/MacOS/Info.plist",
     ];
-    // Apple names the Chinese folders by script, and knows no Montenegrin at all
+    // Apple names the Chinese folders by script and Norwegian by its Bokmål standard,
+    // and knows no Montenegrin at all
     private static readonly Dictionary<string, string?> LprojNames = new() {
         [Languages.Chinese.IsoCode] = "zh-Hans",
+        [Languages.Norwegian.IsoCode] = "nb",
         [Languages.Montenegrin.IsoCode] = null,
     };
     private static readonly Regex EntryRe = new("^\"(?<key>[^\"]+)\" = \"(?<value>(?:[^\"\\\\]|\\\\.)*)\";$");

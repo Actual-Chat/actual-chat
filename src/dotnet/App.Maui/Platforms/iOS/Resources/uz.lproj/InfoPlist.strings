@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Ovozli xabarlarni yozib olish uchun mikrofonga kirish kerak";
+"NSCameraUsageDescription" = "Rasmga olish va ularni boshqa foydalanuvchilar bilan ulashish uchun kameraga kirish kerak.";
+"NSPhotoLibraryUsageDescription" = "Rasmlarni boshqa foydalanuvchilar bilan ulashish yoki avataringizni oʻzgartirish uchun yuklang.";
+"NSPhotoLibraryAddUsageDescription" = "Galereyangizdagi foto va videolarni ulashing.";
+"NSContactsUsageDescription" = "Bu maʼlumotni kontaktlar roʻyxatingizda Voxt’dan allaqachon foydalanayotgan doʻstlarni topishingizga yordam berish uchun yigʻamiz. Kontaktlarga kirishga ruxsat bersangiz, kontakt ismlari hamda telefon raqamlari va email manzillarining xeshlarini serverlarimizga yuboramiz.";
+"NSLocationWhenInUseUsageDescription" = "Joylashuvni ulashish yoqilganda jonli joylashuvingizni chat aʼzolari bilan ulashing.";
+"NSLocationUsageDescription" = "Joylashuvni ulashish yoqilganda jonli joylashuvingizni chat aʼzolari bilan ulashing.";
+"NSFocusStatusUsageDescription" = "Voxt’ga Uyqu yoki Bezovta qilinmasin kabi Fokus rejimi yoqilganini koʻrishga imkon beradi, shunda “Bos va gapir” ovozni baland ijro etish oʻrniga jim qoladi.";

@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Piekļuve mikrofonam nepieciešama balss ziņu ierakstīšanai";
+"NSCameraUsageDescription" = "Piekļuve kamerai nepieciešama, lai uzņemtu fotoattēlus un kopīgotu tos ar citiem lietotājiem.";
+"NSPhotoLibraryUsageDescription" = "Augšupielādējiet fotoattēlus, lai kopīgotu tos ar citiem lietotājiem vai mainītu savu avatāru.";
+"NSPhotoLibraryAddUsageDescription" = "Kopīgojiet fotoattēlus un video no savas galerijas.";
+"NSContactsUsageDescription" = "Mēs vācam šo informāciju, lai palīdzētu jums atrast kontaktu sarakstā draugus, kas jau izmanto Voxt. Ja atļausiet piekļuvi kontaktu sarakstam, uz mūsu serveriem nosūtīsim kontaktu vārdus un tālruņa numuru un e-pasta adrešu jaucējvērtības.";
+"NSLocationWhenInUseUsageDescription" = "Kopīgojiet tiešraides atrašanās vietu ar cilvēkiem tērzēšanā, kamēr atrašanās vietas kopīgošana ir ieslēgta.";
+"NSLocationUsageDescription" = "Kopīgojiet tiešraides atrašanās vietu ar cilvēkiem tērzēšanā, kamēr atrašanās vietas kopīgošana ir ieslēgta.";
+"NSFocusStatusUsageDescription" = "Ļauj Voxt redzēt, kad ir ieslēgts fokusa režīms, piemēram, „Miegs“ vai „Netraucēt“, lai „Nospied un runā“ paliktu kluss, nevis atskaņotu balsi skaļi.";

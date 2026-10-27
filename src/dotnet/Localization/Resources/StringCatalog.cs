@@ -3,12 +3,12 @@ using Microsoft.Extensions.Localization;
 namespace ActualChat.Localization;
 
 /// <summary>
-/// The merged Strings + Messages catalog for every shipped UI language, loaded once.
+/// The merged Strings + Messages catalog of each shipped UI language, loaded on first use.
 /// Callers pick the language; this type never resolves one.
 /// </summary>
 public static class StringCatalog
 {
-    private static readonly Dictionary<Language, Dictionary<string, string>> Translations = LoadAll();
+    private static readonly ConcurrentDictionary<Language, Dictionary<string, string>?> Translations = new();
 
     public static LocalizedString Get(Language language, string name)
     {
@@ -25,8 +25,7 @@ public static class StringCatalog
 
     public static IEnumerable<LocalizedString> GetAll(Language language)
     {
-        var dict = Translations.GetValueOrDefault(language)
-            ?? Translations.GetValueOrDefault(Languages.Main);
+        var dict = GetTranslations(language) ?? GetTranslations(Languages.Main);
         return dict?.Select(kv => new LocalizedString(kv.Key, kv.Value)) ?? [];
     }
 
@@ -34,14 +33,14 @@ public static class StringCatalog
 
     private static string GetString(Language language, string name, out bool found)
     {
-        if (Translations.TryGetValue(language, out var dict) && dict.TryGetValue(name, out var value)) {
+        if (GetTranslations(language) is { } dict && dict.TryGetValue(name, out var value)) {
             found = true;
             return value;
         }
 
         if (language != Languages.Main
-            && Translations.TryGetValue(Languages.Main, out dict)
-            && dict.TryGetValue(name, out value)) {
+            && GetTranslations(Languages.Main) is { } mainDict
+            && mainDict.TryGetValue(name, out value)) {
             found = true;
             return value;
         }
@@ -50,20 +49,24 @@ public static class StringCatalog
         return name;
     }
 
-    private static Dictionary<Language, Dictionary<string, string>> LoadAll()
-    {
-        var result = new Dictionary<Language, Dictionary<string, string>>();
-        foreach (var lang in Languages.AllUIAndTestOnly) {
-            var strings = StringCatalogs.LoadStrings(lang);
-            if (strings == null)
-                continue;
+    // Loaded per language rather than all at once: a process renders in one or two of them,
+    // and parsing every catalog would put ~60 of them on the startup path.
+    private static Dictionary<string, string>? GetTranslations(Language language)
+        => Translations.GetOrAdd(language, static x => Load(x));
 
-            var messages = StringCatalogs.LoadMessages(lang);
-            if (messages != null)
-                foreach (var (key, value) in messages)
-                    strings[key] = value;
-            result[lang] = strings;
-        }
-        return result;
+    private static Dictionary<string, string>? Load(Language language)
+    {
+        if (!Languages.AllUIAndTestOnly.Contains(language))
+            return null;
+
+        var strings = StringCatalogs.LoadStrings(language);
+        if (strings == null)
+            return null;
+
+        var messages = StringCatalogs.LoadMessages(language);
+        if (messages != null)
+            foreach (var (key, value) in messages)
+                strings[key] = value;
+        return strings;
     }
 }

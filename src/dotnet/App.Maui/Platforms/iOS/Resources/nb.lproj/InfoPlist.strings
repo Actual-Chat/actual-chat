@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Trenger tilgang til mikrofonen for å ta opp talemeldinger";
+"NSCameraUsageDescription" = "Trenger tilgang til kameraet for å ta bilder og dele dem med andre brukere.";
+"NSPhotoLibraryUsageDescription" = "Last opp bilder for å dele dem med andre brukere eller bytte avatar.";
+"NSPhotoLibraryAddUsageDescription" = "Del bilder og videoer fra bildegalleriet ditt.";
+"NSContactsUsageDescription" = "Vi samler inn denne informasjonen for å hjelpe deg å finne venner i kontaktlisten din som allerede bruker Voxt. Hvis du gir tilgang til kontaktlisten, sender vi kontaktenes navn og hashverdiene av telefonnumre og e-postadresser til serverne våre.";
+"NSLocationWhenInUseUsageDescription" = "Del posisjonen din i sanntid med personene i en chat mens posisjonsdeling er aktiv.";
+"NSLocationUsageDescription" = "Del posisjonen din i sanntid med personene i en chat mens posisjonsdeling er aktiv.";
+"NSFocusStatusUsageDescription" = "Lar Voxt se når et fokus som Søvn eller Ikke forstyrr er på, slik at Trykk og snakk holder seg stille i stedet for å spille av tale høyt.";

@@ -11,6 +11,7 @@ namespace ActualChat.App.Maui;
 public static class AppleLanguages
 {
     private const string Key = "AppleLanguages";
+
     public static void Set(Language? selected)
     {
         // Removed rather than left alone on auto: the WebView's language list follows this key,
@@ -19,6 +20,12 @@ public static class AppleLanguages
         if (selected == null)
             defaults.RemoveObject(Key);
         else
-            defaults[Key] = NSArray.FromStrings(selected.IsoCode);
+            defaults[Key] = NSArray.FromStrings(GetAppleCode(selected));
     }
+
+    // Private methods
+
+    // Apple names Norwegian by its Bokmål standard, as the nb.lproj folder does
+    private static string GetAppleCode(Language language)
+        => language == Languages.Norwegian ? "nb" : language.IsoCode;
 }

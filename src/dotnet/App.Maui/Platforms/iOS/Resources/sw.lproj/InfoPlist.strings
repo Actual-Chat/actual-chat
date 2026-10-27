@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Ufikiaji wa maikrofoni unahitajika ili kurekodi ujumbe wa sauti";
+"NSCameraUsageDescription" = "Ufikiaji wa kamera unahitajika ili kupiga picha na kuzishiriki na watumiaji wengine.";
+"NSPhotoLibraryUsageDescription" = "Pakia picha ili kuzishiriki na watumiaji wengine au kubadilisha avatari yako.";
+"NSPhotoLibraryAddUsageDescription" = "Shiriki picha na video kutoka kwenye matunzio yako.";
+"NSContactsUsageDescription" = "Tunakusanya maelezo haya ili kukusaidia kupata marafiki katika orodha yako ya anwani ambao tayari wanatumia Voxt. Ukiruhusu ufikiaji wa anwani, tunatuma majina ya anwani pamoja na hash za nambari za simu na anwani za barua pepe kwenye seva zetu.";
+"NSLocationWhenInUseUsageDescription" = "Shiriki eneo lako la moja kwa moja na wanachama wa gumzo wakati kushiriki eneo kumewashwa.";
+"NSLocationUsageDescription" = "Shiriki eneo lako la moja kwa moja na wanachama wa gumzo wakati kushiriki eneo kumewashwa.";
+"NSFocusStatusUsageDescription" = "Huruhusu Voxt kuona wakati Focus, kama vile Usingizi au Usisumbue, imewashwa, ili Bonyeza uongee ibaki kimya badala ya kucheza sauti kwa nguvu.";

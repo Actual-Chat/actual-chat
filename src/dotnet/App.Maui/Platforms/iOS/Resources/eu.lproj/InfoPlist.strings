@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Mikrofonorako sarbidea behar da ahots-mezuak grabatzeko";
+"NSCameraUsageDescription" = "Kamerarako sarbidea behar da argazkiak atera eta beste erabiltzaileekin partekatzeko.";
+"NSPhotoLibraryUsageDescription" = "Kargatu irudiak beste erabiltzaileekin partekatzeko edo zure abatarra aldatzeko.";
+"NSPhotoLibraryAddUsageDescription" = "Partekatu zure galeriako argazkiak eta bideoak.";
+"NSContactsUsageDescription" = "Informazio hau biltzen dugu zure kontaktuen zerrendan Voxt erabiltzen ari diren lagunak aurkitzen laguntzeko. Kontaktuetarako sarbidea baimentzen baduzu, kontaktuen izenak eta telefono-zenbakien eta helbide elektronikoen hashak bidaltzen ditugu gure zerbitzarietara.";
+"NSLocationWhenInUseUsageDescription" = "Partekatu zure zuzeneko kokapena txateko kideekin, kokapena partekatzea aktibatuta dagoenean.";
+"NSLocationUsageDescription" = "Partekatu zure zuzeneko kokapena txateko kideekin, kokapena partekatzea aktibatuta dagoenean.";
+"NSFocusStatusUsageDescription" = "Voxt-i uzten dio jakiten noiz dagoen aktibatuta Kontzentrazio-modu bat, adibidez Loa edo Ez molestatu, \"Sakatu eta hitz egin\" isilik egon dadin soinua ozen erreproduzitu ordez.";

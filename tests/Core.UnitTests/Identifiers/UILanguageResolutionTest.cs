@@ -9,16 +9,23 @@ public sealed class UILanguageResolutionTest(ITestOutputHelper @out) : TestBase(
     [InlineData("de-AT", "de-DE")]
     [InlineData("pt-BR", "pt-PT")]
     [InlineData("sr-Latn-RS", "sr-SR")]
+    [InlineData("fil-PH", "fil-PH")] // Must not collapse onto Finnish's "fi"
     public void DetectUILanguageShouldMatchByIsoCode(string clientLanguage, string expected)
+        => Languages.DetectUILanguage([clientLanguage]).Should().Be(Language.Parse(expected));
+
+    [Theory]
+    [InlineData("nb-NO", "no-NO")]
+    [InlineData("nn-NO", "no-NO")]
+    [InlineData("tl-PH", "fil-PH")]
+    public void DetectUILanguageShouldResolveAliases(string clientLanguage, string expected)
         => Languages.DetectUILanguage([clientLanguage]).Should().Be(Language.Parse(expected));
 
     [Fact]
     public void DetectUILanguageShouldTakeTheFirstSupportedLanguage()
-        => Languages.DetectUILanguage(["nb-NO", "fi-FI", "it-IT", "fr-FR"]).Should().Be(Languages.Italian);
+        => Languages.DetectUILanguage(["ur-PK", "he-IL", "it-IT", "fr-FR"]).Should().Be(Languages.Italian);
 
     [Theory]
-    [InlineData("fil-PH")] // Must not collapse onto Finnish's "fi"
-    [InlineData("nb-NO")]
+    [InlineData("ur-PK")] // Transcription-only until the app supports right-to-left layout
     [InlineData("")]
     [InlineData("max")]
     [InlineData("not-a-language")]

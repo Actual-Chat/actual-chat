@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "A hangüzenetek felvételéhez mikrofon-hozzáférés szükséges";
+"NSCameraUsageDescription" = "Fényképek készítéséhez és más felhasználókkal való megosztásához kamera-hozzáférés szükséges.";
+"NSPhotoLibraryUsageDescription" = "Tölts fel képeket, hogy megoszd őket más felhasználókkal, vagy lecseréld az avatárodat.";
+"NSPhotoLibraryAddUsageDescription" = "Ossz meg fényképeket és videókat a galériádból.";
+"NSContactsUsageDescription" = "Ezeket az adatokat azért gyűjtjük, hogy segítsünk megtalálni a névjegyzékedben azokat a barátaidat, akik már használják a Voxtot. Ha engedélyezed a névjegyekhez való hozzáférést, elküldjük a kiszolgálóinkra a névjegyek nevét, valamint a telefonszámok és e-mail-címek kivonatát.";
+"NSLocationWhenInUseUsageDescription" = "Oszd meg élő helyzetedet a csevegés tagjaival, amikor a helymegosztás be van kapcsolva.";
+"NSLocationUsageDescription" = "Oszd meg élő helyzetedet a csevegés tagjaival, amikor a helymegosztás be van kapcsolva.";
+"NSFocusStatusUsageDescription" = "Lehetővé teszi, hogy a Voxt lássa, mikor van bekapcsolva egy Fókusz, például az Alvás vagy a Ne zavarjanak, így a Nyomd és beszélj csendben marad, és nem játszik le hangosan hangot.";

@@ -71,8 +71,13 @@ public class DateFormatsLocalizerExtTest
         var rendered = Specifiers.ToDictionary(x => x, x => SampleDate.ToString(x, formats));
 
         // assert
-        // English uses the 12-hour clock, every other catalog the 24-hour one
-        var time = subtag is "en" or "max" ? "9:05 PM" : "21:05";
+        // English uses the 12-hour clock, every other catalog the 24-hour one; Finnish and
+        // Danish separate hours from minutes with a period
+        var time = subtag switch {
+            "en" => "9:05 PM",
+            "fi" or "da" => "21.05",
+            _ => "21:05",
+        };
         rendered["t"].Should().Be(time);
         foreach (var (specifier, value) in rendered) {
             value.Should().NotBeNullOrWhiteSpace($"'{subtag}' must render \"{specifier}\"");

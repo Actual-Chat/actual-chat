@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Necesítase acceso ao micrófono para gravar mensaxes de voz";
+"NSCameraUsageDescription" = "Necesítase acceso á cámara para tirar fotos e compartilas con outros usuarios.";
+"NSPhotoLibraryUsageDescription" = "Sube fotos para compartilas con outros usuarios ou para cambiar o teu avatar.";
+"NSPhotoLibraryAddUsageDescription" = "Comparte fotos e vídeos da túa galería.";
+"NSContactsUsageDescription" = "Recollemos esta información para axudarte a atopar amigos da túa lista de contactos que xa usan Voxt. Se concedes acceso aos teus contactos, enviaremos aos nosos servidores os nomes dos contactos e os valores hash dos números de teléfono e dos enderezos de correo.";
+"NSLocationWhenInUseUsageDescription" = "Comparte a túa localización en directo coas persoas dun chat mentres a compartición da localización estea activa.";
+"NSLocationUsageDescription" = "Comparte a túa localización en directo coas persoas dun chat mentres a compartición da localización estea activa.";
+"NSFocusStatusUsageDescription" = "Permite que Voxt saiba cando hai activado un modo de concentración, como Durmir ou Non molestar, para que Preme e fala permaneza en silencio en vez de reproducir a voz en alto.";

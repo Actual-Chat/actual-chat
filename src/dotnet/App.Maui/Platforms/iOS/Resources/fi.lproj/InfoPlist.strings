@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Mikrofonin käyttöoikeus tarvitaan ääniviestien tallentamiseen";
+"NSCameraUsageDescription" = "Kameran käyttöoikeus tarvitaan kuvien ottamiseen ja jakamiseen muille käyttäjille.";
+"NSPhotoLibraryUsageDescription" = "Lataa kuvia jakaaksesi niitä muille käyttäjille tai vaihtaaksesi avatarisi.";
+"NSPhotoLibraryAddUsageDescription" = "Jaa kuvia ja videoita galleriastasi.";
+"NSContactsUsageDescription" = "Keräämme näitä tietoja auttaaksemme sinua löytämään yhteystietoluettelostasi ystäviä, jotka jo käyttävät Voxtia. Jos sallit yhteystietojen käytön, lähetämme palvelimillemme yhteystietojen nimet sekä puhelinnumeroiden ja sähköpostiosoitteiden tiivisteet.";
+"NSLocationWhenInUseUsageDescription" = "Jaa reaaliaikainen sijaintisi keskustelun jäsenille, kun sijainnin jakaminen on käytössä.";
+"NSLocationUsageDescription" = "Jaa reaaliaikainen sijaintisi keskustelun jäsenille, kun sijainnin jakaminen on käytössä.";
+"NSFocusStatusUsageDescription" = "Antaa Voxtin nähdä, milloin keskittymistila, kuten Uni tai Älä häiritse, on päällä, jotta Paina ja puhu pysyy hiljaa eikä toista ääntä kovaa.";
