@@ -1,4 +1,5 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@using ActualChat.Contacts
 @inherits ComputedStateComponent<AppUIHub, bool>
 
 <Banner IsVisible="@State.Value">
@@ -23,7 +24,7 @@
             });
 
     protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
-        var contact = await Hub.Contacts.GetForChat(Session, Chat.Id, cancellationToken).ConfigureAwait(false);
+        var contact = await Hub.ContactsUI.Get(Chat.Id, cancellationToken).ConfigureAwait(false);
         return contact is { IsArchived: true, IsBlocked: false };
     }
 }

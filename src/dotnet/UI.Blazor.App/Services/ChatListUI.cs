@@ -421,7 +421,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
         var chatIds = await NotificationsUI.ListUnreadChatIds(cancellationToken).ConfigureAwait(false);
         var contactResults = await chatIds
             .Where(chatId => IsInPlace(chatId, placeId))
-            .Select(chatId => Contacts.GetForChat(Session, chatId, cancellationToken))
+            .Select(chatId => Hub.ContactsUI.Get(chatId, cancellationToken))
             .CollectResults(ApiConstants.Concurrency.High, cancellationToken)
             .ConfigureAwait(false);
         var count = contactResults.Count(x => x.ValueOrDefault is { IsArchived: true, IsBlocked: false });
@@ -439,7 +439,7 @@ public partial class ChatListUI : UIWorkerBase<AppUIHub>, IComputeService, INoti
     public ValueTask Unpin(ChatId chatId) => SetPinState(chatId, false);
     public async ValueTask SetPinState(ChatId chatId, bool mustPin)
     {
-        var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(false);
+        var contact = await Hub.ContactsUI.Get(chatId, default).Require().ConfigureAwait(false);
         if (contact.IsPinned == mustPin)
             return;
 

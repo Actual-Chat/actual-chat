@@ -28,6 +28,15 @@ public sealed class UserSettingsUI(IServiceProvider services, Session session)
         return await UserSettings.Get(Session, key, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<StoredSettings?> GetTemporal(string key)
+    {
+        // For a caller that reads the server value through another call: Get without the server read
+        if (KvasKeys.IsHidden(key) || !Temporals.IsReal)
+            return null;
+
+        return await Temporals.Get<StoredSettings>(key).ConfigureAwait(false);
+    }
+
     public Task Set(string key, StoredSettings? value, CancellationToken cancellationToken = default)
     {
         KvasKeys.RequireNotHidden(key);
