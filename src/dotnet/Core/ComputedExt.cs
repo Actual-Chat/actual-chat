@@ -46,8 +46,8 @@ public static class ComputedExt
 
     public static T UseIfReady<T>(this Task<T> task, T pendingValue, Computed computed)
     {
-        // Lets a computation depend on something it must not wait for - typically a
-        // RemoteComputedCacheMode.NoCache method, which never completes while offline. The result is
+        // Lets a computation depend on something it must not wait for - typically a remote compute
+        // method that has to wait for the server's answer. The result is
         // used only if it's already there; otherwise `pendingValue` stands in and `computed` is
         // invalidated once the real value arrives, so the computation re-runs and picks it up.
         if (task.IsCompletedSuccessfully)

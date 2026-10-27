@@ -217,90 +217,21 @@ public class LiveVideoStreams : ILiveVideoStreams
     }
 
     // [ComputeMethod]
-    // Cross-node aggregate: delegates to VideoStreamingBackend on the stream's
-    // owning node, which receives demand reports from every API pod.
-    public virtual async Task<int> MaxRequestedLayerId(
+    public virtual async Task<StreamDemandInfo> DemandInfo(
         Session session,
         StreamId streamId,
         CancellationToken cancellationToken)
     {
+        // Cross-node aggregate: delegates to VideoStreamingBackend on the stream's
+        // owning node, which receives demand reports from every API pod.
         if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
-            return MaxLayerIdFromMask(0);
+            return StreamDemandInfo.None;
 
         // `session` must NOT reach the aggregate's cache key (the aggregate spans
         // every viewer) — otherwise a viewer's ChangePlaybackQuality invalidates
         // its OWN session's key while the producer subscribes under the producer's
         // session key, and the producer never sees the change (stuck at its startup
         // value). Delegate to a session-less inner compute instead.
-        return await MaxRequestedLayerIdByStream(streamId, cancellationToken).ConfigureAwait(false);
-    }
-
-    [ComputeMethod]
-    public virtual async Task<int> MaxRequestedLayerIdByStream(
-        StreamId streamId,
-        CancellationToken cancellationToken)
-    {
-        var info = await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
-        return MaxLayerIdFromMask(info.Mask);
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<int> RequestedLayersMask(
-        Session session,
-        StreamId streamId,
-        CancellationToken cancellationToken)
-    {
-        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
-            return 0;
-
-        // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
-        // every viewer, so delegate to a session-less inner compute.
-        return await RequestedLayersMaskByStream(streamId, cancellationToken).ConfigureAwait(false);
-    }
-
-    [ComputeMethod]
-    public virtual async Task<int> RequestedLayersMaskByStream(
-        StreamId streamId,
-        CancellationToken cancellationToken)
-    {
-        var info = await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
-        return info.Mask;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<bool> ThumbnailViewersOnly(
-        Session session,
-        StreamId streamId,
-        CancellationToken cancellationToken)
-    {
-        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
-            return false;
-
-        // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
-        // every viewer, so delegate to a session-less inner compute.
-        return await ThumbnailViewersOnlyByStream(streamId, cancellationToken).ConfigureAwait(false);
-    }
-
-    [ComputeMethod]
-    public virtual async Task<bool> ThumbnailViewersOnlyByStream(
-        StreamId streamId,
-        CancellationToken cancellationToken)
-    {
-        var info = await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
-        return info.ThumbnailViewersOnly;
-    }
-
-    // [ComputeMethod]
-    public virtual async Task<StreamDemandInfo> DemandInfo(
-        Session session,
-        StreamId streamId,
-        CancellationToken cancellationToken)
-    {
-        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
-            return StreamDemandInfo.None;
-
-        // Same session-key caveat as MaxRequestedLayerId: the aggregate spans
-        // every viewer, so delegate to a session-less inner compute.
         return await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
     }
 
@@ -457,6 +388,77 @@ public class LiveVideoStreams : ILiveVideoStreams
                 .ToArray();
             await Task.WhenAll(keyFrameRequests).ConfigureAwait(false);
         }
+    }
+
+    // Legacy methods
+
+    // [ComputeMethod]
+    [Obsolete("2026.07: Use DemandInfo. Old clients only.")]
+    public virtual async Task<int> LegacyMaxRequestedLayerId(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+            return MaxLayerIdFromMask(0);
+
+        // Same session-key caveat as DemandInfo
+        return await LegacyMaxRequestedLayerIdByStream(streamId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<int> LegacyMaxRequestedLayerIdByStream(
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var info = await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
+        return MaxLayerIdFromMask(info.Mask);
+    }
+
+    // [ComputeMethod]
+    [Obsolete("2026.07: Use DemandInfo. Old clients only.")]
+    public virtual async Task<int> LegacyRequestedLayersMask(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+            return 0;
+
+        // Same session-key caveat as DemandInfo
+        return await LegacyRequestedLayersMaskByStream(streamId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<int> LegacyRequestedLayersMaskByStream(
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var info = await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
+        return info.Mask;
+    }
+
+    // [ComputeMethod]
+    [Obsolete("2026.07: Use DemandInfo. Old clients only.")]
+    public virtual async Task<bool> LegacyThumbnailViewersOnly(
+        Session session,
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        if (!await LiveStreamAccess.CanReadVideo(session, streamId, cancellationToken).ConfigureAwait(false))
+            return false;
+
+        // Same session-key caveat as DemandInfo
+        return await LegacyThumbnailViewersOnlyByStream(streamId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> LegacyThumbnailViewersOnlyByStream(
+        StreamId streamId,
+        CancellationToken cancellationToken)
+    {
+        var info = await DemandInfoByStream(streamId, cancellationToken).ConfigureAwait(false);
+        return info.ThumbnailViewersOnly;
     }
 
     // Private methods

@@ -266,11 +266,10 @@
                 && await IsUnreadByOthers(lastEntry, ownAuthorId, cancellationToken).ConfigureAwait(false);
             lastTextEntryIcons = GetIcons(lastEntry);
         }
-        // Call activity resolves through ILiveSessions, which is CacheMode.NoCache, so awaiting it
-        // offline never returns and the whole item would render as Model.None - title only, no last
-        // message, no timestamp. It's an ephemeral overlay: render without it, fill it in when it lands.
-        // The stand-in is the last known value, not None: on WASM every recompute costs an RPC round
-        // trip, and None renders as "no live conversation" - i.e. a visible dropout of the indicator.
+        // Call activity is an ephemeral overlay, so the row never waits for it: render without it,
+        // fill it in when it lands. The stand-in is the last known value, not None: on WASM every
+        // recompute costs an RPC round trip, and None renders as "no live conversation" - i.e. a
+        // visible dropout of the indicator.
         var chatActivityUI = Hub.ChatActivityUI;
         var callActivity = chatActivityUI
             .GetCallActivity(chatId, cancellationToken)

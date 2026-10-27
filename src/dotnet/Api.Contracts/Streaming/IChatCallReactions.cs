@@ -9,7 +9,7 @@ public interface IChatCallReactions : IComputeService
     // Emoji reactions sent in the chat's call over the last Constants.Call.ReactionDuration,
     // at most one per author - a newer one replaces it.
     [ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ApiArrayComparer<CallReaction>))]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<ApiArray<CallReaction>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // A reaction is only worth showing right away, so a late one is dropped rather than resent.
