@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Səsli mesajları yazmaq üçün mikrofona giriş lazımdır";
+"NSCameraUsageDescription" = "Şəkil çəkmək və onları başqa istifadəçilərlə paylaşmaq üçün kameraya giriş lazımdır.";
+"NSPhotoLibraryUsageDescription" = "Şəkilləri başqa istifadəçilərlə paylaşmaq və ya avatarınızı dəyişmək üçün yükləyin.";
+"NSPhotoLibraryAddUsageDescription" = "Qalereyanızdan foto və videoları paylaşın.";
+"NSContactsUsageDescription" = "Bu məlumatı kontakt siyahınızda artıq Voxt istifadə edən dostları tapmağınıza kömək etmək üçün toplayırıq. Kontaktlara girişə icazə versəniz, kontakt adlarını və telefon nömrələri ilə e-poçt ünvanlarının heşlərini serverlərimizə göndəririk.";
+"NSLocationWhenInUseUsageDescription" = "Yerin paylaşılması aktiv olduqda canlı yerinizi çat üzvləri ilə paylaşın.";
+"NSLocationUsageDescription" = "Yerin paylaşılması aktiv olduqda canlı yerinizi çat üzvləri ilə paylaşın.";
+"NSFocusStatusUsageDescription" = "Voxt-a Yuxu və ya Narahat etməyin kimi Fokus rejiminin aktiv olduğunu görməyə imkan verir ki, Bas-danış ucadan səs çalmaq əvəzinə səssiz qalsın.";

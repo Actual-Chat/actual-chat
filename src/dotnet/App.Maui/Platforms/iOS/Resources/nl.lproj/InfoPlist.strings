@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Toegang tot je microfoon is nodig om spraakberichten op te nemen";
+"NSCameraUsageDescription" = "Toegang tot je camera is nodig om foto's te maken en met andere gebruikers te delen.";
+"NSPhotoLibraryUsageDescription" = "Upload foto's om ze met andere gebruikers te delen of om je avatar te wijzigen.";
+"NSPhotoLibraryAddUsageDescription" = "Deel foto's en video's uit je fotogalerij.";
+"NSContactsUsageDescription" = "We verzamelen deze gegevens om je te helpen vrienden in je contactenlijst te vinden die Voxt al gebruiken. Als je toegang tot je contactenlijst geeft, sturen we de namen van de contacten en de gehashte waarden van telefoonnummers en e-mailadressen naar onze servers.";
+"NSLocationWhenInUseUsageDescription" = "Deel je live locatie met de mensen in een chat zolang het delen van je locatie actief is.";
+"NSLocationUsageDescription" = "Deel je live locatie met de mensen in een chat zolang het delen van je locatie actief is.";
+"NSFocusStatusUsageDescription" = "Laat Voxt zien wanneer een focus zoals Slaap of Niet storen aan staat, zodat Druk en spreek stil blijft in plaats van spraak hardop af te spelen.";

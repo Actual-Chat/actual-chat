@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Este nevoie de acces la microfon pentru a înregistra mesaje vocale";
+"NSCameraUsageDescription" = "Este nevoie de acces la cameră pentru a face fotografii și a le distribui altor utilizatori.";
+"NSPhotoLibraryUsageDescription" = "Încărcați fotografii pentru a le distribui altor utilizatori sau pentru a vă schimba avatarul.";
+"NSPhotoLibraryAddUsageDescription" = "Distribuiți fotografii și videoclipuri din galeria dvs.";
+"NSContactsUsageDescription" = "Colectăm aceste informații pentru a vă ajuta să găsiți prieteni din lista de contacte care folosesc deja Voxt. Dacă permiteți accesul la lista de contacte, vom trimite pe serverele noastre numele contactelor și valorile hash ale numerelor de telefon și ale adreselor de e-mail.";
+"NSLocationWhenInUseUsageDescription" = "Distribuiți locația live persoanelor dintr-un chat cât timp distribuirea locației este activă.";
+"NSLocationUsageDescription" = "Distribuiți locația live persoanelor dintr-un chat cât timp distribuirea locației este activă.";
+"NSFocusStatusUsageDescription" = "Permite aplicației Voxt să vadă când este activ un mod de concentrare, cum ar fi Somn sau Nu deranja, pentru ca Apasă și vorbește să rămână silențios în loc să redea vocea cu voce tare.";

@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Prieiga prie mikrofono reikalinga balso žinutėms įrašyti";
+"NSCameraUsageDescription" = "Prieiga prie kameros reikalinga nuotraukoms daryti ir bendrinti su kitais naudotojais.";
+"NSPhotoLibraryUsageDescription" = "Įkelkite nuotraukas, kad galėtumėte jomis dalytis su kitais naudotojais arba pakeisti avatarą.";
+"NSPhotoLibraryAddUsageDescription" = "Bendrinkite nuotraukas ir vaizdo įrašus iš savo galerijos.";
+"NSContactsUsageDescription" = "Renkame šią informaciją, kad padėtume jums rasti kontaktų sąraše draugų, kurie jau naudoja Voxt. Jei leisite prieigą prie kontaktų sąrašo, į mūsų serverius išsiųsime kontaktų vardus ir telefono numerių bei el. pašto adresų maišos reikšmes.";
+"NSLocationWhenInUseUsageDescription" = "Bendrinkite tiesioginę vietą su pokalbio žmonėmis, kol vietos bendrinimas įjungtas.";
+"NSLocationUsageDescription" = "Bendrinkite tiesioginę vietą su pokalbio žmonėmis, kol vietos bendrinimas įjungtas.";
+"NSFocusStatusUsageDescription" = "Leidžia Voxt matyti, kada įjungtas susitelkimo režimas, pvz., „Miegas“ ar „Netrukdyti“, kad „Spausk ir kalbėk“ liktų tylus ir neleistų balso garsiai.";

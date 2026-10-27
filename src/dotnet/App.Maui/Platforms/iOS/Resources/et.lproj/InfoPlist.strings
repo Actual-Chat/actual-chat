@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Häälsõnumite salvestamiseks on vaja juurdepääsu mikrofonile";
+"NSCameraUsageDescription" = "Fotode tegemiseks ja teiste kasutajatega jagamiseks on vaja juurdepääsu kaamerale.";
+"NSPhotoLibraryUsageDescription" = "Laadige fotosid üles, et neid teiste kasutajatega jagada või oma avatari muuta.";
+"NSPhotoLibraryAddUsageDescription" = "Jagage fotosid ja videoid oma galeriist.";
+"NSContactsUsageDescription" = "Kogume seda teavet, et aidata teil leida oma kontaktide hulgast sõpru, kes juba kasutavad Voxti. Kui lubate juurdepääsu kontaktide loendile, saadame oma serveritesse kontaktide nimed ning telefoninumbrite ja e-posti aadresside räsid.";
+"NSLocationWhenInUseUsageDescription" = "Jagage oma reaalajas asukohta vestluses olevate inimestega, kuni asukoha jagamine on sees.";
+"NSLocationUsageDescription" = "Jagage oma reaalajas asukohta vestluses olevate inimestega, kuni asukoha jagamine on sees.";
+"NSFocusStatusUsageDescription" = "Võimaldab Voxtil näha, kui fookusrežiim, näiteks Uni või Mitte segada, on sees, et „Vajuta ja räägi“ jääks vaikseks ega esitaks häält valjult.";

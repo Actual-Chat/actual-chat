@@ -1,0 +1,8 @@
+"NSMicrophoneUsageDescription" = "Akses mikrofon diperlukan untuk merakam mesej suara";
+"NSCameraUsageDescription" = "Akses kamera diperlukan untuk mengambil gambar dan berkongsinya dengan pengguna lain.";
+"NSPhotoLibraryUsageDescription" = "Muat naik imej untuk berkongsinya dengan pengguna lain atau menukar avatar anda.";
+"NSPhotoLibraryAddUsageDescription" = "Kongsi foto dan video daripada galeri anda.";
+"NSContactsUsageDescription" = "Kami mengumpul maklumat ini untuk membantu anda mencari rakan dalam senarai kenalan anda yang sudah menggunakan Voxt. Jika anda membenarkan akses kenalan, kami menghantar nama kenalan serta cincangan nombor telefon dan alamat e-mel ke pelayan kami.";
+"NSLocationWhenInUseUsageDescription" = "Kongsi lokasi langsung anda dengan ahli sembang apabila perkongsian lokasi didayakan.";
+"NSLocationUsageDescription" = "Kongsi lokasi langsung anda dengan ahli sembang apabila perkongsian lokasi didayakan.";
+"NSFocusStatusUsageDescription" = "Membenarkan Voxt melihat apabila Fokus, seperti Tidur atau Jangan Ganggu, dihidupkan, supaya Tekan untuk bercakap kekal senyap dan tidak memainkan bunyi dengan kuat.";
