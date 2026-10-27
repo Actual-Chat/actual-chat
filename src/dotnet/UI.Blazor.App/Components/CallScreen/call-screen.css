@@ -955,6 +955,11 @@ body.show-fps-overlay .video-fps:empty {
     left: calc(var(--vp-safe-left) + 0.25rem);
     right: calc(var(--vp-safe-right) + 0.25rem);
 }
+/* Off the face and clear of the footer (5.5rem high), which overlays the focused tile */
+.call-screen.expanded:not(.layout-equal) .video-track-player.item-focused .video-error {
+    @apply top-auto mb-0;
+    bottom: calc(var(--vp-safe-bottom) + 5.5rem + 1rem);
+}
 .call-screen .video-track-player .video-participant-label {
     @apply flex items-center gap-1;
     @apply min-w-0;
