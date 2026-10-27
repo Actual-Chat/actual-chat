@@ -111,6 +111,7 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         _isListeningPausedByFocus = stateFactory.NewMutable(
             false,
             StateCategories.Get(type, nameof(ShouldHoldListeningFocus)));
+        _isProximityCovered = stateFactory.NewMutable(false, StateCategories.Get(type, nameof(IsReplayAtEar)));
     }
 
     void INotifyInitialized.Initialized()
