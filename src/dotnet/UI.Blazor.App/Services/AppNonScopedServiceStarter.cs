@@ -71,13 +71,13 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
         // NOTE(DF): I doubt that it makes sense to run preload contacts here now,
         // because we don't know the selected place yet.
         var chats = Services.GetRequiredService<IChats>();
-        var mentions = Services.GetRequiredService<IMentions>();
         var chatPositions = Services.GetRequiredService<IChatPositions>();
         var chatThreads = Services.GetRequiredService<IChatThreads>();
         var localSettings = Services.LocalSettings();
-        var userSettingsUI = Services.UserSettingsUI(session);
 
-        var selectedChatId = await localSettings.Get<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken).ConfigureAwait(false);
+        var selectedChatId = await localSettings
+            .Get<ChatId>(nameof(ChatUI.SelectedChatId), cancellationToken)
+            .ConfigureAwait(false);
         var selectedPlaceId = (PlaceId?)null;
         if (selectedChatId is not null)
             selectedPlaceId = (selectedChatId as PlaceChatId)?.PlaceId;
@@ -93,17 +93,14 @@ public class AppNonScopedServiceStarter(IServiceProvider services)
 
         async Task PreloadContact(ContactId contactId)
         {
+            // Exactly the calls ChatUI.Get makes per chat: a call that differs only warms another cache entry
             var chatId = contactId.ChatId;
-            var contactTask = contacts.Get(session, contactId, cancellationToken);
+            var summaryTask = contacts.GetSummary(session, chatId, cancellationToken);
             var chatNewsTask = chats.GetNews(session, chatId, cancellationToken);
-            var lastMentionTask = mentions.GetLastOwn(session, chatId, cancellationToken);
             var chatPositionTask = chatPositions.GetOwn(session, chatId, ChatPositionKind.Read, cancellationToken);
-            var chatUserSettingsTask = userSettingsUI.ChatUserSettings(chatId).Get(cancellationToken);
 
-            var contact = contactTask.ConfigureAwait(false);
+            var summary = await summaryTask.ConfigureAwait(false);
             var news = await chatNewsTask.ConfigureAwait(false);
-            var chatUserSettings = await chatUserSettingsTask.ConfigureAwait(false);
-            var lastMention = await lastMentionTask.ConfigureAwait(false);
             var chatPosition = await chatPositionTask.ConfigureAwait(false);
 
             if (news?.LastTextEntry is { IsThreadStart: true } lastTextEntry) {

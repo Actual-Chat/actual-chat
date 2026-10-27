@@ -13,6 +13,9 @@ public class Contacts(IServiceProvider services) : IContacts
     private IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
     private IChatThreads ChatThreads => field ??= Services.GetRequiredService<IChatThreads>();
     private IChatPositions ChatPositions => field ??= Services.GetRequiredService<IChatPositions>();
+    // Lazy: only API hosts register them, and IContacts is a local API on backend hosts too
+    private IMentions Mentions => field ??= Services.GetRequiredService<IMentions>();
+    private IUserSettings UserSettings => field ??= Services.GetRequiredService<IUserSettings>();
     private IContactsBackend Backend { get; } = services.GetRequiredService<IContactsBackend>();
     private ICommander Commander { get; } = services.Commander();
 
@@ -47,6 +50,24 @@ public class Contacts(IServiceProvider services) : IContacts
 
         contact = contact with { Chat = chat };
         return contact;
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ContactSummary?> GetSummary(
+        Session session,
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        var contact = await GetForChat(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (contact == null)
+            return null;
+
+        var lastOwnMentionTask = Mentions.GetLastOwn(session, chatId, cancellationToken);
+        var chatUserSettingsKey = ChatUserSettings.GetKey(chatId);
+        var chatUserSettingsTask = UserSettings.Get(session, chatUserSettingsKey, cancellationToken);
+        var lastOwnMention = await lastOwnMentionTask.ConfigureAwait(false);
+        var chatUserSettings = await chatUserSettingsTask.ConfigureAwait(false) as ChatUserSettings;
+        return new ContactSummary(contact, lastOwnMention, chatUserSettings ?? ChatUserSettings.Default);
     }
 
     // [ComputeMethod]

@@ -127,6 +127,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ChatIdRange>();
         CodeKeeper.KeepSerializable<global::ActualChat.Contacts.Contact>();
         CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ContactSubset>();
+        CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ContactSummary>();
         CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ExternalContact>();
         CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ExternalContactFull>();
         CodeKeeper.KeepSerializable<global::ActualChat.Contacts.ExternalContactsHash>();
@@ -793,6 +794,9 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Contacts.ContactSubsetKind>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Contacts.ContactSubsetKind>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Contacts.ContactSubsetKind>>>>();
+        CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Contacts.ContactSummary>>();
+        CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Contacts.ContactSummary>>>();
+        CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Contacts.ContactSummary>>>>();
         CodeKeeper.Keep<global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Contacts.ExternalContact>>();
         CodeKeeper.Keep<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Contacts.ExternalContact>>>();
         CodeKeeper.Keep<global::System.Linq.Expressions.Expression<global::System.Func<global::MessagePack.MessagePackSerializerOptions, global::System.Type, global::ActualLab.Serialization.MessagePackByteSerializer<global::ActualChat.Contacts.ExternalContact>>>>();
@@ -2502,6 +2506,7 @@ internal partial class ApiAotSource : IAotSource
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Contacts+ContactFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Contacts+ContactStateFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Contacts+ContactSubsetKindFormatter, ActualChat.Api");
+        CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Contacts+ContactSummaryFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Contacts+ExternalContactFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Contacts+ExternalContactFullFormatter, ActualChat.Api");
         CodeKeeper.Keep("MessagePack.GeneratedMessagePackResolver+ActualChat+Contacts+ExternalContactsHashFormatter, ActualChat.Api");
@@ -2836,6 +2841,7 @@ internal partial class ApiAotSource : IAotSource
             (typeof(global::ActualChat.Contacts.ChatIdRange), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Contacts.Contact), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Contacts.ContactSubset), AotTypeKind.Serializable),
+            (typeof(global::ActualChat.Contacts.ContactSummary), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Contacts.ExternalContact), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Contacts.ExternalContactFull), AotTypeKind.Serializable),
             (typeof(global::ActualChat.Contacts.ExternalContactsHash), AotTypeKind.Serializable),

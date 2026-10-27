@@ -135,7 +135,7 @@
         var shareModel = await ShareUI.GetModel(chatId, cancellationToken).ConfigureAwait(false);
         Contact? peerContact = null;
         if (chatId is PeerChatId)
-            peerContact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
+            peerContact = await Hub.ContactsUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         return new Model(authorRules.CanEditProperties(), shareModel, peerContact);
     }
 

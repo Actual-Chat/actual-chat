@@ -83,6 +83,7 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         services.AddScoped<RecentGifsUI>();
         fusion.AddService<LinkPreviewUI>(ServiceLifetime.Scoped);
         fusion.AddService<PeerBlockUI>(ServiceLifetime.Scoped);
+        fusion.AddService<ContactsUI>(ServiceLifetime.Scoped);
         fusion.AddService<ActivitiesUI>(ServiceLifetime.Scoped);
         services.AddScoped<IAppActivityState>(c => c.GetRequiredService<ActivitiesUI>());
         services.TryAddScoped<ILiveActivitiesAvailability>(_ => new DefaultLiveActivitiesAvailability());

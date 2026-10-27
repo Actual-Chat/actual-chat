@@ -31,7 +31,7 @@ public class AuthorUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
             return ownAccount.Avatar.Name;
 
         var contactId = ContactId.NewUser(ownAccount.Id, userId);
-        var contact = await Contacts.Get(Session, contactId, cancellationToken).ConfigureAwait(false);
+        var contact = await Hub.ContactsUI.Get(contactId.ChatId, cancellationToken).ConfigureAwait(false);
         return contact?.PreferredPeerName ?? "";
     }
 

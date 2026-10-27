@@ -199,7 +199,7 @@ public class LocalSearchUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     {
         var contactIds = await Contacts.ListIds(Session, placeId, cancellationToken).ConfigureAwait(false);
         var contacts = await contactIds
-            .Select(id => Contacts.Get(Session, id, cancellationToken))
+            .Select(id => Hub.ContactsUI.Get(id.ChatId, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 

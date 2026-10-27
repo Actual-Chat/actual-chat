@@ -57,8 +57,8 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private IConversations Conversations => Hub.Conversations;
     private IPlaces Places => Hub.Places;
     private IChatPositions ChatPositions => Hub.ChatPositions;
-    private IMentions Mentions => Hub.Mentions;
     private IReactions Reactions => Hub.Reactions;
+    private ContactsUI ContactsUI => Hub.ContactsUI;
     private ActiveChatsUI ActiveChatsUI => Hub.ActiveChatsUI;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
     private ChatEditorUI ChatEditorUI => Hub.ChatEditorUI;
@@ -138,15 +138,15 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
         if (_readPositionStates.IsDisposed)
             return null;
 
-        var contact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var contact = await ContactsUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (contact == null)
             return null;
 
         try {
             var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
-            var lastMentionTask = Mentions.GetLastOwn(Session, chatId, cancellationToken);
+            var lastMentionTask = ContactsUI.GetLastOwnMention(chatId, cancellationToken);
             var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
-            var chatUserSettingsTask = UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken);
+            var chatUserSettingsTask = ContactsUI.GetChatUserSettings(chatId, cancellationToken);
             // Every chat in the list gets here, so a chat without PTT skips the PTT reads: otherwise
             // any change to the account-level PTT settings would recompute every ChatInfo.
             var chatAudioUI = Hub.ChatAudioUI;
@@ -310,9 +310,10 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     [ComputeMethod(ConsolidationDelay = 0.2)] // Manually & automatically invalidated
     public virtual async Task<long> GetReadEntryLid(ChatId chatId, CancellationToken cancellationToken)
     {
-        // Notes chat should always appear as fully read
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        if (chat?.HasSingleAuthor == true)
+        // Notes chat should always appear as fully read. The contact carries the chat, and Get - the
+        // caller for every chat in the list - has already fetched it, so this costs no extra RPC call.
+        var contact = await ContactsUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        if (contact?.Chat.HasSingleAuthor == true)
             return long.MaxValue;
 
         // NOTE(AY): This method uses LeaseReadPositionState in a bit tricky way:
@@ -540,7 +541,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public async Task Archive(ChatId chatId, bool mustDisableNotifications)
     {
-        var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(true);
+        var contact = await ContactsUI.Get(chatId, default).Require().ConfigureAwait(true);
         var archiveCommand = new Contacts_Archive { Session = Session, Id = contact.Id };
         var result = await UICommander.Run(archiveCommand).ConfigureAwait(true);
         if (result.HasError || !mustDisableNotifications)
@@ -552,7 +553,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
 
     public async Task Unarchive(ChatId chatId)
     {
-        var contact = await Contacts.GetForChat(Session, chatId, default).Require().ConfigureAwait(true);
+        var contact = await ContactsUI.Get(chatId, default).Require().ConfigureAwait(true);
         var unarchiveCommand = new Contacts_Unarchive { Session = Session, Id = contact.Id };
         await UICommander.Run(unarchiveCommand).ConfigureAwait(true);
     }
@@ -1021,10 +1022,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             TimeSpan.FromSeconds(1),
             command => Commander.Run(command, CancellationToken.None));
 
-        ChatSwitchTracer.Mark("ChatUI.CreateReadPositionState: Chats.Get -> in", chatId);
-        var chat = await Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
-        ChatSwitchTracer.Mark("ChatUI.CreateReadPositionState: Chats.Get <- out");
-        var hasSingleAuthor = chat?.HasSingleAuthor == true;
+        // ContactsUI.Get rather than Chats.Get: GetReadEntryLid, which leases this state, reads it too
+        ChatSwitchTracer.Mark("ChatUI.CreateReadPositionState: ContactsUI.Get -> in", chatId);
+        var contact = await ContactsUI.Get(chatId, cancellationToken).ConfigureAwait(false);
+        ChatSwitchTracer.Mark("ChatUI.CreateReadPositionState: ContactsUI.Get <- out");
+        var hasSingleAuthor = contact?.Chat.HasSingleAuthor == true;
         return StateFactory.NewCustomSynced<ReadPosition>(
             new (
                 // Reader

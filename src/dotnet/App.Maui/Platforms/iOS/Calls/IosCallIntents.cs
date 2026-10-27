@@ -27,7 +27,7 @@ public sealed class IosCallIntents(AppUIHub hub)
     private async Task DonateInternal(
         ChatId chatId, bool hasVideo, INInteractionDirection direction, CancellationToken cancellationToken)
     {
-        var contact = await Hub.Contacts.GetForChat(Hub.Session, chatId, cancellationToken).ConfigureAwait(false);
+        var contact = await Hub.ContactsUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         if (contact is null)
             return;
 

@@ -64,7 +64,7 @@
         var ids = await Contacts.ListBlockedIds(Session, cancellationToken).ConfigureAwait(false);
         var items = new List<Item>(ids.Length);
         foreach (var id in ids) {
-            var contact = await Contacts.Get(Session, id, cancellationToken).ConfigureAwait(false);
+            var contact = await Hub.ContactsUI.Get(id.ChatId, cancellationToken).ConfigureAwait(false);
             if (contact?.Account is null)
                 continue;
 

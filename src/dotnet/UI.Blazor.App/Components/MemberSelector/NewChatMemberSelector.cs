@@ -20,7 +20,7 @@ internal sealed class NewChatMemberSelector(AppUIHub hub, ChatId chatId)
             return userIds;
         }
 
-        var contacts = await Contacts.ListUserContacts(Session, cancellationToken).ConfigureAwait(false);
+        var contacts = await Hub.ContactsUI.ListUserContacts(cancellationToken).ConfigureAwait(false);
         return contacts.Select(c => c.Account!.Id).ToArray();
     }
 

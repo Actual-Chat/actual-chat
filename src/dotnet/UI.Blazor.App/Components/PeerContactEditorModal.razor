@@ -101,7 +101,7 @@
         var cancellationToken = CancellationToken.None;
         _form = new FormModel(ComponentIdGenerator).CopyToBase(); // Must be fully initialized in sync part
         var peerContactId = ModalModel.PeerContactId;
-        _contact = await Contacts.Get(Session, peerContactId, cancellationToken).ConfigureAwait(false);
+        _contact = await Hub.ContactsUI.Get(peerContactId.ChatId, cancellationToken).ConfigureAwait(false);
         var peerContactName = _contact?.PeerContactName ?? "";
         _form.PeerContactName = peerContactName;
         _form.CopyToBase();

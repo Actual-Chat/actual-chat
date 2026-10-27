@@ -12,7 +12,7 @@ public class PeerBlockUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeS
         if (chatId.Kind != ChatKind.Peer)
             return PeerBlockState.None;
 
-        var contact = await Contacts.GetForChat(Session, chatId, cancellationToken).ConfigureAwait(false);
+        var contact = await Hub.ContactsUI.Get(chatId, cancellationToken).ConfigureAwait(false);
         return contact is null
             ? PeerBlockState.None
             : new PeerBlockState(contact.Id, contact.IsBlocked, contact.IsBlockedByPeer);

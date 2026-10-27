@@ -178,7 +178,7 @@
         var peerChatId = await AuthorUI.GetPeerChatId(authorId, cancellationToken).ConfigureAwait(false);
         Contact? peerChatContact = null;
         if (peerChatId is not null)
-            peerChatContact = await Contacts.GetForChat(session, peerChatId, cancellationToken).ConfigureAwait(false);
+            peerChatContact = await Hub.ContactsUI.Get(peerChatId, cancellationToken).ConfigureAwait(false);
 
         var enableIncompleteUI = await Features.IsIncompleteUIEnabled(cancellationToken).ConfigureAwait(false);
 
