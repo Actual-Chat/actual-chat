@@ -33,6 +33,7 @@ public partial class CallUI
             AsyncChain.From(SyncOutputRoute),
             AsyncChain.From(SyncOutputRouteTakeover),
             AsyncChain.From(SyncScreenOffAtEar),
+            AsyncChain.From(ApplyDialingTranscription),
         };
         var retryDelays = RetryDelaySeq.Exp(0.5, 10);
         return (
