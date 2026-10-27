@@ -813,10 +813,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             var referencingExtContactIds = await ExternalContactsBackend
                 .ListReferencingContactIds(account.Id, cancellationToken)
                 .ConfigureAwait(false);
-            await referencingExtContactIds.Select(c => c.UserDeviceId.OwnerId)
-                .Where(ownerId => ownerId != account.Id)
-                .Distinct()
-                .Select(CreateContact)
+            await referencingExtContactIds.Select(c => new { UserId =  c.UserDeviceId.OwnerId, ExtContactId = c })
+                .Where(d => d.UserId != account.Id)
+                .GroupBy(d => d.UserId)
+                .Select(d => CreateContact(d.Key, d.Select(c => c.ExtContactId).ToList()))
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
             var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);
@@ -836,10 +836,12 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
         return;
 
-        async Task<Contact?> CreateContact(UserId ownerId) {
-            var externalContactName = await ExternalContactsBackend
-                .GetDisplayNameFor(ownerId, account.Id, cancellationToken)
+        async Task<Contact?> CreateContact(UserId ownerId, IEnumerable<ExternalContactId> extContactIds) {
+            var externalContacts = await extContactIds
+                .Select(c => ExternalContactsBackend.Get(c, cancellationToken))
+                .Collect(cancellationToken)
                 .ConfigureAwait(false);
+            var externalContactName = externalContacts.PickDisplayName(account);
             var contact = new Contact(ContactId.NewUser(ownerId, account.Id)) {
                 ExternalContactName = externalContactName,
                 State = ContactState.Regular,
