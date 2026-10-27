@@ -12,10 +12,10 @@
         @if (_bubble != null) {
             <div id="@_bubble.Id"
                  @key="@_bubble.Id"
-                 class="ac-bubble"
+                 class="ac-bubble bubble-surface"
                  data-child="bubble">
                 <DynamicComponent Type="@_bubble.Ref.BubbleType" Parameters="@_bubble.Parameters"/>
-                <div class="ac-bubble-arrow"></div>
+                <div class="ac-bubble-arrow bubble-arrow"></div>
             </div>
         }
     </CascadingValue>

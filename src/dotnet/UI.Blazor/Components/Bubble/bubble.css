@@ -5,6 +5,18 @@
 .ac-bubble-host[data-has-bubble] {
     @apply inset-0;
 }
+/* The bubble look, shared by onboarding bubbles and hints; BubbleHost.place positions both */
+.bubble-surface {
+    @apply bg-bubble;
+    @apply rounded-lg;
+    filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
+}
+.bubble-arrow {
+    @apply absolute;
+    @apply bg-bubble;
+    @apply w-[12px] h-[12px];
+    @apply rotate-45;
+}
 .ac-bubble {
     @apply hidden absolute top-0 left-0 z-bubble;
     /* Both bounds subtract the insets - shift() can only translate a bubble, not shrink it - and the
@@ -12,17 +24,8 @@
     min-width: min(16rem, calc(100vw - 2rem - var(--safe-area-left) - var(--safe-area-right)));
     max-width: min(20rem, calc(100vw - 2rem - var(--safe-area-left) - var(--safe-area-right)));
     @apply p-4;
-    @apply bg-bubble;
-    @apply rounded-lg;
     @apply pointer-events-auto;
-    filter: drop-shadow(0px 5px 12px rgba(0, 0, 0, 0.16));
 }
 body.narrow .ac-bubble-host.landscape .ac-bubble {
     @apply min-w-[60%] max-w-[90%];
-}
-.ac-bubble-arrow {
-    @apply absolute;
-    @apply bg-bubble;
-    @apply w-[12px] h-[12px];
-    @apply rotate-45;
 }
