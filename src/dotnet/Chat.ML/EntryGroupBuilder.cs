@@ -1,4 +1,5 @@
 using System.Text;
+using ActualChat.Transcription;
 
 namespace ActualChat.Chat.ML;
 
@@ -81,7 +82,7 @@ public partial class EntryGroupBuilder
                 _minLid = entry.LocalId;
             if (entry.LocalId > _maxLid)
                 _maxLid = entry.LocalId;
-            var entryWordCount = CountWords(entry.Content);
+            var entryWordCount = entry.Content.CountWords();
             AuthorActivity[entry.AuthorId] = AuthorActivity.TryGetValue(entry.AuthorId, out var count)
                 ? count + entryWordCount
                 : entryWordCount;
@@ -93,7 +94,7 @@ public partial class EntryGroupBuilder
     {
         var currentPause = GetPauseBetween(entry);
         _entries.Add(entry);
-        var entryWordCount = CountWords(entry.Content);
+        var entryWordCount = entry.Content.CountWords();
         _wordCount += entryWordCount;
         AuthorActivity[entry.AuthorId] = AuthorActivity.TryGetValue(entry.AuthorId, out var count)
             ? count + entryWordCount
@@ -126,7 +127,7 @@ public partial class EntryGroupBuilder
             if (_stringBuilder.Length != 0)
                 _stringBuilder.Clear();
             foreach (var entry in entryList) {
-                var entryWordCount = CountWords(entry.Content);
+                var entryWordCount = entry.Content.CountWords();
                 _wordCount += entryWordCount;
                 AuthorActivity[entry.AuthorId] = AuthorActivity.TryGetValue(entry.AuthorId, out var count)
                     ? count + entryWordCount
@@ -171,25 +172,5 @@ public partial class EntryGroupBuilder
             totalPause += (int)currentPause;
         }
         _averagePauseBetweenEntries = totalPause / (_entries.Count - 1);
-    }
-
-    private static int CountWords(string text)
-    {
-        if (text.IsNullOrEmpty())
-            return 0;
-
-        int count = 0;
-        bool inWord = false;
-        foreach (char c in text)
-            if (char.IsWhiteSpace(c))
-                inWord = false;
-            else {
-                if (inWord)
-                    continue;
-
-                count++;
-                inWord = true;
-            }
-        return count;
     }
 }

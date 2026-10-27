@@ -79,7 +79,9 @@
 
     private IReadOnlyList<SegmentedSwitchItem> BuildItems(IReadOnlyCollection<Language> languages) {
         var useShortTitle = languages.Count > 2;
-        return languages.Select(l => new SegmentedSwitchItem(l.Value, useShortTitle ? l.ShortTitle : l.Title)).ToList();
+        return languages
+            .Select(l => new SegmentedSwitchItem(l.Value, useShortTitle ? l.ShortTitle : L.GetLanguageTitle(l)))
+            .ToList();
     }
 
     private async Task OnLanguageIdChanged(string id) {
