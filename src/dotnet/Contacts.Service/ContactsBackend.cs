@@ -810,12 +810,13 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
             return;
 
         try {
-            var referencingExtContactIds = await ExternalContactsBackend.ListReferencingContactIds(account.Id, cancellationToken)
+            var referencingExtContactIds = await ExternalContactsBackend
+                .ListReferencingContactIds(account.Id, cancellationToken)
                 .ConfigureAwait(false);
-            await referencingExtContactIds.Select(c => new { UserId =  c.UserDeviceId.OwnerId, ExtContactId = c })
-                .Where(d => d.UserId != account.Id)
-                .GroupBy(d => d.UserId)
-                .Select(d => CreateContact(d.Key, d.Select(c => c.ExtContactId).ToList()))
+            await referencingExtContactIds.Select(c => c.UserDeviceId.OwnerId)
+                .Where(ownerId => ownerId != account.Id)
+                .Distinct()
+                .Select(CreateContact)
                 .Collect(cancellationToken)
                 .ConfigureAwait(false);
             var completeCmd = new AccountsBackend_Update(account with { IsGreetingCompleted = true }, account.Version);
@@ -835,15 +836,10 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         }
         return;
 
-        async Task<Contact?> CreateContact(UserId ownerId, IEnumerable<ExternalContactId> extContactIds) {
-            string externalContactName = "";
-            foreach (var externalContactId in extContactIds) {
-                var externalContact = await ExternalContactsBackend.Get(externalContactId, cancellationToken).ConfigureAwait(false);
-                if (externalContact is not null && !externalContact.DisplayName.IsNullOrEmpty()) {
-                    externalContactName = externalContact.DisplayName;
-                    break;
-                }
-            }
+        async Task<Contact?> CreateContact(UserId ownerId) {
+            var externalContactName = await ExternalContactsBackend
+                .GetDisplayNameFor(ownerId, account.Id, cancellationToken)
+                .ConfigureAwait(false);
             var contact = new Contact(ContactId.NewUser(ownerId, account.Id)) {
                 ExternalContactName = externalContactName,
                 State = ContactState.Regular,
