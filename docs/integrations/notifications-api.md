@@ -126,3 +126,6 @@ Changes outside the `chatId` / `placeId` scope wake it too, but leave the filter
 unchanged, so the call keeps waiting.
 
 Web hooks ([`web-hooks.md`](./web-hooks.md)) push the same events.
+
+Notifications are not a feed of every message: a message may produce none. An agent that must see
+every new message uses `wait_for_changes` ([`chat-activity-api.md`](./chat-activity-api.md)).

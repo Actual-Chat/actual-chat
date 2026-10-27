@@ -7,9 +7,12 @@ namespace ActualChat.Contacts;
 
 public class Contacts(IServiceProvider services) : IContacts
 {
+    private IServiceProvider Services { get; } = services;
     private IAccounts Accounts { get; } = services.GetRequiredService<IAccounts>();
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
-    private IPlaces Places => field ??= services.GetRequiredService<IPlaces>(); // Lazy resolving to prevent cyclic dependency
+    private IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
+    private IChatThreads ChatThreads => field ??= Services.GetRequiredService<IChatThreads>();
+    private IChatPositions ChatPositions => field ??= Services.GetRequiredService<IChatPositions>();
     private IContactsBackend Backend { get; } = services.GetRequiredService<IContactsBackend>();
     private ICommander Commander { get; } = services.Commander();
 
@@ -126,6 +129,69 @@ public class Contacts(IServiceProvider services) : IContacts
         return await Backend.ListArchivedIds(ownerId, placeId, indexTile, cancellationToken).ConfigureAwait(false);
     }
 
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<UnreadChat>> ListUnreadChats(
+        Session session,
+        ContactSubset subset,
+        CancellationToken cancellationToken)
+    {
+        if (subset.IsAll()) {
+            var subsets = await ListAllSubsets(session, cancellationToken).ConfigureAwait(false);
+            var lists = await subsets
+                .Select(s => ListUnreadChats(session, s, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                .ConfigureAwait(false);
+            return lists
+                .SelectMany(x => x)
+                .DistinctBy(x => x.ChatId)
+                .OrderBy(x => x.ChatId.Value)
+                .ToApiArray();
+        }
+
+        var ranges = await ListChatIdRanges(session, subset, cancellationToken).ConfigureAwait(false);
+        var unreadChats = await ranges
+            .Where(x => !x.IdRange.IsEmptyOrNegative)
+            .Select(x => GetUnreadChat(session, x, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+        return unreadChats.SkipNullItems().ToApiArray();
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<ApiArray<ChatIdRange>> ListChatIdRanges(
+        Session session,
+        ContactSubset subset,
+        CancellationToken cancellationToken)
+    {
+        if (subset.IsAll()) {
+            // One cached list per place, so a message in one place doesn't recompute the others
+            var subsets = await ListAllSubsets(session, cancellationToken).ConfigureAwait(false);
+            var lists = await subsets
+                .Select(s => ListChatIdRanges(session, s, cancellationToken))
+                .Collect(ApiConstants.Concurrency.High, cancellationToken)
+                .ConfigureAwait(false);
+            return lists
+                .SelectMany(x => x)
+                .DistinctBy(x => x.ChatId)
+                .OrderBy(x => x.ChatId.Value)
+                .ToApiArray();
+        }
+
+        var placeId = subset.IsPlace(out var subsetPlaceId) ? subsetPlaceId : null;
+        var contactIds = await ListIds(session, placeId, cancellationToken).ConfigureAwait(false);
+        var threadIds = await ChatThreads.ListIdsForPlace(session, placeId, cancellationToken).ConfigureAwait(false);
+        var chatIds = contactIds
+            .Where(id => id.Kind is ContactKind.User or ContactKind.Chat)
+            .Select(id => id.ChatId)
+            .Concat(threadIds.Select(id => (ChatId)id))
+            .Distinct();
+        var ranges = await chatIds
+            .Select(chatId => GetChatIdRange(session, chatId, cancellationToken))
+            .Collect(ApiConstants.Concurrency.High, cancellationToken)
+            .ConfigureAwait(false);
+        return ranges.SkipNullItems().OrderBy(x => x.ChatId.Value).ToApiArray();
+    }
+
     // [CommandHandler]
     public virtual async Task<Contact?> OnChange(Contacts_Change command, CancellationToken cancellationToken)
     {
@@ -234,6 +300,40 @@ public class Contacts(IServiceProvider services) : IContacts
             else if (state == ContactState.Blocked && contact.Kind != ContactKind.User)
                 state = ContactState.Regular;
             return state == contact.State ? contact : contact with { State = state };
+        }
+    }
+
+    private async Task<ContactSubset[]> ListAllSubsets(Session session, CancellationToken cancellationToken)
+    {
+        var placeIds = await ListPlaceIds(session, cancellationToken).ConfigureAwait(false);
+        return [ContactSubset.Chats(), ..placeIds.Select(ContactSubset.Place)];
+    }
+
+    private async Task<UnreadChat?> GetUnreadChat(
+        Session session, ChatIdRange chatIdRange, CancellationToken cancellationToken)
+    {
+        var (chatId, idRange) = chatIdRange;
+        var position = await ChatPositions
+            .GetOwn(session, chatId, ChatPositionKind.Read, cancellationToken)
+            .ConfigureAwait(false);
+        var lastEntryLid = chatIdRange.LastEntryLid;
+        if (ChatPosition.GetUnreadCount(chatId, position.EntryLid, lastEntryLid) == 0)
+            return null;
+
+        var readEntryLid = Math.Max(position.EntryLid, idRange.Start - 1);
+        return new UnreadChat(chatId, readEntryLid, lastEntryLid);
+    }
+
+    private async Task<ChatIdRange?> GetChatIdRange(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        try {
+            var idRange = await Chats.GetIdRange(session, chatId, cancellationToken).ConfigureAwait(false);
+            return new ChatIdRange(chatId, idRange);
+        }
+        catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
+            // A chat the user can't read any longer is left out rather than failing the whole list
+            return null;
         }
     }
 

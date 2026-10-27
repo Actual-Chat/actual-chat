@@ -242,6 +242,66 @@ public sealed class McpChatTools(IServiceProvider services)
         await Commander.Call(command, cancellationToken).ConfigureAwait(false);
     }
 
+    [McpServerTool(Name = "archive_chat", UseStructuredContent = true)]
+    [Description("Moves a chat from the caller's chat list to their archive; nobody else is affected. " +
+        "A new message doesn't bring it back - only unarchive_chat does - and until then the chat is left out " +
+        "of the chat lists, list_unread_chats, wait_for_unread and wait_for_changes.")]
+    public async Task ArchiveChat(
+        [Description("The chat id.")] string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        var contact = await GetContact(chatId, cancellationToken).ConfigureAwait(false);
+        var command = new Contacts_Archive { Session = Session, Id = contact.Id };
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    [McpServerTool(Name = "unarchive_chat", UseStructuredContent = true)]
+    [Description("Moves a chat from the caller's archive back to their chat list.")]
+    public async Task UnarchiveChat(
+        [Description("The chat id.")] string chatId,
+        CancellationToken cancellationToken = default)
+    {
+        var contact = await GetContact(chatId, cancellationToken).ConfigureAwait(false);
+        var command = new Contacts_Unarchive { Session = Session, Id = contact.Id };
+        await Commander.Call(command, cancellationToken).ConfigureAwait(false);
+    }
+
+    [McpServerTool(Name = "list_archived_chats", UseStructuredContent = true)]
+    [Description("Lists the chats in the caller's archive, most recently archived first: " +
+        "the chats outside any place, or the chats of one place. " +
+        "`afterId` is exclusive; pass null to start from the beginning. `limit` is capped at 1024.")]
+    public async Task<McpListChatsResult> ListArchivedChats(
+        [Description("The place id; null = the chats outside any place.")] string? placeId = null,
+        [Description("Return chats after the one with this id. Use null to start from the beginning.")]
+        string? afterId = null,
+        [Description("Max chats to return; capped at 1024.")] int limit = DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        var parsedPlaceId = placeId.IsNullOrEmpty() ? null : PlaceId.Parse(placeId);
+        var session = Session;
+        var count = await Contacts.GetArchivedCount(session, parsedPlaceId, cancellationToken).ConfigureAwait(false);
+        var tileLayer = Constants.Contacts.ArchiveIndexTiles;
+        var contactIds = new List<ContactId>();
+        while (contactIds.Count < count) {
+            var tile = tileLayer.GetTile(contactIds.Count);
+            var tileIds = await Contacts
+                .ListArchivedIds(session, parsedPlaceId, tile, cancellationToken)
+                .ConfigureAwait(false);
+            if (tileIds.Length == 0)
+                break;
+
+            contactIds.AddRange(tileIds);
+        }
+
+        var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
+        var page = Page(contactIds, afterId, limit, id => id.ChatId.Value);
+        var infos = await Task.WhenAll(page.Select(id => id.ChatId is PeerChatId peerChatId
+                ? ResolvePeerChatInfo(peerChatId, ownAccount.Id, cancellationToken)
+                : ResolveChatInfo(id.ChatId, cancellationToken)))
+            .ConfigureAwait(false);
+        return new McpListChatsResult(infos.Where(i => i is not null).Cast<McpChatInfo>().ToArray());
+    }
+
     [McpServerTool(Name = "create_invite_link", UseStructuredContent = true)]
     [Description("Returns the chat's current invite link, generating one if none is active " +
         "(requires the Invite permission).")]
@@ -284,6 +344,13 @@ public sealed class McpChatTools(IServiceProvider services)
         chat = await Chats.Get(Session, chat.Id, cancellationToken).Require().ConfigureAwait(false);
         var authorIds = await Authors.ListAuthorIds(Session, chat.Id, cancellationToken).ConfigureAwait(false);
         return chat.ToMcpDetails(authorIds.Length, UrlMapper);
+    }
+
+    private async Task<Contact> GetContact(string chatId, CancellationToken cancellationToken)
+    {
+        var parsedChatId = ChatId.Parse(chatId);
+        var contact = await Contacts.GetForChat(Session, parsedChatId, cancellationToken).ConfigureAwait(false);
+        return contact ?? throw StandardError.NotFound<Contact>($"The caller has no contact for chat {chatId}.");
     }
 
     private async Task<McpChatInfo?> ResolveChatInfo(ChatId chatId, CancellationToken cancellationToken)

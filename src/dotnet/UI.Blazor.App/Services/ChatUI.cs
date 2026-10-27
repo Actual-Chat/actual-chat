@@ -1002,17 +1002,11 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     private static Trimmed<int> ComputeUnreadCount(
         ChatId chatId, ChatNews? chatNews, long readEntryLid, bool isMarkedUnread)
     {
-        // A negative lid is ChatPosition.None - nothing was ever stored, so the chat was never
-        // opened and counting all of it as unread would flood the badge on first sight. A stored 0
-        // is a real position: joining a chat that was empty at the time seeds exactly that, and
-        // entry lids start at 1, so every message that arrives afterwards is genuinely unread.
-        // Peer chats are exempt from the "never opened" rule - they have no join step to seed a
-        // position, so a missing one just means this side of the conversation hasn't started.
         var unreadCount = 0;
-        var hasReadPosition = readEntryLid >= 0 || chatId.Kind == ChatKind.Peer;
-        if (chatNews is not null && hasReadPosition) {
+        if (chatNews is not null) {
             var lastId = chatNews.TextEntryLidRange.End - 1;
-            unreadCount = (int)(lastId - Math.Max(0, readEntryLid)).Clamp(0, ChatInfo.MaxUnreadCount);
+            unreadCount = (int)ChatPosition.GetUnreadCount(chatId, readEntryLid, lastId)
+                .Clamp(0, ChatInfo.MaxUnreadCount);
         }
         // "Mark as unread" is a flag rather than a read position, so every badge and counter shows it as one
         if (isMarkedUnread && unreadCount == 0)
