@@ -22,7 +22,7 @@
 
 @* Expanded, the screen covers every window-drag region of the page, so its header becomes one *@
 <div class="call-screen-toolbar call-screen-header" data-window-drag="@(isExpanded ? "" : null)">
-    <div class="header-row">
+    <div class="header-row header-row-main">
         <div class="c-left">
             @if (isExpanded) {
                 <HeaderButton Class="btn-glass btn-expand" Click="@OnCollapse">

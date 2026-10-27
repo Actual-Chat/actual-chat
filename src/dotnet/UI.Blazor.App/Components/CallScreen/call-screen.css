@@ -356,6 +356,20 @@ body.wide .call-screen.expanded > .c-container {
 html.native-titlebar body.wide .call-screen.expanded .call-screen-header {
     padding-top: calc(var(--titlebar-inset) + 0.5rem);
 }
+/* Equal side columns keep the title on the screen's centre line, whatever each side holds */
+.call-screen.expanded .call-screen-header .header-row-main {
+    @apply grid;
+    grid-template-columns: 1fr minmax(0, auto) 1fr;
+}
+.call-screen.expanded .call-screen-header .header-row-main > .c-left {
+    @apply col-start-1;
+}
+.call-screen.expanded .call-screen-header .header-row-main > .c-center {
+    @apply col-start-2;
+}
+.call-screen.expanded .call-screen-header .header-row-main > .c-right {
+    @apply col-start-3 justify-end;
+}
 .call-screen.expanded .call-screen-header.c-brand {
     @apply flex-x items-center justify-center gap-2;
     @apply h-14 pt-0;
