@@ -66,38 +66,20 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
         if (account is null)
             return "";
 
-        var links = GetLinksFor(account);
-        if (links.Length == 0)
-            return "";
-
-        var list = new List<ExternalContactId>();
-        var phoneMatchIds = new HashSet<ExternalContactId>();
-        foreach (var link in links) {
+        // GetLinksFor lists phone links first, so an entry matched by phone wins over an email-only one,
+        // and email links are queried only when no phone-matched entry has a name
+        foreach (var link in GetLinksFor(account)) {
             var extContactIds = await List(ownerId, link, cancellationToken).ConfigureAwait(false);
-            list.AddRange(extContactIds);
-            if (DbExternalContactLink.IsPhoneLink(link, out _))
-                phoneMatchIds.AddRange(extContactIds);
+            var extContacts = await extContactIds
+                .Select(c => Get(c, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            var displayName = extContacts.PickDisplayName(account);
+            if (!displayName.IsNullOrEmpty())
+                return displayName;
         }
-        if (list.Count == 0)
-            return string.Empty;
 
-        var extContacts = (await list
-            .Distinct()
-            .Select(c => Get(c, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false)
-            ).ToArray();
-
-        // An entry holding only the peer's email is often a forgotten or auto-collected one.
-        // ModifiedAt is the server time of the last sync of the entry, so it only breaks ties.
-        var extContact = extContacts
-            .SkipNullItems()
-            .Where(c => !c.DisplayName.IsNullOrEmpty())
-            .OrderByDescending(c => phoneMatchIds.Contains(c.Id))
-            .ThenByDescending(c => c.ModifiedAt)
-            .FirstOrDefault();
-
-        return extContact?.DisplayName ?? "";
+        return "";
     }
 
     [ComputeMethod]
