@@ -384,6 +384,41 @@ public class ExternalContactsTest(ExternalAppHostFixture fixture, ITestOutputHel
     }
 
     [Fact]
+    public async Task ExternalContactNameShouldPreferPhoneMatchOverNewerEmailMatch()
+    {
+        // arrange
+        var jackIdentities = NewJackIdentities();
+        var tester2 = AppHost.NewWebClientTester(Out);
+        var jack = await SignInAsUniqueJack(tester2, jackIdentities);
+
+        var bobDeviceId = NewDeviceId();
+        var bob = await _tester.SignInAsUniqueBob();
+        var sessionBob = _tester.Session;
+        const string currentName = "Jack Current";
+        var currentEntry = NewExternalContact(bob, bobDeviceId)
+            .WithPhone(jackIdentities.Phone)
+            .WithDisplayName(currentName)
+            .WithHash(_hasher);
+        var staleEntry = NewExternalContact(bob, bobDeviceId)
+            .WithEmail(jackIdentities.Email)
+            .WithDisplayName("Jack Stale")
+            .WithHash(_hasher);
+
+        // act
+        // The stale entry comes second, so the server stamps it with the later ModifiedAt
+        await _tester.SaveExternalContacts(currentEntry, staleEntry);
+
+        // assert
+        var contactId = BuildContactId(bob, jack);
+        await TestWait.When(async ct => {
+            var contact = await _contacts.Get(sessionBob, contactId, ct);
+            contact.Should().NotBeNull();
+            contact.ExternalContactName.Should().Be(currentName);
+            return contact;
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    [Fact]
     public async Task RejectsOversizedContactBatch()
     {
         // arrange

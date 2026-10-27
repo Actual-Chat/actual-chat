@@ -71,23 +71,31 @@ public class ExternalContactsBackend(IServiceProvider services) : DbServiceBase<
             return "";
 
         var list = new List<ExternalContactId>();
+        var phoneMatchIds = new HashSet<ExternalContactId>();
         foreach (var link in links) {
             var extContactIds = await List(ownerId, link, cancellationToken).ConfigureAwait(false);
             list.AddRange(extContactIds);
+            if (DbExternalContactLink.IsPhoneLink(link, out _))
+                phoneMatchIds.AddRange(extContactIds);
         }
         if (list.Count == 0)
             return string.Empty;
 
         var extContacts = (await list
+            .Distinct()
             .Select(c => Get(c, cancellationToken))
             .Collect(cancellationToken)
             .ConfigureAwait(false)
             ).ToArray();
 
+        // An entry holding only the peer's email is often a forgotten or auto-collected one.
+        // ModifiedAt is the server time of the last sync of the entry, so it only breaks ties.
         var extContact = extContacts
             .SkipNullItems()
-            .OrderByDescending(c => c.ModifiedAt)
-            .FirstOrDefault(c => !c.DisplayName.IsNullOrEmpty());
+            .Where(c => !c.DisplayName.IsNullOrEmpty())
+            .OrderByDescending(c => phoneMatchIds.Contains(c.Id))
+            .ThenByDescending(c => c.ModifiedAt)
+            .FirstOrDefault();
 
         return extContact?.DisplayName ?? "";
     }
