@@ -1098,7 +1098,9 @@ public class ContactsBackend(IServiceProvider services) : DbServiceBase<Contacts
         var (ownerUserId, links) = eventCommand;
         var peerUserIds = new List<UserId>();
         foreach (var link in links.OrderBy(c => c)) {
-            var peerUserId = await ExternalContactExt2.FindUser(AccountsBackend, link, cancellationToken).ConfigureAwait(false);
+            var peerUserId = await AccountsBackend
+                .GetUserIdByExternalContactLink(link, cancellationToken)
+                .ConfigureAwait(false);
             if (peerUserId is not null && !peerUserIds.Contains(peerUserId))
                 peerUserIds.Add(peerUserId);
         }
