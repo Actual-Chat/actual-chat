@@ -16,11 +16,11 @@
 @* Intentionally absent from KeyboardShortcutsModal. *@
 <Hotkey Keys="ctrl+shift+l t" AriaLabel="@L.Shortcuts_ToggleTheme" OnTrigger="OnToggleTheme" IsGlobal="true"/>
 @if (HostInfo.IsDevelopmentInstance) {
-    <Hotkey Keys="ctrl+shift+l s" AriaLabel="@L.Shortcuts_ToggleSafeAreas" OnTrigger="OnToggleSafeAreas" IsGlobal="true"/>
+    <Hotkey Keys="ctrl+shift+l s" AriaLabel="@L.Shortcuts_ToggleSafeAreas" OnTrigger="OnToggleSafeAreas"
+            IsGlobal="true"/>
 }
-@if (!BrowserInfo.IsTouchCapable) {
-    <TooltipHost />
-}
+<TooltipHost />
+<HintHost />
 
 <RenderIntoSlot Name="@LayoutSlots.MainLeftDrawer">
     <LeftPanel/>
@@ -46,7 +46,6 @@
     private bool _isQuickNavOpen;
     private bool _isShortcutsHelpOpen;
 
-    private BrowserInfo BrowserInfo => Hub.BrowserInfo;
     private LoadingUI LoadingUI => Hub.LoadingUI;
     private ThemeUI ThemeUI => Hub.ThemeUI;
 

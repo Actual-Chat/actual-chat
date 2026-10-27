@@ -700,6 +700,8 @@
   "Call_Recording": "Nagrywanie",
   "Call_Listening": "Słucham",
   "Call_HangUp": "Rozłącz",
+  "Call_Muted": "Wyciszono",
+  "Call_HangUpHint": "Nadal jesteś w rozmowie — rozłącz się tutaj",
   "Call_ListeningCountdown": "Słuchanie...",
   "Call_StopListening": "Zatrzymaj słuchanie",
   "Call_CantMutePeer": "W rozmowie jeden na jeden nie możesz wyłączyć mikrofonu drugiej osoby.",

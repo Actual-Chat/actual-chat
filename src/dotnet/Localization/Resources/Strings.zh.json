@@ -700,6 +700,8 @@
   "Call_Recording": "正在录音",
   "Call_Listening": "我在听",
   "Call_HangUp": "挂断",
+  "Call_Muted": "已静音",
+  "Call_HangUpHint": "你仍在对话中——在这里挂断",
   "Call_ListeningCountdown": "正在收听…",
   "Call_StopListening": "停止收听",
   "Call_CantMutePeer": "在一对一聊天中,你无法关闭对方的麦克风。",

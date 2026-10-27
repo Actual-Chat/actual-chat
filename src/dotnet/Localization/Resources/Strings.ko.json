@@ -700,6 +700,8 @@
   "Call_Recording": "녹음 중",
   "Call_Listening": "듣고 있어요",
   "Call_HangUp": "종료",
+  "Call_Muted": "음소거됨",
+  "Call_HangUpHint": "아직 대화 중입니다. 여기서 종료하세요",
   "Call_ListeningCountdown": "듣는 중…",
   "Call_StopListening": "듣기 중지",
   "Call_CantMutePeer": "1:1 채팅에서는 상대방의 마이크를 끌 수 없습니다.",

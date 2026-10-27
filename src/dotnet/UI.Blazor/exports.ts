@@ -40,6 +40,7 @@ export * from './Components/Clipboard/copy-trigger';
 export * from './Components/ContentSwap/content-swap';
 export * from './Components/Dropdown/dropdown';
 export * from './Components/FileUpload/file-upload-picker';
+export * from './Components/Hint/hint-host';
 export * from './Components/MapView/map-marker-bubble.lit';
 export * from './Components/MapView/map-marker-dot.lit';
 export * from './Components/MapView/map-marker-pin.lit';

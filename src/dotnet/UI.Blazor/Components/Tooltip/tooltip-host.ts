@@ -14,6 +14,7 @@ import {
 } from '@floating-ui/dom';
 import { MutationProcessor } from 'mutation-processor';
 import { SafeAreas } from 'safe-area';
+import { DeviceInfo } from 'device-info';
 import { getLogs } from 'logging';
 
 const { errorLog } = getLogs('TooltipHost');
@@ -63,6 +64,8 @@ export class TooltipHost implements Disposable {
         TooltipHost.current?.setAutoRequest(element, text);
     }
 
+    // A touch device gets auto-shown tooltips only: a tap fires mouseover too, and its hover tooltip
+    // would stick until the next tap elsewhere.
     constructor() {
         try {
             this.tooltipRef = document.getElementsByClassName('ac-tooltip')[0] as HTMLElement;
@@ -70,7 +73,8 @@ export class TooltipHost implements Disposable {
             this.tooltipTextRef = document.getElementsByClassName('ac-tooltip-text')[0] as HTMLElement;
             this.attributeObserver = new MutationObserver(() => this.update());
             TooltipHost.current = this;
-            this.listenForMouseOverEvent();
+            if (!DeviceInfo.isTouchCapable)
+                this.listenForMouseOverEvent();
         } catch (error) {
             errorLog?.log(`constructor: unhandled error:`, error);
             this.dispose();

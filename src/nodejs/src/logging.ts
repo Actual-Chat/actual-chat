@@ -132,6 +132,7 @@ export type LogScope =
     | 'TextBox'
     | 'Theme'
     | 'TooltipHost'
+    | 'HintHost'
     | 'LocalizationUI'
     | 'UserInterface'
     | 'VideoPanel'
@@ -260,6 +261,7 @@ const defaults: Record<LogScope, LogLevel> = {
     Theme: LogLevel.Warn,
     LocalizationUI: LogLevel.Warn,
     TooltipHost: LogLevel.Warn,
+    HintHost: LogLevel.Warn,
     UserInterface: LogLevel.Warn,
     // Video
     VideoPanel: LogLevel.Warn,

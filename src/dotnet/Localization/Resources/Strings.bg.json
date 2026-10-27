@@ -700,6 +700,8 @@
   "Call_Recording": "Записване",
   "Call_Listening": "Слушам",
   "Call_HangUp": "Затвори",
+  "Call_Muted": "Микрофонът е изключен",
+  "Call_HangUpHint": "Още сте в разговора — затворете оттук",
   "Call_ListeningCountdown": "Слушане...",
   "Call_StopListening": "Спрете слушането",
   "Call_CantMutePeer": "В разговор един на един не може да изключите микрофона на другия.",

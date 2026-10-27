@@ -25,12 +25,16 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
     private static readonly TimeSpan PendingOwnHandTimeout = TimeSpan.FromSeconds(5);
     // Hands going up together ring once
     private static readonly TimeSpan HandRaisedTuneInterval = TimeSpan.FromSeconds(3);
-
+    private static readonly TimeSpan HangUpHintDuration = TimeSpan.FromSeconds(6);
+    private static readonly TimeSpan MuteSettleTimeout = TimeSpan.FromSeconds(2);
     private readonly ConcurrentDictionary<ChatId, LiveConversation?> _lastOpenConversations = new();
     private readonly ConcurrentDictionary<ChatId, bool> _ownHandIntents = new();
     private readonly ConcurrentDictionary<ChatId, bool> _ownTranscriptionIntents = new();
     private readonly MutableState<(ChatId ChatId, bool IsRaised)?> _pendingOwnHand
         = hub.StateFactory.NewMutable(default((ChatId ChatId, bool IsRaised)?));
+    private readonly MutableState<ChatId?> _muteNoticeChatId = hub.StateFactory.NewMutable(default(ChatId?));
+    private readonly MutableState<ChatId?> _hangUpHintChatId = hub.StateFactory.NewMutable(default(ChatId?));
+    private readonly HashSet<ChatId> _hangUpHintedChatIds = [];
 
     private ILiveSessions LiveSessions => Hub.LiveSessions;
     private ChatAudioUI ChatAudioUI => Hub.ChatAudioUI;
@@ -232,6 +236,45 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         return await ChatVideoUI.IsWatching(chatId, cancellationToken).ConfigureAwait(false);
     }
 
+    [ComputeMethod]
+    public virtual async Task<bool> MustAnnounceMute(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var muteNoticeChatId = await _muteNoticeChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (muteNoticeChatId != chatId)
+            return false;
+
+        return await AmIMuted(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> MustShowHangUpHint(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var hangUpHintChatId = await _hangUpHintChatId.Use(cancellationToken).ConfigureAwait(false);
+        if (hangUpHintChatId != chatId)
+            return false;
+
+        return await AmIMuted(chatId, cancellationToken).ConfigureAwait(false);
+    }
+
+    [ComputeMethod]
+    public virtual async Task<bool> AmIMuted(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // Muted rather than gone: a call or a live session is on, and it holds the listening on - the state in
+        // which ChatAudioControls offers hang-up instead of the stop-listening countdown
+        var activeChats = await ActiveChatsUI.ActiveChats.Use(cancellationToken).ConfigureAwait(false);
+        if (!activeChats.TryGetValue(chatId, out var activeChat))
+            return false;
+        if (activeChat is not { IsListening: true, IsRecording: false })
+            return false;
+
+        var stopListeningAt = await ChatAudioUI.GetStopListeningAt(chatId, cancellationToken).ConfigureAwait(false);
+        if (stopListeningAt is not null)
+            return false;
+
+        var live = await Get(chatId, cancellationToken).ConfigureAwait(false);
+        return live is not null;
+    }
+
     // The non-reactive form of AmIInLiveConversation, for callbacks that can't await.
     public bool IsInLiveConversation(ChatId chatId)
     {
@@ -259,6 +302,7 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         var baseChains = new[] {
             AsyncChain.From(SyncParticipations),
             AsyncChain.From(StopRecordingWhenMuted),
+            AsyncChain.From(AnnounceMutes),
             AsyncChain.From(NotifyWhenHandRaised),
             AsyncChain.From(NotifyWhenHandLowered),
             AsyncChain.From(LowerOwnHandWhenSpoken),
@@ -354,6 +398,61 @@ public class LiveSessionUI(AppUIHub hub) : UIWorkerBase<AppUIHub>(hub), ICompute
         // ValueOrDefault, not Value: an errored computed would throw and take the whole worker down.
         static bool IsMuted(Computed<ChatId?> computed)
             => computed.ValueOrDefault is { } chatId && !chatId.Value.IsNullOrEmpty();
+    }
+
+    private async Task AnnounceMutes(CancellationToken cancellationToken)
+    {
+        // "Muted" on every mute; the hang-up hint, since muting can pass for hanging up, on the first mute of
+        // each stay - which lasts while the chat is listened to, however often the server restarts the session
+        var activeChats = ActiveChatsUI.ActiveChats;
+        var cActiveChats = activeChats.Computed;
+        var recordingChatId = GetRecordingChatId(cActiveChats.Value);
+        while (!cancellationToken.IsCancellationRequested) {
+            await cActiveChats.WhenInvalidated(cancellationToken).ConfigureAwait(false);
+            cActiveChats = activeChats.Computed;
+            var chats = cActiveChats.Value;
+            _hangUpHintedChatIds.RemoveWhere(id => !IsListening(chats, id));
+            var lastRecordingChatId = recordingChatId;
+            recordingChatId = GetRecordingChatId(chats);
+            if (_muteNoticeChatId.Value is { } noticeChatId
+                && (recordingChatId == noticeChatId || !IsListening(chats, noticeChatId)))
+                _muteNoticeChatId.Value = null;
+            if (lastRecordingChatId is not { } chatId || recordingChatId == chatId)
+                continue;
+
+            // Woken by the state itself, this can run ahead of the invalidation reaching AmIMuted
+            var cIsMuted = await Computed
+                .Capture(() => AmIMuted(chatId, cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            await cIsMuted
+                .When(isMuted => isMuted, cancellationToken)
+                .WaitAsync(MuteSettleTimeout, cancellationToken)
+                .SilentAwait(false);
+            cIsMuted = await cIsMuted.Update(cancellationToken).ConfigureAwait(false);
+            if (!cIsMuted.Value)
+                continue;
+
+            _muteNoticeChatId.Value = chatId;
+            if (!_hangUpHintedChatIds.Add(chatId))
+                continue;
+
+            _hangUpHintChatId.Value = chatId;
+            // Gone with the mute, or a quick unmute and mute again would bring it back
+            await cIsMuted
+                .When(isMuted => !isMuted, cancellationToken)
+                .WaitAsync(HangUpHintDuration, cancellationToken)
+                .SilentAwait(false);
+            _hangUpHintChatId.Value = null;
+            cActiveChats = activeChats.Computed;
+            recordingChatId = GetRecordingChatId(cActiveChats.Value);
+        }
+        return;
+
+        static ChatId? GetRecordingChatId(ActiveChat[] chats)
+            => chats.FirstOrDefault(c => c.IsRecording)?.ChatId;
+
+        static bool IsListening(ActiveChat[] chats, ChatId chatId)
+            => chats.TryGetValue(chatId, out var chat) && chat.IsListening;
     }
 
     private async Task NotifyWhenHandRaised(CancellationToken cancellationToken)

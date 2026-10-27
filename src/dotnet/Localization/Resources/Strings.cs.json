@@ -700,6 +700,8 @@
   "Call_Recording": "Nahrávání",
   "Call_Listening": "Poslouchám",
   "Call_HangUp": "Zavěsit",
+  "Call_Muted": "Ztlumeno",
+  "Call_HangUpHint": "Pořád jste v rozhovoru — zavěsit můžete tady",
   "Call_ListeningCountdown": "Poslech...",
   "Call_StopListening": "Zastavit poslech",
   "Call_CantMutePeer": "V hovoru jeden na jednoho nemůžete vypnout mikrofon druhé osoby.",

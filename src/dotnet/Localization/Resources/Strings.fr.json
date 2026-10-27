@@ -700,6 +700,8 @@
   "Call_Recording": "Enregistre",
   "Call_Listening": "J'écoute",
   "Call_HangUp": "Raccrocher",
+  "Call_Muted": "Micro coupé",
+  "Call_HangUpHint": "Vous êtes toujours dans la conversation — raccrochez ici",
   "Call_ListeningCountdown": "Écoute en cours…",
   "Call_StopListening": "Arrêter l'écoute",
   "Call_CantMutePeer": "Dans une discussion en tête-à-tête, vous ne pouvez pas couper le micro de l’autre personne.",

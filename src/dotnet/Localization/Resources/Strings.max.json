@@ -829,6 +829,8 @@
   "Call_Recording": "रिकॉर्ड कर रहे हैं",
   "Call_Listening": "Saya mendengarkan",
   "Call_HangUp": "कॉल समाप्त करें",
+  "Call_Muted": "Микрофонът е изключен",
+  "Call_HangUpHint": "Vous êtes toujours dans la conversation — raccrochez ici",
   "Call_ListeningCountdown": "Écoute en cours…",
   "Call_StopListening": "Остановить прослушивание",
   "Call_CantMutePeer": "Dans une discussion en tête-à-tête, vous ne pouvez pas couper le micro de l’autre personne.",

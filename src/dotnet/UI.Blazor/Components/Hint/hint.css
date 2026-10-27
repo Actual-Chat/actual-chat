@@ -1,0 +1,23 @@
+/* The look is .bubble-surface's; a hint is one short line with no buttons, so it is sized like a tooltip */
+.ac-hint {
+    @apply absolute top-0 left-0 z-bubble;
+    @apply max-w-64 md:max-w-80;
+    @apply px-3 py-2;
+    @apply text-body text-bubble-text;
+    @apply pointer-events-none;
+    transition-behavior: allow-discrete;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 150ms ease-in-out, visibility 150ms allow-discrete;
+}
+.ac-hint.show {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 300ms ease-in-out, visibility 300ms allow-discrete;
+    @starting-style {
+        opacity: 0;
+    }
+}
+.ac-hint-text {
+    @apply text-center whitespace-normal break-words;
+}

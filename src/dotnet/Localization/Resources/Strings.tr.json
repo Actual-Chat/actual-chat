@@ -700,6 +700,8 @@
   "Call_Recording": "Kaydediyor",
   "Call_Listening": "Dinliyorum",
   "Call_HangUp": "Kapatın",
+  "Call_Muted": "Sessizde",
+  "Call_HangUpHint": "Hâlâ sohbettesiniz — buradan kapatın",
   "Call_ListeningCountdown": "Dinleniyor…",
   "Call_StopListening": "Dinlemeyi durdurun",
   "Call_CantMutePeer": "Birebir sohbette karşı tarafın mikrofonunu kapatamazsınız.",

@@ -752,6 +752,8 @@ public static class LocalizedStringsLocalizerExt
         public string Call_Recording => l["Call_Recording"].Value;
         public string Call_Listening => l["Call_Listening"].Value;
         public string Call_HangUp => l["Call_HangUp"].Value;
+        public string Call_Muted => l["Call_Muted"].Value;
+        public string Call_HangUpHint => l["Call_HangUpHint"].Value;
         public string Call_ListeningCountdown => l["Call_ListeningCountdown"].Value;
         public string Call_StopListening => l["Call_StopListening"].Value;
         public string Call_CantMutePeer => l["Call_CantMutePeer"].Value;

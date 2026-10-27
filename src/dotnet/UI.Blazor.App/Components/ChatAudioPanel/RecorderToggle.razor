@@ -12,9 +12,10 @@
         : "";
     var permissionClass = hasMicrophonePermission ? "" : "mic-disabled";
     var status = m.Status;
-    var tooltip = status.GetTooltip(L);
+    var isMutedShown = m.IsMuted && status.Kind == RecordingStatusKind.Off;
+    var tooltip = isMutedShown ? L.Call_Muted : status.GetTooltip(L);
     var severity = status.IsFailure ? TooltipSeverity.Error : TooltipSeverity.Normal;
-    var autoShowText = status.IsFailure ? tooltip : "";
+    var autoShowText = status.IsFailure || (isMutedShown && m.MustAnnounceMute) ? tooltip : "";
     var recordingIconSize = ScreenSize.IsNarrow() ? 10 : 8;
     var recBtnCls = "rec-btn ";
     var isRecordOnBtn = false;
@@ -167,6 +168,8 @@
         var isAnyoneTalking = await LiveStreamUI
             .IsAnyoneStreamingAudio(chatId, cancellationToken).ConfigureAwait(false);
         var audioState = await ChatAudioUI.GetState(chatId).ConfigureAwait(false);
+        var isMuted = await LiveSessionUI.AmIMuted(chatId, cancellationToken).ConfigureAwait(false);
+        var mustAnnounceMute = await LiveSessionUI.MustAnnounceMute(chatId, cancellationToken).ConfigureAwait(false);
 
         return new (
             chat,
@@ -176,7 +179,9 @@
             hasMicrophonePermission,
             isTransitioning,
             isAnyoneTalking,
-            audioState);
+            audioState,
+            isMuted,
+            mustAnnounceMute);
     }
 
     private void OnClick()
@@ -244,7 +249,9 @@
         bool? HasMicrophonePermission = null,
         bool IsTransitioning = false,
         bool IsAnyoneTalking = false,
-        ChatAudioState? AudioState = null
+        ChatAudioState? AudioState = null,
+        bool IsMuted = false,
+        bool MustAnnounceMute = false
     ) {
         public static readonly Model Loading = new(null, RecordingStatus.Off, false, true, false, false, false);
     }

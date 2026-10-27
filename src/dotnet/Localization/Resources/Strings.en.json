@@ -829,6 +829,8 @@
   "Call_Recording": "Recording",
   "Call_Listening": "Listening",
   "Call_HangUp": "Hang up",
+  "Call_Muted": "Muted",
+  "Call_HangUpHint": "Still in the conversation — hang up here",
   "Call_ListeningCountdown": "Listening...",
   "Call_StopListening": "Stop listening",
   "Call_CantMutePeer": "You can't turn off the other person's microphone in a one-on-one chat.",
