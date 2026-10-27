@@ -378,6 +378,8 @@ html.native-titlebar body.wide .call-screen.expanded .call-screen-header {
 /* The recorder holds the middle column; each side lines up from it outwards */
 .call-screen.expanded .call-screen-footer {
     @apply grid;
+    /* Sized by the record button, the tallest control */
+    @apply h-auto items-center;
     @apply pb-4;
     grid-template-columns: 1fr auto 1fr;
     /* Five controls have to fit a 360px phone */
@@ -393,12 +395,12 @@ html.native-titlebar body.wide .call-screen.expanded .call-screen-header {
 }
 body.device-mobile.narrow .call-screen.expanded .video-stage.video-stage-layout__sidebar {
     /* Right inset matches toolbars (--vp-safe-right). Bottom inset depends on orientation:
-       portrait — sit above footer (footer height 4rem + 1rem gap);
+       portrait — sit above footer (footer height 5.5rem + 1rem gap);
        landscape — align with footer bottom. */
     padding:
         var(--vp-safe-top)
         calc(var(--vp-safe-right) + 1rem)
-        calc(var(--vp-safe-bottom) + 4rem + 1rem)
+        calc(var(--vp-safe-bottom) + 5.5rem + 1rem)
         var(--vp-safe-left);
 }
 @media (orientation: landscape) {
@@ -653,6 +655,16 @@ body.hoverable .call-screen .call-screen-footer .c-side > button:hover,
 }
 .recorder-wrapper.compact .rec-icon i.left {
     @apply -mr-0.5;
+}
+/* The call's main control stands out from the round buttons around it */
+.call-screen-footer .recorder-wrapper.compact,
+.call-screen-footer .recorder-wrapper.compact .btn.btn-round,
+.call-screen-footer .recorder-wrapper.compact .btn.btn-round .btn-content,
+.call-screen-footer .recorder-wrapper.compact .rec-icon {
+    @apply w-[4.5rem] h-[4.5rem];
+}
+.call-screen-footer .recorder-wrapper.compact .rec-icon i {
+    @apply text-[2rem] leading-8;
 }
 /* Dialing: nothing to record yet, so the button waits for the peer to answer. */
 .recorder-wrapper.compact .btn.btn-round:disabled {
@@ -1065,7 +1077,7 @@ body[data-has-call-screen-column]
     nomad-slot-content[data-nomad-slot="CallScreenColumnKey"] > .call-screen.expanded
     .video-stage.video-stage-layout__sidebar {
     padding-top: calc(1rem + var(--vp-safe-top));
-    padding-bottom: calc(5rem + var(--vp-safe-bottom));
+    padding-bottom: calc(6.5rem + var(--vp-safe-bottom));
 }
 /* The wide layout's flat top strip (main.css) is fixed above everything, so it would cover the video's
    top safe area. Below the call screen (z-10) it still paints over the chat column beside it. */
