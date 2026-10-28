@@ -3,6 +3,10 @@
 @{
     if (CurrentStep != this)
         return;
+
+    var primaryLanguages = Languages.AllTranscription.WithSelected(_spoken.GetOrDefault(0));
+    var secondaryLanguages = Languages.AllTranscription.WithSelected(_spoken.GetOrDefault(1));
+    var tertiaryLanguages = Languages.AllTranscription.WithSelected(_spoken.GetOrDefault(2));
 }
 
 <div class="languages-step">
@@ -23,7 +27,7 @@
                             Value="_formModel.PrimaryLanguageId"
                             ValueExpression="@(() => _formModel.PrimaryLanguageId)"
                             ValueChanged="@((string languageId) => OnLanguageChanged(0, languageId))">
-                            @foreach (var language in Languages.AllTranscription) {
+                            @foreach (var language in primaryLanguages) {
                                 <option value="@language.Id">@language.Title</option>
                             }
                         </InputSelect>
@@ -39,7 +43,7 @@
                             ValueExpression="@(() => _formModel.SecondaryLanguageId)"
                             ValueChanged="@((string languageId) => OnLanguageChanged(1, languageId))">
                             <option value="">@L.Onboarding_NoLanguage</option>
-                            @foreach (var language in Languages.AllTranscription) {
+                            @foreach (var language in secondaryLanguages) {
                                 if (!IsPrimary(language.Id)) {
                                     <option value="@language.Id">@language.Title</option>
                                 }
@@ -58,7 +62,7 @@
                             ValueChanged="@((string languageId) => OnLanguageChanged(2, languageId))"
                             disabled="@IsTertiaryDisabled">
                             <option value="">@L.Onboarding_NoLanguage</option>
-                            @foreach (var language in Languages.AllTranscription) {
+                            @foreach (var language in tertiaryLanguages) {
                                 if (!IsPrimary(language.Id) && !IsSecondary(language.Id)) {
                                     <option value="@language.Id">@language.Title</option>
                                 }
@@ -73,6 +77,7 @@
 
 @code {
     private FormModel _formModel = null!;
+    private List<Language> _spoken = [];
     private Form? _formRef;
 
     private LanguageUI LanguageUI => Hub.LanguageUI;
@@ -86,10 +91,10 @@
         var languages = await LanguageUI.Settings
             .Use(LanguageUI.WhenReady, CancellationToken.None);
 
-        var spoken = languages.ListSpoken();
-        _formModel.PrimaryLanguageId = spoken.GetOrDefault(0)?.Value ?? "";
-        _formModel.SecondaryLanguageId = spoken.GetOrDefault(1)?.Value ?? "";
-        _formModel.TertiaryLanguageId = spoken.GetOrDefault(2)?.Value ?? "";
+        _spoken = languages.ListSpoken();
+        _formModel.PrimaryLanguageId = _spoken.GetOrDefault(0)?.Value ?? "";
+        _formModel.SecondaryLanguageId = _spoken.GetOrDefault(1)?.Value ?? "";
+        _formModel.TertiaryLanguageId = _spoken.GetOrDefault(2)?.Value ?? "";
     }
 
     protected override Task<bool> Validate() {
@@ -102,9 +107,9 @@
 
     protected override async Task<bool> Save() {
         await LanguageUI.UpdateSettings(x =>
-            x.With(0, Language.ParseNullable(_formModel.PrimaryLanguageId))
-                .With(1, Language.ParseNullable(_formModel.SecondaryLanguageId))
-                .With(2, Language.ParseNullable(_formModel.TertiaryLanguageId))
+            x.With(0, ToLanguage(_formModel.PrimaryLanguageId))
+                .With(1, ToLanguage(_formModel.SecondaryLanguageId))
+                .With(2, ToLanguage(_formModel.TertiaryLanguageId))
         );
         return true;
     }
@@ -131,6 +136,11 @@
 
         return Task.CompletedTask;
     }
+
+    private Language? ToLanguage(string languageId)
+        // An unchanged slot keeps its language as read: set on a newer device, it may be one this build
+        // doesn't know, which Language.ParseNullable rejects
+        => _spoken.FirstOrDefault(x => x.Value == languageId) ?? Language.ParseNullable(languageId);
 
     private bool IsPrimary(string languageId)
         => languageId == _formModel.PrimaryLanguageId;

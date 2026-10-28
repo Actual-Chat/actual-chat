@@ -12,6 +12,9 @@
     _formModel.PrimaryLanguageId = languages.GetOrDefault(0)?.Value ?? "";
     _formModel.SecondaryLanguageId = languages.GetOrDefault(1)?.Value ?? "";
     _formModel.TertiaryLanguageId = languages.GetOrDefault(2)?.Value ?? "";
+    var primaryLanguages = Languages.AllTranscription.WithSelected(languages.GetOrDefault(0));
+    var secondaryLanguages = Languages.AllTranscription.WithSelected(languages.GetOrDefault(1));
+    var tertiaryLanguages = Languages.AllTranscription.WithSelected(languages.GetOrDefault(2));
     var shouldDisplayTranscriberEngineSettings = m.EnableIncompleteUI;
     var hasSensors = HostInfo.HostKind.IsMauiApp() && GestureUI.Feed.IsAccelerometerAvailable;
 }
@@ -33,7 +36,7 @@
                     Value="_formModel.PrimaryLanguageId"
                     ValueExpression="@(() => _formModel.PrimaryLanguageId)"
                     ValueChanged="@((string languageId) => OnLanguageChanged(0, languageId))">
-                    @foreach (var language in Languages.AllTranscription) {
+                    @foreach (var language in primaryLanguages) {
                         <option value="@language.Id">@language.Title</option>
                     }
                 </InputSelect>
@@ -49,7 +52,7 @@
                     ValueExpression="@(() => _formModel.SecondaryLanguageId)"
                     ValueChanged="@((string languageId) => OnLanguageChanged(1, languageId))">
                     <option value="">@L.Transcription_None</option>
-                    @foreach (var language in Languages.AllTranscription) {
+                    @foreach (var language in secondaryLanguages) {
                         <option value="@language.Id">@language.Title</option>
                     }
                 </InputSelect>
@@ -65,7 +68,7 @@
                     ValueExpression="@(() => _formModel.TertiaryLanguageId)"
                     ValueChanged="@((string languageId) => OnLanguageChanged(2, languageId))">
                     <option value="">@L.Transcription_None</option>
-                    @foreach (var language in Languages.AllTranscription) {
+                    @foreach (var language in tertiaryLanguages) {
                         <option value="@language.Id">@language.Title</option>
                     }
                 </InputSelect>
