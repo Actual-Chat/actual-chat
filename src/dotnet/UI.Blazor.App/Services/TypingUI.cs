@@ -1,6 +1,6 @@
+using ActualChat.Comparison;
 using ActualChat.Live;
 using ActualChat.Streaming;
-using ActualChat.UI.Blazor.Services;
 
 namespace ActualChat.UI.Blazor.App.Services;
 
@@ -9,8 +9,7 @@ public class TypingUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServ
     private static readonly TimeSpan RotationPeriod = TimeSpan.FromSeconds(2);
 
     private IChatTypingActivities ChatTypingActivities => Hub.ChatTypingActivities;
-    private IAuthors Authors => Hub.Authors;
-    private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
+    private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
     [ComputeMethod(ConsolidationDelay = 0)]
     public virtual async Task<AuthorId?> GetTypingAuthorId(ChatId chatId, CancellationToken cancellationToken)
@@ -39,27 +38,15 @@ public class TypingUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeServ
         return authorIds.Contains(authorId);
     }
 
-    [ComputeMethod]
+    [ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
     public virtual async Task<ApiArray<AuthorId>> ListTypingAuthorIds(
         ChatId chatId,
         CancellationToken cancellationToken)
     {
-        // Everyone but me, in the server's "who started first" order.
-        // While the RPC peer is down we stop receiving invalidations, so the last known value is stale.
-        var isConnected = await ConnectivityUI.IsConnected.Use(cancellationToken).ConfigureAwait(false);
-        if (!isConnected)
-            return default;
-
-        var authorIds = await ChatTypingActivities
-            .ListTypingAuthorIds(Session, chatId, cancellationToken)
-            .ConfigureAwait(false);
-        if (authorIds.Count == 0)
-            return authorIds;
-
-        var ownAuthor = await Authors.GetOwn(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return ownAuthor is null
-            ? authorIds
-            : authorIds.Without(id => id == ownAuthor.Id);
+        // Everyone but me, in the server's "who started first" order. Consolidated, as the summary
+        // carrying it also changes with the chat's call activity.
+        var summary = await ChatActivityUI.GetSummary(chatId, cancellationToken).ConfigureAwait(false);
+        return summary.TypingAuthorIds;
     }
 
     public Task SetTyping(

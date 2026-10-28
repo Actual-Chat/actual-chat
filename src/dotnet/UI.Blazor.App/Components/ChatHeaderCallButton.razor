@@ -26,7 +26,7 @@
 
     protected override async Task<Model> ComputeState(CancellationToken cancellationToken) {
         var chatId = Chat.Id;
-        var activity = await ChatActivityUI.GetCallActivity(chatId, cancellationToken).ConfigureAwait(false);
+        var activity = await ChatActivityUI.GetLiveActivity(chatId, cancellationToken).ConfigureAwait(false);
         var canCall = true;
         if (chatId.Kind == ChatKind.Peer) {
             var chat = await Hub.Chats.Get(Session, chatId, cancellationToken).ConfigureAwait(false);
@@ -34,7 +34,7 @@
         }
         // A dialing call counts as busy: the ring is already ours, and offering the button again would
         // re-notify every invitee and extend the ring window.
-        var isBusy = activity.IsActive || activity.IsDialing;
+        var isBusy = activity is not null;
         // One call at a time: a call held in another chat disables the button here.
         var canStartCall = await CallUI.CanStartCall(cancellationToken).ConfigureAwait(false);
         return new Model(isBusy, canCall, !isBusy && !canStartCall);

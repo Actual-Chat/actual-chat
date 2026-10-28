@@ -72,6 +72,23 @@ public class LegacyLiveSessionsRoutingTest(ITestOutputHelper @out) : TestBase(@o
     }
 
     [Fact]
+    public void TheCallStatusStubShouldAnswerTo220AndOlderPeersOnly()
+    {
+        // arrange
+#pragma warning disable CS0618 // The legacy method is the subject here
+        var legacyMethod = typeof(ILiveSessions).GetMethod(nameof(ILiveSessions.LegacyGetCallStatus))!;
+#pragma warning restore CS0618
+
+        // act
+        var oldPeer = LegacyNameOf(legacyMethod, new Version(2, 20, 9999));
+        var newPeer = LegacyNameOf(legacyMethod, new Version(2, 21));
+
+        // assert
+        oldPeer?.Name.Should().Be("GetCallStatus", "2.20 clients subscribe to it and fault on a missing method");
+        newPeer.Should().BeNull("2.21 dropped the call-status banner, so the wire name is not theirs");
+    }
+
+    [Fact]
     public void ALegacyStateShouldKeepTheOldMeaningOfTheFields()
     {
         // arrange
