@@ -38,7 +38,12 @@ public class ContactsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
         if (temporal is not null)
             return temporal;
 
-        return await GetChatUserSettingsFromSummary(chatId, cancellationToken).ConfigureAwait(false);
+        var fromSummary = await GetChatUserSettingsFromSummary(chatId, cancellationToken).ConfigureAwait(false);
+        if (fromSummary is not null)
+            return fromSummary;
+
+        // A chat with no contact - a public one the user hasn't joined - still has settings of its own
+        return await settings.Get(cancellationToken).ConfigureAwait(false);
     }
 
     public async ValueTask<List<Contact>> ListUserContacts(CancellationToken cancellationToken = default)
@@ -74,11 +79,11 @@ public class ContactsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
     }
 
     [ComputeMethod(ConsolidationDelay = 0)]
-    protected virtual async Task<ChatUserSettings> GetChatUserSettingsFromSummary(
+    protected virtual async Task<ChatUserSettings?> GetChatUserSettingsFromSummary(
         ChatId chatId,
         CancellationToken cancellationToken)
     {
         var summary = await Contacts.GetSummary(Session, chatId, cancellationToken).ConfigureAwait(false);
-        return summary?.ChatUserSettings ?? ChatUserSettings.Default;
+        return summary?.ChatUserSettings;
     }
 }
