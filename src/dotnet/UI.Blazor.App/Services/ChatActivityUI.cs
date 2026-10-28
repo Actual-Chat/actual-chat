@@ -1,4 +1,5 @@
-﻿using ActualChat.Live;
+using ActualChat.Comparison;
+using ActualChat.Live;
 using ActualChat.Streaming;
 using ActualChat.UI.Blazor.Services;
 
@@ -16,11 +17,14 @@ public enum VisualActivityPanelMode { Inline, Expanded, Collapsed, Hidden }
 /// </summary>
 public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
 {
+    private static readonly TimeSpan TypistRotationPeriod = TimeSpan.FromSeconds(2);
+
     private readonly ConcurrentDictionary<ChatId, VisualActivityTab> _selectedPanelTabs = new();
     private readonly ConcurrentDictionary<ChatId, VisualActivityPanelMode> _panelModes = new();
     private readonly ConcurrentDictionary<ChatId, ChatLiveActivity?> _lastLiveActivities = new();
 
     private ILiveSessions LiveSessions => Hub.LiveSessions;
+    private IChatTypingActivities ChatTypingActivities => Hub.ChatTypingActivities;
     private LocationUI LocationUI => Hub.LocationUI;
     private ChatVideoUI ChatVideoUI => Hub.ChatVideoUI;
     private ConnectivityUI ConnectivityUI => Hub.ConnectivityUI;
@@ -81,6 +85,51 @@ public class ChatActivityUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICompu
 
         return await ChatVideoUI.GetOwnSourceKind(chatId, cancellationToken).ConfigureAwait(false) is not null;
     }
+
+    [ComputeMethod(ConsolidationDelay = 0.2)]
+    public virtual async Task<bool> IsTyping(ChatId chatId, AuthorId authorId, CancellationToken cancellationToken)
+    {
+        // Per-member typing state for the right-panel Members list.
+        var authorIds = await ListTypingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        return authorIds.Contains(authorId);
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0)]
+    public virtual async Task<AuthorId?> GetTypingAuthorId(ChatId chatId, CancellationToken cancellationToken)
+    {
+        // The single typist to show. Several of them take turns, one TypistRotationPeriod each,
+        // so nobody stays hidden behind the one who started first.
+        var computed = Computed.GetCurrent();
+        var authorIds = await ListTypingAuthorIds(chatId, cancellationToken).ConfigureAwait(false);
+        if (authorIds.Count == 0)
+            return null;
+        if (authorIds.Count == 1)
+            return authorIds[0];
+
+        var now = Clocks.SystemClock.Now;
+        var slot = now.EpochOffset.Ticks / TypistRotationPeriod.Ticks;
+        var slotEndsAt = new Moment(TimeSpan.FromTicks((slot + 1) * TypistRotationPeriod.Ticks));
+        computed.Invalidate(slotEndsAt - now);
+        return authorIds[(int)(slot % authorIds.Count)];
+    }
+
+    [ComputeMethod(ConsolidationDelay = 0, ConsolidationComparer = typeof(ApiArrayComparer<AuthorId>))]
+    public virtual async Task<ApiArray<AuthorId>> ListTypingAuthorIds(
+        ChatId chatId,
+        CancellationToken cancellationToken)
+    {
+        // Everyone but me, in the server's "who started first" order. Consolidated, as the summary
+        // carrying it also changes with the chat's live activity.
+        var summary = await GetSummary(chatId, cancellationToken).ConfigureAwait(false);
+        return summary.TypingAuthorIds;
+    }
+
+    public Task SetTyping(
+        ChatId chatId,
+        TypingActivityKind kind,
+        TimeSpan ttl,
+        CancellationToken cancellationToken)
+        => ChatTypingActivities.SetTyping(Session, chatId, kind, ttl, cancellationToken);
 
     [ComputeMethod]
     public virtual Task<VisualActivityPanelMode> GetPanelMode(

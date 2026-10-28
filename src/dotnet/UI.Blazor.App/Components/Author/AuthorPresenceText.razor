@@ -13,7 +13,7 @@
 @code {
     private IAuthors Authors => Hub.Authors;
     private LiveStreamUI LiveStreamUI => Hub.LiveStreamUI;
-    private TypingUI TypingUI => Hub.TypingUI;
+    private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
     [Parameter, EditorRequired] public AuthorId? AuthorId { get; set; }
     [Parameter] public bool ShowRecording { get; set; }
@@ -49,7 +49,7 @@
         // Recording (audio) takes priority over typing.
         var isTyping = showTyping
             && !isRecording
-            && await TypingUI.IsTyping(chatId, authorId, cancellationToken).ConfigureAwait(false);
+            && await ChatActivityUI.IsTyping(chatId, authorId, cancellationToken).ConfigureAwait(false);
 
         var lastCheckIn = await Authors.GetLastCheckIn(Session, chatId, authorId, cancellationToken).ConfigureAwait(false);
         return new() {

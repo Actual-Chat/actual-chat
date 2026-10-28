@@ -67,7 +67,7 @@ Four consequences shape everything below:
   serve-stale paths engage.
 - **`no-cache` methods have nothing to fall back to.** The only defence is not awaiting them:
   `ComputedExt.UseIfReady` (used once, in `ChatListItem`) or a `ConnectivityUI.IsConnected` gate
-  (used in `LiveStreamUI` and `TypingUI`).
+  (used in `LiveStreamUI` and `ChatActivityUI`).
 
 ::: tip Already verified on a device
 Commit `6fcd74beab` measured an airplane-mode chat list: all 489 cache lookups hit, `IChats.GetNews`

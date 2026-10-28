@@ -70,7 +70,6 @@ public sealed class AppUIHub(IServiceProvider services) : UIHub(services)
     public VideoQualityUI VideoQualityUI => field ??= Services.GetRequiredService<VideoQualityUI>();
     public AudioDiagnosticsUI AudioDiagnosticsUI => field ??= Services.GetRequiredService<AudioDiagnosticsUI>();
     public LiveStreamUI LiveStreamUI => field ??= Services.GetRequiredService<LiveStreamUI>();
-    public TypingUI TypingUI => field ??= Services.GetRequiredService<TypingUI>();
     public VoiceActivityUI VoiceActivityUI => field ??= Services.GetRequiredService<VoiceActivityUI>();
     public PttReplyUI PttReplyUI => field ??= Services.GetRequiredService<PttReplyUI>();
     public GestureUI GestureUI => field ??= Services.GetRequiredService<GestureUI>();

@@ -11,7 +11,7 @@
 
 @code {
     private IAuthors Authors => Hub.Authors;
-    private TypingUI TypingUI => Hub.TypingUI;
+    private ChatActivityUI ChatActivityUI => Hub.ChatActivityUI;
 
     [Parameter, EditorRequired] public ChatId ChatId { get; set; }
     [Parameter] public bool IsEnabled { get; set; } = true;
@@ -29,7 +29,7 @@
         if (!IsEnabled || chatId.Value.IsNullOrEmpty())
             return Model.None;
 
-        var authorId = await TypingUI.GetTypingAuthorId(chatId, cancellationToken).ConfigureAwait(false);
+        var authorId = await ChatActivityUI.GetTypingAuthorId(chatId, cancellationToken).ConfigureAwait(false);
         if (authorId is not { } id)
             return Model.None;
 

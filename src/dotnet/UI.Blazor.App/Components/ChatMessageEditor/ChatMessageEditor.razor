@@ -216,7 +216,7 @@
         if (kind != TypingActivityKind.None && !attachments.IsCommitted)
             FileAttachments.CommitDraft(attachments);
 
-        return Hub.TypingUI.SetTyping(Chat.Id, kind, TimeSpan.FromMilliseconds(ttlMs), CancellationToken.None);
+        return Hub.ChatActivityUI.SetTyping(Chat.Id, kind, TimeSpan.FromMilliseconds(ttlMs), CancellationToken.None);
     }
 
     // Private methods
