@@ -371,14 +371,15 @@ public partial class AudioStreamingBackend
         Task<string> realtimeTextTask,
         TaskCompletionSource<RefinedTranscript?> refinedTranscriptTcs)
     {
-        if (!mustStreamVoice || closedSegment is null) {
+        var record = openSegment.Record;
+        // A producer's own transcript is the message: retranscribing its audio would replace its words
+        if (!mustStreamVoice || closedSegment is null || _externalTranscripts.ContainsKey(record.StreamId)) {
             refinedTranscriptTcs.TrySetResult(null);
             return;
         }
 
         var audioSource = closedSegment.Audio;
         var streamId = openSegment.StreamId;
-        var record = openSegment.Record;
         _ = BackgroundTask.Run(async () => {
             var language = await refineTranscriptLanguageTask.ConfigureAwait(false);
             if (language is not { } lang) {
