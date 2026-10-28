@@ -394,6 +394,12 @@ audio is short, voice-gated, and rarely overlapping.
   from a phone call into a live conversation that resumed unattended is worse
   than a toggle.
 
+On Android a recording focus takes the communication route (`Mode.InCommunication`,
+the `VoiceCommunication` mic source with the platform's echo canceller), and every
+playback track follows it: `VOICE_COMMUNICATION` usage while the mic is open or a
+call is on, `MEDIA` otherwise - a track switches mid-utterance when the mic opens or
+closes. See [`10-push-to-talk.md`](10-push-to-talk.md) for why both directions matter.
+
 On Android the gain type follows the mode: recording and listening ask for
 `GAIN_TRANSIENT` so that music and navigation resume in the gaps, replay and the
 projected-media route for a permanent `GAIN`, the tune for

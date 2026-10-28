@@ -29,7 +29,11 @@ public sealed class AndroidAudioFocusHelper : IDisposable
     // _hasFocus minus the focus we lost to another app - i.e. is the session we measured still ours
     private bool _isFocusSessionOpen;
     private CpuTimestamp _sessionEndedAt = CpuTimestamp.Now - TimeSpan.FromHours(1);
-    public bool IsCommunicationFocus => _isCommunicationFocus;
+
+    public bool IsCommunicationFocus
+        // Polled by the playback engines' feed loops on their own threads
+        => Volatile.Read(ref _isCommunicationFocus);
+
     public bool HasEarpiece { get; }
 
     public event Action<AudioFocus>? OnFocusChanged;

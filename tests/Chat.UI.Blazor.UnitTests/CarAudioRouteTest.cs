@@ -47,14 +47,14 @@ public class CarAudioRouteTest
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void OrdinaryPlaybackShouldUseCommunicationOnlyForACall(bool isCallActive)
+    public void OrdinaryPlaybackShouldUseCommunicationOnlyWhileItIsActive(bool isCommunicationActive)
     {
         // act
-        var mustUseCommunication = CarAudioRoute.Default.UseCommunicationPlayback(isCallActive);
+        var mustUseCommunication = CarAudioRoute.Default.UseCommunicationPlayback(isCommunicationActive);
 
         // assert
-        mustUseCommunication.Should().Be(isCallActive,
-            "PTT playback must not move to the earpiece when a concurrent reply releases its recording focus");
+        mustUseCommunication.Should().Be(isCommunicationActive,
+            "without a call or an open mic, communication playback would drop to the earpiece");
     }
 
     [Theory]
@@ -77,17 +77,27 @@ public class CarAudioRouteTest
     }
 
     [Fact]
-    public void RecordingCommunicationFocusShouldNotBindPttPlaybackToTheCallRoute()
+    public void RecordingCommunicationFocusShouldBindPlaybackToTheCommunicationPath()
     {
         // arrange
         var focus = new RecordingAudioFocusUI();
 
         // act
-        var mustUseCommunication = CarAudioRoute.Default.UseCommunicationPlayback(focus.IsCallActive);
+        var mustUseCommunication = CarAudioRoute.Default.UseCommunicationPlayback(focus);
 
         // assert
-        focus.IsCommunicationFocus.Should().BeTrue();
-        focus.ActiveMode.Should().Be(AudioFocusMode.Recording);
+        focus.IsCallActive.Should().BeFalse();
+        mustUseCommunication.Should().BeTrue(
+            "the mic's echo canceller removes only what plays through the communication path");
+    }
+
+    [Fact]
+    public void IdleFocusShouldKeepPlaybackOnMedia()
+    {
+        // act
+        var mustUseCommunication = CarAudioRoute.Default.UseCommunicationPlayback(new AudioFocusUI());
+
+        // assert
         mustUseCommunication.Should().BeFalse();
     }
 

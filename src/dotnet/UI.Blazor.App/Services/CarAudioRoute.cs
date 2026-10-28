@@ -1,3 +1,4 @@
+using ActualChat.UI.Blazor.Services;
 using ActualChat.Users;
 
 namespace ActualChat.UI.Blazor.App.Services;
@@ -39,11 +40,16 @@ public sealed record CarAudioRoute(AudioEndpoint Input, AudioEndpoint Output, Ca
         };
     }
 
-    public bool UseCommunicationPlayback(bool isCallActive)
+    public bool UseCommunicationPlayback(AudioFocusUI audioFocusUI)
+        // An open mic records through the communication path, and the echo canceller there
+        // removes only what plays through it too - a Media track next to it is heard twice.
+        => UseCommunicationPlayback(audioFocusUI.IsCallActive || audioFocusUI.IsCommunicationFocus);
+
+    public bool UseCommunicationPlayback(bool isCommunicationActive)
         => UseHandsFreeLink || Output switch {
             AudioEndpoint.Builtin => true,
             AudioEndpoint.External => false,
-            _ => isCallActive,
+            _ => isCommunicationActive,
         };
 }
 
