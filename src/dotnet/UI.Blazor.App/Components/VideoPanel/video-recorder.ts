@@ -1215,11 +1215,15 @@ export class VideoRecorder {
         // at up to 4 tiers (adds 1080 when that layer exists); the 1080 top is
         // reserved for non-H264 (gated below at the probe + fallback), realized by
         // the QC ramp. Capped to the available layer count.
-        const tierCeiling = DeviceInfo.isMobile
+        // The ladder and the capture always take the full ceiling: maxLayerCount only
+        // soft-starts the health cap, as in openGate. A ladder sized by a cap that
+        // was degraded at start could never grow back.
+        const tierCap = DeviceInfo.isMobile
             ? 2
             : Math.min(4, VIDEO.cameraLayerBaseBitratesKbps.length);
-        const tierCap = Math.max(1, Math.min(maxLayerCount, tierCeiling));
-        infoLog?.log(`Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}], maxLayerCount=${maxLayerCount} → tierCap=${tierCap}`);
+        infoLog?.log(
+            `Starting video recording... audienceCodecs=[${audienceCodecs?.join(', ') ?? '(none)'}], `
+            + `maxLayerCount=${maxLayerCount}, tierCap=${tierCap}`);
 
         try {
             const cameraTopByTier: Record<number, Size> = {
@@ -1446,10 +1450,20 @@ export class VideoRecorder {
                 ladder = ladder.map(l => ({ ...l, width: l.height, height: l.width }));
                 this.layers = ladder.length >= 2 ? [...ladder] : null;
                 this.fullLayerLadder = this.layers ? [...this.layers] : null;
-                infoLog?.log(`Camera orientation mismatch — flipped ladder to: [${ladder.map(l => `${l.width}x${l.height}`).join(', ')}]`);
+                const ladderText = ladder.map(l => `${l.width}x${l.height}`).join(', ');
+                infoLog?.log(`Camera orientation mismatch — flipped ladder to: [${ladderText}]`);
             } else if (wantsPortrait && !cameraIsPortrait) {
-                infoLog?.log(`Camera returned landscape despite portrait request — keeping ladder portrait, normalize will cover-crop. Camera=${this.cameraWidth}x${this.cameraHeight}, ladder top=${ladder[ladder.length - 1].width}x${ladder[ladder.length - 1].height}`);
+                const topTier = ladder[ladder.length - 1];
+                infoLog?.log(
+                    'Camera returned landscape despite portrait request — keeping ladder portrait, '
+                    + `normalize will cover-crop. Camera=${this.cameraWidth}x${this.cameraHeight}, `
+                    + `ladder top=${topTier.width}x${topTier.height}`);
             }
+            const softCount = Math.max(1, Math.min(maxLayerCount, ladder.length));
+            this.healthLayerCap = softCount;
+            this.layers = (this.fullLayerLadder && softCount >= 2)
+                ? this.fullLayerLadder.slice(0, softCount)
+                : null;
 
             void this.blazorRef.invokeMethodAsync(
                 'OnTrackSettings',
@@ -1464,7 +1478,8 @@ export class VideoRecorder {
             };
 
             this.ensureWorker();
-            await this.startWorker(ladder);
+            // A one-tier fallback ladder has no full ladder to cap
+            await this.startWorker(this.fullLayerLadder ? this.resolveActiveLadder() : ladder);
             if (!this.isCurrentLifecycle(lifecycleEpoch))
                 return;
 
