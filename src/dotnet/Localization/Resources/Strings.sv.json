@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Använd Tryck och prata på den här enheten",
   "Ptt_UseOnThisDeviceCaption": "När det är avstängt vaknar den här enheten inte och varken spelar upp eller skickar röst via Tryck och prata.",
   "Ptt_UseOnDesktopCaption": "Tryck och prata fungerar medan appen körs. Det stoppas när du avslutar appen.",
+  "Ptt_ShowChatsBar": "Visa fältet med Tryck och prata-chattar",
+  "Ptt_ShowChatsBarCaption": "Chattar med Tryck och prata under Aktiva chattar",
   "Ptt_ChatsTopicLimit_Format": "Chattar med Tryck och prata (upp till {0})",
   "Ptt_NoPttChats": "Ingen chatt är i läget Tryck och prata än - ägaren slår på det i själva chatten.",
   "Ptt_AvailableTopic": "Inte i din lista för Tryck och prata",

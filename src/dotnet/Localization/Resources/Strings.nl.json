@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Druk en spreek op dit apparaat gebruiken",
   "Ptt_UseOnThisDeviceCaption": "Als dit uit staat, ontwaakt dit apparaat niet voor spraak via Druk en spreek en speelt of verstuurt het die niet.",
   "Ptt_UseOnDesktopCaption": "Druk en spreek werkt zolang de app actief is. Het stopt wanneer je de app afsluit.",
+  "Ptt_ShowChatsBar": "Balk met Druk en spreek-chats tonen",
+  "Ptt_ShowChatsBarCaption": "Chats met Druk en spreek onder Actieve chats",
   "Ptt_ChatsTopicLimit_Format": "Chats met Druk en spreek (maximaal {0})",
   "Ptt_NoPttChats": "Er staat nog geen chat in de modus Druk en spreek - de eigenaar zet die aan in de chat zelf.",
   "Ptt_AvailableTopic": "Niet in je lijst voor Druk en spreek",

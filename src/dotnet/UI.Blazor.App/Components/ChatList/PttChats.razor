@@ -57,6 +57,10 @@
             _mru = (await LocalSettings.Get<ChatId[]>(MruKey, cancellationToken).ConfigureAwait(false))?.ToList() ?? [];
             _mruLoaded = true;
         }
+        var settings = await UserSettingsUI.UserPttSettings().Get(cancellationToken).ConfigureAwait(false);
+        if (!(settings.IsPttBarEnabled ?? true))
+            return [];
+
         var chatIds = new List<ChatId>(await ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false));
         var mutedPttChatIds = await ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false);
         chatIds.AddRange(mutedPttChatIds.Where(id => !chatIds.Contains(id)));

@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Gamitin ang Pindutin at magsalita sa device na ito",
   "Ptt_UseOnThisDeviceCaption": "Kapag naka-off, hindi magigising, hindi magpe-play, at hindi magpapadala ng boses ng Pindutin at magsalita ang device na ito.",
   "Ptt_UseOnDesktopCaption": "Gumagana ang Pindutin at magsalita habang tumatakbo ang app. Humihinto ito kapag isinara mo ang app.",
+  "Ptt_ShowChatsBar": "Ipakita ang bar ng mga chat na Pindutin at magsalita",
+  "Ptt_ShowChatsBarCaption": "Ilista ang mga chat na Pindutin at magsalita sa ilalim ng Mga Aktibong Chat",
   "Ptt_ChatsTopicLimit_Format": "Mga chat na Pindutin at magsalita (hanggang {0})",
   "Ptt_NoPttChats": "Wala pang chat na nasa Pindutin at magsalita mode - ino-on ito ng may-ari sa chat mismo.",
   "Ptt_AvailableTopic": "Wala sa listahan mo ng Pindutin at magsalita",

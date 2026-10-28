@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Gebruik Druk-en-praat op hierdie toestel",
   "Ptt_UseOnThisDeviceCaption": "Wanneer dit af is, sal hierdie toestel nie wakker word vir, speel of stuur van Druk-en-praat-stem nie.",
   "Ptt_UseOnDesktopCaption": "Druk-en-praat werk terwyl die toep loop. Dit stop wanneer jy die toep afsluit.",
+  "Ptt_ShowChatsBar": "Wys die Druk-en-praat-kletsbalk",
+  "Ptt_ShowChatsBarCaption": "Lys Druk-en-praat-kletse onder Aktiewe kletse",
   "Ptt_ChatsTopicLimit_Format": "Druk-en-praat-kletse (tot {0})",
   "Ptt_NoPttChats": "Geen klets is nog in Druk-en-praat-modus nie - die eienaar skakel dit in die klets self aan.",
   "Ptt_AvailableTopic": "Nie in jou Druk-en-praat-lys nie",

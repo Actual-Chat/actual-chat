@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Folosiți Apasă și vorbește pe acest dispozitiv",
   "Ptt_UseOnThisDeviceCaption": "Când este dezactivat, acest dispozitiv nu se activează, nu redă și nu transmite voce Apasă și vorbește.",
   "Ptt_UseOnDesktopCaption": "Apasă și vorbește funcționează cât timp aplicația rulează. Se oprește când ieșiți din aplicație.",
+  "Ptt_ShowChatsBar": "Afișează bara de chaturi Apasă și vorbește",
+  "Ptt_ShowChatsBarCaption": "Chaturile Apasă și vorbește sub chaturile active",
   "Ptt_ChatsTopicLimit_Format": "Chaturi Apasă și vorbește (maximum {0})",
   "Ptt_NoPttChats": "Niciun chat nu este încă în modul Apasă și vorbește - proprietarul îl activează chiar în chat.",
   "Ptt_AvailableTopic": "Nu sunt în lista dvs. Apasă și vorbește",

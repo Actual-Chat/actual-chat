@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Uporabljaj Pritisni in govori v tej napravi",
   "Ptt_UseOnThisDeviceCaption": "Ko je izklopljeno, se ta naprava zaradi glasu Pritisni in govori ne zbudi, ga ne predvaja in ne prenaša.",
   "Ptt_UseOnDesktopCaption": "Pritisni in govori deluje, dokler aplikacija teče. Ko aplikacijo zaprete, se ustavi.",
+  "Ptt_ShowChatsBar": "Prikaži vrstico klepetov Pritisni in govori",
+  "Ptt_ShowChatsBarCaption": "Klepeti Pritisni in govori pod aktivnimi klepeti",
   "Ptt_ChatsTopicLimit_Format": "Klepeti Pritisni in govori (največ {0})",
   "Ptt_NoPttChats": "Noben klepet še ni v načinu Pritisni in govori – vklopi ga lastnik v samem klepetu.",
   "Ptt_AvailableTopic": "Ni na vašem seznamu Pritisni in govori",

@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Fes servir Prem i parla en aquest dispositiu",
   "Ptt_UseOnThisDeviceCaption": "Si està desactivat, aquest dispositiu no es desperta, ni reprodueix ni transmet veu de Prem i parla.",
   "Ptt_UseOnDesktopCaption": "Prem i parla funciona mentre l'aplicació està oberta. S'atura quan surts de l'aplicació.",
+  "Ptt_ShowChatsBar": "Mostra la barra de xats de Prem i parla",
+  "Ptt_ShowChatsBarCaption": "Llista els xats de Prem i parla sota els xats actius",
   "Ptt_ChatsTopicLimit_Format": "Xats de Prem i parla (fins a {0})",
   "Ptt_NoPttChats": "Encara no hi ha cap xat en mode Prem i parla; el propietari l'activa al mateix xat.",
   "Ptt_AvailableTopic": "No són a la teva llista de Prem i parla",

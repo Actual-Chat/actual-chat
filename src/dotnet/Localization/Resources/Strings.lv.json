@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Izmantot „Nospied un runā“ šajā ierīcē",
   "Ptt_UseOnThisDeviceCaption": "Kad izslēgts, šī ierīce nepamostas, neatskaņo un nepārraida „Nospied un runā“ balsi.",
   "Ptt_UseOnDesktopCaption": "„Nospied un runā“ darbojas, kamēr lietotne ir palaista. Tas apstājas, kad aizverat lietotni.",
+  "Ptt_ShowChatsBar": "Rādīt „Nospied un runā“ tērzēšanu joslu",
+  "Ptt_ShowChatsBarCaption": "„Nospied un runā“ tērzēšanas zem aktīvajām tērzēšanām",
   "Ptt_ChatsTopicLimit_Format": "„Nospied un runā“ tērzēšanas (līdz {0})",
   "Ptt_NoPttChats": "Neviena tērzēšana vēl nav režīmā „Nospied un runā“ — to ieslēdz īpašnieks pašā tērzēšanā.",
   "Ptt_AvailableTopic": "Nav jūsu sarakstā „Nospied un runā“",

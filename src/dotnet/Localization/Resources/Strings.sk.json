@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Používať Stlač a hovor v tomto zariadení",
   "Ptt_UseOnThisDeviceCaption": "Keď je vypnuté, toto zariadenie sa pre hlas Stlač a hovor nezobudí, neprehrá ho ani neprenesie.",
   "Ptt_UseOnDesktopCaption": "Stlač a hovor funguje, kým je aplikácia spustená. Ukončením aplikácie sa zastaví.",
+  "Ptt_ShowChatsBar": "Zobrazovať lištu chatov Stlač a hovor",
+  "Ptt_ShowChatsBarCaption": "Chaty Stlač a hovor pod aktívnymi chatmi",
   "Ptt_ChatsTopicLimit_Format": "Chaty Stlač a hovor (najviac {0})",
   "Ptt_NoPttChats": "Zatiaľ žiadny chat nie je v režime Stlač a hovor – zapína ho vlastník priamo v chate.",
   "Ptt_AvailableTopic": "Nie sú vo vašom zozname Stlač a hovor",

@@ -1494,6 +1494,8 @@
   "Ptt_UseOnThisDevice": "Bu cihazda Bas-Konuş kullan",
   "Ptt_UseOnThisDeviceCaption": "Kapalıyken bu cihaz Bas-Konuş sesiyle uyanmaz, ses çalmaz ve iletmez.",
   "Ptt_UseOnDesktopCaption": "Bas-konuş, uygulama çalışırken kullanılabilir. Uygulamadan çıktığınızda durur.",
+  "Ptt_ShowChatsBar": "Bas-konuş sohbet çubuğunu göster",
+  "Ptt_ShowChatsBarCaption": "Bas-konuş sohbetlerini Aktif Sohbetler altında listele",
   "Ptt_ChatsTopicLimit_Format": "Bas-konuş sohbetleri (en fazla {0})",
   "Ptt_NoPttChats": "Henüz Bas-konuş modunda sohbet yok - sohbet sahibi bunu sohbetin içinden açar.",
   "Ptt_AvailableTopic": "Bas-konuş listenizde değil",

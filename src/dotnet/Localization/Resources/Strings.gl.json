@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Usar Preme e fala neste dispositivo",
   "Ptt_UseOnThisDeviceCaption": "Se está desactivado, este dispositivo non se activa nin reproduce nin transmite voz de Preme e fala.",
   "Ptt_UseOnDesktopCaption": "Preme e fala funciona mentres a aplicación está aberta. Detense cando saes da aplicación.",
+  "Ptt_ShowChatsBar": "Amosar a barra de chats de Preme e fala",
+  "Ptt_ShowChatsBarCaption": "Lista os chats de Preme e fala baixo os chats activos",
   "Ptt_ChatsTopicLimit_Format": "Chats de Preme e fala (ata {0})",
   "Ptt_NoPttChats": "Aínda non hai ningún chat en modo Preme e fala; o propietario actívao no propio chat.",
   "Ptt_AvailableTopic": "Non están na túa lista de Preme e fala",

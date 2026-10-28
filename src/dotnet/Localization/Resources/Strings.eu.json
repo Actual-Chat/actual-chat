@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Erabili \"Sakatu eta hitz egin\" gailu honetan",
   "Ptt_UseOnThisDeviceCaption": "Desaktibatuta dagoenean, gailu hau ez da esnatuko, eta ez du \"Sakatu eta hitz egin\" ahotsik erreproduzituko ez transmitituko.",
   "Ptt_UseOnDesktopCaption": "\"Sakatu eta hitz egin\" aplikazioa martxan dagoen bitartean dabil. Aplikaziotik irtetean gelditzen da.",
+  "Ptt_ShowChatsBar": "Erakutsi \"Sakatu eta hitz egin\" txaten barra",
+  "Ptt_ShowChatsBarCaption": "\"Sakatu eta hitz egin\" txatak txat aktiboen azpian",
   "Ptt_ChatsTopicLimit_Format": "\"Sakatu eta hitz egin\" txatak (gehienez {0})",
   "Ptt_NoPttChats": "Oraindik ez dago txatik \"Sakatu eta hitz egin\" moduan; jabeak txatean bertan aktibatzen du.",
   "Ptt_AvailableTopic": "Ez daude zure \"Sakatu eta hitz egin\" zerrendan",
