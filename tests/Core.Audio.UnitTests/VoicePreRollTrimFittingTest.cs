@@ -3,8 +3,8 @@ using ActualLab.IO;
 
 namespace Core.Audio.UnitTests;
 
-// Recordings are private, so they live outside the repo: 16 kHz mono s16 *.pcm files
-// in the folder named by ActualChat_VadOnsetDataDir (default: tmp/vad-onset/pcm).
+// Manual only: the recordings are private and live outside the repo. tools/vad-onset/fetch.py downloads them
+// into tmp/vad-onset/pcm (or the folder named by ActualChat_VadOnsetDataDir); see tools/vad-onset/README.md.
 
 /// <summary>
 /// Ranks voice-start pre-roll trims on real recordings replayed through the ONNX VAD:
@@ -32,6 +32,11 @@ public sealed class VoicePreRollTrimFittingTest(ITestOutputHelper @out) : TestBa
         var repoRoot = FindRepoRoot();
         FilePath dataDir = Environment.GetEnvironmentVariable("ActualChat_VadOnsetDataDir")
             ?? repoRoot & "tmp" & "vad-onset" & "pcm";
+        if (!Directory.Exists(dataDir) || Directory.GetFiles(dataDir, "*.pcm").Length == 0) {
+            WriteLine($"No recordings in {dataDir}: run tools/vad-onset/fetch.py first (see its README.md).");
+            return;
+        }
+
         var modelPath = repoRoot & "src" & "dotnet" & "UI.Blazor.App"
             & "Components" & "AudioRecorder" & "workers" & "vad_batched.ort";
         var services = new ServiceCollection();
