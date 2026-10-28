@@ -52,6 +52,14 @@ public sealed class SonioxLanguageTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void FromSonioxShouldDropPreviewLanguages()
+    {
+        // act, assert
+        foreach (var language in Languages.All.Where(x => x.Support.HasFlag(LanguageSupport.Preview)))
+            SonioxLanguage.FromSoniox(language.ToSoniox(), [language]).Should().BeNull($"{language} isn't released");
+    }
+
+    [Fact]
     public void EverySupportedLanguageShouldMapToNonEmptyCode()
     {
         // act

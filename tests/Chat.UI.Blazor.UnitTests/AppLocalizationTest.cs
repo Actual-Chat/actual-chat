@@ -43,7 +43,7 @@ public class AppLocalizationTest
 
         // assert
         foreach (var subtag in subtags)
-            Languages.AllUIAndTestOnly.Should().Contain(
+            Languages.AllWithCatalog.Should().Contain(
                 l => l.IsoCode == subtag,
                 $"resource '{StringCatalogs.ResourceName(kind, subtag)}' must map to a known language");
     }
@@ -332,7 +332,7 @@ public class AppLocalizationTest
         // Subtags naming no catalog language are dropped here - it's
         // EveryShippedTranslationShouldMapToKnownLanguage that reports them.
         => ShippedSubtags(kind)
-            .Select(s => Languages.AllUIAndTestOnly.SingleOrDefault(l => l.IsoCode == s))
+            .Select(s => Languages.AllWithCatalog.SingleOrDefault(l => l.IsoCode == s))
             .OfType<Language>();
 
     private static Dictionary<string, string>? Load(Language language, StringCatalogs.Kind kind = Strings)

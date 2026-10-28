@@ -38,50 +38,54 @@ export const UI_LANGUAGES: UILanguage[] = [
     { code: 'hr-HR', subtag: 'hr', nativeName: 'Hrvatski' },
     { code: 'cnr-ME', subtag: 'cnr', nativeName: 'Crnogorski' },
     { code: 'sr-SR', subtag: 'sr', nativeName: 'Српски' },
-    { code: 'af-ZA', subtag: 'af', nativeName: 'Afrikaans' },
-    { code: 'sq-AL', subtag: 'sq', nativeName: 'Shqip' },
-    { code: 'az-AZ', subtag: 'az', nativeName: 'Azərbaycanca' },
-    { code: 'eu-ES', subtag: 'eu', nativeName: 'Euskara' },
-    { code: 'be-BY', subtag: 'be', nativeName: 'Беларуская' },
-    { code: 'bn-BD', subtag: 'bn', nativeName: 'বাংলা' },
-    { code: 'ca-ES', subtag: 'ca', nativeName: 'Català' },
+    { code: 'af-ZA', subtag: 'af', nativeName: 'Afrikaans', isPreview: true },
+    { code: 'sq-AL', subtag: 'sq', nativeName: 'Shqip', isPreview: true },
+    { code: 'az-AZ', subtag: 'az', nativeName: 'Azərbaycanca', isPreview: true },
+    { code: 'eu-ES', subtag: 'eu', nativeName: 'Euskara', isPreview: true },
+    { code: 'be-BY', subtag: 'be', nativeName: 'Беларуская', isPreview: true },
+    { code: 'bn-BD', subtag: 'bn', nativeName: 'বাংলা', isPreview: true },
+    { code: 'ca-ES', subtag: 'ca', nativeName: 'Català', isPreview: true },
     { code: 'da-DK', subtag: 'da', nativeName: 'Dansk' },
     { code: 'nl-NL', subtag: 'nl', nativeName: 'Nederlands' },
-    { code: 'et-EE', subtag: 'et', nativeName: 'Eesti' },
+    { code: 'et-EE', subtag: 'et', nativeName: 'Eesti', isPreview: true },
     { code: 'fil-PH', subtag: 'fil', nativeName: 'Filipino' },
     { code: 'fi-FI', subtag: 'fi', nativeName: 'Suomi' },
-    { code: 'gl-ES', subtag: 'gl', nativeName: 'Galego' },
-    { code: 'el-GR', subtag: 'el', nativeName: 'Ελληνικά' },
-    { code: 'gu-IN', subtag: 'gu', nativeName: 'ગુજરાતી' },
-    { code: 'hu-HU', subtag: 'hu', nativeName: 'Magyar' },
-    { code: 'kn-IN', subtag: 'kn', nativeName: 'ಕನ್ನಡ' },
+    { code: 'gl-ES', subtag: 'gl', nativeName: 'Galego', isPreview: true },
+    { code: 'el-GR', subtag: 'el', nativeName: 'Ελληνικά', isPreview: true },
+    { code: 'gu-IN', subtag: 'gu', nativeName: 'ગુજરાતી', isPreview: true },
+    { code: 'hu-HU', subtag: 'hu', nativeName: 'Magyar', isPreview: true },
+    { code: 'kn-IN', subtag: 'kn', nativeName: 'ಕನ್ನಡ', isPreview: true },
     { code: 'kk-KZ', subtag: 'kk', nativeName: 'Қазақ тілі' },
-    { code: 'lv-LV', subtag: 'lv', nativeName: 'Latviešu' },
-    { code: 'lt-LT', subtag: 'lt', nativeName: 'Lietuvių' },
-    { code: 'mk-MK', subtag: 'mk', nativeName: 'Македонски' },
+    { code: 'lv-LV', subtag: 'lv', nativeName: 'Latviešu', isPreview: true },
+    { code: 'lt-LT', subtag: 'lt', nativeName: 'Lietuvių', isPreview: true },
+    { code: 'mk-MK', subtag: 'mk', nativeName: 'Македонски', isPreview: true },
     { code: 'ms-MY', subtag: 'ms', nativeName: 'Bahasa Melayu' },
-    { code: 'ml-IN', subtag: 'ml', nativeName: 'മലയാളം' },
+    { code: 'ml-IN', subtag: 'ml', nativeName: 'മലയാളം', isPreview: true },
     { code: 'mr-IN', subtag: 'mr', nativeName: 'मराठी' },
-    { code: 'no-NO', subtag: 'no', nativeName: 'Norsk' },
+    { code: 'no-NO', subtag: 'no', nativeName: 'Norsk', isPreview: true },
     { code: 'pa-IN', subtag: 'pa', nativeName: 'ਪੰਜਾਬੀ' },
-    { code: 'ro-RO', subtag: 'ro', nativeName: 'Română' },
-    { code: 'sk-SK', subtag: 'sk', nativeName: 'Slovenčina' },
-    { code: 'sl-SI', subtag: 'sl', nativeName: 'Slovenščina' },
-    { code: 'sw-KE', subtag: 'sw', nativeName: 'Kiswahili' },
+    { code: 'ro-RO', subtag: 'ro', nativeName: 'Română', isPreview: true },
+    { code: 'sk-SK', subtag: 'sk', nativeName: 'Slovenčina', isPreview: true },
+    { code: 'sl-SI', subtag: 'sl', nativeName: 'Slovenščina', isPreview: true },
+    { code: 'sw-KE', subtag: 'sw', nativeName: 'Kiswahili', isPreview: true },
     { code: 'sv-SE', subtag: 'sv', nativeName: 'Svenska' },
     { code: 'ta-IN', subtag: 'ta', nativeName: 'தமிழ்' },
-    { code: 'te-IN', subtag: 'te', nativeName: 'తెలుగు' },
+    { code: 'te-IN', subtag: 'te', nativeName: 'తెలుగు', isPreview: true },
     { code: 'th-TH', subtag: 'th', nativeName: 'ไทย' },
     { code: 'uz-UZ', subtag: 'uz', nativeName: 'Oʻzbekcha' },
-    { code: 'cy-GB', subtag: 'cy', nativeName: 'Cymraeg' },
+    { code: 'cy-GB', subtag: 'cy', nativeName: 'Cymraeg', isPreview: true },
 ];
 
 export const ENGLISH = UI_LANGUAGES[0];
+
+/** Languages.AllUI: what the App-language picker offers. Preview languages open only through `?lang=`. */
+export const OFFERED_UI_LANGUAGES = UI_LANGUAGES.filter(x => !x.isPreview);
 
 export interface UILanguage {
     code: string;
     subtag: string;
     nativeName: string;
+    isPreview?: boolean;
 }
 
 export type Catalog = Record<string, string>;

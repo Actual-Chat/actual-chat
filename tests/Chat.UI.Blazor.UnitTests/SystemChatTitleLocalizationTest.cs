@@ -96,6 +96,6 @@ public sealed class SystemChatTitleLocalizationTest
 
     private static IEnumerable<Language> ShippedLanguages()
         => StringCatalogs.ShippedSubtags(StringCatalogs.Kind.Strings)
-            .Select(s => Languages.AllUIAndTestOnly.SingleOrDefault(l => l.IsoCode == s))
+            .Select(s => Languages.AllWithCatalog.SingleOrDefault(l => l.IsoCode == s))
             .OfType<Language>();
 }

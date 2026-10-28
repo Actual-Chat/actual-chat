@@ -56,4 +56,18 @@ public sealed class LanguageSupportTest(ITestOutputHelper @out) : TestBase(@out)
         // assert
         unusable.Should().BeEmpty("a language nothing can use should be removed, not declared");
     }
+
+    [Fact]
+    public void PreviewShouldStandAlone()
+    {
+        // act
+        var combined = Languages.All
+            .Where(x => x.Support.HasFlag(LanguageSupport.Preview) && x.Support != LanguageSupport.Preview)
+            .ToList();
+
+        // assert
+        combined.Should().BeEmpty(
+            "a Preview language is held back as a whole: another flag would offer it, or send its code to apps "
+            + "that can't parse it");
+    }
 }

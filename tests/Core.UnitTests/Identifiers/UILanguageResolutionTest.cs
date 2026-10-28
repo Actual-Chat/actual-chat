@@ -2,6 +2,9 @@ namespace ActualChat.Core.UnitTests.Identifiers;
 
 public sealed class UILanguageResolutionTest(ITestOutputHelper @out) : TestBase(@out)
 {
+    private static readonly Language[] PreviewLanguages =
+        Languages.All.Where(x => x.Support.HasFlag(LanguageSupport.Preview)).ToArray();
+
     [Theory]
     [InlineData("en-US", "en-US")]
     [InlineData("en", "en-US")]
@@ -14,11 +17,23 @@ public sealed class UILanguageResolutionTest(ITestOutputHelper @out) : TestBase(
         => Languages.DetectUILanguage([clientLanguage]).Should().Be(Language.Parse(expected));
 
     [Theory]
-    [InlineData("nb-NO", "no-NO")]
-    [InlineData("nn-NO", "no-NO")]
     [InlineData("tl-PH", "fil-PH")]
     public void DetectUILanguageShouldResolveAliases(string clientLanguage, string expected)
         => Languages.DetectUILanguage([clientLanguage]).Should().Be(Language.Parse(expected));
+
+    [Fact]
+    public void DetectUILanguageShouldSkipPreviewLanguages()
+    {
+        // act, assert
+        foreach (var language in PreviewLanguages)
+            Languages.DetectUILanguage([language.Value]).Should().Be(Languages.Main, $"{language} isn't released");
+    }
+
+    [Theory]
+    [InlineData("nb-NO")]
+    [InlineData("nn-NO")]
+    public void DetectUILanguageShouldSkipAliasesOfPreviewLanguages(string clientLanguage)
+        => Languages.DetectUILanguage([clientLanguage]).Should().Be(Languages.Main, "Norwegian isn't released");
 
     [Fact]
     public void DetectUILanguageShouldTakeTheFirstSupportedLanguage()
@@ -54,11 +69,30 @@ public sealed class UILanguageResolutionTest(ITestOutputHelper @out) : TestBase(
             .Should().Be(Language.Parse(expected));
 
     [Theory]
+    [InlineData("nb-NO", "no-NO")]
+    [InlineData("nn-NO", "no-NO")]
+    public void ResolveUILanguageShouldResolveAliasesOfTheUrlOverride(string languageOverride, string expected)
+        => Languages.ResolveUILanguage(languageOverride, null, []).Should().Be(Language.Parse(expected));
+
+    [Fact]
+    public void ResolveUILanguageShouldReachPreviewLanguagesThroughTheUrlOverride()
+    {
+        // act, assert
+        foreach (var language in PreviewLanguages)
+            Languages.ResolveUILanguage(language.Value, null, ["de-DE"])
+                .Should().Be(language, $"{language} has a catalog");
+    }
+
+    [Theory]
     [InlineData("max")]
     [InlineData("MAX")]
     public void ResolveUILanguageShouldAcceptMaxOnlyAsTheUrlOverride(string languageOverride)
         => Languages.ResolveUILanguage(languageOverride, Languages.Japanese, ["fr-FR"])
             .Should().Be(Languages.Max);
+
+    [Fact]
+    public void ResolveUILanguageShouldNotReachLanguagesWithoutCatalogThroughTheUrlOverride()
+        => Languages.ResolveUILanguage("ur-PK", null, ["de-DE"]).Should().Be(Languages.Main);
 
     [Theory]
     [InlineData("")]

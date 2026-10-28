@@ -143,6 +143,7 @@ public class LanguageUI : UIServiceBase<AppUIHub>, IComputeService, IDisposable
         var languages = BrowserInfo.ClientLanguages
             .Select(x => Language.TryParse(x))
             .SkipNullItems()
+            .Where(x => x.Support.HasFlag(LanguageSupport.Transcription))
             .Distinct()
             .ToList();
         return new () {

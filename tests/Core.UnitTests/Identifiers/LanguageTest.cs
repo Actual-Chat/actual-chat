@@ -64,6 +64,20 @@ public sealed class LanguageTest(ITestOutputHelper @out) : StringIdentifierTestB
         result.Language!.Value.Should().Be("xx-XX");
     }
 
+    [Fact]
+    public void PreviewLanguageShouldParseButNotBeOffered()
+    {
+        // arrange
+        var previewLanguages = Languages.All.Where(x => x.Support.HasFlag(LanguageSupport.Preview)).ToList();
+
+        // act, assert
+        foreach (var language in previewLanguages) {
+            Language.Parse(language.Value).Should().BeSameAs(language, "a newer peer may still send it");
+            Languages.AllUI.Should().NotContain(language);
+            Languages.AllTranscription.Should().NotContain(language);
+        }
+    }
+
     [Theory]
     [InlineData("~")]
     [InlineData("kannada")]

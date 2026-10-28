@@ -370,6 +370,7 @@ public sealed partial class GoogleTranscriber : ITranscriber
 
         // Only what Google detected - see DeepgramTranscriber
         var languages = Language.TryParse(result.LanguageCode, out var language)
+            && language.Support.HasFlag(LanguageSupport.Transcription)
             ? new [] {language}
             : [];
         state.Append(suffix, endTime, languages, mustAppendToUnstable).MakeStable(isFinal);

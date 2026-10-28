@@ -71,6 +71,7 @@ public class LanguageDetector(IServiceProvider services)
             return Serializers.SystemJson.Read<string[]>(json)
                 .Select(Language.ParseNullable)
                 .SkipNullItems()
+                .Where(x => x.Support.HasFlag(LanguageSupport.Transcription))
                 .ToList();
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {

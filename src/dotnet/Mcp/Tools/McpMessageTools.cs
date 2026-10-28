@@ -80,7 +80,7 @@ public sealed class McpMessageTools(IServiceProvider services)
     {
         var stream = await Chats
             .StartEntryStream(Session, ChatId.Parse(chatId), entryId,
-                Language.ParseNullable(language), cancellationToken)
+                ParseLanguage(language), cancellationToken)
             .ConfigureAwait(false);
         return stream.ToMcpModel();
     }
@@ -135,7 +135,7 @@ public sealed class McpMessageTools(IServiceProvider services)
     {
         var stream = await Chats
             .StartVoiceStream(Session, ChatId.Parse(chatId), replyToId,
-                Language.ParseNullable(language), cancellationToken)
+                ParseLanguage(language), cancellationToken)
             .ConfigureAwait(false);
         return stream.ToMcpModel();
     }
@@ -380,4 +380,10 @@ public sealed class McpMessageTools(IServiceProvider services)
                 entries.Select(e => e.ToMcpModel(authorById, UrlMapper, MarkupParser, cancellationToken)))
             .ConfigureAwait(false);
     }
+
+    private static Language? ParseLanguage(string? language)
+        // A Preview language falls back to the bot's own: apps released before it can't parse it
+        => Language.ParseNullable(language) is { } result && result.Support.HasFlag(LanguageSupport.Transcription)
+            ? result
+            : null;
 }

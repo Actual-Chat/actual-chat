@@ -160,7 +160,7 @@ public class DateFormatsLocalizerExtTest
 
     private static TestStringLocalizer NewLocalizer(string subtag)
     {
-        var language = Languages.AllUIAndTestOnly.Single(l => l.IsoCode == subtag);
+        var language = Languages.AllWithCatalog.Single(l => l.IsoCode == subtag);
         return new TestStringLocalizer(StringCatalogs.Load(StringCatalogs.Kind.Strings, language)!, language);
     }
 }

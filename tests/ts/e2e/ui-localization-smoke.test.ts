@@ -21,7 +21,7 @@ import {
     type BrowserConnection,
 } from './helpers';
 import {
-    ENGLISH, UI_LANGUAGES, findProbeMatches, getEnglishProbes, getTranslatedValues,
+    ENGLISH, OFFERED_UI_LANGUAGES, findProbeMatches, getEnglishProbes, getTranslatedValues,
     type EnglishProbe, type UILanguage,
 } from './localization-catalog';
 
@@ -262,7 +262,7 @@ async function runTour(
 
 function getLanguagesUnderTest(): UILanguage[] {
     const filter = process.env.AC_E2E_LANGUAGES?.trim();
-    const languages = UI_LANGUAGES.filter(x => x !== ENGLISH);
+    const languages = OFFERED_UI_LANGUAGES.filter(x => x !== ENGLISH);
     if (!filter || filter.toLowerCase() === 'all')
         return languages;
 

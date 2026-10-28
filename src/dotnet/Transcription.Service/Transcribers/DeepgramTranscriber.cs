@@ -226,7 +226,7 @@ public sealed partial class DeepgramTranscriber : ITranscriber
         // Only what Deepgram detected: the configured language is a hint, and stamping it on a
         // transcript would hide a foreign message from translation
         var languages = alternative?.Languages?.Select(DeepgramLanguage.FromDeepgram)
-            .Distinct().ToArray() ?? [];
+            .Where(x => x.Support.HasFlag(LanguageSupport.Transcription)).Distinct().ToArray() ?? [];
         var endTime = (float?)result.Duration ?? 0;
         if (isFinal) {
             if (TryParseFinal(state, result, out suffix, out var map))
