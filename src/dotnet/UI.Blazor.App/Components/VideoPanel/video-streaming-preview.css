@@ -79,10 +79,9 @@ body.hoverable .video-streaming-preview .btn-h.btn-settings:hover {
 }
 
 /* Error display — theme-independent: black 50% bg, white text.
-   Centred and bounded by the tile, so it wraps instead of being clipped. */
-.video-streaming-preview {
-    container-type: inline-size;
-}
+   Centred and bounded by the tile, so it wraps instead of being clipped.
+   The tile is already a size container (.video-track-player in call-screen.css): an inline-size
+   one here would turn the rotated preview's 100cqh into the viewport height. */
 .video-streaming-preview .video-error {
     @apply absolute inset-2 m-auto w-fit h-fit;
     @apply bg-[rgba(0,0,0,0.5)] text-white;
