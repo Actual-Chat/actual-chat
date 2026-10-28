@@ -31,6 +31,31 @@ public class TextScriptTest(ITestOutputHelper @out) : TestBase(@out)
     public void RejectsRefineWithDifferentScript(string realtimeText, string refinedText)
         => realtimeText.ShouldUseOriginalTranscript(refinedText).Should().BeTrue();
 
+    [Theory]
+    [InlineData("да ну давай", "Да, давай.", false)]
+    [InlineData("привет как дела у тебя", "Привет.", true)]
+    [InlineData("щас", "Сейчас.", false)]
+    [InlineData("ну в общем я думаю что надо это сделать до конца недели",
+        "Ну, в общем, надо до конца недели.", true)]
+    [InlineData("ну в общем я думаю что надо это сделать до конца недели",
+        "Ну, в общем, я думаю, надо это сделать до конца недели.", false)]
+    public void RefineShouldWinUnlessMuchShorter(string realtimeText, string refinedText, bool mustUseOriginal)
+        // Under 50 chars the refined text must keep 80% of the length, from 50 chars on 90%
+        => realtimeText.ShouldUseOriginalTranscript(refinedText).Should().Be(mustUseOriginal);
+
+    [Theory]
+    [InlineData("Да я", "Okay, yeah.", false)]
+    [InlineData("привет как дела у тебя", "Привет, как ты?", false)]
+    [InlineData("привет как дела у тебя", "Привет.", true)]
+    [InlineData("ну в общем я думаю что надо это сделать до конца недели",
+        "Ну, в общем, надо это сделать до конца недели.", false)]
+    [InlineData("ну в общем я думаю что надо это сделать до конца недели", "Ну, до конца недели.", true)]
+    [InlineData("что-то", "", true)]
+    public void SonioxRefineShouldWinUnlessEmptyOrHalved(string realtimeText, string refinedText, bool mustUseOriginal)
+        // Soniox skips the script check, and its bars are 60% under 50 chars and 80% from 50 chars on
+        => realtimeText.ShouldUseOriginalTranscript(refinedText, TranscriberId.SonioxOffline)
+            .Should().Be(mustUseOriginal);
+
     [Fact]
     public void AcceptsSameScriptRefine()
     {

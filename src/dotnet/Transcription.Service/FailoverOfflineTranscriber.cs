@@ -16,6 +16,15 @@ public sealed class FailoverOfflineTranscriber(IReadOnlyList<IOfflineTranscriber
         TranscriptionOptions options,
         CancellationToken cancellationToken = default)
     {
+        var result = await TranscribeWithId(audioSource, options, cancellationToken).ConfigureAwait(false);
+        return result.Transcript;
+    }
+
+    public async Task<(Transcript? Transcript, TranscriberId TranscriberId)> TranscribeWithId(
+        AudioSource audioSource,
+        TranscriptionOptions options,
+        CancellationToken cancellationToken = default)
+    {
         foreach (var candidate in candidates) {
             var transcript = (Transcript?)null;
             try {
@@ -25,9 +34,9 @@ public sealed class FailoverOfflineTranscriber(IReadOnlyList<IOfflineTranscriber
                 log.LogWarning(e, "Offline transcriber {TranscriberId} failed, failing over", candidate.Info.Id);
             }
             if (transcript != null)
-                return transcript;
+                return (transcript, candidate.Info.Id);
         }
 
-        return null;
+        return (null, Info.Id);
     }
 }

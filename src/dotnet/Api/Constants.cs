@@ -284,11 +284,6 @@ public static partial class Constants
         // streaming provider. Measured against Soniox: 200ms -> ~490ms leading-edge lag, 60ms ->
         // ~320ms, 20ms -> ~305ms for 12% more bytes. Offline paths keep the larger default.
         public static readonly TimeSpan StreamPageDuration = TimeSpan.FromMilliseconds(60);
-        // The bar a message clears before a second pass is worth its full extra transcription.
-        // Either one is enough: a wordy short message is worth refining, and so is a long one the
-        // realtime pass produced few words for.
-        public static readonly int MinRetranscriptionWords = 10;
-        public static readonly TimeSpan MinRetranscriptionDuration = TimeSpan.FromSeconds(5);
 
         public static class Google
         {
