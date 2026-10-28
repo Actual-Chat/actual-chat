@@ -12,6 +12,11 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
     private static readonly string JSProcessUrlMethod
         = $"{BlazorUIAppModule.ImportName}.ImageProcessingInterop.processUrl";
 
+    private static readonly string JSCreatePreviewPlaceholderMethod
+        = $"{BlazorUIAppModule.ImportName}.ImageProcessingInterop.createPreviewPlaceholder";
+
+    private static readonly ImageProcessRequest PlaceholderOnlyRequest = new([ImageOutputSpec.Placeholder()]);
+
     private IServiceProvider Services { get; } = services;
     private IJSRuntime JS => field ??= Services.JSRuntime();
     private IProcessedImageStore ProcessedImageStore => field ??= Services.GetRequiredService<IProcessedImageStore>();
@@ -46,6 +51,29 @@ public sealed class ImageAttachmentProcessor(IServiceProvider services)
             Log.LogWarning(e,
                 "Failed to process image '{FileName}' with {Budget}, uploading the source instead",
                 source.Metadata.FileName, budget);
+            return null;
+        }
+    }
+
+    public async Task<byte[]?> CreatePreviewPlaceholder(FilePreview preview, CancellationToken cancellationToken)
+    {
+        // A video's preview is the video itself everywhere but Apple, where it's a thumbnail image
+        var isImagePreview = preview.IsImagePreview
+            || (MediaMimeTypes.TryGetMimeType(preview.Url, out var previewType)
+                && MediaTypeExt.IsSupportedImage(previewType));
+        try {
+            var base64 = await JS
+                .InvokeAsync<string>(
+                    JSCreatePreviewPlaceholderMethod,
+                    cancellationToken,
+                    preview.Url,
+                    !isImagePreview,
+                    PlaceholderOnlyRequest)
+                .ConfigureAwait(false);
+            return DecodePlaceholder(base64);
+        }
+        catch (Exception e) when (e is not OperationCanceledException) {
+            Log.LogWarning(e, "Failed to create a placeholder from preview '{PreviewUrl}'", preview.Url);
             return null;
         }
     }

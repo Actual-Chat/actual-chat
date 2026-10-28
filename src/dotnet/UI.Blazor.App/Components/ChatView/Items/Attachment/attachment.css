@@ -83,6 +83,30 @@ body.hoverable .image-line .image-item:hover {
     mix-blend-mode: soft-light;
 }
 
+/* Uploading media attachment */
+.uploading-media-attachment {
+    @apply bg-03;
+}
+.uploading-media-attachment .c-skeleton {
+    @apply absolute inset-0;
+    @apply bg-skeleton;
+    @apply animate-pulse;
+}
+.uploading-media-attachment .c-placeholder {
+    @apply absolute inset-0;
+    @apply w-full h-full;
+    object-fit: cover;
+    transform: scale(1.1);
+    filter: blur(12px);
+}
+.uploading-media-attachment .c-spinner {
+    @apply absolute inset-0;
+    @apply w-8 h-8;
+    @apply m-auto;
+    @apply bg-pal-black-80;
+    @apply text-white;
+}
+
 /* File Attachment */
 .file-attachment {
     @apply gap-x-2;

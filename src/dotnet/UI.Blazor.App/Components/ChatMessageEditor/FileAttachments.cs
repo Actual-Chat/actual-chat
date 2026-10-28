@@ -335,7 +335,7 @@ public sealed class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
                 => ProcessImageAndUpload(list, id, preset, previousTask, isReprocess, cancellationToken));
 
     private Task StartUploadOnly(AttachmentList list, AttachmentId id)
-        => StartPendingWork(id, _ => UploadOnly(list, id));
+        => StartPendingWork(id, cancellationToken => UploadOnly(list, id, cancellationToken));
 
     private Task StartPendingWork(AttachmentId id, Func<CancellationToken, Task> taskFactory)
     {
@@ -458,14 +458,19 @@ public sealed class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         }
     }
 
-    private async Task UploadOnly(AttachmentList list, AttachmentId id)
+    private async Task UploadOnly(AttachmentList list, AttachmentId id, CancellationToken cancellationToken)
     {
         if (list.Items.FirstOrDefault(a => a.Id == id) is not { } attachment)
             return;
 
         Attachment uploading;
         try {
-            uploading = await StartUpload(attachment, list.MediaScope);
+            var withPlaceholder = await WithVideoPlaceholder(attachment, cancellationToken);
+            uploading = await StartUpload(withPlaceholder, list.MediaScope);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            // Removed while its placeholder was being made
+            return;
         }
         catch (Exception e) {
             // Without a session the attachment can't be posted, so it leaves the list
@@ -485,6 +490,17 @@ public sealed class FileAttachments(AppUIHub hub) : UIServiceBase<AppUIHub>(hub)
         }
 
         list.Replace(attachment, uploading);
+    }
+
+    private async Task<Attachment> WithVideoPlaceholder(Attachment attachment, CancellationToken cancellationToken)
+    {
+        // Made before the upload session is, since the session reserves the media and the placeholder
+        // goes with that reservation: it's what other members see while the video is still uploading
+        if (attachment is not SourceAttachment { IsSupportedVideo: true, Preview: { } preview, Placeholder: null })
+            return attachment;
+
+        var placeholder = await ImageAttachmentProcessor.CreatePreviewPlaceholder(preview, cancellationToken);
+        return placeholder is null ? attachment : attachment with { Placeholder = placeholder };
     }
 
     private void ReleaseForReprocessing(AttachmentList list, Attachment attachment, AttachmentSource source)
