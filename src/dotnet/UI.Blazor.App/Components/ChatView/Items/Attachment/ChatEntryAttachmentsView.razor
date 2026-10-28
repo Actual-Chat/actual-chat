@@ -6,7 +6,7 @@
             Entry="@Entry"
             ShownUploads="@(() => _hasShownUploads = true)" />
     } else {
-        <UploadPlug />
+        <UploadingAttachmentsView Entry="@Entry"/>
     }
 }
 else if (Entry.Attachments.Length > 0) {

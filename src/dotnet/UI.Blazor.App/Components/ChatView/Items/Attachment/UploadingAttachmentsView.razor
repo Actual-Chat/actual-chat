@@ -1,0 +1,24 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    // Reserved media already carries its size and placeholder, so the gallery can be laid out
+    // before any of it is uploaded; everything else waits behind the plug
+    var mediaList = Entry.Attachments
+        .Where(a => a.IsVisualMedia() && a.Media is { Width: > 0, Height: > 0 })
+        .ToArray();
+}
+
+@if (mediaList.Length == 0) {
+    <UploadPlug/>
+} else {
+    <div class="message-attachments">
+        <VisualMediaAttachmentList MediaList="@mediaList" IsNarrow="@ScreenSize.IsNarrow()" IsUploading="true"/>
+        @if (mediaList.Length < Entry.Attachments.Length) {
+            <UploadPlug/>
+        }
+    </div>
+}
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+}
