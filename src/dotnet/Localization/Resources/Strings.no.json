@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Bruk Trykk og snakk på denne enheten",
   "Ptt_UseOnThisDeviceCaption": "Når dette er av, våkner ikke enheten og verken spiller av eller sender tale via Trykk og snakk.",
   "Ptt_UseOnDesktopCaption": "Trykk og snakk virker mens appen kjører. Det stopper når du avslutter appen.",
+  "Ptt_ShowChatsBar": "Vis linjen med Trykk og snakk-chatter",
+  "Ptt_ShowChatsBarCaption": "Chatter med Trykk og snakk under Aktive chatter",
   "Ptt_ChatsTopicLimit_Format": "Chatter med Trykk og snakk (opptil {0})",
   "Ptt_NoPttChats": "Ingen chat er i modusen Trykk og snakk ennå - eieren slår den på i selve chatten.",
   "Ptt_AvailableTopic": "Ikke i listen din for Trykk og snakk",

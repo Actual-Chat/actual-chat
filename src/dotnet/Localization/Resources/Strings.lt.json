@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Naudoti „Spausk ir kalbėk“ šiame įrenginyje",
   "Ptt_UseOnThisDeviceCaption": "Išjungus šis įrenginys nepabus, neleis ir neperduos „Spausk ir kalbėk“ balso.",
   "Ptt_UseOnDesktopCaption": "„Spausk ir kalbėk“ veikia, kol programėlė veikia. Išėjus iš programėlės sustoja.",
+  "Ptt_ShowChatsBar": "Rodyti „Spausk ir kalbėk“ pokalbių juostą",
+  "Ptt_ShowChatsBarCaption": "„Spausk ir kalbėk“ pokalbiai po aktyviais pokalbiais",
   "Ptt_ChatsTopicLimit_Format": "„Spausk ir kalbėk“ pokalbiai (iki {0})",
   "Ptt_NoPttChats": "Dar nė vienas pokalbis nėra režimu „Spausk ir kalbėk“ – jį įjungia savininkas pačiame pokalbyje.",
   "Ptt_AvailableTopic": "Ne jūsų sąraše „Spausk ir kalbėk“",

@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Gunakan Tekan untuk bercakap pada peranti ini",
   "Ptt_UseOnThisDeviceCaption": "Apabila dimatikan, peranti ini tidak akan bangun, memainkan atau menghantar suara Tekan untuk bercakap.",
   "Ptt_UseOnDesktopCaption": "Tekan untuk bercakap berfungsi semasa aplikasi berjalan. Ia berhenti apabila anda keluar dari aplikasi.",
+  "Ptt_ShowChatsBar": "Tunjukkan bar sembang Tekan untuk bercakap",
+  "Ptt_ShowChatsBarCaption": "Senaraikan sembang Tekan untuk bercakap di bawah Sembang aktif",
   "Ptt_ChatsTopicLimit_Format": "Sembang Tekan untuk bercakap (sehingga {0})",
   "Ptt_NoPttChats": "Belum ada sembang dalam mod Tekan untuk bercakap - pemiliknya menghidupkannya dalam sembang itu sendiri.",
   "Ptt_AvailableTopic": "Tiada dalam senarai Tekan untuk bercakap anda",

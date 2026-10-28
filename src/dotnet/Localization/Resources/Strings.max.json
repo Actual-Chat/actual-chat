@@ -1706,6 +1706,8 @@
   "Ptt_UseOnThisDevice": "Выкарыстоўваць «Націсні і гавары» на гэтай прыладзе",
   "Ptt_UseOnThisDeviceCaption": "Όταν είναι ανενεργό, αυτή η συσκευή δεν θα ξυπνά, δεν θα αναπαράγει και δεν θα μεταδίδει φωνή «Πάτα και μίλα».",
   "Ptt_UseOnDesktopCaption": "Le push-to-talk fonctionne tant que l’application est en cours d’exécution. Il s’arrête quand vous quittez l’application.",
+  "Ptt_ShowChatsBar": "Εμφάνιση γραμμής συνομιλιών «Πάτα και μίλα»",
+  "Ptt_ShowChatsBarCaption": "アクティブなチャットの下にプッシュ・トゥ・トークのチャットを表示します",
   "Ptt_ChatsTopicLimit_Format": "プッシュ・トゥ・トークのチャット（最大 {0} 件）",
   "Ptt_NoPttChats": "Καμία συνομιλία δεν είναι ακόμη σε λειτουργία «Πάτα και μίλα» - ο ιδιοκτήτης της την ενεργοποιεί μέσα στην ίδια τη συνομιλία.",
   "Ptt_AvailableTopic": "Hayapo kwenye orodha yako ya Bonyeza uongee",

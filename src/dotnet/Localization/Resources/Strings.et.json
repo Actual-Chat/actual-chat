@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Kasuta „Vajuta ja räägi“ selles seadmes",
   "Ptt_UseOnThisDeviceCaption": "Kui see on väljas, ei ärka see seade „Vajuta ja räägi“ hääle peale, ei esita ega edasta seda.",
   "Ptt_UseOnDesktopCaption": "„Vajuta ja räägi“ töötab, kuni rakendus töötab. Rakendusest väljumisel see peatub.",
+  "Ptt_ShowChatsBar": "Näita „Vajuta ja räägi“ vestluste riba",
+  "Ptt_ShowChatsBarCaption": "„Vajuta ja räägi“ vestlused aktiivsete vestluste all",
   "Ptt_ChatsTopicLimit_Format": "„Vajuta ja räägi“ vestlused (kuni {0})",
   "Ptt_NoPttChats": "Ükski vestlus pole veel režiimis „Vajuta ja räägi“ – selle lülitab sisse omanik vestluses endas.",
   "Ptt_AvailableTopic": "Pole teie loendis „Vajuta ja räägi“",

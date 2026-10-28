@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Nyomd és beszélj használata ezen az eszközön",
   "Ptt_UseOnThisDeviceCaption": "Kikapcsolva ez az eszköz nem ébred fel, nem játssza le és nem továbbítja a Nyomd és beszélj hangot.",
   "Ptt_UseOnDesktopCaption": "A Nyomd és beszélj addig működik, amíg az alkalmazás fut. Ha kilépsz az alkalmazásból, leáll.",
+  "Ptt_ShowChatsBar": "Nyomd és beszélj csevegéssáv megjelenítése",
+  "Ptt_ShowChatsBarCaption": "Nyomd és beszélj csevegések az aktív csevegések alatt",
   "Ptt_ChatsTopicLimit_Format": "Nyomd és beszélj csevegések (legfeljebb {0})",
   "Ptt_NoPttChats": "Még egy csevegés sincs Nyomd és beszélj módban – a tulajdonos magában a csevegésben kapcsolja be.",
   "Ptt_AvailableTopic": "Nincsenek a Nyomd és beszélj listádon",

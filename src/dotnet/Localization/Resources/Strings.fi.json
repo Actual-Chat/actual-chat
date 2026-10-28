@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Käytä Paina ja puhu -toimintoa tällä laitteella",
   "Ptt_UseOnThisDeviceCaption": "Kun tämä on pois päältä, laite ei herää, toista eikä välitä Paina ja puhu -ääntä.",
   "Ptt_UseOnDesktopCaption": "Paina ja puhu toimii, kun sovellus on käynnissä. Se lakkaa toimimasta, kun lopetat sovelluksen.",
+  "Ptt_ShowChatsBar": "Näytä Paina ja puhu -keskustelupalkki",
+  "Ptt_ShowChatsBarCaption": "Paina ja puhu -keskustelut aktiivisten keskustelujen alla",
   "Ptt_ChatsTopicLimit_Format": "Paina ja puhu -keskustelut (enintään {0})",
   "Ptt_NoPttChats": "Yksikään keskustelu ei ole vielä Paina ja puhu -tilassa – omistaja ottaa sen käyttöön keskustelussa itse.",
   "Ptt_AvailableTopic": "Ei Paina ja puhu -luettelossasi",

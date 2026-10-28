@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Defnyddio Pwyso i siarad ar y ddyfais hon",
   "Ptt_UseOnThisDeviceCaption": "Pan fydd i ffwrdd, ni fydd y ddyfais hon yn deffro, yn chwarae nac yn trosglwyddo llais Pwyso i siarad.",
   "Ptt_UseOnDesktopCaption": "Mae Pwyso i siarad yn gweithio tra bydd yr ap yn rhedeg. Mae'n stopio pan fyddwch yn gadael yr ap.",
+  "Ptt_ShowChatsBar": "Dangos bar sgyrsiau Pwyso i siarad",
+  "Ptt_ShowChatsBarCaption": "Rhestru sgyrsiau Pwyso i siarad o dan Sgyrsiau gweithredol",
   "Ptt_ChatsTopicLimit_Format": "Sgyrsiau Pwyso i siarad (hyd at {0})",
   "Ptt_NoPttChats": "Does dim sgwrs yn y modd Pwyso i siarad eto - mae ei pherchennog yn ei droi ymlaen yn y sgwrs ei hun.",
   "Ptt_AvailableTopic": "Ddim yn eich rhestr Pwyso i siarad",
