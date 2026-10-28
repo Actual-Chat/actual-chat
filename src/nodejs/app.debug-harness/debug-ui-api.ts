@@ -7,7 +7,8 @@ export interface DebugUIApi {
     signOut(): Promise<void>;
     getUserId(): Promise<string>;
     setRenderMode(mode: 'a' | 's' | 'w'): Promise<void>;
-    setChatLanguage(chatId: string, language: string): Promise<void>;    fake: {
+    setChatLanguage(chatId: string, language: string): Promise<void>;
+    fake: {
         send(text: string): Promise<void>;
         attach(files: DebugAttachment[]): Promise<void>;
         mic?: FakeMicrophoneApi;

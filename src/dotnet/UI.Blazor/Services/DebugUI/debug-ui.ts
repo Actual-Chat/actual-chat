@@ -10,6 +10,7 @@ import { SvgCache } from '../../Components/Avatar/svg-cache';
 import { VirtualListOverlay } from '../../Components/VirtualList/virtual-list-overlay';
 import { isEditable } from 'keyboard-visibility';
 import { SafeAreas, type SafeAreaPreset, type SafeAreaViolation } from 'safe-area';
+import { fakeMicrophone } from 'debug-media/fake-microphone';
 
 const { infoLog } = getLogs('DebugUI');
 
@@ -62,6 +63,15 @@ interface VideoDebugConsoleGlobal {
     __videoDebugConsole?: VideoDebugConsole;
 }
 
+interface ChatEditorDebugConsole {
+    send(text: string): Promise<void>;
+    attach(files: { name: string; type: string; base64: string }[]): void;
+}
+
+interface ChatEditorDebugConsoleGlobal {
+    __chatEditorDebugConsole?: ChatEditorDebugConsole;
+}
+
 export class DebugUI {
     private static _backendRef: DotNet.DotNetObject = null!;
     private static _eventSnifferInstalled = false;
@@ -92,6 +102,12 @@ export class DebugUI {
     /** Video codec controls from UI.Blazor.App's video-diagnostics; undefined until that bundle part loads. */
     public static get video(): VideoDebugConsole | undefined {
         return (globalThis as VideoDebugConsoleGlobal).__videoDebugConsole;
+    }
+
+    /** What the debug harness drives the page with; `send` and `attach` come from UI.Blazor.App's
+     *  chat-message-editor-debug and are undefined until that bundle part loads. */
+    public static get fake(): Partial<ChatEditorDebugConsole> & { mic: typeof fakeMicrophone } {
+        return { ...(globalThis as ChatEditorDebugConsoleGlobal).__chatEditorDebugConsole, mic: fakeMicrophone };
     }
 
     // Local-dev-only: stops the running server. Mirrors the HTTP /health/stop

@@ -79,8 +79,9 @@ unlike DevTools throttling, which slows HTTP but not an open WebSocket's frames.
 
 ## The page-side surface
 
-`debugUI.fake` is added by `chat-message-editor-debug.ts` and is callable from the
-browser console too:
+`debugUI.fake` is a getter on `DebugUI` (`debug-ui.ts`) and is callable from the
+browser console too. `send` and `attach` come from `chat-message-editor-debug.ts`,
+which publishes them as `__chatEditorDebugConsole` the way `debugUI.video` is wired:
 
 ```js
 await debugUI.fake.send('hello')

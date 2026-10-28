@@ -1,5 +1,3 @@
-import { registerDebugSurface } from 'debug-surface';
-
 /*
  * `debugUI.fake.mic` - a microphone the debug harness speaks into. Once enabled,
  * `getUserMedia({ audio })` returns a stream fed by decoded clips instead of the real
@@ -24,11 +22,7 @@ let source: AudioBufferSourceNode | null = null;
 let isEnabled = false;
 let streamRequests = 0;
 
-export function initFakeMicrophoneDebugConsole(): void {
-    registerDebugSurface('fake', {
-        mic: { enable, load, say, stop, getState },
-    });
-}
+export const fakeMicrophone = { enable, load, say, stop, getState };
 
 // Private methods
 

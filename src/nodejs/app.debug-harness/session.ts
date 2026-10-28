@@ -76,10 +76,7 @@ export async function signIn(page: Page, phoneOrEmail: string, isFresh = false):
     return userId;
 }
 
-/**
- * Waits for `debugUI.fake`, which appears only once Blazor has started - both the
- * DebugUI service and this surface are wired up after `whenBlazorReady`.
- */
+/** Waits for `debugUI.fake`, which appears only once Blazor has started and DebugUI.init() has run. */
 export async function waitForDebugUI(page: Page, timeoutMs = 30_000): Promise<void> {
     await page.waitForFunction(
         () => !!(globalThis as DebugUIRoot).debugUI?.fake,

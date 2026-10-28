@@ -1,5 +1,3 @@
-import { registerDebugSurface } from 'debug-surface';
-
 const EditorContentSelector = '#message-input .editor-content';
 const FilePickerSelector = '.chat-message-editor input.attachment-web-file-picker';
 const PostTimeoutMs = 10_000;
@@ -13,13 +11,18 @@ export interface DebugAttachment {
 
 // Console surface: `debugUI.fake.*` — writes a message and attaches files without a
 // human at the keyboard. It drives the DOM rather than the ChatMessageEditor instance
-// so a scenario exercises the same path a keystroke and a file pick take.
-export function initChatEditorDebugConsole(): void {
-    registerDebugSurface('fake', {
-        send: sendMessage,
-        attach: attachFiles,
-    });
-}
+// so a scenario exercises the same path a keystroke and a file pick take. DebugUI lives
+// in UI.Blazor and can't import this module, so it reads the hook on access.
+const chatEditorDebugConsole = {
+    send: sendMessage,
+    attach: attachFiles,
+};
+
+type ChatEditorDebugConsoleGlobal = typeof globalThis & {
+    __chatEditorDebugConsole?: typeof chatEditorDebugConsole;
+};
+
+(globalThis as ChatEditorDebugConsoleGlobal).__chatEditorDebugConsole = chatEditorDebugConsole;
 
 // Private methods
 
