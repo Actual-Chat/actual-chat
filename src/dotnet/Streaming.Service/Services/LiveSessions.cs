@@ -17,6 +17,9 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     private IChats Chats { get; } = services.GetRequiredService<IChats>();
     private PeerParticipations PeerParticipations => field ??= Services.GetRequiredService<PeerParticipations>();
     private IAuthors Authors => field ??= Services.GetRequiredService<IAuthors>();
+    private IChatTypingActivities ChatTypingActivities
+        => field ??= Services.GetRequiredService<IChatTypingActivities>();
+
     private IChatsBackend ChatsBackend => field ??= Services.GetRequiredService<IChatsBackend>();
     private IRolesBackend RolesBackend => field ??= Services.GetRequiredService<IRolesBackend>();
     private AudioSettings AudioSettings => field ??= Services.GetRequiredService<AudioSettings>();
@@ -83,6 +86,27 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     }
 
     // [ComputeMethod]
+    public virtual async Task<ChatActivitySummary?> GetActivitySummary(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        // A list row may still hold a chat the user can no longer see: nothing is going on there for it,
+        // and throwing would take the row down
+        var chat = await Chats.Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (chat == null)
+            return ChatActivitySummary.None;
+
+        var liveActivityTask = GetLiveActivity(session, chatId, cancellationToken);
+        var typingAuthorIdsTask = ListOthersTypingAuthorIds(session, chatId, cancellationToken);
+        var hasActivityTask = HasActivity(session, chatId, cancellationToken);
+        var hasRecorderTask = HasRecorder(session, chatId, cancellationToken);
+        var liveActivity = await liveActivityTask.ConfigureAwait(false);
+        var typingAuthorIds = await typingAuthorIdsTask.ConfigureAwait(false);
+        var hasActivity = await hasActivityTask.ConfigureAwait(false);
+        var hasRecorder = await hasRecorderTask.ConfigureAwait(false);
+        return new ChatActivitySummary(liveActivity, typingAuthorIds, hasActivity || hasRecorder);
+    }
+
+    // [ComputeMethod]
     public virtual async Task<bool> HasActivity(
         Session session, ChatId chatId, CancellationToken cancellationToken)
     {
@@ -125,13 +149,6 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     }
 
     // [ComputeMethod]
-    public virtual Task<CallStatus> GetCallStatus(
-        Session session, ChatId chatId, CancellationToken cancellationToken)
-        // None rather than a throwing stub, unlike LeaveCall: this one is a compute method an old
-        // client subscribes to, and "no status" retires its banner instead of faulting its state.
-        => Task.FromResult(CallStatus.None);
-
-    // [ComputeMethod]
     public virtual async Task<UserCall?> GetMyCall(
         Session session, string clientId, CancellationToken cancellationToken)
     {
@@ -141,7 +158,7 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     }
 
     public Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken)
-        // The status it dismissed is gone with the banner that showed it - see GetCallStatus.
+        // The status it dismissed is gone with the banner that showed it - see LegacyGetCallStatus.
         => throw StandardError.NotSupported<ILiveSessions>(
             $"{nameof(DismissCallStatus)} is obsolete and no longer available.");
 
@@ -362,6 +379,14 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
     public virtual Task<UserCall?> LegacyGetMyCall(Session session, CancellationToken cancellationToken)
         => Task.FromResult<UserCall?>(null);
 
+    // [ComputeMethod]
+    [Obsolete("2026.09: 2.20 clients only. Always None. Remove once no installed app version calls it.")]
+    public virtual Task<CallStatus> LegacyGetCallStatus(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+        // None rather than a throwing stub, unlike LeaveCall: this one is a compute method an old
+        // client subscribes to, and "no status" retires its banner instead of faulting its state.
+        => Task.FromResult(CallStatus.None);
+
     // Protected methods
 
     // Session-less for the same reason as GetAudioStreamingAuthorIdsByChat. Every read below is
@@ -421,6 +446,53 @@ public class LiveSessions(IServiceProvider services) : ILiveSessions
             || (call.SessionHash == sessionHash && (call.ClientId is null || call.ClientId == clientId));
 
     // Private methods
+
+    private async Task<ChatLiveActivity?> GetLiveActivity(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var liveSession = await Get(session, chatId, cancellationToken).ConfigureAwait(false);
+        // Dialing registers its caller as a recorder right away, so they'd read as a live participant
+        // and surface "1 · live" before anyone answers. Skipping just them keeps the tile silent for a
+        // plain ring while anyone else active in the chat - unrelated to the call - still counts.
+        var isDialing = liveSession is { Kind: LiveSessionKind.Call, Conversation: null };
+        var dialingHost = isDialing ? liveSession!.Host : default;
+        // Count only members actually present now — the Host/Owner group survives a leave, so a
+        // Group-based count would keep an exited host; a closing session can also report none left.
+        var participantCount = liveSession?.Members.Count(m =>
+            m.AuthorId != dialingHost
+            && (m.IsMicOpen || m.HasCamera || m.HasScreenShare || m.IsListening)) ?? 0;
+        if (participantCount > 0)
+            return new ChatLiveActivity(participantCount, IsLiveSession: true, isDialing);
+
+        var talkingIds = await GetAudioStreamingAuthorIds(session, chatId, cancellationToken).ConfigureAwait(false);
+        if (isDialing)
+            talkingIds = talkingIds.Where(id => id != dialingHost).ToApiArray();
+        var hasRecorder = await HasRecorder(session, chatId, cancellationToken).ConfigureAwait(false);
+        // HasRecorder isn't attributable to an author, so while dialing it would only re-report the caller.
+        var isTalking = talkingIds.Count > 0 || (!isDialing && hasRecorder);
+        // Own recorder may not be in the streaming author ids yet — count it as one talker.
+        var talkingCount = talkingIds.Count == 0 && hasRecorder ? 1 : talkingIds.Count;
+        if (isTalking)
+            return new ChatLiveActivity(talkingCount, IsLiveSession: false, isDialing);
+
+        // Nobody active yet, but a ringing call still keeps its caller's call button busy
+        return isDialing ? new ChatLiveActivity(0, IsLiveSession: false, IsDialing: true) : null;
+    }
+
+    private async Task<ApiArray<AuthorId>> ListOthersTypingAuthorIds(
+        Session session, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var authorIds = await ChatTypingActivities
+            .ListTypingAuthorIds(session, chatId, cancellationToken)
+            .ConfigureAwait(false);
+        if (authorIds.Count == 0)
+            return authorIds;
+
+        var ownAuthor = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
+        return ownAuthor is null
+            ? authorIds
+            : authorIds.Without(id => id == ownAuthor.Id);
+    }
 
     // The in-progress half of the window. Its counterpart skips still-streaming entries, so an
     // utterance is counted here or there, never twice.

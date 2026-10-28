@@ -12,30 +12,28 @@ public interface ILiveSessions : IComputeService
 {
     // ReturnDefault, not NoCache: live state must never come off the disk cache, but a NoCache call
     // parks until reconnect - and "no session" is both the right offline answer and a non-blocking one.
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     [LegacyName("GetState_Hidden", "2.21.9999")]
     Task<LiveSessionState?> GetState(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<LiveConversation?> GetOpenConversation(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<ApiArray<ConversationId>> ListConversations(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<LiveConversation?> GetConversation(
         Session session, ConversationId conversationId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<LiveSession?> Get(Session session, ChatId chatId, CancellationToken cancellationToken);
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<bool> HasRecorder(Session session, ChatId chatId, CancellationToken cancellationToken);
+    // Everything a chat list row shows about live activity, built from the methods a client used to call
+    // one by one. Not consolidated here: the client consolidates the parts it splits out.
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    Task<ChatActivitySummary?> GetActivitySummary(Session session, ChatId chatId, CancellationToken cancellationToken);
     // The signal behind the idle stop-listening / stop-recording timers. Deliberately unrelated to transcription.
     // Consolidated: a stream list change that leaves the bool alone must not be pushed to every listener.
-    [ComputeMethod(ConsolidationDelay = 0.5)]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod(ConsolidationDelay = 0.5), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<bool> HasActivity(Session session, ChatId chatId, CancellationToken cancellationToken);
     // Who is speaking right now (VAD-gated, audio only). Consolidated because ILiveAudioStreams.List
     // rebuilds its array per register/unregister while the author set behind it rarely moves;
@@ -50,22 +48,11 @@ public interface ILiveSessions : IComputeService
     // that trips VAD. Null means there is no live conversation at all - no session, or one that
     // never started with 2+ authors. Re-measured on a fixed period rather than on chat traffic, so
     // it also paces its consumers; see LiveSessions.GetConversationStats.
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<ConversationStats?> GetConversationStats(Session session, ChatId chatId, CancellationToken cancellationToken);
-    // Obsolete: the outgoing-call banner it fed is gone - the caller's own status now follows the
-    // call slot (see CallUI.Apply / ISystemCallUI). The result type must stay the bare CallStatus
-    // enum v2.20 clients read it as: they subscribe to this compute method, and a nil where they
-    // expect an enum faults their state and takes the whole chat page down with it. Only None is
-    // ever returned, and None is 0 in both numberings, so the renumbering never reaches the wire.
-    [Obsolete("2026.09: Old clients only. Always None. Remove once no installed app version calls it.")]
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
-    Task<CallStatus> GetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
     // The one call this user is in, as this client sees it (#4929), then its end. NoCache, unlike the rest:
     // CallUI leaves a call on this answer, so a disconnected client must wait for the real one (#5053).
-    [ComputeMethod(ConsolidationDelay = 0)]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
+    [ComputeMethod(ConsolidationDelay = 0), RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.NoCache)]
     Task<UserCall?> GetMyCall(Session session, string clientId, CancellationToken cancellationToken);
 
     Task SetParticipation(
@@ -106,7 +93,7 @@ public interface ILiveSessions : IComputeService
         string clientId,
         CancellationToken cancellationToken);
     Task CancelCall(Session session, CallId callId, CancellationToken cancellationToken);
-    // Obsolete: there is no caller-visible status left to dismiss - see GetCallStatus. Kept as a
+    // Obsolete: there is no caller-visible status left to dismiss - see LegacyGetCallStatus. Kept as a
     // throwing stub rather than removed, in case a stale client build still calls it.
     [Obsolete("2026.09: Old MAUI clients only. Throws. Remove once no installed app version calls it.")]
     Task DismissCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
@@ -121,16 +108,23 @@ public interface ILiveSessions : IComputeService
     // Legacy methods
 
     // Added with the live-conversation rework: the 2.21 and older clients read the old LiveSessionState layout
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     [LegacyName(nameof(GetState), "2.21.9999")]
     [Obsolete("2026.10: Use GetState - this one serves the 2.21 LiveSessionState layout to older clients.")]
     Task<LegacyLiveSessionState?> LegacyGetState(Session session, ChatId chatId, CancellationToken cancellationToken);
     // 2.21 clients poll the clientId-less GetMyCall for every user; without an endpoint they retry it
     // every few seconds. Their calls are broken anyway (dev-only there), so "no call" is the whole answer.
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     [LegacyName(nameof(GetMyCall), "2.21.9999")]
     [Obsolete("2026.10: 2.21 clients only. Always null. Remove once no installed app version calls it.")]
     Task<UserCall?> LegacyGetMyCall(Session session, CancellationToken cancellationToken);
+    // The outgoing-call banner it fed is gone - the caller's own status now follows the call slot
+    // (see CallUI.Apply / ISystemCallUI). The result type must stay the bare CallStatus enum 2.20
+    // clients read it as: they subscribe to this compute method, and a nil where they expect an enum
+    // faults their state and takes the whole chat page down with it. Only None is ever returned, and
+    // None is 0 in both numberings, so the renumbering never reaches the wire.
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [LegacyName("GetCallStatus", "2.20.9999")]
+    [Obsolete("2026.09: 2.20 clients only. Always None. Remove once no installed app version calls it.")]
+    Task<CallStatus> LegacyGetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
 }
