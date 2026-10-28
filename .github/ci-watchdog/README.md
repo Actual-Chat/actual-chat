@@ -9,7 +9,7 @@ the script, the agent's prompt, the card format — come with a line in [Design 
 
 | Part | Where | What it does |
 |---|---|---|
-| Workflow | [`.github/workflows/ci-watchdog.yml`](../workflows/ci-watchdog.yml) | Fires on every completed `Build test and deploy`, `Run slow tests` and `Run nightly tests` run that failed |
+| Workflow | [`.github/workflows/ci-watchdog.yml`](../workflows/ci-watchdog.yml) | Fires on every completed `Build test and deploy`, `Run slow tests` and `Run nightly tests` run: triages the failed ones, and tells Voxt when a green one ends reported red |
 | Script | [`scripts/CiWatchdog.ps1`](../../scripts/CiWatchdog.ps1), tests in [`tests/ps/unit/CiWatchdog.Tests.ps1`](../../tests/ps/unit/CiWatchdog.Tests.ps1) | Reads the run's jobs and logs, picks a verdict, re-runs, stores the record, writes a journal note |
 | Records | branch `ci-watchdog-data`, `records/<year>/<month>/<runId>-<attempt>.json` | One file per red run attempt: verdict, failed jobs and tests, error, stack, condensed output |
 | Registry | open issues labelled `ci-flaky`, grouped under #4997 | The known flakes: a test-name pattern in the title, an optional `Symptom:` regex in the body |
@@ -31,6 +31,8 @@ the script, the agent's prompt, the card format — come with a line in [Design 
 4. **Journal note** on #4640 for a notable verdict on `dev`, a re-run, or a re-run that could not
    start.
 5. **Notify Voxt** for red on `dev` or `release/*` that was not re-run.
+6. **Green again.** A green run on `dev` or `release/*` that ends red reported in step 5 posts
+   one message: where the red began, how many runs and how long it lasted.
 
 ### Once a day: the agent
 
@@ -85,6 +87,13 @@ turned down. A decision that changes one of these adds or replaces its entry in 
 
 ### The workflow and its records
 
+- **2026-10-28 — A green run that ends reported red says so in Voxt, once per streak** (#5663).
+  Red counts as reported when a run's latest attempt failed: the watchdog re-runs only first
+  attempts, so a failed latest attempt reached Voxt. Runs are ordered by when they completed, the
+  order their messages arrived; cancelled and skipped runs are passed over. A green re-run counts
+  unless `github-actions[bot]` started it — that is the watchdog clearing a flake it kept quiet
+  about. Each workflow is tracked on its own, so a green build doesn't answer a red nightly.
+  Rejected: storing what was posted, which needs state the run list already implies.
 - **2026-10-22 — Records are self-contained:** the first ten failed xUnit tests of a job keep
   their `Stack` and a condensed `Output`. Why: the cloud agent sees only the last 5000 lines of a
   job log, and its network can't reach the storage the full log redirects to; #5565 got an

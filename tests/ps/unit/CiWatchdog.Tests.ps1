@@ -969,4 +969,109 @@ Describe "CiWatchdog.ps1" {
             Test-CiRerunAllowed 'dev' 1 'KnownFlake' '' '' | Should -BeFalse
         }
     }
+
+    Context "Get-CiRedStreak" {
+        BeforeAll {
+            function New-Run {
+                param(
+                    [long]$Id,
+                    [string]$Conclusion,
+                    [string]$CompletedAt,
+                    [int]$Attempt = 1,
+                    [string]$TriggeredBy = 'crui3er')
+
+                return [PSCustomObject]@{
+                    id = $Id; run_number = $Id; run_attempt = $Attempt; conclusion = $Conclusion
+                    updated_at = $CompletedAt; html_url = "https://github.com/runs/$Id"
+                    triggering_actor = [PSCustomObject]@{ login = $TriggeredBy }
+                }
+            }
+        }
+
+        It "ends the reported red runs that came right before it" {
+            $green = New-Run 14 'success' '2026-10-28T08:00:00Z'
+            $earlier = @(
+                New-Run 10 'success' '2026-10-28T01:00:00Z'
+                New-Run 11 'failure' '2026-10-28T02:00:00Z'
+                New-Run 12 'failure' '2026-10-28T03:00:00Z'
+                New-Run 13 'failure' '2026-10-28T04:00:00Z'
+            )
+
+            $streak = Get-CiRedStreak $green $earlier ''
+
+            $streak.id | Should -Be @(11, 12, 13)
+        }
+
+        It "says nothing after a green run" {
+            $green = New-Run 12 'success' '2026-10-28T08:00:00Z'
+            $earlier = @(
+                New-Run 10 'failure' '2026-10-28T01:00:00Z'
+                New-Run 11 'success' '2026-10-28T02:00:00Z'
+            )
+
+            Get-CiRedStreak $green $earlier '' | Should -BeNullOrEmpty
+        }
+
+        It "passes over cancelled runs, which reported nothing" {
+            $green = New-Run 13 'success' '2026-10-28T08:00:00Z'
+            $earlier = @(
+                New-Run 11 'failure' '2026-10-28T01:00:00Z'
+                New-Run 12 'cancelled' '2026-10-28T02:00:00Z'
+            )
+
+            (Get-CiRedStreak $green $earlier '').id | Should -Be @(11)
+        }
+
+        It "orders runs by when they completed, not by number" {
+            $green = New-Run 13 'success' '2026-10-28T08:00:00Z'
+            $earlier = @(
+                New-Run 12 'success' '2026-10-28T02:00:00Z'
+                New-Run 11 'failure' '2026-10-28T03:00:00Z'
+            )
+
+            (Get-CiRedStreak $green $earlier '').id | Should -Be @(11)
+        }
+
+        It "ignores runs that completed after it" {
+            $green = New-Run 12 'success' '2026-10-28T08:00:00Z'
+            $earlier = @(New-Run 13 'failure' '2026-10-28T09:00:00Z')
+
+            Get-CiRedStreak $green $earlier '' | Should -BeNullOrEmpty
+        }
+
+        It "counts a person's green re-run of a red run" {
+            $green = New-Run 12 'success' '2026-10-28T08:00:00Z' -Attempt 2
+            $earlier = @(
+                New-Run 11 'failure' '2026-10-28T01:00:00Z'
+                $green
+            )
+
+            (Get-CiRedStreak $green $earlier 'failure').id | Should -Be @(11, 12)
+        }
+
+        It "stays quiet about a flake the watchdog re-ran" {
+            $green = New-Run 12 'success' '2026-10-28T08:00:00Z' -Attempt 2 -TriggeredBy 'github-actions[bot]'
+            $earlier = @(New-Run 11 'success' '2026-10-28T01:00:00Z')
+
+            Get-CiRedStreak $green $earlier 'failure' | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "Format-CiRecoveryNote" {
+        It "names the first red run, the count and how long it lasted" {
+            $run = [PSCustomObject]@{ updated_at = '2026-10-28T08:10:00Z' }
+            $streak = @(
+                [PSCustomObject]@{ run_number = 1229; updated_at = '2026-10-28T04:00:00Z'; html_url = 'https://x/1229' }
+                [PSCustomObject]@{ run_number = 1230; updated_at = '2026-10-28T05:00:00Z'; html_url = 'https://x/1230' }
+            )
+
+            Format-CiRecoveryNote $run $streak | Should -Be 'Red since #1229 (2 red runs, 4 h 10 min): https://x/1229'
+        }
+
+        It "formats durations from minutes to days" {
+            Format-CiDuration ([TimeSpan]::FromSeconds(30)) | Should -Be 'under a minute'
+            Format-CiDuration ([TimeSpan]::FromMinutes(25)) | Should -Be '25 min'
+            Format-CiDuration ([TimeSpan]::FromHours(50.5)) | Should -Be '2 d 2 h'
+        }
+    }
 }
