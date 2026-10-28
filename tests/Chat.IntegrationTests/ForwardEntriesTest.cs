@@ -16,6 +16,7 @@ public class ForwardEntriesTest(ChatCollection.AppHostFixture fixture, ITestOutp
         var chats = tester.AppServices.GetRequiredService<IChats>();
         var (sourceChatId, _) = await tester.CreateChat(true);
         var (destinationChatId, _) = await tester.CreateChat(true);
+        await tester.AppServices.WaitForOpeningEntry(destinationChatId);
         var readyEntry = await tester.CreateTextEntry(sourceChatId, "Ready");
         var reservedMediaId = await tester.Commander.Call(new Media_ReserveMedia {
             Session = session,

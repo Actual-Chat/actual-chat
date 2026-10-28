@@ -37,6 +37,7 @@ public sealed class ContactsChatActivityTest(AppHostFixture fixture, ITestOutput
         // arrange
         await _bobTester.SignInAsUniqueBob();
         var (chatId, _) = await _bobTester.CreateChat(false);
+        await AppHost.Services.WaitForOpeningEntry(chatId);
 
         // act
         var entry = await _bobTester.CreateTextEntry(chatId, "hello");
@@ -81,7 +82,9 @@ public sealed class ContactsChatActivityTest(AppHostFixture fixture, ITestOutput
         var alice = await _aliceTester.SignInAsUniqueAlice();
         await _bobTester.SignInAsUniqueBob();
         var (chatId, _) = await _bobTester.CreateChat(false);
-        await _bobTester.InviteToChat(chatId, alice.Id);
+        await AppHost.Services.WaitForOpeningEntry(chatId);
+        var aliceAuthor = await _bobTester.InviteToChat(chatId, alice.Id);
+        await _bobTester.WaitForJoinEntry(chatId, aliceAuthor.Id);
         var first = await _bobTester.CreateTextEntry(chatId, "first");
         var second = await _bobTester.CreateTextEntry(chatId, "second");
         var unreadChat = await TestWait.When(async ct => {
@@ -115,6 +118,7 @@ public sealed class ContactsChatActivityTest(AppHostFixture fixture, ITestOutput
         // arrange
         await _bobTester.SignInAsUniqueBob();
         var (chatId, _) = await _bobTester.CreateChat(false);
+        await AppHost.Services.WaitForOpeningEntry(chatId);
         var first = await _bobTester.CreateTextEntry(chatId, "first");
         var command = new ChatPositions_Set {
             Session = _bobTester.Session,

@@ -383,6 +383,7 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
     {
         // arrange
         var (chatId, _) = await Alice.CreateChat(x => x with { Title = "TestPost" });
+        await AppHost.Services.WaitForOpeningEntry(chatId);
         var alice = await Alice.GetOwnAccount();
         var hook = (await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, null, null,
@@ -452,6 +453,9 @@ public class WebHooksIncomingBackendTest(ChatCollection.AppHostFixture fixture, 
             IsPublic = isPublicChat,
         });
         chatId.Should().BeOfType<PlaceChatId>();
+        // A public place chat gets no join entry, so there's nothing to wait for
+        if (!isPublicChat)
+            await AppHost.Services.WaitForOpeningEntry(chatId);
         var alice = await Alice.GetOwnAccount();
         var hook = (await Commander.Call(new WebHooksBackend_Change(
             WebHookScope.Chat, chatId.Value, null, null,

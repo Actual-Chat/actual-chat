@@ -15,8 +15,7 @@ public sealed class McpChatActivityToolsTest(McpCollection.AppHostFixture fixtur
         var alice = await Tester.SignInAsUniqueAlice();
         var aliceKey = await IssueApiKey("alice");
         await Tester.SignInAsUniqueBob();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Wait for changes");
-        await Tester.InviteToChat(chatId, alice.Id);
+        var chatId = await CreateChatWithAlice(alice, "Wait for changes");
         await using var client = await CreateClientWithRawKey(aliceKey);
         var first = await Tester.CreateTextEntry(chatId, "first");
         var before = await TestWait.WhenPolled(async () => {
@@ -45,7 +44,8 @@ public sealed class McpChatActivityToolsTest(McpCollection.AppHostFixture fixtur
     {
         // arrange
         await Tester.SignInAsUniqueAlice();
-        await Tester.CreateChat(isPublicChat: false, title: "Quiet chat");
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Quiet chat");
+        await Tester.AppServices.WaitForOpeningEntry(chatId);
         var client = await CreateClient();
         var before = await CallTool<McpWaitForChangesResult>(client, "wait_for_changes");
 
@@ -65,8 +65,7 @@ public sealed class McpChatActivityToolsTest(McpCollection.AppHostFixture fixtur
         var alice = await Tester.SignInAsUniqueAlice();
         var aliceKey = await IssueApiKey("alice");
         await Tester.SignInAsUniqueBob();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Unread chats");
-        await Tester.InviteToChat(chatId, alice.Id);
+        var chatId = await CreateChatWithAlice(alice, "Unread chats");
         await using var client = await CreateClientWithRawKey(aliceKey);
         await Tester.CreateTextEntry(chatId, "one");
         var two = await Tester.CreateTextEntry(chatId, "two");
@@ -95,8 +94,7 @@ public sealed class McpChatActivityToolsTest(McpCollection.AppHostFixture fixtur
         var alice = await Tester.SignInAsUniqueAlice();
         var aliceKey = await IssueApiKey("alice");
         await Tester.SignInAsUniqueBob();
-        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Wait for unread");
-        await Tester.InviteToChat(chatId, alice.Id);
+        var chatId = await CreateChatWithAlice(alice, "Wait for unread");
         await using var client = await CreateClientWithRawKey(aliceKey);
         var first = await Tester.CreateTextEntry(chatId, "first");
         await TestWait.WhenPolled(async () => {
@@ -125,6 +123,7 @@ public sealed class McpChatActivityToolsTest(McpCollection.AppHostFixture fixtur
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: "Read chat");
+        await Tester.AppServices.WaitForOpeningEntry(chatId);
         var entry = await Tester.CreateTextEntry(chatId, "own message");
         var client = await CreateClient();
         await CallTool(client, "mark_read", new { chatId = chatId.Value, lastId = entry.LocalId });
@@ -149,5 +148,18 @@ public sealed class McpChatActivityToolsTest(McpCollection.AppHostFixture fixtur
 
         // assert
         error.Should().Contain("cursor");
+    }
+
+    // Private methods
+
+    private async Task<ChatId> CreateChatWithAlice(AccountFull alice, string title)
+    {
+        // Join entries are posted asynchronously, and one landing after a test's own message
+        // shifts every lid and cursor this class compares
+        var (chatId, _) = await Tester.CreateChat(isPublicChat: false, title: title);
+        await Tester.AppServices.WaitForOpeningEntry(chatId);
+        var aliceAuthor = await Tester.InviteToChat(chatId, alice.Id);
+        await Tester.WaitForJoinEntry(chatId, aliceAuthor.Id);
+        return chatId;
     }
 }

@@ -249,6 +249,7 @@ public class McpMessageToolsTest(McpCollection.AppHostFixture fixture, ITestOutp
         // arrange
         await Tester.SignInAsUniqueAlice();
         var (chatId, _) = await Tester.CreateChat(isPublicChat: false);
+        await Tester.AppServices.WaitForOpeningEntry(chatId);
         var client = await CreateClient();
         var before = await Tester.Chats.GetIdRange(Tester.Session, chatId, CancellationToken.None);
 
