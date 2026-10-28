@@ -117,6 +117,7 @@ public class ConversationCacheTest(ChatCollection.AppHostFixture fixture, ITestO
     {
         await Tester.SignInAsUniqueBob();
         var (chatId, _) = await Tester.CreateChat(true);
+        await Tester.AppServices.WaitForOpeningEntry(chatId);
         var author = await Tester.AppServices.GetRequiredService<IAuthors>().GetOwn(Tester.Session, chatId, default);
         var live = Tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
         var conversations = Tester.AppServices.GetRequiredService<IConversationsBackend>();

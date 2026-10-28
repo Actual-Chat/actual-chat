@@ -86,20 +86,24 @@ public static class ChatOperations
         if (wasJoined)
             return author;
 
-        // The join writes a "member added" entry from an async event handler that waits for the author's
-        // avatar with its own retries, so the entry can land seconds after the join command returned.
-        var chats = tester.AppServices.GetRequiredService<IChats>();
-        await TestWait.When(async ct => {
+        await tester.WaitForJoinEntry(chatId, author.Id);
+        return author;
+    }
+
+    public static Task WaitForJoinEntry(this IWebTester tester, ChatId chatId, AuthorId authorId)
+        // A join writes its "member added" entry from an async event handler that waits for the author's
+        // avatar with its own retries, so the entry can land seconds after the join or invite returned.
+        => TestWait.When(async ct => {
+            var session = tester.Session;
+            var chats = tester.AppServices.GetRequiredService<IChats>();
             var lidRange = await chats.GetIdRange(session, chatId, ct);
             var reader = chats.NewEntryReader(session, chatId);
             var entry = await reader.GetLast(lidRange,
-                x => x is MembersChangedEntry { HasLeft: false } e && e.TargetAuthorId == author.Id,
+                x => x is MembersChangedEntry { HasLeft: false } e && e.TargetAuthorId == authorId,
                 JoinEntrySearchLimit,
                 ct);
             entry.Should().NotBeNull("the join system entry must be written by now");
         }, TimeSpan.FromSeconds(10));
-        return author;
-    }
 
     public static Task<Chat.Chat> UpdateChat(this IWebTester tester, ChatId chatId, string title)
         => tester.Commander.Call(new Chats_Change {

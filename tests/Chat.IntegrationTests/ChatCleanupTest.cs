@@ -182,6 +182,7 @@ public sealed class ChatCleanupTest(ChatCollection.AppHostFixture fixture, ITest
         // arrange
         await Owner.SignInAsUniqueAlice();
         var (chatId, _) = await Owner.CreateChat(true);
+        await Owner.AppServices.WaitForOpeningEntry(chatId);
         var first = await Owner.CreateTextEntry(chatId, "first");
         var last = await Owner.CreateTextEntry(chatId, "last");
 

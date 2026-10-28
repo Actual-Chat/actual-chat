@@ -1002,8 +1002,10 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
         await alice.JoinChat(chatId, inviteId);
         var bobAuthor = await bob.GetOwnAuthor(chatId);
         var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        await bob.AppServices.WaitForOpeningEntry(chatId);
+        await bob.WaitForJoinEntry(chatId, aliceAuthor!.Id);
         var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
-        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor!.Id }.ToApiArray(), false, default);
+        await backend.StartCall(chatId, bobAuthor!.Id, new[] { aliceAuthor.Id }.ToApiArray(), false, default);
 
         // the ring is published under this id while dialing; it must stay put for the whole call
         var callId = (await backend.GetCall(chatId, default))!.Id;

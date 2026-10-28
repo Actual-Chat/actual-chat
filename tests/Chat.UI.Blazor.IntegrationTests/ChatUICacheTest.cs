@@ -29,6 +29,7 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
         // arrange
         await Tester.SignInAsUniqueBob();
         var (chat, _) = await Tester.CreateAndGetChat(false, "chat-ui-cache-test");
+        await AppHost.Services.WaitForOpeningEntry(chat.Id);
         for (var i = 0; i < 3; i++)
             await Tester.CreateTextEntry(chat.Id, $"entry {i}");
         var author = await Tester.GetOwnAuthor(chat.Id).Require();
@@ -69,6 +70,7 @@ public sealed class ChatUICacheTest(ChatAppHostFixture fixture, ITestOutputHelpe
         // ChangeEntry Update at finalization
         await Tester.SignInAsUniqueBob();
         var (chat, _) = await Tester.CreateAndGetChat(false, "chat-ui-cache-test-update");
+        await AppHost.Services.WaitForOpeningEntry(chat.Id);
         var streamingEntry = await Tester.CreateStreamingEntry(chat.Id, Languages.English);
         var entryLid = streamingEntry.ChatEntrySlim.Id.LocalId;
         var tileStart = ChatUI.ConversationIdTiles.GetTile(entryLid).Start;

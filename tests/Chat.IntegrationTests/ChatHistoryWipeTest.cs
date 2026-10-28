@@ -27,6 +27,7 @@ public sealed class ChatHistoryWipeTest(ChatCollection.AppHostFixture fixture, I
         // arrange
         await Owner.SignInAsUniqueAlice();
         var (chatId, _) = await Owner.CreateChat(true);
+        await Owner.AppServices.WaitForOpeningEntry(chatId);
         var older = await Owner.CreateTextEntries(chatId, "older", 2);
         var wiped = await Owner.CreateTextEntries(chatId, "wiped", 3);
 
