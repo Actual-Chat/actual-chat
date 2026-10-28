@@ -1,6 +1,5 @@
 using ActualChat.Transcription.Module;
 using ActualChat.Audio;
-using ActualChat.Streaming.Module;
 using ActualChat.Testing.Host;
 using ActualChat.Transcription;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -92,8 +91,6 @@ public sealed class RetranscribeNotifyCollection : ICollectionFixture<Retranscri
                     cfg.AddInMemory<TranscriptionSettings>(
                         (x => x.UseFakeTranscriber, "true"),
                         (x => x.OfflineRanking, "fake-offline"));
-                    // The test clip is seconds long, so it clears neither retranscription bar.
-                    cfg.AddInMemory<StreamingSettings>((x => x.MinRetranscriptionWords, "0"));
                 },
                 ConfigureServices = (_, services) => {
                     services.Replace(ServiceDescriptor.Singleton<IOfflineTranscriber>(_ => new FakeOfflineTranscriber()));

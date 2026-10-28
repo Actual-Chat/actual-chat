@@ -13,4 +13,14 @@ public interface IOfflineTranscriber
         AudioSource audioSource,
         TranscriptionOptions options,
         CancellationToken cancellationToken = default);
+
+    async Task<(Transcript? Transcript, TranscriberId TranscriberId)> TranscribeWithId(
+        AudioSource audioSource,
+        TranscriptionOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        // Also returns which transcriber produced the result: a failover chain reports the one that answered
+        var transcript = await Transcribe(audioSource, options, cancellationToken).ConfigureAwait(false);
+        return (transcript, Info.Id);
+    }
 }
