@@ -42,6 +42,21 @@ body.no-select {
     -webkit-user-select: none !important;
 }
 
+/* Chrome resamples a CSS background without proper filtering, so a crisp noise tile drawn at most scales
+   turns into a moire. Both tiles are slightly blurred to survive that, the tile is always 235 CSS px, and
+   each DPR gets the tile closest to 1:1 */
+.grain-overlay {
+    @apply pointer-events-none;
+    background-image: url("noise.webp");
+    background-image: image-set(url("noise-1x.webp") 1.2x, url("noise.webp") 2x);
+    background-size: 235px;
+    opacity: 0.3;
+    mix-blend-mode: overlay;
+}
+.galaxy-grain {
+    @apply absolute inset-0 z-10;
+}
+
 /* prevent pull-to-refresh for Safari 16+ */
 @media screen and (pointer: coarse) {
     @supports (-webkit-backdrop-filter: blur(1px)) and (overscroll-behavior-y: none)  {

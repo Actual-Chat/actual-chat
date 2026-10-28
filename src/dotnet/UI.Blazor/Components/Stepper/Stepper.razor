@@ -25,17 +25,13 @@
             <div class="stepper-footer @(ShowNoise ? "show-noise" : "")">
                 @Footer.Invoke(this)
                 @if (ShowNoise) {
-                    <div class="stepper-footer-noise">
-                        <img draggable="false" src="/dist/images/landing/landing-page-noise-small.svg" alt="">
-                    </div>
+                    <div class="stepper-footer-noise grain-overlay"></div>
                 }
             </div>
         }
     </CascadingValue>
     @if (ShowNoise) {
-        <div class="stepper-noise">
-            <img draggable="false" src="/dist/images/landing/landing-page-noise-small.svg" alt="">
-        </div>
+        <div class="stepper-noise grain-overlay"></div>
     }
 </div>
 

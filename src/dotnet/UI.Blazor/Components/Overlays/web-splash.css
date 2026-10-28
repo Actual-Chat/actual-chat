@@ -39,6 +39,10 @@
     animation: showSplashImage 0.5s linear forwards;
 
 }
+.web-splash .bg-wrapper > .galaxy-grain {
+    filter: blur(2px) opacity(0);
+    animation: showSplashImage 0.5s linear forwards;
+}
 @keyframes showSplashImage {
     0%, 50% {
         filter: blur(2px) opacity(0);
