@@ -9,7 +9,6 @@ namespace ActualChat.Media;
 public sealed partial record MediaFull : Media
 {
     [DataMember, Key(10)] public UserId? UserId { get; init; }
-    [DataMember, Key(11)] public MediaId? ThumbnailId { get; init; }
 
     public MediaFull(MediaId id) : base(id) { }
 
@@ -23,11 +22,8 @@ public sealed partial record MediaFull : Media
         byte[]? placeholder,
         UserId? userId,
         MediaId? thumbnailId)
-        : base(id, blobId, version, kind, metadata, placeholder)
-    {
-        UserId = userId;
-        ThumbnailId = thumbnailId;
-    }
+        : base(id, blobId, version, kind, metadata, placeholder, thumbnailId)
+        => UserId = userId;
 
     // This record relies on referential equality
     public bool Equals(MediaFull? other) => ReferenceEquals(this, other);

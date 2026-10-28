@@ -23,8 +23,11 @@ public sealed class MetadataBagJsonTest(ITestOutputHelper @out) : TestBase(@out)
     public void ReadsEveryMediaKey()
     {
         // act
-        var media = new Media(
-            MediaId.New("test"), "blob-1", 0, MediaKind.ChatEntryAttachment, MetadataBagJson.FromJson(EveryMediaKeyJson), null);
+        var media = new Media(MediaId.New("test")) {
+            BlobId = "blob-1",
+            Kind = MediaKind.ChatEntryAttachment,
+            Metadata = MetadataBagJson.FromJson(EveryMediaKeyJson),
+        };
 
         // assert
         media.Length.Should().Be(74481L);
@@ -71,7 +74,10 @@ public sealed class MetadataBagJsonTest(ITestOutputHelper @out) : TestBase(@out)
     public void RoundTripsValuesSetThroughTypedAccessors()
     {
         // arrange
-        var media = new Media(MediaId.New("test"), "blob-1", 0, MediaKind.ChatEntryVideo, MetadataBag.Empty, null) {
+        var media = new Media(MediaId.New("test")) {
+            BlobId = "blob-1",
+            Kind = MediaKind.ChatEntryVideo,
+            Metadata = MetadataBag.Empty,
             Length = 1024L,
             FileName = "clip.mp4",
             ContentType = "video/mp4",

@@ -18,6 +18,8 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
     [DataMember, Key(3)] public MediaKind Kind { get; init; }
     [DataMember, Key(4)] public MetadataBag Metadata { get; init; }
     [DataMember, Key(5)] public byte[]? Placeholder { get; init; }
+    // Key(11) is what MediaFull used before the property moved here, so MediaFull's wire format is unchanged
+    [DataMember, Key(11)] public MediaId? ThumbnailId { get; init; }
 
     // Computed properties
 
@@ -99,7 +101,8 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
         long version,
         MediaKind kind,
         MetadataBag metadata,
-        byte[]? placeholder)
+        byte[]? placeholder,
+        MediaId? thumbnailId)
     {
         Id = id;
         BlobId = blobId;
@@ -107,6 +110,7 @@ public partial record Media : IHasId<MediaId>, IHasVersion<long>, IHasMetadata, 
         Kind = kind;
         Metadata = metadata;
         Placeholder = placeholder;
+        ThumbnailId = thumbnailId;
     }
 
     // This record relies on referential equality
