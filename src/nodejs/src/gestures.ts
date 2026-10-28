@@ -30,6 +30,7 @@ export class Gestures {
         SuppressDefaultContextMenuGesture.use();
         ContextMenuGesture.use();
         DismissKeyboardOnDragGesture.use();
+        TapThroughFlingGesture.use();
     }
 
     public static addActive(gesture: Gesture): Gesture {
@@ -340,6 +341,87 @@ class ContextMenuGesture extends Gesture {
                 }
             }),
         );
+    }
+}
+
+/** Chromium on Android spends a tap that lands during a fling on stopping the fling and never sends its
+ *  click, so a button meant to be used mid-scroll (e.g. "go to the end") takes two taps. Inside an element
+ *  marked data-tap-through-fling, the touched element gets that click from touchend instead. */
+class TapThroughFlingGesture extends Gesture {
+    private static readonly Selector = '[data-tap-through-fling]';
+    // Wide on purpose: a main thread busy rendering what the fling loaded sends no scroll events for 200ms+
+    // while the compositor carries on, and arming for a fling that already ended still yields one click.
+    private static readonly FlingQuietMs = 300;
+    private static readonly MaxTapMovePx = 10;
+    private static readonly MaxTapMs = 500;
+    private static readonly NativeClickWindowMs = 100;
+
+    public static use(): void {
+        if (!DeviceInfo.isAndroid)
+            return;
+
+        debugLog?.log(`TapThroughFlingGesture.use`);
+        let lastScrollAt = 0;
+        let armed: { element: HTMLElement, root: Element, start: Vector2D, startedAt: number } | null = null;
+        let swallowClicksIn: Element | null = null;
+        let swallowClicksUntil = 0;
+        // On the touched element rather than on document: a blocking touchend listener holds every tap's
+        // click until the main thread acks it, so only a tap that needs one gets one.
+        const onTouchEnd = (event: TouchEvent) => {
+            const tap = armed;
+            disarm();
+            // Event timestamps, not performance.now(): a render stalling the main thread mid-tap is likely
+            // right after a fling, and it must not turn a quick tap into a long press.
+            if (tap == null || !tap.element.isConnected || event.timeStamp - tap.startedAt > this.MaxTapMs)
+                return;
+
+            // A click Chromium does send after all would make it two: a cancelled touchend sends none,
+            // and one that can't be cancelled has its click swallowed below.
+            if (event.cancelable)
+                event.preventDefault();
+            else {
+                swallowClicksIn = tap.root;
+                swallowClicksUntil = event.timeStamp + this.NativeClickWindowMs;
+            }
+            tap.element.click();
+        };
+        const disarm = () => {
+            armed?.element.removeEventListener('touchend', onTouchEnd);
+            armed = null;
+        };
+
+        // Element scrolls don't bubble, but a capturing listener on the window still hears them.
+        DocumentEvents.capturedPassive.scroll$?.subscribe(e => lastScrollAt = e.timeStamp);
+        DocumentEvents.capturedPassive.touchStart$.subscribe((event: TouchEvent) => {
+            disarm();
+            if (event.touches.length !== 1 || event.timeStamp - lastScrollAt > this.FlingQuietMs)
+                return;
+
+            const element = event.target;
+            const root = element instanceof HTMLElement ? element.closest(this.Selector) : null;
+            if (!(element instanceof HTMLElement) || root == null)
+                return;
+
+            const touch = event.touches[0];
+            armed = { element, root, start: new Vector2D(touch.clientX, touch.clientY), startedAt: event.timeStamp };
+            element.addEventListener('touchend', onTouchEnd, { passive: false });
+        });
+        DocumentEvents.capturedPassive.touchMove$.subscribe((event: TouchEvent) => {
+            const touch = event.touches.item(0);
+            if (armed != null && touch != null
+                && new Vector2D(touch.clientX, touch.clientY).sub(armed.start).length > this.MaxTapMovePx)
+                disarm();
+        });
+        DocumentEvents.capturedPassive.touchCancel$.subscribe(() => disarm());
+        DocumentEvents.capturedActive.click$.subscribe((event: MouseEvent) => {
+            if (!event.isTrusted || swallowClicksIn == null)
+                return;
+
+            const root = swallowClicksIn;
+            swallowClicksIn = null;
+            if (event.timeStamp < swallowClicksUntil && event.target instanceof Node && root.contains(event.target))
+                stopEvent(event);
+        });
     }
 }
 
