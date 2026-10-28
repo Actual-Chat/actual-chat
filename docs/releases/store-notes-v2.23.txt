@@ -1,0 +1,7 @@
+Friendlier calls, 12 new app languages and a fresh animated look.
+• Raised hands are hard to miss, with a sound and a hand counter
+• Camera preview while dialing, plus alerts when video turns on
+• Voxt now speaks Danish, Dutch, Swedish, Thai and 8 more languages
+• Push-to-talk chats in one compact row and in Active Chats
+• Redesigned, animated cat illustrations in light and dark themes
+• Smoother video previews and more reliable sharing
