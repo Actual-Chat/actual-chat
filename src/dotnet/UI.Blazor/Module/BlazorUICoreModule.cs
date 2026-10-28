@@ -63,7 +63,7 @@ public sealed class BlazorUICoreModule(IServiceProvider moduleServices)
             }.Start(),
         });
         services.AddScoped(c => new LocalSettings(c.GetRequiredService<LocalSettings.Options>(), c));
-        services.AddScoped(c => new UserSettingsUI(c, c.Session()));
+        services.AddScoped(c => new UserSettingsUI(c, c.Session(), c.GetService<IChatUserSettingsSource>()));
         if (isServer) {
             services.AddScoped<DateTimeConverter>(c => new ServerSideDateTimeConverter(c));
             MomentClockSet.Default.ServerClock.Offset = TimeSpan.Zero;
