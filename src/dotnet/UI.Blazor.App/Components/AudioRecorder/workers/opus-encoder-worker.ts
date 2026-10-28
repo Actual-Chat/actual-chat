@@ -7,9 +7,10 @@ import { AUDIO, AppConstants, initAppConstants } from 'app-constants';
 import Denque from 'denque';
 import { Disposable } from 'disposable';
 import { retry } from 'actuallab-core';
-import { approximateGain, average, clamp } from 'math';
+import { approximateGain } from 'math';
 import { rpcClientServer, rpcNoWait, RpcNoWait, RpcTimeout } from 'rpc';
 import { Versioning } from 'versioning';
+import { getSpeechFrameCount } from 'voice-onset';
 
 import { Api } from 'api';
 import { AudioStream, AudioStreamer } from './audio-streamer';
@@ -315,35 +316,16 @@ async function processQueue(fade: 'in' | 'out' | 'none' = 'none'): Promise<void>
     try {
         isProcessing = true;
         if (fade === 'in') {
-            // calculate precise moment when speech starts - VAD may provide signals with delay
-            // we will try to filter out frames with gain significantly lower than most recent
-            const gains = new Float32Array(queue.length).fill(0);
-            if (gains.length) {
-                for (let i = 0; i < queue.length; i++) {
-                    const { buffer: samplesBuffer } = queue.peekAt(i)!;
-                    const samples = new Float32Array(samplesBuffer);
-                    gains[i] = approximateGain(samples);
-                }
-                const preRollFrameLimit = AUDIO.encode.voicePreRollFrameLimit;
-                const preRollFrameCount = Math.min(preRollFrameLimit, queue.length);
-                const speechFrameCount = Math.max(
-                    1,
-                    Math.min(preRollFrameCount, Math.ceil(preRollFrameLimit / 3)));
-                const speechGain = average(gains.slice(-speechFrameCount));
-                const minStartIndex = queue.length - preRollFrameCount;
-                let startIndex = queue.length - speechFrameCount - 1;
-                while (startIndex >= minStartIndex) {
-                    const gain = gains[startIndex];
-                    if (gain < speechGain/3)
-                        break;
-
-                    startIndex--;
-                }
-                let framesToShift = startIndex >= minStartIndex
-                    ? startIndex
-                    : minStartIndex;
-                framesToShift = clamp(framesToShift, minStartIndex, queue.length - speechFrameCount);
-                debugLog?.log(`processQueue(in): gains: `, gains, framesToShift, speechFrameCount);
+            // The VAD fires late, so the speech start is searched for in the buffered frames
+            if (queue.length) {
+                const frames: Float32Array[] = [];
+                for (let i = 0; i < queue.length; i++)
+                    frames.push(new Float32Array(queue.peekAt(i)!.buffer));
+                // Queued frames are 20 ms at the device rate, which may differ from AUDIO.rec.sampleRate
+                const sampleRate = frames[0].length * 1000 / 20;
+                const speechFrameCount = getSpeechFrameCount(frames, sampleRate, AUDIO.encode.voicePreRollFrameLimit);
+                let framesToShift = queue.length - speechFrameCount;
+                debugLog?.log(`processQueue(in): speech frames:`, speechFrameCount, 'of', queue.length);
                 while (framesToShift-- > 0) {
                     const { buffer: samplesBuffer } = queue.shift()!;
                     void encoderWorklet.releaseBuffer(samplesBuffer, rpcNoWait);
