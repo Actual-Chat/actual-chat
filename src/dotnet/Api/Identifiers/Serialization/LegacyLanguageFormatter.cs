@@ -50,7 +50,7 @@ public class LegacyLanguageFormatter : MemoryPackFormatter<Language>
                 string? sid = null;
                 StringAsSymbolMemoryPackFormatter.Default.Deserialize(ref reader, ref sid);
                 if (!sid.IsNullOrEmpty())
-                    value = Language.Parse(sid);
+                    value = Language.ParseOrUnknown(sid);
             }
             else
                 value = null;
