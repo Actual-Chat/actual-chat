@@ -43,6 +43,17 @@ public partial class AccountUI
         }
     }
 
+    // Protected/internal methods
+
+    [ComputeMethod]
+    protected virtual async Task<bool> IsDataCollectionEnabled(CancellationToken cancellationToken)
+    {
+        // MaintainAnalyticsClient watches this: UserSettingsAccessor.Get isn't a compute method,
+        // so capturing it directly captures IUserSettings.Get - a Computed<StoredSettings?>.
+        var appSettings = await Hub.UserSettingsUI.UserAppSettings().Get(cancellationToken).ConfigureAwait(false);
+        return appSettings.IsDataCollectionEnabled == true;
+    }
+
     // Private methods
 
     private async Task CaptureAttributions(CancellationToken cancellationToken)
@@ -95,14 +106,13 @@ public partial class AccountUI
     {
         // The server sends milestones under this id; a new user consents during onboarding, mid-session
         await WhenAttributionsCanStart(cancellationToken).ConfigureAwait(true);
-        var appSettings = Hub.UserSettingsUI.UserAppSettings();
-        var cAppSettings0 = await Computed
-            .Capture(() => appSettings.Get(cancellationToken), cancellationToken)
+        var cIsEnabled0 = await Computed
+            .Capture(() => IsDataCollectionEnabled(cancellationToken), cancellationToken)
             .ConfigureAwait(false);
-        var changes = cAppSettings0.Changes(FixedDelayer.YieldUnsafe, cancellationToken);
-        await foreach (var cAppSettings in changes.ConfigureAwait(false)) {
-            var (settings, error) = cAppSettings;
-            if (error is null && settings?.IsDataCollectionEnabled == true)
+        var changes = cIsEnabled0.Changes(FixedDelayer.YieldUnsafe, cancellationToken);
+        await foreach (var cIsEnabled in changes.ConfigureAwait(false)) {
+            var (isEnabled, error) = cIsEnabled;
+            if (error is null && isEnabled)
                 await ReportAnalyticsClient(cancellationToken).ConfigureAwait(false);
         }
     }
