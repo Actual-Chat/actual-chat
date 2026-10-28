@@ -112,7 +112,10 @@ public sealed class ElevenLabsOfflineTranscriber : IOfflineTranscriber
         }
 
         // A degenerate map makes the caller DTW-remap the realtime one instead of trusting this.
-        var languages = Language.TryParse(response.LanguageCode ?? "", out var language) ? new[] { language } : [];
+        var languages = Language.TryParse(response.LanguageCode ?? "", out var language)
+            && language.Support.HasFlag(LanguageSupport.Transcription)
+            ? new[] { language }
+            : [];
         return new Transcript(text, timeMap.IsValid() ? timeMap : LinearMap.Zero, languages);
     }
 

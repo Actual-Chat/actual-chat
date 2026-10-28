@@ -79,7 +79,9 @@ public sealed class ElevenLabsTranscriptBuilder
     private void AddLanguage(string? code)
     {
         var language = Language.TryParse(code, true);
-        if (language != null && !_languages.Contains(language))
+        if (language is not null
+            && language.Support.HasFlag(LanguageSupport.Transcription)
+            && !_languages.Contains(language))
             _languages.Add(language);
     }
 

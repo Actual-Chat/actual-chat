@@ -56,7 +56,8 @@ public static class StringCatalog
 
     private static Dictionary<string, string>? Load(Language language)
     {
-        if (!Languages.AllUIAndTestOnly.Contains(language))
+        // A newer device may have chosen a Preview language: its catalog ships too
+        if (!Languages.AllWithCatalog.Contains(language))
             return null;
 
         var strings = StringCatalogs.LoadStrings(language);

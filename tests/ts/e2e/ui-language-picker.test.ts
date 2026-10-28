@@ -4,7 +4,7 @@ import {
     BASE_URL, connectBrowser, ensureSignedIn, openLanguageSelect, setUILanguage,
     waitForAppReady, type BrowserConnection,
 } from './helpers';
-import { ENGLISH, UI_LANGUAGES, getTranslatedValues, loadStrings } from './localization-catalog';
+import { ENGLISH, OFFERED_UI_LANGUAGES, UI_LANGUAGES, getTranslatedValues, loadStrings } from './localization-catalog';
 
 const English = 'en-US';
 const Spanish = 'es-ES';
@@ -78,7 +78,7 @@ describe('UI language picker', () => {
         }, 60_000);
 
         // English goes last, so each switch leaves a language the previous case applied
-        for (const language of [...UI_LANGUAGES.filter(x => x !== ENGLISH), ENGLISH]) {
+        for (const language of [...OFFERED_UI_LANGUAGES.filter(x => x !== ENGLISH), ENGLISH]) {
             it(`should apply ${language.nativeName} (${language.code})`, async () => {
                 // arrange
                 const select = await openLanguageSelect(page);

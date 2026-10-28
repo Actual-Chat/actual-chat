@@ -33,7 +33,7 @@ public sealed class LanguageTitleLocalizerExtTest
     public void EveryLanguageShouldNameEveryLanguageDistinctly(string subtag)
     {
         // arrange
-        var l = NewLocalizer(Languages.AllUIAndTestOnly.Single(x => x.IsoCode == subtag));
+        var l = NewLocalizer(Languages.AllWithCatalog.Single(x => x.IsoCode == subtag));
 
         // act
         var titles = Languages.All.Select(l.GetLanguageTitle).ToList();

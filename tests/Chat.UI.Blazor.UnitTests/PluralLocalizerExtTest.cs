@@ -208,5 +208,5 @@ public sealed class PluralLocalizerExtTest
         => new(StringCatalogs.Load(StringCatalogs.Kind.Strings, language)!, language);
 
     private static Language GetCatalogLanguage(string subtag)
-        => Languages.AllUIAndTestOnly.Single(l => l.IsoCode == subtag);
+        => Languages.AllWithCatalog.Single(l => l.IsoCode == subtag);
 }
