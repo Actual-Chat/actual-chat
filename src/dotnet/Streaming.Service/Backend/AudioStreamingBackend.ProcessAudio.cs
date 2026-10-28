@@ -290,9 +290,6 @@ public partial class AudioStreamingBackend
 
         // TODO(AK): Compensate failures during audio entry creation or saving audio blob (later)
 
-        if (publishAudioTask != null)
-            await publishAudioTask.ConfigureAwait(false);
-
         // Close an open audio segment when the duration becomes available.
         // WhenDurationAvailable ends two ways: "Duration wasn't parsed" when the producer's
         // RPC stream disconnects cleanly mid-recording (non-OCE, caught below), or OCE when
@@ -304,6 +301,10 @@ public partial class AudioStreamingBackend
         try {
             try {
                 try {
+                    // Inside the finally blocks below: it throws if the request is cancelled before the
+                    // publish task starts, and transcription is already running and waits for them
+                    if (publishAudioTask != null)
+                        await publishAudioTask.ConfigureAwait(false);
                     await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
                     Log.LogInformation(
                         "ProcessAudio: stream #{StreamId} ended normally, duration={Duration:F1}s",

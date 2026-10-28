@@ -18,29 +18,10 @@ public class StreamingEntryNetworkLossTest(
     public async Task WatchdogEndSavesPartialAudioAndFinalizes()
     {
         // arrange
-        await Tester.SignInAsUniqueAlice();
-        var (chatId, _) = await Tester.CreateChat(false);
-
+        var (chatId, record, segmentStreamId) = await PrepareRecording();
         var services = Tester.AppServices;
-        var session = Tester.Session;
-        var userSettingsUI = services.UserSettingsUI(session);
-        await userSettingsUI.UserLanguageSettings()
-            .Set(new UserLanguageSettings { Primary = Languages.English }, CancellationToken.None);
-        await userSettingsUI.ChatUserSettings(chatId)
-            .Update(x => x with { Language = Languages.English, VoiceMode = VoiceMode.TextAndVoice }, CancellationToken.None);
-
         var streaming = services.GetRequiredService<IAudioStreamingBackend>();
         var chatsBackend = services.GetRequiredService<IChatsBackend>();
-        var thisNode = services.MeshWatcher().ThisNode;
-        var recordStreamId = StreamId.New(thisNode.Ref);
-        // Mirrors OpenAudioSegment.GetStreamId(record, 0): the transcript stream id of segment #0.
-        var segmentStreamId = StreamId.New(recordStreamId.NodeRef, $"{recordStreamId.LocalId}-0000");
-        var record = new AudioRecord(
-            recordStreamId,
-            session,
-            chatId,
-            services.Clocks().SystemClock.Now.EpochOffset.TotalSeconds,
-            null);
 
         // act
         // Simulate the client losing the network mid-recording: frames stop arriving but the stream is
@@ -70,7 +51,59 @@ public class StreamingEntryNetworkLossTest(
         await recordTask;
     }
 
+    [Fact]
+    public async Task CancelledRecordingFinalizes()
+    {
+        // arrange
+        var (chatId, record, segmentStreamId) = await PrepareRecording();
+        var services = Tester.AppServices;
+        var streaming = services.GetRequiredService<IAudioStreamingBackend>();
+        var chatsBackend = services.GetRequiredService<IChatsBackend>();
+        using var cts = new CancellationTokenSource();
+
+        // act
+        var recordTask = streaming.ProcessAudio(record, 0,
+            new RpcStream<AudioFrame>(FramesThenHang(80)),
+            cts.Token);
+        var streamingEntry = await WhenStreamingEntry(chatsBackend, chatId, segmentStreamId);
+        cts.Cancel();
+
+        // assert
+        await TestWait.When(async ct => {
+            var entry = await chatsBackend.GetEntry(streamingEntry.Id, ct);
+            entry.Should().NotBeNull();
+            entry!.IsContentStreaming.Should().BeFalse(
+                because: "a cancelled recording must still finalize its streaming entry");
+        }, TimeSpan.FromSeconds(30));
+        await recordTask.SuppressCancellationAwait();
+    }
+
     // Private methods
+
+    private async Task<(ChatId ChatId, AudioRecord Record, StreamId SegmentStreamId)> PrepareRecording()
+    {
+        await Tester.SignInAsUniqueAlice();
+        var (chatId, _) = await Tester.CreateChat(false);
+
+        var services = Tester.AppServices;
+        var session = Tester.Session;
+        var userSettingsUI = services.UserSettingsUI(session);
+        await userSettingsUI.UserLanguageSettings()
+            .Set(new UserLanguageSettings { Primary = Languages.English }, CancellationToken.None);
+        await userSettingsUI.ChatUserSettings(chatId)
+            .Update(x => x with { Language = Languages.English, VoiceMode = VoiceMode.TextAndVoice }, CancellationToken.None);
+
+        var recordStreamId = StreamId.New(services.MeshWatcher().ThisNode.Ref);
+        // Mirrors OpenAudioSegment.GetStreamId(record, 0): the transcript stream id of segment #0.
+        var segmentStreamId = StreamId.New(recordStreamId.NodeRef, $"{recordStreamId.LocalId}-0000");
+        var record = new AudioRecord(
+            recordStreamId,
+            session,
+            chatId,
+            services.Clocks().SystemClock.Now.EpochOffset.TotalSeconds,
+            null);
+        return (chatId, record, segmentStreamId);
+    }
 
     private static Task<ChatEntry> WhenStreamingEntry(IChatsBackend chatsBackend, ChatId chatId, StreamId segmentStreamId)
         => TestWait.When(async ct => {
