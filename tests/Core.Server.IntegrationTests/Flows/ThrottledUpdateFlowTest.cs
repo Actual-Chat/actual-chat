@@ -185,8 +185,6 @@ public sealed class ThrottledUpdateFlowTest(ThrottledUpdateFlowFixture fixture, 
             },
             DefaultTimeout);
 
-        // #4945: this failed with the marker wait passed and a single resume here - the details tell
-        // which of the moments, the flow seen as completed or the two reads of the list is off
         var finalResumes = GatedThrottledUpdateFlow.GetResumes(target);
         finalResumes.Should().HaveCount(2,
             "the first resume and the marker are the only ones asked for; the first run was seen as "
