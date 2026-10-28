@@ -22,7 +22,11 @@
             <FileAttachmentTitle Title="@FileName"/>
             <div class="c-bottom">
                 <div class="c-size">
-                    <span>@(SizeText ?? FileSizeFormatter.Format(Length))</span>
+                    @if (Size is not null) {
+                        @Size
+                    } else {
+                        <span>@FileSizeFormatter.Format(Length)</span>
+                    }
                 </div>
                 @Progress
             </div>
@@ -38,8 +42,8 @@
     [Parameter] public string? Url { get; set; }
     [Parameter] public bool IsUploading { get; set; }
     [Parameter] public string? IconClass { get; set; }
-    [Parameter] public string? SizeText { get; set; }
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? Size { get; set; }
     [Parameter] public RenderFragment? Progress { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
 }

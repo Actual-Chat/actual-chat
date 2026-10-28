@@ -1,0 +1,8 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits AttachmentItemBase
+
+@ChildContent(State.Value)
+
+@code {
+    [Parameter, EditorRequired] public RenderFragment<Model> ChildContent { get; set; } = null!;
+}

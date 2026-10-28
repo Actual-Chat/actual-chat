@@ -1,27 +1,39 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@if (Entry.HasUploadingAttachments && IsOwnMessage) {
-    <ChatEntryAttachmentUploadsViewContainer
-        Hub="@Hub"
-        Entry="@Entry"
-        ShownUploads="@(() => _hasShownUploads = true)" />
+@if (!_isReady || Entry is { Attachments.Length: 0, HasUploadingAttachments: false })
+    return;
+
+@if (_hasShownUploads && !Entry.HasUploadingAttachments) {
+    Hub.SendingMessages.NotifyAttachmentsLoaded(Entry.Id);
+    _hasShownUploads = false;
 }
-else if (Entry.Attachments.Length > 0) {
-    if (_hasShownUploads) {
-        Hub.SendingMessages.NotifyAttachmentsLoaded(Entry.Id);
-        _hasShownUploads = false;
-    }
-    <ChatEntryAttachmentList
-        Entry="@Entry"
-        IsUnreadByOthers="@IsUnreadByOthers"
-        IsUnreadByOthersBlockStart="@IsUnreadByOthersBlockStart"/>
-}
+<ChatEntryAttachmentList
+    Entry="@Entry"
+    Uploads="@_uploads?.Attachments"
+    IsUnreadByOthers="@IsUnreadByOthers"
+    IsUnreadByOthersBlockStart="@IsUnreadByOthersBlockStart"/>
 
 @code {
+    private bool _isReady;
     private bool _hasShownUploads;
+    private AttachmentUploads? _uploads;
 
     [Parameter, EditorRequired] public AppUIHub Hub { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwnMessage { get; set; }
     [Parameter] public bool IsUnreadByOthers { get; set; }
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
+
+    protected override async Task OnParametersSetAsync() {
+        // Uploads restored after a restart register only once the stored requests are processed
+        if (!IsOwnMessage || !Entry.HasUploadingAttachments) {
+            _uploads = null;
+            _isReady = true;
+            return;
+        }
+
+        await Hub.SendingMessages.WhenStoredRequestsProcessed.ConfigureAwait(true);
+        _uploads = Hub.SendingMessages.GetMediaUploads(Entry);
+        _hasShownUploads |= _uploads is not null;
+        _isReady = true;
+    }
 }

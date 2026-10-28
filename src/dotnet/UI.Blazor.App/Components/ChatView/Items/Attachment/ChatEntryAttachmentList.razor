@@ -1,22 +1,36 @@
 @namespace ActualChat.UI.Blazor.App.Components
+@implements IDisposable
 @{
     var isUploading = Entry.HasUploadingAttachments;
-    var mediaList = Entry.Attachments.Where(a => a.IsVisualMedia()).ToArray();
-    var fileList = Entry.Attachments.Where(a => !a.IsVisualMedia()).ToArray();
+    // While this client still uploads the entry, its own attachments are what's shown: they exist before
+    // the entry is posted and drop out the moment one is removed. They come in the order the server
+    // stores them, so the tiles stay in place when the uploaded attachments replace them.
+    var uploads = isUploading ? Uploads : null;
+    var attachments = uploads is null ? Entry.Attachments : GetUploadingAttachments(uploads);
+    var mediaList = attachments.Where(a => a.IsVisualMedia()).ToArray();
+    var fileList = attachments.Where(a => !a.IsVisualMedia()).ToArray();
 }
 
 <div class="message-attachments">
-    <VisualMediaAttachmentList MediaList="@mediaList" IsNarrow="@ScreenSize.IsNarrow()" IsUploading="@isUploading"/>
+    <VisualMediaAttachmentList
+        MediaList="@mediaList"
+        IsNarrow="@ScreenSize.IsNarrow()"
+        IsUploading="@isUploading"
+        Uploads="@uploads"/>
     <div class="message-file-attachments">
         @foreach (var attachment in fileList) {
             if (attachment.IsAudio() && attachment.Media.IsReady) {
                 <AudioFileAttachment Attachment="@attachment"/>
             } else {
-                <FileAttachment Attachment="@attachment" IsUploading="@isUploading"/>
+                <FileAttachment Attachment="@attachment" IsUploading="@isUploading" Uploads="@uploads"/>
             }
         }
     </div>
-    @if (IsUnreadByOthers) {
+    @if (uploads is not null) {
+        <ChatMessageSendingStatus
+            Status="@ChatMessageSendingStatus.MessageStatus.Sending"
+            IsDotOnly="@true"/>
+    } else if (IsUnreadByOthers) {
         <ChatMessageSendingStatus
             Status="@ChatMessageSendingStatus.MessageStatus.Unread"
             IsDotOnly="@(!IsUnreadByOthersBlockStart)"/>
@@ -24,8 +38,68 @@
 </div>
 
 @code {
+    private readonly Dictionary<AttachmentId, (Attachment Source, int Index, ChatEntryAttachment Item)> _uploading
+        = new();
+
+    private IAttachmentList? _subscribedUploads;
+
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public IAttachmentList? Uploads { get; set; }
     [Parameter] public bool IsUnreadByOthers { get; set; }
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
+
+    public void Dispose() {
+        if (_subscribedUploads is not null)
+            _subscribedUploads.Changed -= OnUploadsChanged;
+    }
+
+    // Protected/internal methods
+
+    protected override void OnParametersSet() {
+        if (ReferenceEquals(_subscribedUploads, Uploads))
+            return;
+
+        if (_subscribedUploads is not null)
+            _subscribedUploads.Changed -= OnUploadsChanged;
+        _subscribedUploads = Uploads;
+        if (_subscribedUploads is not null)
+            _subscribedUploads.Changed += OnUploadsChanged;
+        _uploading.Clear();
+    }
+
+    // Private methods
+
+    private void OnUploadsChanged(object? sender, EventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    private ChatEntryAttachment[] GetUploadingAttachments(IAttachmentList uploads)
+        => uploads.Items.Select(GetUploadingAttachment).ToArray();
+
+    private ChatEntryAttachment GetUploadingAttachment(Attachment upload, int index) {
+        // Cached per upload: ChatEntryAttachment parameters compare by reference, so a fresh copy on every
+        // render would re-render each tile
+        if (_uploading.TryGetValue(upload.Id, out var cached)
+            && ReferenceEquals(cached.Source, upload)
+            && cached.Index == index)
+            return cached.Item;
+
+        var media = new Media.Media(MediaId.New(Entry.ChatId.Value)) {
+            FileName = upload.FileName,
+            ContentType = upload.FileType,
+            Length = upload.Length,
+            Width = upload.Width,
+            Height = upload.Height,
+            DurationMs = upload.DurationMs,
+            Placeholder = upload.Placeholder,
+        };
+        var item = new ChatEntryAttachment(upload.Id.ToString()) {
+            EntryId = Entry.Id,
+            Index = index,
+            MediaId = media.Id,
+            Media = media,
+        };
+        _uploading[upload.Id] = (upload, index, item);
+        return item;
+    }
 }
