@@ -133,6 +133,8 @@ export class ScrollController {
     private lastWrittenTop: number | null = null;
     private isOverflowLocked = false;
     private overflowLockEpoch = 0;
+    // The lock is stopMomentum's: a navigation's own jump must not release it before it has done its job.
+    private isMomentumStopLock = false;
     private resizeObserver: ResizeObserver | null = null;
 
     private overscrollOffset = 0;       // px, the rubber band's own displacement
@@ -263,6 +265,22 @@ export class ScrollController {
     public static cancelMomentumAll(): void {
         for (const controller of this.all)
             controller.cancelMomentum();
+    }
+
+    /** For a navigation on WebKit: a jump written while iOS inertia runs is only partly taken, and the
+     *  fling keeps dragging the view off the target. Elsewhere the jump's own write ends the fling, and
+     *  locking the overflow on Android stops the fling without letting the jump land. Overridable as
+     *  ?vlstop=0 or ?vlstop=1. */
+    public stopMomentum(): void {
+        if (!canStopMomentum()
+            || !this.enableScrollConstraints || this.phase !== 'in-band' || this.isTouching)
+            return;
+        // Only a list a finger set moving has a fling to end; a lock on a still one only risks a dead
+        // gesture. Not gated on recentSpeed: every re-anchor of a fling through loading history zeroes it.
+        if (!this.isTouchMotion || performance.now() - this.lastScrollTime > FlingContinuationMaxGapMs)
+            return;
+
+        this.killMomentum(true);
     }
 
     public scrollTo(target: number | HTMLElement, options: ScrollToOptions = {}): void {
@@ -818,6 +836,9 @@ export class ScrollController {
     private snapMomentumToBoundary(mustLock: boolean): number {
         const before = this.overscrollElement.getBoundingClientRect().top;
         if (mustLock) {
+            // A stopMomentum lock still running would release this one when its frames are up.
+            ++this.overflowLockEpoch;
+            this.isMomentumStopLock = false;
             this.setOverflowLocked(true, true);
             void this.element.offsetHeight;
         }
@@ -906,7 +927,7 @@ export class ScrollController {
             this.momentumVelocity = 0;
             this.clearVirtualSpring();
         }
-        if (this.isOverflowLocked) {
+        if (this.isOverflowLocked && !this.isMomentumStopLock) {
             ++this.overflowLockEpoch;
             this.setOverflowLocked(false, true);
             if (mustFlushOverflow)
@@ -1097,12 +1118,13 @@ export class ScrollController {
 
     // Ends a fling where the ordinary return path can. WebKit is handled by the release takeover instead;
     // writing scrollTop back to itself is neither a reliable stop nor harmless to its compositor.
-    private killMomentum(): void {
-        if (!canLockOverflow() || this.isOverflowLocked)
+    private killMomentum(mustForce = false): void {
+        if ((!mustForce && !canLockOverflow()) || this.isOverflowLocked)
             return;
 
         const epoch = ++this.overflowLockEpoch;
-        this.setOverflowLocked(true);
+        this.isMomentumStopLock = mustForce;
+        this.setOverflowLocked(true, mustForce);
         // The lock has to land in this frame, not in the one the unlock is already scheduled for.
         void this.element.offsetHeight;
         let frames = MomentumKillFrames;
@@ -1121,7 +1143,8 @@ export class ScrollController {
             // whole gesture, and releasing at touchstart comes too late - the compositor has already
             // decided. Measured on Android: a finger landing on a spring with 1.6px left to run then
             // dragged 397px without moving scrollTop by a pixel. Documented as WebKit-only; it is not.
-            this.setOverflowLocked(false);
+            this.isMomentumStopLock = false;
+            this.setOverflowLocked(false, mustForce);
         };
         fastRaf({ write: unlock });
     }
@@ -1243,6 +1266,16 @@ function mustOwnWholeWheelGesture(): boolean {
     }
 
     return wheelOwnWholeEnabled;
+}
+
+function canStopMomentum(): boolean {
+    const value = new URLSearchParams(location.search).get('vlstop');
+    if (value === '0')
+        return false;
+    if (value === '1')
+        return true;
+
+    return DeviceInfo.isWebKit;
 }
 
 function canTakeOverMomentum(): boolean {

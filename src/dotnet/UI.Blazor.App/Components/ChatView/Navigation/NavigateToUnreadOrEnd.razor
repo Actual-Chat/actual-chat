@@ -13,7 +13,7 @@
 }
 
 <div class="navigate-to-end @_animator.Class">
-    <div class="c-content">
+    <div class="c-content" data-tap-through-fling>
         @if (m.UnreadCount > 0) {
             var text = m.UnreadCount.FormatK();
             <Badge Class="unread-counter" Click="OnClick">@text</Badge>

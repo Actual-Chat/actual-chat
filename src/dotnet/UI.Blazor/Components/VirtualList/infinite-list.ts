@@ -1005,6 +1005,8 @@ export class InfiniteList extends VirtualList {
 
         if (scrollToKey != null && this.indexByKey.has(scrollToKey)) {
             this.isInitiallyPlaced = true;
+            if (scrollToKey !== this.handledScrollToKey)
+                this.scrollController.stopMomentum();
             if (scrollToKey === this.getLastContentKey() && rs.hasVeryLastItem) {
                 this.pendingJump = null;
                 this.handledScrollToKey = scrollToKey;
