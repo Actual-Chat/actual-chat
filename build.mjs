@@ -109,6 +109,7 @@ const options = {
         '.ttf': 'file',
         '.otf': 'file',
         '.svg': 'file',
+        '.webp': 'file',
         '.wasm': 'file',
         '.wasm.map': 'file',
         '.jsep.mjs': 'file',
