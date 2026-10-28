@@ -120,9 +120,13 @@ body.hoverable .image-line .image-item:hover {
     @apply p-0;
     @apply border-none;
 }
-body.hoverable .file-attachment:not(.upload-file):hover,
-.touch-capable .file-attachment:not(.upload-file):active {
+body.hoverable .file-attachment:not(.upload-file):not([data-state="uploading"]):hover,
+.touch-capable .file-attachment:not(.upload-file):not([data-state="uploading"]):active {
     filter: brightness(1.1);
+}
+/* Kept in place while uploading, so the tile doesn't change width once the file is ready */
+.file-attachment[data-state="uploading"] > .c-menu {
+    @apply invisible;
 }
 .file-attachment.with-menu {
     @apply pr-1;

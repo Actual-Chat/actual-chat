@@ -1,28 +1,27 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var isUploading = Entry.HasUploadingAttachments;
-    // Reserved media already carries its size and placeholder, so the gallery can be laid out
-    // before any of it is uploaded; everything else waits behind the plug
+    // Reserved media already carries its name, size and placeholder, so attachments are laid out
+    // before any of them is uploaded; only visual media with no known size waits behind the plug
     var mediaList = Entry.Attachments
         .Where(a => a.IsVisualMedia() && (!isUploading || a.Media is { Width: > 0, Height: > 0 }))
         .ToArray();
     var fileList = Entry.Attachments.Where(a => !a.IsVisualMedia()).ToArray();
-    var hasPlug = isUploading && mediaList.Length < Entry.Attachments.Length;
+    var hasPlug = mediaList.Length + fileList.Length < Entry.Attachments.Length;
 }
 
 <div class="message-attachments">
     <VisualMediaAttachmentList MediaList="@mediaList" IsNarrow="@ScreenSize.IsNarrow()" IsUploading="@isUploading"/>
     <div class="message-file-attachments">
+        @foreach (var attachment in fileList) {
+            if (attachment.IsAudio() && attachment.Media.IsReady) {
+                <AudioFileAttachment Attachment="@attachment"/>
+            } else {
+                <FileAttachment Attachment="@attachment" IsUploading="@isUploading"/>
+            }
+        }
         @if (hasPlug) {
             <UploadPlug/>
-        } else if (!isUploading) {
-            foreach (var attachment in fileList) {
-                if (attachment.IsAudio()) {
-                    <AudioFileAttachment Attachment="@attachment"/>
-                } else {
-                    <FileAttachment Attachment="@attachment"/>
-                }
-            }
         }
     </div>
     @if (IsUnreadByOthers) {
