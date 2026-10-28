@@ -1,42 +1,31 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @inherits ComponentBase<UIHub>
 @{
-    var fileSize = Attachment.Media.Length;
+    var media = Attachment.Media;
+    var isPending = IsUploading && !media.IsReady;
     // ToOrigin: the link opens outside the WebView, which can't resolve the app's content scheme
-    var url = UrlMapper.ToOrigin(UrlMapper.ContentUrl(Attachment.Media.BlobId));
-    var kind = FileTypeHelper.GetKind(Attachment.Media.FileName, Attachment.Media.ContentType);
-    var fileCls = FileTypeHelper.GetCssClass(kind);
-    var iconCls = FileTypeHelper.GetIconClass(kind);
+    var url = isPending ? null : UrlMapper.ToOrigin(UrlMapper.ContentUrl(media.BlobId));
 }
 
-<div class="file-attachment with-menu unfocusable">
-    <a class="c-file-link"
-       href="@url"
-       target="_blank"
-       role="button">
-        <div class="c-file-icon @fileCls">
-            <i class="@iconCls text-xl"></i>
-        </div>
-        <div class="c-file-info">
-            <FileAttachmentTitle Title="@Attachment.Media.FileName"/>
-            <div class="c-bottom">
-                <div class="c-size">
-                    <span>@FileSizeFormatter.Format(fileSize)</span>
-                </div>
-            </div>
-        </div>
-    </a>
+<FileAttachmentTile
+    FileName="@media.FileName"
+    ContentType="@media.ContentType"
+    Length="@media.Length"
+    Url="@url"
+    IsUploading="@isPending"
+    Class="with-menu">
     <ButtonRound
-        Class="btn-sm btn-transparent"
+        Class="c-menu btn-sm btn-transparent"
         data-menu="@(MenuRef.New<FileAttachmentMenu>(Attachment.EntryId.Value, Attachment.Index.ToString()).ToString())"
         data-menu-trigger="@MenuTrigger.Primary"
         data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
         <i class="icon-more-vertical text-xl"></i>
     </ButtonRound>
-</div>
+</FileAttachmentTile>
 
 @code {
     [Parameter, EditorRequired]
     public ChatEntryAttachment Attachment { get; set; } = null!;
+    [Parameter] public bool IsUploading { get; set; }
     [Parameter] public bool IconOnly { get; set; }
 }

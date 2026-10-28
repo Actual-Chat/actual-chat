@@ -10,9 +10,6 @@
     var progressValue = progress.Progress;
     var stageDetails = progress.Details;
     var uploadProgressClass = "attachment-upload-progress";
-    var kind = FileTypeHelper.GetKind(attachment.FileName, attachment.FileType);
-    var fileCls = FileTypeHelper.GetCssClass(kind);
-    var iconCls = FileTypeHelper.GetIconClass(kind);
     if (progress.IsFailed) {
         progressValue = Math.Max(progressValue, 30);
         uploadProgressClass += " attachment-upload-failed";
@@ -21,51 +18,40 @@
     }
     var uploadStyle = $"width: {progressValue}%;";
     var isUploading = progress.IsInProgress;
+    var iconCls = previewState switch {
+        PreviewAccessState.PendingGetAccessRequest => "icon-file-blocked text-2xl text-02",
+        PreviewAccessState.NoFileAccess => "icon-file-broken text-2xl text-02",
+        _ => null,
+    };
+    var sizeText = isUploading && progress.UploadSize > 0
+        ? FileSizeFormatter.FormatProgress(progress.UploadProgress, progress.UploadSize)
+        : null;
 }
 
-<div class="file-attachment upload-file unfocusable">
-    <div class="c-file-icon @fileCls">
-        @if (previewState is PreviewAccessState.PendingGetAccessRequest) {
-            <i class="icon-file-blocked text-2xl text-02"></i>
-        } else if (previewState is PreviewAccessState.NoFileAccess) {
-            <i class="icon-file-broken text-2xl text-02"></i>
-        } else {
-            <i class="@iconCls text-xl"></i>
-        }
-        @if (!progress.IsReady && previewState is PreviewAccessState.Ok) {
-            @if (isUploading) {
-                <span class="spinner-icon-wrapper">
-                    <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt="loading"/>
-                </span>
-            }
-        }
-    </div>
-    <div class="c-file-info">
-        <FileAttachmentTitle Title="@attachment.FileName"/>
-        <div class="c-bottom">
-            <div class="c-size">
-                @if (isUploading && progress.UploadSize > 0) {
-                    <span>@FileSizeFormatter.FormatProgress(progress.UploadProgress, progress.UploadSize)</span>
-                } else {
-                    <span>@FileSizeFormatter.Format(attachment.Length)</span>
-                }
-            </div>
-            <div class="@uploadProgressClass"
-                 style="@uploadStyle"
-                 title="@stageDetails">
-            </div>
+<FileAttachmentTile
+    FileName="@attachment.FileName"
+    ContentType="@attachment.FileType"
+    Length="@attachment.Length"
+    IsUploading="@(isUploading && previewState is PreviewAccessState.Ok)"
+    IconClass="@iconCls"
+    SizeText="@sizeText"
+    Class="upload-file">
+    <Progress>
+        <div class="@uploadProgressClass"
+             style="@uploadStyle"
+             title="@stageDetails">
         </div>
-    </div>
-    @if (!progress.IsReady) {
-        @if (progress.CanRestart && !m.NoAccess && RestartClick.HasDelegate) {
+    </Progress>
+    <ChildContent>
+        @if (!progress.IsReady && progress.CanRestart && !m.NoAccess && RestartClick.HasDelegate) {
             <span class="reload-icon-wrapper">
                 <ButtonRound Click="@RestartClick" Class="btn-sm">
                     <i class="icon-sync text-2xl"></i>
                 </ButtonRound>
             </span>
         }
-    }
-    <ButtonRound Click="@RemoveClick" Class="remove-attachment-btn btn-danger">
-        <i class="icon-trash03 text-2xl font-thin"></i>
-    </ButtonRound>
-</div>
+        <ButtonRound Click="@RemoveClick" Class="remove-attachment-btn btn-danger">
+            <i class="icon-trash03 text-2xl font-thin"></i>
+        </ButtonRound>
+    </ChildContent>
+</FileAttachmentTile>
