@@ -80,7 +80,9 @@ public static class TestWait
         [CallerLineNumber] int callerLine = 0)
     {
         var budget = Budget(timeout, isExactTimeout);
-        return Measured(() => TestExt.When(assertion, checkIntervals, budget), budget, callerFilePath, callerLine);
+        return Measured(
+            () => TestExt.When(Isolated(assertion), checkIntervals, budget),
+            budget, callerFilePath, callerLine);
     }
 
     public static Task WhenPolled(
@@ -100,7 +102,9 @@ public static class TestWait
         [CallerLineNumber] int callerLine = 0)
     {
         var budget = Budget(timeout, isExactTimeout);
-        return Measured(() => TestExt.When(assertion, checkIntervals, budget), budget, callerFilePath, callerLine);
+        return Measured(
+            () => TestExt.When(Isolated(assertion), checkIntervals, budget),
+            budget, callerFilePath, callerLine);
     }
 
     // The type argument has to be explicit at the call site: without it the non-generic overload
@@ -160,6 +164,18 @@ public static class TestWait
     }
 
     // Private methods
+
+    private static Action Isolated(Action assertion)
+        // A failed Contain(predicate) leaves its chain for the next Should() in the same flow (AwesomeAssertions'
+        // AssertionChain.ReuseOnce), and the next poll's assertions then pass unchecked (#4945)
+        => () => ExecutionContext.Run(ExecutionContext.Capture()!, static s => ((Action)s!).Invoke(), assertion);
+
+    private static Func<Task> Isolated(Func<Task> assertion)
+        => () => {
+            var assertionTask = Task.CompletedTask;
+            ExecutionContext.Run(ExecutionContext.Capture()!, _ => assertionTask = assertion.Invoke(), null);
+            return assertionTask;
+        };
 
     private static TimeSpan Budget(TimeSpan? timeout, bool isExactTimeout)
         => timeout is not { } value ? DefaultTimeout.CiScaled()
