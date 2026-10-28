@@ -16,13 +16,42 @@ public class MediaSerializationTest(ITestOutputHelper @out) : TestBase(@out)
     {
         var mediaId = MediaId.New(TestUserId.Value, "local1");
         var placeholder = new byte[] { 1, 208, 255, 196 };
-        var media = new Media(mediaId, "content-1", 0, MediaKind.Unknown, new MetadataBag(), placeholder);
+        var thumbnailId = MediaId.New(TestUserId.Value, "thumb1");
+        var media = new Media(
+            mediaId,
+            "content-1",
+            0,
+            MediaKind.Unknown,
+            new MetadataBag(),
+            placeholder,
+            thumbnailId);
 
         var s = media.PassThroughSerializers(Out);
         s.Id.Should().Be(media.Id);
         s.BlobId.Should().Be(media.BlobId);
         s.Placeholder.Should().Equal(placeholder,
             "a placeholder that doesn't survive Key(5) leaves every recipient with the grey skeleton");
+        s.ThumbnailId.Should().Be(thumbnailId);
+    }
+
+    [Fact]
+    public void MediaFullShouldKeepThumbnailIdAndUserId()
+    {
+        // arrange
+        var mediaId = MediaId.New(TestUserId.Value, "local1");
+        var thumbnailId = MediaId.New(TestUserId.Value, "thumb1");
+        var media = new MediaFull(mediaId) {
+            BlobId = "content-1",
+            UserId = TestUserId,
+            ThumbnailId = thumbnailId,
+        };
+
+        // act
+        var s = media.PassThroughSerializers(Out);
+
+        // assert
+        s.ThumbnailId.Should().Be(thumbnailId, "ThumbnailId moved from MediaFull to Media under the same Key(11)");
+        s.UserId.Should().Be(TestUserId);
     }
 
     [Fact]
