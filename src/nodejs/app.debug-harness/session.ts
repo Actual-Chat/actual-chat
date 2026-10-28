@@ -54,8 +54,11 @@ export async function signIn(page: Page, phoneOrEmail: string, isFresh = false):
     await waitForDebugUI(page);
     const currentUserId = await getUserId(page);
     if (currentUserId && !currentUserId.startsWith('~')) {
-        if (!isFresh)
+        if (!isFresh) {
+            // A step added to onboarding after this account went through it shows up again
+            await skipOnboarding(page);
             return currentUserId;
+        }
 
         await page.evaluate(() => (globalThis as DebugUIRoot).debugUI!.signOut());
         await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
