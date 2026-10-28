@@ -522,7 +522,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UnreadCount>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UnreadCountWithTime>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UploadAttachmentItem>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UploadPlug>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VerificationStatus>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.ScreenCastAlreadyActiveModal>();
@@ -1423,7 +1422,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.UnreadCount), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.UnreadCountWithTime), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.UploadAttachmentItem), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.UploadPlug), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VerificationStatus), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.ScreenCastAlreadyActiveModal), AotTypeKind.Component),

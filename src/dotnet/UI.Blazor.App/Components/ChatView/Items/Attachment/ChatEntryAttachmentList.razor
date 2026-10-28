@@ -1,13 +1,8 @@
 @namespace ActualChat.UI.Blazor.App.Components
 @{
     var isUploading = Entry.HasUploadingAttachments;
-    // Reserved media already carries its name, size and placeholder, so attachments are laid out
-    // before any of them is uploaded; only visual media with no known size waits behind the plug
-    var mediaList = Entry.Attachments
-        .Where(a => a.IsVisualMedia() && (!isUploading || a.Media is { Width: > 0, Height: > 0 }))
-        .ToArray();
+    var mediaList = Entry.Attachments.Where(a => a.IsVisualMedia()).ToArray();
     var fileList = Entry.Attachments.Where(a => !a.IsVisualMedia()).ToArray();
-    var hasPlug = mediaList.Length + fileList.Length < Entry.Attachments.Length;
 }
 
 <div class="message-attachments">
@@ -19,9 +14,6 @@
             } else {
                 <FileAttachment Attachment="@attachment" IsUploading="@isUploading"/>
             }
-        }
-        @if (hasPlug) {
-            <UploadPlug/>
         }
     </div>
     @if (IsUnreadByOthers) {
