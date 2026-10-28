@@ -63,3 +63,47 @@ jobs:
       actions: read
     uses: ./.github/workflows/notify-voxt.yml
     secrets: inherit
+
+  recovery:
+    name: Find the red a green run ends
+    if: >-
+      github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.head_branch == 'dev' || startsWith(github.event.workflow_run.head_branch, 'release/'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      note: ${{ steps.recovery.outputs.note }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/CiWatchdog.ps1
+          sparse-checkout-cone-mode: false
+          lfs: false
+
+      - name: Find the red streak
+        id: recovery
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          . ./scripts/CiWatchdog.ps1
+          $note = Get-CiRecoveryNote -RunId $env:RUN_ID
+          Write-Host ($note ? $note : 'No reported red before this run.')
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "note=$note"
+
+  notify-recovered:
+    name: Notify Voxt (green again)
+    needs: recovery
+    if: needs.recovery.outputs.note != ''
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/notify-voxt.yml
+    with:
+      recovery-note: ${{ needs.recovery.outputs.note }}
+    secrets: inherit

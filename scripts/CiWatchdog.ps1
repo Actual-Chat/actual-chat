@@ -57,6 +57,11 @@ $script:HostLossLookahead = 4
 # Their sum has to fit the workflow's 10-minute limit.
 $script:LogRetryDelaysSeconds = @(60, 120)
 
+# The watchdog re-runs as this account; a human re-run carries the person's login.
+$script:BotLogin = 'github-actions[bot]'
+# How many earlier runs are read to find where a red streak began.
+$script:RecoveryLookback = 50
+
 function Get-CiFailureCategory {
     <#
     .SYNOPSIS
@@ -1044,4 +1049,97 @@ function Invoke-CiWatchdog {
 
     Write-Host (Format-CiJournalNote $record)
     return $record
+}
+
+function Get-CiRedStreak {
+    <#
+    .SYNOPSIS
+        The red runs a green run ends, oldest first; empty when nothing red was reported before it.
+    .DESCRIPTION
+        Runs are ordered by when they completed, which is the order their messages reached Voxt.
+        A run counts as red when its latest attempt failed: the watchdog re-runs only first
+        attempts, so a failed latest attempt was reported. Cancelled and skipped runs reported
+        nothing and are passed over.
+
+        A green re-run of the same run ends a streak too, unless the watchdog started it: then the
+        failed attempt was a flake it kept quiet about.
+    #>
+    param(
+        [Parameter(Mandatory)][object]$Run,
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$EarlierRuns,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$PreviousAttemptConclusion)
+
+    $completedAt = [DateTime]$Run.updated_at
+    $earlier = @($EarlierRuns |
+        Where-Object { $_.id -ne $Run.id -and [DateTime]$_.updated_at -lt $completedAt } |
+        Where-Object { $_.conclusion -in @('success', 'failure') } |
+        Sort-Object { [DateTime]$_.updated_at } -Descending)
+    $streak = [Collections.Generic.List[object]]::new()
+    foreach ($earlierRun in $earlier) {
+        if ($earlierRun.conclusion -ne 'failure') {
+            break
+        }
+        $streak.Insert(0, $earlierRun)
+    }
+    if ($Run.run_attempt -gt 1 -and $PreviousAttemptConclusion -eq 'failure' -and
+            $Run.triggering_actor.login -ne $script:BotLogin) {
+        $streak.Add($Run)
+    }
+    return , $streak.ToArray()
+}
+
+function Format-CiDuration {
+    param([Parameter(Mandatory)][TimeSpan]$Duration)
+
+    if ($Duration.TotalMinutes -lt 1) {
+        return 'under a minute'
+    }
+    if ($Duration.TotalHours -lt 1) {
+        return "$([int][Math]::Floor($Duration.TotalMinutes)) min"
+    }
+    if ($Duration.TotalDays -lt 1) {
+        return "$([int][Math]::Floor($Duration.TotalHours)) h $($Duration.Minutes) min"
+    }
+    return "$([int][Math]::Floor($Duration.TotalDays)) d $($Duration.Hours) h"
+}
+
+function Format-CiRecoveryNote {
+    <#
+    .SYNOPSIS
+        The line a recovery message adds: where the red began, how many runs and how long it lasted.
+    #>
+    param(
+        [Parameter(Mandatory)][object]$Run,
+        [Parameter(Mandatory)][object[]]$Streak)
+
+    $first = $Streak[0]
+    $count = $Streak.Count
+    $runs = if ($count -eq 1) { '1 red run' } else { "$count red runs" }
+    $duration = Format-CiDuration ([DateTime]$Run.updated_at - [DateTime]$first.updated_at)
+    return "Red since #$($first.run_number) ($runs, $duration): $($first.html_url)"
+}
+
+function Get-CiRecoveryNote {
+    <#
+    .SYNOPSIS
+        For a green run, the recovery line to post to Voxt, or '' when it ends no reported red.
+    #>
+    param([Parameter(Mandatory)][string]$RunId)
+
+    $run = Invoke-CiGh @('api', "repos/$script:Repo/actions/runs/$RunId") | ConvertFrom-Json
+    $branch = [Uri]::EscapeDataString($run.head_branch)
+    $query = "branch=$branch&status=completed&per_page=$script:RecoveryLookback"
+    $earlier = (Invoke-CiGh @('api', "repos/$script:Repo/actions/workflows/$($run.workflow_id)/runs?$query") |
+        ConvertFrom-Json).workflow_runs
+    $previousAttempt = ''
+    if ($run.run_attempt -gt 1) {
+        $attempt = $run.run_attempt - 1
+        $previousAttempt = (Invoke-CiGh @('api', "repos/$script:Repo/actions/runs/$RunId/attempts/$attempt") |
+            ConvertFrom-Json).conclusion
+    }
+    $streak = Get-CiRedStreak $run @($earlier) "$previousAttempt"
+    if ($streak.Count -eq 0) {
+        return ''
+    }
+    return Format-CiRecoveryNote $run $streak
 }

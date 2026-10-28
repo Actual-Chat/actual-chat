@@ -5,6 +5,12 @@ on:
   # once it has decided not to re-run the failed jobs, so a flake it re-runs stays quiet.
   # A called workflow sees the caller's event, so github.event.workflow_run is the same.
   workflow_call:
+    inputs:
+      recovery-note:
+        # Set by CI watchdog for a green run that ends reported red; the message then says it's green again.
+        description: "Where the red this run ends began"
+        type: string
+        default: ''
   workflow_run:
     workflows:
       - Run claude tests
@@ -21,8 +27,8 @@ permissions:
 
 jobs:
   notify-failure:
-    name: Notify Voxt on failure
-    if: github.event.workflow_run.conclusion == 'failure'
+    name: Notify Voxt
+    if: github.event.workflow_run.conclusion == 'failure' || inputs.recovery-note != ''
     runs-on: ubuntu-latest
     steps:
       - name: Checkout configs
@@ -50,9 +56,21 @@ jobs:
           COMMIT_AUTHOR: ${{ github.event.workflow_run.head_commit.author.name }}
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.event.workflow_run.id }}
+          RECOVERY_NOTE: ${{ inputs.recovery-note }}
         run: |
           short_sha="${SHA:0:7}"
           commit_title="$(printf '%s' "$COMMIT_MSG" | head -n1)"
+          if [ -n "$RECOVERY_NOTE" ]; then
+            {
+              echo "text<<VOXT_EOF"
+              echo "✅ **$REPO — $WF #$NUM is green again**"
+              echo "\`$BRANCH\` · \`$short_sha\` $commit_title"
+              echo "$RECOVERY_NOTE"
+              echo "$URL"
+              echo "VOXT_EOF"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           # Blame the author of the commit under test, not the triggering actor: a
           # scheduled run is credited to whoever last touched the workflow file, which
           # has nothing to do with what's failing.
