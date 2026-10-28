@@ -259,7 +259,7 @@ public partial class AudioStreamingBackend
                     () => audioMemoizer.WhenRunning ?? Task.CompletedTask,
                     Log,
                     "Failed to publish audio stream",
-                    cancellationToken);
+                    CancellationToken.None);
             else
                 await audioMemoizer.DisposeAsync().ConfigureAwait(false);
         }
@@ -301,8 +301,6 @@ public partial class AudioStreamingBackend
         try {
             try {
                 try {
-                    // Inside the finally blocks below: it throws if the request is cancelled before the
-                    // publish task starts, and transcription is already running and waits for them
                     if (publishAudioTask != null)
                         await publishAudioTask.ConfigureAwait(false);
                     await openSegment.Source.WhenDurationAvailable.ConfigureAwait(false);
