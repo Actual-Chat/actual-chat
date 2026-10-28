@@ -19,6 +19,7 @@ public sealed partial class Emoji : StringIdentifier, IStringIdentifier<Emoji>
 {
     private static ILogger? _log;
     private static ILogger Log => _log ??= StaticLog.For<Emoji>();
+    private static readonly ILruCache<string, Emoji> UnsupportedCache = CreateCache<Emoji>(32);
 
     [IgnoreDataMember]
     public string Symbol { get; }
@@ -30,6 +31,9 @@ public sealed partial class Emoji : StringIdentifier, IStringIdentifier<Emoji>
     public EmojiGroup Group { get; }
 
     // Factories and constructors
+
+    private static Emoji NewUnsupported(string id)
+        => new(id, id);
 
     // Standard emoji: id == symbol
     internal Emoji(string symbol, string title, EmojiGroup group = EmojiGroup.Gestures) : base(symbol)
@@ -50,22 +54,34 @@ public sealed partial class Emoji : StringIdentifier, IStringIdentifier<Emoji>
     // Equality
 
     public bool Equals(Emoji? other)
-        => ReferenceEquals(this, other); // Fine for Emoji
+        // By value, since an unsupported emoji isn't a singleton
+        => ReferenceEquals(this, other)
+            || (!ReferenceEquals(other, null) && HashCode == other.HashCode && string.Equals(Value, other.Value));
     public override bool Equals(object? obj)
-        => ReferenceEquals(this, obj); // Fine for Emoji
+        => obj is Emoji other && Equals(other);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(Emoji? left, Emoji? right)
-        => ReferenceEquals(left, right); // Fine for Emoji
+        => left?.Equals(right) ?? right is null;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator !=(Emoji? left, Emoji? right)
-        => !ReferenceEquals(left, right); // Fine for Emoji
+        => !(left?.Equals(right) ?? right is null);
 
     // Parsing
 
     public static Emoji Parse(string? s)
         => TryParse(s, out var result) ? result : throw StandardError.Format<Emoji>(s);
+
+    static Emoji IStringLike<Emoji>.Parse(string? s)
+        => ParseOrUnsupported(s);
+
+    public static Emoji ParseOrUnsupported(string? s)
+        // Formatters deserialize through this one, so an emoji added by a later release reads as
+        // a placeholder rather than failing the whole payload; Parse itself stays strict.
+        => TryParse(s, out var result) ? result
+            : IsValidUnsupportedId(s) ? GetUnsupported(s)
+            : throw StandardError.Format<Emoji>(s);
 
     public static Emoji? ParseNullable(string? s)
         => s.IsNullOrEmpty() ? null : Parse(s);
@@ -83,4 +99,18 @@ public sealed partial class Emoji : StringIdentifier, IStringIdentifier<Emoji>
         result = null;
         return false;
     }
+
+    public Emoji RequireSupported()
+        => Emojis.ById.ContainsKey(Value) ? this : throw StandardError.Format<Emoji>(Value);
+
+    // Private methods
+
+    private static Emoji GetUnsupported(string id)
+        => UnsupportedCache.TryGetValue(id, out var cached) ? cached
+            : UnsupportedCache.AddOrGet(id, NewUnsupported(id));
+
+    private static bool IsValidUnsupportedId([NotNullWhen(true)] string? s)
+        => !s.IsNullOrEmpty()
+            && s.Length <= 32
+            && !s.Any(c => char.IsWhiteSpace(c) || char.IsControl(c));
 }

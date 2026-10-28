@@ -38,6 +38,7 @@ public class Reactions(IServiceProvider services) : IReactions
     {
         var session = command.Session;
         var reaction = command.Reaction;
+        reaction.Emoji.RequireSupported();
         var chatRules = await Chats.GetRules(session, reaction.EntryId.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Write);
 

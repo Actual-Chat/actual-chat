@@ -112,6 +112,22 @@ public class ChatCallReactionsTest(AppHostFixture fixture, ITestOutputHelper @ou
     }
 
     [Fact]
+    public async Task UnsupportedEmojiShouldBeRejected()
+    {
+        // arrange
+        var (session, chatId) = await CreateTestChat("UnsupportedEmoji");
+        var unsupportedEmoji = Emoji.ParseOrUnsupported("🦄");
+
+        // act
+        var send = () => Api.Send(session, chatId, unsupportedEmoji, CancellationToken.None);
+
+        // assert
+        await send.Should().ThrowAsync<FormatException>();
+        var reactions = await Backend.List(chatId, CancellationToken.None);
+        reactions.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task MemberReactionShouldBeListedButOutsiderShouldBeIgnored()
     {
         // arrange
