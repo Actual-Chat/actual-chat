@@ -106,9 +106,13 @@ turned down. A decision that changes one of these adds or replaces its entry in 
   watchdog logic.
 - **2026-10-22 — Network errors in build steps (ENOTFOUND, ETIMEDOUT, ECONNRESET) stay `Build`,
   not `Infra`, for now,** so they are not re-run.
-- **2026-10-21 — A test job's log without failed tests or a totals line is fetched again after 1
-  and 2 more minutes before it counts as `Unparsed`:** `workflow_run` fires before the last job's
-  log is archived.
+- **2026-10-28 — The waits grew to 2, 4 and 8 minutes, and the triage job's limit to 20
+  minutes** (#5556). 1 and 2 minutes left the first red nightly after them `Unparsed`: its 2-hour
+  TS E2E job still had no test output 3 minutes after it ended, while the same log parses in full
+  later. Every warning about a missing output now gives the job log's line count and the times
+  of its first and last lines, since the log is complete by the time anyone looks.
+- **2026-10-21 — A test job's log without failed tests or a totals line is fetched again before
+  it counts as `Unparsed`:** `workflow_run` fires before the last job's log is archived.
 - **2026-10-09 — Large records go through `gh api --input`; errors are capped at 500 characters,
   test names are never cut, a journal note lists at most 30 tests per job** — the 128 KB argument
   limit and GitHub's 65,536-character comment limit.

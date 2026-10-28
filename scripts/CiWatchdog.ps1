@@ -54,8 +54,9 @@ $script:JournalTestLimit = 30
 $script:HostLossLookahead = 4
 
 # Waits before each re-download of a log that came back without its test output.
-# Their sum has to fit the workflow's 10-minute limit.
-$script:LogRetryDelaysSeconds = @(60, 120)
+# Their sum has to fit the workflow's 20-minute limit. 1 and 2 minutes were not enough
+# for the 2-hour nightly TS E2E job (#5556).
+$script:LogRetryDelaysSeconds = @(120, 240, 480)
 
 # The watchdog re-runs as this account; a human re-run carries the person's login.
 $script:BotLogin = 'github-actions[bot]'
@@ -829,8 +830,9 @@ function Get-CiRunRecord {
     # and no lost host is read as a log not ready yet, and fetched again. A log
     # that never completes degrades to Unparsed, which a human then reads.
     $flakes = @(Get-CiKnownFlakes)
-    $record = New-CiRunRecord $run $failed (Get-CiFailedLog $RunId) $flakes
-    foreach ($delay in $LogRetryDelaysSeconds) {
+    $log = Get-CiFailedLog $RunId
+    $record = New-CiRunRecord $run $failed $log $flakes
+    foreach ($delay in @($LogRetryDelaysSeconds) + @($null)) {
         $unread = @($record.Jobs | Where-Object {
             $_.Category -eq 'Test' -and @($_.Tests).Count -eq 0 -and @($_.Totals).Count -eq 0 -and
                 @($_.HostLosses).Count -eq 0
@@ -839,11 +841,40 @@ function Get-CiRunRecord {
             break
         }
 
-        Write-Warning "No test output yet for $($unread.Name -join ', '); fetching the log again in $delay s."
+        # What came back instead is the only clue to why the output is missing, and the log
+        # is complete by the time anyone looks.
+        $sections = Split-CiLogByJob $log
+        $shapes = ($unread | ForEach-Object { "$($_.Name) ($(Format-CiLogShape $sections[$_.Name]))" }) -join ', '
+        if ($null -eq $delay) {
+            Write-Warning "Still no test output for $shapes; recording the run as it is."
+            break
+        }
+        Write-Warning "No test output yet for $shapes; fetching the log again in $delay s."
         Start-Sleep -Seconds $delay
-        $record = New-CiRunRecord $run $failed (Get-CiFailedLog $RunId) $flakes
+        $log = Get-CiFailedLog $RunId
+        $record = New-CiRunRecord $run $failed $log $flakes
     }
     return $record
+}
+
+function Format-CiLogShape {
+    <#
+    .SYNOPSIS
+        How much of a job's log arrived: its line count and the times of its first and last lines.
+    #>
+    param([AllowNull()][AllowEmptyString()][string]$JobLog)
+
+    if (-not $JobLog) {
+        return 'no log'
+    }
+    $lines = @($JobLog -split "`n" | Where-Object { $_ })
+    $times = @($lines | ForEach-Object {
+        if ($_ -match '\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d') { $Matches[0] }
+    })
+    if ($times.Count -eq 0) {
+        return "$($lines.Count) lines, no timestamps"
+    }
+    return "$($lines.Count) lines, $($times[0])Z to $($times[-1])Z"
 }
 
 function Get-CiFailedLog {

@@ -790,6 +790,15 @@ Describe "CiWatchdog.ps1" {
             $record.Verdict | Should -Be 'NewFailure'
         }
 
+        It "says how much of the log came back when the test output is still missing" {
+            Set-GhResponses @($script:unfinishedLog, $script:unfinishedLog)
+            $record = Get-CiRunRecord '39531379699' -LogRetryDelaysSeconds @(0) -WarningVariable warnings `
+                -WarningAction SilentlyContinue
+            $script:logDownloads | Should -Be 2
+            $record.Verdict | Should -Be 'Unparsed'
+            $warnings[-1] | Should -BeLike 'Still no test output for TS E2E Tests / TS E2E tests results (1 lines, *'
+        }
+
         It "fetches the log again when a test job came back without its test output" {
             Set-GhResponses @($script:unfinishedLog, $script:vitestLog)
             $record = Get-CiRunRecord '39531379699' -LogRetryDelaysSeconds @(0, 0) -WarningAction SilentlyContinue
@@ -1054,6 +1063,18 @@ Describe "CiWatchdog.ps1" {
             $earlier = @(New-Run 11 'success' '2026-10-28T01:00:00Z')
 
             Get-CiRedStreak $green $earlier 'failure' | Should -BeNullOrEmpty
+        }
+    }
+
+    Context "Format-CiLogShape" {
+        It "gives the line count and the first and last timestamps" {
+            $log = "a`tb`t2026-10-28T02:05:29.9199829Z start`nnot timed`na`tb`t2026-10-28T03:21:37.2373691Z end"
+            Format-CiLogShape $log | Should -Be '3 lines, 2026-10-28T02:05:29Z to 2026-10-28T03:21:37Z'
+        }
+
+        It "says when there is no log at all" {
+            Format-CiLogShape '' | Should -Be 'no log'
+            Format-CiLogShape $null | Should -Be 'no log'
         }
     }
 
