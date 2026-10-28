@@ -3,13 +3,14 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Media;
 using Windows.Media.Audio;
 using Windows.Media.Capture;
+using Windows.Media.Devices;
+using Windows.Media.Effects;
 using Windows.Media.MediaProperties;
 using Windows.Media.Render;
 using ActualChat.App.Maui.Services.Recording;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.Audio.APM;
 using NAudio.CoreAudioApi;
-using NAudio.CoreAudioApi.Interfaces;
 using NAudio.Wave;
 using Role = NAudio.CoreAudioApi.Role;
 
@@ -21,6 +22,9 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
     private const int MicDelayMs = 10;
     private const int MicDelaySamples = Constants.Audio.RecordingSampleRate * MicDelayMs / 1000;
     private static readonly TimeSpan GraphRetryDelay = TimeSpan.FromMilliseconds(250);
+    private static readonly TimeSpan AecMaxDelay = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan AecDelayWindow = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan AecDelayEstimatePeriod = TimeSpan.FromSeconds(1);
     private ILogger Log { get; } = log;
 
     public async Task<AudioCaptureResult> Capture(CancellationToken cancellationToken)
@@ -44,16 +48,22 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 .SetPipeline(false, false));
         }
         catch (Exception e) {
-            Log.LogWarning(e, "Failed to set up AudioProcessingModule; proceeding without APM features");
+            // Never expected: webrtc-apm ships with the app. Windows' own processing is the fallback,
+            // which some drivers don't provide at all - so this must be loud.
+            Log.LogCritical(e,
+                "Failed to set up AudioProcessingModule: NO Voxt echo cancellation, falling back to Windows' own");
         }
+        var isApmMissing = apm is null;
 
         var micEncoding = AudioEncodingProperties.CreatePcm(
             Constants.Audio.RecordingSampleRate,
             Constants.Audio.Channels,
             32);
         micEncoding.Subtype = MediaEncodingSubtypes.Float;
-        var settings = new AudioGraphSettings(AudioRenderCategory.Other) {
-            // Use a non-communications category to avoid OS voice processing (AEC/NS/AGC) on capture
+        // Communications is what makes Windows run its own voice processing (AEC/NS/AGC) on the capture;
+        // with the APM in the path, a second round of it would only distort what the APM gets.
+        var renderCategory = isApmMissing ? AudioRenderCategory.Communications : AudioRenderCategory.Other;
+        var settings = new AudioGraphSettings(renderCategory) {
             QuantumSizeSelectionMode = QuantumSizeSelectionMode.ClosestToDesired,
             DesiredSamplesPerQuantum = Constants.Audio.RecordingSampleRate / 1000 * CaptureBufferMs,
         };
@@ -72,9 +82,9 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
         AudioGraph? graph = null;
         AudioDeviceInputNode? inputNode = null;
         AudioFrameOutputNode? outputNode = null;
-        WasapiCapture? loopbackCapture = null;
+        WindowsAecLoopback? loopback = null;
         MMDeviceEnumerator? deviceEnumerator = null;
-        DefaultCaptureDeviceWatcher? deviceWatcher = null;
+        DefaultDeviceWatcher? deviceWatcher = null;
         MMDevice? micDevice = null;
         AudioEndpointVolume? endpointVolume = null;
         CancellationTokenSource? processingCts = null;
@@ -103,14 +113,8 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 // Multimedia, matching what CreateDeviceInputNodeAsync opens below. Under
                 // Communications, AGC drove a mic nobody was recording and never converged.
                 micDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Multimedia);
-                var loopbackDevice = deviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
-                loopbackCapture = new CustomWasapiLoopbackCapture(loopbackDevice, true, CaptureBufferMs);
-                loopbackCapture.DataAvailable += OnLoopbackCaptureOnDataAvailable;
-                // NAudio's only channel for a capture-thread failure. Unsubscribed, losing the
-                // render endpoint silently ends the AEC reference for the rest of the session.
-                loopbackCapture.RecordingStopped += OnLoopbackRecordingStopped;
-                loopbackCapture.WaveFormat =
-                    WaveFormat.CreateIeeeFloatWaveFormat(Constants.Audio.RecordingSampleRate, 1);
+                if (!isApmMissing)
+                    loopback = new WindowsAecLoopback(deviceEnumerator, loopbackBuffer, CaptureBufferMs, Log);
             }
             catch (Exception e) {
                 // Under NativeAOT, ILC emits an invalid body for NAudio's COM ComObject wrapper
@@ -121,8 +125,8 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 // without the AEC loopback reverse stream and without mic volume control.
                 Log.LogWarning(e,
                     "NAudio capture devices unavailable; continuing without AEC loopback and mic volume control");
-                loopbackCapture.DisposeSilently();
-                loopbackCapture = null;
+                loopback.DisposeSilently();
+                loopback = null;
                 micDevice.DisposeSilently();
                 micDevice = null;
                 deviceEnumerator.DisposeSilently();
@@ -131,10 +135,10 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
 
             if (deviceEnumerator != null) {
                 try {
-                    // The endpoint the graph actually opened, so a re-pick landing back on it is
-                    // ignored: WinRT ids embed the WASAPI endpoint id the notification carries.
+                    // The endpoint the graph actually opened, so a re-pick landing back on it is ignored
                     var openedDeviceId = inputNode?.Device?.Id;
-                    deviceWatcher = new DefaultCaptureDeviceWatcher(openedDeviceId, OnDefaultCaptureDeviceChanged);
+                    deviceWatcher = new DefaultDeviceWatcher(
+                        DataFlow.Capture, openedDeviceId, OnDefaultCaptureDeviceChanged);
                     deviceEnumerator.RegisterEndpointNotificationCallback(deviceWatcher);
                 }
                 catch (Exception e) {
@@ -155,6 +159,11 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
             var processingToken = processingCts.Token;
             processingTask = BackgroundTask.Run(async () => {
                 var emptyArray = ArrayPools.SharedFloatPool.Rent(apmFrameSize);
+                // The loopback hears our output as it leaves the PC, but a TV over HDMI plays it ~0.6 s
+                // later - past the delay range AEC3 searches, so the reference is delayed to meet it
+                var aecDelayAligner = new AecDelayAligner(
+                    Constants.Audio.RecordingSampleRate, AecMaxDelay, AecDelayWindow, AecDelayEstimatePeriod);
+                var alignedReverse = new float[apmFrameSize];
                 var emptyMemory = emptyArray.AsMemory(0, apmFrameSize);
                 emptyMemory.Span.Clear();
                 var isSilent = true;
@@ -216,6 +225,13 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                         if (apm == null)
                             micIn.CopyTo(outSpan); // No APM: raw capture beats no capture
                         else {
+                            if (aecDelayAligner.Process(micIn, loopIn, alignedReverse))
+                                Log.LogInformation(
+                                    "AEC reference delayed by {Delay}ms (measured {Latency}ms, corr {Correlation:F2})",
+                                    aecDelayAligner.Delay.TotalMilliseconds,
+                                    aecDelayAligner.LastEstimate.TotalMilliseconds,
+                                    aecDelayAligner.LastCorrelation);
+                            loopIn = alignedReverse;
                             apm.AnalyzeReverseStream(loopIn);
 
                             // The APM clears the stream delay after every ProcessStream, so it has to
@@ -262,17 +278,8 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 }
             }, processingCts.Token);
 
-            if (loopbackCapture is not null)
-                try {
-                    loopbackCapture.StartRecording();
-                }
-                catch (Exception e) {
-                    // Degraded, not fatal: WASAPI Initialize happens inside StartRecording, so an
-                    // app holding the render endpoint exclusively used to kill the whole recording.
-                    Log.LogWarning(e, "AEC loopback failed to start; continuing without it");
-                    loopbackCapture.DisposeSilently();
-                    loopbackCapture = null;
-                }
+            // Degraded, not fatal: a loopback that can't start leaves the APM a silent reverse stream
+            loopback?.Start();
 
             try {
                 graph!.Start();
@@ -320,7 +327,8 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
 
             graph = graphCreate.Graph;
             var inputCreate = await graph
-                .CreateDeviceInputNodeAsync(MediaCategory.Other, micEncoding)
+                .CreateDeviceInputNodeAsync(
+                    isApmMissing ? MediaCategory.Communications : MediaCategory.Other, micEncoding)
                 .AsTask(cancellationToken)
                 .ConfigureAwait(true);
             if (inputCreate.Status != AudioDeviceNodeCreationStatus.Success || inputCreate.DeviceInputNode is null) {
@@ -344,8 +352,10 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 graph.SamplesPerQuantum,
                 graph.EncodingProperties.SampleRate);
 
-            // Ensure no built-in audio effects are applied on the capture path
-            inputNode.EffectDefinitions.Clear();
+            if (isApmMissing)
+                LogSystemEffects(inputNode.Device?.Id);
+            else
+                inputNode.EffectDefinitions.Clear(); // The APM is the only processing in the path
 
             outputNode = graph.CreateFrameOutputNode(micEncoding);
             inputNode.AddOutgoingConnection(outputNode);
@@ -387,7 +397,6 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                     inputNode?.Stop();
                     outputNode?.Stop();
                     graph?.Stop();
-                    loopbackCapture?.StopRecording();
                 }
                 catch {
                     /* Ignore */
@@ -415,8 +424,9 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
                 outputNode?.DisposeSilently();
                 graph?.DisposeSilently();
                 micDevice?.DisposeSilently();
+                // Before the enumerator, which it unregisters its device watcher from
+                loopback?.Dispose();
                 deviceEnumerator?.DisposeSilently();
-                loopbackCapture?.Dispose();
                 processingCts.DisposeSilently();
                 outputBuffer.Dispose();
                 microphoneBuffer.Dispose();
@@ -470,11 +480,6 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
             _ = Stop();
         }
 
-        void OnLoopbackRecordingStopped(object? sender, StoppedEventArgs e) {
-            if (e.Exception is { } error)
-                Log.LogWarning(error, "AEC loopback capture stopped - echo cancellation is degraded");
-        }
-
         void OnDefaultCaptureDeviceChanged() {
             // The graph is bound to the endpoint it opened, so it goes on delivering silence from a
             // device that is no longer the user's. Ending the capture is honest; recording resumes
@@ -513,23 +518,13 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
             }
         }
 
-        void OnLoopbackCaptureOnDataAvailable(object? _, WaveInEventArgs args) {
-            // Guard flag: Stop() may already be disposing loopbackCapture on another thread
-            if (Volatile.Read(ref isStopping) != 0 || cancellationToken.IsCancellationRequested)
-                return;
-            if (args.BytesRecorded == 0)
-                return;
-
-            PushToBuffer(args, loopbackCapture!.WaveFormat, loopbackBuffer);
-        }
-
         void OnVolumeChanged(AudioVolumeNotificationData data)
             => currentVolume = Math.Clamp(data.MasterVolume, 0f, 1f);
     }
 
-    // Private methods
+    // Protected/internal methods
 
-    private static void PushToBuffer(WaveInEventArgs args, WaveFormat format, BlockRingBuffer<float> ringBuffer)
+    internal static void PushToBuffer(WaveInEventArgs args, WaveFormat format, BlockRingBuffer<float> ringBuffer)
     {
         var buffer = args.Buffer;
         var bytesRecorded = args.BytesRecorded;
@@ -557,29 +552,23 @@ public sealed class WindowsAudioCapture(ILogger<WindowsAudioCapture> log) : IAud
         // Any other format is dropped on purpose: in practice devices deliver one of the two above.
     }
 
-    // Nested types
+    // Private methods
 
-    private sealed class DefaultCaptureDeviceWatcher(
-        string? openedDeviceId,
-        Action onChanged
-        ) : IMMNotificationClient
+    private void LogSystemEffects(string? deviceId)
     {
-        public void OnDefaultDeviceChanged(DataFlow dataFlow, Role role, string defaultDeviceId)
-        {
-            if (dataFlow != DataFlow.Capture || role != Role.Multimedia)
-                return;
-            // Still the endpoint the graph holds
-            if (openedDeviceId != null
-                && !defaultDeviceId.IsNullOrEmpty()
-                && openedDeviceId.Contains(defaultDeviceId, StringComparison.OrdinalIgnoreCase))
-                return;
-
-            onChanged();
+        // The only way to tell whether Windows cancels echo here: some drivers offer no AEC at all
+        try {
+            var effectsManager = AudioEffectsManager.CreateAudioCaptureEffectsManager(
+                deviceId.NullIfEmpty() ?? MediaDevice.GetDefaultAudioCaptureId(AudioDeviceRole.Communications),
+                MediaCategory.Communications);
+            var effectTypes = effectsManager.GetAudioCaptureEffects().Select(x => x.AudioEffectType).ToList();
+            if (effectTypes.Contains(AudioEffectType.AcousticEchoCancellation))
+                Log.LogWarning("Windows capture effects: {Effects}", effectTypes);
+            else
+                Log.LogError("Windows capture effects have no echo cancellation either: {Effects}", effectTypes);
         }
-
-        public void OnDeviceStateChanged(string deviceId, DeviceState newState) { }
-        public void OnDeviceAdded(string deviceId) { }
-        public void OnDeviceRemoved(string deviceId) { }
-        public void OnPropertyValueChanged(string deviceId, PropertyKey propertyKey) { }
+        catch (Exception e) {
+            Log.LogError(e, "Can't list the Windows capture effects");
+        }
     }
 }

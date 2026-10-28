@@ -103,6 +103,7 @@ internal sealed class WindowsAudioPlaybackEngine(
                 $"AudioGraph device output creation failed: {deviceOutputResult.Status}");
         }
         _deviceOutput = deviceOutputResult.DeviceOutputNode;
+        WindowsAecLoopback.ReportPlaybackDevice(_deviceOutput.Device?.Id);
         Tracer.Point("engine: device output node created");
         _frameInput = _graph.CreateFrameInputNode(encoding);
         _frameInput.AddOutgoingConnection(_deviceOutput);

@@ -181,12 +181,32 @@ recording path depends on the platform:
 - **Windows** — used. `WindowsAudioCapture` runs every 10 ms capture frame
   through the APM with the echo canceller, noise suppression, AGC and
   high-pass filter enabled. The far-end reference the echo canceller needs
-  is a **WASAPI loopback capture of the default render endpoint**, fed to
-  `AnalyzeReverseStream` one frame per capture frame (zeros when the render
-  endpoint is idle and the loopback delivers nothing). The capture graph
+  is a **WASAPI loopback capture of the render endpoint our playback goes
+  to** (`WindowsAecLoopback`), fed to `AnalyzeReverseStream` one frame per
+  capture frame (zeros when the render endpoint is idle and the loopback
+  delivers nothing). That endpoint is the one the last playback graph
+  reported opening - per-app output routing can make it something other than
+  the default - or the default Multimedia endpoint before any playback and
+  after the default changes. The loopback moves when either changes, and a
+  loopback that dies is restarted up to three times per recording.
+
+  The loopback hears our output as it leaves the PC, not as it leaves the
+  speaker. A TV fed over HDMI was measured playing it ~600 ms later - far past
+  the delay range AEC3 searches, so it cancelled for the first seconds of a
+  recording and then let the echo through, with the AGC amplifying it.
+  `AecDelayAligner` (`Core.Audio`) measures that latency by correlating 1 ms
+  energy envelopes of the reverse and capture streams (3 s window, once a
+  second, accepted after two estimates agree within 20 ms) and delays the
+  reverse stream by it minus 50 ms. On the TV this took the echo from about
+  -5 dB to 35-59 dB of attenuation; the first ~5 s of a recording run
+  unaligned while the estimates come in. The capture graph
   deliberately uses `AudioRenderCategory.Other` / `MediaCategory.Other` and
   clears `EffectDefinitions`, so Windows' own voice processing is bypassed
-  and the APM is the only echo canceller in the path.
+  and the APM is the only echo canceller in the path. The one exception is an APM that
+  fails to load, which should never happen: the capture then opens with the
+  `Communications` categories and keeps its effects, so Windows' own
+  processing replaces the APM rather than the raw mic going out. That is
+  logged as critical, along with the effects Windows reports.
 
 ## Constants summary
 
