@@ -12,9 +12,6 @@ public class UserSettingsAccessor<T>(UserSettingsUI userSettingsUI, string key)
         return (T?)result ?? new T();
     }
 
-    public async Task<T?> GetTemporal()
-        => (T?)await userSettingsUI.GetTemporal(key).ConfigureAwait(false);
-
     public async Task<TResult> Get<TResult>(Func<T, TResult> selector, CancellationToken cancellationToken = default)
         => selector.Invoke(await Get(cancellationToken).ConfigureAwait(false));
 

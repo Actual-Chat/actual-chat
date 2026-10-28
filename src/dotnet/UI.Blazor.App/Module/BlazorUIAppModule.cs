@@ -84,6 +84,9 @@ public sealed class BlazorUIAppModule(IServiceProvider moduleServices)
         fusion.AddService<LinkPreviewUI>(ServiceLifetime.Scoped);
         fusion.AddService<PeerBlockUI>(ServiceLifetime.Scoped);
         fusion.AddService<ContactsUI>(ServiceLifetime.Scoped);
+        // Blazor Server reads chat settings directly: its calls are local, so there's nothing to save
+        if (!HostInfo.HostKind.IsServer())
+            services.AddAlias<IChatUserSettingsSource, ContactsUI>(ServiceLifetime.Scoped);
         fusion.AddService<ActivitiesUI>(ServiceLifetime.Scoped);
         services.AddScoped<IAppActivityState>(c => c.GetRequiredService<ActivitiesUI>());
         services.TryAddScoped<ILiveActivitiesAvailability>(_ => new DefaultLiveActivitiesAvailability());

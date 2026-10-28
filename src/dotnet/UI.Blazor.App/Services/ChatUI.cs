@@ -146,7 +146,7 @@ public partial class ChatUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
             var chatNewsTask = Chats.GetNews(Session, chatId, cancellationToken);
             var lastMentionTask = ContactsUI.GetLastOwnMention(chatId, cancellationToken);
             var readEntryLidTask = GetReadEntryLid(chatId, cancellationToken);
-            var chatUserSettingsTask = ContactsUI.GetChatUserSettings(chatId, cancellationToken);
+            var chatUserSettingsTask = UserSettingsUI.ChatUserSettings(chatId).Get(cancellationToken);
             // Every chat in the list gets here, so a chat without PTT skips the PTT reads: otherwise
             // any change to the account-level PTT settings would recompute every ChatInfo.
             var chatAudioUI = Hub.ChatAudioUI;

@@ -1,4 +1,3 @@
-using ActualChat.Chat;
 using ActualLab.Fusion.Blazor;
 
 namespace ActualChat.Contacts;

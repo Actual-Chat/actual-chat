@@ -13,6 +13,15 @@ public sealed partial record ChatUserSettings : StoredSettings
     public static string GetKey(ChatId chatId) => $"{KeyPrefix}{chatId.Value}{KeySuffix}";
     public static string GetKey(string chatId) => $"{KeyPrefix}{chatId}{KeySuffix}";
 
+    public static bool TryParseKey(string key, [NotNullWhen(true)] out ChatId? chatId)
+    {
+        chatId = null;
+        if (!key.StartsWith(KeyPrefix) || !key.EndsWith(KeySuffix))
+            return false;
+
+        return ChatId.TryParse(key[KeyPrefix.Length..^KeySuffix.Length], out chatId);
+    }
+
     public override void ValidateKey(string key)
     {
         if (!key.StartsWith(KeyPrefix) || !key.EndsWith(KeySuffix))

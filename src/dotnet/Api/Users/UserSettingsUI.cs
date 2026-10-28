@@ -7,6 +7,7 @@ namespace ActualChat.Users;
 /// Works with <see cref="StoredSettings"/> instead of raw bytes.
 /// When <see cref="Temporals"/> is available, Get checks for temporary overrides first,
 /// and Set applies a temporary override alongside the server write.
+/// On clients, <see cref="ChatUserSettings"/> come from <see cref="IChatUserSettingsSource"/> when it has them.
 /// </summary>
 public sealed class UserSettingsUI(IServiceProvider services, Session session)
 {
@@ -14,6 +15,10 @@ public sealed class UserSettingsUI(IServiceProvider services, Session session)
     public IUserSettings UserSettings { get; } = services.GetRequiredService<IUserSettings>();
     public Temporals Temporals { get; } = services.Temporals();
     public Session Session { get; } = session;
+
+    // Optional: only clients register it, and a server builds this type from its root provider too
+    private LazySlim<IChatUserSettingsSource?> ChatUserSettingsSourceLazy { get; }
+        = new(services.GetService<IChatUserSettingsSource>);
 
     public async Task<StoredSettings?> Get(string key, CancellationToken cancellationToken = default)
     {
@@ -25,16 +30,13 @@ public sealed class UserSettingsUI(IServiceProvider services, Session session)
             if (value is not null)
                 return value;
         }
+        if (ChatUserSettings.TryParseKey(key, out var chatId)
+            && ChatUserSettingsSourceLazy.Value is { } chatUserSettingsSource) {
+            var chatUserSettings = await chatUserSettingsSource.Get(chatId, cancellationToken).ConfigureAwait(false);
+            if (chatUserSettings is not null)
+                return chatUserSettings;
+        }
         return await UserSettings.Get(Session, key, cancellationToken).ConfigureAwait(false);
-    }
-
-    public async Task<StoredSettings?> GetTemporal(string key)
-    {
-        // For a caller that reads the server value through another call: Get without the server read
-        if (KvasKeys.IsHidden(key) || !Temporals.IsReal)
-            return null;
-
-        return await Temporals.Get<StoredSettings>(key).ConfigureAwait(false);
     }
 
     public Task Set(string key, StoredSettings? value, CancellationToken cancellationToken = default)

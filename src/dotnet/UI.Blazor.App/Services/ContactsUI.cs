@@ -6,8 +6,11 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <summary>
 /// Per-chat contact data for UI code. A client gets all of it from one <see cref="IContacts.GetSummary"/>
 /// RPC call per chat and splits it here; Blazor Server reads each part directly, since its calls are local.
+/// UserSettingsUI reads ChatUserSettings through it on clients.
 /// </summary>
-public class ContactsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeService
+public class ContactsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub),
+    IChatUserSettingsSource,
+    IComputeService
 {
     private IContacts Contacts => Hub.Contacts;
     private IMentions Mentions => Hub.Mentions;
@@ -25,27 +28,6 @@ public class ContactsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             ? Mentions.GetLastOwn(Session, chatId, cancellationToken)
             : GetLastOwnMentionFromSummary(chatId, cancellationToken);
 
-    public async Task<ChatUserSettings> GetChatUserSettings(
-        ChatId chatId,
-        CancellationToken cancellationToken = default)
-    {
-        var settings = UserSettingsUI.ChatUserSettings(chatId);
-        if (IsBlazorServer)
-            return await settings.Get(cancellationToken).ConfigureAwait(false);
-
-        // A setting the user has just changed is shown before the server confirms it
-        var temporal = await settings.GetTemporal().ConfigureAwait(false);
-        if (temporal is not null)
-            return temporal;
-
-        var fromSummary = await GetChatUserSettingsFromSummary(chatId, cancellationToken).ConfigureAwait(false);
-        if (fromSummary is not null)
-            return fromSummary;
-
-        // A chat with no contact - a public one the user hasn't joined - still has settings of its own
-        return await settings.Get(cancellationToken).ConfigureAwait(false);
-    }
-
     public async ValueTask<List<Contact>> ListUserContacts(CancellationToken cancellationToken = default)
     {
         var contactIds = await Contacts.ListIds(Session, null, cancellationToken).ConfigureAwait(false);
@@ -55,6 +37,10 @@ public class ContactsUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IComputeSe
             .ConfigureAwait(false);
         return contacts.Where(c => c?.Account != null).ToList()!;
     }
+
+    // Registered as IChatUserSettingsSource on clients only, see BlazorUIAppModule
+    Task<ChatUserSettings?> IChatUserSettingsSource.Get(ChatId chatId, CancellationToken cancellationToken)
+        => GetChatUserSettingsFromSummary(chatId, cancellationToken);
 
     // Protected/internal methods
 
