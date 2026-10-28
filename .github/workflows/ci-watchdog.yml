@@ -24,7 +24,8 @@ jobs:
     name: Triage a red run
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'failure'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The log retries in CiWatchdog.ps1 wait up to 14 minutes in all.
+    timeout-minutes: 20
     outputs:
       rerun: ${{ steps.triage.outputs.rerun }}
     steps:
