@@ -21,31 +21,36 @@
     var ratioStyle = hasDims
         ? $"aspect-ratio: {((float)mediaW / mediaH).ToString(CultureInfo.InvariantCulture)}"
         : null;
-    var imageMenuRef = Hub.ClipboardUI.CanWriteImage && attachment.IsSupportedImage() && !attachment.IsSvg()
+    var isPending = IsUploading && !attachment.Media.IsReady;
+    var imageMenuRef = !isPending
+        && Hub.ClipboardUI.CanWriteImage && attachment.IsSupportedImage() && !attachment.IsSvg()
         ? MenuRef.New<MessageMenu>(attachment.EntryId.Value, bool.FalseString, "", "", url).ToString()
         : null;
 }
 
-<div class="image-attachment @Class" style="@ratioStyle">
+<div class="image-attachment @Class" style="@ratioStyle" data-state="@(isPending ? "uploading" : "ready")">
     <a class="c-content"
-       href="@url"
+       href="@(isPending ? null : url)"
        role="button"
        data-menu="@imageMenuRef"
-       @onclick="@(() => VisualMediaViewerUI.Show(url, attachments))"
+       @onclick="@(() => { if (!isPending) VisualMediaViewerUI.Show(url, attachments); })"
        @onclick:preventDefault="true">
         @if (attachment.IsSupportedVideo()) {
-            <VideoAttachmentThumbnail Attachment="@attachment"/>
+            <VideoAttachmentThumbnail Attachment="@attachment" IsUploading="@IsUploading"/>
         } else {
             <image-skeleton
                 initial-state="skeleton"
-                src="@UrlMapper.ImageOriginalUrl(url)"
-                thumbnailSrc="@previewUrl"
+                src="@(isPending ? "" : UrlMapper.ImageOriginalUrl(url))"
+                thumbnailSrc="@(isPending ? null : previewUrl)"
                 placeholderSrc="@placeholderUrl"
                 width="@(hasDims ? mediaW : 0)"
                 height="@(hasDims ? mediaH : 0)"
             />
         }
     </a>
+    @if (isPending) {
+        <Spinner Class="c-upload-spinner"/>
+    }
     @* TODO(Andrey): need to add Attachment parameter Hidden *@
     @* @if (_enableIncompleteUI) { *@
     @*     <div class="noise-overlay @_overlayCls" @onclick="@OnOverlayClick"></div> *@
@@ -61,6 +66,7 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ChatEntryAttachment Attachment { get; set; } = null!;
     [Parameter] public ChatEntryAttachment[]? Attachments { get; set; }
+    [Parameter] public bool IsUploading { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
     protected override async Task OnInitializedAsync() {

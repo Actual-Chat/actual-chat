@@ -4,11 +4,7 @@
     @foreach (var row in _rows) {
         <VisualMediaAttachmentLine Row="@row" TotalItems="@_mediaList.Length">
             <ItemTemplate>
-                @if (IsUploading && !context.Media.IsReady) {
-                    <UploadingMediaAttachment Attachment="@context"/>
-                } else {
-                    <VisualMediaAttachment Attachment="@context" Attachments="@_viewableList"/>
-                }
+                <VisualMediaAttachment Attachment="@context" Attachments="@_viewableList" IsUploading="@IsUploading"/>
             </ItemTemplate>
         </VisualMediaAttachmentLine>
     }

@@ -1,0 +1,40 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var isUploading = Entry.HasUploadingAttachments;
+    // Reserved media already carries its size and placeholder, so the gallery can be laid out
+    // before any of it is uploaded; everything else waits behind the plug
+    var mediaList = Entry.Attachments
+        .Where(a => a.IsVisualMedia() && (!isUploading || a.Media is { Width: > 0, Height: > 0 }))
+        .ToArray();
+    var fileList = Entry.Attachments.Where(a => !a.IsVisualMedia()).ToArray();
+    var hasPlug = isUploading && mediaList.Length < Entry.Attachments.Length;
+}
+
+<div class="message-attachments">
+    <VisualMediaAttachmentList MediaList="@mediaList" IsNarrow="@ScreenSize.IsNarrow()" IsUploading="@isUploading"/>
+    <div class="message-file-attachments">
+        @if (hasPlug) {
+            <UploadPlug/>
+        } else if (!isUploading) {
+            foreach (var attachment in fileList) {
+                if (attachment.IsAudio()) {
+                    <AudioFileAttachment Attachment="@attachment"/>
+                } else {
+                    <FileAttachment Attachment="@attachment"/>
+                }
+            }
+        }
+    </div>
+    @if (IsUnreadByOthers) {
+        <ChatMessageSendingStatus
+            Status="@ChatMessageSendingStatus.MessageStatus.Unread"
+            IsDotOnly="@(!IsUnreadByOthersBlockStart)"/>
+    }
+</div>
+
+@code {
+    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
+    [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
+    [Parameter] public bool IsUnreadByOthers { get; set; }
+    [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
+}
