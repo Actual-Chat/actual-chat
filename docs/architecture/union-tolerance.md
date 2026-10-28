@@ -16,6 +16,14 @@ goes to the root's `NewUnsupported`, which returns a placeholder. The surroundin
 reads to completion. Peers old enough to predate the formatter cannot be fixed after the
 fact, so `IChats` carries filtering twins that never send them a kind they cannot read.
 
+## Tolerance runs one way
+
+A client is never newer than the server it talks to: the server is deployed first, and the
+apps ship after it. So only clients need to tolerate values from a later release; a server
+never receives one on the wire. A server that rejects a value its own build doesn't know —
+`Emoji.RequireSupported()` on a reaction, for one — is validating input, not breaking a
+newer client.
+
 ## The formatter
 
 `src/dotnet/Core/Serialization/Internal/ForwardCompatibleUnionFormatter.cs`
