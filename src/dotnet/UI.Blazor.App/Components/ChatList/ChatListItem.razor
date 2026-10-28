@@ -277,8 +277,6 @@
         // Only the Active list renders the muted badge, so only it takes the dependency.
         var isPttMuted = listKind == ChatListKind.Active
             && (await Hub.ChatAudioUI.GetMutedPttChatIds(cancellationToken).ConfigureAwait(false)).Contains(chatId);
-        // Active Chats shows its PTT chats with their own badge, so its titles carry no icon
-        var pttState = listKind == ChatListKind.Active ? PttChatState.Off : chatInfo.PttState;
         var hasOngoingCall = chatInfo.IsPttArmed
             && await chatActivityUI.HasOngoingCall(chatId, cancellationToken).ConfigureAwait(false);
         // Deliberately outside the IsReadingTail gate GetUnreadState applies: the row you just
@@ -322,7 +320,7 @@
             IsFirstItem = isFirstItem,
             IsUnreadByOthers = isUnreadByOthers,
             IsPttMuted = isPttMuted,
-            PttState = pttState,
+            PttState = chatInfo.PttState,
             IsPttArmed = chatInfo.IsPttArmed,
             IsPttOffOnDevice = chatInfo.IsPttOffOnDevice,
             HasOngoingCall = hasOngoingCall,
