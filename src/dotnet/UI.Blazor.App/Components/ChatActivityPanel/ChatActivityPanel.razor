@@ -82,7 +82,8 @@
                     Class="btn-sm btn-transparent unhovered not-listening"
                     StopPropagation="true"
                     PreventDefault="true"
-                    Click="@OnJoinClick">
+                    Click="@OnJoinClick"
+                    data-tune="@(m.IsAnyChatListening ? null : "none")">
                     @joinButtonText
                 </Button>
             } else {
@@ -142,6 +143,7 @@
         var canShowAudioDiagnostics = await AudioDiagnosticsUI.IsEnabled(cancellationToken).ConfigureAwait(false);
         var isSharingOwnLocation = await LocationUI.IsOwnLive(chat.Id, cancellationToken).ConfigureAwait(false);
         var callJoinedAt = await Hub.CallScreensUI.GetCallConnectedAt(chat.Id, cancellationToken).ConfigureAwait(false);
+        var listeningChatIds = await ChatAudioUI.GetListeningChatIds().ConfigureAwait(false);
         return new() {
             AudioState = audioState,
             IsPttArmed = isPttArmed,
@@ -153,6 +155,7 @@
             IsAudioDiagnosticsEnabled = canShowAudioDiagnostics,
             IsSharingOwnLocation = isSharingOwnLocation,
             CallJoinedAt = callJoinedAt,
+            IsAnyChatListening = !listeningChatIds.IsEmpty,
         };
     }
 
@@ -181,6 +184,8 @@
         public required bool IsAudioDiagnosticsEnabled { get; init; }
         public required bool IsSharingOwnLocation { get; init; }
         public Moment? CallJoinedAt { get; init; }
+        // StartListening plays only for the first listening chat, so Join plays a tap after that
+        public bool IsAnyChatListening { get; init; }
 
         public bool IsListening => AudioState.IsListening;
         public bool IsRecordingHere => AudioState.IsRecording;

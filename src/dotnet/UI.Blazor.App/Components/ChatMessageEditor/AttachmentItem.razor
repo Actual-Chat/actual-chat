@@ -24,7 +24,7 @@
 <li class="attachment-wrapper @(isFailed ? "attachment-failed" : "")">
     <div class="c-content">
         <div class="attachment-item">
-            <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm">
+            <ButtonSquare Click="@RemoveClick" Class="remove-attachment-btn btn-danger btn-sm" data-tune="none">
                 <i class="icon-close text-lg"></i>
             </ButtonSquare>
             @if (attachment.IsSupportedImage || m.HasCustomPreview || m.HasImagePreview) {
@@ -47,7 +47,7 @@
                     </RoundProgress>
                 } else if (progress.CanRestart && !m.NoAccess && RestartClick.HasDelegate) {
                     <span class="spinner-icon-wrapper">
-                        <ButtonRound Click="@RestartClick">
+                        <ButtonRound Click="@RestartClick" data-tune="none">
                             <i class="icon-sync text-2xl"></i>
                         </ButtonRound>
                     </span>

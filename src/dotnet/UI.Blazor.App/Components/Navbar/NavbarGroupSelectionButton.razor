@@ -14,6 +14,7 @@
     TooltipPosition="@TooltipPosition"
     Tooltip="@Tooltip"
     Click="OnClick"
+    ClickTune="Tune.SelectNavbarItem"
     ChildContent="@ChildContent"
     CanMove="@CanMove"
     AdditionalAttributes="@AdditionalAttributes">
@@ -55,7 +56,6 @@
         if (NavbarUI.SelectedGroupId == Id)
             Hub.SearchUI.Clear();
         NavbarUI.SelectGroup(Id, true);
-        _ = TuneUI.Play(Tune.SelectNavbarItem).SilentAwait();
     }
 
     private void OnNavbarSelectedGroupChanged(object? s, EventArgs e)

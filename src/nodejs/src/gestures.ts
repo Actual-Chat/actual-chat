@@ -8,7 +8,7 @@ import { History } from '../../dotnet/UI.Blazor/Services/History/history';
 import { FocusUI } from '../../dotnet/UI.Blazor/Services/FocusUI/focus-ui';
 import { ScreenSize } from '../../dotnet/UI.Blazor/Services/ScreenSize/screen-size';
 import { Timeout } from 'timeout';
-import { Tune, TuneName, TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
+import { TuneUI } from '../../dotnet/UI.Blazor/Services/TuneUI/tune-ui';
 import { Vector2D } from 'math';
 import { getLogs } from 'logging';
 import { BrowserInfo } from '../../dotnet/UI.Blazor/Services/BrowserInfo/browser-info';
@@ -127,9 +127,9 @@ class DataHrefGesture extends Gesture {
             return;
 
         FocusUI.blur();
-        const tuneName = element.dataset.hrefTune as TuneName | undefined;
-        if (tuneName)
-            TuneUI.play(Tune[tuneName]);
+        const tune = TuneUI.getElementTune(element, null);
+        if (tune !== null)
+            TuneUI.play(tune);
         if (href.startsWith('http://') || href.startsWith('https://'))
             location.href = href; // External URL
         else if (href.startsWith('mailto:') || href.startsWith('tel:'))
@@ -154,14 +154,8 @@ class DataHrefGesture extends Gesture {
 // Plays the standard "tap" haptic whenever an interactive control is activated, so every button,
 // toggle, radio and [role="button"] feels the same without each wiring its own TuneUI call. Runs in
 // the capturing phase: the haptic must fire even for controls that stop the click from propagating
-// (e.g. Toggle's label). Nav links keep their own haptic via data-href-tune; controls with a distinct
-// haptic opt out with data-no-tune, and data-click-tune overrides the played tune.
+// (e.g. Toggle's label). TuneUI.getClickTune decides which tune a click plays, if any.
 class ClickTuneGesture extends Gesture {
-    private static readonly Selector =
-        'button, [role="button"], [role="switch"], [role="radio"], [data-click-tune]';
-    private static readonly DisabledSelector =
-        ':disabled, [aria-disabled="true"], [data-input-disabled="True"]';
-
     public static use(): void {
         debugLog?.log(`ClickTuneGesture.use`);
 
@@ -170,31 +164,18 @@ class ClickTuneGesture extends Gesture {
                 return;
 
             const target = event.target as HTMLElement | null;
-            // A <label>-wrapped checkbox/radio (Toggle, FormRadio) fires a second click on the control
-            // itself; skip that synthetic one so one tap plays one haptic, not two.
-            if (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio'))
-                return;
-
-            const element = target?.closest<HTMLElement>(this.Selector);
-            if (!element)
-                return;
-
-            if (element.hasAttribute('data-href-tune') || element.hasAttribute('data-no-tune'))
-                return;
-
-            if (element.matches(this.DisabledSelector))
-                return;
-
             if (target?.closest('div.pulling'))
                 return;
 
-            const tuneName = element.dataset.clickTune as TuneName | undefined;
-            const tune = tuneName
-                ? Tune[tuneName]
-                : element.matches('[role="switch"], [role="radio"]')
-                    ? Tune.ChangeToggle
-                    : Tune.ClickButton;
-            TuneUI.play(tune);
+            // The click a long press releases is stopped by a SuppressEventGesture registered after
+            // this listener, so it would still reach this handler first
+            for (const gesture of Gestures.activeGestures)
+                if (gesture instanceof SuppressEventGesture && gesture.mustSuppress(event))
+                    return;
+
+            const tune = TuneUI.getClickTune(target);
+            if (tune !== null)
+                TuneUI.play(tune);
         });
     }
 }
@@ -483,13 +464,17 @@ class SuppressEventGesture extends Gesture {
             new Timeout(timeoutMs, () => { this.dispose(); }),
             fromEvent(document, eventName, { capture: true, passive: false })
                 .subscribe((e: Event) => {
-                    const shouldStopEvent = !elementHasNameOrClass(e.target as HTMLElement, this.targetExclusions);
-                    if (shouldStopEvent)
+                    if (this.mustSuppress(e))
                         stopEvent(e);
                     if (justOnce)
                         this.dispose();
                 }),
         );
+    }
+
+    public mustSuppress(event: Event): boolean {
+        return event.type === this.eventName
+            && !elementHasNameOrClass(event.target as HTMLElement, this.targetExclusions);
     }
 }
 

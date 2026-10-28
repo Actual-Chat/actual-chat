@@ -7,13 +7,14 @@
 
 <div class="hover-menu-wrapper @topOffsetClass">
     <div class="message-hover-menu-new">
-        <ButtonRound Click="OnReactionClick" Class="btn-xs btn-transparent">
+        <ButtonRound Click="OnReactionClick" Class="btn-xs btn-transparent" data-tune="none">
             <EmojiIcon Emoji="@Emojis.ThumbsUp" Class="w-5 h-5"/>
         </ButtonRound>
         @if (m.CanReply && !IsSystem) {
             <ButtonRound
                 Class="btn-xs btn-transparent"
                 Click="@(() => Reply(Entry))"
+                data-tune="none"
                 Tooltip="@L.MessageMenu_Reply"
                 TooltipPosition="FloatingPosition.Top">
                 <i class="icon-reply-2 text-xl text-icon-01"></i>

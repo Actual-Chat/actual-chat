@@ -61,11 +61,13 @@ public abstract class TuneUI : ProcessorBase
     // StartListening (listening auto-enables for the recording chat) feel
     // like jitter on top of Tune.BeginRecording's initial haptic+sound.
     private static readonly TimeSpan BeginRecordingFollowupWindow = TimeSpan.FromMilliseconds(1500);
-    private static readonly HashSet<Tune> BeginRecordingFollowups = [Tune.ConfirmRecording, Tune.StartListening];
+    private static readonly Tune[] BeginRecordingFollowups = [Tune.ConfirmRecording, Tune.StartListening];
+    private static readonly TimeSpan DefaultSuppressionDuration = TimeSpan.FromMilliseconds(500);
 
     private static readonly string JSInitMethod = $"{BlazorUICoreModule.ImportName}.TuneUI.init";
     private DotNetObjectReference<TuneUI>? _backendRef;
-    private CpuTimestamp _lastBeginRecordingAt;
+    private readonly Lock _lock = new();
+    private readonly Dictionary<Tune, CpuTimestamp> _suppressedUntil = new();
     private Dictionary<Tune, TuneInfo>? _resolvedTunes;
 
     protected TuneUI(UIHub hub)
@@ -139,6 +141,23 @@ public abstract class TuneUI : ProcessorBase
         return mustPlay ? PlayAndWaitInternal(tune) : Task.CompletedTask;
     }
 
+    // An action that produces two tunes calls this before it starts, for the one it doesn't need,
+    // so the other is the only one heard whichever comes first. A tune arriving later still plays.
+    public void Suppress(Tune tune, TimeSpan? duration = null)
+    {
+        var until = CpuTimestamp.Now + (duration ?? DefaultSuppressionDuration);
+        lock (_lock) {
+            if (!_suppressedUntil.TryGetValue(tune, out var current) || current < until)
+                _suppressedUntil[tune] = until;
+        }
+    }
+
+    public void SuppressBeginRecordingFollowups()
+    {
+        foreach (var followup in BeginRecordingFollowups)
+            Suppress(followup, BeginRecordingFollowupWindow);
+    }
+
     // The MAUI WebView has no vibration API on iOS and no sound player of its own, so a tune
     // the JS side starts - a menu opening, a drag - is handed back to the app here.
     [JSInvokable("play")]
@@ -168,13 +187,15 @@ public abstract class TuneUI : ProcessorBase
             });
 
     private bool IsSuppressed(Tune tune)
-        => BeginRecordingFollowups.Contains(tune)
-            && _lastBeginRecordingAt.Elapsed < BeginRecordingFollowupWindow;
+    {
+        lock (_lock)
+            return _suppressedUntil.TryGetValue(tune, out var until) && CpuTimestamp.Now < until;
+    }
 
     private void OnBeforePlay(Tune tune)
     {
         if (tune == Tune.BeginRecording)
-            _lastBeginRecordingAt = CpuTimestamp.Now;
+            SuppressBeginRecordingFollowups();
     }
 }
 

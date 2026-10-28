@@ -21,6 +21,7 @@
             role="tab"
             aria-selected="@(isOn ? "true" : "false")"
             class="btn-segment @(isOn ? "on" : "")"
+            data-tune="@(MustPlayClickTune ? null : "none")"
             @onclick="@(() => OnClick(item.Id))">@item.Title@if (item.HasDot) {
                 <span class="c-dot"></span>
             }</button>
@@ -32,6 +33,7 @@
     [Parameter] public string SelectedId { get; set; } = "";
     [Parameter] public EventCallback<string> SelectedIdChanged { get; set; }
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public bool MustPlayClickTune { get; set; } = true;
 
     private Task OnClick(string id)
         => id == SelectedId ? Task.CompletedTask : SelectedIdChanged.InvokeAsync(id);

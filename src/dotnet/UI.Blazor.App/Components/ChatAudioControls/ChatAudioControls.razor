@@ -24,6 +24,9 @@
     var remaining = (int)Math.Ceiling(remainingSeconds);
     var mm = remaining / 60;
     var ss = remaining % 60;
+    // StopListening plays only once the last listening chat stops, so until then a tap is the only feedback
+    var stopListeningTune = m.IsOnlyListeningChat ? "none" : null;
+    var hangUpTune = m.HasHangUpTune ? "none" : null;
 }
 
 <div class="chat-audio-controls @Class" data-child="audio-controls">
@@ -34,6 +37,7 @@
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnStopRecording"
+                data-tune="none"
                 Tooltip="@L.Recording_StopRecording"
                 TooltipPosition="FloatingPosition.Top">
                 <i class="icon-mic-2"></i>
@@ -44,6 +48,7 @@
             StopPropagation="true"
             PreventDefault="true"
             Click="@OnHangUp"
+            data-tune="none"
             Tooltip="@L.Call_HangUp"
             TooltipPosition="FloatingPosition.Top">
             <i class="icon-phone-off"></i>
@@ -63,6 +68,7 @@
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnStopListening"
+                data-tune="@stopListeningTune"
                 Tooltip="@L.Call_ListeningCountdown"
                 TooltipPosition="FloatingPosition.Top">
                 <span class="timer-swap">
@@ -77,6 +83,7 @@
             StopPropagation="true"
             PreventDefault="true"
             Click="@OnHangUp"
+            data-tune="@hangUpTune"
             Tooltip="@L.Call_HangUp"
             TooltipPosition="FloatingPosition.Top"
             data-render-script-hint="@(m.MustShowHangUpHint ? L.Call_HangUpHint : "")">
@@ -111,8 +118,11 @@
         var chatId = Chat.Id;
         var mustShowHangUpHint = await MustShowHangUpHint(chatId, cancellationToken).ConfigureAwait(true);
         var stopListeningAt = await ChatAudioUI.GetStopListeningAt(chatId, cancellationToken).ConfigureAwait(true);
+        var listeningChatIds = await ChatAudioUI.GetListeningChatIds().ConfigureAwait(true);
+        var isOnlyListeningChat = listeningChatIds.Count == 1 && listeningChatIds.Contains(chatId);
+        var hasHangUpTune = await CallScreensUI.HasHangUpTune(chatId, cancellationToken).ConfigureAwait(true);
         if (!stopListeningAt.HasValue)
-            return new Model(null, mustShowHangUpHint);
+            return new Model(null, mustShowHangUpHint, isOnlyListeningChat, hasHangUpTune);
 
         var remaining = (stopListeningAt.Value - Now).TotalSeconds;
         if (remaining > 0) {
@@ -120,7 +130,7 @@
             var delay = fractional > 0.05 ? fractional : fractional + 1.0;
             Computed.GetCurrent().Invalidate(TimeSpan.FromSeconds(delay));
         }
-        return new Model(stopListeningAt, mustShowHangUpHint);
+        return new Model(stopListeningAt, mustShowHangUpHint, isOnlyListeningChat, hasHangUpTune);
     }
 
     // Private methods
@@ -155,7 +165,11 @@
 
     // Nested types
 
-    public sealed record Model(Moment? StopListeningAt = null, bool MustShowHangUpHint = false) {
+    public sealed record Model(
+        Moment? StopListeningAt = null,
+        bool MustShowHangUpHint = false,
+        bool IsOnlyListeningChat = false,
+        bool HasHangUpTune = false) {
         public static readonly Model None = new();
     }
 }

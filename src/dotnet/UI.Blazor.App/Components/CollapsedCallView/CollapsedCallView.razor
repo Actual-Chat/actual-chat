@@ -40,7 +40,7 @@
                 <i class="icon-phone-take text-2xl"></i>
             </ButtonRound>
         } else {
-            <ButtonRound Class="c-hang-up" Click="@OnHangUpClick">
+            <ButtonRound Class="c-hang-up" Click="@OnHangUpClick" data-tune="@(m.HasHangUpTune ? "none" : null)">
                 <i class="icon-phone-off text-2xl"></i>
             </ButtonRound>
         }
@@ -68,6 +68,7 @@
         if (view is not { Kind: CallViewKind.Collapsed, Call: { } call })
             return ComputedModel.None;
 
+        var hasHangUpTune = await CallScreensUI.HasHangUpTune(call.ChatId, cancellationToken).ConfigureAwait(false);
         if (call.Phase == CallPhase.Active) {
             // The call's video, inline or floating, carries the call itself then
             if (await IsVideoShown(call.ChatId, cancellationToken).ConfigureAwait(false))
@@ -76,14 +77,25 @@
             var chatId = call.ChatId;
             var joinedAt = await CallScreensUI.GetCallConnectedAt(chatId, cancellationToken).ConfigureAwait(false);
             var stage = await CallScreensUI.GetCallStage(chatId, cancellationToken).ConfigureAwait(false);
-            return new ComputedModel { ChatId = chatId, IsInCall = true, Stage = stage, JoinedAt = joinedAt };
+            return new ComputedModel {
+                ChatId = chatId,
+                IsInCall = true,
+                Stage = stage,
+                JoinedAt = joinedAt,
+                HasHangUpTune = hasHangUpTune,
+            };
         }
 
         if (await CallScreensUI.GetCallPeerId(cancellationToken).ConfigureAwait(false) is not { } peerId)
             return ComputedModel.None;
 
         var isIncoming = call.Role == CallRole.Callee;
-        return new ComputedModel { ChatId = call.ChatId, PeerId = peerId, IsIncoming = isIncoming };
+        return new ComputedModel {
+            ChatId = call.ChatId,
+            PeerId = peerId,
+            IsIncoming = isIncoming,
+            HasHangUpTune = hasHangUpTune,
+        };
     }
 
     private async Task<bool> IsVideoShown(ChatId chatId, CancellationToken cancellationToken) {
@@ -139,5 +151,6 @@
         public bool IsInCall { get; init; }
         public CallStage Stage { get; init; }
         public Moment? JoinedAt { get; init; }
+        public bool HasHangUpTune { get; init; }
     }
 }

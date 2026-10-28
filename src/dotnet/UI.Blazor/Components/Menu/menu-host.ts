@@ -201,7 +201,8 @@ export class MenuHost implements Disposable {
             && m.isHoverMenu === menu.isHoverMenu;
     }
 
-    private show(menu: Menu): void {
+    // mustPlayTune is false when the click that opened the menu has already played the tap haptic
+    private show(menu: Menu, mustPlayTune = true): void {
         if (!menu.isHoverMenu)
             unselect();
         debugLog?.log('show:', menu)
@@ -215,7 +216,7 @@ export class MenuHost implements Disposable {
         this.removeMessageMark(this.currentMenuRef);
         this.currentMenuRef = menu.menuRef;
         this.addMessageMark(this.currentMenuRef);
-        if (ScreenSize.isNarrow())
+        if (mustPlayTune && ScreenSize.isNarrow())
             TuneUI.play(Tune.ShowMenu);
     }
 
@@ -502,7 +503,7 @@ export class MenuHost implements Disposable {
                 void this.position(this.menu!, menu)
         }
         else
-            this.show(menu);
+            this.show(menu, trigger !== MenuTrigger.Primary || TuneUI.getClickTune(event.target) === null);
 
         stopEvent(event);
     }

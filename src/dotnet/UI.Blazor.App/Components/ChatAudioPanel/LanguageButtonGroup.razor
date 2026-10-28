@@ -34,7 +34,8 @@
         Class="pill"
         Items="@BuildItems(languages, useShortTitle)"
         SelectedId="@language.Value"
-        SelectedIdChanged="@OnLanguageIdChanged"/>
+        SelectedIdChanged="@OnLanguageIdChanged"
+        MustPlayClickTune="false"/>
 </div>
 
 @code {
@@ -70,6 +71,8 @@
 
     private Task OnLanguageIdChanged(string id) {
         if (id == AddLanguageId) {
+            // MustPlayClickTune is off for the language segments, and this one changes no language
+            _ = TuneUI.Play(Tune.ClickButton);
             OnConfigureSecondLanguage();
             return Task.CompletedTask;
         }

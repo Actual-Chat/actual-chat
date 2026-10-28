@@ -1,11 +1,16 @@
 ﻿@namespace ActualChat.UI.Blazor.App.Components
 
+@{
+    var clickTune = ClickTune == Tune.None ? null : ClickTune.ToString();
+}
+
 <div class="navbar-button @Class"
      @attributes="@AdditionalAttributes">
     @if (IsRound) {
         <ButtonRound
             Click="@Click"
             Class="@ButtonClass"
+            data-tune="@clickTune"
             Tooltip="@Tooltip"
             ContentClass="navbar-button-content"
             TooltipPosition="@TooltipPosition">
@@ -15,6 +20,7 @@
         <ButtonSquare
             Click="@Click"
             Class="@ButtonClass"
+            data-tune="@clickTune"
             Tooltip="@Tooltip"
             ContentClass="navbar-button-content"
             TooltipPosition="@TooltipPosition">
@@ -34,6 +40,7 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public RenderFragment? Ending { get; set; }
     [Parameter] public EventCallback Click { get; set; }
+    [Parameter] public Tune ClickTune { get; set; }
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 }

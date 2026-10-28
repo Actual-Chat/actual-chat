@@ -149,6 +149,26 @@ public partial class CallScreensUI : UIWorkerBase<AppUIHub>, IComputeService, IN
             : null;
     }
 
+    // Whether hanging up this chat plays a tune of its own, so the hang-up button must not add a tap:
+    // cancelling a dial plays EndRecording, a hang-up while recording plays EndRecording (stopping the
+    // recording suppresses StopListening), and one with the mic muted plays StopListening for the last
+    // listening chat. A call here never runs alongside a recording in another chat.
+    [ComputeMethod]
+    public virtual async Task<bool> HasHangUpTune(ChatId chatId, CancellationToken cancellationToken)
+    {
+        var call = await CallUI.GetActiveCall(cancellationToken).ConfigureAwait(false);
+        if (call is { Role: CallRole.Caller, Phase: CallPhase.Dialing } && call.ChatId == chatId)
+            return true;
+
+        var chatAudioUI = Hub.ChatAudioUI;
+        var recordingChatId = await chatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        if (recordingChatId == chatId)
+            return true;
+
+        var listeningChatIds = await chatAudioUI.GetListeningChatIds().ConfigureAwait(false);
+        return listeningChatIds.Count == 1 && listeningChatIds.Contains(chatId);
+    }
+
     public string GetStatusText(CallStage stage)
         => stage switch {
             CallStage.Requesting => L.Call_Requesting,

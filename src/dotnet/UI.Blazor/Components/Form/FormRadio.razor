@@ -7,7 +7,7 @@
     var clickTune = IsDisabled ? null : nameof(Services.Tune.ChangeToggle);
 }
 
-<label class="@cls" data-click-tune="@clickTune">
+<label class="@cls" data-tune="@clickTune">
     <InputRadio TValue="TValue" id="@Id" disabled="@IsDisabled" Name="@Name" Value="@Value" />
     <span class="radio"></span>
 </label>

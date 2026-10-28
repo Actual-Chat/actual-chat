@@ -50,6 +50,9 @@ export type TuneName = keyof typeof Tune;
 
 interface TuneInfo { vibration: number[], sound?: string }
 
+const ClickTuneSelector = 'button, [role="button"], [role="switch"], [role="radio"], [data-tune]';
+const DisabledSelector = ':disabled, [aria-disabled="true"], [data-input-disabled="True"]';
+
 const cooldownMap = new Map<Tune, number>([
     [Tune.CancelReply, 1],
     [Tune.OpenModal, 1],
@@ -89,6 +92,45 @@ export class TuneUI {
         this.tunes = tunes;
         this.isNative = isNative;
         this.whenReady.resolve(null);
+    }
+
+    /** The tap haptic a click on target plays, or null. A data-href element's tune is played by
+     *  DataHrefGesture instead, once the click survives the long-press suppression. */
+    public static getClickTune(target: EventTarget | null): Tune | null {
+        // A <label>-wrapped checkbox/radio (Toggle, FormRadio) fires a second click on the control
+        // itself; skip that synthetic one so one tap plays one haptic, not two.
+        if (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio'))
+            return null;
+        if (!(target instanceof Element))
+            return null;
+
+        const element = target.closest<HTMLElement>(ClickTuneSelector);
+        if (!element)
+            return null;
+        if (element.hasAttribute('data-href') && element.hasAttribute('data-tune'))
+            return null;
+        if (element.matches(DisabledSelector))
+            return null;
+
+        const defaultTune = element.matches('[role="switch"], [role="radio"]') ? Tune.ChangeToggle : Tune.ClickButton;
+        return this.getElementTune(element, defaultTune);
+    }
+
+    /** The tune element's data-tune names, or defaultTune when it has none; "none" and "false" mute it. */
+    public static getElementTune(element: HTMLOrSVGElement, defaultTune: Tune | null): Tune | null {
+        const tuneName = element.dataset.tune;
+        if (tuneName === undefined)
+            return defaultTune;
+
+        // Tune also maps numbers back to names, so only a number is a tune
+        const tune: unknown = Tune[tuneName as TuneName];
+        if (typeof tune !== 'number') {
+            if (tuneName !== 'none' && tuneName !== 'false')
+                warnLog?.log(`${logScope}.getElementTune: unknown data-tune '${tuneName}'.`);
+            return null;
+        }
+
+        return tune as Tune === Tune.None ? null : tune as Tune;
     }
 
     /** Called by blazor */
