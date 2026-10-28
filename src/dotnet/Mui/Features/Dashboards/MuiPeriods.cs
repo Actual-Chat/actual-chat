@@ -4,6 +4,7 @@ public enum MuiInterval
 {
     Day,
     Week,
+    FourWeeks,
 }
 
 // How far back each compared window is shifted: by a week, a month, a quarter, or by its own length
@@ -31,7 +32,12 @@ public sealed record MuiPeriodSettings(
 {
     public const int MaxCount = 12;
 
-    public TimeSpan Length => Interval == MuiInterval.Day ? TimeSpan.FromDays(1) : TimeSpan.FromDays(7);
+    public TimeSpan Length
+        => TimeSpan.FromDays(Interval switch {
+            MuiInterval.Day => 1,
+            MuiInterval.Week => 7,
+            _ => 28,
+        });
 
     public MuiWindow[] GetWindows(DateTime now)
     {
@@ -75,13 +81,21 @@ public sealed record MuiPeriodSettings(
     private string GetLabel(int k)
     {
         if (k == 0)
-            return Interval == MuiInterval.Day ? "Last 24 hours" : "Last 7 days";
+            return Interval switch {
+                MuiInterval.Day => "Last 24 hours",
+                MuiInterval.Week => "Last 7 days",
+                _ => "Last 28 days",
+            };
 
         return Step switch {
             MuiStep.Week => Plural(k, "week"),
             MuiStep.Month => Plural(k, "month"),
             MuiStep.Quarter => Plural(3 * k, "month"),
-            _ => Plural(k, Interval == MuiInterval.Day ? "day" : "week"),
+            _ => Interval switch {
+                MuiInterval.Day => Plural(k, "day"),
+                MuiInterval.Week => Plural(k, "week"),
+                _ => Plural(4 * k, "week"),
+            },
         } + " earlier";
     }
 
@@ -90,7 +104,11 @@ public sealed record MuiPeriodSettings(
             MuiStep.Week => $"-{k}w",
             MuiStep.Month => $"-{k}mo",
             MuiStep.Quarter => $"-{3 * k}mo",
-            _ => Interval == MuiInterval.Day ? $"-{k}d" : $"-{k}w",
+            _ => Interval switch {
+                MuiInterval.Day => $"-{k}d",
+                MuiInterval.Week => $"-{k}w",
+                _ => $"-{4 * k}w",
+            },
         };
 
     private static string Plural(int count, string unit)

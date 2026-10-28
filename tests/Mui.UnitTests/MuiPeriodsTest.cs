@@ -57,6 +57,23 @@ public class MuiPeriodsTest
     }
 
     [Fact]
+    public void FourWeekSettingsGiveBackToBackFourWeekWindows()
+    {
+        // arrange
+        var settings = new MuiPeriodSettings(MuiInterval.FourWeeks, MuiStep.Interval, 2);
+
+        // act
+        var windows = settings.GetWindows(Now);
+
+        // assert
+        windows[0].From.Should().Be(Now.AddDays(-28));
+        windows[1].To.Should().Be(windows[0].From);
+        windows[2].To.Should().Be(Now.AddDays(-56));
+        windows.Select(w => w.Label).Should().Equal("Last 28 days", "4 weeks earlier", "8 weeks earlier");
+        windows.Select(w => w.ShortLabel).Should().Equal("now", "-4w", "-8w");
+    }
+
+    [Fact]
     public void CountIsClamped()
     {
         // arrange
