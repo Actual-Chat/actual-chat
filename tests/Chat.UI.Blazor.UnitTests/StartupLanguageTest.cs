@@ -1,5 +1,6 @@
 using ActualChat.UI.Blazor.App.Services;
 using ActualChat.UI.Blazor.Services;
+using ActualChat.Users;
 using Bunit;
 using Moq;
 
@@ -187,6 +188,7 @@ public class StartupLanguageTest
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Services.AddScoped<AppUIHub>();
         context.Services.AddScoped<LocalizationUI>();
+        context.Services.AddScoped(c => new UserSettingsUI(c, c.Session(), c.GetService<IChatUserSettingsSource>()));
         context.Services.AddScoped<BrowserInfo>(c => new TestBrowserInfo(c.GetRequiredService<UIHub>(),
             new(languageOverride, cachedLanguage, ["ru-RU"])));
         if (whenRead is not null) {
