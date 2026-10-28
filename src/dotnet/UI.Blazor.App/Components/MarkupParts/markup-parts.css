@@ -18,13 +18,13 @@
     @apply inline-flex items-center;
     @apply max-w-48 h-5;
     @apply px-1.5;
-    /* Without this the inline-flex pill aligns on its synthetic baseline (its bottom edge) and
-       rides high, poking above the text line; middle centers it on the line instead. */
-    @apply align-middle;
+    /* The name (see below) is the only baseline-aligned item, so it gives the pill its baseline,
+       and the name sits on the text line's baseline - the editor's mention chip does the same. */
+    @apply align-baseline;
     /* Vertical margin so wrapped mention chips don't touch the row above/below: for an atomic
        inline box the line box fits its margin box, so this adds the inter-line gap. */
     @apply my-0.5;
-    @apply rounded-lg bg-mention-other;
+    @apply rounded-full bg-mention-other;
     @apply text-mention-other-text font-normal;
     @apply select-none;
 }
@@ -37,6 +37,9 @@
 }
 .mention-markup > i {
     font-size: 1.25rem;
+}
+.mention-markup > div {
+    @apply self-baseline;
 }
 /* Leading alert-state icon (bell / filled bell / checkmark): trim the left padding so its gap to
    the edge matches the text's gap on the right. */

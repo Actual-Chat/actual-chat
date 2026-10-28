@@ -18,19 +18,19 @@
 .markup-editor .editor-content .editor-mention {
     @apply inline-block;
     @apply max-w-48;
-    @apply truncate;
+    @apply whitespace-nowrap text-ellipsis;
+    /* Not overflow: hidden - that moves an inline-block's baseline to its bottom edge, and the
+       name would no longer sit on the text line's baseline. */
+    overflow: clip;
     @apply align-baseline;
 }
+/* Same box as .mention-markup in a message: 20px tall, the name on the line's baseline. */
 .markup-editor .editor-content .editor-mention-user {
-    /* Negative bottom margin keeps a single input line compact; too negative and wrapped mention
-       rows merge, so it's eased from -1.5 to -0.5 to give the inter-row gap back. */
-    @apply px-1.5 mx-px -mb-1;
+    @apply h-5 leading-5;
+    @apply px-1.5 mx-px;
     @apply rounded-full;
     @apply bg-mention-other;
     @apply text-mention-other-text font-normal;
-}
-body.narrow .markup-editor .editor-content .editor-mention-user {
-    @apply -mb-0.5;
 }
 .markup-editor .editor-content .editor-mention-chat,
 .markup-editor .editor-content .editor-mention-place {
