@@ -20,6 +20,7 @@ public class ChatCallReactions(IServiceProvider services) : IChatCallReactions
 
     public virtual async Task Send(Session session, ChatId chatId, Emoji emoji, CancellationToken cancellationToken)
     {
+        emoji.RequireSupported();
         // GetOwn returns null for a non-member, which gates reactions to the chat's authors.
         var author = await Authors.GetOwn(session, chatId, cancellationToken).ConfigureAwait(false);
         if (author is null)
