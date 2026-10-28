@@ -210,36 +210,16 @@ body.hoverable .file-attachment:not(.upload-file):not([data-state="uploading"]):
     @apply bg-file-default;
 }
 
-.message-image-attachments.media-attachment-uploads {
-    @apply w-full;
-    @apply mb-1;
-}
-.message-image-attachments.media-attachment-uploads .attachment-wrapper {
-    @apply w-full;
-    @apply rounded-none;
-}
-.message-image-attachments.media-attachment-uploads .attachment-wrapper > .c-content {
-    @apply h-full;
-}
-.message-image-attachments.media-attachment-uploads .attachment-item {
-    @apply gap-x-0;
-    @apply h-full w-auto;
-    @apply m-0;
-    @apply rounded-none;
-}
-.message-image-attachments.media-attachment-uploads .attachment-filename {
-    @apply w-full max-w-none;
-}
-body.hoverable .message-image-attachments.media-attachment-uploads .remove-attachment-btn.btn {
+/* The sender's own controls on a media tile it is uploading */
+body.hoverable .image-attachment > .remove-attachment-btn.btn {
     @apply hidden;
 }
-body.hoverable .message-image-attachments.media-attachment-uploads .image-item:hover .remove-attachment-btn.btn {
+body.hoverable .image-attachment:hover > .remove-attachment-btn.btn {
     @apply flex;
 }
-.message-image-attachments.media-attachment-uploads .attachment-item > img,
-.message-image-attachments.media-attachment-uploads .attachment-item > video,
-.message-image-attachments.media-attachment-uploads .attachment-item > image-skeleton {
-    @apply h-full;
+/* The upload size takes the corner the video duration sits in */
+.image-attachment:has(> .attachment-upload-size) .video-thumbnail .c-duration {
+    @apply invisible;
 }
 .attachment-upload-ring {
     @apply absolute inset-0 z-20;

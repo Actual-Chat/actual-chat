@@ -92,8 +92,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatBotWaitingMessage>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatContentItemMenu>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatDescription>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsView>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsViewContainer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentsView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryAuthorGroupView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ChatEntryLine>();
@@ -236,7 +234,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FileAttachmentTitle>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FileAttachmentView>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FileList>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FileUploadAttachment>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FontSizeSlider>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.ForwardMessageModal>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.FoundChatList>();
@@ -521,7 +518,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UnknownGuideContent>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UnreadCount>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UnreadCountWithTime>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.UploadAttachmentItem>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VerificationStatus>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VideoPanel.ScreenCastAlreadyActiveModal>();
@@ -537,7 +533,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachment>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachmentList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualMediaList>();
-        CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VisualUploadMediaList>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsButton>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsButtonBubble>();
         CodeKeeper.Keep<global::ActualChat.UI.Blazor.App.Components.VoiceSettingsModal>();
@@ -992,8 +987,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatBotWaitingMessage), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatContentItemMenu), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatDescription), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsView), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentUploadsViewContainer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAttachmentsView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryAuthorGroupView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ChatEntryLine), AotTypeKind.Component),
@@ -1136,7 +1129,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.FileAttachmentTitle), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FileAttachmentView), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FileList), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.FileUploadAttachment), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FontSizeSlider), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.ForwardMessageModal), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.FoundChatList), AotTypeKind.Component),
@@ -1421,7 +1413,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.UnknownGuideContent), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.UnreadCount), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.UnreadCountWithTime), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.UploadAttachmentItem), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VerificationStatus), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.RemoteStreamPlayer), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VideoPanel.ScreenCastAlreadyActiveModal), AotTypeKind.Component),
@@ -1437,7 +1428,6 @@ internal partial class BlazorUIAppAotSource : IAotSource
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachment), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualMediaAttachmentList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VisualMediaList), AotTypeKind.Component),
-            (typeof(global::ActualChat.UI.Blazor.App.Components.VisualUploadMediaList), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsButton), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsButtonBubble), AotTypeKind.Component),
             (typeof(global::ActualChat.UI.Blazor.App.Components.VoiceSettingsModal), AotTypeKind.Component),

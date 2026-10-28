@@ -4,7 +4,11 @@
     @foreach (var row in _rows) {
         <VisualMediaAttachmentLine Row="@row" TotalItems="@_mediaList.Length">
             <ItemTemplate>
-                <VisualMediaAttachment Attachment="@context" Attachments="@_viewableList" IsUploading="@IsUploading"/>
+                <VisualMediaAttachment
+                    Attachment="@context"
+                    Attachments="@_viewableList"
+                    IsUploading="@IsUploading"
+                    Uploads="@Uploads"/>
             </ItemTemplate>
         </VisualMediaAttachmentLine>
     }
@@ -32,6 +36,7 @@
     [Parameter] public bool IsConversation { get; set; }
     [Parameter] public bool IsNarrow { get; set; }
     [Parameter] public bool IsUploading { get; set; }
+    [Parameter] public IAttachmentList? Uploads { get; set; }
 
     protected override void OnParametersSet() {
         var maxCount = IsConversation ? IsNarrow ? 6 : 8 : 10;
