@@ -24,7 +24,7 @@ on:
         type: boolean
         default: true
       macos:
-        description: Mac App Store — submit the Mac Catalyst build for review
+        description: Mac App Store — submit the macOS AppKit build for review
         type: boolean
         default: true
       windows:
@@ -199,7 +199,7 @@ jobs:
             notes_path:"$GITHUB_WORKSPACE/${{ needs.params.outputs.NOTES_PATH }}"
 
   macos:
-    name: Mac App Store — submit Mac Catalyst for review
+    name: Mac App Store — submit the macOS AppKit build for review
     if: ${{ inputs.macos }}
     needs: params
     runs-on: macos-26

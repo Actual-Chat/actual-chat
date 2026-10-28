@@ -2,7 +2,7 @@
 name: promote-release
 description: |
   Publish a tested Voxt release to the stores: Google Play production, App
-  Store review (iOS + Mac Catalyst), Microsoft Store certification. Use when
+  Store review (iOS + macOS), Microsoft Store certification. Use when
   the user says "promote the release", "publish the apps", "release to the
   stores", "/promote-release", or after /prepare-release once the staged
   builds have been tested.
@@ -64,6 +64,28 @@ The version is `X.Y.Z` (nbgv SimpleVersion, e.g. `2.17.246`). A staging job
 that failed or was skipped means that platform has nothing to promote — leave
 it out in step 3 and say why.
 
+**Check the picked build is the branch tip.** Commits pushed after
+`/prepare-release` start their own release runs, and the newest green run can
+be older than the branch:
+
+```bash
+sha=$(gh run view <id> --repo Actual-Chat/actual-chat --json headSha -q .headSha)
+git log --oneline "$sha..origin/$branch"
+git diff --stat "$sha" "origin/$branch"
+gh run list --repo Actual-Chat/actual-chat --workflow build-test-deploy-dev.yml \
+  --branch "$branch" --json databaseId,status,conclusion,headSha,url --limit 10 \
+  -q '.[] | "\(.databaseId)\t\(.status)\t\(.conclusion)\t\(.headSha[0:10])\t\(.url)"'
+```
+
+- No commits after `$sha` — the build is current.
+- Only `*.md` files changed — the workflow ignores those paths, so no newer
+  build will come; the build is current.
+- Anything else — the branch is ahead of the build. Find the runs for the newer
+  commits and say what state each is in: `waiting` (the `prod` approval is
+  pending), `in_progress`, or `failure` (quote the failed job). Carry this into
+  the step 3 question. Never start a CI run from here: a new build needs the
+  `prod` approval and its own testing, so that is the user's call.
+
 **Windows: Partner Center holds one submission per app**, and it stays
 "pending" until it is published — including while it's in certification.
 Read the Windows upload job (`Upload win app package ...`) of every
@@ -118,8 +140,13 @@ Ask with `AskUserQuestion` (multiSelect), listing exactly what was staged, e.g.:
 > promoted.
 > - Android — Play internal track, version code N
 > - iOS — TestFlight X.Y.Z
-> - macOS — TestFlight X.Y.Z (Mac Catalyst)
+> - macOS — TestFlight X.Y.Z (AppKit app)
 > - Windows — pending Store submission <id>, App.Maui_X.Y.Z.0_x64.msix
+
+If step 1 found the branch ahead of the build, put that in the question
+itself, above the options — e.g. "`release/vX.Y` is 5 commits ahead of
+X.Y.Z; run <id> for the newest commit is waiting for the `prod` approval".
+The user may still promote the older build, but they must see the gap first.
 
 Don't ask for an App Store version: the workflow publishes under the build
 version (`X.Y.Z`), the same string Google Play and the Microsoft Store show, so
@@ -227,6 +254,9 @@ for the user to paste. Confirm with a one-liner:
   Set it only when the user asks for a specific store version.
 - **Dispatching on `dev`.** The `prod-store` environment rejects every ref
   but `release/*`, so the store jobs fail before doing anything.
+- **Promoting an older green build without saying so.** If the newest release
+  run failed or is still waiting for approval, the newest green run is behind
+  the branch; the step 3 question must name the gap.
 - **Skipping the tested-build question**, or pre-selecting platforms for the
   user. The only source of truth is the user's answer in this session.
 - **Promoting Windows from a stale run.** The pending submission is the last
