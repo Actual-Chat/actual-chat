@@ -629,6 +629,68 @@ public sealed class CallEntryTest(ChatCollection.AppHostFixture fixture, ITestOu
         refreshed.AuthorIds.Should().NotContain(Constants.User.Walle.GetWalleAuthorId(chatId));
     }
 
+    [Fact]
+    public async Task ACallWithEveryMessageRemovedShouldKeepItsCardWhileItsEntryStays()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        var commander = tester.AppServices.Commander();
+
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        var message = await tester.CreateTextEntry(chatId, "hi");
+        await HangUp(backend, chatId, alice.Id);
+        var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
+        var materialized = await conversations.Get(conversationId, default).Require();
+        materialized.MessageCount.Should().Be(1);
+
+        // act
+        var removeCmd = new ChatsBackend_ChangeEntry(message.Id, null, Change.Remove<ChatEntryDiff>());
+        await commander.Call(removeCmd);
+        var summarizeCmd = new ConversationBackend_Summarize(chatId, [materialized.EntryLidRange]);
+        var refreshed = await commander.Call(summarizeCmd);
+
+        // assert
+        refreshed.Should().NotBeNull("the CallEntry is still in the card's range");
+        refreshed!.IsCall.Should().BeTrue();
+        refreshed.MessageCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RemovingTheEntryOfACallWithNoMessagesShouldRemoveItsCard()
+    {
+        // arrange
+        await using var tester = AppHost.NewBlazorTester(Out);
+        var (chatId, bob, alice) = await NewPeerChat(tester);
+        var backend = tester.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        var conversations = tester.AppServices.GetRequiredService<IConversationsBackend>();
+        var commander = tester.AppServices.Commander();
+
+        await backend.StartCall(chatId, bob.Id, new[] { alice.Id }.ToApiArray(), false, default);
+        await backend.AcceptCall(chatId, alice.Id, default);
+        var connected = await backend.GetState(chatId, default);
+        await HangUp(backend, chatId, alice.Id);
+        var conversationId = connected!.OpenConversation!.ToMaterializedConversation().Id;
+        var materialized = await conversations.Get(conversationId, default).Require();
+        var callEntries = await ReadCallEntries(tester, chatId);
+        var callEntry = callEntries.Single();
+
+        // act
+        var removeCmd = new ChatsBackend_ChangeEntry(callEntry.Id, null, Change.Remove<ChatEntryDiff>());
+        await commander.Call(removeCmd);
+        var summarizeCmd = new ConversationBackend_Summarize(chatId, [materialized.EntryLidRange]);
+        var refreshed = await commander.Call(summarizeCmd);
+
+        // assert
+        refreshed.Should().BeNull();
+        var conversation = await conversations.Get(conversationId, default);
+        conversation.Should().BeNull("nothing is left in the card's range");
+    }
+
     // Private methods
 
     private static async Task HangUp(ILiveSessionsBackend backend, ChatId chatId, AuthorId authorId)

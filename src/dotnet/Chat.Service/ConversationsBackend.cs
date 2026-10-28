@@ -364,10 +364,18 @@ public class ConversationsBackend(IServiceProvider services) : DbServiceBase<Cha
         var entriesInfo = await GetTextEntries(chatId, entryIdRanges, cancellationToken).ConfigureAwait(false);
         var entries = entriesInfo.TextEntries;
         if (entries.Count == 0) {
-            // A call's card outlives its transcript: it records that the call happened, so deleting
-            // every message must leave it standing rather than erase the call from the chat.
-            if (existing is { IsCall: true })
-                return existing;
+            // A call's card stands for the call: it stays while any entry of its range does - its own
+            // CallEntry included - and only its message count drops to what's left.
+            if (existing is { IsCall: true }) {
+                var firstEntries = await ChatsBackend
+                    .ListNewEntries(chatId, conversationId.StartEntryLid - 1, 1, cancellationToken)
+                    .ConfigureAwait(false);
+                if (firstEntries.Any(e => e.LocalId <= existing.EndEntryLid)) {
+                    var (emptied, _) = await SizeCallConversation(existing, cancellationToken).ConfigureAwait(false);
+                    return await Persist(emptied, command.IsLiveMaterialization, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
 
             // Every entry in the range was removed - a summary of nothing must not survive, but a stale
             // command whose range predates the conversation's growth must not delete the grown one.
