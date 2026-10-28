@@ -45,7 +45,11 @@
                 <i class="icon-phone-take text-2xl"></i>
             </ButtonRound>
         } else {
-            <ButtonRound Class="btn-call c-hang-up" Tooltip="@L.Call_HangUp" Click="@OnHangUpClick">
+            <ButtonRound
+                Class="btn-call c-hang-up"
+                Tooltip="@L.Call_HangUp"
+                Click="@OnHangUpClick"
+                data-tune="@(m.HasHangUpTune ? "none" : null)">
                 <i class="icon-phone-off text-2xl"></i>
             </ButtonRound>
         }
@@ -82,6 +86,7 @@
 
         var mutedChatId = await CallScreensUI.MutedRingChatId.Use(cancellationToken).ConfigureAwait(false);
         var stage = await CallScreensUI.GetCallStage(chatId, cancellationToken).ConfigureAwait(false);
+        var hasHangUpTune = await CallScreensUI.HasHangUpTune(chatId, cancellationToken).ConfigureAwait(false);
         return new() {
             Author = author,
             Stage = stage,
@@ -90,6 +95,7 @@
             IsIncoming = call is { Role: CallRole.Callee, Phase: CallPhase.Ringing },
             HasVideo = call.HasVideo,
             IsMuted = mutedChatId == chatId,
+            HasHangUpTune = hasHangUpTune,
         };
     }
 
@@ -165,6 +171,7 @@
         public bool IsIncoming { get; init; }
         public bool HasVideo { get; init; }
         public bool IsMuted { get; init; }
+        public bool HasHangUpTune { get; init; }
     }
 
     public sealed record Model(ChatId ChatId);

@@ -99,6 +99,7 @@
                     StopPropagation="true"
                     PreventDefault="true"
                     Click="@OnHangUpClick"
+                    data-tune="@(m.HasHangUpTune ? "none" : null)"
                     data-render-script-hint="@(m.MustShowHangUpHint ? L.Call_HangUpHint : "")">
                     <i class="icon-phone-off"></i>
                 </HeaderButton>
@@ -172,6 +173,7 @@
         var isEqualLayout = await CallScreensUI.IsEqualLayout(cancellationToken).ConfigureAwait(false);
         var mustShowHangUpHint = await LiveSessionUI.MustShowHangUpHint(chatId, cancellationToken)
             .ConfigureAwait(false);
+        var hasHangUpTune = await CallScreensUI.HasHangUpTune(chatId, cancellationToken).ConfigureAwait(false);
         var m = new Model {
             Mode = screen.Mode,
             Phase = phase,
@@ -180,6 +182,7 @@
             HasVideo = screen.HasVideo,
             HasHangUp = screen.HasHangUp,
             MustShowHangUpHint = screen.HasHangUp && mustShowHangUpHint,
+            HasHangUpTune = hasHangUpTune,
             IsEqualLayout = isEqualLayout,
         };
         if (!screen.HasVideo)
@@ -237,6 +240,7 @@
         public bool HasVideo { get; init; }
         public bool HasHangUp { get; init; }
         public bool MustShowHangUpHint { get; init; }
+        public bool HasHangUpTune { get; init; }
         public int RemoteAuthorCount { get; init; }
         public int TileCount { get; init; }
         public int MemberCount { get; init; }

@@ -78,6 +78,7 @@
                             <NotifyAllButton Chat="@Chat"/>
                             <div class="c-incut"></div>
                             <button class="post-panel-btn post-message btn btn-round btn-transparent btn-xs"
+                                    data-tune="none"
                                     @onmousedown="@(_ => Post())"
                                     @onmousedown:preventDefault="true">
                                 <i class="icon-paper-plane"></i>
@@ -243,7 +244,7 @@
         var clearMarkupTask = MarkupEditorRef.Clear();
         try {
             var relatedChatEntry = ChatEditorUI.RelatedEntryRef.Value;
-            await ChatEditorUI.HideRelatedEntry(false);
+            await ChatEditorUI.HideRelatedEntry(false, mustPlayTune: false);
             Task<ChatEntry?> postTask;
             FilesUploadHandle? uploads = null;
             try {
@@ -450,7 +451,7 @@
 
         _ = TuneUI.Play(Tune.SendMessage);
         var relatedChatEntry = ChatEditorUI.RelatedEntryRef.Value;
-        await ChatEditorUI.HideRelatedEntry(false).ConfigureAwait(true);
+        await ChatEditorUI.HideRelatedEntry(false, mustPlayTune: false).ConfigureAwait(true);
 
         SendMessageRequest cmd;
         if (relatedChatEntry is { Kind: RelatedEntryKind.Reply })

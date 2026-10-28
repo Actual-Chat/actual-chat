@@ -71,8 +71,9 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
         }
     }
 
-    public async Task HideRelatedEntry(bool updateUI = true)
+    public async Task HideRelatedEntry(bool updateUI = true, bool mustPlayTune = true)
     {
+        // Send and record pass mustPlayTune: false - their own tune covers the reply bar going away
         RelatedEntryRef? oldEntryRef;
         lock (_lock) {
             if (_relatedEntryRef.Value == null)
@@ -83,7 +84,8 @@ public partial class ChatEditorUI : UIWorkerBase<AppUIHub>, IComputeService, INo
         }
         if (updateUI)
             _ = UICommander.RunNothing();
-        _ = TuneUI.Play(Tune.CancelReply);
+        if (mustPlayTune)
+            _ = TuneUI.Play(Tune.CancelReply);
         if (oldEntryRef != null)
             await SaveRelatedEntry(oldEntryRef.EntryId.ChatId, null).ConfigureAwait(false);
     }

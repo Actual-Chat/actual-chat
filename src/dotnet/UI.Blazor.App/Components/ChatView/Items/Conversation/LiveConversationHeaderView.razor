@@ -25,7 +25,7 @@
     <span class="c-lc-name">@title</span>
     @* Leaving is just "stop listening", so re-joining stays one tap away. *@
     @if (s.CanJoin) {
-        <button type="button" class="c-lc-join btn btn-sm btn-transparent" @onclick="@Join">@L.Call_Join</button>
+        <button type="button" class="c-lc-join btn btn-sm btn-transparent" data-tune="none" @onclick="@Join">@L.Call_Join</button>
     }
     @if (s.IsTranslatedVoiceAvailable) {
         <HeaderButton

@@ -55,7 +55,8 @@
         Class="@recBtnCls"
         IsDisabled="@IsDisabled"
         Click="@OnClick"
-        PointerDownPreventDefault="true">
+        PointerDownPreventDefault="true"
+        data-tune="none">
 
         @if (hasMicrophonePermission) {
             if (m is { IsAnyoneTalking: true, IsRecordingHere: false } && !IsListening) {
@@ -208,6 +209,7 @@
             if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(cancellationToken).ConfigureAwait(false)) {
                 // Recording never starts, so this is the only chance to say why the press did nothing
                 AudioRecorder.MarkFailed(chatId, RecorderStartResult.NoPermission);
+                _ = TuneUI.Play(Tune.ShowInputError);
                 return;
             }
 

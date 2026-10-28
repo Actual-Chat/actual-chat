@@ -691,8 +691,15 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
         bool mustPlayBeginTune = true)
     {
         var oldRecordingChatId = ActiveChatsUI.ActiveChats.Value.FirstOrDefault(c => c.IsRecording)?.ChatId;
-        if (oldRecordingChatId != chatId)
+        if (oldRecordingChatId != chatId) {
             _recordingIntentChangedAt.Value = CpuNow;
+            // Armed before the change: the recording tune is the only one this press plays,
+            // whichever comes first, the recording tune or the listening one
+            if (chatId is not null)
+                TuneUI.SuppressBeginRecordingFollowups();
+            else
+                TuneUI.Suppress(Tune.StopListening);
+        }
         // Publication: RecordChat reads both from its own flow right before opening the mic.
         Volatile.Write(ref _recordingIdleDurationBox, chatId is null ? null : (object?)idleDuration);
         Volatile.Write(ref _isBeginTuneSuppressed, chatId is not null && !mustPlayBeginTune);

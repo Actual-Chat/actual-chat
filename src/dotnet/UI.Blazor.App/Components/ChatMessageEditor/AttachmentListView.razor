@@ -10,7 +10,7 @@
                 <ImageQualitySelector
                     Attachments="@Attachments"
                     OnPresetChanged="@OnImageQualityChanged"/>
-                <ButtonRound Class="c-remove-btn" Click="_ => Clear()">
+                <ButtonRound Class="c-remove-btn" Click="_ => Clear()" data-tune="none">
                     <i class="icon-trash03 text-xl text-danger"></i>
                 </ButtonRound>
             </div>
@@ -25,7 +25,7 @@
             }
             @if (Attachments.Count < 10) {
                 <li class="attachment-wrapper last-element">
-                    <ButtonRound Class="add-attachment" Click="@OnAddClick">
+                    <ButtonRound Class="add-attachment" Click="@OnAddClick" data-tune="none">
                         <i class="icon-plus text-2xl"></i>
                     </ButtonRound>
                 </li>

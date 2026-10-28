@@ -89,7 +89,7 @@
                     </div>
 
                     @* Mic button *@
-                    <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
+                    <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle" data-tune="@MicToggleTune">
                         @if (_isMicOn) {
                             <i class="icon-mic-2 text-2xl"></i>
                         } else {
@@ -110,7 +110,7 @@
                     </ButtonRound>
 
                     @* Mic button *@
-                    <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle">
+                    <ButtonRound Class="@MicBtnClass()" Click="@OnMicToggle" data-tune="@MicToggleTune">
                         @if (_isMicOn) {
                             <i class="icon-mic-2 text-2xl"></i>
                         } else {
@@ -561,6 +561,7 @@
             if (!await AudioRecorder.MicrophonePermission.CheckOrRequest(CancellationToken.None)) {
                 _isMicOn = false;
                 StateHasChanged();
+                _ = Hub.TuneUI.Play(Tune.ShowInputError);
                 return;
             }
             await ChatAudioUI.SetRecordingChatId(chatId);
@@ -569,6 +570,9 @@
         }
         _isChatMicLive = _isMicOn;
     }
+
+    // Only settings mode applies the toggle, and the recording state change plays its own tune
+    private string? MicToggleTune => IsSettingsMode ? "none" : null;
 
     // Red when the chat mic is actually live; blue when it's only the preview
     // intent that will start on "Start video".

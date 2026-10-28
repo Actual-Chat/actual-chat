@@ -1,4 +1,5 @@
 ﻿using ActualChat.Localization;
+using ActualChat.UI.Blazor.Services;
 namespace ActualChat.UI.Blazor.App.Services;
 
 public partial class ChatVideoUI
@@ -243,6 +244,10 @@ public partial class ChatVideoUI
         // Long-session "no" or timeout: stop everything — video send/recv + audio.
         StopStreaming();
         CloseVideoPanel();
+        // Listening stops first here, so the recording tune's suppression of StopListening is armed by hand
+        var recordingChatId = await ChatAudioUI.GetRecordingChatId().ConfigureAwait(false);
+        if (recordingChatId is not null)
+            Hub.TuneUI.Suppress(Tune.StopListening);
         await ChatAudioUI.ClearListeningChats().ConfigureAwait(false);
         await ChatAudioUI.SetRecordingChatId(null).ConfigureAwait(false);
         ChatAudioUI.StopReplay();

@@ -20,7 +20,7 @@
         @if (hasChats) {
             @* The whole panel opens PTT settings via this backing layer: everything above it is
                pointer-events-none so clicks fall through to it. *@
-            <div class="c-settings-hit" @onclick="@OnOpenSettings"></div>
+            <div class="c-settings-hit" role="button" @onclick="@OnOpenSettings"></div>
             <div class="c-preview">
                 <div class="c-stack" style="--ptt-count: @itemCount">
                     @for (var i = 0; i < previewChats.Count; i++) {

@@ -342,7 +342,7 @@ public partial class ChatAudioUI
             var repliedEntryId = relatedEntryRef is { Kind: RelatedEntryKind.Reply }
                 ? relatedEntryRef.EntryId
                 : null;
-            await ChatEditorUI.HideRelatedEntry().ConfigureAwait(false);
+            await ChatEditorUI.HideRelatedEntry(mustPlayTune: false).ConfigureAwait(false);
 
             // Play tune BEFORE acquiring mic — on iOS Safari, the mic's
             // audioSession is set to 'play-and-record' after getUserMedia,

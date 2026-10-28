@@ -244,6 +244,9 @@ public partial class CallUI : UIWorkerBase<AppUIHub>, IComputeService, INotifyIn
     {
         // Listening goes first, so a pending OS mic prompt can't fail the server's connect grace check;
         // a denied mic still joins the call, listening only.
+        // With the mic known to be allowed, the recording tune is this connect's only one
+        if (AudioRecorder.MicrophonePermission.Cached.Value == true)
+            TuneUI.SuppressBeginRecordingFollowups();
         await ChatAudioUI.SetListeningState(chatId, true).ConfigureAwait(true);
         var hasMic = await AudioRecorder.MicrophonePermission
             .CheckOrRequest(cancellationToken)
