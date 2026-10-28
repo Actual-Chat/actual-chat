@@ -19,7 +19,7 @@
                 ValueExpression="@(() => _formModel.LanguageCode)"
                 ValueChanged="@(OnLanguageChanged)">
                 <option value="">@L.Settings_Language_Auto</option>
-                @foreach (var language in Languages.AllUI) {
+                @foreach (var language in Languages.AllUI.WithSelected(State.Value)) {
                     <option value="@language.Value">@language.NativeName</option>
                 }
             </InputSelect>

@@ -19,7 +19,7 @@
                 <div class="c-name">@L.Settings_Language_Auto</div>
                 <div class="c-caption">@L.YourAccount_DigestLanguage_AutoCaption</div>
             </div>
-            @foreach (var language in Languages.AllUI) {
+            @foreach (var language in Languages.AllUI.WithSelected(ModalModel.DigestLanguage)) {
                 var isSelected = language == ModalModel.DigestLanguage;
                 <div class="c-item @(isSelected ? "selected" : "")"
                      role="option"
