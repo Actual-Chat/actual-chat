@@ -96,12 +96,21 @@ when the app opens even while the native microphone and playback kept running.
 `StopRecordingAndReplayOnDeviceAwake` therefore resets audio only in browser
 hosts; MAUI keeps recording intent and replay intact.
 
-Android ordinary PTT tracks use media playback even when a concurrent reply
-holds communication focus. Otherwise a track created during that reply keeps
-`VOICE_COMMUNICATION` after the microphone closes and the speaker route is
-cleared, allowing it to fall back to the earpiece. Actual calls and explicit
-car routes retain their communication playback through
-`CarAudioRoute.UseCommunicationPlayback`.
+On Android the playback usage follows the microphone, not PTT:
+`CarAudioRoute.UseCommunicationPlayback(AudioFocusUI)` picks `VOICE_COMMUNICATION`
+while a call is on or the recorder holds the communication focus, and `MEDIA`
+otherwise. A `MEDIA` track beside an open mic escapes the communication path's
+echo canceller, so the listener hears themselves; a `VOICE_COMMUNICATION` track
+outliving the mic falls back to the earpiece once the speaker route is cleared.
+A track's usage is fixed when it is built, so `AndroidAudioPlaybackEngine`
+re-checks it before every write. On a change to `VOICE_COMMUNICATION` it first
+asks for the output route and keeps feeding the current track until the
+communication device really is off the earpiece (a Samsung took 1-1.5 s, and
+switched only once the mic it was opened for was recording). Then it stops the
+track at once and continues on a new one, starting with the part the old track
+had been written but hadn't played - the engine keeps the last 3 s it wrote for
+that. Playing the old track out instead would put up to a second of Media audio
+past the echo canceller. Explicit car routes keep the usage their route dictates.
 
 **Muting** is a timed pause of an armed chat that keeps the consent:
 `PttMuteButton`, the Active Chats badge, opens `PttMuteMenu` (15 min / 1 h /
