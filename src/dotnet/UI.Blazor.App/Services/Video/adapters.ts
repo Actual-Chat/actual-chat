@@ -51,7 +51,22 @@ export type AsyncVideoEncoderOptions = CodecToAsyncAdapterOptions & { codec?: st
 interface PendingCodecItem<TIn, TOut> {
     input: TIn;
     index: number;
+    timestamp: number | null;
     source: PromiseSourceWithTimeout<TOut>;
+}
+
+/** The codec accepted this input and will never emit an output for it - a rate-controlled
+ *  encoder may skip frames. Not a fault: the codec is healthy and needs no reset. */
+export class CodecSkippedInputError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'CodecSkippedInputError';
+    }
+}
+
+export function isCodecSkippedInputError(e: unknown): e is CodecSkippedInputError {
+    return e instanceof CodecSkippedInputError
+        || (e instanceof Error && e.name === 'CodecSkippedInputError');
 }
 
 export class CodecToAsyncAdapterResetError extends Error {
@@ -188,6 +203,19 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
             return;
         }
 
+        // Inputs ahead of the one this output belongs to were skipped by the codec. Pairing
+        // by position instead would hand this output to the wrong input and strand the last one.
+        const outputTimestamp = this.getOutputTimestamp(output);
+        const ownerPosition = outputTimestamp === null
+            ? -1
+            : this.inflight.findIndex(p => p.timestamp === outputTimestamp);
+        for (let i = 0; i < ownerPosition; i++) {
+            const skipped = this.inflight.shift()!;
+            this.closeInput(skipped.input);
+            skipped.source.reject(new CodecSkippedInputError(
+                `${this.adapterName}: input skipped by the codec (index=${skipped.index})`));
+        }
+
         const front = this.inflight.shift();
         if (!front) {
             this.closeOutput(output);
@@ -234,6 +262,32 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
         return null;
     }
 
+    /** Runs the codec's flush. Every output is out once it resolves, so inputs submitted before
+     *  it that are still waiting were skipped by the codec - and would otherwise wait forever. */
+    protected async flushAndSkipUnanswered(flush: () => Promise<void>): Promise<void> {
+        const submitted = [...this.inflight];
+        await flush();
+        for (const pending of submitted) {
+            const position = this.inflight.indexOf(pending);
+            if (position < 0)
+                continue;
+
+            this.inflight.splice(position, 1);
+            this.closeInput(pending.input);
+            pending.source.reject(new CodecSkippedInputError(
+                `${this.adapterName}: input skipped by the codec (index=${pending.index}, seen at flush)`));
+        }
+    }
+
+    // Both return null to pair outputs with inputs in submission order
+    protected getInputTimestamp(_input: TIn): number | null {
+        return null;
+    }
+
+    protected getOutputTimestamp(_output: TCodecOutput): number | null {
+        return null;
+    }
+
     protected closeInputAfterOutput(input: TIn): void {
         this.closeInput(input);
     }
@@ -260,6 +314,8 @@ export abstract class CodecToAsyncAdapter<TIn, TOut, TCodecOutput> implements Di
         const pending: PendingCodecItem<TIn, TOut> = {
             input,
             index: this.getInputIndex(input),
+            // Read here: submit may close the input before its output arrives
+            timestamp: this.getInputTimestamp(input),
             source,
         };
 
@@ -395,7 +451,11 @@ export class AsyncVideoEncoder<
         if (this.encoder.state !== 'configured')
             return;
 
-        try { await this.encoder.flush(); } catch { /* a reset/close races this */ }
+        try {
+            await this.flushAndSkipUnanswered(() => this.encoder.flush());
+        } catch {
+            // A reset/close races this
+        }
     }
 
     handleEncoderHang(): void {
@@ -404,6 +464,14 @@ export class AsyncVideoEncoder<
 
     protected getInputIndex(input: TIn): number {
         return input.index;
+    }
+
+    protected override getInputTimestamp(input: TIn): number | null {
+        return input.frame.timestamp;
+    }
+
+    protected override getOutputTimestamp(output: EncoderOutput): number | null {
+        return output.chunk.timestamp;
     }
 
     // Recoverable on purpose: an unusable encoder means "skip this bundle and rebuild

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
     AsyncVideoEncoder,
+    isCodecSkippedInputError,
     type CapturedFrame,
     type EncodedFrame,
 } from '../../../src/dotnet/UI.Blazor.App/Services/Video/adapters';
@@ -79,6 +80,7 @@ class MockVideoEncoder {
 
 class MockVideoFrame {
     closed = false;
+    timestamp?: number;
     constructor(public id = 0) {}
     close(): void { this.closed = true; }
 }
@@ -180,6 +182,33 @@ describe('AsyncVideoEncoder', () => {
         expect(r1.meta.tag).toBe('a');
         expect(r2.meta.tag).toBe('b');
         expect(enc.inflightCount).toBe(0);
+    });
+
+    it('rejects an input the codec skipped and pairs the next output by timestamp', async () => {
+        // arrange
+        const enc = makeEncoder({ maxInflight: 3, timeoutMs: 0 });
+        const mock = MockVideoEncoder.instances[0];
+        const frames = [1, 2, 3].map(i => {
+            const frame = new MockVideoFrame(i);
+            frame.timestamp = i * 1000;
+            return frame;
+        });
+
+        // act
+        const p1 = enc.encode(makeCaptured(1, 'a', frames[0]), { keyFrame: false });
+        const p2 = enc.encode(makeCaptured(2, 'b', frames[1]), { keyFrame: false });
+        const p3 = enc.encode(makeCaptured(3, 'c', frames[2]), { keyFrame: false });
+        mock.emitRaw({ type: 'delta', timestamp: 2000 } as unknown as EncodedVideoChunk);
+        mock.emitRaw({ type: 'delta', timestamp: 3000 } as unknown as EncodedVideoChunk);
+
+        // assert
+        await expect(p1).rejects.toSatisfy(isCodecSkippedInputError);
+        expect((await p2).meta.tag).toBe('b');
+        expect((await p3).meta.tag).toBe('c');
+        expect(frames[0].closed).toBe(true);
+        expect(enc.inflightCount).toBe(0);
+        expect(enc.isDegraded).toBe(false);
+        expect(mock.resetCalls).toBe(0);
     });
 
     it('rejects with "queue full" when inflight cap is reached', async () => {

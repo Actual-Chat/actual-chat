@@ -3,7 +3,7 @@ import { getLogs } from 'logging';
 import { from, type PipeOperator } from 'ix-ext';
 import { AsyncSignal, PromiseSource, abortPromise, withTimeout } from 'actuallab-core';
 import { RunningEMA } from 'math';
-import { AsyncVideoEncoder, isAsyncVideoEncoderResetError } from '../adapters';
+import { AsyncVideoEncoder, isAsyncVideoEncoderResetError, isCodecSkippedInputError } from '../adapters';
 import { getEncoderPipelineDepth } from '../codec-support';
 import { isCapturedBundleKeyFrame } from '../bundle-helpers';
 import { FrameDropStage } from '../frame-drop-trace';
@@ -141,6 +141,11 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
             // Stamped onto the next surviving bundle so `traceDrops` below finds
             // the gap already accounted for and does not re-blame SenderEncode.
             let pacingDrops = 0;
+            // Drops a codec skip leaves unexplained, carried to the next frame that ships: per
+            // bundle when every layer was skipped, per canonical layer id when only some were.
+            // Untagged, the gap reads as wire loss on the sender and as pull loss on receivers.
+            const bundleSkipCarry: FrameDropStage[] = [];
+            const layerSkipCarry = new Map<number, FrameDropStage[]>();
             let anyEncodedOutput = false;
             // Consecutive bundle-watchdog timeouts. Reset on any successful
             // settle. Escalates to throw at 2 — first hang triggers in-place
@@ -301,7 +306,8 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 p.bundle.stats.encodeTimeMsMaxSum += layerMaxMs;
                 p.bundle.stats.encodeTimeMsCount++;
                 const rejected = settled.filter(
-                    (r): r is PromiseRejectedResult => r.status === 'rejected');
+                    (r): r is PromiseRejectedResult =>
+                        r.status === 'rejected' && !isCodecSkippedInputError(r.reason));
                 for (const result of settled) {
                     if (result.status === 'fulfilled') {
                         anyEncodedOutput = true;
@@ -348,12 +354,16 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     return { kind: 'throw', error: firstRealReason };
                 }
 
-                const results = settled.map((result): EncodedFrame => {
-                    if (result.status !== 'fulfilled')
-                        throw new Error('encode: unreachable rejected result after rejection check');
+                // A layer the codec skipped is left out of the bundle: nothing references the
+                // skipped frame, so its own next delta still decodes, and the other layers'
+                // deltas must ship or their chains break. No keyframe is needed for either.
+                const results = settled.map((result): EncodedFrame | null =>
+                    result.status === 'fulfilled' ? result.value : null);
+                if (results.every(r => r === null)) {
+                    bundleSkipCarry.push(...p.bundle.dropTrace, FrameDropStage.SenderEncodePacing);
+                    return { kind: 'skip' };
+                }
 
-                    return result.value;
-                });
                 // Verify keyframe-ness when we asked for one. Pooled
                 // encoders may have lingering state where the first
                 // post-reset encode unexpectedly emerges as a delta;
@@ -365,7 +375,7 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                 if (p.keyFrame) {
                     let allKey = true;
                     for (const r of results) {
-                        if (r.chunk.type !== 'key') {
+                        if (r?.chunk.type !== 'key') {
                             allKey = false;
                             break;
                         }
@@ -375,30 +385,47 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                         warnLog?.log(
                             `requested keyframe but encoder produced delta(s) `
                             + `at index=${p.bundle.index}; re-requesting`);
-                        for (const r of results)
-                            closeEncodedFrame(r);
+                        for (const r of results) {
+                            if (r)
+                                closeEncodedFrame(r);
+                        }
                         forceKeyframeNext = true;
                         return { kind: 'skip' };
                     }
                 }
 
+                if (bundleSkipCarry.length > 0) {
+                    p.bundle.dropTrace.push(...bundleSkipCarry);
+                    bundleSkipCarry.length = 0;
+                }
                 const out: EncodedFrame[] = [];
                 let mustClose = true;
+                let layerId = 0;
                 try {
                     const top = p.bundle.layers[layerCount - 1];
-                    for (let layerId = 0; layerId < results.length; layerId++) {
+                    for (; layerId < results.length; layerId++) {
                         const partial = results[layerId];
+                        const canonicalLayerId = configs[layerId].layerId ?? layerId;
+                        if (!partial) {
+                            const carry = layerSkipCarry.get(canonicalLayerId) ?? [];
+                            carry.push(...p.bundle.dropTrace, FrameDropStage.SenderEncodePacing);
+                            layerSkipCarry.set(canonicalLayerId, carry);
+                            continue;
+                        }
+
                         const cfg = configs[layerId];
+                        const carry = layerSkipCarry.get(canonicalLayerId);
+                        layerSkipCarry.delete(canonicalLayerId);
                         const completed: EncodedFrame = {
                             chunk: partial.chunk,
                             metadata: partial.metadata,
                             durationUs: top.durationUs,
                             capturedAt: top.capturedAt,
                             index: top.index,
-                            // Shared by reference with the bundle; per-layer
-                            // wire DTOs carry the same trace bytes.
-                            dropTrace: p.bundle.dropTrace,
-                            layerId: cfg.layerId ?? layerId,
+                            // Shared by reference with the bundle unless this layer carries
+                            // drops of its own; wire-send ships per-layer bytes only then.
+                            dropTrace: carry ? [...p.bundle.dropTrace, ...carry] : p.bundle.dropTrace,
+                            layerId: canonicalLayerId,
                             sourceWidth: top.sourceWidth,
                             sourceHeight: top.sourceHeight,
                             encodedWidth: cfg.width,
@@ -426,8 +453,11 @@ export function encode(opts: EncodeOptions): PipeOperator<CapturedBundle, Encode
                     if (mustClose) {
                         for (const f of out)
                             closeEncodedFrame(f);
-                        for (let i = out.length; i < results.length; i++)
-                            closeEncodedFrame(results[i]);
+                        for (let i = layerId; i < results.length; i++) {
+                            const r = results[i];
+                            if (r)
+                                closeEncodedFrame(r);
+                        }
                     }
                 }
             };

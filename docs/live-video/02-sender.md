@@ -186,6 +186,18 @@ File: `operators/encode.ts`. For each `CapturedBundle`:
   RPC layer's compaction step both treat L0 keyframes as restart points.
 - On `CodecToAsyncAdapterResetError` (encoder timed out, see `adapters.ts`):
   marks the next bundle as a keyframe and retries.
+- A rate-controlled encoder may accept a frame and never emit a chunk for it —
+  WebKit's VP9 encoder does this to camera frames at low bitrates. The adapter
+  pairs each chunk with its input by timestamp, rejects the inputs ahead of it
+  with `CodecSkippedInputError`, and `encode` leaves that layer out of the
+  bundle: no reset and no keyframe, since nothing references a skipped frame.
+  Pairing by position instead hands every later chunk to the previous input and
+  strands one input per skip until the bundle watchdog resets the encoder.
+  After a successful `flush()` every chunk is out, so inputs still waiting are
+  rejected the same way. A skip is traced as `SenderEncodePacing` - encoder-side,
+  never wire loss - carried onto the next bundle when the whole bundle was
+  skipped, and onto that layer's next frame alone when only one layer was;
+  `wireSend` ships such a layer's own trace instead of the bundle's.
 
 Each `EncodedFrame` carries its `EncodedVideoChunk`,
 `EncodedVideoChunkMetadata` (SPS/PPS for keyframes), the source `capturedAt`,

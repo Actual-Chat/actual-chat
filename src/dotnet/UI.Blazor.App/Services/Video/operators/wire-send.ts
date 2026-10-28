@@ -244,7 +244,10 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             };
                             if (encoded.rotation !== 0)
                                 dto.rotation = encoded.rotation;
-                            if (dropTraceBytes)
+                            // A layer that skipped frames other layers shipped carries its own trace
+                            if (encoded.dropTrace !== bundle.dropTrace && encoded.dropTrace.length > 0)
+                                dto.dropTrace = Uint8Array.from(encoded.dropTrace);
+                            else if (dropTraceBytes)
                                 dto.dropTrace = dropTraceBytes;
                             if (isKey && encoded.description)
                                 dto.description = encoded.description;
