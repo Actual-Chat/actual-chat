@@ -694,6 +694,18 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
                 .SkipNullItems()
                 .DistinctBy(m => m.Id)
                 .ToDictionary(m => m.Id);
+
+            // The entry links a thumbnail only once all its uploads complete, while each media knows its own
+            // as soon as it is processed
+            var lateThumbnails = await mediaMap.Values
+                .Select(m => m.ThumbnailId)
+                .SkipNullItems()
+                .Where(id => !mediaMap.ContainsKey(id))
+                .Select(id => MediaBackend.Get(id, cancellationToken))
+                .Collect(cancellationToken)
+                .ConfigureAwait(false);
+            foreach (var thumbnail in lateThumbnails.SkipNullItems())
+                mediaMap[thumbnail.Id] = thumbnail;
         }
         return dbAttachments.Select(x => WithMedia(x.ToModel())).SkipNullItems().ToArray();
 
@@ -703,11 +715,13 @@ public partial class ChatsBackend(IServiceProvider services) : DbServiceBase<Cha
             if (media is null)
                 return null;
 
+            var thumbnailMediaId = attachment.ThumbnailMediaId ?? media.ThumbnailId;
             Media.Media? thumbnailMedia = null;
-            if (attachment.ThumbnailMediaId != null)
-                thumbnailMedia = mediaMap.GetValueOrDefault(attachment.ThumbnailMediaId);
+            if (thumbnailMediaId != null)
+                thumbnailMedia = mediaMap.GetValueOrDefault(thumbnailMediaId);
             return attachment with {
                 Media = media,
+                ThumbnailMediaId = thumbnailMediaId,
                 ThumbnailMedia = thumbnailMedia,
             };
         }
