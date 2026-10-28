@@ -17,12 +17,10 @@ public interface ILiveVideoStreams : IComputeService
         CancellationToken cancellationToken);
 
     // ReturnDefault: "no streams" is the right answer offline and until the server answers
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<ApiArray<VideoStreamInfo>> List(Session session, ChatId chatId, CancellationToken cancellationToken);
 
-    [ComputeMethod]
-    [RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
+    [ComputeMethod, RemoteComputeMethod(CacheMode = RemoteComputedCacheMode.ReturnDefault)]
     Task<int> GetMemberCount(Session session, ChatId chatId, CancellationToken cancellationToken);
 
     // NoCache, unlike List: the recorder picks its codec from this, so a default empty list would mislead it

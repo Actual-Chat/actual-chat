@@ -13,7 +13,6 @@ public class Contacts(IServiceProvider services) : IContacts
     private IPlaces Places => field ??= Services.GetRequiredService<IPlaces>();
     private IChatThreads ChatThreads => field ??= Services.GetRequiredService<IChatThreads>();
     private IChatPositions ChatPositions => field ??= Services.GetRequiredService<IChatPositions>();
-    // Lazy: only API hosts register them, and IContacts is a local API on backend hosts too
     private IMentions Mentions => field ??= Services.GetRequiredService<IMentions>();
     private IUserSettings UserSettings => field ??= Services.GetRequiredService<IUserSettings>();
     private IContactsBackend Backend { get; } = services.GetRequiredService<IContactsBackend>();
