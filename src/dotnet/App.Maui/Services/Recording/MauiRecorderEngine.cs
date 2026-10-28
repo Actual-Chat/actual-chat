@@ -617,7 +617,7 @@ public class MauiRecorderEngine : IAudioRecorderEngine
     private sealed class AudioStreamProcessor(MauiRecorderEngine engine, ILogger log)
     {
         // The ring buffer's own capacity is a pool-rounded power of two, so the size limit is enforced on Count.
-        private const int EncodingBufferFrameCount = 25; // 500ms
+        private const int EncodingBufferFrameCount = 50; // 1 s: VoiceOnsetFinder reads the background from it
         private const int EncodingBufferSampleCount = EncodingBufferFrameCount * Constants.Audio.OpusFrameLength;
 
         private readonly VoiceActivityDetector _vad = engine.VoiceActivityDetector;
@@ -828,46 +828,20 @@ public class MauiRecorderEngine : IAudioRecorderEngine
             var frameCount = bufferedSamples / frameLen;
             var totalSamples = frameCount * frameLen;
             var tempBuffer = new float[totalSamples];
-            var gains = new double[frameCount];
             var sourceCapturedAts = new Moment[frameCount];
-
-            // Read frame by frame and compute gains
-            for (int i = 0; i < frameCount; i++) {
+            for (var i = 0; i < frameCount; i++) {
                 var frameSpan = tempBuffer.AsSpan(i * frameLen, frameLen);
                 if (!_encodingBuffer.TryRead(frameSpan, out _))
                     break;
+
                 sourceCapturedAts[i] = _encodingFrameSourceCapturedAts.TryDequeue(out var sourceCapturedAt)
                     ? sourceCapturedAt
                     : fallbackSourceCapturedAt + TimeSpan.FromMilliseconds(i * Constants.Audio.OpusFrameDurationMs);
-                gains[i] = AudioExt.ApproximateGain(frameSpan);
             }
 
-            // Calculate average speech gain from the speech-confirmed tail of the pre-roll window.
-            var retainedFrameLimit = Math.Min(preRollFrameLimit, frameCount);
-            var speechFrames = Math.Max(
-                1,
-                Math.Min(retainedFrameLimit, (int)Math.Ceiling(preRollFrameLimit / 3d)));
-            double speechGain = 0;
-            for (int i = frameCount - speechFrames; i < frameCount; i++)
-                speechGain += gains[i];
-            speechGain /= speechFrames;
-
-            // Scan backward within the pre-roll window to find where gain drops below speechGain/3.
-            var threshold = speechGain / 3;
-            var minStartIndex = frameCount - retainedFrameLimit;
-            var startIndex = frameCount - speechFrames - 1;
-            while (startIndex >= minStartIndex) {
-                if (gains[startIndex] < threshold)
-                    break;
-                startIndex--;
-            }
-
-            // Discard older frames, but retain no more than the configured pre-roll window.
-            var framesToDiscard = startIndex >= minStartIndex
-                ? startIndex
-                : minStartIndex;
-            framesToDiscard = Math.Clamp(framesToDiscard, minStartIndex, frameCount - speechFrames);
-            var framesToKeep = frameCount - framesToDiscard;
+            var framesToKeep = VoiceOnsetFinder.GetSpeechFrameCount(
+                tempBuffer, frameLen, Constants.Audio.RecordingSampleRate, preRollFrameLimit);
+            var framesToDiscard = frameCount - framesToKeep;
 
             // Write remaining frames back to encoding buffer
             _encodingBuffer.Clear();
