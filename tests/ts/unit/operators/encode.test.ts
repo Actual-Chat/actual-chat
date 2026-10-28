@@ -38,6 +38,8 @@ class MockVideoEncoder {
     /** Settle each submission on a microtask, i.e. an encoder that keeps pace.
      *  The operator drops once MAX_PIPELINE submissions are outstanding. */
     static autoEmit = false;
+    /** Runs on flush(); unset, flush rejects the way a codec without one fails. */
+    static flushImpl: ((encoder: MockVideoEncoder) => Promise<void>) | null = null;
     state: 'unconfigured' | 'configured' | 'closed' = 'configured';
     encodeCalls: { frame: MockVideoFrame; opts: { keyFrame: boolean } }[] = [];
     configureCalls: VideoEncoderConfig[] = [];
@@ -78,16 +80,35 @@ class MockVideoEncoder {
         this.state = 'configured';
     }
 
+    flush(): Promise<void> {
+        if (!MockVideoEncoder.flushImpl)
+            return Promise.reject(new Error('flush is not mocked'));
+
+        return MockVideoEncoder.flushImpl(this);
+    }
+
     /** Test helper: complete the next pending submission FIFO with a fake
      *  encoded chunk. `byteLength` and `type` propagate; everything else
      *  is empty. */
     emitNext(byteLength = 100, type: 'key' | 'delta' = 'delta'): void {
         const call = this.encodeCalls.shift();
-        if (!call) throw new Error('emitNext: no pending encode');
+        if (!call)
+            throw new Error('emitNext: no pending encode');
+
+        this.emitCall(call, 0, byteLength, type);
+    }
+
+    /** Test helper: emit the chunk for an already-dequeued submission, stamped `timestamp`. */
+    emitCall(
+        call: { frame: MockVideoFrame; opts: { keyFrame: boolean } },
+        timestamp: number,
+        byteLength = 100,
+        type: 'key' | 'delta' = 'delta',
+    ): void {
         const finalType: 'key' | 'delta' = call.opts.keyFrame ? 'key' : type;
         const chunk: { type: string; timestamp: number; byteLength: number; closed: boolean; close: () => void } = {
             type: finalType,
-            timestamp: 0,
+            timestamp,
             byteLength,
             closed: false,
             close(): void { chunk.closed = true; },
@@ -98,6 +119,7 @@ class MockVideoEncoder {
 
 class MockVideoFrame {
     closed = false;
+    timestamp?: number;
     constructor(
         public id: number,
         public codedWidth: number,
@@ -114,6 +136,7 @@ beforeEach(() => {
     MockVideoEncoder.instances = [];
     MockVideoEncoder.configureFailureForCodec = null;
     MockVideoEncoder.autoEmit = false;
+    MockVideoEncoder.flushImpl = null;
     (globalThis as unknown as GlobalWithVideoEncoder).VideoEncoder = MockVideoEncoder;
 });
 
@@ -488,6 +511,69 @@ describe('encode operator', () => {
             while (m.encodeCalls.length > 0) m.emitNext(50);
         await settle(50);
         await consumed;
+    });
+
+    it('ships a bundle without the layer the codec skipped and carries the drop to that layer', async () => {
+        // arrange
+        const skipped = new Set(['0:1000', '1:2000']);
+        MockVideoEncoder.flushImpl = encoder => {
+            const layer = MockVideoEncoder.instances.indexOf(encoder);
+            for (const call of encoder.encodeCalls.splice(0)) {
+                const timestamp = call.frame.timestamp ?? 0;
+                if (!skipped.has(`${layer}:${timestamp}`))
+                    encoder.emitCall(call, timestamp);
+            }
+            return Promise.resolve();
+        };
+        const stats = makeStats();
+        const bundles = [0, 1, 2].map(i => {
+            const bundle = makeBundle(i, stats, [{ width: 320, height: 180 }, { width: 640, height: 360 }]);
+            for (const layer of bundle.layers)
+                (layer.frame as unknown as MockVideoFrame).timestamp = i * 1000;
+            return bundle;
+        });
+
+        // act
+        const out = await drain(encode({
+            controller: new LayerLadderController([cfg(320, 180), cfg(640, 360)]),
+            createEncoder: makeFactory({ timeoutMs: 10000 }),
+        })(fromArray(bundles)));
+
+        // assert
+        expect(out.map(b => b.layers.map(l => l.layerId))).toEqual([[0, 1], [1], [0]]);
+        expect(out[1].layers[0].dropTrace).toEqual([]);
+        expect(out[2].layers[0].dropTrace).toEqual([FrameDropStage.SenderEncodePacing]);
+        expect(out[2].dropTrace).toEqual([]);
+        expect(MockVideoEncoder.instances.map(e => e.resetCalls)).toEqual([0, 0]);
+    });
+
+    it('carries a bundle the codec skipped whole onto the next bundle as SenderEncodePacing', async () => {
+        // arrange
+        MockVideoEncoder.flushImpl = encoder => {
+            for (const call of encoder.encodeCalls.splice(0)) {
+                const timestamp = call.frame.timestamp ?? 0;
+                if (timestamp !== 1000)
+                    encoder.emitCall(call, timestamp);
+            }
+            return Promise.resolve();
+        };
+        const stats = makeStats();
+        const bundles = [0, 1, 2].map(i => {
+            const bundle = makeBundle(i, stats, [{ width: 320, height: 180 }]);
+            (bundle.layers[0].frame as unknown as MockVideoFrame).timestamp = i * 1000;
+            return bundle;
+        });
+
+        // act
+        const out = await drain(encode({
+            controller: new LayerLadderController([cfg(320, 180)]),
+            createEncoder: makeFactory({ timeoutMs: 10000 }),
+        })(fromArray(bundles)));
+
+        // assert
+        expect(out.map(b => b.index)).toEqual([0, 2]);
+        expect(out[1].dropTrace).toEqual([FrameDropStage.SenderEncodePacing]);
+        expect(MockVideoEncoder.instances[0].resetCalls).toBe(0);
     });
 
     it('multi-layer (3 tiers): 5 source bundles → 5 EncodedBundles (1 per layer inside each)', async () => {
