@@ -1548,6 +1548,8 @@ public static class LocalizedStringsLocalizerExt
         public string Ptt_UseOnThisDevice => l["Ptt_UseOnThisDevice"].Value;
         public string Ptt_UseOnThisDeviceCaption => l["Ptt_UseOnThisDeviceCaption"].Value;
         public string Ptt_UseOnDesktopCaption => l["Ptt_UseOnDesktopCaption"].Value;
+        public string Ptt_ShowChatsBar => l["Ptt_ShowChatsBar"].Value;
+        public string Ptt_ShowChatsBarCaption => l["Ptt_ShowChatsBarCaption"].Value;
         public string Ptt_ChatsTopicLimit_Format(object arg0) => l["Ptt_ChatsTopicLimit_Format", arg0].Value;
         public string Ptt_NoPttChats => l["Ptt_NoPttChats"].Value;
         public string Ptt_AvailableTopic => l["Ptt_AvailableTopic"].Value;

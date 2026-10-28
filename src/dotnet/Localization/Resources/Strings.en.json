@@ -1706,6 +1706,8 @@
   "Ptt_UseOnThisDevice": "Use Push-to-talk on this device",
   "Ptt_UseOnThisDeviceCaption": "When off, this device won't wake, play, or transmit Push-to-talk voice.",
   "Ptt_UseOnDesktopCaption": "Push-to-talk works while the app is running. It stops when you quit the app.",
+  "Ptt_ShowChatsBar": "Show Push-to-talk chats bar",
+  "Ptt_ShowChatsBarCaption": "List Push-to-talk chats under Active Chats",
   "Ptt_ChatsTopicLimit_Format": "Push-to-talk chats (up to {0})",
   "Ptt_NoPttChats": "No chat is in Push-to-talk mode yet - its owner turns it on in the chat itself.",
   "Ptt_AvailableTopic": "Not in your Push-to-talk list",

@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Bu qurilmada “Bos va gapir”dan foydalanish",
   "Ptt_UseOnThisDeviceCaption": "Oʻchiq boʻlsa, bu qurilma “Bos va gapir” ovozi uchun uygʻonmaydi, uni ijro etmaydi va uzatmaydi.",
   "Ptt_UseOnDesktopCaption": "“Bos va gapir” ilova ishlab turganda ishlaydi. Ilovadan chiqqaningizda u toʻxtaydi.",
+  "Ptt_ShowChatsBar": "“Bos va gapir” chatlar panelini koʻrsatish",
+  "Ptt_ShowChatsBarCaption": "Faol chatlar ostida “Bos va gapir” chatlari",
   "Ptt_ChatsTopicLimit_Format": "“Bos va gapir” chatlari ({0} tagacha)",
   "Ptt_NoPttChats": "Hali birorta chat “Bos va gapir” rejimida emas - uni chat egasi chatning oʻzida yoqadi.",
   "Ptt_AvailableTopic": "“Bos va gapir” roʻyxatingizda emas",

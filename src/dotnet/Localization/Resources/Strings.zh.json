@@ -1487,6 +1487,8 @@
   "Ptt_UseOnThisDevice": "在此设备上使用按住说话",
   "Ptt_UseOnThisDeviceCaption": "关闭后，此设备不会因按住说话语音而唤醒、播放或发送。",
   "Ptt_UseOnDesktopCaption": "即按即说在应用运行时可用。退出应用后，它将停止工作。",
+  "Ptt_ShowChatsBar": "显示按住说话聊天栏",
+  "Ptt_ShowChatsBarCaption": "在活跃聊天下方列出按住说话的聊天",
   "Ptt_ChatsTopicLimit_Format": "按住说话的聊天（最多 {0} 个）",
   "Ptt_NoPttChats": "还没有处于按住说话模式的聊天 - 由聊天所有者在聊天中开启。",
   "Ptt_AvailableTopic": "不在你的按住说话列表中",

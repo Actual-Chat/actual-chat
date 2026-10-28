@@ -59,6 +59,9 @@ public sealed partial record UserPttSettings
     // Nullable, read as `?? true`: a blob predating this member reads it as default, not as `= true`.
     [DataMember, Key(13)]
     public bool? IsHushGestureEnabled { get; init; }
+    // Nullable, read as `?? true`: a blob predating this member reads it as default, not as `= true`.
+    [DataMember, Key(14)]
+    public bool? IsPttBarEnabled { get; init; }
 
     // PttChats + legacy PttChatIds-only entries (surfaced with JoinedAt = default, so never armed).
     [JsonIgnore, Newtonsoft.Json.JsonIgnore, IgnoreDataMember, IgnoreMember]

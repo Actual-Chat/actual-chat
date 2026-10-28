@@ -31,6 +31,17 @@
 </Tile>
 
 <div class="ptt-settings-body @(m.IsDeviceEnabled ? "" : "off")">
+<Tile>
+    <TileItem Click="@OnTogglePttBar">
+        <Icon><i class="icon-list text-xl"></i></Icon>
+        <Content>@L.Ptt_ShowChatsBar</Content>
+        <Caption>@L.Ptt_ShowChatsBarCaption</Caption>
+        <Right>
+            <Toggle IsChecked="@(m.Settings.IsPttBarEnabled ?? true)"
+                    IsCheckedChanged="@(_ => OnTogglePttBar())"/>
+        </Right>
+    </TileItem>
+</Tile>
 <TileTopic Topic="@L.Ptt_ChatsTopicLimit_Format(UserPttSettings.MaxChatCount)"/>
 <Tile>
     @foreach (var chat in m.AllowedChats) {
@@ -252,6 +263,10 @@
             ? ChatAudioUI.ShowPttSupportLimits(L.PttSupport_EnabledOnDevice)
             : Task.CompletedTask;
     }
+
+    private Task OnTogglePttBar()
+        => UserSettingsUI.UserPttSettings()
+            .Update(x => x with { IsPttBarEnabled = !(x.IsPttBarEnabled ?? true) }, CancellationToken.None);
 
     private Task OnTurnOff(ChatId chatId)
         => UserSettingsUI.UserPttSettings().Update(x => x.WithoutPttChat(chatId), CancellationToken.None);

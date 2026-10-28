@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Bu cihazda Bas-danışdan istifadə et",
   "Ptt_UseOnThisDeviceCaption": "Söndürüldükdə bu cihaz oyanmayacaq, Bas-danış səsini oxutmayacaq və ötürməyəcək.",
   "Ptt_UseOnDesktopCaption": "Bas-danış tətbiq işləyərkən fəaliyyət göstərir. Tətbiqdən çıxanda dayanır.",
+  "Ptt_ShowChatsBar": "Bas-danış çatları panelini göstər",
+  "Ptt_ShowChatsBarCaption": "Bas-danış çatlarını Aktiv çatların altında sırala",
   "Ptt_ChatsTopicLimit_Format": "Bas-danış çatları ({0} çata qədər)",
   "Ptt_NoPttChats": "Hələ heç bir çat Bas-danış rejimində deyil - onu çat sahibi çatın özündə yandırır.",
   "Ptt_AvailableTopic": "Bas-danış siyahınızda deyil",

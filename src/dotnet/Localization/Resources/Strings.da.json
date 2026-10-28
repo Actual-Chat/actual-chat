@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Brug Tryk og tal på denne enhed",
   "Ptt_UseOnThisDeviceCaption": "Når det er slået fra, vågner enheden ikke og hverken afspiller eller sender tale via Tryk og tal.",
   "Ptt_UseOnDesktopCaption": "Tryk og tal virker, mens appen kører. Det stopper, når du afslutter appen.",
+  "Ptt_ShowChatsBar": "Vis bjælken med Tryk og tal-chats",
+  "Ptt_ShowChatsBarCaption": "Vis chats med Tryk og tal under Aktive chats",
   "Ptt_ChatsTopicLimit_Format": "Chats med Tryk og tal (op til {0})",
   "Ptt_NoPttChats": "Ingen chat er i tilstanden Tryk og tal endnu - ejeren slår den til i selve chatten.",
   "Ptt_AvailableTopic": "Ikke på din liste til Tryk og tal",

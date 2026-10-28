@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Përdor \"Shtyp dhe fol\" në këtë pajisje",
   "Ptt_UseOnThisDeviceCaption": "Kur është joaktiv, kjo pajisje nuk do të zgjohet, nuk do të luajë dhe nuk do të transmetojë zë \"Shtyp dhe fol\".",
   "Ptt_UseOnDesktopCaption": "\"Shtyp dhe fol\" funksionon ndërsa aplikacioni është i hapur. Ndalon kur e mbyllni aplikacionin.",
+  "Ptt_ShowChatsBar": "Shfaq shiritin e bisedave \"Shtyp dhe fol\"",
+  "Ptt_ShowChatsBarCaption": "Bisedat \"Shtyp dhe fol\" nën bisedat aktive",
   "Ptt_ChatsTopicLimit_Format": "Bisedat \"Shtyp dhe fol\" (deri në {0})",
   "Ptt_NoPttChats": "Ende asnjë bisedë nuk është në modalitetin \"Shtyp dhe fol\" - pronari e aktivizon brenda vetë bisedës.",
   "Ptt_AvailableTopic": "Jo në listën tuaj \"Shtyp dhe fol\"",

@@ -1484,6 +1484,8 @@
   "Ptt_UseOnThisDevice": "Tumia Bonyeza uongee kwenye kifaa hiki",
   "Ptt_UseOnThisDeviceCaption": "Ikizimwa, kifaa hiki hakitaamka, hakitacheza wala kutuma sauti ya Bonyeza uongee.",
   "Ptt_UseOnDesktopCaption": "Bonyeza uongee hufanya kazi wakati programu inaendeshwa. Husimama unapofunga programu.",
+  "Ptt_ShowChatsBar": "Onyesha upau wa magumzo ya Bonyeza uongee",
+  "Ptt_ShowChatsBarCaption": "Magumzo ya Bonyeza uongee chini ya Magumzo Amilifu",
   "Ptt_ChatsTopicLimit_Format": "Magumzo ya Bonyeza uongee (hadi {0})",
   "Ptt_NoPttChats": "Bado hakuna gumzo katika hali ya Bonyeza uongee - mmiliki wake huiwasha ndani ya gumzo lenyewe.",
   "Ptt_AvailableTopic": "Hayapo kwenye orodha yako ya Bonyeza uongee",
