@@ -572,10 +572,11 @@ re-driven from the create callback.
 
 `IncomingPushResult` must return synchronously and fast, so it only parses the
 payload, persists the wake (`SaveLastWake`), sets the channel descriptor title,
-prepares the session (`AudioSession.PrepareForPttSession`: category
-`PlayAndRecord`, mode `VoiceChat` — the framework activates the session with
+prepares the session (`AudioSession.PrepareForSession(PttPlayback)`: category
+`PlayAndRecord`, mode `Default` — the framework activates the session with
 whatever category it finds, and it won't activate a mixable one such as the
-`Ambient` an idle app rests in while in the background), and either parks the
+`Ambient` an idle app rests in while in the background; `VoiceChat` would put
+the loudspeaker on the quiet call volume, and a wake doesn't record), and either parks the
 wake in `_pendingWake` when `AudioSession.Owner == AudioSessionOwner.App` — the
 session is still App-owned, so an activation callback will follow and dispatch
 it then — or dispatches it immediately otherwise, because a session that is
@@ -586,7 +587,11 @@ dispatched anyway: its playback is refused, and that refusal is what asks the
 framework again with a fresh participant (see *Self-initiated playback*). The
 same preparation runs at `DidBeginTransmitting` (a listening burst leaves
 `Playback`, whose input node reports no sample rate, and the pre-roll and the
-recorder both need a live input) and before a self-initiated activation. An invalid payload still returns a `PTParticipant` and schedules
+recorder both need a live input), there with `PttTransmit` and mode `VoiceChat`,
+and before a self-initiated activation. A mic the app opens itself while a
+`PttPlayback` owns the session raises the mode to `VideoChat`: `Default` has no
+voice processing, so the wake playing on the loudspeaker would be recorded back.
+An invalid payload still returns a `PTParticipant` and schedules
 `ClearActiveParticipant` after `PhantomWakeClearDelay` (5 s), or the system UI
 would show the channel as receiving forever.
 

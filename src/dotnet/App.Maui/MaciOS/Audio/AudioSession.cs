@@ -232,7 +232,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // and an idle app leaves Ambient, which is mixable and which neither framework activates
         // in the background at all - the activation callback then never comes.
         try {
-            ConfigureRecordingUnsafe(AVAudioSession.SharedInstance(), owner, IsCallVideo);
+            ConfigureRecordingUnsafe(AVAudioSession.SharedInstance(), owner, IsCallVideo, false);
             OwnerLog.LogInformation("Session prepared for {Owner}", owner);
         }
         catch (Exception e) {
@@ -714,7 +714,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // pick - the earpiece drops AllowBluetooth, without which a device keeps the output. Only
         // a fresh pick rebuilds on an option difference: iOS re-adds bits of its own under some
         // modes, and chasing those on every route change is a loop.
-        var sessionMode = GetSessionMode(Owner, IsCallVideo);
+        var isRecording = mode is AudioFocusMode.Recording;
+        var sessionMode = GetSessionMode(Owner, IsCallVideo, isRecording);
         var options = GetCategoryOptions(Owner, IsCallVideo);
         if (!IsConfiguredAs(session, sessionMode, options) && (mustForce || session.GetMode() != sessionMode)) {
             Log.LogInformation(
@@ -722,7 +723,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
                 selectedId, session.Mode, sessionMode, session.CategoryOptions, options);
             // A refused category change costs this pick only; the caller's playback still starts.
             try {
-                ConfigureRecordingUnsafe(session, Owner, IsCallVideo);
+                ConfigureRecordingUnsafe(session, Owner, IsCallVideo, isRecording);
             }
             catch (Exception e) {
                 Log.LogWarning(e, "ApplyOutputRoute: couldn't reconfigure the session for {Id}", selectedId);
@@ -878,16 +879,17 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // A call on the line keeps the call's category whatever the focus mode: Playback and
         // Ambient only ever reach the loudspeaker, so a muted call would lose the earpiece.
         if (mode is AudioFocusMode.Recording || IsCallActive)
-            ConfigureRecordingUnsafe(session, Owner, IsCallVideo);
+            ConfigureRecordingUnsafe(session, Owner, IsCallVideo, mode is AudioFocusMode.Recording);
         else if (mode is AudioFocusMode.Playback or AudioFocusMode.Listening)
             session.SetCategory(AVAudioSessionCategory.Playback).Assert($"{mode}: failed to set category");
         else
             session.SetCategory(AVAudioSessionCategory.Ambient).Assert($"{mode}: failed to set category");
     }
 
-    private static void ConfigureRecordingUnsafe(AVAudioSession session, AudioSessionOwner owner, bool isCallVideo)
+    private static void ConfigureRecordingUnsafe(
+        AVAudioSession session, AudioSessionOwner owner, bool isCallVideo, bool isRecording)
     {
-        var sessionMode = GetSessionMode(owner, isCallVideo);
+        var sessionMode = GetSessionMode(owner, isCallVideo, isRecording);
         var options = GetCategoryOptions(owner, isCallVideo);
         // Even identical values count as a change on a live session: they clear the port override
         // and rebuild the voice path, so a mute mid-call would drop the call off the speaker.
@@ -900,7 +902,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         error.Assert("Failed to set preferred IO buffer duration");
     }
 
-    private static AVAudioSessionMode GetSessionMode(AudioSessionOwner owner, bool isCallVideo)
+    private static AVAudioSessionMode GetSessionMode(AudioSessionOwner owner, bool isCallVideo, bool isRecording)
     {
         // VideoChat always takes the loudspeaker - an override can't pull it back - so the
         // earpiece needs VoiceChat, the telephony profile, whoever owns the session. A live call
@@ -912,11 +914,12 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
         // ours: SetVoiceProcessingEnabled replaces Default and drops DefaultToSpeaker with it.
         // Default for a PTT playback: VoiceChat puts the loudspeaker on the telephony profile and
         // the call volume, far too quiet for a hands-free listener - and a wake plays, it doesn't
-        // record, so it wants no AEC. A transmit re-prepares with VoiceChat when it begins.
+        // record, so it wants no AEC. A transmit re-prepares with VoiceChat when it begins; a mic
+        // the app opens itself under the playback takes VideoChat, or the wake is heard twice.
         return owner switch {
             AudioSessionOwner.App => AVAudioSessionMode.VideoChat,
             AudioSessionOwner.CallKit when isCallVideo => AVAudioSessionMode.VideoChat,
-            AudioSessionOwner.PttPlayback => AVAudioSessionMode.Default,
+            AudioSessionOwner.PttPlayback => isRecording ? AVAudioSessionMode.VideoChat : AVAudioSessionMode.Default,
             _ => AVAudioSessionMode.VoiceChat,
         };
     }
