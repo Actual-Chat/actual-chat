@@ -143,8 +143,8 @@ until the signature carries the meaning.
   declaration, since that's what it annotates. The body is the wrong place: the
   reader needs it while looking at the signature, not after entering the method.
   ```csharp
-  // It's internal to be accessible from tests
-  internal async IAsyncEnumerable<Transcript> ProcessResponses(...)
+  // The result type must stay the bare CallStatus enum 2.20 clients read it as
+  Task<CallStatus> LegacyGetCallStatus(Session session, ChatId chatId, CancellationToken cancellationToken);
   ```
   This exception is narrow. A comment that says anything about *what the member
   does* goes inside the body as usual, even if it also touches the signature.
@@ -866,6 +866,20 @@ public override async Task Require(CancellationToken cancellationToken)
     Don't pass `isOutermost: true` from an `ApiCommand` handler: `IApiCommand` is an
     `IDelegatingCommand`, and every command called from a delegating command's handler
     already runs as an outermost one.
+
+### Visibility in published projects
+
+`Core`, `Api` and `Api.Contracts` are packed and pushed to nuget.org on every push to `dev`,
+`master` and `release/*` (`nuget-pack` / `nuget-push` in `build-test-deploy-dev.yml`). Anything
+`public` there is public to whoever references the package, and removing it later breaks them.
+
+- Make a member `public` in these projects only when other code needs it at runtime. A test
+  is not such a reason.
+- Don't switch to `internal` + `InternalsVisibleTo` instead: that describes a test's needs, not
+  the design. Test through the public surface, or move the logic into a small type with a
+  real responsibility and test its public operation.
+- Plans for a feature that isn't released yet (what a held-back language will become, and the
+  like) go in comments, not in public members.
 
 ### Serialization Attributes
 
