@@ -49,6 +49,16 @@ public sealed partial class DebugUI
     }
 
     [JSInvokable]
+    public async Task SetChatLanguage(string chatId, string language)
+    {
+        var parsedLanguage = Language.Parse(language);
+        await Hub.UserSettingsUI.ChatUserSettings(ChatId.Parse(chatId))
+            .Update(x => x with { Language = parsedLanguage })
+            .ConfigureAwait(false);
+        Log.LogInformation("SetChatLanguage({ChatId}, {Language}): done", chatId, parsedLanguage);
+    }
+
+    [JSInvokable]
     public async Task ResetOnboarding(bool enable)
     {
         await Hub.OnboardingUI.ResetOnboarding(enable).ConfigureAwait(true);
