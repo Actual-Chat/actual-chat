@@ -470,7 +470,7 @@ body.narrow .message-file-attachments {
     @apply truncate;
     @apply text-01 text-heading-600;
 }
-.chat-welcome-block .c-content {
+.chat-welcome-block > .c-content {
     @apply flex-x gap-x-1;
     @apply text-02 text-body;
 }
