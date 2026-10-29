@@ -4,7 +4,7 @@ namespace ActualChat.UI.Blazor.App.Services;
 
 public class ActiveChatsUI : UIServiceBase<AppUIHub>
 {
-    public const int MaxActiveChatCount = 3;
+    public const int MaxActiveChatCount = 1;
 
     private readonly AsyncLock _updateLock = new(LockReentryMode.CheckedFail);
 
@@ -74,13 +74,17 @@ public class ActiveChatsUI : UIServiceBase<AppUIHub>
                     : activeChats.WithOrReplace(newChat).ToArray();
         }
 
-        // There must be no more than MaxActiveChatCount active chats
-        while (activeChats.Length > MaxActiveChatCount) {
-            var chat = activeChats[^1];
-            if (chat.IsRecording)
-                chat = activeChats[^2];
-            activeChats = activeChats.Without(chat).ToArray();
-        }
-        return activeChats;
+        // Push-to-talk chats always listen, so the cap covers the rest only: joining a chat
+        // leaves the previous one, and the recording chat is the one that stays
+        var pttChatIds = await Hub.ChatAudioUI.GetPttChatIds(cancellationToken).ConfigureAwait(false);
+        var keptChats = activeChats
+            .Where(c => !pttChatIds.Contains(c.ChatId))
+            .OrderByDescending(c => c.IsRecording)
+            .ThenByDescending(c => c.Recency)
+            .Take(MaxActiveChatCount)
+            .ToHashSet();
+        return activeChats
+            .Where(c => pttChatIds.Contains(c.ChatId) || keptChats.Contains(c))
+            .ToArray();
     }
 }
