@@ -833,6 +833,37 @@ public sealed class LiveSessionsTest(ChatCollection.AppHostFixture fixture, ITes
     }
 
     [Fact]
+    public async Task CameraStreamAfterLeaveShouldNotRegisterParticipant()
+    {
+        // arrange - Bob records, then leaves
+        await using var bob = AppHost.NewBlazorTester(Out);
+        await using var alice = AppHost.NewBlazorTester(Out);
+        await bob.SignInAsUniqueBob();
+        await alice.SignInAsUniqueAlice();
+        var (chatId, inviteId) = await bob.CreateChat(false);
+        await alice.JoinChat(chatId, inviteId);
+        var bobAuthor = await bob.GetOwnAuthor(chatId);
+        var aliceAuthor = await alice.GetOwnAuthor(chatId);
+        var backend = bob.AppServices.GetRequiredService<ILiveSessionsBackend>();
+        await backend.SetParticipation(chatId, bobAuthor!.Id, ParticipationKind.Record, true, default);
+        await backend.SetParticipation(chatId, bobAuthor.Id, ParticipationKind.Record, false, default);
+        await TestWait.When(async ct => (await backend.HasRecorder(chatId, ct)).Should().BeFalse());
+
+        // act - his camera's stream registers late, the way VideoStreamingBackend does it
+        await backend.OnStreamRegistered(chatId, bobAuthor.Id, null, false, false, default);
+        await backend.OnStreamRegistered(chatId, aliceAuthor!.Id, null, true, true, default);
+
+        // assert - Alice's registration came later, so once the list has her it has seen Bob's too
+        var participantIds = await TestWait.When(async ct => {
+            var ids = await backend.ListParticipants(chatId, ct);
+            ids.Should().Contain(aliceAuthor.Id);
+            return ids;
+        });
+        participantIds.Should().NotContain(bobAuthor.Id,
+            because: "a camera stream has nothing to mute, and a new entry would count Bob as a recorder");
+    }
+
+    [Fact]
     public async Task StartCallShouldRingInvitee()
     {
         // arrange — Bob (caller) and Alice (callee) share a chat
