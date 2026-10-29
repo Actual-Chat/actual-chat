@@ -213,10 +213,17 @@
     <PackageReference Include="AdamE.Firebase.iOS.Analytics" />
     <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
     <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
-    <PackageReference Include="ActualLab.Opus.MaciOS" />
+    <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
-    <PackageReference Include="ActualLab.Opus.MaciOS" />
+    <!-- OpusSharp.Natives has no maccatalyst slice, so its native part comes from Platforms/MacCatalyst/Opus -->
+    <PackageReference Include="OpusSharp.Core" />
+    <NativeReference Include="Platforms\MacCatalyst\Opus\libopus.xcframework">
+      <Kind>Framework</Kind>
+      <SmartLink>False</SmartLink>
+      <ForceLoad>True</ForceLoad>
+    </NativeReference>
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
     <PackageReference Include="Microsoft.Maui.Platforms.MacOS" />

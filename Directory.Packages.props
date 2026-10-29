@@ -100,7 +100,6 @@
     <PackageVersion Include="AdamE.Firebase.iOS.Analytics" Version="12.5.0.4" />
     <PackageVersion Include="AdamE.Firebase.iOS.Crashlytics" Version="12.5.0.4" />
     <PackageVersion Include="AdamE.Firebase.iOS.CloudMessaging" Version="12.5.0.4" />
-    <PackageVersion Include="ActualLab.Opus.MaciOS" Version="1.0.16-alpha" />
   </ItemGroup>
   <!-- Strictly non-MAUI packages -->
   <ItemGroup Condition="!$(MSBuildProjectName.Contains('Maui'))">
