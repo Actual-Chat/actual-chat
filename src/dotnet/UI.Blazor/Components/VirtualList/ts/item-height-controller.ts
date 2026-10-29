@@ -160,6 +160,28 @@ export class ItemHeightController {
         this.write(key, this.states.get(key)!, adopted, false);
     }
 
+    public rename(oldKey: string, newKey: string): void {
+        // The element stays, so its observers and written height do; only a cycle in flight is redone,
+        // as its timers look the state up by the old key
+        const state = this.states.get(oldKey);
+        if (state == null)
+            return;
+
+        const wasPending = isAnimationPending(state);
+        this.cancelTimer(state);
+        this.clearAnimationTimer(state);
+        state.animatingUntil = 0;
+        state.isAppearing = false;
+        this.stability.releaseAnimation(oldKey);
+        this.states.delete(oldKey);
+        this.states.set(newKey, state);
+        this.contentKeys.set(state.contentRef, newKey);
+        if (this.deferred.delete(oldKey))
+            this.deferred.add(newKey);
+        if (wasPending)
+            this.schedule(newKey, state);
+    }
+
     public untrack(key: string): void {
         const state = this.states.get(key);
         if (state == null)
