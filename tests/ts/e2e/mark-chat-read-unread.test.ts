@@ -132,9 +132,18 @@ describe('mark chat as read / unread', () => {
             await expect.poll(() => tabBadges.count(), { timeout: 15_000 }).toBe(0);
             await expect.poll(() => navbarBadge.count(), { timeout: 15_000 }).toBe(0);
         };
-        // Reactions from an earlier failed run outlive it
-        if (await badge.count() > 0)
-            await (await openMenu(alice, item, 'Mark as read')).click();
+        // The tab and navbar badges count every chat, and other test files leave chats unread on these
+        // accounts, as do earlier failed runs of this one
+        const unreadItems = alice.locator('.navbar-item[data-menu]', {
+            has: alice.locator('.message-counter-badge:visible'),
+        });
+        for (let i = 0; i < 10 && await unreadItems.count() > 0; i++) {
+            const menu = await unreadItems.first().getAttribute('data-menu');
+            const unreadItem = alice.locator(`.navbar-item[data-menu="${menu}"]`).first();
+            await (await openMenu(alice, unreadItem, 'Mark as read')).click();
+            await expect.poll(() => unreadItem.locator('.message-counter-badge:visible').count(), { timeout: 15_000 })
+                .toBe(0);
+        }
         await expectAllRead();
 
         // act - a reaction to Alice's message
