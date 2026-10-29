@@ -131,12 +131,13 @@ describe('multi-user location sharing', () => {
 
         // assert — the live card Alice posted offers Bob a share-back button, while Alice's own
         // copy of the same card doesn't (#4057)
-        const bobCard = bob.locator('.location-message').last();
         await expect.poll(
-            async () => bobCard.locator('.c-share-back').count(),
+            async () => bob.locator('.location-message').last().locator('.c-share-back').count(),
             { timeout: 20_000 },
         ).toBe(1);
         expect(await alice.locator('.location-message').last().locator('.c-share-back').count()).toBe(0);
+        // Pinned by index: once Bob shares, his own card becomes the last one
+        const bobCard = bob.locator('.location-message').nth(await bob.locator('.location-message').count() - 1);
 
         // act — Bob expands the map from the inline panel
         await bobPanel.locator('.c-expand').first().click();
@@ -179,6 +180,16 @@ describe('multi-user location sharing', () => {
         // assert — Bob's panel flips to the sharer state: Stop button, no viewer CTA
         await bobPanel.locator('.btn-stop-sharing').first().waitFor({ state: 'visible', timeout: 20_000 });
         expect(await bobPanel.locator('.btn-share-location').count()).toBe(0);
+
+        // assert — Bob's own live card is in, and Alice's card stops offering him share-back (#5681)
+        await bob.locator('.location-message.live .btn-stop-sharing').first()
+            .waitFor({ state: 'visible', timeout: 20_000 });
+        await expect.poll(
+            async () => bobCard.locator('.c-share-back').count(),
+            { timeout: 10_000 },
+        ).toBe(0);
+        await bobCard.scrollIntoViewIfNeeded();
+        await bobCard.screenshot({ path: shot('bob-shares-back-alice-card') });
 
         // assert — Alice's inline panel now shows both markers (hers + Bob's)
         await expect.poll(
