@@ -269,11 +269,13 @@ public class RpcPathManagerTest(ITestOutputHelper @out) : TestBase(@out), IDispo
         // act
         manager.Start();
 
-        // assert
+        // assert: Current is set before CurrentChanged fires, so the wait is on the event
         await TestWait.WhenPolled(() => {
-            manager.Current.Should().Be("kz1");
+            lock (events)
+                events.Should().Contain("current kz1");
             return Task.CompletedTask;
         });
+        manager.Current.Should().Be("kz1");
         lock (events)
             events.Should().Equal("attestation kz1", "current kz1");
     }
