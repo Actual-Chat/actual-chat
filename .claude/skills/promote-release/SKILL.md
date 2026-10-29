@@ -23,6 +23,25 @@ platform the user hasn't confirmed as tested. The store jobs run in the
 `prod-store` GitHub environment, which admits `release/*` branches only; it
 has no reviewer gate, so the user's answer in step 3 is the only gate.
 
+## Store listings are not this skill's
+
+The listings in every language (names, descriptions, keywords, screenshots,
+feature graphics, categories) are maintained by hand from
+`ActualChat-Marketing/store-listings/master` and edited in the consoles.
+Promotion carries them over and never writes them:
+
+- **Google Play:** the job only changes the production track, and it checks
+  that every listing language keeps its phone screenshots before committing.
+- **Apple:** the new App Store version copies the live version's
+  localizations. The fastlane lane sets only What's New, and before submitting
+  it fails if a live locale or one of its screenshot types is missing.
+- **Microsoft:** the commit fails if a listing language of the published
+  submission, or its screenshots, is missing. The release-branch upload refuses
+  to replace a pending submission whose listings were edited in Partner Center.
+
+A failure from one of these checks means a listing would have been lost. Stop
+and report it; don't work around it.
+
 ## Reuse
 
 - **`promote-release.yml`** does all store work; the skill only gathers inputs
@@ -195,6 +214,10 @@ Microsoft Store submission (the release run's Windows upload didn't run), or
 the pending submission is already committed (`Submission <id> is already
 committed (status Certification)` — a previous promote run's Windows job
 succeeded even if that run as a whole shows as cancelled or failed).
+A listing check failing (`lost listings of live …`, `lost listings of the
+published submission`, or the Play job's `the edit changed these listings`)
+means a translation or its screenshots would be lost — see "Store listings are
+not this skill's".
 
 ### 6. Announce in the Releases chat
 
@@ -267,6 +290,9 @@ for the user to paste. Confirm with a one-liner:
   failed promote run may still have committed Windows; a later `windows=false`
   promote doesn't "redo" it. Read the Windows job's conclusion and the Partner
   Center submission status.
+- **Editing a Microsoft listing on a draft that a newer build will replace.**
+  The release-branch upload now fails instead of discarding those edits, so
+  finish and commit (or discard) the edited submission before the next upload.
 - **Announcing only the successes**, or announcing before a re-run settles.
   The Releases post is the record of what reached each store; a platform that
   failed or was skipped must be named as such, in the one post for the run.

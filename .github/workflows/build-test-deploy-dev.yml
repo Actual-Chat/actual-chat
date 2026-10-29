@@ -1517,6 +1517,8 @@ jobs:
       # Only an uncommitted draft is replaced: if the previous build is still
       # in certification this job fails and nothing new is staged — wait for
       # it to publish, or cancel it in Partner Center, then re-run the job.
+      # A draft whose store listings were edited in Partner Center is never
+      # replaced either: the job fails so those edits aren't discarded.
       - name: Upload to a pending Store submission
         uses: ActualLab/windows-store-action@main
         with:
