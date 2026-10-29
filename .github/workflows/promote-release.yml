@@ -146,6 +146,18 @@ jobs:
           edit=$(call -X POST "$api/edits" -d '{}' | jq -r .id)
           echo "Edit $edit opened"
 
+          # The translated listings are maintained by hand from ActualChat-Marketing's
+          # store-listings/master. This job must not lose any of them, so it records each
+          # listing language with its phone screenshot count and checks them before commit.
+          listings() {
+            for lang in $(call "$api/edits/$edit/listings" | jq -r '.listings[]?.language' | sort); do
+              echo "$lang $(call "$api/edits/$edit/listings/$lang/phoneScreenshots" | jq '.images // [] | length')"
+            done
+          }
+          listings_before=$(listings)
+          echo "Listings (language, phone screenshots):"
+          echo "$listings_before"
+
           internal=$(call "$api/edits/$edit/tracks/internal")
           echo "$internal" | jq .
           if ! echo "$internal" | jq -e --arg vc "$VERSION_CODE" '[.releases[]?.versionCodes[]?] | index($vc)' > /dev/null; then
@@ -169,6 +181,15 @@ jobs:
               }')
           echo "$body" | jq .
           call -X PUT "$api/edits/$edit/tracks/production" -d "$body" | jq .
+
+          lost=$(comm -23 <(echo "$listings_before") <(listings))
+          if [[ -n $lost ]]; then
+            call -X DELETE "$api/edits/$edit" || true
+            echo "::error::the edit changed these listings (language, phone screenshots); nothing was committed:"
+            echo "$lost"
+            exit 1
+          fi
+
           call -X POST "$api/edits/$edit:commit" -d '{}' | jq .
 
           echo "- Android: version code $VERSION_CODE ($VERSION) released to production at ${ROLLOUT}%" >> "$GITHUB_STEP_SUMMARY"
