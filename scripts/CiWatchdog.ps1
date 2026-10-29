@@ -212,7 +212,9 @@ function ConvertTo-CiPlainText {
     param([Parameter(Mandatory)][AllowEmptyString()][string]$Line)
 
     # `gh run view --log-failed` prefixes every line with "job<TAB>step<TAB>timestamp ".
-    $text = $Line -replace "`e\[[0-9;]*m", ''
+    # Since gh 2.92 it also prints ESC as the two characters "^[" (cli/cli#13272),
+    # so a color code arrives either way.
+    $text = $Line -replace "(?:`e|\^\[)\[[0-9;]*m", ''
     $text = $text -replace '^[^\t]*\t[^\t]*\t', ''
     return $text -replace '^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?', ''
 }
