@@ -69,6 +69,24 @@ public class DismissalPayloadChunkTest(ITestOutputHelper @out) : TestBase(@out)
     }
 
     [Fact]
+    public void ShouldSendRingDismissalsInTheirOwnChunkFirst()
+    {
+        // arrange
+        var ringTag = Constants.Notification.CallTagPrefix + "c-1";
+        var dismissals = new[] { NewDismissal("s-a-b"), NewDismissal(ringTag), NewDismissal("") };
+
+        // act
+        var chunks = FirebaseMessagingClient.ChunkDismissals(dismissals);
+
+        // assert
+        chunks.Should().HaveCount(2, "only a ring's dismissal may go out at high priority");
+        chunks[0].IsRing.Should().BeTrue();
+        chunks[0].Tags.Should().Equal(ringTag);
+        chunks[1].IsRing.Should().BeFalse();
+        chunks[1].Dismissals.Should().HaveCount(2);
+    }
+
+    [Fact]
     public void ShouldProduceNoChunksForNoDismissals()
         => FirebaseMessagingClient.ChunkDismissals([]).Should().BeEmpty();
 
