@@ -935,7 +935,7 @@ devices:
 
 | Member | Default | Meaning |
 |---|---|---|
-| `PttChats` | `[]` | Per-chat consent entries `(ChatId, JoinedAt, MutedAt?, MutedUntil?)`; armed iff `JoinedAt >= Chat.PttEnabledAt`, muted while `MutedUntil` is ahead. `MaxChatCount = 3`, matching `ActiveChatsUI.MaxActiveChatCount`, which also bounds server wake fan-out per speaker; adding beyond the cap evicts the least-recently-joined entry |
+| `PttChats` | `[]` | Per-chat consent entries `(ChatId, JoinedAt, MutedAt?, MutedUntil?)`; armed iff `JoinedAt >= Chat.PttEnabledAt`, muted while `MutedUntil` is ahead. `MaxChatCount = 10`; adding beyond the cap evicts the least-recently-joined entry. Push-to-talk chats are exempt from `ActiveChatsUI.MaxActiveChatCount` (1), which caps the other active chats |
 | `PttChatIds` | `[]` | Legacy mirror of `PttChats` (ids only), kept in sync for pre-epoch readers; ids present here but not in `PttChats` surface via `AllPttChats` with `JoinedAt = default`, i.e. never armed |
 | `IsFlipToTalkEnabled` | `true` | Flip-to-talk start gesture |
 | `IsDoubleShakeEnabled` | `true` | Double-shake start gesture. The stop-side shake rides the stop toggle instead, so switching this off keeps "shake again to stop" |
