@@ -18,6 +18,10 @@ public abstract record NotificationContent
     public virtual NotificationContent WithTranslations(IReadOnlyDictionary<Language, string> textByLanguage)
         // Text this app words itself has no translations to take: it is composed per language already
         => this;
+
+    public virtual NotificationContent WithAuthorName(string authorName)
+        // Only a text this app words around the author's name has a name to replace
+        => this;
 }
 
 /// <summary>
@@ -54,6 +58,8 @@ public sealed record ThreadCreatedNotificationContent(string ChatTitle) : Notifi
 public sealed record AttentionRequestedNotificationContent(string AuthorName) : NotificationContent
 {
     public override string Render(IStringLocalizer l) => l.Notification_AttentionRequested_Format(AuthorName);
+
+    public override NotificationContent WithAuthorName(string authorName) => this with { AuthorName = authorName };
 }
 
 public sealed record VoiceChatStartedNotificationContent(IReadOnlyList<string> AuthorNames) : NotificationContent

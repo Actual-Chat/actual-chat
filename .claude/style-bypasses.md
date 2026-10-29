@@ -306,3 +306,5 @@ focused (recorded per CLAUDE.md's rule for recurring violations).
   public methods
 - `async Task<(` + `UserNotificationInfo Info,` (the local `Reconcile` in `ApplyHardUpdate`) —
   local function's opening brace on the next line
+- `"SpeechStarted in chat '{ChatId}': {TargetCount}/{MemberCount} wake candidate(s), {ActiveCount} active skipped",`
+  — 124 chars, over the line limit; reported on every edit during #3601, left to keep that diff focused
