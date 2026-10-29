@@ -63,7 +63,7 @@ public sealed class UploadOperations(AppUIHub hub) : IUploadOperations
 
         await GetOrRegisterUpload(source, snapshotAccessor, cancellationToken).ConfigureAwait(false);
         progress ??= new Progress<double>(_ => { });
-        var uploadOperation = new FileUploadOperation(StartUpload);
+        var uploadOperation = new FileUploadOperation(source.Metadata.Length, StartUpload);
         _uploadQueue.Enqueue(uploadOperation);
         await uploadOperation.Task.ConfigureAwait(false);
         return;
