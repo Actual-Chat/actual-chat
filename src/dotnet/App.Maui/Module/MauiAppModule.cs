@@ -151,7 +151,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // TODO(FC): migrate to native audio capture + playback, like the other MAUI platforms.
         // The port needs: an AVAudioSession-free rewrite of MaciOS/Audio's AudioSession +
         // AppleAudioFocusUI (the API doesn't exist on macOS - CoreAudio device notifications
-        // instead), a net-macos target for ActualLab.Opus.MaciOS (or an OpusSharp-based codec),
+        // instead), OpusAudioCodec's OpusSharp branches enabled for MACOS,
         // and per-TFM bundling of the CoreML VAD model. Until then the JS pipeline below and
         // the Web* registrations under "#if MACOS" in this file are the recording/playback path.
         services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
@@ -171,7 +171,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<AudioFocusUI>(c => new AppleAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new AppleTuneUI(c.UIHub()));
         services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));
-        services.AddScoped<IAudioCodec, AppleAudioCodec>();
+        services.AddSingleton<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<AudioEngines>(c => new AudioEngines(c.AppUIHub()));
 #if IOS
         services.AddScoped<Haptics>(c => new Haptics(c.AppUIHub()));
