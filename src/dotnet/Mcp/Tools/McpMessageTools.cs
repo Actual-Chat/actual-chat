@@ -291,8 +291,9 @@ public sealed class McpMessageTools(IServiceProvider services)
     }
 
     [McpServerTool(Name = "react", UseStructuredContent = true)]
-    [Description("Toggles the caller's reaction on a message: adds it, or removes it if the same emoji " +
-        "is already set. `emoji` is the emoji character, e.g. \"👍\".")]
+    [Description("Toggles one of the caller's reactions on a message: adds the emoji, or removes it if the " +
+        "caller already reacted with it. Other emojis the caller left stay. `emoji` is the emoji character, " +
+        "e.g. \"👍\".")]
     public async Task React(
         [Description("The chat id.")] string chatId,
         [Description("The message local id (LID).")] long entryId,

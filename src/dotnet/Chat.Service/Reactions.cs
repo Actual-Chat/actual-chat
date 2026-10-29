@@ -13,13 +13,23 @@ public class Reactions(IServiceProvider services) : IReactions
     // [ComputeMethod]
     public virtual async Task<Reaction?> Get(Session session, ChatEntryId entryId, CancellationToken cancellationToken)
     {
+        var reactions = await ListOwn(session, entryId, cancellationToken).ConfigureAwait(false);
+        return reactions.MaxBy(x => x.ModifiedAt);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Reaction[]> ListOwn(
+        Session session,
+        ChatEntryId entryId,
+        CancellationToken cancellationToken)
+    {
         var chatAuthor = await Authors.GetOwn(session, entryId.ChatId, cancellationToken).ConfigureAwait(false);
         if (chatAuthor == null)
-            return null;
+            return [];
 
         var chatRules = await Chats.GetRules(session, entryId.ChatId, cancellationToken).ConfigureAwait(false);
         chatRules.Require(ChatPermissions.Read);
-        return await Backend.Get(entryId, chatAuthor.Id, cancellationToken).ConfigureAwait(false);
+        return await Backend.ListByAuthor(entryId, chatAuthor.Id, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]

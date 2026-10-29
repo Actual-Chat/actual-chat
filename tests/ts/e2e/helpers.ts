@@ -564,6 +564,43 @@ export async function waitForEditor(page: Page, timeout = 30_000) {
     );
 }
 
+/** Types `text` into the chat editor, sends it and waits for the message to render. */
+export async function postText(page: Page, text: string) {
+    const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
+    await messageInput.click({ force: true });
+    await messageInput.evaluate(el => {
+        el.innerHTML = '';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.keyboard.type(text);
+    await messageInput.dispatchEvent('keypress', {
+        key: 'Enter', code: 'Enter', bubbles: true, cancelable: true,
+    });
+    await page.locator(`.chat-message-markup:has-text("${text}")`).first()
+        .waitFor({ state: 'visible', timeout: 15_000 });
+}
+
+/** The local id of the first rendered message whose text contains `text`. */
+export async function entryLidOf(page: Page, text: string): Promise<number> {
+    const entryId = await page.locator(`[data-chat-entry-id]:has(.chat-message-markup:has-text("${text}"))`)
+        .first()
+        .getAttribute('data-chat-entry-id');
+    if (!entryId)
+        throw new Error(`no rendered message contains "${text}"`);
+
+    return Number(entryId.split(':').pop());
+}
+
+/** Toggles a thumbs-up on the message with the hover menu's first button. */
+export async function reactWithThumbsUp(page: Page, entryLid: number) {
+    const message = page.locator(`[data-chat-entry-id$=":${entryLid}"] .chat-message`).first();
+    await message.waitFor({ state: 'visible', timeout: 15_000 });
+    await message.hover();
+    const reactButton = page.locator('.message-hover-menu-new .btn-round').first();
+    await reactButton.waitFor({ state: 'visible', timeout: 5_000 });
+    await reactButton.click();
+}
+
 export async function dismissCookieConsent(page: Page, timeout = 10_000) {
     const btn = page.locator(
         'button:has-text("Accept all cookies"), button:has-text("Necessary cookies only")',

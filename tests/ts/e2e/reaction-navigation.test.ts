@@ -13,8 +13,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { BrowserContext, Page } from 'playwright';
 import {
-    DEFAULT_CHAT_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, newUserContext, openChat,
-    screenshot, withUILanguage, type BrowserConnection,
+    DEFAULT_CHAT_URL, TEST_EMAIL, TEST_EMAIL_2, connectBrowser, entryLidOf, newUserContext, openChat,
+    postText, reactWithThumbsUp, screenshot, withUILanguage, type BrowserConnection,
 } from './helpers';
 
 const shot = (name: string) => screenshot('e2e-reaction-nav', name);
@@ -24,21 +24,6 @@ const shot = (name: string) => screenshot('e2e-reaction-nav', name);
 // it's expected to be a jump target - and gets dismissed as seen instead.
 const FILLER_COUNT = 60;
 const SECOND_INDEX = 28;
-
-async function post(page: Page, text: string) {
-    const messageInput = page.locator('#message-input .editor-content[contenteditable="true"]').first();
-    await messageInput.click({ force: true });
-    await messageInput.evaluate(el => {
-        el.innerHTML = '';
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    await page.keyboard.type(text);
-    await messageInput.dispatchEvent('keypress', {
-        key: 'Enter', code: 'Enter', bubbles: true, cancelable: true,
-    });
-    await page.locator(`.chat-message-markup:has-text("${text}")`).first()
-        .waitFor({ state: 'visible', timeout: 15_000 });
-}
 
 async function waitInViewport(page: Page, entryLid: number) {
     await expect.poll(() => page.locator(`[data-chat-entry-id$=":${entryLid}"]`).first().evaluate(el => {
@@ -64,14 +49,6 @@ async function drainReactions(page: Page) {
     }
 }
 
-async function entryLidOf(page: Page, text: string): Promise<number> {
-    const entryId = await page.locator(`[data-chat-entry-id]:has(.chat-message-markup:has-text("${text}"))`)
-        .first()
-        .getAttribute('data-chat-entry-id');
-    expect(entryId).toBeTruthy();
-    return Number(entryId!.split(':').pop());
-}
-
 // "The button never appeared" has two very different causes: the reaction never reached this
 // page, or it did and its entry is on screen - SelectClosest skips those, because
 // SeenNotificationDismisser is about to dismiss them. Say which.
@@ -88,14 +65,8 @@ async function describeReactedEntries(page: Page, lids: number[]): Promise<strin
     return lines.join('; ');
 }
 
-// The hover menu's first button reacts with a thumbs-up right away.
 async function reactTo(page: Page, entryLid: number) {
-    const message = page.locator(`[data-chat-entry-id$=":${entryLid}"] .chat-message`).first();
-    await message.waitFor({ state: 'visible', timeout: 15_000 });
-    await message.hover();
-    const reactButton = page.locator('.message-hover-menu-new .btn-round').first();
-    await reactButton.waitFor({ state: 'visible', timeout: 5_000 });
-    await reactButton.click();
+    await reactWithThumbsUp(page, entryLid);
     await page.locator(`[data-chat-entry-id$=":${entryLid}"] .message-reactions`).first()
         .waitFor({ state: 'visible', timeout: 15_000 });
 }
@@ -128,12 +99,12 @@ describe('navigate to unread reaction', () => {
         const targetText = `rx-target-${stamp}`;
         await openChat(alice);
         await drainReactions(alice);
-        await post(alice, targetText);
+        await postText(alice, targetText);
         const targetLid = await entryLidOf(alice, targetText);
         let secondText = '';
         for (let i = 0; i < FILLER_COUNT; i++) {
             const text = `rx-filler-${stamp}-${i}`;
-            await post(alice, text);
+            await postText(alice, text);
             if (i === SECOND_INDEX)
                 secondText = text;
         }

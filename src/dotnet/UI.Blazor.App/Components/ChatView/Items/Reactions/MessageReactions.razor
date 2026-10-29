@@ -2,8 +2,9 @@
 @inherits ComputedStateComponent<AppUIHub, MessageReactions.Model?>
 @{
     var serverModel = State.Value;
-    var m = OptimisticReactions.TryGet(Entry.Id, out var pending)
-        ? ApplyOptimistic(serverModel, Entry.Id, pending.Emoji, pending.IsRemove)
+    var pending = OptimisticReactions.List(Entry.Id);
+    var m = pending.Count > 0
+        ? ApplyOptimistic(serverModel, Entry.Id, pending)
         : serverModel;
     if (m is null)
         return;
@@ -12,7 +13,10 @@
 
 <ul class="message-reactions @Class">
     @foreach (var reaction in m.Reactions) {
-        <ReactionBadge @key="@reaction.Emoji" Reaction="reaction" OwnReaction="m.OwnReaction" Entry="Entry" />
+        <ReactionBadge @key="@reaction.Emoji"
+                       Reaction="reaction"
+                       IsOwn="m.OwnEmojis.Contains(reaction.Emoji)"
+                       Entry="Entry"/>
     }
 
     <li class="message-reactions-add"
@@ -46,53 +50,48 @@
 
     protected override ComputedState<Model?>.Options GetStateOptions()
         => new() {
-            InitialValue = Entry.HasReactions ? new Model([]) : null,
+            InitialValue = Entry.HasReactions ? new Model([], []) : null,
             Category = GetStateCategory(GetType()),
         };
 
     protected override async Task<Model?> ComputeState(CancellationToken cancellationToken) {
         var entryId = Entry.Id;
         var summaries = await Reactions.ListSummaries(Session, entryId, cancellationToken).ConfigureAwait(false);
-        var ownReaction = summaries.Length > 0
-            ? await Reactions.Get(Session, entryId, cancellationToken).ConfigureAwait(false)
-            : null;
+        Reaction[] ownReactions = [];
+        if (summaries.Length > 0)
+            ownReactions = await Reactions.ListOwn(Session, entryId, cancellationToken).ConfigureAwait(false);
+        var ownEmojis = ownReactions.Select(x => x.Emoji).ToArray();
 
         // Clear optimistic state once server data reflects the expected change
-        if (OptimisticReactions.TryGet(entryId, out var pending2)) {
-            var serverReflects = pending2.IsRemove
-                ? ownReaction?.Emoji != pending2.Emoji
-                : ownReaction?.Emoji == pending2.Emoji;
-            if (serverReflects)
-                OptimisticReactions.TryRemove(entryId);
-        }
+        foreach (var pending in OptimisticReactions.List(entryId))
+            if (ownEmojis.Contains(pending.Emoji) != pending.IsRemove)
+                OptimisticReactions.TryRemove(entryId, pending.Emoji);
 
-        return summaries.Length == 0 ? null : new(summaries, ownReaction);
+        return summaries.Length == 0 ? null : new(summaries, ownEmojis);
     }
 
-    private static Model? ApplyOptimistic(Model? serverModel, ChatEntryId entryId, Emoji emoji, bool isRemove) {
-        var reactions = serverModel?.Reactions?.ToList() ?? [];
-        var ownReaction = serverModel?.OwnReaction;
-
-        if (isRemove) {
-            UpdateSummaryCount(reactions, entryId, emoji, -1);
-            if (ownReaction?.Emoji == emoji)
-                ownReaction = null;
-        } else if (ownReaction?.Emoji != emoji) {
-            if (ownReaction != null)
-                UpdateSummaryCount(reactions, entryId, ownReaction.Emoji, -1);
-            UpdateSummaryCount(reactions, entryId, emoji, +1);
-            ownReaction = new Reaction {
-                Id = Symbol.Empty,
-                AuthorId = default!,
-                EntryId = entryId,
-                Emoji = emoji,
-            };
+    private static Model? ApplyOptimistic(
+        Model? serverModel,
+        ChatEntryId entryId,
+        List<OptimisticReactions.OptimisticReactionInfo> pending) {
+        var reactions = serverModel?.Reactions.ToList() ?? [];
+        var ownEmojis = serverModel?.OwnEmojis.ToHashSet() ?? [];
+        foreach (var (emoji, isRemove) in pending) {
+            if (isRemove) {
+                if (ownEmojis.Remove(emoji))
+                    UpdateSummaryCount(reactions, entryId, emoji, -1);
+            } else if (ownEmojis.Add(emoji))
+                UpdateSummaryCount(reactions, entryId, emoji, +1);
         }
 
-        return reactions.Count > 0 ? new Model(reactions.ToArray(), ownReaction) : null;
+        return reactions.Count > 0 ? new Model(reactions.ToArray(), ownEmojis.ToArray()) : null;
     }
 
-    private static void UpdateSummaryCount(List<ReactionSummary> summaries, ChatEntryId entryId, Emoji emoji, int delta) {
+    private static void UpdateSummaryCount(
+        List<ReactionSummary> summaries,
+        ChatEntryId entryId,
+        Emoji emoji,
+        int delta) {
         for (int i = 0; i < summaries.Count; i++) {
             if (summaries[i].Emoji == emoji) {
                 var newCount = summaries[i].Count + delta;
@@ -117,6 +116,6 @@
 
     public sealed record Model(
         ReactionSummary[] Reactions,
-        Reaction? OwnReaction = null
+        Emoji[] OwnEmojis
     );
 }

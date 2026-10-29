@@ -16,15 +16,30 @@ public class ReactionsBackend(IServiceProvider services)
     private IMaintenancesBackend MaintenancesBackend { get; } = services.GetRequiredService<IMaintenancesBackend>();
 
     // [ComputeMethod]
-    public virtual async Task<Reaction?> Get(ChatEntryId entryId, AuthorId authorId, CancellationToken cancellationToken)
+    public virtual async Task<Reaction?> Get(
+        ChatEntryId entryId,
+        AuthorId authorId,
+        CancellationToken cancellationToken)
+    {
+        var reactions = await ListByAuthor(entryId, authorId, cancellationToken).ConfigureAwait(false);
+        return reactions.MaxBy(x => x.ModifiedAt);
+    }
+
+    // [ComputeMethod]
+    public virtual async Task<Reaction[]> ListByAuthor(
+        ChatEntryId entryId,
+        AuthorId authorId,
+        CancellationToken cancellationToken)
     {
         var dbContext = await DbHub.CreateDbContext(cancellationToken).ConfigureAwait(false);
         await using var _ = dbContext.ConfigureAwait(false);
 
-        var id = DbReaction.ComposeId(entryId, authorId);
-        var dbReaction = await dbContext.Reactions.Get(id, cancellationToken)
+        var dbReactions = await dbContext.Reactions
+            .Where(x => x.EntryId == entryId.Value && x.AuthorId == authorId.Value)
+            .OrderBy(x => x.ModifiedAt)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return dbReaction?.ToModel();
+        return dbReactions.Select(x => x.ToModel()).ToArray();
     }
 
     // [ComputeMethod]
@@ -60,13 +75,14 @@ public class ReactionsBackend(IServiceProvider services)
         var dbContext = await DbHub.CreateOperationDbContext(cancellationToken).ConfigureAwait(false);
         await using var __ = dbContext.ConfigureAwait(false);
 
-        var id = DbReaction.ComposeId(entryId, authorId);
-        var dbReaction = await dbContext.Reactions.ForUpdate()
-            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+        // Each emoji toggles on its own: the author's other reactions to the entry stay as they are
+        var dbReactions = await dbContext.Reactions.ForUpdate()
+            .Where(x => x.EntryId == entryId.Value && x.AuthorId == authorId.Value)
+            .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var mustUpdateHasReactions = true;
-        var changeKind = ChangeKind.Create;
-
+        var dbReaction = dbReactions.FirstOrDefault(x => x.Emoji == emoji.Value);
+        bool mustUpdateHasReactions;
+        ChangeKind changeKind;
         if (dbReaction == null) {
             reaction = reaction with {
                 Version = VersionGenerator.NextVersion(),
@@ -74,30 +90,15 @@ public class ReactionsBackend(IServiceProvider services)
             };
             dbReaction = new DbReaction(reaction);
             dbContext.Add(dbReaction);
-
             var dbSummary = await UpsertDbSummary(emoji, true).ConfigureAwait(false);
-            if (dbSummary.Count > 1)
-                mustUpdateHasReactions = false; // There were already reaction before
+            mustUpdateHasReactions = dbSummary.Count == 1;
+            changeKind = ChangeKind.Create;
         }
         else {
-            if (emoji.Id == dbReaction.Emoji) {
-                dbContext.Remove(dbReaction);
-                var dbSummary = await UpsertDbSummary(emoji, false).ConfigureAwait(false);
-                if (dbSummary.Count > 0)
-                    mustUpdateHasReactions = false; // Some reactions are still there
-                changeKind = ChangeKind.Remove;
-            }
-            else {
-                var oldEmoji = Emoji.Parse(dbReaction.Emoji);
-                dbReaction.Version = VersionGenerator.NextVersion(dbReaction.Version);
-                dbReaction.Emoji = emoji.Id;
-                dbReaction.ModifiedAt = Clocks.SystemClock.Now;
-                await UpsertDbSummary(oldEmoji, false).ConfigureAwait(false);
-                await UpsertDbSummary(emoji, true).ConfigureAwait(false);
-                mustUpdateHasReactions = false; // Author replaced one reaction with another
-                changeKind = ChangeKind.Update;
-            }
-
+            dbContext.Remove(dbReaction);
+            var dbSummary = await UpsertDbSummary(emoji, false).ConfigureAwait(false);
+            mustUpdateHasReactions = dbSummary.Count == 0;
+            changeKind = ChangeKind.Remove;
             reaction = dbReaction.ToModel();
         }
 
@@ -107,7 +108,7 @@ public class ReactionsBackend(IServiceProvider services)
 
         Invalidation.Defer(() => {
             _ = List(entryId, default);
-            _ = Get(entryId, authorId, default);
+            _ = ListByAuthor(entryId, authorId, default);
         });
 
         // Raise events
