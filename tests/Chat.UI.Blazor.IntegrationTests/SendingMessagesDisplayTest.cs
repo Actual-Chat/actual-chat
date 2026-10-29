@@ -1,4 +1,5 @@
 using ActualChat.Hashing;
+using ActualLab.Generators;
 using ActualChat.Testing.Host;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
@@ -54,7 +55,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
 
         // assert: the optimistic message is surfaced
-        items.Items.OfType<ChatEntryMessage>()
+        GetEntryMessages(items)
             .Select(m => m.Entry.Content)
             .Should().Contain("TEST_SENDING");
     }
@@ -183,7 +184,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
 
         // assert
-        var sending = items.Items.OfType<ChatEntryMessage>()
+        var sending = GetEntryMessages(items)
             .Select(m => m.Entry.GetSendingMessage())
             .SkipNullItems()
             .ToList();
@@ -261,7 +262,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, cancellationToken);
         var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
         var items = await chatUI.GetChatItems(chatId, query, 0, cancellationToken);
-        return items.Items.OfType<ChatEntryMessage>()
+        return GetEntryMessages(items)
             .Where(m => m.Entry.IsSending)
             .Select(m => m.Entry.Content)
             .ToList();
@@ -307,7 +308,7 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
         var items = await chatUI.GetChatItems(chat.Id, query, 0, CancellationToken.None);
 
         // assert: the tail merge still surfaces the optimistic message
-        items.Items.OfType<ChatEntryMessage>()
+        GetEntryMessages(items)
             .Select(m => m.Entry.Content)
             .Should().Contain("TAIL_SENDING");
 
@@ -319,5 +320,76 @@ public class SendingMessagesDisplayTest(ChatAppHostFixture fixture, ITestOutputH
             conversation.Items
                 .Select(i => ((IVirtualListItem)i).RenderKey)
                 .Should().OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public async Task ShouldKeepRenderKeysWhenStoredEntryReplacesSend()
+    {
+        // arrange: a send queued after an own message, so it joins that message's author group
+        await Tester.SignInAsUniqueBob();
+        var (chat, _) = await Tester.CreateAndGetChat(false, "sending-render-key-test");
+        await Tester.CreateTextEntry(chat.Id, "before-send");
+
+        var chatUI = Tester.ScopedAppServices.GetRequiredService<ChatUI>();
+        var sendingMessages = Tester.ScopedAppServices.GetRequiredService<SendingMessages>();
+        var now = Tester.AppServices.Clocks().SystemClock.Now;
+        var clientId = RandomStringGenerator.Default.Next();
+        var sendingMessage = new SendingMessage(
+            RandomStringGenerator.Default.Next(),
+            clientId,
+            chat.Id,
+            null,
+            now,
+            "KEY_SWAP",
+            HashString.None,
+            null,
+            () => { });
+        sendingMessages.GetSendingMessages(chat.Id).ChatSendingMessages.AddSendingMessage(sendingMessage);
+
+        string sendGroupKey = null!;
+        string sendKey = null!;
+        await TestWait.When(async ct => {
+            var items = await GetChatItems(chatUI, chat.Id, ct);
+            var (group, message) = FindGrouped(items, "KEY_SWAP");
+            message.Kind.Should().Be(ChatMessageKind.SendingNewMessage);
+            sendGroupKey = ((IVirtualListItem)group).RenderKey;
+            sendKey = ((IVirtualListItem)message).RenderKey;
+        }, TimeSpan.FromSeconds(10));
+
+        // act: the stored entry lands carrying the send's ClientId
+        var upsertEntryCmd = new Chats_UpsertEntry {
+            Session = Tester.Session,
+            ChatId = chat.Id,
+            LocalId = null,
+            Text = "KEY_SWAP",
+            ClientId = clientId,
+        };
+        await Tester.Commander.Call(upsertEntryCmd);
+
+        // assert: Blazor sees the same keys, so it updates the message rather than recreating it
+        await TestWait.When(async ct => {
+            var items = await GetChatItems(chatUI, chat.Id, ct);
+            var (group, message) = FindGrouped(items, "KEY_SWAP");
+            message.Kind.Should().Be(ChatMessageKind.None);
+            ((IVirtualListItem)group).RenderKey.Should().Be(sendGroupKey);
+            ((IVirtualListItem)message).RenderKey.Should().Be(sendKey);
+        }, TimeSpan.FromSeconds(10));
+    }
+
+    private async Task<ChatItems> GetChatItems(ChatUI chatUI, ChatId chatId, CancellationToken cancellationToken)
+    {
+        var idRange = await Tester.Chats.GetIdRange(Tester.Session, chatId, cancellationToken);
+        var query = new ChatDataQuery(idRange, -chatUI.HalfLoadLimit, chatUI.HalfLoadLimit);
+        return await chatUI.GetChatItems(chatId, query, 0, cancellationToken);
+    }
+
+    private static IEnumerable<ChatEntryMessage> GetEntryMessages(ChatItems items)
+        => items.Items.SelectMany(i => i.GetLeafMessages()).OfType<ChatEntryMessage>();
+
+    private static (ChatEntryAuthorGroup Group, ChatEntryMessage Message) FindGrouped(ChatItems items, string content)
+    {
+        var group = items.Items.OfType<ChatEntryAuthorGroup>()
+            .Single(g => g.Items.Any(m => m.Entry.Content == content));
+        return (group, group.Items.Single(m => m.Entry.Content == content));
     }
 }

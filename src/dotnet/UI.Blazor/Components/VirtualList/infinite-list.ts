@@ -143,7 +143,8 @@ interface StickyItem {
 }
 
 interface InfiniteListItem {
-    readonly key: string;
+    // Changes only when Blazor keeps the element while the item's key moves on - see findRenamedItems
+    key: string;
     ref: HTMLElement;
     height: number;
     mustSkipKey: boolean;
@@ -527,12 +528,15 @@ export class InfiniteList extends VirtualList {
     // Private methods
 
     private applyRender(rs: VirtualListRenderState): void {
-        const oldKeys = this.items.map(x => x.key);
         const oldOffsets = this.offsets;
         const oldChainStart = this.chainStart;
         const oldHeights = new Map(this.items.map(x => [x.key, x.height]));
 
-        this.rebuildItems();
+        const renames = this.rebuildItems();
+        // A renamed item is the same item: written under its new key, it neither leaves nor arrives
+        const oldKeys = [...oldHeights.keys()].map(key => renames.get(key) ?? key);
+        for (const [oldKey, newKey] of renames)
+            oldHeights.set(newKey, oldHeights.get(oldKey)!);
         this.runRenderScripts();
         const isFullReplacement = oldKeys.length > 0
             && this.items.length > 0
@@ -628,14 +632,22 @@ export class InfiniteList extends VirtualList {
         return index == null ? this.chainStart : this.chainStart + this.offsets[index];
     }
 
-    private rebuildItems(): void {
+    // Returns the items Blazor kept while their key changed, old key -> new key
+    private rebuildItems(): Map<string, string> {
         const itemRefs = this.containerRef.querySelectorAll<HTMLElement>(':scope .item[data-key]');
         const items = new Array<InfiniteListItem>(itemRefs.length);
         const indexByKey = new Map<string, number>();
+        const oldKeyByRef = this.findRenamedItems(itemRefs);
+        const renames = new Map<string, string>();
         for (let i = 0; i < itemRefs.length; i++) {
             const itemRef = itemRefs[i];
             const key = itemRef.dataset.key!;
-            const oldIndex = this.indexByKey.get(key);
+            const oldKey = oldKeyByRef.get(itemRef);
+            if (oldKey != null) {
+                this.renameItem(oldKey, key);
+                renames.set(oldKey, key);
+            }
+            const oldIndex = this.indexByKey.get(oldKey ?? key);
             const existing = oldIndex == null ? null : this.items[oldIndex];
             const item: InfiniteListItem = existing ?? {
                 key,
@@ -651,7 +663,14 @@ export class InfiniteList extends VirtualList {
                 this.observeItem(itemRef);
             }
             // Blazor renders a true bool attribute as a valueless one (data-skip=""), never "true".
-            item.mustSkipKey = itemRef.dataset.skip != null && itemRef.dataset.skip !== 'false';
+            const mustSkipKey = itemRef.dataset.skip != null && itemRef.dataset.skip !== 'false';
+            // Visibility is judged with the skip flag, and an element that stays put gets no new
+            // intersection callback - re-observing it is what makes the observer report it again
+            if (existing?.ref === itemRef && existing.mustSkipKey !== mustSkipKey) {
+                this.visibilityObserver.unobserve(itemRef);
+                this.visibilityObserver.observe(itemRef);
+            }
+            item.mustSkipKey = mustSkipKey;
             items[i] = item;
             indexByKey.set(key, i);
             this.heights?.track(key, itemRef);
@@ -675,6 +694,37 @@ export class InfiniteList extends VirtualList {
                 this.recentlyRemoved.delete(key);
         this.items = items;
         this.indexByKey = indexByKey;
+        return renames;
+    }
+
+    // An element still in place whose key is gone from the render: Blazor kept it under a stable @key
+    // while the item's identity moved on, e.g. an optimistic chat message replaced by its stored entry
+    private findRenamedItems(itemRefs: NodeListOf<HTMLElement>): Map<HTMLElement, string> {
+        const result = new Map<HTMLElement, string>();
+        const newKeys = new Set<string>();
+        const newRefs = new Set<HTMLElement>();
+        for (const itemRef of itemRefs) {
+            newKeys.add(itemRef.dataset.key!);
+            newRefs.add(itemRef);
+        }
+        for (const item of this.items) {
+            const newKey = item.ref.dataset.key!;
+            if (!newKeys.has(item.key) && newRefs.has(item.ref) && !this.indexByKey.has(newKey))
+                result.set(item.ref, item.key);
+        }
+        return result;
+    }
+
+    private renameItem(oldKey: string, newKey: string): void {
+        this.items[this.indexByKey.get(oldKey)!].key = newKey;
+        if (this.visibleKeys.delete(oldKey))
+            this.visibleKeys.add(newKey);
+        this.heights?.rename(oldKey, newKey);
+        const screenAnchor = this.screenAnchor;
+        if (screenAnchor?.key === oldKey)
+            screenAnchor.key = newKey;
+        if (screenAnchor?.aboveKey === oldKey)
+            screenAnchor.aboveKey = newKey;
     }
 
     private observeItem(itemRef: HTMLElement): void {

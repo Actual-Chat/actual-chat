@@ -68,6 +68,7 @@ public class ChatSendingMessagesAccessor(ChatSendingMessages chatSendingMessages
                 Content = sendingMessage.Content,
                 BeginsAt = sendingMessage.BeginsAt,
                 SendingTag = sendingMessage,
+                ClientId = sendingMessage.ClientId,
                 ClientUid = Guid.NewGuid().ToString(),
                 HasUploadingAttachments = sendingMessage.AttachmentUploads is not null,
             };
