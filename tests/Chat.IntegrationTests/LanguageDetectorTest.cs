@@ -31,7 +31,14 @@ public class LanguageDetectorTest(TranslationCollection.AppHostFixture fixture, 
     [InlineData("123")]
     [InlineData("0xDEADBEEF")]
     [InlineData("Hello! @#$%^&*()_+", "en-US")]
-    [InlineData("1998: Most amazing amazing chat absolutely amazing chat actual actual most most terrific terrific chat terrific ever absolutely terrific terrific level 100500", "en-US")]
+    // Arabic isn't declared, which must not cost the message its English
+    [InlineData(
+        "Hello, how are you today? مرحبا، كيف حالك اليوم؟",
+        "en-US")]
+    [InlineData(
+        "1998: Most amazing amazing chat absolutely amazing chat actual actual most most terrific terrific chat "
+        + "terrific ever absolutely terrific terrific level 100500",
+        "en-US")]
     public async Task ShouldDetectLanguages(string text, params string[] sExpectedLanguages)
     {
         // arrange
