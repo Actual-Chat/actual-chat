@@ -176,7 +176,8 @@ public partial class ChatVideoUI
         ChatId? activeChatId = null;
 
         try {
-            await foreach (var (intent, _) in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+            await foreach (var cIntent in cState.Changes(cancellationToken).ConfigureAwait(false)) {
+                var (intent, _) = cIntent;
                 var intentChatId = intent?.ChatId;
                 var isRestart = recorder is not null && intent is not null
                     && mustRestart?.Invoke(recorder, intent) == true;
@@ -205,7 +206,10 @@ public partial class ChatVideoUI
                         var serverTimeSync = Hub.Services.GetService<ServerTimeSync>();
                         if (serverTimeSync != null)
                             await serverTimeSync.EnsureSynced(cancellationToken).ConfigureAwait(false);
-                        await startRecorder(recorder, intent, cancellationToken).ConfigureAwait(false);
+                        var whenStarted = startRecorder(recorder, intent, cancellationToken);
+                        await StopIfIntentMoves(recorder, whenStarted, cIntent, intent.ChatId, cancellationToken)
+                            .ConfigureAwait(false);
+                        await whenStarted.ConfigureAwait(false);
                         activeChatId = intent.ChatId;
                     }
                     catch (Exception e) when (e is not OperationCanceledException) {
@@ -228,6 +232,23 @@ public partial class ChatVideoUI
             // TODO(DF): to think how to properly handle cancellation
             if (recorder is not null)
                 await CompleteRecording(recorder, CancellationToken.None).ConfigureAwait(false);
+        }
+
+        static async Task StopIfIntentMoves(
+            VideoRecorder recorder,
+            Task whenStarted,
+            Computed<TIntent?> cIntent,
+            ChatId chatId,
+            CancellationToken cancellationToken)
+        {
+            // A start takes seconds and goes live before it ends, so an intent gone meanwhile (a hang-up right
+            // after the camera went on) would publish a stream nobody wants: stopping now aborts the start.
+            using var cts = cancellationToken.CreateLinkedTokenSource();
+            var whenMoved = cIntent.When(x => x?.ChatId != chatId, cts.Token);
+            await Task.WhenAny(whenStarted, whenMoved).ConfigureAwait(false);
+            cts.CancelSilently();
+            if (!whenStarted.IsCompleted)
+                await recorder.StopRecording(cancellationToken).ConfigureAwait(false);
         }
 
         static async Task CompleteRecording(VideoRecorder recorder, CancellationToken cancellationToken)
