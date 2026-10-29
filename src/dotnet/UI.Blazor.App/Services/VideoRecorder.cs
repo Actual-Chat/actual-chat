@@ -85,6 +85,10 @@ public sealed class VideoRecorder : IAsyncDisposable
 
         _startRequest = (chatId, true);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
+        // JS ignores a stop that comes before its start, so a stop during the await above must skip the start
+        if (IsStopRequested)
+            return;
+
         // Always-on simulcast: JS startRecording builds up to a 3-tier ladder
         // (probe-gated to 2-tier on iOS HW-encoder budget exhaustion), clamped
         // by maxLayerCount (mobile = 2 to keep the top output at 640x360 / L1).
@@ -105,6 +109,9 @@ public sealed class VideoRecorder : IAsyncDisposable
 
         _startRequest = (chatId, true);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
+        if (IsStopRequested)
+            return;
+
         await _jsRef
             .InvokeVoidAsync("warmup", cancellationToken, chatId.Value, codecs)
             .ConfigureAwait(false);
@@ -149,6 +156,9 @@ public sealed class VideoRecorder : IAsyncDisposable
 
         _startRequest = (chatId, false);
         var codecs = await GetInitialAudienceCodecs(chatId).ConfigureAwait(false);
+        if (IsStopRequested)
+            return;
+
         await _jsRef
             .InvokeVoidAsync("startScreenCast", cancellationToken, chatId.Value, codecs, maxLayerCount)
             .ConfigureAwait(false);
