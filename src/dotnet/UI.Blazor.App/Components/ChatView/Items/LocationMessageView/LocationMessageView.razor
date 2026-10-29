@@ -59,7 +59,7 @@
                 <CopyToClipboard ButtonClass="btn-xs btn-transparent" Text="@m.Center.ToOpenStreetMapUrl()"/>
             </div>
         </div>
-        @if (m is { IsLive: true, IsOwnLive: false }) {
+        @if (m.CanShareBack) {
             <Button Class="c-share-back" Click="@OnShareBack" StopPropagation="true">
                 @L.LocationMessage_ShareBack
             </Button>
@@ -103,6 +103,8 @@
             ? await LocationUI.GetTrackingError(chatId, cancellationToken).ConfigureAwait(false)
             : null;
         var distance = isOwn ? null : await GetDistance(location.Point, cancellationToken).ConfigureAwait(false);
+        var canShareBack = !isOwn && countdown is not null
+            && !await LocationUI.IsOwnLive(chatId, cancellationToken).ConfigureAwait(false);
         return new Model(
             location.Point,
             [marker],
@@ -110,7 +112,8 @@
             isOwnLive,
             distance,
             trackingError,
-            location.IsPlace);
+            location.IsPlace,
+            canShareBack);
     }
 
     // Private methods
@@ -162,7 +165,8 @@
         bool IsOwnLive,
         double? Distance = null,
         GeoTrackingError? TrackingError = null,
-        bool IsPlace = false) {
+        bool IsPlace = false,
+        bool CanShareBack = false) {
         public bool IsSending { get; init; }
         public bool IsLive => Countdown is not null;
     }
