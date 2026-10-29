@@ -13,9 +13,9 @@ public static class AVAudioPcmBufferExt
     }
 
     public static AVAudioPcmBuffer ToPcmBuffer(this IMemoryOwner<float> frame, AVAudioFormat format)
-        => ToPcmBuffer2(frame.Memory.Span, format);
+        => frame.Memory.Span.ToPcmBuffer(format);
 
-    public static AVAudioPcmBuffer ToPcmBuffer2(this Span<float> data, AVAudioFormat format)
+    public static AVAudioPcmBuffer ToPcmBuffer(this ReadOnlySpan<float> data, AVAudioFormat format)
     {
         var buffer = new AVAudioPcmBuffer(format, (uint)data.Length);
         buffer.SetData(data);
@@ -25,7 +25,7 @@ public static class AVAudioPcmBufferExt
     public static unsafe ReadOnlySpan<float> AsReadOnlySpan(this AVAudioPcmBuffer pcm)
         => new (pcm.AudioBufferList[0].Data.ToPointer(), (int)pcm.FrameLength);
 
-    public static void SetData(this AVAudioPcmBuffer buffer, Span<float> data)
+    public static void SetData(this AVAudioPcmBuffer buffer, ReadOnlySpan<float> data)
     {
         unsafe
         {
