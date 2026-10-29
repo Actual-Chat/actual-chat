@@ -207,9 +207,10 @@ public class FirebaseMessagingClient(
                 Data = data,
                 Android = new AndroidConfig {
                     Data = data,
-                    // Doze holds this one, but only until the device wakes: measured at ~0.57s
-                    // after it leaves Doze, which High would buy with an FCM cold start.
-                    Priority = Priority.Normal,
+                    // Doze holds a Normal one, but only until the device wakes: measured at ~0.57s
+                    // after it leaves Doze, which High would buy with an FCM cold start. A ring
+                    // can't wait for that - it sounds on a phone answered elsewhere until this lands.
+                    Priority = chunk.IsRing ? Priority.High : Priority.Normal,
                     TimeToLive = TimeSpan.FromDays(1),
                 },
                 Apns = new ApnsConfig {
@@ -314,13 +315,23 @@ public class FirebaseMessagingClient(
     // It's internal to be accessible from tests
     internal static List<DismissalChunk> ChunkDismissals(IReadOnlyCollection<PendingDismissal> dismissals)
     {
+        // Rings are chunked apart and go first: only their dismissals spend FCM's high-priority budget.
+        var chunks = new List<DismissalChunk>();
+        AddChunks(chunks, dismissals.Where(x => NotificationExt.IsCallTag(x.Tag)).ToList(), isRing: true);
+        AddChunks(chunks, dismissals.Where(x => !NotificationExt.IsCallTag(x.Tag)).ToList(), isRing: false);
+        return chunks;
+    }
+
+    // Private methods
+
+    private static void AddChunks(List<DismissalChunk> chunks, List<PendingDismissal> dismissals, bool isRing)
+    {
         // Over the FCM payload limit the whole message is rejected, taking every dismissal in it
         // down. A chunk pays for both keys it emits - one id per dismissal, one tag per distinct
         // tag - so the two stay consistent and a rejected chunk leaves exactly its own owed.
         var budget = MaxFcmPayloadBytes - FcmPayloadMargin
             - Encoding.UTF8.GetByteCount(Constants.Notification.MessageDataKeys.DismissedIds)
             - Encoding.UTF8.GetByteCount(Constants.Notification.MessageDataKeys.DismissedTags);
-        var chunks = new List<DismissalChunk>();
         // Only chat/entry-derived tags are emitted: a client closes every notification sharing
         // a tag, so the non-chat "topic" fallback must never be a dismissal tag. An untagged
         // dismissal closes no banner, but its id still refreshes the badge.
@@ -330,7 +341,7 @@ public class FirebaseMessagingClient(
         foreach (var group in dismissals.Where(x => !x.Tag.IsNullOrEmpty()).GroupBy(x => x.Tag)) {
             var groupSize = Encoding.UTF8.GetByteCount(group.Key) + 1 + group.Sum(IdSize);
             if (tags.Count > 0 && size + groupSize > budget) {
-                chunks.Add(new DismissalChunk(items, tags));
+                chunks.Add(new DismissalChunk(items, tags, isRing));
                 items = [];
                 tags = [];
                 size = 0;
@@ -340,16 +351,14 @@ public class FirebaseMessagingClient(
             size += groupSize;
         }
         if (items.Count > 0 || tags.Count > 0)
-            chunks.Add(new DismissalChunk(items, tags));
+            chunks.Add(new DismissalChunk(items, tags, isRing));
 
-        return chunks;
+        return;
 
         static int IdSize(PendingDismissal dismissal)
             // + the ',' separator
             => Encoding.UTF8.GetByteCount(dismissal.Id.Value) + 1;
     }
-
-    // Private methods
 
     private TimeSpan GetTimeToLive(Notification notification)
     {
@@ -427,5 +436,6 @@ public class FirebaseMessagingClient(
 
     internal sealed record DismissalChunk(
         IReadOnlyList<PendingDismissal> Dismissals,
-        IReadOnlyList<string> Tags);
+        IReadOnlyList<string> Tags,
+        bool IsRing);
 }
