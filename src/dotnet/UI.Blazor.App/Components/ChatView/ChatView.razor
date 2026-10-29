@@ -41,7 +41,7 @@
         else if (item is ExpandedConversationMessage expandedConversationMessage) {
             foreach (var childItem in expandedConversationMessage.Items) {
                 @if (childItem.IsGroup) {
-                    <div @key="@childItem.Key" class="group" data-children="@GroupChildren">
+                    <div @key="@childItem.RenderKey" class="group" data-children="@GroupChildren">
                         @RenderChatMessage!((childItem, chatContext))
                     </div>
                 }
@@ -49,7 +49,7 @@
                     @* One element for all item kinds: a live card and its ended call's header share a key, and
                        Blazor merges same-key elements of two branches by dropping the attributes they share. *@
                     var isHeader = childItem is ConversationHeader or LiveConversationHeader;
-                    <div @key="@childItem.Key" class="@(isHeader ? "item expanded" : "item")"
+                    <div @key="@childItem.RenderKey" class="@(isHeader ? "item expanded" : "item")"
                          data-key="@childItem.Key" data-skip="@childItem.ShouldSkipKey"
                          data-children="@ItemChildren"
                          data-vl-h-transition="@(childItem.MustAnimateAppearance ? null : "change")">

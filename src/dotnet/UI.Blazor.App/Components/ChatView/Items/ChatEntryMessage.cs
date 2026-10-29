@@ -4,6 +4,13 @@ public sealed class ChatEntryMessage(ChatEntry entry): ChatMessage(entry.Id.Loca
 {
     public ChatEntry Entry { get; } = entry;
 
+    public override string RenderKey
+        // A send keeps its ClientId when the optimistic copy is swapped for the stored entry, while its lid may not
+        => field ??= Kind is ChatMessageKind.None or ChatMessageKind.SendingNewMessage
+            && !Entry.ClientId.IsNullOrEmpty()
+                ? "c-" + Entry.ClientId
+                : Key.Value;
+
     public override bool Equals(ChatMessage? other)
     {
         if (ReferenceEquals(null, other))

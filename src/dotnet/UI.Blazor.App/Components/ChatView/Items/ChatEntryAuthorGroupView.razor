@@ -25,9 +25,10 @@
                on every animation frame (height is a layout property), which a mobile WebView repaints
                as a flicker of the neighbouring blocks. "none" makes it grow instantly - one reflow per
                line, not one per frame. A settled entry (null) keeps the normal height animation. *@
-            <div @key="@item.Key" class="item" data-key="@item.Key"
+            <div @key="@item.RenderKey" class="item"
+                 data-key="@item.Key" data-skip="@item.ShouldSkipKey"
                  data-vl-h-transition="@(item.Entry.IsContentStreaming ? "none" : null)"
-                 data-children="conversation-message live-card live-footer live-header show-author conversation-header vl-sticky">
+                 data-children="@ItemChildren">
                 <ChatEntryMessageView ChatContext="@ChatContext" Message="@item" ShowAuthorBadge="false"/>
             </div>
         }
@@ -36,6 +37,9 @@
 
 
 @code {
+    private const string ItemChildren =
+        "conversation-message live-card live-footer live-header show-author conversation-header vl-sticky";
+
     private EventCallback<AuthorId> _onClickCallback;
 
     private AppUIHub Hub => ChatContext.Hub;
