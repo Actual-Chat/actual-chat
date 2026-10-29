@@ -53,6 +53,8 @@ Describe "CiWatchdog.ps1" {
             "`e[34me2e: `e[0m`e[2m      Tests `e[22m `e[1m`e[31m3 failed`e[39m`e[22m`e[2m | `e[22m`e[1m`e[32m139 passed`e[39m`e[22m`e[2m | `e[22m`e[33m13 skipped`e[39m`e[90m (155)`e[39m"
             "`e[90mBuild:`e[0m `e[34me2e-tests`e[37m:`e[0m `e[31mFAILED!`e[0m `e[31mCommand execution failed because the underlying process (npm#29201) returned a non-zero exit code (1)."
         )
+        # The same lines as gh 2.92+ prints them: every ESC as the two characters "^[".
+        $script:sanitizedVitestLog = $script:vitestLog -replace "`e", '^['
 
         function New-Flake {
             param([string]$Pattern, [string]$Symptom = '', [int]$Issue = 4645)
@@ -349,6 +351,13 @@ Describe "CiWatchdog.ps1" {
             $tests[1].KnownFlake | Should -BeFalse
         }
 
+        It "reads a vitest failure whose colors gh printed as ^[" {
+            $tests = Get-CiFailedTests $script:sanitizedVitestLog @()
+            $tests.Name | Should -Be (Get-CiFailedTests $script:vitestLog @()).Name
+            $tests[0].Error | Should -Be 'TimeoutError: page.waitForResponse: Timeout 30000ms exceeded while waiting for event "response"'
+            $tests[0].Duration | Should -Be '43 s'
+        }
+
         It "drops the path vitest repeats after a file that failed to load" {
             $log = New-JobLog @(' FAIL  tests/ts/e2e/broken.test.ts [ tests/ts/e2e/broken.test.ts ]', 'SyntaxError: Unexpected token')
             $tests = Get-CiFailedTests $log @()
@@ -482,6 +491,13 @@ Describe "CiWatchdog.ps1" {
             $totals[0].Failed | Should -Be 3
             $totals[0].Passed | Should -Be 139
             $totals[0].Skipped | Should -Be 13
+            $totals[0].Total | Should -Be 155
+        }
+
+        It "reads vitest's totals whose colors gh printed as ^[" {
+            $totals = Get-CiAssemblyTotals $script:sanitizedVitestLog
+            $totals.Count | Should -Be 1
+            $totals[0].Failed | Should -Be 3
             $totals[0].Total | Should -Be 155
         }
 
