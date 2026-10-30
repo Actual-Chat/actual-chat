@@ -693,8 +693,8 @@ body.hoverable .call-screen .call-screen-footer .c-side > button:hover,
    would strip it on every re-render of the layout-driven `FocusedClass`,
    producing the "black sidebar tile / blur-only focused" symptom.
    §6.D + §6.E — `contain: size` decouples element layout from the per-frame
-   intrinsic dims of the source; aspect-ratio is pinned via inline style on
-   the parent so object-fit still letterboxes correctly. `will-change` +
+   intrinsic dims of the source; the tile's box is sized by the layout, and
+   object-fit letterboxes the frame inside it. `will-change` +
    `translateZ(0)` promote each surface to its own GraphicsLayer; without
    them WebKit propagates style/layout invalidation up the ancestor chain
    on every frame. `pointer-events: none` skips per-paint hit-test. */
@@ -732,31 +732,23 @@ body.hoverable .call-screen .call-screen-footer .c-side > button:hover,
     @apply bg-transparent;
 }
 
-/* Branded placeholder shown until the first decoded frame paints — covers the
-   empty <video>/canvas (otherwise a bare gray box with the native play glyph).
+/* The author's blurred avatar, shown until the first decoded frame paints.
    JS adds `.has-frame` to this element (not the Blazor-owned tile root, whose
    class attribute a re-render would rewrite and strip the signal) once the
    first frame arrives. */
 .video-track-player .video-placeholder {
     @apply absolute inset-0;
-    @apply flex items-center justify-center;
+    @apply overflow-hidden;
     @apply bg-black pointer-events-none;
     z-index: 2;
-    color: var(--white-70);
     transition: opacity 200ms ease-out;
 }
-.video-track-player .video-placeholder > i {
-    font-size: clamp(3rem, 45cqmin, 10rem);
-    line-height: 1;
+.video-track-player .video-placeholder img {
+    @apply w-full h-full;
+    object-fit: cover;
 }
 .video-track-player .video-placeholder.has-frame {
     @apply opacity-0;
-}
-/* Freeze the pulse once the frame arrives — the placeholder stays in the DOM
-   (only fades to opacity:0), so an infinite animation would otherwise tick
-   forever on every tile. */
-.video-track-player .video-placeholder.has-frame > i {
-    animation-play-state: paused;
 }
 
 /* Blurred backdrop (§13): fills the letterbox/pillarbox bars. JS paints a
@@ -782,8 +774,7 @@ body.hoverable .call-screen .call-screen-footer .c-side > button:hover,
 
 /* Blurred background canvas — visible on PRIMARY tiles, filling the container
    behind the letterboxed main canvas. The canvas renders at 64×N intrinsic
-   resolution; CSS upscales it via object-cover to fill the parent (parent has
-   aspect-ratio matching the source).
+   resolution; CSS upscales it via object-cover to fill the parent.
    The selector pairs mirror `isPrimaryTile` in tile-fit.ts: the focused tile,
    plus every non-PiP tile in the equal layout, where they are all the same size.
    Keep the two in step — JS deciding to paint a backdrop that CSS keeps hidden
@@ -852,9 +843,6 @@ body.wide .video-stage .video-track-player.pip-overlay {
     @apply rounded-none border-0;
     @apply overflow-hidden;
     contain: strict;
-}
-.call-screen.expanded .video-track-player.item-focused {
-    aspect-ratio: auto !important;
 }
 .call-screen.expanded .video-track-player.item-focused.screencast {
     @apply overflow-hidden;

@@ -19,14 +19,9 @@ export class OffThreadRenderBackend implements RenderBackend {
     readonly isOffThread = true;
     private trackAttached = false;
     private disposed = false;
-    // Cached aspect-ratio applied to the parent container — same role as in
-    // CanvasRenderBackend. Skip redundant DOM writes when the live videoEl
-    // dims still resolve to the same ratio.
-    private lastAspectRatio = '';
     private rotationQuarter = 0;
     private currentFit: 'cover' | 'contain' = 'cover';
     private expectedPaused = false;
-    private resizeListener: (() => void) | null = null;
     // DIAG: watchdog watches whether <video> playback is actually advancing
     // and falls back to the canvas backend on a true stall. See
     // mstg-playback-watchdog.ts for details and the kill switch.
@@ -98,15 +93,6 @@ export class OffThreadRenderBackend implements RenderBackend {
         this.videoEl.srcObject = stream;
         // DIAG: start the playback watchdog now that a track is attached.
         this.watchdog.start();
-        // `resize` fires whenever videoWidth/videoHeight change — including the
-        // initial attach (after `loadedmetadata`) and every mid-stream rotation
-        // that flips the encoder dims (no Format republish, no Blazor
-        // re-render — the receiver's only signal that source dims changed).
-        this.resizeListener = () => this.applyContainerAspect();
-        this.videoEl.addEventListener('resize', this.resizeListener);
-        // First attach may already have dims if the metadata event landed
-        // before the listener was registered; flush once eagerly.
-        this.applyContainerAspect();
         this.tryPlay('initial');
         this.startParentClassObserver();
         infoLog?.log('Off-thread track attached to <video srcObject>');
@@ -130,7 +116,6 @@ export class OffThreadRenderBackend implements RenderBackend {
         if (q === this.rotationQuarter) return;
         this.rotationQuarter = q;
         applyRotationLayout(this.videoEl, q);
-        this.applyContainerAspect(true);
     }
 
     recomputeLayout(): void {
@@ -161,36 +146,11 @@ export class OffThreadRenderBackend implements RenderBackend {
             this.watchdog.resetCounters();
     }
 
-    // Mirrors CanvasRenderBackend.applyContainerAspect: writes the source
-    // aspect ratio to the parent `.video-track-player` container so the CSS
-    // `.has-source-aspect.item-focused[style*="aspect-ratio"]` rule fits the
-    // tile to the source instead of the panel.
-    private applyContainerAspect(force = false): void {
-        const w = this.videoEl.videoWidth;
-        const h = this.videoEl.videoHeight;
-        if (w <= 0 || h <= 0) return;
-        // 90/270 turns swap visual W/H, so parent's aspect-ratio must invert.
-        const swap = (this.rotationQuarter & 1) === 1;
-        const visibleW = swap ? h : w;
-        const visibleH = swap ? w : h;
-        const ratio = `${visibleW} / ${visibleH}`;
-        if (!force && ratio === this.lastAspectRatio) return;
-        const parent = this.videoEl.parentElement;
-        if (!parent) return;
-        parent.style.aspectRatio = ratio;
-        this.lastAspectRatio = ratio;
-        debugLog?.log(`Container aspect-ratio set to ${ratio} (mstg rotation=${this.rotationQuarter})`);
-    }
-
     dispose(): void {
         if (this.disposed) return;
         this.disposed = true;
         this.watchdog.dispose();
         this.stopParentClassObserver();
-        if (this.resizeListener) {
-            try { this.videoEl.removeEventListener('resize', this.resizeListener); } catch { /* ignore */ }
-            this.resizeListener = null;
-        }
         try {
             const stream = this.videoEl.srcObject;
             if (stream instanceof MediaStream) {

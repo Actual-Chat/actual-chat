@@ -8,7 +8,6 @@ export class CanvasRenderBackend implements RenderBackend {
     readonly kind = 'canvas' as const;
     readonly isOffThread = false;
     private readonly ctx: CanvasRenderingContext2D | null;
-    private lastAspectRatio = '';
     private lastOutputSize: { width: number; height: number } | null = null;
     private rotationQuarter = 0;
     private currentFit: 'cover' | 'contain' = 'cover';
@@ -28,7 +27,6 @@ export class CanvasRenderBackend implements RenderBackend {
                 this.canvas.width = pf.displayWidth;
                 this.canvas.height = pf.displayHeight;
                 debugLog?.log(`Canvas resized to ${pf.displayWidth}x${pf.displayHeight}`);
-                this.applyContainerAspect(pf.displayWidth, pf.displayHeight);
             }
             this.lastOutputSize = { width: pf.displayWidth, height: pf.displayHeight };
             this.ctx.drawImage(pf.drawable as CanvasImageSource, 0, 0);
@@ -42,8 +40,6 @@ export class CanvasRenderBackend implements RenderBackend {
         if (q === this.rotationQuarter) return;
         this.rotationQuarter = q;
         applyRotationLayout(this.canvas, q);
-        if (this.lastOutputSize)
-            this.applyContainerAspect(this.lastOutputSize.width, this.lastOutputSize.height, true);
     }
 
     recomputeLayout(): void {
@@ -68,21 +64,6 @@ export class CanvasRenderBackend implements RenderBackend {
         // draw loop already gates on frame arrival.
     }
 
-    private applyContainerAspect(width: number, height: number, force = false): void {
-        if (width <= 0 || height <= 0) return;
-        // 90/270 turns swap visual W/H, so the parent's aspect-ratio must invert.
-        const swap = (this.rotationQuarter & 1) === 1;
-        const visibleW = swap ? height : width;
-        const visibleH = swap ? width : height;
-        const ratio = `${visibleW} / ${visibleH}`;
-        if (!force && ratio === this.lastAspectRatio) return;
-        const parent = this.canvas.parentElement;
-        if (!parent) return;
-        parent.style.aspectRatio = ratio;
-        this.lastAspectRatio = ratio;
-        debugLog?.log(`Container aspect-ratio set to ${ratio} (rotation=${this.rotationQuarter})`);
-    }
-
     dispose(): void {
         // intentionally empty
     }
@@ -92,7 +73,6 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
     readonly kind = 'canvas' as const;
     readonly isOffThread = false;
     private rotationQuarter = 0;
-    private lastAspectRatio = '';
     private currentFit: 'cover' | 'contain' = 'cover';
 
     constructor(private readonly canvas: HTMLCanvasElement) {}
@@ -104,10 +84,7 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
     }
 
     drawFrame(pf: PresentableFrame): void {
-        // OffscreenCanvas owns rendering; we still need to track dims to
-        // keep parent aspect-ratio + rotation transform in sync.
-        if (this.canvas.width > 0 && this.canvas.height > 0)
-            this.applyContainerAspect(this.canvas.width, this.canvas.height);
+        // OffscreenCanvas owns rendering.
         const disposable = pf.drawable as unknown as { close?: () => void };
         try { disposable.close?.(); } catch { /* ignore */ }
     }
@@ -117,8 +94,6 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
         if (q === this.rotationQuarter) return;
         this.rotationQuarter = q;
         applyRotationLayout(this.canvas, q);
-        if (this.canvas.width > 0 && this.canvas.height > 0)
-            this.applyContainerAspect(this.canvas.width, this.canvas.height, true);
     }
 
     recomputeLayout(): void {
@@ -140,18 +115,6 @@ export class TransferableCanvasRenderBackend implements RenderBackend {
     setExpectedPaused(_paused: boolean): void {
         // Canvas backends have no stall watchdog — VideoPlayer's main-thread
         // draw loop already gates on frame arrival.
-    }
-
-    private applyContainerAspect(width: number, height: number, force = false): void {
-        const swap = (this.rotationQuarter & 1) === 1;
-        const visibleW = swap ? height : width;
-        const visibleH = swap ? width : height;
-        const ratio = `${visibleW} / ${visibleH}`;
-        if (!force && ratio === this.lastAspectRatio) return;
-        const parent = this.canvas.parentElement;
-        if (!parent) return;
-        parent.style.aspectRatio = ratio;
-        this.lastAspectRatio = ratio;
     }
 
     dispose(): void {
