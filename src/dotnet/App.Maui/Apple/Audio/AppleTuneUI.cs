@@ -56,7 +56,14 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
         }
     }
 
-#if IOS
+#if MACOS
+    protected override bool CanVibrate
+        // MauiTuneUI asks Essentials' Vibration, which has no macos implementation and throws.
+        => false;
+
+    protected override Task Vibrate(Tune tune, TuneInfo info)
+        => Task.CompletedTask;
+#elif IOS
     protected override bool CanVibrate
         // Mac Catalyst keeps MauiTuneUI's Vibration.Default check; iOS needs the CoreHaptics one,
         // which is also false on iPads - they have no Taptic Engine.
@@ -91,5 +98,10 @@ public sealed class AppleTuneUI(UIHub hub) : MauiTuneUI(hub)
     }
 
     private static NSUrl GetUrl(string soundName)
+#if MACOS
+        // The WebView still plays the ringtone from this folder, so the bundle keeps one copy.
+        => NSBundle.MainBundle.GetUrlForResource(soundName, "m4a", "wwwroot/dist/sounds").Require();
+#else
         => NSBundle.MainBundle.GetUrlForResource(soundName, "m4a", "sounds").Require();
+#endif
 }
