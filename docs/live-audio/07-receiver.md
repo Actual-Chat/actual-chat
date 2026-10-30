@@ -423,7 +423,10 @@ takes its own focus, so the tune's session is the one that evicts the paused
 app.
 
 iOS uses MAUI-side audio session APIs in the iOS app; on the web this
-collapses to "always have focus".
+collapses to "always have focus". So does the macOS app: it plays through the same
+AVAudioEngine stack as iOS (`AppleAudioPlaybackEngine`, `App.Maui/Apple/Audio`), but AppKit
+has no `AVAudioSession`, so there is nothing to negotiate, and `AudioEngines` itself
+reconnects the engines when the default output changes.
 
 ## Track lifecycle
 

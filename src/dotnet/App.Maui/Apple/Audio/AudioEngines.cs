@@ -90,5 +90,15 @@ public sealed class AudioEngines : ProcessorBase
         => $"{Playback.DescribeOutput()}; {Recording.DescribeOutput()}";
 
     private void OnConfigurationChange(object? sender, NSNotificationEventArgs e)
-        => Log.LogInformation("Audio engine configuration change");
+    {
+        Log.LogInformation("Audio engine configuration change");
+#if MACOS
+        // AppKit has no AVAudioSession, so no AppleAudioFocusUI reconnects the engines after the
+        // default output changes. Not from this callback: it runs on the engine's own queue.
+        _ = BackgroundTask.Run(() => {
+            Reconnect(AudioFocusMode.Recording);
+            return Task.CompletedTask;
+        }, Log, "Failed to handle configuration change");
+#endif
+    }
 }

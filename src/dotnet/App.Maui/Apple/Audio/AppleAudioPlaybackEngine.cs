@@ -52,7 +52,7 @@ public sealed class AppleAudioPlaybackEngine(
         _decodeFeedTask = BackgroundTask.Run(
             () => DecodeAndFeed(_decodeFeedCts.Token),
             Log,
-            "Failed to decode/feed iOS audio",
+            "Failed to decode/feed audio",
             _decodeFeedCts.Token);
         await _voicePlayer.Play(cancellationToken).ConfigureAwait(false);
         // After Play(), not before: starting the player is what builds the engine and moves the route.
@@ -107,10 +107,12 @@ public sealed class AppleAudioPlaybackEngine(
             var state = cPosition.Value;
             backend.OnPlaying(state.Position.TotalSeconds, !state.IsPlaying, state.IsBufferLow);
             if (state.IsPlaying && state.Position > TimeSpan.Zero) {
+#if !MACOS
                 // Rendering progress, not frames handed in: TrackPlayer keeps pushing into a dead
                 // engine, so a push-based heartbeat would tell the owner watchdog the session is
                 // fine in precisely the case it exists to rescue.
                 AudioSession.NotifyPlaybackActivity();
+#endif
                 TryReportPresentationLag(state.Position);
             }
         }
