@@ -131,6 +131,12 @@ public static partial class Constants
         // How long the mic staying shut or the connection staying down must last before the UI
         // calls it a failure: a healthy start passes through both states on its way up.
         public static readonly TimeSpan RecordingProblemGracePeriod = TimeSpan.FromSeconds(1.5);
+
+        // The same limit for a start the recorder hasn't taken yet: it has to cover the begin tune
+        // and both of the recorder's startup waits, or a slow but healthy start reads as a failure.
+        public static readonly TimeSpan RecordingStartupGracePeriod =
+            TunePlayTimeout + RecorderStartupWaitTimeout + RecorderStartupWaitTimeout + RecordingProblemGracePeriod;
+
         // A PTT reply's two startup deadlines: how long the recorder may take to report itself
         // recording, and how long after that the first captured sample may take. Both are shorter
         // than AudioRecorder.StartRecordingTimeout - a reply that slow has lost its answer window,
