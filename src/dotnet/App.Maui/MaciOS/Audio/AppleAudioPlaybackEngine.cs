@@ -10,6 +10,7 @@ namespace ActualChat.App.Maui.Audio;
 public sealed class AppleAudioPlaybackEngine(
     string playerId,
     TrackInfo info,
+    IMediaSource source,
     IAudioPlayerBackend backend,
     AppUIHub hub
     ) : IAudioPlaybackEngine
@@ -139,11 +140,19 @@ public sealed class AppleAudioPlaybackEngine(
     private async Task DecodeAndFeed(CancellationToken cancellationToken)
     {
         try {
+            var remainingPreSkip = ((AudioSource)source).Format.PreSkip;
             var opusPackets = _frames.ReadAllAsync(cancellationToken);
             await foreach (var pcmOwner in AudioCodec.Decode(opusPackets, cancellationToken).ConfigureAwait(false)) {
                 AVAudioPcmBuffer pcm;
-                using (pcmOwner)
-                    pcm = pcmOwner.ToPcmBuffer(AudioEngine.VoicePlaybackFormat);
+                using (pcmOwner) {
+                    var samples = pcmOwner.Memory.Span;
+                    var skip = Math.Min(remainingPreSkip, samples.Length);
+                    remainingPreSkip -= skip;
+                    if (skip == samples.Length)
+                        continue;
+
+                    pcm = samples[skip..].ToPcmBuffer(AudioEngine.VoicePlaybackFormat);
+                }
                 await _voicePlayer.Feed(pcm, cancellationToken).ConfigureAwait(false);
             }
             await _voicePlayer.Complete(cancellationToken).ConfigureAwait(false);
