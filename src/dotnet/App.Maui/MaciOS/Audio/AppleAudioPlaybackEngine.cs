@@ -97,6 +97,7 @@ public sealed class AppleAudioPlaybackEngine(
             return ValueTask.CompletedTask;
 
         _frames.Push(frame);
+        _voicePlayer.AddBuffered();
         return ValueTask.CompletedTask;
     }
 
