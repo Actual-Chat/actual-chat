@@ -605,6 +605,7 @@ export class DebugUI {
             CodecSettings: '',
             Size: { Width: 1280, Height: 720 },
             SourceSize: { Width: 1280, Height: 720 },
+            InitialDisplaySize: { Width: 1280, Height: 720 },
         };
         const fakeData = new Uint8Array(64);
         fakeData[0] = 0x42;

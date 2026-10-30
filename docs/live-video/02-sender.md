@@ -112,9 +112,9 @@ takeover), it flips `forceKeyframe = true` so the receiver's
 
 ### `attachSourceDims`
 File: `operators/attach-source-dims.ts`.
-Stamps `sourceWidth/sourceHeight` from the raw frame *before* downscale. The
-server uses these to track when the publisher's source resolution changes
-(window resize, screen rotation) and to make resolution-aware quality choices.
+Stamps `sourceWidth/sourceHeight` from the raw frame's coded size *before*
+downscale. It reaches the wire only as the obsolete `VideoFormat.SourceSize`,
+which nothing reads.
 
 ### `downscale` — produces the simulcast bundle
 File: `operators/downscale.ts`.
@@ -210,7 +210,10 @@ File: `operators/wire-send.ts`.
   one bundle per source moment, bottom-first; the wire DTO maps 1:1 to
   .NET's `VideoFrameBundle` ([04](./04-rpc-and-framing.md)).
 - On the **first top-layer keyframe**, calls `sender.init(StreamFormat)` to
-  send the codec, top-layer dims, source dims, and base64 description; this
+  send the codec, top-layer dims, source dims, the initial display size and the
+  base64 description. The initial display size is the full-ladder top
+  (`ceilingSize`, which the soft-started active ladder may not reach yet),
+  transposed when the keyframe's rotation is a quarter turn; this
   is what kicks off the RPC `PushStream` call (the format becomes the
   `VideoFormat` argument).
 - For every bundle, computes a single wall-clock offset from the top layer:

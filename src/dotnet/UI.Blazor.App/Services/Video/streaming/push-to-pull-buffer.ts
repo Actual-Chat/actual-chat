@@ -119,6 +119,8 @@ export interface WireSenderFormat {
     height: number;
     sourceWidth: number;
     sourceHeight: number;
+    initialDisplayWidth: number;
+    initialDisplayHeight: number;
     codecSettings: string;
 }
 
@@ -198,7 +200,8 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
 
             infoLog?.log(`createWireSender: PushStream codec=${format.codec}, ` +
                 `${format.width}x${format.height} ` +
-                `(source ${format.sourceWidth}x${format.sourceHeight}), ` +
+                `(source ${format.sourceWidth}x${format.sourceHeight}, ` +
+                `initial display ${format.initialDisplayWidth}x${format.initialDisplayHeight}), ` +
                 `settings=${format.codecSettings.length} chars`);
 
             const formatDto: VideoFormatDto = {
@@ -206,6 +209,7 @@ export function createWireSender(opts: CreateWireSenderOptions): DisposableStrea
                 CodecSettings: format.codecSettings,
                 Size: { Width: format.width, Height: format.height },
                 SourceSize: { Width: format.sourceWidth, Height: format.sourceHeight },
+                InitialDisplaySize: { Width: format.initialDisplayWidth, Height: format.initialDisplayHeight },
             };
 
             const streamOptions = {

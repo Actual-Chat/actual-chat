@@ -261,6 +261,7 @@ export class Recorder {
             wireSend({
                 createSender: () => config.createSender(gate),
                 controller: ladderController,
+                ceilingSize: normalizeSize,
                 abortSignal,
             }),
         );

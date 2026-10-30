@@ -58,6 +58,10 @@ export interface StreamFormat {
     height: number;
     sourceWidth: number;
     sourceHeight: number;
+    // The full-ladder top turned upright by the first keyframe's rotation: what a viewer
+    // sees at the highest layer. Stale once the device turns; frames carry the truth.
+    initialDisplayWidth: number;
+    initialDisplayHeight: number;
     // Free-form codec hint (e.g. base64 HEVC description); empty when no extra negotiation is needed.
     codecSettings: string;
 }
@@ -97,6 +101,9 @@ export interface WireSendOptions {
     // Drives per-bundle LayerCount stamping and the first-keyframe sender.init
     // dims; reads on every bundle so hot-applied changes propagate.
     controller: LayerLadderController;
+    // The full-ladder top, which the active ladder may not reach yet (soft start).
+    // Defaults to the active top.
+    ceilingSize?: { width: number; height: number };
     // Aborts mid-send so Recorder.stop() doesn't block on a stalled ring buffer / dead peer.
     abortSignal?: AbortSignal;
 }
@@ -115,7 +122,7 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
         return from(impl());
 
         async function* impl(): AsyncIterable<void> {
-            const { createSender, controller, abortSignal } = opts;
+            const { createSender, controller, ceilingSize, abortSignal } = opts;
             const wireQueueDepthEma = new RunningEMA(0, 1, WIRE_QUEUE_DEPTH_EMA_ALPHA);
             const wireRingDepthEma = new RunningEMA(0, 1, WIRE_QUEUE_DEPTH_EMA_ALPHA);
             // Reconnect streak: persists across resetSender() calls so a burst
@@ -274,12 +281,16 @@ export function wireSend(opts: WireSendOptions): PipeOperator<EncodedBundle, voi
                             const description = top.description ?? null;
                             const topCfg = cur[cur.length - 1];
                             warnOnLayerCodecDivergence(bundle);
+                            const ceiling = ceilingSize ?? topCfg;
+                            const isRotatedSideways = (top.rotation & 1) === 1;
                             sender.init({
                                 codec: top.metadata.decoderConfig?.codec ?? topCfg.codec,
                                 width: topCfg.width,
                                 height: topCfg.height,
                                 sourceWidth: top.sourceWidth,
                                 sourceHeight: top.sourceHeight,
+                                initialDisplayWidth: isRotatedSideways ? ceiling.height : ceiling.width,
+                                initialDisplayHeight: isRotatedSideways ? ceiling.width : ceiling.height,
                                 codecSettings: description ? bytesToBase64(description) : '',
                             });
                             initSent = true;

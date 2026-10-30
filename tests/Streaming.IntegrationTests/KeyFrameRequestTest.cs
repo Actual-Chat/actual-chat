@@ -88,7 +88,7 @@ public class KeyFrameRequestTest(AppHostFixture fixture, ITestOutputHelper @out)
             new VideoFormat {
                 Codec = "avc1",
                 Size = new Size2D(320, 240),
-                SourceSize = new Size2D(320, 240),
+                InitialDisplaySize = new Size2D(320, 240),
             });
 
         // act
@@ -148,7 +148,7 @@ public class KeyFrameRequestTest(AppHostFixture fixture, ITestOutputHelper @out)
             new VideoFormat {
                 Codec = "avc1",
                 Size = new Size2D(320, 240),
-                SourceSize = new Size2D(320, 240),
+                InitialDisplaySize = new Size2D(320, 240),
             });
         await backend.PushVideo(record, new RpcStream<VideoFrameBundle>(GetBundles()), cts.Token);
 
