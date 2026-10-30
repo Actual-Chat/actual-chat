@@ -76,6 +76,7 @@ export async function runRpcProducer(
             LayerId: 0,
             Size: { Width: FrameConfig.Width, Height: FrameConfig.Height },
             SourceSize: { Width: FrameConfig.Width, Height: FrameConfig.Height },
+            InitialDisplaySize: { Width: FrameConfig.Width, Height: FrameConfig.Height },
         };
         const clientStartAtSec = Date.now() / 1000;  // Unix epoch (seconds, double)
 
