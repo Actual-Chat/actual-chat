@@ -286,8 +286,8 @@ public partial class ChatAudioUI
             // Bounded: the clock is synced by a background worker, so anything that keeps that worker
             // from running (a wake-driven headless scope used to) would otherwise wedge listening
             // here for the life of the scope - silently, since a hang throws nothing.
-            // EnsureSynced beats waiting for that worker: it forces a fresh measurement right here,
-            // so the startAt anchor below can't be captured off a clock that just woke from a sleep.
+            // EnsureSynced beats waiting for that worker: it measures right here unless a burst just
+            // landed, so the startAt anchor below can't be captured off a clock that just woke from a sleep.
             try {
                 var whenSynced = Hub.Services.GetService<ServerTimeSync>() is { } serverTimeSync
                     ? serverTimeSync.EnsureSynced(cancellationToken)
