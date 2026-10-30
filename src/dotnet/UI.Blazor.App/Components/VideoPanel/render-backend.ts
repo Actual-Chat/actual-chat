@@ -22,8 +22,7 @@ export interface RenderBackend {
     getOutputSize(): { width: number; height: number } | null;
     drawFrame(pf: PresentableFrame): void;
     // Quarter-turn (0..3, CW from natural) to apply at display time. The
-    // backend writes the CSS transform on its inner element and adjusts
-    // the parent's aspect-ratio (swapping W/H when the quarter is odd).
+    // backend writes the CSS transform on its inner element.
     setRotation(quarter: number): void;
     // Re-applies rotation-dependent layout. Odd-quarter rotations require
     // the inner element to be sized to the parent's transposed dimensions,

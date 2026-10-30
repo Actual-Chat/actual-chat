@@ -11,22 +11,9 @@
     var sourceKindCls = isScreenCast ? "screencast" : "";
     var labelIcon = isScreenCast ? "icon-screen-share" : "icon-video";
     var handRaisedCls = IsHandRaised ? "hand-raised" : "";
-    // Prefer rotation-aware source dims over encoder dims: the encoder's W/H
-    // can be landscape at PushVideo time even when the source is portrait
-    // (the rotation reconcile in workers/video-processing.ts swaps encoder
-    // dims after the first frame, but VideoStreamInfo.Format is frozen at
-    // PushVideo). SourceSize is populated post-rotation. JS-side
-    // (render-backend-canvas.ts) overrides this on each canvas resize for
-    // mid-stream rotation.
-    var topFormat = StreamInfo.Format;
-    var aspectRatioStyle = topFormat switch {
-        { SourceSize.Width: > 0, SourceSize.Height: > 0 } f => $"aspect-ratio: {f.SourceSize.Width} / {f.SourceSize.Height}",
-        { Size.Width: > 0, Size.Height: > 0 } f             => $"aspect-ratio: {f.Size.Width} / {f.Size.Height}",
-        _                                                   => "",
-    };
+    var authorName = AuthorAvatar?.Name ?? "";
 }
-<div class="video-track-player remote-video-container has-source-aspect @FocusedClass @sourceKindCls @handRaisedCls"
-     style="@aspectRatioStyle"
+<div class="video-track-player remote-video-container @FocusedClass @sourceKindCls @handRaisedCls"
      @onclick="@OnClick" @onclick:stopPropagation="true">
     @* Low-res intrinsic resolution: WebGPU renders to a 64×64 swap chain
        and CSS `object-cover` upscales to fill the focused tile. The heavy
@@ -39,13 +26,15 @@
            disablepictureinpicture disableremoteplayback
            controlslist="nodownload nofullscreen noremoteplayback"></video>
     <div class="video-placeholder" aria-hidden="true">
-        <i class="icon-video-play animate-pulse"></i>
+        @if (AuthorAvatar is not null) {
+            <AvatarCircle Avatar="@AuthorAvatar" IsSquare="@true" IsBlurred="@true"/>
+        }
     </div>
     <div class="video-tile-caption">
-        @if (!AuthorName.IsNullOrEmpty()) {
+        @if (!authorName.IsNullOrEmpty()) {
             <div class="video-participant-label">
                 <i class="@labelIcon"></i>
-                <span>@AuthorName</span>
+                <span>@authorName</span>
                 <span class="video-fps" data-stream-id="@StreamInfo.StreamId.Value"></span>
             </div>
         }
@@ -88,7 +77,7 @@
     public VideoStreamInfo StreamInfo { get; set; } = null!;
 
     [Parameter]
-    public string AuthorName { get; set; } = "";
+    public Avatar? AuthorAvatar { get; set; }
 
     [Parameter]
     public string FocusedClass { get; set; } = "";

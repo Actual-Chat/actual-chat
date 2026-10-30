@@ -241,6 +241,18 @@ contain and paints a **blurred backdrop** on a second (background) canvas to
 fill the letterbox (`applyFitDecision`; backdrop can be disabled). Fit is
 recomputed on tile resize from the last post-rotation frame dims.
 
+Presentation follows the frames only. `VideoFormat.InitialDisplaySize` is a
+guess frozen at stream start, so no layout reads it: before the first frame a
+tile shows its author's blurred avatar (`.video-placeholder`) in whatever box
+the layout gives it, and the collapsed island keeps its current shape. Frame
+dims reach the main thread through `latencyTap`, which samples the first frame
+at once and any frame whose rotation or size differs from the last sample.
+
+Only the focused tile sizes the collapsed island
+(`updateCollapsedIslandAspect`): the receiver and the sender's self-preview
+both check `item-focused` before writing. A hidden tile writing too makes the
+two fight over the island's shape at the camera frame rate.
+
 A **screen share is always contain**, in a tile of any size: every pixel of it
 is content. `chooseTileFit` (`tile-fit.ts`) holds the rule for both the remote
 tile and the sharer's self-preview. The sender keeps the same promise one step

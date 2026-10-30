@@ -952,15 +952,9 @@ export class VideoPlayer {
     private updateCollapsedIslandAspect(): void {
         const panel = this.canvas.closest<HTMLElement>('.call-screen');
         if (!panel) return;
-        let frameW = this.lastFrameW;
-        let frameH = this.lastFrameH;
-        if (frameW <= 0 || frameH <= 0) {
-            const ratio = readAspectRatio(this.canvas.parentElement);
-            if (ratio > 0 && Number.isFinite(ratio)) {
-                frameW = ratio;
-                frameH = 1;
-            }
-        }
+        // No frame yet: the island keeps its current shape rather than guess one.
+        const frameW = this.lastFrameW;
+        const frameH = this.lastFrameH;
         const prevAspect = panel.style.getPropertyValue('--call-screen-island-aspect');
         const prevPortrait = panel.hasAttribute('data-portrait-video');
         updateCollapsedIslandAspect(panel, frameW, frameH);
@@ -1794,16 +1788,6 @@ function priorityForRenderSize(hint: ViewportInfo | null): number {
 function getDevicePixelRatio(): number {
     const dpr = Number.isFinite(window.devicePixelRatio) ? window.devicePixelRatio : 1;
     return Math.max(1, dpr);
-}
-
-function readAspectRatio(el: HTMLElement | null): number {
-    const raw = el?.style.aspectRatio;
-    if (!raw) return 0;
-    const parts = raw.split('/').map(x => Number.parseFloat(x.trim()));
-    if (parts.length === 2 && parts[0] > 0 && parts[1] > 0)
-        return parts[0] / parts[1];
-    const value = Number.parseFloat(raw);
-    return value > 0 ? value : 0;
 }
 
 function isZeroSized(rect: DOMRect): boolean {
