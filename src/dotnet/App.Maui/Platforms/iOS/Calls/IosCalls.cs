@@ -104,7 +104,7 @@ public sealed class IosCalls : CXProviderDelegate
         if (isAnswered)
             return true;
 
-        AudioSession.IsCallVideo = call.HasVideo;
+        RaiseCallVideo(call);
         RequestTransaction(
             callUuid, call, new CXAnswerCallAction(new NSUuid(callUuid.ToString())), LocalAction.Answer);
         return true;
@@ -209,9 +209,10 @@ public sealed class IosCalls : CXProviderDelegate
 
     public void ReportCallVideo()
     {
-        // CallKit hears of video only when a call is reported, so a camera turned on mid-call is news to it
+        // CallKit hears of video only when a call is reported, so a camera turned on mid-call is news to it.
+        // A ring is another call, one this video isn't part of.
         foreach (var (callUuid, call) in _calls) {
-            if (!call.IsAnswered)
+            if (IsRinging(call))
                 continue;
 
             Log.LogInformation("ReportCallVideo: #{ChatId}", call.ChatId);
@@ -231,7 +232,7 @@ public sealed class IosCalls : CXProviderDelegate
             call.MarkAnswered();
             // The caller is the one who never got this from an answer action, and an outgoing video
             // call would otherwise start on the receiver-first audio route.
-            AudioSession.IsCallVideo = call.HasVideo;
+            RaiseCallVideo(call);
             _provider.ReportConnectedOutgoingCall(new NSUuid(callId.ToString()), NSDate.Now);
             return true;
         case CallerStatus.NoAnswer:
@@ -328,7 +329,7 @@ public sealed class IosCalls : CXProviderDelegate
         Log.LogInformation("PerformAnswerCallAction: chat #{ChatId}, handledLocally={IsHandledLocally}, app={AppState}",
             call.ChatId, isHandledLocally, UIApplication.SharedApplication.ApplicationState);
         call.MarkAnswered();
-        AudioSession.IsCallVideo = call.HasVideo;
+        RaiseCallVideo(call);
         // Configured and claimed before the fulfil, never activated: CallKit activates the session
         // itself and hands it over in DidActivateAudioSession, and it leaves an idle app's Ambient
         // session alone in the background - that callback then never comes, and an answer from the
@@ -371,7 +372,7 @@ public sealed class IosCalls : CXProviderDelegate
     {
         // Same as an answer: CallKit activates the session for a start action it fulfilled.
         if (TryGetCall(action.CallUuid, out var call)) {
-            AudioSession.IsCallVideo = call.HasVideo;
+            RaiseCallVideo(call);
             // A call with no name shows its handle, which is the chat id. The lock keeps the fallback
             // from landing after the name SetOutgoingCallName reports.
             lock (call) {
@@ -496,6 +497,14 @@ public sealed class IosCalls : CXProviderDelegate
             call.ClearLocalAction();
             EndCall(callId, CXCallEndedReason.Failed);
         });
+    }
+
+    private static void RaiseCallVideo(Call call)
+    {
+        // HasVideo is how the call was placed or rung. Video that came since reaches the session through
+        // CallUI, which reports a change only once, so a voice call's placement must not take it back.
+        if (call.HasVideo)
+            AudioSession.IsCallVideo = true;
     }
 
     private static void ReleaseAudioSession()
