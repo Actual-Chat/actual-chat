@@ -142,7 +142,7 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         Log.LogInformation("SetCallActive: {IsCallActive}, video={HasVideo}", isCallActive, hasVideo);
         var isVideoOnlyChange = isCallActive && AudioSession.IsCallActive;
         AudioSession.IsCallActive = isCallActive;
-        // CallKit sets this for its own calls; an app-owned call only ever reports it here.
+        // CallKit sets this from how its calls were placed; video that came since is only ever reported here.
         AudioSession.IsCallVideo = hasVideo;
 #if IOS
         if (isVideoOnlyChange && hasVideo)
@@ -155,15 +155,14 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         // earlier sits on the speaker - so it's brought to the call's configuration right away.
         return _interruptionQueue.Enqueue(async _ => {
             using (await _lock.Lock(StopToken).ConfigureAwait(false)) {
-                if (!_activeScopes.IsEmpty) {
-                    // Video turned on mid-call changes neither the mode nor the options of a live
-                    // call, only the built-in output - and a full reconfigure restarts the recorder.
-                    var mode = _activeScopes.GetMode();
-                    if (isVideoOnlyChange)
-                        await AudioSession.ApplyOutputRoute(mode).ConfigureAwait(false);
-                    else
-                        await SetModeUnsafe(mode).ConfigureAwait(false);
-                }
+                // Video turned on mid-call changes neither the mode nor the options of a live call,
+                // only the built-in output - and a full reconfigure restarts the recorder. No scope
+                // check for it: a dialing call holds none, nor does a muted one with nobody speaking.
+                var mode = _activeScopes.GetMode();
+                if (isVideoOnlyChange)
+                    await AudioSession.ApplyOutputRoute(mode).ConfigureAwait(false);
+                else if (!_activeScopes.IsEmpty)
+                    await SetModeUnsafe(mode).ConfigureAwait(false);
             }
             await RefreshOutputRoutes().ConfigureAwait(false);
         });
@@ -174,12 +173,14 @@ public sealed class AppleAudioFocusUI : AudioFocusUI
         // An incoming ring interrupts whatever session the app held, and iOS never posts the end
         // once CallKit hands that session back for the call - so the activation is the end.
         _ = _interruptionQueue.Enqueue(async _ => {
-            if (!IsInterrupted)
-                return;
-
-            Log.LogInformation("CallKit activated the session - ending the interruption");
-            Volatile.Write(ref _interruptedAt, 0);
-            await TryRecover().ConfigureAwait(false);
+            if (IsInterrupted) {
+                Log.LogInformation("CallKit activated the session - ending the interruption");
+                Volatile.Write(ref _interruptedAt, 0);
+                await TryRecover().ConfigureAwait(false);
+            }
+            // CallKit's session starts on the receiver, and a dialing call has no scope to move it off.
+            if (AudioSession.IsCallVideo)
+                await EnsureOutputRoute().ConfigureAwait(false);
         });
     }
 
