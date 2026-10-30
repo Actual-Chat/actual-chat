@@ -619,10 +619,12 @@ public partial class ChatAudioUI : UIWorkerBase<AppUIHub>, IComputeService, INot
             return RecordingStatus.Recording;
 
         // Unnamed, so it's judged by age - and it's only as old as the newer of the press and the
-        // pipeline transition: startup waits precede the first, a disconnect has no press at all.
-        var graceLeft = Moment.Max(intentChangedAt, recorderState.ChangedAt)
-            + Constants.Audio.RecordingProblemGracePeriod
-            - CpuNow;
+        // pipeline transition, since a disconnect has no press at all. Until the recorder takes the
+        // chat it's in its startup waits, which are bounded but outlast the usual grace.
+        var gracePeriod = recorderState.ChatId == chatId
+            ? Constants.Audio.RecordingProblemGracePeriod
+            : Constants.Audio.RecordingStartupGracePeriod;
+        var graceLeft = Moment.Max(intentChangedAt, recorderState.ChangedAt) + gracePeriod - CpuNow;
         if (graceLeft <= TimeSpan.Zero)
             return recorderState.IsRecording ? RecordingStatus.Disconnected : RecordingStatus.StartFailed;
 

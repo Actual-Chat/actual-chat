@@ -1244,7 +1244,9 @@ DOMException name, Android's `AudioRecord` state or Windows' `AudioDeviceNodeCre
 verdict and is reported at once. An unnamed one is judged by age instead: it stays
 `Starting`/`Reconnecting` until it outlasts `Constants.Audio.RecordingProblemGracePeriod`, measured
 from the later of the press and the last recorder-pipeline transition, because a healthy start
-passes through the same states on its way up.
+passes through the same states on its way up. Until the recorder takes the chat, the limit is
+`Constants.Audio.RecordingStartupGracePeriod` instead: the begin tune and the recorder's startup waits
+come first, and they're bounded but longer than that.
 
 ### Hints
 
