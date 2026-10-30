@@ -202,11 +202,13 @@ export class RecorderPreviewView {
         const frameH = swap ? sourceW : sourceH;
         // Keep the collapsed island sized to the source aspect — without this
         // the panel stays at the default 16:9 and a portrait camera ends up
-        // letterboxed in a tiny landscape tile.
-        updateCollapsedIslandAspect(
-            videoEl.closest<HTMLElement>('.call-screen'),
-            frameW,
-            frameH);
+        // letterboxed in a tiny landscape tile. Only the focused tile is shown
+        // in the island; a second writer flips its shape on every frame.
+        if (parent.classList.contains('item-focused'))
+            updateCollapsedIslandAspect(
+                videoEl.closest<HTMLElement>('.call-screen'),
+                frameW,
+                frameH);
         // Same rule the receiver follows in VideoPlayer.applyFitDecision.
         const isScreenCast = this.attachedRecorder?.isScreenCastActive() ?? false;
         const fit = chooseTileFit(parent, isScreenCast, frameW, frameH);
