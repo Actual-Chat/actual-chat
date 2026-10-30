@@ -29,7 +29,7 @@ public partial class MauiWebView
         // AudioContext silent until a user gesture it recognizes
         settings.MediaPlaybackRequiresUserGesture = false;
         settings.JavascriptCanOpenWindowsAutomatically = true;
-        // One more MAUI host on the JS audio pipeline - see BrowserInfo.useWebAudio
+        // On the JS audio pipeline, player and recorder - see BrowserInfo.useWebAudio
         var useWebAudioScript = UserScript.New(
             "globalThis.__useWebAudio = true;",
             UserContentInjectedFrames.AllFrames,

@@ -1,4 +1,4 @@
-#if !MACOS && !LINUX
+#if !LINUX
 using ActualChat.App.Maui.Audio;
 #endif
 using ActualChat.MediaPlayback;
@@ -20,7 +20,7 @@ public sealed class MauiAudioPlaybackEngineFactory(AppUIHub hub) : IAudioPlaybac
             Services);
 #elif ANDROID
         return new AndroidAudioPlaybackEngine(playerId, trackInfo, source, backend, Services);
-#elif IOS || MACCATALYST
+#elif IOS || MACCATALYST || MACOS
         return new AppleAudioPlaybackEngine(playerId, trackInfo, source, backend, hub);
 #else
         return new WebAudioPlaybackEngine(playerId,

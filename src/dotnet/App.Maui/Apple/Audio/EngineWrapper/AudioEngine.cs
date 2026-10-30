@@ -80,6 +80,7 @@ public sealed class AudioEngine : IDisposable
         if (TryEnsureRunning(out var error))
             return;
 
+#if !MACOS
         // A PTT-joined app in the background may not activate its own session, and a player
         // that outruns the focus acquisition is where that refusal surfaces first. Not for the
         // recording engine under a PTT owner - see AudioSession.TryAwaitOwnerActivation - but under
@@ -91,6 +92,7 @@ public sealed class AudioEngine : IDisposable
             && TryEnsureRunning(out error))
             return;
 
+#endif
         error.Assert($"{Mode}: failed to start the engine");
     }
 

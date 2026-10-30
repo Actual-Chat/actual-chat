@@ -137,12 +137,16 @@ dispatcher only, so a thread-pool resolve throws.
 These are Voxt decisions rather than labs limitations, and they carry their own `TODO(FC)`
 markers:
 
-- **Audio** runs on the web pipeline the browser app uses (`BrowserInfo.useWebAudio`), with
-  `WebRecorderEngine`, the JS playback engine and a no-op VAD. Tunes go the same way through
-  `WebTuneUI`: `AppleTuneUI` plays on the shared AVAudioEngine and the AVAudioSession-based
-  focus stack, and `MauiTuneUI` on `Plugin.Maui.Audio`, which has no macos TFM. The native port
-  needs an AVAudioSession-free audio session, a macos build of the Opus codec and the CoreML VAD
-  model.
+- **Audio recording** runs on the web pipeline the browser app uses (`BrowserInfo.useWebAudio`),
+  with `WebRecorderEngine` and a no-op VAD, and the incoming ringtone and the ringback loop in the
+  WebView too. Voice playback and tunes are native: `AppleAudioPlaybackEngine` and `AppleTuneUI` on
+  the shared AVAudioEngine stack in `Apple/Audio`, with Opus from OpusSharp, whose macos library
+  sets the 15.0 minimum. AppKit has no AVAudioSession, so the base `AudioFocusUI` stands in for
+  `AppleAudioFocusUI`, and `AudioEngines` reconnects its engines on a configuration change itself.
+  The native recorder is [#5708](https://github.com/Actual-Chat/actual-chat/issues/5708): it needs
+  `AppleAudioCapture` without `AudioSession` and the CoreML VAD model. Until it lands, don't expect
+  WebKit's echo cancellation to cover native playback, because macOS cancels only what the same
+  voice-processing unit plays.
 - **Notifications** are pull-based through `NotificationReconciler` and delivered only while the
   app runs; there is no APNs-for-Mac push path. macOS asks the app about every notification it
   posts, in front or not, and `MacOSNotificationDelegate` hides the banner only while Voxt is the
