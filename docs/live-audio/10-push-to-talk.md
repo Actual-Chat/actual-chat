@@ -480,9 +480,9 @@ and in the live WebView scope.
    window), then builds the **armed set** from
    `GetChatsYouNeedToKeepListeningTo` plus the trigger chat and starts listening
    on every chat in it.
-4. **Clock**: forces `ServerTimeSync.EnsureSynced` as a background task. Its own
-   loop only starts syncing after a 3 s settling delay, and everything wanting
-   server time queues behind that. Note the sync worker runs headless at all
+4. **Clock**: forces `ServerTimeSync.EnsureSynced` as a background task. On a
+   reused scope its own loop may be asleep until its next cycle, and everything
+   wanting server time queues behind that. Note the sync worker runs headless at all
    only because `StartScopedServices` starts it — `AfterFirstRender` never runs
    without a WebView, and a never-ready `ServerClock` used to hang listening
    outright.
