@@ -1,4 +1,3 @@
-using System.Buffers;
 using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
@@ -11,9 +10,6 @@ public static class AVAudioPcmBufferExt
         Marshal.Copy(pcm.AudioBufferList[0].Data, data, 0, (int)pcm.FrameLength);
         return data;
     }
-
-    public static AVAudioPcmBuffer ToPcmBuffer(this IMemoryOwner<float> frame, AVAudioFormat format)
-        => frame.Memory.Span.ToPcmBuffer(format);
 
     public static AVAudioPcmBuffer ToPcmBuffer(this ReadOnlySpan<float> data, AVAudioFormat format)
     {
