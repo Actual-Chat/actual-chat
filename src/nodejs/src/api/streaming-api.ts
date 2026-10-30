@@ -140,6 +140,7 @@ export interface VideoFormatDto {
     LayerId?: number;
     Size: Size2DDto;
     SourceSize: Size2DDto;
+    InitialDisplaySize: Size2DDto;
 }
 
 // --- AudioFrame TypeScript interface ---

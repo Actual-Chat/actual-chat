@@ -81,6 +81,7 @@ export interface VideoFormat {
     LayerId: number;
     Size: Size2D;
     SourceSize: Size2D;
+    InitialDisplaySize: Size2D;
 }
 
 export interface VideoStreamInfo {

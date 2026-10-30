@@ -634,4 +634,28 @@ describe('wireSend', () => {
         expect(sender.sent[2].layerCount).toBe(2);
         expect(sender.sent[3].layerCount).toBe(2);
     });
+
+    it('init announces the full-ladder top, turned upright, as the initial display size', async () => {
+        const stats = createEmptyRecorderStats();
+        const sender = new FakeSender();
+        const controller = new LayerLadderController([
+            { width: 320, height: 184, bitrate: 200_000, framerate: 30, codec: 'avc1.640028' },
+        ]);
+        const sink = wireSend({
+            createSender: () => sender,
+            controller,
+            ceilingSize: { width: 1280, height: 720 },
+        });
+        const keyframe = { ...makeEncoded(stats, { type: 'key' }), rotation: 1 as const };
+
+        await runWith(source([keyframe]), sink);
+
+        expect(sender.formats).toHaveLength(1);
+        expect(sender.formats[0]).toMatchObject({
+            width: 320,
+            height: 184,
+            initialDisplayWidth: 720,
+            initialDisplayHeight: 1280,
+        });
+    });
 });

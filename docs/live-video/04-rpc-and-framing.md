@@ -172,7 +172,8 @@ public sealed partial record VideoFormat : MediaFormat
     public string CodecSettings { get; init; } = "";  // base64 description
     public byte LayerId { get; init; }
     public Size2D Size { get; init; }
-    public Size2D SourceSize { get; init; }
+    [Obsolete] public Size2D SourceSize { get; init; }  // raw coded capture size; still sent, unread
+    public Size2D InitialDisplaySize { get; init; }     // full-ladder top, upright, at stream start
 }
 
 public sealed partial record VideoStreamInfo(
