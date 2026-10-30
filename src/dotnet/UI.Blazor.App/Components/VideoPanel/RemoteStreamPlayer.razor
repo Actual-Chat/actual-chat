@@ -5,7 +5,7 @@
     var m = State.Value;
 }
 
-<VideoTrackPlayer StreamInfo="@StreamInfo" AuthorName="@m.AuthorName" FocusedClass="@Class"
+<VideoTrackPlayer StreamInfo="@StreamInfo" AuthorAvatar="@m.AuthorAvatar" FocusedClass="@Class"
                   IsHandRaised="@IsHandRaised"
                   OnClick="@(() => OnTileClick.InvokeAsync(StreamInfo.AuthorId))" />
 
@@ -30,14 +30,12 @@
         var authorId = StreamInfo.AuthorId;
 
         var author = await Authors.Get(Session, StreamInfo.ChatId, authorId, cancellationToken);
-        var authorName = author?.Avatar.Name ?? "";
-
-        return new Model(authorName);
+        return new Model(author?.Avatar);
     }
 
     // Nested types
 
-    public sealed record Model(string AuthorName) {
-        public static readonly Model None = new("");
+    public sealed record Model(Avatar? AuthorAvatar) {
+        public static readonly Model None = new((Avatar?)null);
     }
 }

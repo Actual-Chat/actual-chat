@@ -52,23 +52,31 @@ const DEFAULT_INTERVAL_MS = 1000;
 
 // Cadence is driven by frame arrival, not setInterval, so a stalled stream
 // produces no spurious reports. First frame emits immediately.
-// Additionally fires an out-of-cadence sample whenever rotation changes, so
-// the receiver can swap presentation transform without waiting up to 1 s.
+// Additionally fires an out-of-cadence sample whenever rotation or frame size
+// changes, so the receiver re-lays out the tile without waiting up to 1 s: a
+// phone turning with its screen unlocked flips the size, not the rotation.
 export function latencyTap(opts: LatencyTapOptions): PipeOperator<DecodedFrame, DecodedFrame> {
     const intervalMs = opts.intervalMs ?? DEFAULT_INTERVAL_MS;
     const now = opts.now ?? ((): number => performance.now());
     const { report } = opts;
     let lastReportAtMs = Number.NEGATIVE_INFINITY;
     let lastReportedRotation: RotationQuarter = -1;
+    let lastReportedWidth = 0;
+    let lastReportedHeight = 0;
     return tap((envelope: DecodedFrame): void => {
         try {
             const nowMs = now();
-            const rotationChanged = envelope.rotation !== lastReportedRotation;
-            if (!rotationChanged && nowMs - lastReportAtMs < intervalMs)
+            const { displayWidth, displayHeight } = envelope.frame;
+            const isShapeChanged = envelope.rotation !== lastReportedRotation
+                || displayWidth !== lastReportedWidth
+                || displayHeight !== lastReportedHeight;
+            if (!isShapeChanged && nowMs - lastReportAtMs < intervalMs)
                 return;
 
             lastReportAtMs = nowMs;
             lastReportedRotation = envelope.rotation;
+            lastReportedWidth = displayWidth;
+            lastReportedHeight = displayHeight;
             report({
                 sampledAtMs: nowMs,
                 frameAgeMs: nowMs - envelope.decodedAt.timeMs,
@@ -78,8 +86,8 @@ export function latencyTap(opts: LatencyTapOptions): PipeOperator<DecodedFrame, 
                 serverArrivedAtUnixMs: envelope.serverArrivedAtUnixMs,
                 rxDecodeMs: Math.max(0, envelope.decodedAt.timeMs - envelope.arrivedAt.timeMs),
                 layerId: envelope.layerId,
-                width: envelope.frame.displayWidth,
-                height: envelope.frame.displayHeight,
+                width: displayWidth,
+                height: displayHeight,
                 rotation: envelope.rotation,
                 bytesReceived: envelope.stats.bytesReceived,
                 bufferSpanMs: 0,

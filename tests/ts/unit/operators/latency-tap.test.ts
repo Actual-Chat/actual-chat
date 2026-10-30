@@ -176,4 +176,28 @@ describe('latencyTap', () => {
         // Only the first frame produced a sample (default 1000 ms throttle).
         expect(samples).toHaveLength(1);
     });
+
+    it('a frame size change produces an out-of-cadence sample', async () => {
+        const stats = createEmptyPlayerStats();
+        const samples: LatencySample[] = [];
+        const nowValues = [1000, 1033, 1066];
+        let nowIdx = 0;
+        const items = nowValues.map((t, i) => makeEnvelope(stats, i, {
+            capturedTimeMs: t - 50,
+            decodedTimeMs: t - 5,
+        }));
+        // The sender's phone turned: same rotation, transposed size
+        const turned = items[2].frame as unknown as MockVideoFrame;
+        turned.displayWidth = 180;
+        turned.displayHeight = 320;
+
+        const op = latencyTap({
+            intervalMs: 1000,
+            now: () => nowValues[nowIdx++],
+            report: s => samples.push(s),
+        });
+        await drain(op(source(items)));
+
+        expect(samples.map(x => [x.width, x.height])).toEqual([[320, 180], [180, 320]]);
+    });
 });
