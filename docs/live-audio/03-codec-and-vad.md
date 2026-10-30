@@ -96,6 +96,29 @@ and close `AudioStream`s.
 - `audio-vad-worklet-processor.ts` is told the new window size via a
   `start(windowSizeMs: 30 | 32)` RPC and reconfigures itself.
 
+### Native Silero VAD (MAUI)
+
+`MauiRecorderEngine` runs the same batched Silero model natively through
+`Core.Audio/VoiceActivityDetector`: TFLite on Android
+(`TfLiteVoiceActivityDetector`), CoreML on iOS and Mac Catalyst
+(`CoreMLVoiceActivityDetector`, `Platforms/iOS/Resources/vad_batched_fp16.mlmodelc`).
+
+The `.mlmodelc` is checked in already compiled, so nothing at build time
+checks its deployment target against the app's. It must target the
+app's minimum iOS (17.0): convert with
+`minimum_deployment_target=ct.target.iOS17` and compile with
+`xcrun coremlcompiler compile <model>.mlpackage <out> --platform iOS --deployment-target 17.0`.
+A model compiled for iOS 18 fails to load on older iOS with "compiler major
+version for compiled model is 9.0.0 and is more recent than this framework
+major version 8.0.0". Recording then fails with an Unknown error on every
+retry (#5696).
+
+The checked-in model was originally built for iOS 18. The iOS 17 build has the
+same ops, the same fp16 weights (`weight.bin` is byte-identical) and the same
+outputs. Keep the two `transpose` ops around the `lstm`: without them, the
+CPU LSTM kernel logs "lstm kernel requires hidden states and cell states have
+the same stride" on every batch-1 call.
+
 ### What the VAD signal does
 
 The encoder worker uses the VAD signal as the trigger for `AudioStream`

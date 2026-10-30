@@ -326,7 +326,7 @@ Address the forward as `127.0.0.1`, not `localhost` — on Windows `localhost` c
 esbuild copies whatever a `@font-face` names, not what the browser ends up fetching, so
 every legacy format listed as a fallback shipped in full while `woff2` served every
 request. woff2 works in WKWebView (iOS 10+), Chromium (Android WebView, WebView2) and
-every browser since 2016 — far below our floors of iOS 16.4 / API 28 / Windows 10 17763,
+every browser since 2016 — far below our floors of iOS 17 / API 28 / Windows 10 17763,
 so the fallbacks were dead weight in all three chains that had them:
 
 | Chain | Cut by |
