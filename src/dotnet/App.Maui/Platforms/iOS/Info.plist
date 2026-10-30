@@ -73,7 +73,7 @@
 	<key>aps-environment</key>
 	<string>development</string>
 	<key>MinimumOSVersion</key>
-	<string>16.4</string>
+	<string>17.0</string>
 	<!-- Without this the whole app - its WKWebView included - is capped at 60Hz on a ProMotion
 	     iPhone, so finger-tracked gestures update half as often as the display refreshes -->
 	<key>CADisableMinimumFrameDurationOnPhone</key>
