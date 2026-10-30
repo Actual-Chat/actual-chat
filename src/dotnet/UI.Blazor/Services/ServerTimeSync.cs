@@ -128,8 +128,14 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 
     private async Task Sync(CancellationToken cancellationToken)
     {
+        var syncCount = SyncCount;
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
+            // A burst accepted while this call was queued is its answer. Measuring again would
+            // only delay whoever waits on it: a first recording queues behind every other caller.
+            if (SyncCount != syncCount)
+                return;
+
             await SyncUnsafe(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
