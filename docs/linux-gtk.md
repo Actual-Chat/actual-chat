@@ -141,10 +141,10 @@ recreated the WebView off the UI thread and took the process down.
 
 ## What is deliberately not ported yet
 
-- **Audio** runs on the web pipeline (`BrowserInfo.useWebAudio`), as in the AppKit app:
-  `WebRecorderEngine`, the JS playback engine and `WebTuneUI`. Unlike the AppKit app, the GTK
-  one registers no `IAudioCodec` and no `VoiceActivityDetector` - only `MauiRecorderEngine`
-  needs them.
+- **Audio** runs on the web pipeline (`BrowserInfo.useWebAudio`): `WebRecorderEngine`, the JS
+  playback engine and `WebTuneUI`. The AppKit app records this way too, but plays natively. The
+  GTK app registers no `IAudioCodec` and no `VoiceActivityDetector` - only `MauiRecorderEngine`
+  and the native players need them.
 - **Notifications** are pull-based through `NotificationReconciler` and delivered only while
   the app runs: there is no push channel for a Linux desktop app.
 - **Tray icon and autostart.** Closing the window quits the app.

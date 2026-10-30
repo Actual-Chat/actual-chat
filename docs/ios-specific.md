@@ -284,8 +284,8 @@ It is a step function, not a slider:
 
 | `SupportedOSPlatformVersion` | `_ComputedInstructionSet` |
 |---|---|
-| 16.4 (ours) | `armv8-a` |
-| 17.0 | `armv8-a` |
+| 16.4 | `armv8-a` |
+| 17.0 (ours) | `armv8-a` |
 | **18.0** | **`armv8.3-a`** |
 | 26.0 | `armv8.3-a` |
 
@@ -295,7 +295,7 @@ it further. The flag does reach the composite: `Microsoft.NET.CrossGen.targets:5
 hands `Crossgen2ExtraCommandLineArgs` and `Crossgen2CompositeExtraCommandLineArgs` to the
 same task.
 
-**Raising the floor to 18.0 is the entire lever, and it costs iOS 16.4/17 support.** What it
+**Raising the floor to 18.0 is the entire lever, and it costs iOS 17 support.** What it
 buys has *not* been measured — only the flag has. Build both and compare on device before
 trading those users away.
 

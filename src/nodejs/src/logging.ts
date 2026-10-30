@@ -154,6 +154,7 @@ export type LogScope =
     | 'WebAuth'
     | 'WebFileProvider'
     | 'ImageProcessor'
+    | 'ImageProcessingInterop'
     | 'ImageProcessorWorker'
     | 'JpegliEncoder'
     | 'HeifDecoder';
@@ -283,6 +284,7 @@ const defaults: Record<LogScope, LogLevel> = {
     WebAuth: LogLevel.Warn,
     WebFileProvider: LogLevel.Warn,
     ImageProcessor: LogLevel.Warn,
+    ImageProcessingInterop: LogLevel.Warn,
     ImageProcessorWorker: LogLevel.Warn,
     JpegliEncoder: LogLevel.Info,
     HeifDecoder: LogLevel.Info,

@@ -24,9 +24,9 @@ export class BrowserInfo {
                 ? 'WasmApp'
                 : 'Server';
     public static appKind: AppKind = 'Unknown';
-    // True when the JS audio pipeline (player + recorder) is in use: every browser host, plus
-    // the MAUI AppKit backend, whose WebView injects `globalThis.__useWebAudio = true` - it is
-    // the one MAUI host without a native audio stack.
+    // True when the JS audio pipeline is in use: every browser host, plus the MAUI GTK and AppKit
+    // backends, whose WebViews inject `globalThis.__useWebAudio = true`. GTK has no native audio
+    // stack; AppKit plays natively, but records and rings here.
     public static useWebAudio: boolean = BrowserInfo.hostKind !== 'MauiApp' || globalThis['__useWebAudio'] === true;
     // eslint-disable-next-line
     public static renderMode = window?.['App']?.renderMode;

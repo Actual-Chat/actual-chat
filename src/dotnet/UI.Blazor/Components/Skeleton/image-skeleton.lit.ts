@@ -30,7 +30,7 @@ export class ImageSkeleton extends LitElement {
     // cleared whenever a different src starts retrying.
     private _attemptsBySrc = new Map<string, number>();
 
-    @property() src: string;
+    @property() src = '';
     @property() thumbnailSrc: string;
     @property() placeholderSrc: string;
     @property() title = '';
@@ -60,30 +60,32 @@ export class ImageSkeleton extends LitElement {
         // object-fit still drive the actual rendered size.
         const w = this.width && this.width > 0 ? this.width : nothing;
         const h = this.height && this.height > 0 ? this.height : nothing;
-        if (this.thumbnailSrc && this.thumbnailSrc != '') {
-            return html`
-                ${this.placeholderSrc ? html`
-                    <img
-                        part='image-placeholder'
-                        class='image-placeholder'
-                        draggable='false'
-                        alt=''
-                        .src='${this.placeholderSrc}'
-                    />` : nothing}
+        // One template whatever is set, so an upload that gains its thumbnail and original
+        // keeps the <img> elements it already shows instead of re-creating them
+        return html`
+            ${this.placeholderSrc ? html`
                 <img
-                    part='image'
-                    ${ref(this._imageRef)}
-                    class='image'
-                    crossorigin='${isOwnContent ? nothing : 'anonymous'}'
+                    part='image-placeholder'
+                    class='image-placeholder'
                     draggable='false'
                     alt=''
-                    width='${w}'
-                    height='${h}'
-                    .src='${this.src}'
-                    .title='${this.title}'
-                    @load='${this.imageLoaded.bind(this)}'
-                    @error='${this.reloadImage.bind(this)}'
-                />
+                    .src='${this.placeholderSrc}'
+                />` : nothing}
+            <img
+                part='image'
+                ${ref(this._imageRef)}
+                class='image'
+                crossorigin='${isOwnContent ? nothing : 'anonymous'}'
+                draggable='false'
+                alt=''
+                width='${w}'
+                height='${h}'
+                .src='${this.src}'
+                .title='${this.title}'
+                @load='${this.imageLoaded.bind(this)}'
+                @error='${this.reloadImage.bind(this)}'
+            />
+            ${this.thumbnailSrc ? html`
                 <img
                     part='image-thumbnail'
                     class='image-thumbnail'
@@ -95,34 +97,8 @@ export class ImageSkeleton extends LitElement {
                     .src='${this.thumbnailSrc}'
                     .title='${this.title}'
                     @load='${this.thumbnailLoaded.bind(this)}'
-                />
-            `;
-        } else {
-            return html`
-                ${this.placeholderSrc ? html`
-                    <img
-                        part='image-placeholder'
-                        class='image-placeholder'
-                        draggable='false'
-                        alt=''
-                        .src='${this.placeholderSrc}'
-                    />` : nothing}
-                <img
-                    part='image'
-                    ${ref(this._imageRef)}
-                    class='image'
-                    crossorigin='${isOwnContent ? nothing : 'anonymous'}'
-                    draggable='false'
-                    alt=''
-                    width='${w}'
-                    height='${h}'
-                    .src='${this.src}'
-                    .title='${this.title}'
-                    @load='${this.imageLoaded.bind(this)}'
-                    @error='${this.reloadImage.bind(this)}'
-                />
-            `;
-        }
+                />` : nothing}
+        `;
     }
 
     // Protected/internal methods

@@ -35,6 +35,9 @@ public class AttachmentsState(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), ICom
         }
     }
 
+    public AttachmentPreview? PeekPreview(AttachmentId id)
+        => _previews.GetValueOrDefault(id);
+
     public void SetPreview(AttachmentId id, AttachmentPreview preview)
     {
         _previews[id] = preview;

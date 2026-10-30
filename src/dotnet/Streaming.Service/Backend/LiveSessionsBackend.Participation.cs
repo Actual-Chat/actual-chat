@@ -111,7 +111,10 @@ public partial class LiveSessionsBackend
         await _redisStates.Set(chatId.Value, state).ConfigureAwait(false);
         // Register the streamer as a participant so per-peer mute flags have a home
         // (grouping uses live-stream state, so a stale entry never misgroups an active streamer).
-        await EnsureParticipant(chatId, authorId).ConfigureAwait(false);
+        // A stream with neither voice nor text, e.g. a camera's, has nothing to mute, and the new entry
+        // would be a Record one: a camera stream arriving after its author left would read as a recorder.
+        if (hasVoice || hasText)
+            await EnsureParticipant(chatId, authorId).ConfigureAwait(false);
         InvalidateState(chatId);
     }
 

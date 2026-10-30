@@ -5,6 +5,8 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
 {
     public ChatMessageKey Key => field ??= ChatMessageKey.New(Kind, Id);
     string IVirtualListItem.Key => Key.Value;
+    public virtual string RenderKey => Key.Value;
+    string IVirtualListItem.RenderKey => RenderKey;
     public long Id { get; } = id;
 
     public bool ShouldSkipKey { get; init; }
@@ -17,9 +19,6 @@ public abstract class ChatMessage(long id) : IVirtualListItem, IEquatable<ChatMe
     public Conversation? Conversation { get; init; }
     public virtual bool IsGroup => false;
     public virtual bool MustAnimateAppearance => true;
-
-    public bool IsReplacement
-        => Kind != ChatMessageKind.None;
 
     // Returns a shallow copy with NextMessage set. Used to assemble per-snapshot forward links
     // without mutating the shared, cached tile items (see ChatUI.GetTiles).

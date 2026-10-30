@@ -21,31 +21,65 @@
     var ratioStyle = hasDims
         ? $"aspect-ratio: {((float)mediaW / mediaH).ToString(CultureInfo.InvariantCulture)}"
         : null;
-    var imageMenuRef = Hub.ClipboardUI.CanWriteImage && attachment.IsSupportedImage() && !attachment.IsSvg()
+    var isPending = IsUploading && !attachment.Media.IsReady;
+    var upload = isPending ? Uploads?.Items.FirstOrDefault(a => a.Id.ToString() == attachment.Id.Value) : null;
+    var localPreviewUrl = upload is null ? null : GetLocalPreviewUrl(upload);
+    var imageMenuRef = !isPending
+        && Hub.ClipboardUI.CanWriteImage && attachment.IsSupportedImage() && !attachment.IsSvg()
         ? MenuRef.New<MessageMenu>(attachment.EntryId.Value, bool.FalseString, "", "", url).ToString()
         : null;
 }
 
-<div class="image-attachment @Class" style="@ratioStyle">
+<div class="image-attachment @Class" style="@ratioStyle" data-state="@(isPending ? "uploading" : "ready")">
     <a class="c-content"
-       href="@url"
+       href="@(isPending ? null : url)"
        role="button"
        data-menu="@imageMenuRef"
-       @onclick="@(() => VisualMediaViewerUI.Show(url, attachments))"
+       @onclick="@(() => { if (!isPending) VisualMediaViewerUI.Show(url, attachments); })"
        @onclick:preventDefault="true">
         @if (attachment.IsSupportedVideo()) {
-            <VideoAttachmentThumbnail Attachment="@attachment"/>
+            <VideoAttachmentThumbnail
+                Attachment="@attachment"
+                IsUploading="@IsUploading"
+                PreviewUrl="@localPreviewUrl"/>
         } else {
             <image-skeleton
                 initial-state="skeleton"
-                src="@UrlMapper.ImageOriginalUrl(url)"
-                thumbnailSrc="@previewUrl"
+                src="@(isPending ? "" : UrlMapper.ImageOriginalUrl(url))"
+                thumbnailSrc="@(isPending ? localPreviewUrl : previewUrl)"
                 placeholderSrc="@placeholderUrl"
                 width="@(hasDims ? mediaW : 0)"
                 height="@(hasDims ? mediaH : 0)"
             />
         }
     </a>
+    @if (upload is not null) {
+        <AttachmentUploadStateView Attachment="@upload" Context="state">
+            @if (state.Progress.IsInProgress) {
+                var percent = (int)Math.Round(Math.Clamp(state.Progress.Progress, 0, 100));
+                <RoundProgress
+                    Class="attachment-upload-ring"
+                    Fraction="@(percent / 100d)"
+                    title="@state.Progress.Details">
+                    <span class="c-percent">@percent%</span>
+                </RoundProgress>
+                @if (state.Progress.UploadSize > 0) {
+                    <div class="attachment-upload-size">@FileSizeFormatter.Format(state.Progress.UploadSize)</div>
+                }
+            } else if (state.Progress is { IsReady: false, CanRestart: true } && !state.NoAccess) {
+                <span class="reload-icon-wrapper">
+                    <ButtonRound Click="@(() => Uploads!.Restart(upload))" Class="btn-sm">
+                        <i class="icon-sync text-2xl"></i>
+                    </ButtonRound>
+                </span>
+            }
+            <ButtonSquare Click="@(() => Uploads!.Remove(upload))" Class="remove-attachment-btn btn-danger btn-sm">
+                <i class="icon-trash03 text-2xl font-thin"></i>
+            </ButtonSquare>
+        </AttachmentUploadStateView>
+    } else if (isPending) {
+        <Spinner Class="c-upload-spinner"/>
+    }
     @* TODO(Andrey): need to add Attachment parameter Hidden *@
     @* @if (_enableIncompleteUI) { *@
     @*     <div class="noise-overlay @_overlayCls" @onclick="@OnOverlayClick"></div> *@
@@ -61,12 +95,28 @@
     [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public ChatEntryAttachment Attachment { get; set; } = null!;
     [Parameter] public ChatEntryAttachment[]? Attachments { get; set; }
+    [Parameter] public bool IsUploading { get; set; }
+    [Parameter] public IAttachmentList? Uploads { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
     protected override async Task OnInitializedAsync() {
         _enableIncompleteUI = await Features.IsIncompleteUIEnabled(CancellationToken.None);
     }
 
+    // Private methods
+
+    private string? GetLocalPreviewUrl(Attachment upload) {
+        // A video's own preview is the video itself, which an <img> can't show - only a generated
+        // thumbnail (iOS) or a picture is used
+        var preview = Hub.AttachmentsState.PeekPreview(upload.Id) ?? AttachmentPreview.NoPreview;
+        if (preview.State is not PreviewAccessState.Ok || preview.PreviewUrl.IsNullOrEmpty())
+            return null;
+
+        var model = new AttachmentItemBase.Model(upload, preview, AttachmentProgress.New);
+        return upload.IsSupportedImage || model.HasCustomPreview || model.HasImagePreview
+            ? preview.PreviewUrl
+            : null;
+    }
 
     private void OnOverlayClick() {
         if (_overlayCls == "hidden")

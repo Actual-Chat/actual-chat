@@ -248,7 +248,7 @@ export class EmojiPreview {
                     && mutation.attributeName === 'data-emoji-animate'
                     && mutation.target instanceof HTMLElement
                     && mutation.target.dataset.emojiAnimate)
-                    this.animateOverlay(mutation.target, 'data-emoji-animate', CONTAINER_SIZE_REM, 'emoji-reaction-animate');
+                    this.animateReaction(mutation.target);
             }
         });
         observer.observe(document.body, {
@@ -261,9 +261,16 @@ export class EmojiPreview {
 
     private static processAnimateElements(root: HTMLElement): void {
         if (root.dataset.emojiAnimate)
-            this.animateOverlay(root, 'data-emoji-animate', CONTAINER_SIZE_REM, 'emoji-reaction-animate');
+            this.animateReaction(root);
         root.querySelectorAll<HTMLElement>('[data-emoji-animate]')
-            .forEach(el => this.animateOverlay(el, 'data-emoji-animate', CONTAINER_SIZE_REM, 'emoji-reaction-animate'));
+            .forEach(el => this.animateReaction(el));
+    }
+
+    private static animateReaction(el: HTMLElement): void {
+        // A reaction taken back stops its animation at once: the badge either loses "own" or leaves the DOM
+        this.animateOverlay(
+            el, 'data-emoji-animate', CONTAINER_SIZE_REM, 'emoji-reaction-animate',
+            () => el.isConnected && el.classList.contains('own'));
     }
 
     private static processPendingEmojiMessage(root: HTMLElement): void {
@@ -287,7 +294,13 @@ export class EmojiPreview {
         this.animateOverlay(emojiEl, 'data-emoji-message-animate', MESSAGE_EMOJI_SIZE_REM, 'emoji-message-animate');
     }
 
-    private static animateOverlay(el: HTMLElement, attr: string, sizeRem: number, className: string): void {
+    private static animateOverlay(
+        el: HTMLElement,
+        attr: string,
+        sizeRem: number,
+        className: string,
+        isLive?: () => boolean,
+    ): void {
         const svgName = el.getAttribute(attr);
         if (!svgName)
             return;
@@ -327,6 +340,9 @@ export class EmojiPreview {
                 offsetY = top - clampedTop;
             },
             write: () => {
+                if (isLive && !isLive())
+                    return;
+
                 const overlay = document.createElement('div');
                 overlay.className = className;
 
@@ -348,10 +364,22 @@ export class EmojiPreview {
 
                 document.body.appendChild(overlay);
                 el.classList.add('emoji-animating');
-                overlay.addEventListener('animationend', () => {
+                let watcher: MutationObserver | null = null;
+                const stop = (): void => {
+                    watcher?.disconnect();
                     overlay.remove();
                     el.classList.remove('emoji-animating');
-                });
+                };
+                if (isLive) {
+                    // Lives only as long as the animation, so watching the whole body for removals is cheap
+                    watcher = new MutationObserver(() => {
+                        if (!isLive())
+                            stop();
+                    });
+                    watcher.observe(el, { attributes: true, attributeFilter: ['class'] });
+                    watcher.observe(document.body, { childList: true, subtree: true });
+                }
+                overlay.addEventListener('animationend', stop);
 
                 debugLog?.log('animateOverlay:', className, svgName);
             },

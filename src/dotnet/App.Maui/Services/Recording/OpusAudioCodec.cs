@@ -2,13 +2,13 @@ using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.UI.Blazor.App.Components;
 
-#if WINDOWS || ANDROID
+#if WINDOWS || ANDROID || IOS || MACCATALYST || MACOS
 using OpusSharp.Core.Extensions;
 #endif
 
 namespace ActualChat.App.Maui.Services.Recording;
 
-#pragma warning disable CS9113 // 'log' is read only under WINDOWS || ANDROID
+#pragma warning disable CS9113 // 'log' is read only under WINDOWS || ANDROID || IOS || MACCATALYST || MACOS
 public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
 {
     private static readonly UnboundedChannelOptions SyncPipeChannelOptions = new() {
@@ -23,14 +23,11 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
         IAsyncEnumerable<IMemoryOwner<float>> lpcmFrames,
         CancellationToken cancellationToken = default)
     {
-#if IOS
-        return NotSupportedAsyncEnumerable<byte>("Audio encoding is not supported on iOS.");
-#else
         var channel = SyncPipeChannelOptions.NewChannel<IMemoryOwner<byte>>();
         _ = Task.Run(async () => {
                 const int maxOpusPacketSize = 4096;
 
-#if WINDOWS || ANDROID
+#if WINDOWS || ANDROID || IOS || MACCATALYST || MACOS
                 OpusSharp.Core.OpusEncoder? encoder = null;
                 Exception? error = null;
                 try {
@@ -151,19 +148,15 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
             },
             cancellationToken);
         return channel.Reader.ReadAllAsync(cancellationToken);
-#endif
     }
 
     public IAsyncEnumerable<IMemoryOwner<float>> Decode(
         IAsyncEnumerable<AudioFrame> opusPackets,
         CancellationToken cancellationToken = default)
     {
-#if IOS
-        return NotSupportedAsyncEnumerable<float>("Audio decoding is not supported on iOS.");
-#else
         var channel = SyncPipeChannelOptions.NewChannel<IMemoryOwner<float>>();
         _ = Task.Run(async () => {
-#if WINDOWS || ANDROID
+#if WINDOWS || ANDROID || IOS || MACCATALYST || MACOS
                 OpusSharp.Core.OpusDecoder? decoder = null;
                 Exception? error = null;
                 try {
@@ -226,16 +219,6 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
             },
             cancellationToken);
         return channel.Reader.ReadAllAsync(cancellationToken);
-#endif
-    }
-
-    private static async IAsyncEnumerable<IMemoryOwner<T>> NotSupportedAsyncEnumerable<T>(string message)
-    {
-        await Task.Yield(); // Just to suppress the warning
-        throw new NotSupportedException(message);
-#pragma warning disable CS0162
-        yield break;
-#pragma warning restore CS0162
     }
 
     private readonly struct PooledSliceOwner<T>(IMemoryOwner<T> rented, int length) : IMemoryOwner<T>

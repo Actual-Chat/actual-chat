@@ -36,7 +36,7 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
         // Blazor.start() call itself: index.html loads Blazor with autostart="false" and waits for it.
         config.UserContentController.AddUserScript(new WKUserScript(
             new NSString(LabsBlazorWebViewHandlerExt.BlazorInitScript), WKUserScriptInjectionTime.AtDocumentEnd, true));
-        // The one MAUI host on the JS audio pipeline - see BrowserInfo.useWebAudio
+        // Records through the JS audio pipeline, unlike its playback - see BrowserInfo.useWebAudio
         config.UserContentController.AddUserScript(new WKUserScript(
             new NSString("globalThis.__useWebAudio = true;"), WKUserScriptInjectionTime.AtDocumentStart, true));
         // Serves the app's own origin, app://0.0.0.1/ - index.html, _framework, _content - from the

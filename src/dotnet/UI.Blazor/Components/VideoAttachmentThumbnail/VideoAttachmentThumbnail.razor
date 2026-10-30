@@ -1,5 +1,6 @@
 @using ActualChat.Chat
 @using ActualChat.Time
+@using ActualChat.UI.Blazor.Services
 @namespace ActualChat.UI.Blazor.Components
 @{
     var urls = GetUrls();
@@ -7,7 +8,7 @@
     var thumbnailUrl = urls.ThumbnailUrl;
 }
 <div class="video-thumbnail @Class" data-width="@Attachment.Media.Width" data-height="@Attachment.Media.Height">
-    @if (Attachment.ThumbnailMedia is null) {
+    @if (Attachment.ThumbnailMedia is null && !IsUploading) {
         // OBSOLETE 2023.11: For backward compatibility for old videos. Probably convert in background.
         <video preload="metadata">
             <source src="@originalUrl#t=0.5" />
@@ -16,6 +17,7 @@
         <image-skeleton
             src="@originalUrl"
             thumbnailSrc="@thumbnailUrl"
+            placeholderSrc="@ImagePlaceholder.ToDataUrl(Attachment.Media.Placeholder)"
             initial-state="skeleton"
             width="@Attachment.Media.Width"
             height="@Attachment.Media.Height" />
@@ -31,17 +33,25 @@
     [Inject] private UrlMapper UrlMapper { get; init; } = null!;
 
     [Parameter] public ChatEntryAttachment Attachment { get; set; } = null!;
+    [Parameter] public bool IsUploading { get; set; }
+    [Parameter] public string? PreviewUrl { get; set; }
     [Parameter] public string Class { get; set; } = "";
 
-    private (string OriginalUrl, string ThumbnailUrl) GetUrls()
+    private (string OriginalUrl, string? ThumbnailUrl) GetUrls()
     {
-        if (Attachment.ThumbnailMedia is not {} thumbnail)
+        if (Attachment.ThumbnailMedia is not {} thumbnail) {
+            if (IsUploading)
+                return ("", PreviewUrl);
+
             // OBSOLETE 2023.11: For backward compatibility for old videos. Probably convert in background.
             return (UrlMapper.ContentUrl(Attachment.Media.BlobId), UrlMapper.ContentUrl(Attachment.Media.BlobId));
+        }
 
         var contentUrl = UrlMapper.ContentUrl(thumbnail.BlobId);
-        var originalUrl = UrlMapper.ImagePreviewUrl(contentUrl, null, (int?)Constants.Attachments.MaxActualResolution.Y);
-        var thumbnailUrl = UrlMapper.ImagePreviewUrl(contentUrl, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
+        var originalUrl = UrlMapper.ImagePreviewUrl(
+            contentUrl, null, (int?)Constants.Attachments.MaxActualResolution.Y);
+        var thumbnailUrl = UrlMapper.ImagePreviewUrl(
+            contentUrl, null, (int?)Constants.Attachments.MaxActualThumbnailResolution.Y);
         return (originalUrl, thumbnailUrl);
     }
 }

@@ -10,7 +10,6 @@ namespace ActualChat.UI.Blazor.Services;
 /// </summary>
 public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 {
-    private static readonly TimeSpan StartupDelay = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan TargetPrecision = TimeSpan.FromMilliseconds(50);
     private static readonly TimeSpan PrecisionCeiling = TimeSpan.FromMilliseconds(250);
     // Oscillator drift is unmeasurable at this cadence and precision, so it's assumed.
@@ -117,7 +116,6 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
             .AppendDelay(GetNextSyncDelay)
             .CycleForever()
             .Log(LogLevel.Debug, Log)
-            .PrependDelay(StartupDelay)
             .RunIsolated(cancellationToken);
     }
 
@@ -128,8 +126,14 @@ public sealed class ServerTimeSync(IServiceProvider services) : WorkerBase
 
     private async Task Sync(CancellationToken cancellationToken)
     {
+        var syncCount = SyncCount;
         await _syncLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
+            // A burst accepted while this call was queued is its answer. Measuring again would
+            // only delay whoever waits on it: a first recording queues behind every other caller.
+            if (SyncCount != syncCount)
+                return;
+
             await SyncUnsafe(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {

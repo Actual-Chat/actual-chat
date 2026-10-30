@@ -804,6 +804,7 @@ public partial class ChatUI
         }
 
         var items = tiles.SelectMany(t => t.Items).ToList();
+        RemoveSendsAlreadyStored(items);
 
         // Ensure welcome block is present when at the very beginning
         if (hasVeryFirstItem && (items.Count == 0 || items[0].Kind != ChatMessageKind.WelcomeBlock)) {
@@ -1441,13 +1442,34 @@ public partial class ChatUI
 
     // Private methods
 
-    private static List<ChatMessage> GroupAuthorMessages(IEnumerable<ChatMessage> messages)
+    // It's internal to be accessible from tests
+    internal static void RemoveSendsAlreadyStored(List<ChatMessage> items)
+    {
+        // The tail tile retires a send's copy once its stored entry loads there, but tiles are computed
+        // apart: should both still meet here, they'd share a render key, and Blazor throws on that
+        if (!items.Any(m => m.Kind == ChatMessageKind.SendingNewMessage))
+            return;
+
+        var storedClientIds = items
+            .OfType<ChatEntryMessage>()
+            .Where(m => m.Kind == ChatMessageKind.None && !m.Entry.ClientId.IsNullOrEmpty())
+            .Select(m => m.Entry.ClientId)
+            .ToHashSet();
+        if (storedClientIds.Count != 0)
+            items.RemoveAll(m => m is ChatEntryMessage { Kind: ChatMessageKind.SendingNewMessage } send
+                && storedClientIds.Contains(send.Entry.ClientId));
+    }
+
+    // It's internal to be accessible from tests
+    internal static List<ChatMessage> GroupAuthorMessages(IEnumerable<ChatMessage> messages)
     {
         var result = new List<ChatMessage>();
         var groupedItems = new List<ChatEntryMessage>();
 
         foreach (var message in messages)
-            if (message is not ChatEntryMessage cem || message.IsReplacement) {
+            // A send joins its author's group already, so its stored entry lands where the copy stood
+            if (message is not ChatEntryMessage cem
+                || message.Kind is not (ChatMessageKind.None or ChatMessageKind.SendingNewMessage)) {
                 AddGroupToResult();
                 groupedItems = [];
                 result.Add(message);

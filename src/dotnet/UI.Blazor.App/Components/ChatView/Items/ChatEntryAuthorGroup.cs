@@ -11,6 +11,7 @@ public class ChatEntryAuthorGroup : ChatMessage, IVirtualListGroup<ChatEntryMess
     }
 
     public override bool IsGroup => true;
+    public override string RenderKey => field ??= Items[0].RenderKey + "-group";
     public AuthorId AuthorId { get; }
     public IReadOnlyList<ChatEntryMessage> Items { get; }
 

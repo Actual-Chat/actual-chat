@@ -67,6 +67,7 @@ public class UploadSession
     public IFileProvider FileProvider => _snapshot.FileProvider;
     public string FileName => FileProvider.Metadata.FileName;
     public MediaId? MediaId => _snapshot.ReservedMediaId;
+    public byte[]? Placeholder => _snapshot.Placeholder;
     public UploadId? UploadId => _snapshot.UploadId;
     public UploadSessionState CurrentState => _snapshot.CurrentState;
     public bool IsFailed => _snapshot.IsFailed;

@@ -90,10 +90,10 @@ public abstract class TuneUI : ProcessorBase
 
     protected ILogger Log => field ??= Hub.LogFor(GetType());
     protected ILogger? DebugLog => Log.IfEnabled(LogLevel.Information, Constants.DebugMode.Tunes);
-    // False without vibration hardware: desktop browsers, Windows, Mac Catalyst, iPads
+    // False without vibration hardware: desktop browsers, Windows, Macs, iPads
     protected abstract bool CanVibrate { get; }
     // Whether the app plays tunes itself; otherwise the JS side does. The host kind can't tell:
-    // the AppKit backend is a MAUI host that plays through the WebView (WebTuneUI).
+    // the GTK backend is a MAUI host that plays through the WebView (WebTuneUI).
     protected abstract bool IsNative { get; }
 
     private async ValueTask Initialize()

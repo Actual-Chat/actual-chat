@@ -1,7 +1,7 @@
 #if ANDROID
 using ActualChat.App.Maui.Activities;
 #endif
-#if !MACOS && !LINUX
+#if !LINUX
 using ActualChat.App.Maui.Audio;
 #endif
 #if ANDROID || IOS || MACCATALYST
@@ -111,7 +111,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // Native audio capture isn't ported to the AppKit and GTK backends, so recording runs the
         // same JS pipeline the web app uses in Safari; WebKit covers it (getUserMedia + worklets).
         // TODO(FC): switch to MauiRecorderEngine once native capture is ported - see the
-        // migration TODO in the MACOS audio branch above.
+        // TODO in the MACOS audio branch below.
         services.AddScoped<IAudioRecorderEngine>(c => new WebRecorderEngine(c.AppUIHub()));
 #else
         services.AddScoped<IAudioRecorderEngine>(c => new MauiRecorderEngine(c.AppUIHub()));
@@ -145,21 +145,16 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<ILocationTracker>(c => new AndroidLocationTracker(c.AppUIHub()));
 #elif MACOS
-        // Leanest possible audio stack for the AppKit experiment: playback goes through the
-        // WebView's JS audio engine (see MauiAudioPlaybackEngineFactory's fallback branch),
-        // native capture / VAD / audio session management are not ported yet.
-        // TODO(FC): migrate to native audio capture + playback, like the other MAUI platforms.
-        // The port needs: an AVAudioSession-free rewrite of MaciOS/Audio's AudioSession +
-        // AppleAudioFocusUI (the API doesn't exist on macOS - CoreAudio device notifications
-        // instead), a net-macos target for ActualLab.Opus.MaciOS (or an OpusSharp-based codec),
-        // and per-TFM bundling of the CoreML VAD model. Until then the JS pipeline below and
-        // the Web* registrations under "#if MACOS" in this file are the recording/playback path.
+        // Playback and tunes run on the shared Apple engines; AppKit has no AVAudioSession, so the
+        // base AudioFocusUI stands in for AppleAudioFocusUI, and AudioEngines reconnects by itself.
+        // TODO(FC): migrate to native audio capture, like the other MAUI platforms. The port needs
+        // AppleAudioCapture without AudioSession and per-TFM bundling of the CoreML VAD model.
+        // Until then the "#if MACOS" Web* registrations in this file are the recording path.
         services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
-        // MauiTuneUI plays through Plugin.Maui.Audio, which has no macos TFM, and AppleTuneUI needs
-        // the AVAudioSession-based engine + focus stack; both wait for the native audio port above.
-        services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));
+        services.AddScoped<TuneUI>(c => new AppleTuneUI(c.UIHub()));
         services.AddSingleton<VoiceActivityDetector>(c => new NoopVoiceActivityDetector(c));
         services.AddSingleton<IAudioCodec, OpusAudioCodec>();
+        services.AddScoped<AudioEngines>(c => new AudioEngines(c.AppUIHub()));
         services.AddScoped<ILocationTracker>(c => new MauiLocationTracker(c.AppUIHub()));
 #elif LINUX
         // The GTK backend is on the same JS audio pipeline as the AppKit one, minus the codec and
@@ -171,7 +166,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<AudioFocusUI>(c => new AppleAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new AppleTuneUI(c.UIHub()));
         services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));
-        services.AddScoped<IAudioCodec, AppleAudioCodec>();
+        services.AddSingleton<IAudioCodec, OpusAudioCodec>();
         services.AddScoped<AudioEngines>(c => new AudioEngines(c.AppUIHub()));
 #if IOS
         services.AddScoped<Haptics>(c => new Haptics(c.AppUIHub()));

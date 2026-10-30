@@ -118,6 +118,16 @@ export class DebugUI {
         void this._backendRef.invokeMethodAsync('DisconnectRpc');
     }
 
+    /**
+     * Pauses the command queue as a lost connection would.
+     * Pass false to resume; returns the resulting state.
+     */
+    public static async suspendCommandQueue(suspend = true): Promise<boolean> {
+        const isSuspended = await this._backendRef.invokeMethodAsync<boolean>('SuspendCommandQueue', suspend);
+        console.log(`suspendCommandQueue: the queue is ${isSuspended ? 'suspended' : 'running'}`);
+        return isSuspended;
+    }
+
     public static navigateTo(url: string): void {
         void this._backendRef.invokeMethodAsync('NavigateTo', url);
     }

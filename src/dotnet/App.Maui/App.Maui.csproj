@@ -55,9 +55,9 @@
     -->
 
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">28.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">16.4</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">17.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">17.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-macos'))">14.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-macos'))">15.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
   </PropertyGroup>
@@ -213,10 +213,17 @@
     <PackageReference Include="AdamE.Firebase.iOS.Analytics" />
     <PackageReference Include="AdamE.Firebase.iOS.Crashlytics" />
     <PackageReference Include="AdamE.Firebase.iOS.CloudMessaging" />
-    <PackageReference Include="ActualLab.Opus.MaciOS" />
+    <PackageReference Include="OpusSharp.Core" />
+    <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
-    <PackageReference Include="ActualLab.Opus.MaciOS" />
+    <!-- OpusSharp.Natives has no maccatalyst slice, so its native part comes from Platforms/MacCatalyst/Opus -->
+    <PackageReference Include="OpusSharp.Core" />
+    <NativeReference Include="Platforms\MacCatalyst\Opus\libopus.xcframework">
+      <Kind>Framework</Kind>
+      <SmartLink>False</SmartLink>
+      <ForceLoad>True</ForceLoad>
+    </NativeReference>
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
     <PackageReference Include="Microsoft.Maui.Platforms.MacOS" />
@@ -875,8 +882,8 @@
     <!-- Localized Info.plist usage descriptions; the Link keeps <lang>.lproj at the bundle root,
          where the OS looks for it -->
     <BundleResource Include="Platforms\iOS\Resources\**\InfoPlist.strings" Link="%(RecursiveDir)%(Filename)%(Extension)" />
-    <!-- Tunes play through the WebView (WebTuneUI), which fetches them from dist/sounds - the
-         folder build.mjs strips from the MAUI wwwroot because the other platforms play them natively -->
+    <!-- AppleTuneUI reads them from here, and the WebView fetches the ringtone from dist/sounds - the
+         folder build.mjs strips from the MAUI wwwroot because the other platforms bundle it elsewhere -->
     <BundleResource Include="..\..\..\resources\sounds\converted\*.m4a" Link="wwwroot\dist\sounds\%(Filename)%(Extension)" />
   </ItemGroup>
 

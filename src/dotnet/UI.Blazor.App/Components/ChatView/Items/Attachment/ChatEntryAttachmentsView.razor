@@ -1,50 +1,39 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@if (Entry.HasUploadingAttachments) {
-    if (IsOwnMessage) {
-        <ChatEntryAttachmentUploadsViewContainer
-            Hub="@Hub"
-            Entry="@Entry"
-            ShownUploads="@(() => _hasShownUploads = true)" />
-    } else {
-        <UploadPlug />
-    }
+@if (!_isReady || Entry is { Attachments.Length: 0, HasUploadingAttachments: false })
+    return;
+
+@if (_hasShownUploads && !Entry.HasUploadingAttachments) {
+    Hub.SendingMessages.NotifyAttachmentsLoaded(Entry.Id);
+    _hasShownUploads = false;
 }
-else if (Entry.Attachments.Length > 0) {
-    if (_hasShownUploads) {
-        Hub.SendingMessages.NotifyAttachmentsLoaded(Entry.Id);
-        _hasShownUploads = false;
-    }
-    var (mediaList, fileList) = GetOrderedAttachmentList(Entry);
-    <div class="message-attachments">
-        <VisualMediaAttachmentList MediaList="@mediaList" IsNarrow="@ScreenSize.IsNarrow()" />
-        <div class="message-file-attachments">
-            @foreach (var attachment in fileList) {
-                if (attachment.IsAudio()) {
-                    <AudioFileAttachment Attachment="@attachment"/>
-                } else {
-                    <FileAttachment Attachment="@attachment"/>
-                }
-            }
-        </div>
-        @if (IsUnreadByOthers) {
-            <ChatMessageSendingStatus
-                Status="@ChatMessageSendingStatus.MessageStatus.Unread"
-                IsDotOnly="@(!IsUnreadByOthersBlockStart)"/>
-        }
-    </div>
-}
+<ChatEntryAttachmentList
+    Entry="@Entry"
+    Uploads="@_uploads?.Attachments"
+    IsUnreadByOthers="@IsUnreadByOthers"
+    IsUnreadByOthersBlockStart="@IsUnreadByOthersBlockStart"/>
 
 @code {
+    private bool _isReady;
     private bool _hasShownUploads;
+    private AttachmentUploads? _uploads;
 
-    [CascadingParameter] public ScreenSize ScreenSize { get; set; }
     [Parameter, EditorRequired] public AppUIHub Hub { get; set; } = null!;
     [Parameter, EditorRequired] public ChatEntry Entry { get; set; } = null!;
     [Parameter, EditorRequired] public bool IsOwnMessage { get; set; }
     [Parameter] public bool IsUnreadByOthers { get; set; }
     [Parameter] public bool IsUnreadByOthersBlockStart { get; set; }
 
-    private (ChatEntryAttachment[], ChatEntryAttachment[]) GetOrderedAttachmentList(ChatEntry entry)
-        => (entry.Attachments.Where(a => a.IsVisualMedia()).ToArray(),
-            entry.Attachments.Where(a => !a.IsVisualMedia()).ToArray());
+    protected override async Task OnParametersSetAsync() {
+        // Uploads restored after a restart register only once the stored requests are processed
+        if (!IsOwnMessage || !Entry.HasUploadingAttachments) {
+            _uploads = null;
+            _isReady = true;
+            return;
+        }
+
+        await Hub.SendingMessages.WhenStoredRequestsProcessed.ConfigureAwait(true);
+        _uploads = Hub.SendingMessages.GetMediaUploads(Entry);
+        _hasShownUploads |= _uploads is not null;
+        _isReady = true;
+    }
 }

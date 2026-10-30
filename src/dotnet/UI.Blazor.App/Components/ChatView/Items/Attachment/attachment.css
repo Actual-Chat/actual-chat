@@ -83,6 +83,27 @@ body.hoverable .image-line .image-item:hover {
     mix-blend-mode: soft-light;
 }
 
+/* Media attachment that is still uploading: the same tile, only its state differs */
+.image-attachment > .c-upload-spinner {
+    @apply absolute inset-0 z-10;
+    @apply w-6 h-6;
+    @apply m-auto;
+    @apply pointer-events-none;
+    border-color: rgba(255, 255, 255, 0.25);
+    border-top-color: white;
+    background-color: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 0 0.25rem rgba(0, 0, 0, 0.5);
+}
+.image-attachment[data-state="uploading"] > .c-content {
+    @apply cursor-default;
+}
+.image-attachment[data-state="uploading"] image-skeleton:has(> .image-placeholder) {
+    animation: none;
+}
+.image-attachment[data-state="uploading"] .video-thumbnail .c-overlay {
+    @apply invisible;
+}
+
 /* File Attachment */
 .file-attachment {
     @apply gap-x-2;
@@ -99,9 +120,13 @@ body.hoverable .image-line .image-item:hover {
     @apply p-0;
     @apply border-none;
 }
-body.hoverable .file-attachment:not(.upload-file):hover,
-.touch-capable .file-attachment:not(.upload-file):active {
+body.hoverable .file-attachment:not(.upload-file):not([data-state="uploading"]):hover,
+.touch-capable .file-attachment:not(.upload-file):not([data-state="uploading"]):active {
     filter: brightness(1.1);
+}
+/* Kept in place while uploading, so the tile doesn't change width once the file is ready */
+.file-attachment[data-state="uploading"] > .c-menu {
+    @apply invisible;
 }
 .file-attachment.with-menu {
     @apply pr-1;
@@ -185,36 +210,16 @@ body.hoverable .file-attachment:not(.upload-file):hover,
     @apply bg-file-default;
 }
 
-.message-image-attachments.media-attachment-uploads {
-    @apply w-full;
-    @apply mb-1;
-}
-.message-image-attachments.media-attachment-uploads .attachment-wrapper {
-    @apply w-full;
-    @apply rounded-none;
-}
-.message-image-attachments.media-attachment-uploads .attachment-wrapper > .c-content {
-    @apply h-full;
-}
-.message-image-attachments.media-attachment-uploads .attachment-item {
-    @apply gap-x-0;
-    @apply h-full w-auto;
-    @apply m-0;
-    @apply rounded-none;
-}
-.message-image-attachments.media-attachment-uploads .attachment-filename {
-    @apply w-full max-w-none;
-}
-body.hoverable .message-image-attachments.media-attachment-uploads .remove-attachment-btn.btn {
+/* The sender's own controls on a media tile it is uploading */
+body.hoverable .image-attachment > .remove-attachment-btn.btn {
     @apply hidden;
 }
-body.hoverable .message-image-attachments.media-attachment-uploads .image-item:hover .remove-attachment-btn.btn {
+body.hoverable .image-attachment:hover > .remove-attachment-btn.btn {
     @apply flex;
 }
-.message-image-attachments.media-attachment-uploads .attachment-item > img,
-.message-image-attachments.media-attachment-uploads .attachment-item > video,
-.message-image-attachments.media-attachment-uploads .attachment-item > image-skeleton {
-    @apply h-full;
+/* The upload size takes the corner the video duration sits in */
+.image-attachment:has(> .attachment-upload-size) .video-thumbnail .c-duration {
+    @apply invisible;
 }
 .attachment-upload-ring {
     @apply absolute inset-0 z-20;

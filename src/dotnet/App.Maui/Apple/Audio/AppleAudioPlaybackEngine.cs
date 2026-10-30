@@ -3,13 +3,14 @@ using ActualChat.MediaPlayback;
 using ActualChat.UI.Blazor.App.Components;
 using ActualChat.UI.Blazor.App.Services;
 using ActualLab.Diagnostics;
-using ActualLab.Opus.MaciOS;
+using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
 public sealed class AppleAudioPlaybackEngine(
     string playerId,
     TrackInfo info,
+    IMediaSource source,
     IAudioPlayerBackend backend,
     AppUIHub hub
     ) : IAudioPlaybackEngine
@@ -23,11 +24,11 @@ public sealed class AppleAudioPlaybackEngine(
 
     private VoicePlayer _voicePlayer = null!;
     private FuncWorker _processFeederWorker = null!;
-    private OpusDecoder _decoder = null!;
     private Task? _decodeFeedTask;
     private int _endedReported;
     private long _nextLagReportAtTicks;
 
+    private IAudioCodec AudioCodec => field ??= hub.Services.GetRequiredService<IAudioCodec>();
     private ILogger Log => field ??= hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayer);
 
@@ -38,7 +39,6 @@ public sealed class AppleAudioPlaybackEngine(
             await decodeFeedTask.SilentAwait();
         await _processFeederWorker.DisposeSilentlyAsync().ConfigureAwait(false);
         _voicePlayer.DisposeSilently();
-        _decoder.DisposeSilently();
         _decodeFeedTask = null;
     }
 
@@ -49,11 +49,10 @@ public sealed class AppleAudioPlaybackEngine(
 
         _voicePlayer = new VoicePlayer(playerId, hub);
         _processFeederWorker = FuncWorker.Start(MonitorPlayer);
-        _decoder = Opus.CreateDecoder();
         _decodeFeedTask = BackgroundTask.Run(
             () => DecodeAndFeed(_decodeFeedCts.Token),
             Log,
-            "Failed to decode/feed iOS audio",
+            "Failed to decode/feed audio",
             _decodeFeedCts.Token);
         await _voicePlayer.Play(cancellationToken).ConfigureAwait(false);
         // After Play(), not before: starting the player is what builds the engine and moves the route.
@@ -98,6 +97,7 @@ public sealed class AppleAudioPlaybackEngine(
             return ValueTask.CompletedTask;
 
         _frames.Push(frame);
+        _voicePlayer.AddBuffered();
         return ValueTask.CompletedTask;
     }
 
@@ -107,10 +107,12 @@ public sealed class AppleAudioPlaybackEngine(
             var state = cPosition.Value;
             backend.OnPlaying(state.Position.TotalSeconds, !state.IsPlaying, state.IsBufferLow);
             if (state.IsPlaying && state.Position > TimeSpan.Zero) {
+#if !MACOS
                 // Rendering progress, not frames handed in: TrackPlayer keeps pushing into a dead
                 // engine, so a push-based heartbeat would tell the owner watchdog the session is
                 // fine in precisely the case it exists to rescue.
                 AudioSession.NotifyPlaybackActivity();
+#endif
                 TryReportPresentationLag(state.Position);
             }
         }
@@ -141,9 +143,20 @@ public sealed class AppleAudioPlaybackEngine(
     private async Task DecodeAndFeed(CancellationToken cancellationToken)
     {
         try {
-            await foreach (var frame in _frames.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
-                var data = _decoder.Decode(frame.Data.ToArray());
-                await _voicePlayer.Feed(data, cancellationToken).ConfigureAwait(false);
+            var remainingPreSkip = ((AudioSource)source).Format.PreSkip;
+            var opusPackets = _frames.ReadAllAsync(cancellationToken);
+            await foreach (var pcmOwner in AudioCodec.Decode(opusPackets, cancellationToken).ConfigureAwait(false)) {
+                AVAudioPcmBuffer pcm;
+                using (pcmOwner) {
+                    var samples = pcmOwner.Memory.Span;
+                    var skip = Math.Min(remainingPreSkip, samples.Length);
+                    remainingPreSkip -= skip;
+                    if (skip == samples.Length)
+                        continue;
+
+                    pcm = samples[skip..].ToPcmBuffer(AudioEngine.VoicePlaybackFormat);
+                }
+                await _voicePlayer.Feed(pcm, cancellationToken).ConfigureAwait(false);
             }
             await _voicePlayer.Complete(cancellationToken).ConfigureAwait(false);
             TryReportEnded(null);

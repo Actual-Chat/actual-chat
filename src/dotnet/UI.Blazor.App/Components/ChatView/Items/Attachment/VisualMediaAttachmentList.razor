@@ -4,7 +4,11 @@
     @foreach (var row in _rows) {
         <VisualMediaAttachmentLine Row="@row" TotalItems="@_mediaList.Length">
             <ItemTemplate>
-                <VisualMediaAttachment Attachment="@context" Attachments="@MediaList"/>
+                <VisualMediaAttachment
+                    Attachment="@context"
+                    Attachments="@_viewableList"
+                    IsUploading="@IsUploading"
+                    Uploads="@Uploads"/>
             </ItemTemplate>
         </VisualMediaAttachmentLine>
     }
@@ -14,7 +18,7 @@
     var attachment = MediaList[_mediaList.Length];
     var url = UrlMapper.ContentUrl(attachment.Media.BlobId);
     <div class="extra-media-count"
-         @onclick="@(() => VisualMediaViewerUI.Show(url, MediaList))">
+         @onclick="@(() => { if (attachment.Media.IsReady) VisualMediaViewerUI.Show(url, _viewableList); })">
         + @extra media
     </div>
 }
@@ -22,6 +26,7 @@
 @code {
     private VisualMediaGalleryLine<ChatEntryAttachment>[] _rows = [];
     private ChatEntryAttachment[] _mediaList = [];
+    private ChatEntryAttachment[] _viewableList = [];
 
     [Inject] private UIHub Hub { get; init; } = null!;
     private UrlMapper UrlMapper => Hub.UrlMapper;
@@ -30,13 +35,19 @@
     [Parameter, EditorRequired] public ChatEntryAttachment[] MediaList { get; set; } = null!;
     [Parameter] public bool IsConversation { get; set; }
     [Parameter] public bool IsNarrow { get; set; }
+    [Parameter] public bool IsUploading { get; set; }
+    [Parameter] public IAttachmentList? Uploads { get; set; }
 
     protected override void OnParametersSet() {
         var maxCount = IsConversation ? IsNarrow ? 6 : 8 : 10;
         _mediaList = MediaList.Take(maxCount).ToArray();
         _rows = GetRows(_mediaList, IsConversation, IsNarrow);
+        _viewableList = IsUploading ? MediaList.Where(a => a.Media.IsReady).ToArray() : MediaList;
     }
 
-    private static VisualMediaGalleryLine<ChatEntryAttachment>[] GetRows(ChatEntryAttachment[] mediaList, bool isConversation, bool isNarrow)
-        => VisualMediaGalleryArranger.Pick(isConversation, isNarrow).Arrange(mediaList, a => (a.Media.Width, a.Media.Height));
+    private static VisualMediaGalleryLine<ChatEntryAttachment>[] GetRows(
+        ChatEntryAttachment[] mediaList, bool isConversation, bool isNarrow)
+        => VisualMediaGalleryArranger
+            .Pick(isConversation, isNarrow)
+            .Arrange(mediaList, a => (a.Media.Width, a.Media.Height));
 }

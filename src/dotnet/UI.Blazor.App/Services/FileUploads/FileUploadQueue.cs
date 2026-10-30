@@ -1,10 +1,12 @@
 namespace ActualChat.UI.Blazor.App.Services;
 
-public class FileUploadOperation(Func<Task> startFunc)
+public sealed class FileUploadOperation(long length, Func<Task> startFunc)
 {
     private readonly TaskCompletionSource _tcs = TaskCompletionSourceExt.New();
     private long _state;
 
+    public long Length { get; } = length;
+    public bool IsLarge => Length >= FileUploadQueue.LargeFileLength;
     public bool HasStarted => Interlocked.Read(ref _state) != 0;
     public Task Task => _tcs.Task;
 
@@ -33,6 +35,7 @@ public class FileUploadOperation(Func<Task> startFunc)
 
 public class FileUploadQueue
 {
+    public const long LargeFileLength = 10 * 1024 * 1024;
     private const int MaxActiveCount = 2;
     private readonly Lock _lock = new();
     private readonly List<FileUploadOperation> _operations = new ();
@@ -63,20 +66,27 @@ public class FileUploadQueue
 
     private void ReviewQueue()
     {
+        // Large files split the uplink between them, so they go one at a time, while a small one may run beside
+        // a large one instead of waiting for it
         lock (_lock) {
-            int activeCount = 0;
+            var activeCount = 0;
+            var hasActiveLarge = false;
             var toStart = new List<FileUploadOperation>();
             foreach (var operation in _operations)
-                if (operation.HasStarted)
+                if (operation.HasStarted) {
                     activeCount++;
+                    hasActiveLarge |= operation.IsLarge;
+                }
 
             foreach (var operation in _operations) {
                 if (activeCount >= MaxActiveCount)
                     break;
-                if (operation.HasStarted)
+                if (operation.HasStarted || (hasActiveLarge && operation.IsLarge))
                     continue;
+
                 toStart.Add(operation);
                 activeCount++;
+                hasActiveLarge |= operation.IsLarge;
             }
             foreach (var operation in toStart)
                 operation.Start();

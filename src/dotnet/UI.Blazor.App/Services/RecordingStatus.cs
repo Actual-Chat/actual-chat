@@ -6,8 +6,9 @@ namespace ActualChat.UI.Blazor.App.Services;
 /// <summary>
 /// How recording in a chat is going, as the UI reports it. A problem stays
 /// <see cref="RecordingStatusKind.Starting"/> or <see cref="RecordingStatusKind.Reconnecting"/>
-/// until it outlasts <see cref="Constants.Audio.RecordingProblemGracePeriod"/>, unless the
-/// pipeline named it - a named failure is reported at once.
+/// until it outlasts <see cref="Constants.Audio.RecordingProblemGracePeriod"/>, or
+/// <see cref="Constants.Audio.RecordingStartupGracePeriod"/> before the recorder takes the chat,
+/// unless the pipeline named it - a named failure is reported at once.
 /// </summary>
 public sealed record RecordingStatus(RecordingStatusKind Kind, string? FailureCode = null)
 {

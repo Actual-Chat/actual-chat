@@ -8,5 +8,6 @@ public static class MediaFullExt
             Kind = media.Kind,
             Metadata = media.Metadata,
             Placeholder = media.Placeholder,
+            ThumbnailId = media.ThumbnailId,
         };
 }

@@ -1,0 +1,29 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@inherits ComputedStateComponent<AppUIHub, bool>
+@if (State.Value) {
+    <Hotkey Keys="ctrl+shift+l q" AriaLabel="Suspend the command queue" OnTrigger="OnTrigger" IsGlobal="true"/>
+}
+
+@code {
+    protected override ComputedState<bool>.Options GetStateOptions()
+        => new() {
+            InitialValue = AccountUI.OwnAccount.Value.IsAdmin,
+            Category = GetStateCategory(GetType()),
+        };
+
+    protected override async Task<bool> ComputeState(CancellationToken cancellationToken) {
+        var account = await AccountUI.OwnAccount.Use(cancellationToken).ConfigureAwait(false);
+        return account.IsAdmin;
+    }
+
+    private void OnTrigger() {
+        var commandQueueUI = Hub.CommandQueueUI;
+        if (commandQueueUI.IsPaused)
+            commandQueueUI.Resume();
+        else
+            commandQueueUI.Pause();
+        ToastUI.Show(
+            commandQueueUI.IsPaused ? "Command queue paused" : "Command queue running",
+            ToastDismissDelay.Short);
+    }
+}

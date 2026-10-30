@@ -1,0 +1,49 @@
+@namespace ActualChat.UI.Blazor.App.Components
+@{
+    var kind = FileTypeHelper.GetKind(FileName, ContentType);
+    var fileCls = FileTypeHelper.GetCssClass(kind);
+    var iconCls = IconClass ?? $"{FileTypeHelper.GetIconClass(kind)} text-xl";
+}
+
+<div class="file-attachment unfocusable @Class" data-state="@(IsUploading ? "uploading" : "ready")">
+    <a class="c-file-link"
+       href="@Url"
+       target="_blank"
+       role="button">
+        <div class="c-file-icon @fileCls">
+            <i class="@iconCls"></i>
+            @if (IsUploading) {
+                <span class="spinner-icon-wrapper">
+                    <img src="/dist/images/loading-spinner.svg" class="spinner-icon animate-spin" alt=""/>
+                </span>
+            }
+        </div>
+        <div class="c-file-info">
+            <FileAttachmentTitle Title="@FileName"/>
+            <div class="c-bottom">
+                <div class="c-size">
+                    @if (Size is not null) {
+                        @Size
+                    } else {
+                        <span>@FileSizeFormatter.Format(Length)</span>
+                    }
+                </div>
+                @Progress
+            </div>
+        </div>
+    </a>
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string FileName { get; set; } = "";
+    [Parameter] public string? ContentType { get; set; }
+    [Parameter] public long Length { get; set; }
+    [Parameter] public string? Url { get; set; }
+    [Parameter] public bool IsUploading { get; set; }
+    [Parameter] public string? IconClass { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public RenderFragment? Size { get; set; }
+    [Parameter] public RenderFragment? Progress { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

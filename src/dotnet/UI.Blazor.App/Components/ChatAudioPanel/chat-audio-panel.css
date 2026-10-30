@@ -42,13 +42,13 @@ body.hoverable .chat-audio-panel .listen-only-btn.btn:hover {
     isolation: isolate;
     transition-property: transform, opacity, filter;
 }
+/* Must not outgrow the button: WebKit on iOS 17.5-18.5 doesn't clip a z-index:-1 child of an overflow:hidden
+   parent under an ancestor's filter, and body.narrow gives .recorder-wrapper a drop-shadow. */
 .chat-audio-panel .listen-only-btn.btn::before {
     @apply content-empty;
-    @apply absolute inset-x-0 z-minus;
+    @apply absolute inset-0 z-minus;
     @apply pointer-events-none;
-    top: -40%;
-    height: 180%;
-    background: linear-gradient(180deg, var(--magenta-45) -18.32%, var(--blue-55) 132%);
+    background: linear-gradient(180deg, var(--magenta-45) -72.98%, var(--blue-55) 197.6%);
     border-radius: inherit;
 }
 .chat-audio-panel .record-off-btn.btn,

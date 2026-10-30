@@ -1,42 +1,95 @@
 @namespace ActualChat.UI.Blazor.App.Components
-@inherits ComponentBase<UIHub>
+@inherits ComponentBase<AppUIHub>
 @{
-    var fileSize = Attachment.Media.Length;
+    var media = Attachment.Media;
+    var isPending = IsUploading && !media.IsReady;
     // ToOrigin: the link opens outside the WebView, which can't resolve the app's content scheme
-    var url = UrlMapper.ToOrigin(UrlMapper.ContentUrl(Attachment.Media.BlobId));
-    var kind = FileTypeHelper.GetKind(Attachment.Media.FileName, Attachment.Media.ContentType);
-    var fileCls = FileTypeHelper.GetCssClass(kind);
-    var iconCls = FileTypeHelper.GetIconClass(kind);
+    var url = isPending ? null : UrlMapper.ToOrigin(UrlMapper.ContentUrl(media.BlobId));
+    var upload = isPending ? Uploads?.Items.FirstOrDefault(a => a.Id.ToString() == Attachment.Id.Value) : null;
+    var iconCls = upload is null ? null : GetUploadIconClass(upload);
+    var menuRef = MenuRef.New<FileAttachmentMenu>(Attachment.EntryId.Value, Attachment.Index.ToString()).ToString();
 }
 
-<div class="file-attachment with-menu unfocusable">
-    <a class="c-file-link"
-       href="@url"
-       target="_blank"
-       role="button">
-        <div class="c-file-icon @fileCls">
-            <i class="@iconCls text-xl"></i>
-        </div>
-        <div class="c-file-info">
-            <FileAttachmentTitle Title="@Attachment.Media.FileName"/>
-            <div class="c-bottom">
-                <div class="c-size">
-                    <span>@FileSizeFormatter.Format(fileSize)</span>
+<FileAttachmentTile
+    FileName="@media.FileName"
+    ContentType="@media.ContentType"
+    Length="@media.Length"
+    Url="@url"
+    IsUploading="@isPending"
+    IconClass="@iconCls"
+    Class="@(upload is null ? "with-menu" : "upload-file")">
+    <Size>
+        @if (upload is not null) {
+            <AttachmentUploadStateView Attachment="@upload" Context="state">
+                <span>@(state.Progress is { IsInProgress: true, UploadSize: > 0 }
+                    ? FileSizeFormatter.FormatProgress(state.Progress.UploadProgress, state.Progress.UploadSize)
+                    : FileSizeFormatter.Format(media.Length))</span>
+            </AttachmentUploadStateView>
+        } else {
+            <span>@FileSizeFormatter.Format(media.Length)</span>
+        }
+    </Size>
+    <Progress>
+        @if (upload is not null) {
+            <AttachmentUploadStateView Attachment="@upload" Context="state">
+                <div class="@GetProgressClass(state.Progress)"
+                     style="@GetProgressStyle(state.Progress)"
+                     title="@state.Progress.Details">
                 </div>
-            </div>
-        </div>
-    </a>
-    <ButtonRound
-        Class="btn-sm btn-transparent"
-        data-menu="@(MenuRef.New<FileAttachmentMenu>(Attachment.EntryId.Value, Attachment.Index.ToString()).ToString())"
-        data-menu-trigger="@MenuTrigger.Primary"
-        data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
-        <i class="icon-more-vertical text-xl"></i>
-    </ButtonRound>
-</div>
+            </AttachmentUploadStateView>
+        }
+    </Progress>
+    <ChildContent>
+        @if (upload is not null) {
+            <AttachmentUploadStateView Attachment="@upload" Context="state">
+                @if (state.Progress is { IsReady: false, CanRestart: true } && !state.NoAccess) {
+                    <span class="reload-icon-wrapper">
+                        <ButtonRound Click="@(() => Uploads!.Restart(upload))" Class="btn-sm">
+                            <i class="icon-sync text-2xl"></i>
+                        </ButtonRound>
+                    </span>
+                }
+            </AttachmentUploadStateView>
+            <ButtonRound Click="@(() => Uploads!.Remove(upload))" Class="remove-attachment-btn btn-danger">
+                <i class="icon-trash03 text-2xl font-thin"></i>
+            </ButtonRound>
+        } else {
+            <ButtonRound
+                Class="c-menu btn-sm btn-transparent"
+                data-menu="@menuRef"
+                data-menu-trigger="@MenuTrigger.Primary"
+                data-menu-placement="@(FloatingPosition.TopEnd.ToPositionString())">
+                <i class="icon-more-vertical text-xl"></i>
+            </ButtonRound>
+        }
+    </ChildContent>
+</FileAttachmentTile>
 
 @code {
     [Parameter, EditorRequired]
     public ChatEntryAttachment Attachment { get; set; } = null!;
+    [Parameter] public bool IsUploading { get; set; }
+    [Parameter] public IAttachmentList? Uploads { get; set; }
     [Parameter] public bool IconOnly { get; set; }
+
+    // Private methods
+
+    private string? GetUploadIconClass(Attachment upload)
+        => Hub.AttachmentsState.PeekPreview(upload.Id)?.State switch {
+            PreviewAccessState.PendingGetAccessRequest => "icon-file-blocked text-2xl text-02",
+            PreviewAccessState.NoFileAccess => "icon-file-broken text-2xl text-02",
+            _ => null,
+        };
+
+    private static string GetProgressClass(AttachmentProgress progress)
+        => progress switch {
+            { IsFailed: true } => "attachment-upload-progress attachment-upload-failed",
+            { IsReady: true } => "attachment-upload-progress attachment-upload-completed",
+            _ => "attachment-upload-progress",
+        };
+
+    private static string GetProgressStyle(AttachmentProgress progress) {
+        var value = progress.IsFailed ? Math.Max(progress.Progress, 30) : progress.Progress;
+        return $"width: {value}%;";
+    }
 }
