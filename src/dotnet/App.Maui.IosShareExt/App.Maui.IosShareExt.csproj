@@ -16,7 +16,7 @@
 <!--    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>-->
 <!--    <ApplicationVersion>1</ApplicationVersion>-->
 
-    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">16.4</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">17.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IsDevMaui)' == ''">
