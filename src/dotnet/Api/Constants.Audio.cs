@@ -102,7 +102,7 @@ public static partial class Constants
         // Bounds the re-subscribe rate when the lag is upstream (a slow source) and re-anchoring
         // can't fix it: each one restarts every in-flight track.
         public static readonly TimeSpan ListeningReanchorMinPeriod = TimeSpan.FromSeconds(20);
-        // Must outlast ServerTimeSync's first sync (3s startup delay + a few RPC round trips).
+        // Must outlast ServerTimeSync's first sync (a burst of RPC round trips).
         public static readonly TimeSpan ServerClockWaitTimeout = TimeSpan.FromSeconds(10);
         // Short: a PTT reply that waits longer than this has already lost its answer window.
         public static readonly TimeSpan ConnectivityWaitTimeout = TimeSpan.FromSeconds(3);

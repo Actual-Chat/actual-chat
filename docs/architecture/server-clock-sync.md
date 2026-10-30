@@ -172,6 +172,11 @@ Triggers that preempt the deadline:
 These triggers, not the timer, are what catch real clock movement. The timer is
 a backstop for the slow residual.
 
+The first burst runs as soon as the worker starts. Bursts run one at a time, and a
+caller that was queued while a burst was accepted takes that result instead of
+measuring again: a cold start can have the worker, the listening player and the
+recorder all waiting, and the recorder, which comes last, only needs an offset.
+
 ### 2. Preconditions
 
 Never fire probes while disconnected — they park and resume post-reconnect with

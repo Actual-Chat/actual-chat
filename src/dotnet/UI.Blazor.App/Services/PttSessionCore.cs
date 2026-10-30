@@ -65,8 +65,8 @@ public sealed class PttSessionCore(AppUIHub hub) : IDisposable
         if (!isForeground && !Ptt.IsStaleWake(startedAt, Hub.Clocks.SystemClock.Now))
             chatAudioUI.SetListeningCatchUp(chatId, startedAt);
         chatAudioUI.Enable();
-        // Fire-and-forget: ServerTimeSync's own loop only starts syncing after a 3s settling delay,
-        // and everything downstream that wants server time would sit behind it.
+        // Fire-and-forget: on a reused scope ServerTimeSync's own loop may be asleep until its next
+        // cycle, and everything downstream that wants server time would sit behind it.
         if (Hub.Services.GetService<ServerTimeSync>() is { } serverTimeSync)
             _ = BackgroundTask.Run(
                 () => serverTimeSync.EnsureSynced(CancellationToken.None),
