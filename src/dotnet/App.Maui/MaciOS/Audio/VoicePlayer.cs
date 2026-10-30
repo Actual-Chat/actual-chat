@@ -49,6 +49,9 @@ public sealed class VoicePlayer : IDisposable
         Node.Pause();
     }
 
+    public void AddBuffered()
+        => _capacity.AddBuffered();
+
     public async ValueTask Feed(AVAudioPcmBuffer pcm, CancellationToken cancellationToken)
     {
         await _capacity.Acquire(cancellationToken).ConfigureAwait(false);
