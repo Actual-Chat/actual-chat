@@ -137,7 +137,9 @@ public class AndroidWebChromeClient : WebChromeClient
     #region Unremarkable overrides
     // See: https://github.com/dotnet/maui/issues/6565
     public override JniPeerMembers JniPeerMembers => _client.JniPeerMembers;
-    public override Bitmap? DefaultVideoPoster => _client.DefaultVideoPoster;
+    // A null poster makes WebView draw its own gray play glyph, stretched to the box
+    // of every <video> that has no frame yet: live tiles showed it on each stream switch.
+    public override Bitmap? DefaultVideoPoster => field ??= Bitmap.CreateBitmap(1, 1, Bitmap.Config.Argb8888!);
     public override View? VideoLoadingProgressView => _client.VideoLoadingProgressView;
     public override void GetVisitedHistory(IValueCallback? callback)
     {
