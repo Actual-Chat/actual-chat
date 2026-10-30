@@ -64,19 +64,24 @@ public class LanguageDetector(IServiceProvider services)
                 cancellationToken)
             .ConfigureAwait(false);
         try {
-            var result = response.Content ?? "[]";
-            var json = result
-                .Replace("```json", "", StringComparison.OrdinalIgnoreCase)
-                .Replace("`", "");
-            return Serializers.SystemJson.Read<string[]>(json)
-                .Select(Language.ParseNullable)
-                .SkipNullItems()
-                .Where(x => x.Support.HasFlag(LanguageSupport.Transcription))
-                .ToList();
+            return ParseResponse(response.Content);
         }
         catch (Exception e) when (!e.IsCancellationOf(cancellationToken)) {
             Log.LogError(e, "Could not parse language detection response: {Response}", response.Content);
             return [];
         }
+    }
+
+    public static IReadOnlyList<Language> ParseResponse(string? response)
+    {
+        // A code Languages doesn't declare is skipped rather than parsed: it would throw and lose the rest
+        var json = (response ?? "[]")
+            .Replace("```json", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("`", "");
+        return Serializers.SystemJson.Read<string[]>(json)
+            .Select(x => Language.TryParse(x))
+            .SkipNullItems()
+            .Where(x => x.Support.HasFlag(LanguageSupport.Transcription))
+            .ToList();
     }
 }
