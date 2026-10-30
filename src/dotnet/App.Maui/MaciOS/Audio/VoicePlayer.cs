@@ -4,19 +4,20 @@ using AVFoundation;
 
 namespace ActualChat.App.Maui.Audio;
 
-public class VoicePlayer : IDisposable
+public sealed class VoicePlayer : IDisposable
 {
     private readonly AudioBufferCapacity _capacity;
     private readonly ComputedState<State> _state;
     private TimeSpan _position;
 
-    public string Id { get; }
-    private PlayerNode Node { get; }
     private AppUIHub Hub { get; }
     private AudioEngine Engine { get; }
-    public IState<State> PlaybackState => _state;
     private ILogger Log => field ??= Hub.LogFor(GetType());
     private ILogger? DebugLog => Log.IfEnabled(LogLevel.Debug, Constants.DebugMode.NativeAudioPlayer);
+    private PlayerNode Node { get; }
+
+    public string Id { get; }
+    public IState<State> PlaybackState => _state;
 
     public VoicePlayer(string id, AppUIHub hub)
     {
@@ -55,6 +56,7 @@ public class VoicePlayer : IDisposable
             _ => {
                 // IMPORTANT: better not to access node from the callback thread
                 _position += TimeSpan.FromSeconds(pcm.FrameLength / pcm.Format.SampleRate);
+                pcm.DisposeSilently();
                 _capacity.Release();
                 _state.Invalidate();
             });
@@ -72,6 +74,8 @@ public class VoicePlayer : IDisposable
         DebugLog?.LogInformation("#{Id}.Abort", Id);
         Node.Stop();
     }
+
+    // Private methods
 
     private async Task WhenDonePlaying(CancellationToken cancellationToken)
     {
@@ -92,6 +96,8 @@ public class VoicePlayer : IDisposable
         var isBufferLow = await _capacity.IsBufferLow.Use(cancellationToken).ConfigureAwait(false);
         return new State(_position, isPlaying && isEngineRunning, isBufferLow);
     }
+
+    // Nested types
 
     public sealed record State(TimeSpan Position, bool IsPlaying, bool IsBufferLow);
 }
