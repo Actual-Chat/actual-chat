@@ -24,6 +24,11 @@ body.narrow .modal-overlay {
     @apply bg-transparent;
     backdrop-filter: none;
 }
+.modal-overlay-fullscreen {
+    /* Its content covers the screen, so the blur is never seen - yet a modal opened over it stacks a second
+       backdrop-filter, which Android WebView composites in tiles and drops for a frame: the page blinks. */
+    backdrop-filter: none;
+}
 
 body.device-ios .modal-overlay,
 body.device-android .modal-overlay {
