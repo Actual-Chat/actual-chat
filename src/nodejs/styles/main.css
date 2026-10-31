@@ -93,6 +93,28 @@ body[dir="rtl"], [dir="rtl"] body {
     --safe-area-start: var(--safe-area-right);
     --safe-area-end: var(--safe-area-left);
 }
+/* --dir-sign multiplies a horizontal move that should run toward the end, e.g. a toggle's knob;
+   --start-side and --end-side name the sides for a gradient: linear-gradient(to var(--end-side, right), ...) */
+:root, [dir="ltr"] {
+    --dir-sign: 1;
+    --start-side: left;
+    --end-side: right;
+}
+[dir="rtl"] {
+    --dir-sign: -1;
+    --start-side: right;
+    --end-side: left;
+}
+/* A user's name or title that truncates carries dir="auto", so the ellipsis cuts its end; this keeps it
+   aligned with the page rather than with its own script (Chromium renders match-parent as start) */
+.isolated-text {
+    /* physical: start would resolve against the text's own direction */
+    text-align: left;
+}
+:root[dir="rtl"] .isolated-text {
+    /* physical: see above */
+    text-align: right;
+}
 /* In narrow mode the chat header and full-screen modals put their back button in the top-left
    corner, so there the titlebar joins the top inset the way the notch does. The left panel opts
    out (its navbar column lays itself out around the traffic lights), and so does the right panel:

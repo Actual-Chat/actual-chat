@@ -790,17 +790,17 @@ body.narrow .volume-settings-btn.text::before {
 }
 body.narrow .chat-audio-panel[data-has-record-on-btn] .volume-settings-btn.text > .c-text,
 body.narrow .chat-audio-panel[data-has-record-on-btn]:not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
-    background-image: linear-gradient(to right, var(--magenta-60), 10%, white);
+    background-image: linear-gradient(to var(--end-side, right), var(--magenta-60), 10%, white);
 }
 body.narrow .chat-audio-panel[data-has-record-on-btn] .volume-settings-btn.text::before,
 body.narrow .chat-audio-panel[data-has-record-on-btn]:not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
-    background-image: linear-gradient(to right, var(--magenta-60), 25%, var(--mobile-landscape-audio-panel-button-text));
+    background-image: linear-gradient(to var(--end-side, right), var(--magenta-60), 25%, var(--mobile-landscape-audio-panel-button-text));
 }
 body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings-btn.text > .c-text {
-    background-image: linear-gradient(to right, var(--audio-accent-1), 10%, white);
+    background-image: linear-gradient(to var(--end-side, right), var(--audio-accent-1), 10%, white);
 }
 body.narrow .chat-message-editor:not(.text-mode, .narrow-panel) .volume-settings-btn.text::before {
-    background-image: linear-gradient(to right, var(--audio-accent-1), 25%, var(--mobile-landscape-audio-panel-button-text));
+    background-image: linear-gradient(to var(--end-side, right), var(--audio-accent-1), 25%, var(--mobile-landscape-audio-panel-button-text));
 }
 
 /* === 14. Skeletons === */

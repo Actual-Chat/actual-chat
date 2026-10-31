@@ -103,7 +103,7 @@
                 <a class="domain-link"
                    href="@Data.LocalUrl.Value"
                    @onclick:preventDefault="true"
-                   @onclick="NavigateToUrl">@user.Avatar.Name</a>
+                   @onclick="NavigateToUrl"><bdi>@user.Avatar.Name</bdi></a>
             } else if (chat is not null) {
                 var linkText = chat.Title;
                 if (place?.Id is not null)
@@ -119,7 +119,7 @@
                 <a class="domain-link"
                    href="@Data.LocalUrl.Value"
                    @onclick:preventDefault="true"
-                   @onclick="NavigateToUrl">@place.Title</a>
+                   @onclick="NavigateToUrl"><bdi>@place.Title</bdi></a>
             }
             @if (!inChatSuffix.IsNullOrEmpty()) {
                 <span>@inChatSuffix</span>

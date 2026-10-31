@@ -83,7 +83,7 @@ body.wide .web-splash .wide-image {
     animation: load 3s normal cubic-bezier(0.3, 0.9, 0.3, 0.9);
 }
 @keyframes load {
-    0% { transform: translateX(-100%); }
+    0% { transform: translateX(calc(-100% * var(--dir-sign, 1))); }
     100% { transform: translateX(0); }
 }
 

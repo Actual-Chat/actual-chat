@@ -21,7 +21,8 @@
 .bar-chart > .c-column > .c-label { @apply text-xs text-03; }
 /* :where() keeps the specificity low enough for the overrides in coach.css */
 .bar-chart > .c-column > :where(.c-bar-track > .c-value) { @apply text-xs text-02 text-center; }
-.line-chart { @apply grid gap-x-2 gap-y-2 min-w-0; grid-template-columns: auto minmax(0, 1fr); }
+/* Charts plot left to right on a right-to-left page too: points and labels are placed by `left: x%` */
+.line-chart { @apply grid gap-x-2 gap-y-2 min-w-0; grid-template-columns: auto minmax(0, 1fr); direction: ltr; }
 .line-chart[data-target-range="true"] { grid-template-columns: auto minmax(0, 1fr) auto; }
 .line-chart > .c-axis,
 .histogram-chart > .c-y-axis { @apply flex-y justify-between text-caption text-02 text-end; }
@@ -77,7 +78,11 @@
 }
 .line-chart > .c-labels > .c-label:first-child:not(:last-child) { @apply translate-x-0; }
 .line-chart > .c-labels > .c-label:last-child:not(:first-child) { @apply -translate-x-full; }
-.histogram-chart { @apply grid gap-x-2 gap-y-2 min-w-0; grid-template-columns: auto minmax(0, 1fr); }
+.histogram-chart {
+    @apply grid gap-x-2 gap-y-2 min-w-0;
+    grid-template-columns: auto minmax(0, 1fr);
+    direction: ltr;
+}
 .histogram-chart > .c-bounds { @apply relative h-5; grid-column: 2; }
 .histogram-chart > .c-bounds > span {
     @apply absolute -translate-x-1/2 text-caption font-medium whitespace-nowrap;

@@ -20,8 +20,8 @@
 }
 
 <span class="hidden avatar-id">@Avatar?.Id</span><span
-    class="@Class @extraClass @flexClass avatar-name" data-child="@flexClass" @onclick="@Click">
-    <bdi>@name</bdi>
+    class="@Class @extraClass @flexClass avatar-name isolated-text" dir="auto" data-child="@flexClass" @onclick="@Click">
+    @name
 </span>
 
 @code {

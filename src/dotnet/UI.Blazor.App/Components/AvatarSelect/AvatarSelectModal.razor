@@ -45,7 +45,7 @@
                             <AvatarCard Avatar="@avatar"/>
                         </Icon>
                         <Content>
-                            @avatar.Name
+                            <bdi>@avatar.Name</bdi>
                         </Content>
                         <Right>
                             @if (m.SelectedAvatarId == avatar.Id) {
@@ -67,7 +67,7 @@
                                 <AvatarCard Avatar="@avatar"/>
                             </Icon>
                             <Content>
-                                @avatar.Name
+                                <bdi>@avatar.Name</bdi>
                             </Content>
                             <Right>
                                 <i class="w-5 h-5 icon-question-mark-bubble text-xl text-pal-violet-60"></i>

@@ -25,7 +25,7 @@
             }
         </div>
         <div class="c-meta">
-            <span class="c-chat">@(chat?.Title ?? newest.Title)</span>
+            <bdi class="c-chat">@(chat?.Title ?? newest.Title)</bdi>
             <LiveTimeDeltaText Moment="@newest.SentAt"/>
         </div>
     </div>

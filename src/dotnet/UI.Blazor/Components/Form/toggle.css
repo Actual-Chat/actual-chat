@@ -53,7 +53,7 @@
 }
 .toggle[data-input-checked] > .dash > .o {
     @apply bg-toggle-circle border-toggle-on;
-    @apply translate-x-3;
+    transform: translateX(calc(0.75rem * var(--dir-sign, 1)));
 }
 
 /* Hover */
@@ -89,5 +89,5 @@
     @apply h-4 w-4;
 }
 .toggle.toggle-sm[data-input-checked] > .dash > .o {
-    @apply translate-x-2;
+    transform: translateX(calc(0.5rem * var(--dir-sign, 1)));
 }

@@ -574,11 +574,27 @@ offsets name the side by writing direction:
 Class names keep their meaning: `left-panel` and `right-panel` stay, since the panels swap sides
 with everything else.
 
+`translateX` has no logical form. A move toward the end - a toggle's knob, a panel sliding in from
+its side, a swipe to the next tab - multiplies by `var(--dir-sign, 1)`, which is -1 on a right-to-left
+page: `translateX(calc(0.75rem * var(--dir-sign, 1)))`. A gradient has no logical direction either:
+`--start-side` and `--end-side` name the physical sides, as in
+`linear-gradient(to var(--end-side, right), ...)`. Floating placements (`data-menu-placement`,
+tooltip and bubble positions) are mirrored by `TextDirection.mirrorSide`, so `right-start` means the
+end side there too.
+
 Some things really are physical: a position set from JS in viewport coordinates (menus, tooltips,
-bubbles, the dragged call island), anything moved by `translateX`, and a device inset paired with
-its own side (`left: var(--safe-area-left)` next to `right: var(--safe-area-right)`). Such a rule
-keeps `left`/`right` and says why in a `/* physical: <why> */` comment. Centering with `left-1/2`
-plus `-translate-x-1/2` is the same in either direction and needs no comment.
+bubbles, the dragged call island) and a device inset paired with its own side (`left:
+var(--safe-area-left)` next to `right: var(--safe-area-right)`). Such a rule keeps `left`/`right` and
+says why in a `/* physical: <why> */` comment. Centering with `left-1/2` plus `-translate-x-1/2` is
+the same in either direction and needs no comment. A control built on physical positions that
+should not mirror - a media scrubber, a slider over a range input, a chart plotted by `left: x%` -
+sets `direction: ltr` (or `dir="ltr"`) on its root instead, as timelines read left to right in
+right-to-left apps too.
+
+A user's name or title that truncates carries `dir="auto"` on the truncating element, so the ellipsis
+cuts its end, plus `.isolated-text` (main.css), which aligns it with the page instead of with its own
+script. That class aligns physically at specificity (0,2,1) on a right-to-left page, so a site that
+centres such a title sets `text-align` at (0,3,0) or higher, or leaves the class off.
 
 `scripts/check-css-conventions.mjs` enforces this, next to the `c-` child rule, in stylesheets; class
 strings in markup and code are not checked.

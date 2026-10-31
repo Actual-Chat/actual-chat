@@ -1395,6 +1395,7 @@ public static class LocalizedStringsLocalizerExt
         public string Translation_TranslatedVoiceOffInChat => l["Translation_TranslatedVoiceOffInChat"].Value;
         public string Language_Afrikaans => l["Language_Afrikaans"].Value;
         public string Language_Albanian => l["Language_Albanian"].Value;
+        public string Language_Arabic => l["Language_Arabic"].Value;
         public string Language_Azerbaijani => l["Language_Azerbaijani"].Value;
         public string Language_Basque => l["Language_Basque"].Value;
         public string Language_Belarusian => l["Language_Belarusian"].Value;
@@ -1420,6 +1421,7 @@ public static class LocalizedStringsLocalizerExt
         public string Language_German => l["Language_German"].Value;
         public string Language_Greek => l["Language_Greek"].Value;
         public string Language_Gujarati => l["Language_Gujarati"].Value;
+        public string Language_Hebrew => l["Language_Hebrew"].Value;
         public string Language_Hindi => l["Language_Hindi"].Value;
         public string Language_Hungarian => l["Language_Hungarian"].Value;
         public string Language_Indonesian => l["Language_Indonesian"].Value;

@@ -271,17 +271,17 @@ body.narrow .notify-call-btn {
     @apply items-center justify-end gap-x-2;
     @apply rounded-full;
     @apply duration-150;
-    @apply translate-x-full;
     @apply bg-primary;
+    transform: translateX(calc(100% * var(--dir-sign, 1)));
     transition-behavior: allow-discrete;
     transition-property: display, transform, opacity, background-color;
 }
 .notify-call-panel.panel-open {
     @apply flex-x;
-    @apply translate-x-0;
     @apply bg-03;
+    transform: none;
     @starting-style {
-        transform: translateX(100%);
+        transform: translateX(calc(100% * var(--dir-sign, 1)));
         background: var(--primary);
     }
 }

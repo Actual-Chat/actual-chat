@@ -48,7 +48,7 @@
                     }
                 </span>
                 @if (lastTextEntry != null) {
-                    <div class="c-last-message" dir="auto">
+                    <div class="c-last-message">
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span class="hidden last-entry-id">@m.LastTextEntry?.Id.Value</span>
                         }
@@ -75,7 +75,7 @@
                                 <chat-activity-svg size="4" isActive="true"/>
                             }
                             else {
-                                <span class="c-text">
+                                <span class="c-text isolated-text" dir="@(lastTextEntry.IsSystemEntry ? null : "auto")">
                                     @((MarkupString)m.LastTextEntryIcons) @m.LastTextEntryText
                                 </span>
                             }

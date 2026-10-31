@@ -46,7 +46,7 @@
     @foreach (var chat in m.AllowedChats) {
         <TileItem Class="ptt-chat-item" Click="@(() => OnTurnOff(chat.Id))" Caption="@GetPlaceCaption(chat)">
             <Icon><ChatIcon Chat="@chat.Chat" Size="SquareSize.Size8"/></Icon>
-            <Content>@chat.Title</Content>
+            <Content><bdi>@chat.Title</bdi></Content>
             <Right>
                 <Toggle IsChecked="true" IsCheckedChanged="@(_ => OnTurnOff(chat.Id))"/>
             </Right>
@@ -57,7 +57,7 @@
         @foreach (var chat in m.AvailableChats) {
             <TileItem Class="ptt-chat-item" Click="@(() => OnAllow(chat))" Caption="@GetPlaceCaption(chat)">
                 <Icon><ChatIcon Chat="@chat.Chat" Size="SquareSize.Size8"/></Icon>
-                <Content>@chat.Title</Content>
+                <Content><bdi>@chat.Title</bdi></Content>
                 <Right>
                     <Toggle
                         IsDisabled="@(!canAllowMore)"

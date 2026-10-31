@@ -38,8 +38,8 @@
    the region, and clip-path only stops it painting there - its box still counts as scrollable
    overflow, which an ancestor with overflow:auto turns into a scrollbar. The class is only on the
    host for the length of the swap, so nothing is clipped at rest. */
-.content-swap:is(.c-swap-none, .c-swap-fade, .c-swap-defocus, .c-swap-reveal, .c-swap-recede,
-    .c-swap-wipe, .c-swap-swipe) {
+.content-swap:is(.swap-none, .swap-fade, .swap-defocus, .swap-reveal, .swap-recede,
+    .swap-wipe, .swap-swipe) {
     @apply overflow-hidden;
 }
 
@@ -56,11 +56,11 @@
 
 /* An instant cut. Still an animation, and not simply nothing, because it also has to be a cut a
    hold can pause - which is the whole point of None: hold the old content, then hand over. */
-.content-swap.c-swap-none > .c-layer.outgoing {
+.content-swap.swap-none > .c-layer.outgoing {
     animation: content-swap-fade-out 1ms linear forwards;
 }
 
-.content-swap.c-swap-fade > .c-layer.outgoing {
+.content-swap.swap-fade > .c-layer.outgoing {
     will-change: opacity;
     animation: content-swap-fade-out
         var(--content-swap-fade, 0.2s) ease-out forwards;
@@ -83,7 +83,7 @@
      the blur fades out with it. Costlier - backdrop-filter re-samples what is behind it - so
      measure on Android WebView before shipping. */
 
-.content-swap.c-swap-defocus > .c-layer.outgoing {
+.content-swap.swap-defocus > .c-layer.outgoing {
     will-change: opacity;
     filter: blur(var(--content-swap-blur, 3px));
     /* A blur spreads well past the box it came from, which would smear the content of the layer
@@ -94,28 +94,28 @@
     animation: content-swap-fade-out
         var(--content-swap-fade, 0.2s) ease-out forwards;
 }
-.content-swap.c-swap-reveal > .c-layer.outgoing {
+.content-swap.swap-reveal > .c-layer.outgoing {
     will-change: opacity;
     backdrop-filter: blur(var(--content-swap-blur, 8px));
     animation: content-swap-fade-out
         var(--content-swap-fade, 0.2s) ease-out forwards;
 }
 
-/* Defocus + recede. Unlike c-swap-defocus this animates the radius, which puts the keyframe on the
+/* Defocus + recede. Unlike swap-defocus this animates the radius, which puts the keyframe on the
    paint thread and takes opacity and transform down with it - a deliberate trade for how much
-   better a blur that grows reads than one that snaps. c-swap-defocus is the composited fallback if
+   better a blur that grows reads than one that snaps. swap-defocus is the composited fallback if
    this costs too much on a device.
    The scale goes *down*: clip-path is applied in the coordinate space of the layer itself, before
    the transform maps it out, so scaling up would push the blur back past the host and smear the
    header and footer again. */
 
-.content-swap.c-swap-recede > .c-layer.outgoing {
+.content-swap.swap-recede > .c-layer.outgoing {
     will-change: opacity, transform;
     clip-path: inset(0);
     animation: content-swap-recede-out
         var(--content-swap-fade, 0.2s) ease-out forwards;
 }
-.content-swap.c-swap-recede > .c-layer.incoming {
+.content-swap.swap-recede > .c-layer.incoming {
     will-change: transform;
     animation: content-swap-advance-in
         var(--content-swap-fade, 0.2s) ease-out both;
@@ -152,32 +152,35 @@
    A mask sweep is not composited, so this still costs more than the fades - but only one pass, and
    nothing here re-samples what is behind it. */
 
-.content-swap.c-swap-wipe-right {
+/* A wipe runs the other way on a right-to-left page, as a swipe does */
+.content-swap.swap-wipe-right,
+[dir="rtl"] .content-swap.swap-wipe-left {
     --c-wipe-angle: 90deg;
     --c-wipe-size: 300% 100%;
     --c-wipe-from: 100% 0;
     --c-wipe-to: 0% 0;
 }
-.content-swap.c-swap-wipe-left {
+.content-swap.swap-wipe-left,
+[dir="rtl"] .content-swap.swap-wipe-right {
     --c-wipe-angle: 270deg;
     --c-wipe-size: 300% 100%;
     --c-wipe-from: 0% 0;
     --c-wipe-to: 100% 0;
 }
-.content-swap.c-swap-wipe-down {
+.content-swap.swap-wipe-down {
     --c-wipe-angle: 180deg;
     --c-wipe-size: 100% 300%;
     --c-wipe-from: 0 100%;
     --c-wipe-to: 0 0%;
 }
-.content-swap.c-swap-wipe-up {
+.content-swap.swap-wipe-up {
     --c-wipe-angle: 0deg;
     --c-wipe-size: 100% 300%;
     --c-wipe-from: 0 0%;
     --c-wipe-to: 0 100%;
 }
 
-.content-swap.c-swap-wipe > .c-layer.outgoing {
+.content-swap.swap-wipe > .c-layer.outgoing {
     clip-path: inset(0);
     mask-image: linear-gradient(var(--c-wipe-angle),
         transparent 0 30%, rgba(0, 0, 0, 0.35) 42%, rgba(0, 0, 0, 0.8) 52%, var(--black) 62%, var(--black) 100%);
@@ -207,32 +210,32 @@
    region's own surface rather than under an opaque layer, and that surface is not necessarily
    opaque itself. */
 
-.content-swap.c-swap-swipe-right {
-    --c-swipe-out: translateX(100%);
-    --c-swipe-in: translateX(-100%);
+.content-swap.swap-swipe-right {
+    --c-swipe-out: translateX(calc(100% * var(--dir-sign, 1)));
+    --c-swipe-in: translateX(calc(-100% * var(--dir-sign, 1)));
 }
-.content-swap.c-swap-swipe-left {
-    --c-swipe-out: translateX(-100%);
-    --c-swipe-in: translateX(100%);
+.content-swap.swap-swipe-left {
+    --c-swipe-out: translateX(calc(-100% * var(--dir-sign, 1)));
+    --c-swipe-in: translateX(calc(100% * var(--dir-sign, 1)));
 }
-.content-swap.c-swap-swipe-down {
+.content-swap.swap-swipe-down {
     --c-swipe-out: translateY(100%);
     --c-swipe-in: translateY(-100%);
 }
-.content-swap.c-swap-swipe-up {
+.content-swap.swap-swipe-up {
     --c-swipe-out: translateY(-100%);
     --c-swipe-in: translateY(100%);
 }
 
-.content-swap.c-swap-swipe > .c-layer {
+.content-swap.swap-swipe > .c-layer {
     background-color: var(--content-swap-bg, var(--background-01));
     will-change: transform;
 }
-.content-swap.c-swap-swipe > .c-layer.outgoing {
+.content-swap.swap-swipe > .c-layer.outgoing {
     animation: content-swap-swipe-out
         var(--content-swap-swipe, 0.2s) ease-in-out forwards;
 }
-.content-swap.c-swap-swipe > .c-layer.incoming {
+.content-swap.swap-swipe > .c-layer.incoming {
     animation: content-swap-swipe-in
         var(--content-swap-swipe, 0.2s) ease-in-out both;
 }
@@ -242,7 +245,7 @@
    it stays put; the jump to the keyframe start happens on the frame the outgoing layer still covers
    the region completely, so it is not a frame anyone sees. !important because an author declaration
    is the only thing that outranks a running animation. */
-.content-swap[data-swap-hold].c-swap-swipe > .c-layer.incoming {
+.content-swap[data-swap-hold].swap-swipe > .c-layer.incoming {
     transform: none !important;
 }
 @keyframes content-swap-swipe-out {
@@ -265,8 +268,8 @@
 /* Equal specificity with the effect rules above, and later in the file, so this wins without
    !important - but only over what this file declares. */
 @media (prefers-reduced-motion: reduce) {
-    .content-swap:is(.c-swap-none, .c-swap-fade, .c-swap-defocus, .c-swap-reveal, .c-swap-recede,
-        .c-swap-wipe, .c-swap-swipe) > .c-layer:is(.outgoing, .incoming) {
+    .content-swap:is(.swap-none, .swap-fade, .swap-defocus, .swap-reveal, .swap-recede,
+        .swap-wipe, .swap-swipe) > .c-layer:is(.outgoing, .incoming) {
         animation-duration: 1ms;
     }
 }

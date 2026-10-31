@@ -138,7 +138,7 @@ body.narrow .chat-side-panel.has-expanded-header > .c-panel-content {
     @apply opacity-100;
     top: calc(0.5rem + var(--safe-area-top));
     inset-inline-end: 1rem;
-    transform: translateX(calc(0.5rem * var(--rp-collapse)));
+    transform: translateX(calc(0.5rem * var(--rp-collapse) * var(--dir-sign, 1)));
     transition: opacity .25s ease-in .25s;
 }
 .chat-side-panel > .c-top-region > .c-header.expanded-header > .c-buttons {
@@ -370,7 +370,7 @@ body.narrow .chat-side-panel::before {
 .chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center > .c-buttons {
     @apply max-w-0;
     @apply opacity-0;
-    transform: translateX(var(--expanded-header-height));
+    transform: translateX(calc(var(--expanded-header-height) * var(--dir-sign, 1)));
     transition:
         opacity 0.25s ease-in,
         max-width .15s ease-in .25s,

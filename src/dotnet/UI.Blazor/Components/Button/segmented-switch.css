@@ -44,14 +44,13 @@ body.hoverable .segmented-switch > .btn-segment:not(.on):hover,
     @apply rounded-full;
 }
 .segmented-switch.pill > .c-thumb {
-    /* physical: the thumb slides from the left edge by translateX */
     @apply block;
-    @apply absolute z-0 top-1 bottom-1 left-1;
+    @apply absolute z-0 top-1 bottom-1 start-1;
     @apply rounded-full;
     @apply bg-primary;
     @apply shadow-sm;
     width: calc((100% - 0.5rem - (var(--seg-count, 2) - 1) * 0.25rem) / var(--seg-count, 2));
-    transform: translateX(calc(var(--seg-index, 0) * (100% + 0.25rem)));
+    transform: translateX(calc(var(--seg-index, 0) * (100% + 0.25rem) * var(--dir-sign, 1)));
     transition: transform 0.2s ease;
 }
 @media (prefers-reduced-motion: reduce) {

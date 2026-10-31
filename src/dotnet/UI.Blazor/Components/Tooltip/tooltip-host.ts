@@ -16,6 +16,7 @@ import { MutationProcessor } from 'mutation-processor';
 import { SafeAreas } from 'safe-area';
 import { DeviceInfo } from 'device-info';
 import { getLogs } from 'logging';
+import { TextDirection } from 'text-direction';
 
 const { errorLog } = getLogs('TooltipHost');
 
@@ -291,7 +292,7 @@ export class TooltipHost implements Disposable {
         const placement = this.getPlacement(triggerRef, this.isShownAuto);
         const padding = SafeAreas.getPadding(ViewportGap);
         void computePosition(triggerRef, this.tooltipRef, {
-            placement: placement,
+            placement: TextDirection.mirrorSide(placement),
             middleware: [
                 offset(6),
                 flip({ padding }),

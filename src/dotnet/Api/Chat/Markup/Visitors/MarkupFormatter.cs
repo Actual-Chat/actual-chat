@@ -193,6 +193,7 @@ public sealed record MarkupFormatter(
     public static readonly MarkupFormatter Readable = new(MentionMarkup.ReadableFormatter);
     public static readonly MarkupFormatter ReadableUnstyled = Readable with { ShowStyleTokens = false };
     public static readonly MarkupFormatter ReadableUnstyledForQuote = ReadableUnstyled with {
+        MentionFormatter = FormatMentionForQuote,
         UrlFormatter = FormatUrlForQuote,
     };
     // Text for a voice: what can't be listened to (code, tables, links, hidden text) is left out,
@@ -340,6 +341,11 @@ public sealed record MarkupFormatter(
 
         sb.Insert(last + 1, '.');
     }
+
+    // Wrapped in first-strong isolates (FSI ... PDI), as <bdi> would be: a Latin name in a right-to-left
+    // line keeps its "@" and trailing dot on its own side
+    private static string FormatMentionForQuote(MentionMarkup markup)
+        => $"\u2068{MentionMarkup.ReadableFormatter(markup)}\u2069";
 
     private static string FormatUrlForQuote(UrlMarkup markup)
         => markup.Kind is UrlMarkupKind.Www

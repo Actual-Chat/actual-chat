@@ -83,7 +83,7 @@
         <div class="chat-message">
             <div class="c-content">
                 <div class="message-content">
-                    <div class="chat-message-markup" dir="auto" data-children="code-block">
+                    <div class="chat-message-markup" data-children="code-block">
                         <CascadingValue Value="@entry" IsFixed="true">
                             <MarkupView Markup="@markup"/>
                         </CascadingValue>
@@ -152,12 +152,12 @@
                     @if (m.ForwardedChat != null) {
                         <span class="forwarded-chat-header-name message-link"
                               @onclick="() => OnForwardedMessageHeaderClick(m.ForwardedChat.Id)">
-                            @m.ForwardedChat.Title
+                            <bdi>@m.ForwardedChat.Title</bdi>
                         </span>
                     } else if (m.ForwardedPeerAuthor != null) {
                         <span class="forwarded-chat-header-name message-link"
                               @onclick="() => OnForwardedAuthorClick(m.ForwardedPeerAuthor)">
-                            @m.ForwardedPeerAuthor.Avatar.Name
+                            <bdi>@m.ForwardedPeerAuthor.Avatar.Name</bdi>
                         </span>
                     } else {
                         <span class="forwarded-chat-header-name">

@@ -20,8 +20,11 @@
         Attachment="@selectedAttachment"
         DownloadUrl="@selectedAttachmentDownloadUrl"
         ContentType="@(selectedAttachment?.Media.ContentType ?? "")"/>
+    @* dir="ltr": media runs left to right on a right-to-left page too, and the thumb strip and the video
+       scrubber are positioned in physical pixels *@
     <swiper-container
         @ref="@Ref"
+        dir="ltr"
         init="false"
         style="--swiper-navigation-color: #fff; --swiper-pagination-color: #fff"
         class="media-swiper"
@@ -108,6 +111,7 @@
     </swiper-container>
     @if (items.Count > 1) {
         <swiper-container
+            dir="ltr"
             class="media-preview-swiper image-viewer-footer"
             init="false">
             @foreach (var attachment in items) {
