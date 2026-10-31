@@ -104,7 +104,7 @@ current prod release visible in the stores is `2.17.246`.
   reused/renamed per release, and `apple-version` is an optional workflow input
   that overrides the string.
 - `entity=macSoftware` and `id=6450874551` return the *same* record: the Mac
-  Catalyst app is a universal purchase on the iOS App ID
+  app is a universal purchase on the iOS App ID
   (`docs/macos-distribution.md`), so the lookup API can't tell whether the
   Mac build has cleared review. The web page
   `apps.apple.com/us/app/voxt/id6450874551?platform=mac` does render a

@@ -1,4 +1,5 @@
-enumerates `CNContactStore` into the `MauiContacts` mapping | labs implements Contacts |# macOS AppKit backend
+# macOS AppKit backend
+
 The Mac app runs on the experimental AppKit backend from
 [dotnet/maui-labs](https://github.com/dotnet/maui-labs) (`net11.0-macos`), so Voxt is a
 native AppKit process with a WKWebView inside, not a Mac Catalyst app; there is no Mac
@@ -52,7 +53,7 @@ members. WebKit accepts extra URL scheme handlers only before the WKWebView exis
 
 | Workaround | Goes away when |
 |---|---|
-| [MacOSCustomBlazorWebViewHandler.CreatePlatformView](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSCustomBlazorWebViewHandler.cs) replays the base handler's three config lines (`webwindowinterop` message handler, Blazor init script, `app://` scheme handler) and adds `content://`, autoplay and `__useWebAudio` | the labs handler raises `BlazorWebViewInitializing`; the config then moves back to `MauiWebView.MaciOS.OnInitializing` |
+| [MacOSCustomBlazorWebViewHandler.CreatePlatformView](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSCustomBlazorWebViewHandler.cs) replays the base handler's three config lines (`webwindowinterop` message handler, Blazor init script, `app://` scheme handler) and adds `content://`, autoplay and `__useWebAudio` | the labs handler raises `BlazorWebViewInitializing`; the config then moves back to `MauiWebView.iOS.OnInitializing` |
 | [LabsBlazorWebViewHandlerExt](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/LabsBlazorWebViewHandlerExt.cs) reaches the private `BlazorInitScript`, `WebViewScriptMessageHandler`, `SchemeHandler` and `MessageReceived` by reflection, failing fast on a rename | same as above |
 | `PatchedWKWebView` in the same file sets `Superview.NeedsLayout` on attach, because the labs `ContentPageHandler` adds content without invalidating layout and a late-attached WebView keeps a zero frame | the labs page handler invalidates layout |
 | The same subclass calls [WindowConfigurator.RemoveTitlebarDragOverlay](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/WindowConfigurator.cs) once it has a window: the labs handler installs a titlebar-wide drag overlay above the titlebar itself, so clicks on the traffic lights started a window drag, and with the page under the titlebar it would take every click in the headers' top strip. The page moves the window from its own drag regions instead: `window-drag.ts` posts to the `windowDrag` message handler `CreatePlatformView` registers, and `WindowConfigurator.WindowDragHandler` starts the drag from the last left-mouse event | the overlay is opt-out or hit-tests the page |
