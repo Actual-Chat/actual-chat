@@ -59,7 +59,7 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
         var account = await accounts.GetOwn(session, default);
         account.IsGuest.Should().BeFalse();
 
-        var anonymous = await tester.CreateAnonymousAvatar();
+        var anonymous = await CreateAnonymousAvatar(tester);
 
         var author = await tester
             .JoinChat(chatId,
@@ -135,5 +135,22 @@ public class ChatJoinAnonymouslyTest(ChatCollection.AppHostFixture fixture, ITes
                     joinAnonymously: true,
                     avatarId: anonymousAvatar.Id);
             });
+    }
+
+    private async Task<AvatarFull> CreateAnonymousAvatar(IWebTester tester)
+    {
+        var session = tester.Session;
+        var accounts = tester.AppServices.GetRequiredService<IAccounts>();
+        var account = await accounts.GetOwn(session, default);
+        var command = new Avatars_Change {
+            Session = session,
+            AvatarId = Symbol.Empty,
+            ExpectedVersion = null,
+            Change = Change.Create(new AvatarDiff {
+                Name = RandomNameGenerator.Default.Generate(),
+                IsAnonymous = true,
+            }),
+        };
+        return await tester.Commander.Call(command).ConfigureAwait(false);
     }
 }

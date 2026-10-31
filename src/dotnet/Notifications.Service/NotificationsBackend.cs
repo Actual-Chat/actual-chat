@@ -530,15 +530,22 @@ public class NotificationsBackend(IServiceProvider services)
         if (chat is null)
             return;
 
-        var authors = await authorIds
-            .Select(authorId => AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken))
-            .CollectNonNull(cancellationToken)
-            .ConfigureAwait(false);
-        var primaryAuthor = authors.FirstOrDefault();
-        var authorUserIds = authors.Select(x => x.UserId).ToHashSet();
+        var authorUserIds = new HashSet<UserId>();
+        AuthorFull? primaryAuthor = null;
+        var authorNames = new List<string>();
+        foreach (var authorId in authorIds) {
+            var author = await AuthorsBackend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+                .ConfigureAwait(false);
+            if (author is null)
+                continue;
+
+            primaryAuthor ??= author;
+            authorUserIds.Add(author.UserId);
+            authorNames.Add(author.Avatar.Name);
+        }
         var iconUrl = primaryAuthor is null ? "" : NotificationHelper.GetIconUrl(chat, primaryAuthor, UrlMapper);
 
-        var isStartedBanner = phase == ConversationNotificationPhase.Started && authors.Length > 0;
+        var isStartedBanner = phase == ConversationNotificationPhase.Started && authorNames.Count > 0;
 
         // Started/Titled/Final are live phases; their joined participants already see the call live.
         var isLive = phase != ConversationNotificationPhase.Created;
@@ -557,12 +564,8 @@ public class NotificationsBackend(IServiceProvider services)
         var localizers = isStartedBanner || mustLocalizeTitle
             ? await GetLocalizers(recipientIds, cancellationToken).ConfigureAwait(false)
             : [];
-        var readerContentByUserId = isStartedBanner
-            ? await GetVoiceChatStartedContentByUserId(authors, recipientIds, cancellationToken).ConfigureAwait(false)
-            : null;
-        var startedContent = new VoiceChatStartedNotificationContent(Array.ConvertAll(authors, x => x.Avatar.Name));
         var textByUserId = isStartedBanner
-            ? ComposeContentByUserId(localizers, startedContent, readerContentByUserId)
+            ? ComposeContentByUserId(localizers, new VoiceChatStartedNotificationContent(authorNames))
             : new Dictionary<UserId, string>();
         var titleByUserId = ComposeTitleByUserId(localizers, chat);
 
@@ -623,17 +626,13 @@ public class NotificationsBackend(IServiceProvider services)
         var localizers = await GetLocalizers(inviteeUserIds, cancellationToken).ConfigureAwait(false);
         var textByUserId = ComposeContentByUserId(localizers, new IncomingCallNotificationContent(hasVideo));
         var groupTitleByUserId = ComposeTitleByUserId(localizers, chat);
-        var senderNameByUserId = callerAuthor is null
-            ? []
-            : await GetRenamedAuthorNames(callerAuthor, inviteeUserIds, cancellationToken).ConfigureAwait(false);
 
         foreach (var inviteeUserId in inviteeUserIds) {
-            var userSenderName = senderNameByUserId.GetValueOrDefault(inviteeUserId) ?? senderName;
             var userGroupTitle = groupTitleByUserId?[inviteeUserId] ?? groupTitle;
-            var title = NotificationHelper.GetTitle(NotificationKind.IncomingCall, userSenderName, userGroupTitle);
+            var title = NotificationHelper.GetTitle(NotificationKind.IncomingCall, senderName, userGroupTitle);
             var notification = CallNotification.New(inviteeUserId, callId, caller, hasVideo) with {
                 Title = title,
-                SenderName = userSenderName,
+                SenderName = senderName,
                 Text = textByUserId[inviteeUserId],
                 IconUrl = iconUrl,
                 SentAt = now,
@@ -1724,21 +1723,17 @@ public class NotificationsBackend(IServiceProvider services)
         var localizers = sharedText is null || mustLocalizeTitle
             ? await GetLocalizers(otherUserIds, cancellationToken).ConfigureAwait(false)
             : [];
-        var senderNameByUserId = await GetRenamedAuthorNames(changeAuthor, otherUserIds, cancellationToken)
-            .ConfigureAwait(false);
         var contentByUserId = sharedText is null
-            ? ComposeContentByUserId(
-                localizers, content, senderNameByUserId.ToDictionary(x => x.Key, x => content.WithAuthorName(x.Value)))
+            ? ComposeContentByUserId(localizers, content)
             : new Dictionary<UserId, string>();
         var groupTitleByUserId = ComposeTitleByUserId(localizers, chat);
 
         foreach (var otherUserId in otherUserIds) {
             var text = sharedText ?? contentByUserId[otherUserId];
-            var userSenderName = senderNameByUserId.GetValueOrDefault(otherUserId) ?? senderName;
             var userGroupTitle = groupTitleByUserId?[otherUserId] ?? groupTitle;
-            var userTitle = groupTitleByUserId is null && userSenderName == senderName
+            var userTitle = groupTitleByUserId is null
                 ? title
-                : NotificationHelper.GetTitle(kind, userSenderName, userGroupTitle);
+                : NotificationHelper.GetTitle(kind, senderName, userGroupTitle);
 
             ChatNotification notification = kind switch {
                 NotificationKind.Message => MessageNotification.New(otherUserId, chatId, entryLid, changeAuthor.Id),
@@ -1757,7 +1752,7 @@ public class NotificationsBackend(IServiceProvider services)
             };
             notification = notification with {
                 Title = userTitle,
-                SenderName = userSenderName,
+                SenderName = senderName,
                 GroupTitle = userGroupTitle,
                 Text = text,
                 IconUrl = iconUrl,
@@ -1769,7 +1764,7 @@ public class NotificationsBackend(IServiceProvider services)
                     UnreadCount = 1,
                     AuthorIds = authorIds,
                     RecentMessages = new[] {
-                        NotificationMessage.New(changeAuthor.Id, userSenderName, text, entryLid, now),
+                        NotificationMessage.New(changeAuthor.Id, changeAuthor.Avatar.Name, text, entryLid, now),
                     }.ToApiArray(),
                     LeadText = text,
                     LeadCount = 1,
@@ -1791,55 +1786,9 @@ public class NotificationsBackend(IServiceProvider services)
             .Collect(cancellationToken)
             .ConfigureAwait(false);
 
-    private async Task<Dictionary<UserId, NotificationContent>> GetVoiceChatStartedContentByUserId(
-        IReadOnlyList<AuthorFull> authors, IReadOnlyList<UserId> readerIds, CancellationToken cancellationToken)
-    {
-        // Only the readers who renamed one of the authors get their own text
-        var renamedNamesByAuthor = await authors
-            .Select(author => GetRenamedAuthorNames(author, readerIds, cancellationToken))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-        return renamedNamesByAuthor
-            .SelectMany(x => x.Keys)
-            .Distinct()
-            .ToDictionary(
-                readerId => readerId,
-                NotificationContent (readerId) => new VoiceChatStartedNotificationContent(authors
-                    .Zip(renamedNamesByAuthor, (author, names) => names.GetValueOrDefault(readerId) ?? author.Avatar.Name)
-                    .ToList()));
-    }
-
-    private async Task<Dictionary<UserId, string>> GetRenamedAuthorNames(
-        AuthorFull author, IReadOnlyList<UserId> readerIds, CancellationToken cancellationToken)
-    {
-        // Only the readers who renamed the author are in the result
-        var names = await readerIds
-            .Select(async readerId => (
-                ReaderId: readerId,
-                Name: await ContactsBackend.GetAuthorName(author, readerId, cancellationToken).ConfigureAwait(false)))
-            .Collect(cancellationToken)
-            .ConfigureAwait(false);
-        return names
-            .Where(x => x.Name != author.Avatar.Name)
-            .ToDictionary(x => x.ReaderId, x => x.Name);
-    }
-
     private static Dictionary<UserId, string> ComposeContentByUserId(
-        (UserId UserId, IStringLocalizer Localizer)[] localizers,
-        NotificationContent content,
-        IReadOnlyDictionary<UserId, NotificationContent>? readerContentByUserId = null)
-    {
-        // A reader's own content - one naming an author the way that reader renamed them - is the
-        // rare case, so it's composed for that reader alone rather than once per language.
-        var textByUserId = ComposeByUserId(localizers, content, static (l, x) => x.Render(l));
-        if (readerContentByUserId is null || readerContentByUserId.Count == 0)
-            return textByUserId;
-
-        foreach (var (userId, l) in localizers)
-            if (readerContentByUserId.TryGetValue(userId, out var readerContent) && readerContent != content)
-                textByUserId[userId] = readerContent.Render(l);
-        return textByUserId;
-    }
+        (UserId UserId, IStringLocalizer Localizer)[] localizers, NotificationContent content)
+        => ComposeByUserId(localizers, content, static (l, x) => x.Render(l));
 
     // A system chat - Notes, the announcements chat - is named per reader the way the text is;
     // null for any other chat, whose title reads the same to everyone.
@@ -2345,13 +2294,8 @@ public class NotificationsBackend(IServiceProvider services)
                 var author = await AuthorsBackend
                     .Get(related.ChatId, entry.AuthorId, RequestedAuthorKind.Full, cancellationToken)
                     .ConfigureAwait(false);
-                var authorName = "";
-                if (author is not null)
-                    authorName = await ContactsBackend
-                        .GetAuthorName(author, related.UserId, cancellationToken)
-                        .ConfigureAwait(false);
                 var message = NotificationMessage.New(
-                    entry.AuthorId, authorName, text, entry.LocalId, entry.BeginsAt);
+                    entry.AuthorId, author?.Avatar.Name ?? "", text, entry.LocalId, entry.BeginsAt);
                 updated = updated with {
                     RecentMessages = new[] { message }.ToApiArray(),
                     LeadText = message.Text,
