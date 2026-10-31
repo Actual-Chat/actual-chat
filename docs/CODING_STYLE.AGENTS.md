@@ -232,10 +232,10 @@ public async switchFacing(): Promise<boolean> {
 
 #### Multi-targeting
 - Follow the project's multi-targeting patterns with conditional compilation.
-- In the MAUI projects platform code is selected by folder or file suffix (`Apple`, `MaciOS`,
-  `MacOS`, `iOS`, ... - the full table is in [macos-appkit.md](macos-appkit.md); `Linux` is in
+- In the MAUI projects platform code is selected by folder or file suffix (`Apple`, `MacOS`,
+  `iOS`, ... - the full table is in [macos-appkit.md](macos-appkit.md); `Linux` is in
   [linux-gtk.md](linux-gtk.md)). The two are not interchangeable:
-  - **A suffix (`Foo.MaciOS.cs`) is the platform half of a `partial` type** and sits next to
+  - **A suffix (`Foo.iOS.cs`) is the platform half of a `partial` type** and sits next to
     `Foo.cs`.
   - **A standalone type goes into the platform folder** (`Platforms/iOS/IconUIExt.cs`), with no
     suffix.

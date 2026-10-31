@@ -188,7 +188,7 @@ transitions* at idle it is reliable and immediate.
 
 # Part 2 — What each platform actually does today
 
-## iOS (`App.Maui/MaciOS/Audio/`)
+## iOS (`App.Maui/Platforms/iOS/Audio/`)
 
 `AppleAudioFocusUI : AudioFocusUI` — **does not** derive from `MauiAudioFocusUI`.
 Keeps `ActiveScopes`: a `Dictionary<AudioFocusMode, Dictionary<Requester, Scope>>`,

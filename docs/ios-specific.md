@@ -681,7 +681,7 @@ Note the filter: lines with a parenthesised subsystem (`ActualChat(WebKit)`,
 `ActualChat(CoreHaptics)`) are system noise; ours have none.
 
 **JS side** — the WebView console via `ios_webkit_debug_proxy`.
-`MauiWebView.MaciOS.cs` sets `webView.Inspectable = true` on iOS 16.4+ with no
+`MauiWebView.iOS.cs` sets `webView.Inspectable = true` on iOS 16.4+ with no
 `#if DEBUG` guard, so Release builds are inspectable. The app must be **foregrounded**
 (backgrounded, the page list is empty — indistinguishable from Web Inspector being
 off), and iOS 26's WebKit needs commands wrapped in `Target.sendMessageToTarget`

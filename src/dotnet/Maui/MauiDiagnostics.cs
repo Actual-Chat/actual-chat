@@ -140,11 +140,11 @@ public static class MauiDiagnostics
 #elif IOS
         logging = logging.WriteTo.AppleLog();
 #elif MACOS || LINUX
-        // The MaciOS AppleLog sink isn't compiled for the macos TFM and Sentry's native crash
+        // The iOS AppleLog sink isn't compiled for the macos TFM and Sentry's native crash
         // capture (Cocoa bindings) doesn't cover it either - the managed Sentry sink below still
         // runs - so a plain file is where the AppKit app's logs land. The GTK app's too: a Linux
         // desktop has no log of its own for an app started from the launcher.
-        // TODO(maui-labs): add WriteTo.AppleLog (move MaciOS/Logging to Apple) and native
+        // TODO(maui-labs): add WriteTo.AppleLog (move Platforms/iOS/Logging to Apple) and native
         // Sentry once the backend is officially supported.
         AppDataLogFilePath = Path.Combine(FileSystem.AppDataDirectory, "Logs", "ActualChat.log");
         logging = logging.WriteTo.File(AppDataLogFilePath,

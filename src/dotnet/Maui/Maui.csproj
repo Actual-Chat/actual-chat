@@ -54,10 +54,6 @@
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\**\*.iOS.cs" />
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-    <Compile Remove="**\**\*.MaciOS.cs" />
-    <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-    <Compile Remove="**\MaciOS\**\*.cs" />
-    <None Include="**\MaciOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\iOS\**\*.cs" />
     <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>

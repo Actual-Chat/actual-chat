@@ -98,7 +98,7 @@ are live and feeders are `starving` — and offers reactivate/resume actions.
 
 - Compute service — `src/dotnet/UI.Blazor.App/Services/AudioDiagnostics/AudioDiagnosticsUI.cs`
 - Modal + JS collector — `UI.Blazor.App/Components/AudioPanel/{AudioDiagnosticsModal.razor,audio-diagnostics.ts}`
-- Native session snapshot — `App.Maui/MaciOS/Audio/{AppleAudioFocusUI,AudioSession}.cs`
+- Native session snapshot — `App.Maui/Platforms/iOS/Audio/{AppleAudioFocusUI,AudioSession}.cs`
 - Enable via `UserAppSettings.IsAudioDiagnosticsEnabled` (DeveloperTools toggle) —
   an account setting, so it syncs across the user's devices and is picked up
   reactively; mirrors the Video Diagnostics modal.

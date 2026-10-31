@@ -227,7 +227,7 @@ re-shows it.
   halves, and an empty `GroupTitle` means "not a group", which is what keeps a
   peer chat from becoming an Android `SetGroupConversation(true)`.
 - **App-icon badge** — `AppIconBadgeUpdater.cs` (single source of truth) plus
-  native `AppIconBadge` on iOS (`App.Maui/MaciOS/AppIconBadge.cs`) and Windows
+  native `AppIconBadge` on iOS (`App.Maui/Platforms/iOS/AppIconBadge.cs`) and Windows
   (`Platforms/Windows/WindowsAppIconBadge.cs`). On iOS the badge of a
   backgrounded app can only change via `aps.badge`, so every push sets it and a
   silent dismissal push lowers it; the client re-asserts on foreground resume.

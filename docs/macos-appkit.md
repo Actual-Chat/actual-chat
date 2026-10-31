@@ -20,7 +20,7 @@ The App.Maui and Maui projects compile platform code by folder and file suffix:
 | Folder / suffix | Compiled for |
 |---|---|
 | `Platforms/MacOS`, `*.MacOS.cs` | AppKit only |
-| `MaciOS`, `*.MaciOS.cs` | iOS only |
+| `Platforms/iOS`, `*.iOS.cs` | iOS only |
 | `Apple`, `*.Apple.cs` | iOS and AppKit |
 
 The labs packages are pinned in
@@ -117,7 +117,7 @@ dispatcher only, so a thread-pool resolve throws.
 
 | Workaround | Goes away when |
 |---|---|
-| The `MACOS` branch of [MauiDiagnostics.AddPlatformLoggerSinks](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/MauiDiagnostics.cs) writes a plain file, mirroring Windows, with the matching `Serilog.Sinks.File` reference in [Maui.csproj](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/Maui.csproj). The `MaciOS` Apple unified-log sink is not compiled for the macos TFM, and Sentry's native crash capture does not cover it; the managed Sentry sink does run | the sinks are shared with iOS and native Sentry covers AppKit |
+| The `MACOS` branch of [MauiDiagnostics.AddPlatformLoggerSinks](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/MauiDiagnostics.cs) writes a plain file, mirroring Windows, with the matching `Serilog.Sinks.File` reference in [Maui.csproj](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/Maui.csproj). The iOS Apple unified-log sink is not compiled for the macos TFM, and Sentry's native crash capture does not cover it; the managed Sentry sink does run | the sinks are shared with iOS and native Sentry covers AppKit |
 
 ### Build and packaging
 
