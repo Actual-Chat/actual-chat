@@ -6,7 +6,7 @@
 
 @* The text truncates on its own, so the PTT icon stays visible right after the ellipsis *@
 <span class="chat-title @Class">
-    <span class="c-text" dir="auto">@Chat.Title</span>
+    <span class="c-text isolated-text" dir="auto">@Chat.Title</span>
     @if (PttState != PttChatState.Off) {
         <i class="c-ptt icon-push-to-talk @pttCls" data-tooltip="@GetPttTooltip()"></i>
     }

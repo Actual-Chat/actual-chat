@@ -4,6 +4,8 @@
 }
 .totp-input > .c-digits {
     @apply flex-x flex-1 justify-between items-center;
+    /* A code reads left to right on a right-to-left page too, as the arrow keys in totp-input.ts assume */
+    direction: ltr;
 }
 .totp-input > .c-digits > input[type=text].c-digit {
     @apply w-8 h-11 rounded-t-lg rounded-b-none border-s-0 border-t-0 border-e-0 border-b-text-01;

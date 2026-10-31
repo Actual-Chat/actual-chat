@@ -10,6 +10,8 @@ public sealed class PluralLocalizerExtTest
     private static readonly (string Subtag, int Count, string Expected)[] MemberCountCases = [
         ("en", 1, "1 member"), ("en", 2, "2 members"), ("en", 5, "5 members"), ("en", 21, "21 members"),
         ("af", 1, "1 lid"), ("af", 2, "2 lede"), ("af", 5, "5 lede"), ("af", 21, "21 lede"),
+        ("ar", 0, "0 عضو"), ("ar", 1, "1 عضو"), ("ar", 2, "2 عضو"), ("ar", 5, "5 أعضاء"),
+        ("ar", 11, "11 عضوًا"), ("ar", 21, "21 عضوًا"), ("ar", 100, "100 عضو"), ("ar", 103, "103 أعضاء"),
         ("az", 1, "1 üzv"), ("az", 2, "2 üzv"), ("az", 5, "5 üzv"), ("az", 21, "21 üzv"),
         ("be", 1, "1 удзельнік"), ("be", 2, "2 удзельнікі"), ("be", 5, "5 удзельнікаў"), ("be", 21, "21 удзельнік"),
         ("bg", 1, "1 участник"), ("bg", 2, "2 участници"), ("bg", 5, "5 участници"), ("bg", 21, "21 участници"),
@@ -30,6 +32,7 @@ public sealed class PluralLocalizerExtTest
         ("fr", 1, "1 membre"), ("fr", 2, "2 membres"), ("fr", 5, "5 membres"), ("fr", 21, "21 membres"),
         ("gl", 1, "1 membro"), ("gl", 2, "2 membros"), ("gl", 5, "5 membros"), ("gl", 21, "21 membros"),
         ("gu", 1, "1 સભ્ય"), ("gu", 2, "2 સભ્યો"), ("gu", 5, "5 સભ્યો"), ("gu", 21, "21 સભ્યો"),
+        ("he", 1, "1 חבר"), ("he", 2, "2 חברים"), ("he", 5, "5 חברים"), ("he", 21, "21 חברים"),
         ("hi", 1, "1 सदस्य"), ("hi", 2, "2 सदस्य"), ("hi", 5, "5 सदस्य"), ("hi", 21, "21 सदस्य"),
         ("hr", 1, "1 član"), ("hr", 2, "2 člana"), ("hr", 5, "5 članova"), ("hr", 21, "21 član"),
         ("hu", 1, "1 tag"), ("hu", 2, "2 tag"), ("hu", 5, "5 tag"), ("hu", 21, "21 tag"),

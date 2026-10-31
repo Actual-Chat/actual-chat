@@ -55,7 +55,7 @@
 
         @if (isExpanded && m.HasVideo) {
             <div class="c-center">
-                <div class="c-chat-title"><bdi>@Chat.Title</bdi></div>
+                <div class="c-chat-title isolated-text" dir="auto">@Chat.Title</div>
                 <div class="c-member-count">
                     @* The video alone would pass for a call in progress *@
                     @if (m.Phase == CallPhase.Dialing) {

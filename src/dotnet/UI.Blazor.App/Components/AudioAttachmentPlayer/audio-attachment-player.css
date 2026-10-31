@@ -109,6 +109,8 @@ body.hoverable .audio-attachment-subheader > .c-row-main > .btn-play:hover {
 /* Shared interactive progress bar — custom slider, see AudioAttachmentPlayer notes */
 .audio-progress {
     @apply relative;
+    /* Playback runs left to right on a right-to-left page too, as the range input under it must */
+    direction: ltr;
     container-type: inline-size;
 }
 .audio-progress > .c-progress-track,

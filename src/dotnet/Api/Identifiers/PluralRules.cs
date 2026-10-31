@@ -9,7 +9,9 @@ public static class PluralRules
     public static int GetPluralFormCount(this Language language)
         => language == Languages.Max ? 1
             : language.IsoCode switch {
+                "ar" => 6,
                 "sl" => 4,
+                "he" => 3,
                 "ru" or "uk" or "be" or "sr" or "hr" or "bs" or "cnr" => 3,
                 "pl" or "cs" or "sk" or "lt" or "lv" or "ro" => 3,
                 _ => 2,
@@ -57,6 +59,19 @@ public static class PluralRules
         // Macedonian is "one" for anything ending in 1 but 11
         case "mk":
             return mod10 == 1 && mod100 != 11 ? 0 : 1;
+
+        // Arabic has all six CLDR forms; "zero" is listed last, after "other" (100, 101, 102...)
+        case "ar":
+            return n switch {
+                0 => 5,
+                1 => 0,
+                2 => 1,
+                _ => mod100 switch { >= 3 and <= 10 => 2, >= 11 => 3, _ => 4 },
+            };
+
+        // Hebrew has a dual: 1 חבר, 2 חברים with שני, the rest
+        case "he":
+            return n switch { 1 => 0, 2 => 1, _ => 2 };
         default:
             // These put zero in the singular form; the rest don't
             var isOne = language.IsoCode is "fr" or "hi" or "pt" or "bn" or "gu" or "kn" or "pa" ? n <= 1 : n == 1;

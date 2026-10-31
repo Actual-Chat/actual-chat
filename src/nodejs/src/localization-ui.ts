@@ -1,4 +1,5 @@
 import { getLogs } from 'logging';
+import { TextDirection } from 'text-direction';
 
 const { debugLog } = getLogs('LocalizationUI');
 
@@ -25,6 +26,9 @@ export class LocalizationUI {
         this.urlOverride = new URLSearchParams(location.search).get(urlParameter);
         this.selected = load();
         this.languageInfo = createInfo();
+        // A guess until .NET resolves the language, as the splash and skeletons paint before it does. Only an
+        // explicit choice counts: device detection never picks a preview language, and every right-to-left one is.
+        TextDirection.setForLanguage(this.urlOverride ?? this.selected);
     }
 
     public static set(selected: string | null): void {
@@ -40,6 +44,7 @@ export class LocalizationUI {
     // Called with the effective language - i.e. the detected one when nothing is selected.
     public static setDocumentLanguage(language: string, mustPersist = false, selected: string | null = null): void {
         document.documentElement.lang = language;
+        TextDirection.setForLanguage(language);
         if (mustPersist)
             this.set(selected);
     }

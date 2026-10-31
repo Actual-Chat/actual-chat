@@ -20,6 +20,7 @@ import { Vector2D } from 'math';
 import { ScreenSize } from '../../Services/ScreenSize/screen-size';
 import { ScreenOrientation } from 'orientation';
 import { getLogs } from 'logging';
+import { TextDirection } from 'text-direction';
 import { unselect } from 'keyboard';
 import { Tune, TuneUI } from '../../Services/TuneUI/tune-ui';
 
@@ -382,7 +383,7 @@ export class MenuHost implements Disposable {
             menuElement,
             {
                 // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-                placement: menu.placement ?? 'top',
+                placement: TextDirection.mirrorSide(menu.placement ?? 'top'),
                 middleware: middleware,
             });
 

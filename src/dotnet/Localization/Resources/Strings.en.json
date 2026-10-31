@@ -1536,6 +1536,7 @@
   // in this language does; the bracketed part names the regional variant.
   "Language_Afrikaans": "Afrikaans",
   "Language_Albanian": "Albanian",
+  "Language_Arabic": "Arabic",
   "Language_Azerbaijani": "Azerbaijani",
   "Language_Basque": "Basque",
   "Language_Belarusian": "Belarusian",
@@ -1561,6 +1562,7 @@
   "Language_German": "German",
   "Language_Greek": "Greek",
   "Language_Gujarati": "Gujarati",
+  "Language_Hebrew": "Hebrew",
   "Language_Hindi": "Hindi",
   "Language_Hungarian": "Hungarian",
   "Language_Indonesian": "Indonesian",

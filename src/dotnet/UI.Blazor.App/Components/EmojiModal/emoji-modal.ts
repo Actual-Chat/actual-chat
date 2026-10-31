@@ -1,3 +1,5 @@
+import { TextDirection } from 'text-direction';
+
 export class EmojiModal {
     private observer: IntersectionObserver | null = null;
     private recentScroll: RecentScroll | null = null;
@@ -110,8 +112,11 @@ class RecentScroll {
 
     private updateArrows() {
         const { scrollLeft, scrollWidth, clientWidth } = this.list;
-        this.btnLeft.classList.toggle('hidden', scrollLeft <= 0);
-        this.btnRight.classList.toggle('hidden', scrollLeft + clientWidth >= scrollWidth - 1);
+        const maxScroll = scrollWidth - clientWidth;
+        // A right-to-left list starts scrolled to its right edge, at 0, and scrolls left into negatives
+        const fromLeft = TextDirection.current === 'rtl' ? scrollLeft + maxScroll : scrollLeft;
+        this.btnLeft.classList.toggle('hidden', fromLeft <= 0);
+        this.btnRight.classList.toggle('hidden', fromLeft >= maxScroll - 1);
     }
 
     public dispose() {

@@ -171,6 +171,8 @@
 
 .pic-crop-slider {
     @apply relative;
+    /* Left to right on a right-to-left page too: the fill and thumb are placed from the left */
+    direction: ltr;
     @apply w-full h-5;
     container-type: inline-size;
 }

@@ -12,7 +12,7 @@
     <AvatarCircle Avatar="@Participant.Author.Avatar" Size="@SquareSize.Size10"/>
     <div class="c-info">
         <div class="c-name">
-            <span>@Participant.Author.Avatar.Name</span>
+            <bdi>@Participant.Author.Avatar.Name</bdi>
             @if (Participant.IsOwn) {
                 <span class="c-you">@L.Location_You</span>
             }

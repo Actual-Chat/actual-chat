@@ -3,6 +3,7 @@ import { Subject, debounceTime, startWith, takeUntil } from 'rxjs';
 import { ScreenOrientation } from 'orientation';
 import { SafeAreas } from 'safe-area';
 import { getLogs } from 'logging';
+import { TextDirection } from 'text-direction';
 
 const bubbleViewportGap = 5;
 
@@ -103,7 +104,7 @@ export class BubbleHost {
             triggerElement,
             bubbleElement,
             {
-                placement: position,
+                placement: TextDirection.mirrorSide(position),
                 middleware: [
                     offset(6),
                     flip({ fallbackAxisSideDirection: 'end' }),

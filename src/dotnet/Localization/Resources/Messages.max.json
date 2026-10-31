@@ -29,10 +29,10 @@
   "Error_ChatEntryNotFound": "Το μήνυμα της συνομιλίας δεν βρέθηκε.",
   "Error_AccountNotFound": "Ο λογαριασμός δεν βρέθηκε.",
   "Error_AuthorNotFound": "Không tìm thấy người tham gia.",
-  "Error_AvatarNotFound": "プロフィールが見つかりません。",
-  "Error_ContactNotFound": "連絡先が見つかりません。",
+  "Error_AvatarNotFound": "لم يتم العثور على الصورة الرمزية.",
+  "Error_ContactNotFound": "لم يتم العثور على جهة الاتصال.",
   "Error_MediaNotFound": "No s'ha trobat el contingut multimèdia.",
-  "Error_UploadNotFound": "アップロードが見つかりません。",
+  "Error_UploadNotFound": "لم يتم العثور على الملف المرفوع.",
 
   // Connection errors, composed by ActualLab.Rpc on the client while offline or on a flaky link.
   // {timeout} arrives preformatted by the client ("20s", "1m 30s") - it is not a number to inflect.
@@ -68,9 +68,9 @@
   "Error_AuthorAlreadyLeft": "Ο επιλεγμένος συντάκτης έχει ήδη αποχωρήσει από τη συνομιλία.",
   "Error_AutomaticRoleMembership": "Αυτός ο ρόλος συστήματος χρησιμοποιεί αυτόματους κανόνες συμμετοχής.",
   "Error_ManageMembershipInPlace": "Dapat pamahalaan ang pagiging miyembro sa mga pampublikong chat ng Lugar sa pamamagitan ng mga setting ng Lugar.",
-  "Error_AnonymousAvatarRequired": "Για ανώνυμη συμμετοχή πρέπει να χρησιμοποιηθεί ανώνυμο άβατάρ.",
+  "Error_AnonymousAvatarRequired": "يجب استخدام صورة رمزية مجهولة الهوية للانضمام دون الكشف عن الهوية.",
   "Error_GuestJoinNotAllowed": "Η συνομιλία δεν επιτρέπει συμμετοχή με λογαριασμό επισκέπτη.",
-  "Error_AnonymousJoinNotAllowed": "Sembang ini tidak membenarkan penyertaan tanpa nama.",
+  "Error_AnonymousJoinNotAllowed": "لا تسمح الدردشة بالانضمام دون الكشف عن الهوية.",
   "Error_OwnersRoleCannotBeEmpty": "Πρέπει να υπάρχει τουλάχιστον ένας χρήστης στον ρόλο Ιδιοκτήτες.",
   "Error_OnlyOwnersAllowed": "Μόνο τα μέλη του ρόλου Ιδιοκτήτες αυτής της συνομιλίας μπορούν να εκτελέσουν αυτή την ενέργεια.",
 

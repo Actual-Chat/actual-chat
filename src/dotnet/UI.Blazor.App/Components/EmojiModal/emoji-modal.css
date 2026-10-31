@@ -135,10 +135,12 @@ body.hoverable .gif-picker-recent:hover > .c-gif-recent-wrap > .c-gif-recent-arr
     @apply opacity-100;
 }
 .gif-picker-recent > .c-gif-recent-wrap > .c-gif-recent-arrow.left {
-    @apply start-0.5;
+    /* physical: the arrow scrolls the strip left (emoji-modal.ts) */
+    @apply left-0.5;
 }
 .gif-picker-recent > .c-gif-recent-wrap > .c-gif-recent-arrow.right {
-    @apply end-0.5;
+    /* physical: see .left */
+    @apply right-0.5;
 }
 body.hoverable .gif-picker-recent > .c-gif-recent-wrap > .c-gif-recent-arrow:hover {
     @apply bg-pal-black-80;

@@ -22,12 +22,12 @@
             <ChatIcon Chat="@chat" ShowPresence="false"/>
             <div class="c-description">
                 <span class="c-chat-title">
-                    <span>@(chat?.Title ?? newest.Title)</span>
+                    <span class="isolated-text" dir="auto">@(chat?.Title ?? newest.Title)</span>
                     <span class="c-incut"></span>
                     <LiveTimeDeltaText Class="c-timestamp" Moment="@newest.SentAt"/>
                 </span>
-                <div class="c-last-message" dir="auto">
-                    <span class="c-text">@newest.Text</span>
+                <div class="c-last-message">
+                    <span class="c-text isolated-text" dir="auto">@newest.Text</span>
                     <div class="c-incut"></div>
                     @if (Group.OlderCount > 0) {
                         <Badge

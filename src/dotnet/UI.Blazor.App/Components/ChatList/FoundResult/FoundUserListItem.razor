@@ -28,7 +28,7 @@
                 </div>
                 @if (m.Entry != null) {
                     <div class="c-second-line" data-child="second-line">
-                        <div class="c-last-message" dir="auto">
+                        <div class="c-last-message">
                             <AuthorName
                                 AuthorId="@m.Entry.AuthorId"
                                 ShowDetailsOnClick="false"
@@ -37,14 +37,14 @@
                             @if (m.Entry.IsContentStreaming) {
                                 <chat-activity-svg size="4" isActive="true"/>
                             } else {
-                                <span class="c-text">
+                                <span class="c-text isolated-text" dir="@(m.Entry.IsSystemEntry ? null : "auto")">
                                     @m.LastTextEntryText
                                 </span>
                             }
                         </div>
                     </div>
                 } else {
-                    <div class="c-second-line bio" data-child="second-line">
+                    <div class="c-second-line bio" data-child="second-line" dir="auto">
                         @m.Author?.Avatar.Bio
                     </div>
                 }

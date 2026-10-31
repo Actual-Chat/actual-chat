@@ -7,7 +7,7 @@
         @foreach (var place in m.Places) {
             var cls = place.Id == m.SelectedPlaceId ? " active" : "";
             <div class="navbar-item @cls" onclick="@(() => OnClick.InvokeAsync(place.Id))">
-                @place.Title
+                <bdi>@place.Title</bdi>
             </div>
         }
     }

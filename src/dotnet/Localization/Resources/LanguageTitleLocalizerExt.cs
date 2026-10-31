@@ -11,6 +11,7 @@ public static class LanguageTitleLocalizerExt
     private static readonly Dictionary<Language, Func<IStringLocalizer, string>> TitleGetters = new() {
         [Languages.Afrikaans] = l => l.Language_Afrikaans,
         [Languages.Albanian] = l => l.Language_Albanian,
+        [Languages.Arabic] = l => l.Language_Arabic,
         [Languages.Azerbaijani] = l => l.Language_Azerbaijani,
         [Languages.Basque] = l => l.Language_Basque,
         [Languages.Belarusian] = l => l.Language_Belarusian,
@@ -36,6 +37,7 @@ public static class LanguageTitleLocalizerExt
         [Languages.German] = l => l.Language_German,
         [Languages.Greek] = l => l.Language_Greek,
         [Languages.Gujarati] = l => l.Language_Gujarati,
+        [Languages.Hebrew] = l => l.Language_Hebrew,
         [Languages.Hindi] = l => l.Language_Hindi,
         [Languages.Hungarian] = l => l.Language_Hungarian,
         [Languages.Indonesian] = l => l.Language_Indonesian,

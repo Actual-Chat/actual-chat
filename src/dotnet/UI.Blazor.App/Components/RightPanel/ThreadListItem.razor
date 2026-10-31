@@ -16,7 +16,7 @@
         <div class="c-top">
             <span class="c-chat-title">
                 <span class="c-hash">#</span>
-                @chat.Title
+                <bdi>@chat.Title</bdi>
             </span>
             @if (lastTextEntry != null) {
                 @Hub.MarkupHelpers.LastEntryTime(lastTextEntry.BeginsAt)
@@ -24,7 +24,7 @@
         </div>
         <div class="c-bottom">
             @if (lastTextEntry != null) {
-                <div class="c-last-message" dir="auto">
+                <div class="c-last-message">
                     @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                         <span class="c-name" data-children="shrinkable non-shrinkable">
                             <AuthorName
@@ -38,7 +38,7 @@
                     @if (lastTextEntry.IsContentStreaming) {
                         <chat-activity-svg size="4" isActive="true"/>
                     } else {
-                        <span class="c-text">
+                        <span class="c-text isolated-text" dir="@(lastTextEntry.IsSystemEntry ? null : "auto")">
                             @m.LastTextEntryText
                         </span>
                     }

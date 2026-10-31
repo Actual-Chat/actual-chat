@@ -10,7 +10,7 @@
         var isSelected = Value.Contains(chat.Id);
         <div class="c-item" @key="@chat.Id" @onclick="@(() => OnToggle(chat.Id))">
             <ChatIcon Chat="@chat" Size="SquareSize.Size8"/>
-            <span class="c-title">@chat.Title</span>
+            <bdi class="c-title">@chat.Title</bdi>
             <Checkbox IsChecked="@isSelected" Change="@(() => OnToggle(chat.Id))"/>
         </div>
     }

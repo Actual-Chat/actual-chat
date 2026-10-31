@@ -11,11 +11,11 @@ public enum ContentSwapEffect
     Defocus, // ... and is blurred while it does, so it stops competing for the eye as readable text
     Reveal, // ... while the incoming content shows through it blurred and sharpens as it goes
     Recede, // ... shrinking and blurring as it goes, while the incoming content advances into place
-    WipeRight, // A soft dissolve front sweeps across the outgoing content, left to right
+    WipeRight, // A soft dissolve front sweeps across the outgoing content, left to right (mirrored when RTL)
     WipeLeft, // ... right to left
     WipeDown, // ... top to bottom
     WipeUp, // ... bottom to top
-    SwipeRight, // Both layers slide right as one, the incoming content pushing the outgoing one out
+    SwipeRight, // Both layers slide right (mirrored when RTL), the incoming content pushing the outgoing one out
     SwipeLeft, // ... left
     SwipeDown, // ... down
     SwipeUp, // ... up

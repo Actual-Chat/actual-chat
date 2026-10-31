@@ -5,11 +5,14 @@ namespace ActualChat;
 /// </summary>
 public static class Languages
 {
-    // Arabic, Hebrew and Persian are left out until the app supports RTL layout.
+    // Arabic and Hebrew are the right-to-left languages with a catalog; the page mirrors for them
+    // (text-direction.ts). Persian and Urdu have none yet. Releasing Arabic or Hebrew makes device detection
+    // pick it, so LocalizationUI.init must then guess the direction from the device language too.
     // A new language starts as LanguageSupport.Preview; releasing it means LanguageSupport.All and a place
     // in AllUI.
     public static readonly Language Afrikaans = new("af-ZA", "AF", "Afrikaans", "Afrikaans", LanguageSupport.Preview);
     public static readonly Language Albanian = new("sq-AL", "SQ", "Albanian", "Shqip", LanguageSupport.Preview);
+    public static readonly Language Arabic = new("ar-SA", "AR", "Arabic", "العربية", LanguageSupport.Preview);
     public static readonly Language Azerbaijani =
         new("az-AZ", "AZ", "Azerbaijani", "Azərbaycanca", LanguageSupport.Preview);
     public static readonly Language Basque = new("eu-ES", "EU", "Basque", "Euskara", LanguageSupport.Preview);
@@ -39,6 +42,7 @@ public static class Languages
     public static readonly Language German = new("de-DE", "DE", "German", "Deutsch", LanguageSupport.All);
     public static readonly Language Greek = new("el-GR", "EL", "Greek", "Ελληνικά", LanguageSupport.Preview);
     public static readonly Language Gujarati = new("gu-IN", "GU", "Gujarati", "ગુજરાતી", LanguageSupport.Preview);
+    public static readonly Language Hebrew = new("he-IL", "HE", "Hebrew", "עברית", LanguageSupport.Preview);
     public static readonly Language Hindi = new("hi-IN", "HI", "Hindi", "हिन्दी", LanguageSupport.All);
     public static readonly Language Hungarian = new("hu-HU", "HU", "Hungarian", "Magyar", LanguageSupport.Preview);
     public static readonly Language Indonesian =
@@ -94,6 +98,7 @@ public static class Languages
     public static readonly Language[] All = [
         Afrikaans,
         Albanian,
+        Arabic,
         Azerbaijani,
         Basque,
         Belarusian,
@@ -119,6 +124,7 @@ public static class Languages
         German,
         Greek,
         Gujarati,
+        Hebrew,
         Hindi,
         Hungarian,
         Indonesian,
