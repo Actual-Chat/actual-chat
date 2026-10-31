@@ -8,7 +8,7 @@
 | Runtime / ASP.NET Core packages | `11.0.0-rc.2.26504.105` |
 | MAUI | `11.0.0-rc.2.26505.5` |
 | Android workload | `37.2.0-rc.2.84` |
-| iOS / Mac Catalyst / macOS workloads | `27.0.12212-net11-rc.2` |
+| iOS / macOS workloads | `27.0.12212-net11-rc.2` |
 
 `.github/workloads-net11-rc2.json` contains the manifest versions from
 Microsoft's published workload set `11.0.100-rc.2.26509.2`. CI uses this
@@ -24,15 +24,15 @@ MAUI RC2 still depends on the RC1 Blazor WebView package. The application's
 explicit `Microsoft.AspNetCore.Components.WebView` reference is retained
 so its JavaScript assets match the centrally pinned RC2 Blazor packages.
 
-## iOS and Mac Catalyst
+## iOS
 
 Build hosts need **Xcode 27.0 and macOS 26.6 or later**. CI selects Xcode 27.0;
 Apple build jobs use GitHub's `xcode-27` preview runner because `macos-26`
 does not include Xcode 27. This runner meets the host OS requirement, but
 its preview status can mean queueing delays or image instability. Do not bypass SDK/Xcode version validation to use Xcode 26.6.
 
-Xcode 27 requires the UIScene lifecycle. Both application manifests now
-register `SceneDelegate` using MAUI's default scene configuration, with
+Xcode 27 requires the UIScene lifecycle. The iOS application manifest now
+registers `SceneDelegate` using MAUI's default scene configuration, with
 multiple scenes disabled. iOS window styling, activation/background state,
 and user-activity routing run through the scene delegate. Background handling
 retains the background-task assertion while suspend handlers release file
@@ -44,7 +44,6 @@ switch from `UseInterpreter=false` under CoreCLR, so leaving the old property
 would silently re-enable dynamic library paths. The runtime issue #130840 is
 closed, but the fix still needs validation on our device/component paths before
 removing this precaution. This switch does not disable CoreCLR's interpreter.
-Mac Catalyst retains the SDK's dynamic-code default.
 
 Firebase initialization, registration tokens, and silent remote notifications
 remain application-level callbacks. The iOS share extension and Swift widget /
@@ -58,7 +57,7 @@ routing and splash styling, not a reusable Core/Core.Server service.
 Local installation on a compatible Mac:
 
 ```sh
-dotnet workload install maui ios maccatalyst --from-rollback-file .github/workloads-net11-rc2.json
+dotnet workload install maui ios --from-rollback-file .github/workloads-net11-rc2.json
 dotnet workload --info
 xcodebuild -version
 sw_vers -productVersion
@@ -85,8 +84,7 @@ percentage remains too low, review and narrow individual library keep rules
 against their consumer rules and device tests rather than enabling unrestricted
 class/member renaming.
 
-Android's application minimum remains API 28; iOS remains 16.4 and
-Mac Catalyst remains 17.0. Build-tool upgrades do not raise these app minimums.
+Android's application minimum remains API 28; iOS remains 16.4. Build-tool upgrades do not raise these app minimums.
 
 CI explicitly selects Microsoft JDK 21 and runs `InstallAndroidDependencies`
 with the runner's Android SDK and Java paths before packaging. For a local
@@ -97,7 +95,7 @@ Android build, install the pinned workload and run that target with your
 
 On compatible build hosts, build both Debug and Release packages and test:
 
-- iOS / Mac Catalyst cold launch and foreground/background transitions.
+- iOS cold launch and foreground/background transitions.
 - iOS suspension with open local stores, then resume without file-lock crashes.
 - Cold and warm universal links, auth URL callbacks, and call intents.
 - Firebase token registration, foreground alerts, and silent dismissal pushes.

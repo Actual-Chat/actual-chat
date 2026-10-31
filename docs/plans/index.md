@@ -256,19 +256,6 @@ account.
   AdServices token and resolves it in the app, so an Apple Ads install signs up
   as `campaign:asa-<campaignId>` instead of `store` (#4915).
 
-### Platform: macOS / Mac Catalyst
-
-- [Full macOS support](./macos-support.md) — umbrella doc for gaps where Mac
-  Catalyst silently inherits an iOS implementation that doesn't fit macOS.
-  First entry: downloaded files go to Photos or a share sheet instead of
-  `~/Downloads`.
-- [Voice processing](./maccatalyst-voice-processing.md) — restore hardware
-  AEC / NS / AGC on Mac Catalyst; currently disabled (the `AVAudioEngine` VP
-  downlink has no reference graph), so Mac records without echo cancellation.
-- [Notification permission](./macos-notification-permission.md) — wire the
-  Settings > Permissions notifications toggle on Mac Catalyst; today
-  `MacNotificationsPermission` is an unwired stub.
-
 ### Build, testing, CI
 
 - [TypeScript `moduleResolution: bundler`](./ts-module-resolution-bundler.md) —

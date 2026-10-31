@@ -4,7 +4,7 @@ namespace ActualChat.App.Maui.Services;
 
 /// <summary>
 /// <see cref="IDeviceTokenRetriever"/> for the platforms without a push channel:
-/// Mac Catalyst, AppKit, Windows and Linux.
+/// AppKit, Windows and Linux.
 /// </summary>
 public sealed class NoDeviceTokenRetriever : IDeviceTokenRetriever
 {

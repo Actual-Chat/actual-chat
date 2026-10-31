@@ -20,7 +20,7 @@ public partial class AppStoreProbes(IServiceProvider services)
     private const int MaxResponseSize = 8 * 1024 * 1024;
 
     // {0} is the store id. One storefront is asked for everyone: all three stores publish to
-    // every storefront at once. MacOS shares the iOS entries - Mac Catalyst is a universal
+    // every storefront at once. MacOS shares the iOS entries - the Mac app is a universal
     // purchase on the same App ID. They're internal to be accessible from tests.
     internal const string AppleUriFormat = "https://itunes.apple.com/lookup?bundleId={0}&country=us";
     internal const string GoogleUriFormat =

@@ -2,13 +2,13 @@ using System.Buffers;
 using ActualChat.Audio;
 using ActualChat.UI.Blazor.App.Components;
 
-#if WINDOWS || ANDROID || IOS || MACCATALYST || MACOS
+#if WINDOWS || ANDROID || IOS || MACOS
 using OpusSharp.Core.Extensions;
 #endif
 
 namespace ActualChat.App.Maui.Services.Recording;
 
-#pragma warning disable CS9113 // 'log' is read only under WINDOWS || ANDROID || IOS || MACCATALYST || MACOS
+#pragma warning disable CS9113 // 'log' is read only under WINDOWS || ANDROID || IOS || MACOS
 public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
 {
     private static readonly UnboundedChannelOptions SyncPipeChannelOptions = new() {
@@ -27,7 +27,7 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
         _ = Task.Run(async () => {
                 const int maxOpusPacketSize = 4096;
 
-#if WINDOWS || ANDROID || IOS || MACCATALYST || MACOS
+#if WINDOWS || ANDROID || IOS || MACOS
                 OpusSharp.Core.OpusEncoder? encoder = null;
                 Exception? error = null;
                 try {
@@ -156,7 +156,7 @@ public sealed class OpusAudioCodec(ILogger<OpusAudioCodec> log) : IAudioCodec
     {
         var channel = SyncPipeChannelOptions.NewChannel<IMemoryOwner<float>>();
         _ = Task.Run(async () => {
-#if WINDOWS || ANDROID || IOS || MACCATALYST || MACOS
+#if WINDOWS || ANDROID || IOS || MACOS
                 OpusSharp.Core.OpusDecoder? decoder = null;
                 Exception? error = null;
                 try {

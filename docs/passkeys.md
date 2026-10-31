@@ -84,7 +84,7 @@ is the worked example; the dev and prod clusters take the value from
 |---|---|---|
 | Android | `.well-known/assetlinks.json` | `delegate_permission/common.get_login_creds` per package + cert fingerprint |
 | Apple | `.well-known/apple-app-site-association.json` | `webcredentials.apps` lists `M287G8G83F.chat.actual.app` and `.dev.app` |
-| Apple app | `Platforms/{iOS,MacCatalyst,MacOS}/Entitlements.{dev,prod}.plist` | `webcredentials:voxt.ai` (prod) / `webcredentials:dev.voxt.ai` + `webcredentials:local.voxt.ai?mode=developer` (dev) |
+| Apple app | `Platforms/{iOS,MacOS}/Entitlements.{dev,prod}.plist` | `webcredentials:voxt.ai` (prod) / `webcredentials:dev.voxt.ai` + `webcredentials:local.voxt.ai?mode=developer` (dev) |
 
 The RP id the server hands out must be one of the `webcredentials:` domains, or
 Apple refuses the ceremony; `ApplePasskeyClient.IsAvailable` returns `false`
@@ -123,7 +123,7 @@ one shape for every platform. Implementations:
 |---|---|---|
 | `WebPasskeyClient` | web, Blazor Server/WASM | `passkeys.ts` → `navigator.credentials` |
 | `AndroidPasskeyClient` | MAUI Android | Credential Manager |
-| `ApplePasskeyClient` | MAUI iOS, Mac Catalyst, macOS | `ASAuthorizationController` |
+| `ApplePasskeyClient` | MAUI iOS, macOS | `ASAuthorizationController` |
 | `UnavailablePasskeyClient` | MAUI Windows | nothing — `IsAvailable` is `false` |
 
 Windows gets the stub because the WebView2 page origin is `https://0.0.0.1`

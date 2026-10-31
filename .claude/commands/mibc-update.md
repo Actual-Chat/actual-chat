@@ -6,7 +6,7 @@ description: Refresh the .mibc profiles in App.Maui/_Profiling - aothelper.mibc 
 # /mibc-update — refresh the profiles
 
 Maintains six files in `src/dotnet/App.Maui/_Profiling/`: `aothelper.mibc` (static, from
-`App.AotHelper`; used by iOS / Mac Catalyst Release), the recorded `android.mibc`,
+`App.AotHelper`; used by iOS Release), the recorded `android.mibc`,
 `android-notif.mibc`, `windows.mibc` and `ios.mibc`, and `merged.mibc` — their union, and the
 only one Android and Windows builds compile against (iOS Release takes `ios.mibc`,
 `merged.mibc` and `aothelper.mibc`).

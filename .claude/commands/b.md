@@ -99,7 +99,7 @@ iOS. `--prod` on macOS, `--no-web` and `-- <args>` work.
 
 Device-side detail for `app run` — prerequisites, where the logs go, whether the
 command blocks, troubleshooting — lives in the per-platform skills: `/android-run`,
-`/ios-run` (device or simulator) and `/mac-run` (AppKit or Mac Catalyst). They show
+`/ios-run` (device or simulator) and `/mac-run`. They show
 at most a flag or two; the full option list lives here only.
 
 ### `server` options
@@ -118,8 +118,8 @@ Any first word that isn't a registered command is treated as a target:
 build  clean  clean-dist  clean-tests  default  e2e-tests  generate-version
 integration-tests  integration-tests-chat  integration-tests-core
 integration-tests-mlsearch  integration-tests-users  maui  nightly-tests
-npm-build  npm-install  pack-android  pack-ios  pack-mac  pack-maccatalyst
-pack-win  restore  restore-tools  slnf  slow-tests  tests  unit-tests  watch
+npm-build  npm-install  pack-android  pack-ios  pack-mac  pack-win
+restore  restore-tools  slnf  slow-tests  tests  unit-tests  watch
 ```
 
 These take `--configuration`, `--is-dev-maui`, `--use-native-aot`, `--dumps`,

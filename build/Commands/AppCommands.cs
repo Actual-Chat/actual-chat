@@ -56,10 +56,6 @@ public sealed class AppSettings : PlanSettings
     [Description("iOS only: target a simulator instead of a connected device")]
     public bool UseSimulator { get; init; }
 
-    [CommandOption("--catalyst")]
-    [Description("macOS only: the Mac Catalyst app (net11.0-maccatalyst) instead of the default AppKit one (net11.0-macos)")]
-    public bool UseCatalyst { get; init; }
-
     [CommandOption("--publish")]
     [Description("Force dotnet publish (the default for Release)")]
     public bool MustPublish { get; init; }
@@ -129,8 +125,6 @@ public sealed class AppSettings : PlanSettings
             return ValidationResult.Error("The Linux app runs from its publish output only.");
         if (UseSimulator && Platform != AppPlatform.Ios)
             return ValidationResult.Error("--simulator is only supported for the ios platform.");
-        if (UseCatalyst && Platform != AppPlatform.Mac)
-            return ValidationResult.Error("--catalyst is only supported for the macos platform.");
         if (MustUseCiBuild && Platform != AppPlatform.Android)
             return ValidationResult.Error("--ci is only supported for the android platform.");
         if (MustUseCiBuild && (UseNativeAot || MustPublish || MustNotPublish

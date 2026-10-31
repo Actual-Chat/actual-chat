@@ -13,7 +13,7 @@ All in `src/dotnet/App.Maui/App.Maui.csproj`.
 
 | Setting | Value | Effect |
 |---|---|---|
-| `UsePartialR2R` | `true`, forced `false` on `-ios` / `-maccatalyst` | crossgen2 compiles only what the profile lists |
+| `UsePartialR2R` | `true`, forced `false` on `-ios` / `-macos` | crossgen2 compiles only what the profile lists |
 | `PublishReadyToRunPgoFiles` | `_Profiling/merged.mibc` | the profile, on both Android and Windows |
 | `System.Runtime.TieredCompilation.CallCountingDelayMs` | `15000` | no tier-1 promotion during startup |
 | `--mapcsv` | always, Release | `ActualChat.r2r.map.csv` next to the composite |

@@ -4,7 +4,7 @@ using ActualChat.App.Maui.Activities;
 #if !LINUX
 using ActualChat.App.Maui.Audio;
 #endif
-#if ANDROID || IOS || MACCATALYST
+#if ANDROID || IOS
 using ActualChat.App.Maui.Location;
 #endif
 using ActualChat.App.Maui.Services;
@@ -60,7 +60,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<KeepWebViewAliveUI>(c => new (c.UIHub()));
         services.AddScoped<IMauiShare>(c => new MauiShare(c));
         services.AddScoped<AppServerInstanceSelector>(c => new MauiAppServerInstanceSelector(c.UIHub()));
-#if MACOS || MACCATALYST
+#if MACOS
         services.AddScoped<SystemSettingsUI>(_ => new MacSystemSettingsUI());
 #else
         services.AddScoped<SystemSettingsUI>(_ => new MauiSystemSettingsUI());
@@ -68,7 +68,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<ExternalUrlOpener>(c => new MauiExternalUrlOpener(c.UIHub()));
 #if ANDROID
         services.AddScoped<ExternalMapOpener>(c => new AndroidMapOpener(c.AppUIHub()));
-#elif IOS || MACCATALYST
+#elif IOS
         services.AddScoped<ExternalMapOpener>(c => new AppleMapOpener(c.AppUIHub()));
 #else
         services.AddScoped<ExternalMapOpener>(c => new MauiMapOpener(c.AppUIHub()));
@@ -162,7 +162,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         services.AddScoped<AudioFocusUI>(_ => new AudioFocusUI());
         services.AddScoped<TuneUI>(c => new WebTuneUI(c.UIHub()));
         services.AddScoped<ILocationTracker>(c => new WebLocationTracker(c.AppUIHub()));
-#elif IOS || MACCATALYST
+#elif IOS
         services.AddScoped<AudioFocusUI>(c => new AppleAudioFocusUI(c.AppUIHub()));
         services.AddScoped<TuneUI>(c => new AppleTuneUI(c.UIHub()));
         services.AddScoped<VoiceActivityDetector>(c => new CoreMLVoiceActivityDetector(c));
@@ -204,7 +204,7 @@ public sealed class MauiAppModule(IServiceProvider moduleServices)
         // File attachments
 #if ANDROID
         services.AddScoped<IAttachmentFilePicker>(c => new AndroidAttachmentFilePicker(c));
-#elif IOS || MACCATALYST || MACOS
+#elif IOS || MACOS
         services.AddScoped<IAttachmentFilePicker>(c => new AppleAttachmentFilePicker(c));
         services.AddSingleton<ApplePhotoGalleryFiles>();
 #elif !LINUX

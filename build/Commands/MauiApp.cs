@@ -207,8 +207,6 @@ internal static class MauiApp
             args.Add(mustInstall && settings.Platform == AppPlatform.Ios ? "--no-launch" : "--build-only");
         if (settings.UseSimulator)
             args.Add("--simulator");
-        if (settings.UseCatalyst)
-            args.Add("--catalyst");
         if (!settings.IsDev)
             args.Add("--prod");
         if (settings.MustSkipWebBuild)
@@ -246,7 +244,6 @@ internal static class MauiApp
             { Platform: AppPlatform.Android } => $"{TargetFrameworkPrefix}-android",
             { Platform: AppPlatform.Ios } => $"{TargetFrameworkPrefix}-ios",
             { Platform: AppPlatform.Windows } => WindowsTargetFramework,
-            { Platform: AppPlatform.Mac, UseCatalyst: true } => $"{TargetFrameworkPrefix}-maccatalyst",
             { Platform: AppPlatform.Mac } => $"{TargetFrameworkPrefix}-macos",
             { Platform: AppPlatform.Linux } => TargetFrameworkPrefix,
             _ => throw new ArgumentOutOfRangeException(nameof(settings)),

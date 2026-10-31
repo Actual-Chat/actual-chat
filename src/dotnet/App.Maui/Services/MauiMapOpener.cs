@@ -14,7 +14,7 @@ public class MauiMapOpener(UIHub hub) : ExternalMapOpener(hub)
 {
     public override async Task Open(GeoPoint point, string? name = null)
     {
-        // MKMapItem.OpenMaps (iOS/Mac Catalyst) requires the main thread, and MAUI doesn't dispatch on its own.
+        // MKMapItem.OpenMaps (iOS) requires the main thread, and MAUI doesn't dispatch on its own.
         try {
             var location = new MauiLocation(point.Latitude, point.Longitude);
             var options = new MapLaunchOptions { Name = name ?? "" };

@@ -96,7 +96,6 @@ Common flags:
 | `--prod` | build the production app (`IsDevMaui=false`) — talks to voxt.ai instead of dev.voxt.ai |
 | `--aot` | build with Native AOT |
 | `--simulator` | iOS only — target a simulator instead of a connected device |
-| `--catalyst` | macOS only — the Mac Catalyst app instead of the default AppKit one (`net11.0-macos`) |
 | `--no-web` | skip the npm web asset build |
 | `--package` | Windows — build an MSIX package instead of the unpackaged app; implied on the other platforms |
 | `--publish` / `--no-publish` | force `dotnet publish` / `dotnet build` |
@@ -116,7 +115,7 @@ b app run ios --simulator                # iOS simulator
 b app run windows                        # Windows, unpackaged - just runs the .exe
 b app run windows --package              # ... packaged (MSIX): installs, then launches
 b app run windows --release --aot        # Windows, Native AOT
-b app run mac                            # native AppKit app; --catalyst for Mac Catalyst
+b app run mac                            # the AppKit app (net11.0-macos)
 b app build linux                        # the GTK app, self-contained; a cross-build off Linux
 b app pack linux                         # the GTK app as a .tar.gz, as CI builds it
 b app pack android --prod                # the .aab you upload to Play Console
@@ -215,8 +214,7 @@ also why packing is rejected on Windows, where the files have none to keep.
 ### iOS and macOS
 
 These delegate to `scripts/run-ios.sh` (a device, or a simulator with `--simulator`),
-and `scripts/run-mac.sh` (the default AppKit app, or Mac Catalyst with
-`--catalyst`), which handle device detection, certificate install and
+and `scripts/run-mac.sh` (the AppKit app), which handle device detection, certificate install and
 the codesigning workarounds. `b app build` and `b app install ios` stop them after
 the build and after the install. A Mac app runs from `artifacts/` as-is, so
 `b app install mac` is rejected — use `b app run mac` or `b app build mac`.
@@ -271,8 +269,8 @@ integration-tests-chat                   integration-tests-core
 integration-tests-mlsearch               integration-tests-users
 maui                 nightly-tests       npm-build           npm-install
 pack-android         pack-ios            pack-linux          pack-mac
-pack-maccatalyst     pack-win            restore             restore-tools
-slnf                 slow-tests          tests               unit-tests
+pack-win             restore             restore-tools       slnf
+slow-tests           tests               unit-tests
 watch
 ```
 

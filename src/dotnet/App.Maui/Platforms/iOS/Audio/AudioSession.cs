@@ -666,8 +666,8 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
             return input?.PortType ?? "default";
         }
 
-        // Null means leave the route alone - Macs have no receiver to push off, and once a live
-        // CallKit voice call's stale override is cleared, CallKit and the user's toggle own it.
+        // Null means leave the route alone: once a live CallKit voice call's stale override is
+        // cleared, CallKit and the user's toggle own it.
         static AVAudioSessionPortOverride? GetPortOverride(bool hasExternalDevice, bool mustPreferSpeaker) {
             // An external device is the user's own choice of where to listen, so it outranks the
             // speaker default - and clearing the override is also what hands the route back to a
@@ -686,9 +686,7 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
 
             // Forced only when the speaker is wanted: the session reports the speaker even while
             // a post-VPIO source plays on the receiver, so an "only if I see it" test never fires.
-            return OperatingSystem.IsMacCatalyst()
-                ? null
-                : AVAudioSessionPortOverride.Speaker;
+            return AVAudioSessionPortOverride.Speaker;
         }
     }
 
@@ -799,10 +797,9 @@ public sealed class AudioSession(AppUIHub hub) : IAsyncDisposable
 
     private static AudioOutputRoutes GetOutputRoutesUnsafe()
     {
-        // Only PlayAndRecord has a route to pick, and a Mac has no receiver and no override.
+        // Only PlayAndRecord has a route to pick.
         var session = AVAudioSession.SharedInstance();
-        if (OperatingSystem.IsMacCatalyst()
-            || session.GetCategory() != AVAudioSessionCategory.PlayAndRecord)
+        if (session.GetCategory() != AVAudioSessionCategory.PlayAndRecord)
             return AudioOutputRoutes.None;
 
         // iOS lists inputs, never outputs: a two-way device shows up as its mic, and an

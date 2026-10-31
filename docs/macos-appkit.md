@@ -1,9 +1,9 @@
-enumerates `CNContactStore` into the `MauiContacts` mapping | labs implements Contacts |# macOS AppKit backend
+# macOS AppKit backend
+
 The Mac app runs on the experimental AppKit backend from
 [dotnet/maui-labs](https://github.com/dotnet/maui-labs) (`net11.0-macos`), so Voxt is a
-native AppKit process with a WKWebView inside, not a Mac Catalyst app. Mac Catalyst is kept
-intact as a second Mac target; "mac" or "macos" without a qualifier means AppKit everywhere
-in the tooling, Catalyst is always named explicitly.
+native AppKit process with a WKWebView inside, not a Mac Catalyst app; there is no Mac
+Catalyst target. Store packaging and signing are in [macOS distribution](./macos-distribution.md).
 
 [[toc]]
 
@@ -13,7 +13,6 @@ in the tooling, Catalyst is always named explicitly.
 |---|---|
 | Enable the target | `-p:EnableMacOSAppKit=true`, or the `-p:TargetFrameworks="net11.0-macos;net11.0"` override that the scripts use; needs `sudo dotnet workload install macos` |
 | Run the app | `./b.cmd app run mac` ([run-mac.sh](https://github.com/Actual-Chat/actual-chat/blob/main/scripts/run-mac.sh)), or `/mac-run` |
-| Run Mac Catalyst instead | `./b.cmd app run mac --catalyst` |
 | Package for TestFlight | `./b.cmd app pack mac`, `--universal` for an arm64 + x64 bundle; see [Build tool](./build-tool.md) |
 | Logs | `~/Library/Logs/ActualChat.log` |
 
@@ -22,10 +21,8 @@ The App.Maui and Maui projects compile platform code by folder and file suffix:
 | Folder / suffix | Compiled for |
 |---|---|
 | `Platforms/MacOS`, `*.MacOS.cs` | AppKit only |
-| `Platforms/MacCatalyst`, `*.MacCatalyst.cs` | Mac Catalyst only |
-| `MacShared` | Mac Catalyst and AppKit |
-| `MaciOS`, `*.MaciOS.cs` | iOS and Mac Catalyst |
-| `Apple`, `*.Apple.cs` | iOS, Mac Catalyst and AppKit |
+| `Platforms/iOS`, `*.iOS.cs` | iOS only |
+| `Apple`, `*.Apple.cs` | iOS and AppKit |
 
 The labs packages are pinned in
 [Directory.Packages.props](https://github.com/Actual-Chat/actual-chat/blob/main/Directory.Packages.props):
@@ -56,7 +53,7 @@ members. WebKit accepts extra URL scheme handlers only before the WKWebView exis
 
 | Workaround | Goes away when |
 |---|---|
-| [MacOSCustomBlazorWebViewHandler.CreatePlatformView](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSCustomBlazorWebViewHandler.cs) replays the base handler's three config lines (`webwindowinterop` message handler, Blazor init script, `app://` scheme handler) and adds `content://`, autoplay and `__useWebAudio` | the labs handler raises `BlazorWebViewInitializing`; the config then moves back to `MauiWebView.MaciOS.OnInitializing` |
+| [MacOSCustomBlazorWebViewHandler.CreatePlatformView](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSCustomBlazorWebViewHandler.cs) replays the base handler's three config lines (`webwindowinterop` message handler, Blazor init script, `app://` scheme handler) and adds `content://`, autoplay and `__useWebAudio` | the labs handler raises `BlazorWebViewInitializing`; the config then moves back to `MauiWebView.iOS.OnInitializing` |
 | [LabsBlazorWebViewHandlerExt](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/LabsBlazorWebViewHandlerExt.cs) reaches the private `BlazorInitScript`, `WebViewScriptMessageHandler`, `SchemeHandler` and `MessageReceived` by reflection, failing fast on a rename | same as above |
 | `PatchedWKWebView` in the same file sets `Superview.NeedsLayout` on attach, because the labs `ContentPageHandler` adds content without invalidating layout and a late-attached WebView keeps a zero frame | the labs page handler invalidates layout |
 | The same subclass calls [WindowConfigurator.RemoveTitlebarDragOverlay](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/WindowConfigurator.cs) once it has a window: the labs handler installs a titlebar-wide drag overlay above the titlebar itself, so clicks on the traffic lights started a window drag, and with the page under the titlebar it would take every click in the headers' top strip. The page moves the window from its own drag regions instead: `window-drag.ts` posts to the `windowDrag` message handler `CreatePlatformView` registers, and `WindowConfigurator.WindowDragHandler` starts the drag from the last left-mouse event | the overlay is opt-out or hit-tests the page |
@@ -121,7 +118,7 @@ dispatcher only, so a thread-pool resolve throws.
 
 | Workaround | Goes away when |
 |---|---|
-| The `MACOS` branch of [MauiDiagnostics.AddPlatformLoggerSinks](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/MauiDiagnostics.cs) writes a plain file, mirroring Windows, with the matching `Serilog.Sinks.File` reference in [Maui.csproj](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/Maui.csproj). The `MaciOS` Apple unified-log sink is not compiled for the macos TFM, and Sentry's native crash capture does not cover it; the managed Sentry sink does run | the sinks are shared with Catalyst and native Sentry covers AppKit |
+| The `MACOS` branch of [MauiDiagnostics.AddPlatformLoggerSinks](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/MauiDiagnostics.cs) writes a plain file, mirroring Windows, with the matching `Serilog.Sinks.File` reference in [Maui.csproj](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/Maui/Maui.csproj). The iOS Apple unified-log sink is not compiled for the macos TFM, and Sentry's native crash capture does not cover it; the managed Sentry sink does run | the sinks are shared with iOS and native Sentry covers AppKit |
 
 ### Build and packaging
 
@@ -190,7 +187,7 @@ markers:
   files). The JavaScript `<a download>` fallback that Windows relies on does not work in a
   WKWebView: it navigates the main frame to the `blob:` URL and replaces the app shell.
 - **Local-file previews** (`content://files/<key>`) load as `<img>` and `<video>` sources.
-  `fetch` of such a URL is blocked as cross-origin, the same as on iOS and Catalyst.
+  `fetch` of such a URL is blocked as cross-origin, the same as on iOS.
 - **The device id is a salted hash of the hardware UUID** (`IOPlatformUUID`, read through IOKit
   in [MacOSDeviceIdProvider](https://github.com/Actual-Chat/actual-chat/blob/main/src/dotnet/App.Maui/Platforms/MacOS/MacOSDeviceIdProvider.cs)),
   so external contact ids survive reinstalls and preference wipes; this stays even once the
