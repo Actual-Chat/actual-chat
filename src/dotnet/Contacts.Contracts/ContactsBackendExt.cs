@@ -11,24 +11,6 @@ public static class ContactsBackendExt
         CancellationToken cancellationToken)
         => contactsBackend.ListPeerContactIds(userId, null, cancellationToken);
 
-    public static async Task<string> GetAuthorName(
-        this IContactsBackend contactsBackend,
-        AuthorFull author,
-        UserId readerId,
-        CancellationToken cancellationToken)
-    {
-        // The reader's rename of the author wins over the author's own name wherever the reader sees it
-        var name = author.Avatar.Name;
-        if (author.IsAnonymous || author.UserId.IsGuestOrNull())
-            return name; // Never de-anonymize
-        if (readerId.IsGuestOrNull() || readerId == author.UserId)
-            return name;
-
-        var contactId = ContactId.NewUser(readerId, author.UserId);
-        var contact = await contactsBackend.Get(readerId, contactId, cancellationToken).ConfigureAwait(false);
-        return contact.PreferredPeerName ?? name;
-    }
-
     public static async Task<Contact[]> ListRecent(
         this IContactsBackend contactsBackend,
         UserId userId,

@@ -2,16 +2,6 @@ namespace ActualChat;
 
 public static class TaskExt
 {
-    // CollectNonNull
-
-    public static async Task<T[]> CollectNonNull<T>(
-        this IEnumerable<Task<T?>> tasks, CancellationToken cancellationToken = default)
-        where T : class
-    {
-        var results = await tasks.Collect(cancellationToken).ConfigureAwait(false);
-        return [.. results.SkipNullItems()];
-    }
-
     // NeverEnding
 
     // Same as ActualLab.Async.TaskExt.NeverEnding(cancellationToken);

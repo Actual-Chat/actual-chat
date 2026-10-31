@@ -34,11 +34,15 @@ public class Authors(IServiceProvider services) : IAuthors
         if (chat == null)
             return null;
 
-        var authorFull = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+        var authorFull = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+            .ConfigureAwait(false);
         if (authorFull is null)
             return null;
+        if (authorFull.IsAnonymous)
+            return authorFull.ToAuthor(); // Never de-anonymize: the viewer's name for the user behind it reveals them
 
-        return await WithPreferredName(session, authorFull, cancellationToken).ConfigureAwait(false);
+        return await WithPreferredName(session, authorFull.ToAuthor(), authorFull.UserId, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     public virtual async Task<AuthorFull?> GetOwn(
@@ -68,7 +72,7 @@ public class Authors(IServiceProvider services) : IAuthors
         if (author is null || author.IsAnonymous)
             return null; // Never de-anonymize: an anonymous participant isn't resolvable by their user id.
 
-        return await WithPreferredName(session, author, cancellationToken).ConfigureAwait(false);
+        return await WithPreferredName(session, author.ToAuthor(), userId, cancellationToken).ConfigureAwait(false);
     }
 
     // [ComputeMethod]
@@ -433,15 +437,23 @@ public class Authors(IServiceProvider services) : IAuthors
     // Private methods
 
     private async ValueTask<Author> WithPreferredName(
-        Session session, AuthorFull authorFull, CancellationToken cancellationToken)
+        Session session, Author author, UserId userId, CancellationToken cancellationToken)
     {
-        var author = authorFull.ToAuthor();
+        // Your rename of that contact wins over their own avatar name everywhere they're shown.
+        if (userId.IsGuestOrNull())
+            return author;
+
         var ownAccount = await Accounts.GetOwn(session, cancellationToken).ConfigureAwait(false);
-        var name = await ContactsBackend.GetAuthorName(authorFull, ownAccount.Id, cancellationToken)
-            .ConfigureAwait(false);
-        return name == author.Avatar.Name
-            ? author
-            : author with { Avatar = author.Avatar with { Name = name } };
+        if (ownAccount.Id == userId)
+            return author; // Its own author
+
+        var contactId = ContactId.NewUser(ownAccount.Id, userId);
+        var contact = await ContactsBackend.Get(ownAccount.Id, contactId, cancellationToken).ConfigureAwait(false);
+        var preferredPeerName = contact.PreferredPeerName;
+        if (preferredPeerName.IsNullOrEmpty() || preferredPeerName == author.Avatar.Name)
+            return author;
+
+        return author with { Avatar = author.Avatar with { Name = preferredPeerName } };
     }
 
     // A hook bot outlives its hook only when the hook row failed to commit; then it's a member nobody can remove
