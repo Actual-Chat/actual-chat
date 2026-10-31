@@ -90,14 +90,14 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     @apply flex-1 flex items-center;
 }
 .placeholder-circle {
-    @apply w-9 h-9 -ml-4 first:ml-0;
+    @apply w-9 h-9 -ms-4 first:ms-0;
     @apply rounded-full;
     @apply opacity-0;
     @apply bg-pal-indigo-70;
     animation: placeholder-wave 2s infinite steps(10);
 }
 .layout-header.collapsed .placeholder-circle:not(:first-child) {
-    @apply -ml-5;
+    @apply -ms-5;
 }
 .placeholder-circle:nth-child(1) {
     animation-delay: 0s;
@@ -130,7 +130,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
 }
 
 /* Film strip decoration for video streaming */
-.c-film-strip {
+.chat-activity-panel > .c-film-strip {
     @apply absolute inset-0 z-minus;
     @apply pointer-events-none;
     @apply overflow-hidden;
@@ -140,9 +140,10 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     contain: layout paint style;
 }
 /* Horizontal film strip with character illustrations */
-.c-film-strip::after {
+.chat-activity-panel > .c-film-strip::after {
     --film-h: 4rem;
     --film-tile-w: calc(var(--film-h) * 155 / 36);
+    /* physical: film-scroll moves it by translateX */
     @apply content-empty;
     @apply absolute top-1/2 -left-[75%];
     height: var(--film-h);
@@ -157,11 +158,12 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     animation-delay: var(--anim-phase, 0s);
     will-change: transform;
 }
-body.wide .c-film-strip::after {
+body.wide .chat-activity-panel > .c-film-strip::after {
     --film-h: 3rem;
+    /* physical: see .c-film-strip::after */
     @apply -left-[100%];
 }
-.theme-dark .c-film-strip::after {
+.theme-dark .chat-activity-panel > .c-film-strip::after {
     opacity: 0.05;
 }
 @keyframes film-scroll {
@@ -176,7 +178,7 @@ body.wide .c-film-strip::after {
 body.narrow .chat-activity-panel.video-streaming:not(.not-participating) {
     @apply overflow-visible;
 }
-body.narrow .c-film-strip {
+body.narrow .chat-activity-panel > .c-film-strip {
     top: calc(-3.5rem - var(--safe-area-top));
 }
 /* Clip the film strip poking above the header, but keep the bottom open so the
@@ -189,17 +191,17 @@ body.narrow .layout-header[data-has-video-streaming] {
    is redundant (and one more animated full-screen invalidation) once the
    video panel itself is on screen. Also hidden when the activity panel is
    collapsed into the header pill. */
-.chat-activity-panel.watching .c-film-strip {
+.chat-activity-panel.watching > .c-film-strip {
     @apply hidden;
 }
-.layout-header.collapsed:not([data-has-visible-video-panel]) .c-film-strip {
+.layout-header.collapsed:not([data-has-visible-video-panel]) .chat-activity-panel > .c-film-strip {
     @apply opacity-0;
 }
-.layout-header.collapsed:not([data-has-visible-video-panel]) .c-film-strip::after {
+.layout-header.collapsed:not([data-has-visible-video-panel]) .chat-activity-panel > .c-film-strip::after {
     animation-play-state: paused;
 }
 @media (prefers-reduced-motion: reduce) {
-    .c-film-strip {
+    .chat-activity-panel > .c-film-strip {
         @apply hidden;
     }
 }
@@ -267,34 +269,9 @@ body.narrow .chat-activity-panel > .c-buttons > .btn.not-listening {
 body.wide .chat-activity-panel .chat-audio-controls .btn-h i {
     @apply text-2xl;
 }
-
-.chat-activity-subheader:empty {
-    @apply hidden;
-}
-.layout-subheader > div.chat-activity-subheader {
-    @apply w-full;
-    @apply p-[1.5px];
-    @apply rounded-lg;
-    @apply overflow-hidden;
-    background:
-        linear-gradient(-88deg, rgba(255, 202, 255, 0.80) 4.67%, rgba(130, 104, 255, 0.50) 87.89%) padding-box;
-}
 body.narrow .chat-activity-panel.listening:before,
 body.narrow .chat-activity-panel.listening:after {
     @apply hidden;
-}
-.chat-activity-subheader .c-wrapper {
-    @apply relative;
-    @apply w-full h-12;
-    @apply rounded-lg;
-    @apply overflow-hidden;
-    @apply bg-01;
-}
-.chat-activity-subheader .chat-activity-panel {
-    @apply absolute;
-    @apply h-12;
-    @apply px-2;
-    background: linear-gradient(89deg, var(--magenta-90-10) 5.09%, var(--indigo-70-10) 94.69%);
 }
 
 .equalizer {
@@ -385,13 +362,13 @@ body.narrow .chat-activity-panel.listening:after {
 .header-activity-panel-wrapper .chat-activity-panel {
     @apply absolute z-10 bottom-0 inset-x-0;
     @apply h-13 w-auto;
-    @apply pl-3 pr-2;
+    @apply ps-3 pe-2;
     transition: padding-left 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 /* A collapsed wrapper is 0 high, so the absolute panel is drawn over the header row. Start the heads
    right of the back button (header px-4 + w-6 button) instead of hiding the button. */
 body.narrow .layout-header.collapsed .header-activity-panel-wrapper .chat-activity-panel:not(.not-participating) {
-    @apply pl-12;
+    @apply ps-12;
 }
 .header-activity-panel-wrapper .chat-activity-panel {
     -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 100%);
@@ -401,7 +378,7 @@ body.narrow .layout-header.collapsed .header-activity-panel-wrapper .chat-activi
 body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participating {
     @apply relative z-10;
     @apply w-full;
-    @apply pl-2 pr-0;
+    @apply ps-2 pe-0;
     @apply rounded-lg;
     @apply overflow-hidden;
 }
@@ -424,7 +401,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
 }
 
 /* Pin badge inside activity panel */
-.chat-activity-panel .c-pin-badge {
+.chat-activity-panel > .c-pin-badge {
     @apply absolute inset-x-0 top-3 z-20;
     @apply flex justify-center;
     @apply pointer-events-none;
@@ -432,7 +409,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     transform: scale(0);
     transform-origin: center bottom;
 }
-.chat-activity-panel .c-pin-badge .c-badge-content {
+.chat-activity-panel > .c-pin-badge > .c-badge-content {
     @apply flex items-center justify-center gap-x-0.5;
     @apply px-2 py-1;
     @apply rounded-full border border-pal-white-40;
@@ -442,7 +419,7 @@ body.narrow .header-activity-panel-wrapper .chat-activity-panel.not-participatin
     text-shadow: 0 1px 3px rgba(0,0,0,.6);
     backdrop-filter: blur(2px);
 }
-.chat-activity-panel .c-pin-badge i {
+.chat-activity-panel > .c-pin-badge > .c-badge-content > i {
     @apply text-xs;
 }
 

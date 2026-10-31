@@ -26,7 +26,7 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
     @apply cursor-pointer;
 }
 
-.pic-upload .c-busy {
+.pic-upload > .c-busy {
     @apply absolute top-0 z-20;
     @apply flex-y items-center justify-center;
     @apply rounded-full;
@@ -43,14 +43,14 @@ body:not(.hoverable) .pic-upload .pic-upload-picker {
     border-style: solid;
 }
 
-.pic-upload .c-btn-group {
+.pic-upload > .c-btn-group {
     @apply flex-1 flex-y justify-center gap-2;
 }
-.pic-upload .c-btn-group > .btn {
+.pic-upload > .c-btn-group > .btn {
     @apply justify-start;
     @apply max-w-none;
 }
-.pic-upload .c-btn-group > .btn > .btn-content {
+.pic-upload > .c-btn-group > .btn > .btn-content {
     @apply gap-x-4;
     @apply px-2;
 }

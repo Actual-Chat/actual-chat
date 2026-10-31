@@ -6,11 +6,11 @@
     @apply absolute inset-0;
     @apply w-full h-full;
 }
-.round-progress .c-track {
+.round-progress > svg > .c-track {
     fill: none;
     stroke: none;
 }
-.round-progress .c-value {
+.round-progress > svg > .c-value {
     fill: none;
     stroke: currentColor;
     stroke-width: 2;

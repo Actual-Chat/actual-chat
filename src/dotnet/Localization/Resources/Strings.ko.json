@@ -1715,6 +1715,7 @@
   "Shortcuts_ToggleSelection": "선택기에서 선택 전환",
   "Shortcuts_ToggleTheme": "라이트/다크 테마 전환",
   "Shortcuts_ToggleSafeAreas": "안전 영역 전환",
+  "Shortcuts_ToggleTextDirection": "오른쪽에서 왼쪽 레이아웃 전환",
 
   "LocationAccuracy_Topic": "위치 정확도",
 

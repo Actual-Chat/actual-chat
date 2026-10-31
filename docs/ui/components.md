@@ -36,7 +36,7 @@ When a component lives inside a container that already has its own CSS file (e.g
 ```css
 /* ── API Keys tab ── */
 
-.api-key-settings .c-key-info {
+.api-key-settings > .c-key-info {
     @apply flex-y;
 }
 ```
@@ -72,6 +72,20 @@ Direct children use the `c-` prefix:
     <div class="c-right">...</div>
 </div>
 ```
+
+**A `c-` class is always selected as a child of what owns it** — `.amazing-panel > .c-content`,
+never `.amazing-panel .c-content`. `c-content` is a part name every component reuses, so the
+descendant form also styles the `.c-content` of every component rendered inside `.amazing-panel`,
+and a later change in some nested component starts to depend on a rule in its ancestor's file.
+A deeper part is reached through the chain: `.amazing-panel > .c-content > .c-title`. When that
+chain gets long, the block in the middle deserves a name of its own (below), and the chain restarts
+from it. A component's root is such a block too: `AuthorModalHeader` renders `.author-modal-header`,
+not a `.c-header` its parent has to reach into.
+
+`c-` names parts, never states: a state is `.on`, `.active` or a plain name like `height-controlled`,
+and may be matched at any depth. A button modifier starts with `btn-` (below), so it is not a part
+either. `scripts/check-css-conventions.mjs` (part of `npm run lint:css`) fails the build on a `c-`
+class reached through a descendant combinator, including inside `:is()` and `:where()`.
 
 For **deep component hierarchies**, major blocks get their own named class instead of `c-` to avoid ambiguity:
 
@@ -267,7 +281,7 @@ Do NOT write Tailwind utility classes directly in `.razor` markup. Instead, assi
 <div class="c-content">
 ```
 ```css
-.amazing-panel .c-content {
+.amazing-panel > .c-content {
     @apply flex-y gap-4;
     @apply p-4;
     @apply text-sm text-03;
@@ -392,12 +406,10 @@ tabs read as one UI. A tab is a stack of **sections**; each section is a header
 in `.settings-section` so the rows inside it sit closer (`gap-y-3`) than the sections do
 (the tab's own `gap-y-4`). **No divider lines between sections** — the gap is the separator.
 
-A box is a `Tile` of `TileItem`s. Inside a settings tab a tile is **flat**: it drops its
-card fill and padding, and its items become a hairline-divided list flush to the rounded
-edge. This is automatic — `.settings-tab-content .tile` carries the flat skin, so you just
-use `<Tile>` / `<TileItem>` as everywhere else. (Outside a settings tab — e.g. the webhook
-list reused in a chat/place modal — opt the same look in with `Class="tile-flat"`. A
-`Frameless` tile keeps its box-less input look and is left alone.)
+A box is a `Tile` of `TileItem`s, by default a filled card (`bg-01`) with a 4px inset,
+whose rows are rounded and separated by the tile's gap, with no divider lines.
+A `Frameless` tile drops the box, for a tile whose only content is input widgets that
+carry their own border.
 
 - A `TileItem` is one row: `Icon` (leading), `Content` (ti-title), `Caption` (ti-caption),
   `Right` (trailing action / toggle / chevron). A named slot can't be wrapped in `@if` — put
@@ -504,9 +516,9 @@ Selectors go from parent to children, top to bottom:
 
 ```css
 .amazing-panel { }
-.amazing-panel .c-header { }
-.amazing-panel .c-content { }
-.amazing-panel .c-content .btn.amazing-panel-btn { }
+.amazing-panel > .c-header { }
+.amazing-panel > .c-content { }
+.amazing-panel > .c-content .btn.amazing-panel-btn { }
 ```
 
 ### No utility class names in selectors
@@ -544,6 +556,32 @@ the message then names the rule to rewrite.
 
 `scripts/check-css-selectors.mjs` enforces this: `npm run lint:css` is a part of `npm run lint` and
 `lint:all`, so `build:Verify` and `build:Release` run it.
+
+### Start and end, not left and right
+
+The UI has to mirror for right-to-left languages, so spacing, borders, corners, alignment and
+offsets name the side by writing direction:
+
+| Instead of | Use |
+|---|---|
+| `ml-2` / `mr-2`, `pl-4` / `pr-4` | `ms-2` / `me-2`, `ps-4` / `pe-4` |
+| `left-0` / `right-0` | `start-0` / `end-0` (`inset-x-0` for both) |
+| `text-left` / `text-right`, `float-left` | `text-start` / `text-end`, `float-start` |
+| `rounded-l-lg`, `rounded-tr-lg`, `border-l` | `rounded-s-lg`, `rounded-se-lg`, `border-s` |
+| `margin-left`, `padding-right`, `left:` | `margin-inline-start`, `padding-inline-end`, `inset-inline-start:` |
+| `var(--safe-area-right)` on one side | `var(--safe-area-end)` (`--safe-area-start` for the other) |
+
+Class names keep their meaning: `left-panel` and `right-panel` stay, since the panels swap sides
+with everything else.
+
+Some things really are physical: a position set from JS in viewport coordinates (menus, tooltips,
+bubbles, the dragged call island), anything moved by `translateX`, and a device inset paired with
+its own side (`left: var(--safe-area-left)` next to `right: var(--safe-area-right)`). Such a rule
+keeps `left`/`right` and says why in a `/* physical: <why> */` comment. Centering with `left-1/2`
+plus `-translate-x-1/2` is the same in either direction and needs no comment.
+
+`scripts/check-css-conventions.mjs` enforces this, next to the `c-` child rule, in stylesheets; class
+strings in markup and code are not checked.
 
 ### Property Ordering Within a Rule
 
@@ -1147,12 +1185,12 @@ Markup declares both ends, and `presence-tracker.ts` writes `data-has-<name>` on
 at least one such child is present:
 
 ```razor
-<div class="c-active-chats" data-children="ptt-chats">        @* counts the children named here *@
+<div class="chat-list-dock" data-children="ptt-chats">        @* counts the children named here *@
     <div class="ptt-chats" data-child="@(hasChats ? "ptt-chats" : null)">  @* one of them *@
 ```
 
 ```css
-.c-active-chats[data-has-ptt-chats] .chat-list-fab { … }
+.chat-list-dock[data-has-ptt-chats] .chat-list-fab { … }
 ```
 
 A name binds to every ancestor declaring it. Components that render someone else's root take the
@@ -1339,8 +1377,8 @@ services.AddTypeMap<IModalView>(map => map
 The `Class` parameter on `DialogFrame` becomes the CSS scoping class. Use it to scope all styles:
 
 ```css
-.amazing-modal .dialog-body { }
-.amazing-modal .c-content { }
+.amazing-modal > .dialog-body { }
+.amazing-modal > .dialog-body > .c-content { }
 ```
 
 ### Opening Modals

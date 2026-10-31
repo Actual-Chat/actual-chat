@@ -1,41 +1,41 @@
-﻿/*Author modal header*/
-.author-modal .c-header {
+﻿/* ── Header: shared by AuthorModalHeader and CallModalHeader ── */
+.author-modal-header {
     @apply relative;
     @apply flex-y;
     @apply w-full;
     @apply mb-2;
 }
 /* The header already ends with a margin, so the body's own top padding would double the gap under the name */
-.author-modal .dialog-body {
+.author-modal > .dialog-body {
     @apply pt-0;
 }
-.author-modal .c-header > .c-top {
+.author-modal-header > .c-top {
     @apply relative;
     @apply h-20 w-full;
     @apply rounded-b-xl;
     @apply overflow-hidden;
 }
-.author-modal .c-header > .c-top > .avatar-circle {
+.author-modal-header > .c-top > .avatar-circle {
     @apply h-full;
 }
-.author-modal .c-header > .c-bottom {
+.author-modal-header > .c-bottom {
     @apply flex-y items-start justify-end gap-y-1;
     @apply w-full;
     @apply px-4 pt-10;
     @apply bg-modal;
 }
-.author-modal .c-header > .c-bottom  > .c-title {
+.author-modal-header > .c-bottom > .c-title {
     @apply w-full;
     @apply text-caption text-02;
     @apply truncate;
 }
-.author-modal .c-header > .c-bottom  > .c-title .call-text {
+.author-modal-header > .c-bottom > .c-title > .call-text {
     @apply text-02 text-body;
 }
-.author-modal .c-header > .c-bottom  > .c-title .avatar-name {
+.author-modal-header > .c-bottom > .c-title .avatar-name {
     @apply text-body-500;
 }
-.author-modal .c-header > .c-bottom > .c-public {
+.author-modal-header > .c-bottom > .c-public {
     max-height: 3.5lh;
     padding-bottom: 0.5lh;
     @apply overflow-y-auto overflow-x-hidden;
@@ -46,31 +46,24 @@
     -webkit-mask-image: linear-gradient(to bottom, var(--black) 3lh, transparent 3.5lh);
     mask-image: linear-gradient(to bottom, var(--black) 3lh, transparent 3.5lh);
 }
-.author-modal .c-header > .c-center {
+.author-modal-header > .c-center {
     @apply absolute top-12 z-20;
     @apply flex-x;
     @apply h-16 w-full;
     @apply px-4;
 }
-.author-modal .c-header > .c-center > .c-buttons {
+.author-modal-header > .c-center > .c-buttons {
     @apply flex-1 flex-x items-center justify-end gap-x-3;
 }
-.author-modal .c-header > .c-center > .c-buttons .btn.btn-round {
+.author-modal-header > .c-center > .c-buttons > .btn.btn-round {
     @apply bg-round-right-panel;
     @apply shadow-modal-header-btn;
 }
-.author-modal .c-header > .c-center > .c-buttons .btn.btn-round .btn-content {
-    @apply text-primary;
-}
-.author-modal .c-header > .c-center > .c-title {
-    @apply flex flex-1 md:flex-none self-center;
-    @apply text-02 text-caption;
-}
-.author-modal .c-header > .c-center i.icon-edit {
+.author-modal-header > .c-center > .c-buttons > .btn.btn-round > .btn-content {
     @apply text-primary;
 }
 .author-modal-close-btn.btn.btn-round {
-    @apply absolute top-2 right-4 z-10;
+    @apply absolute top-2 end-4 z-10;
 }
 
 .author-modal .header-tile-item .ti-title {
@@ -100,10 +93,7 @@ body.hoverable .author-modal .tile:hover,
     @apply shadow-none;
 }
 .author-modal .tile-item {
-    @apply pr-0;
-}
-.author-modal .anonymous-bio * {
-    @apply text-danger;
+    @apply pe-0;
 }
 .author-modal .anonymous-bio .ti-title {
     @apply max-h-max;
@@ -138,13 +128,6 @@ body.hoverable .author-modal .tile-remove-from-group:hover {
     @apply bg-danger-outline-hover;
 }
 
-.start-chat-btn .c-title {
-    @apply flex-x gap-x-1;
-    @apply overflow-hidden;
-}
-.start-chat-btn .c-title > .c-name {
-    @apply truncate;
-}
 
 .tile-item.anonymous-chat-toggle {
     @apply min-h-10 h-auto;
@@ -157,37 +140,39 @@ body.hoverable .author-modal .tile-remove-from-group:hover {
     @apply bg-selected;
 }
 
-.author-modal .tile-wrapper {
+.anonymous-chat-option {
     @apply flex-y gap-y-2;
 }
-.author-modal .tile-wrapper > .c-incut {
+.anonymous-chat-option > .c-incut {
     @apply flex-none;
     @apply duration-250 ease-in-out transition-opacity;
     @apply opacity-0;
     transition-behavior: allow-discrete;
 }
-.author-modal .tile-wrapper > .c-incut.show {
+.anonymous-chat-option > .c-incut.show {
     @apply opacity-100;
     @starting-style {
         opacity: 0;
     }
 }
 
-.author-modal .tile-wrapper > .c-incut > .c-info {
+.anonymous-chat-option > .c-incut > .c-info {
     @apply flex-x items-start gap-x-2;
     @apply px-4 py-2;
     @apply rounded-xl;
     @apply bg-pal-sienna-50-20;
     @apply text-caption-500 font-normal text-03;
 }
-.btn.anonymous-chat-btn .c-title {
+.btn-start-chat > .btn-content > .c-title,
+.btn-anonymous-chat > .btn-content > .c-title {
     @apply flex-x gap-x-1;
     @apply overflow-hidden;
 }
-.btn.anonymous-chat-btn .c-title .c-name {
+.btn-start-chat > .btn-content > .c-title > .c-name,
+.btn-anonymous-chat > .btn-content > .c-title > .c-name {
     @apply truncate;
 }
-.anonymous-chat-btn .btn-content::after {
+.btn-anonymous-chat > .btn-content::after {
     content: "Anonymous";
     @apply absolute bottom-1 md:bottom-0;
     @apply text-sm;

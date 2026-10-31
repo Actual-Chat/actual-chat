@@ -11,7 +11,7 @@
     mask-composite: exclude;
     contain: layout paint style;
 }
-.playback-running-border .c-spinner {
+.playback-running-border > .c-spinner {
     @apply absolute top-1/2 left-1/2;
     @apply aspect-square;
     width: 150%;
@@ -26,7 +26,7 @@
     animation: playback-border-spin 6s linear infinite;
     will-change: transform;
 }
-.playback-running-border.paused .c-spinner {
+.playback-running-border.paused > .c-spinner {
     animation-play-state: paused;
 }
 @keyframes playback-border-spin {
@@ -35,7 +35,7 @@
     }
 }
 @media (prefers-reduced-motion: reduce) {
-    .playback-running-border .c-spinner {
+    .playback-running-border > .c-spinner {
         animation: none;
     }
 }

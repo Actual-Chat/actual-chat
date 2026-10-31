@@ -23,7 +23,7 @@ body.hoverable .people-group .btn-square:hover .btn-content {
 }
 
 .btn-square.add-user-btn {
-    @apply flex-1 left-0;
+    @apply flex-1 start-0;
     @apply min-w-8;
     @apply rounded-none;
     @apply bg-transparent;
@@ -83,14 +83,14 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply py-0 md:py-2 px-2;
     @apply bg-01;
 }
-.chat-footer .c-text {
+.join-footer > .c-text {
     @apply inline-flex;
     @apply text-01;
 }
 .chat-footer.readonly {
     @apply text-subhead;
 }
-.chat-footer.readonly .c-content {
+.chat-footer.readonly > .c-content {
     @apply flex justify-center items-center;
     @apply w-full min-h-14 md:min-h-12;
     @apply mx-10;
@@ -99,7 +99,7 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     @apply text-02;
     @apply cursor-default;
 }
-.chat-footer.readonly .c-wait-for-contact {
+.chat-footer.readonly > .c-content > .c-wait-for-contact {
     @apply flex-1 self-stretch flex justify-center items-center;
     @apply px-4 text-center;
     @apply cursor-pointer;
@@ -132,17 +132,17 @@ body.hoverable .btn-square.add-user-btn:hover .btn-content {
     transition: padding 0.3s ease-in-out;
 }
 body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.listening)) .chat-header-center {
-    @apply pr-16;
+    @apply pe-16;
 }
 /* Collapsed, the activity panel overlays the header row; the author heads run right from pl-12.
    Push the title just past them. The reserve is fixed per chat kind, not per live speaker count, so
    the title never shifts as people join or leave - a group tops out at 3 heads. */
 body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.not-participating)) .chat-header-center {
-    @apply pl-18;
+    @apply ps-18;
 }
 /* A peer chat shows at most 2 heads, so it needs less room than a group's 3 - stop past the 2nd head. */
 body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.not-participating)) .chat-header-center.peer-chat {
-    @apply pl-13;
+    @apply ps-13;
 }
 /* The speaker heads stand in for the chat icon here. It's already visually hidden (.hideable), but its
    box still pushes the title an avatar-width further right - collapse the box so the title lands right
@@ -178,7 +178,7 @@ body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.not-participa
        (member count), or when the typing indicator replaces either. */
     @apply h-4.5;
 }
-.chat-header-center > .chat-header-title > .c-info .c-typing-indicator {
+.chat-header-center > .chat-header-title > .c-info > .c-typing-indicator {
     @apply truncate;
     @apply text-caption-500 text-primary;
 }
@@ -196,7 +196,7 @@ body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.not-participa
 
 .chat-header-control-panel {
     @apply flex-none flex-x items-center gap-x-3;
-    @apply md:pr-1.5;
+    @apply md:pe-1.5;
 }
 .chat-header-control-panel:empty {
     @apply hidden;
@@ -204,14 +204,14 @@ body.narrow .layout-header.collapsed:has(.chat-activity-panel:not(.not-participa
 .chat-header-control-panel .translation-btn.on {
     @apply text-primary;
 }
-.chat-header-control-panel .translation-btn .c-hill {
+.chat-header-control-panel .translation-btn > .c-content > .c-hill {
     @apply absolute -bottom-1;
     @apply w-4/5 h-0.5;
-    @apply ml-[10%];
+    @apply ms-[10%];
     @apply rounded-full;
     @apply bg-[var(--text-03)];
 }
-.chat-header-control-panel .translation-btn.on .c-hill {
+.chat-header-control-panel .translation-btn.on > .c-content > .c-hill {
     @apply bg-primary;
 }
 .chat-header-control-panel .btn-start-call:disabled,
@@ -225,7 +225,7 @@ body.hoverable .chat-header-control-panel .btn-start-call:disabled:hover {
     @apply group-hover:hidden;
 }
 .message-counter-with-time .last-entry-time {
-    @apply mr-1;
+    @apply me-1;
 }
 .message-counter-with-time .counter-badge-incut {
     @apply h-4.5;
@@ -258,6 +258,6 @@ body.hoverable .chat-header-control-panel .btn-start-call:disabled:hover {
 
 
 /* Leave / delete confirmation: a deletion warns in red */
-.leave-chat-confirmation-modal .c-warning {
+.leave-chat-confirmation-modal > .dialog-body > .form-block > .c-warning {
     @apply text-danger;
 }

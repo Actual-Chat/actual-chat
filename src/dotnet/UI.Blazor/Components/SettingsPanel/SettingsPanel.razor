@@ -27,7 +27,7 @@
         <div class="c-header">
             <SettingsHeader Title="@Title" ArrowClick="CloseModalClick"/>
         </div>
-        <div class="c-tab-items">
+        <div class="settings-tab-list">
             @foreach (var tab in tabs) {
                 var isActive = tab.Id == selectedTabId;
                 @if (tab.HasSeparatorBefore) {

@@ -25,10 +25,10 @@
     @apply text-xs;
 }
 .startup-time-bar .btn.btn-square:first-child .btn-content-inner {
-    @apply ml-1;
+    @apply ms-1;
 }
 .startup-time-bar .btn.btn-square:last-child .btn-content-inner {
-    @apply mr-1;
+    @apply me-1;
 }
 .startup-time-bar .btn.btn-square .btn-content {
     @apply rounded-none;

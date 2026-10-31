@@ -12,7 +12,7 @@ body.wide .modal-overlay-fullscreen .settings-modal.modal-frame {
 .close-settings-btn {
     @apply absolute z-button;
     top: calc(1rem + var(--safe-area-top));
-    right: calc(1rem + var(--safe-area-right));
+    inset-inline-end: calc(1rem + var(--safe-area-end));
 }
 body.narrow .close-settings-btn {
     @apply hidden;
@@ -46,7 +46,7 @@ body.narrow .close-settings-btn {
 /* Indented to the tile-item label column, so a description lines up with the
    rows it describes */
 .settings-tab .tile > .c-description {
-    @apply pl-12 pr-16;
+    @apply ps-12 pe-16;
     @apply text-caption;
 }
 
@@ -56,17 +56,12 @@ body.narrow .close-settings-btn {
     @apply text-body text-03;
 }
 
-/* Inset by the form block it sits in, so it lines up with the input below it */
-.settings-tab .notifications-panel-settings .c-description {
-    @apply text-caption-500 text-03;
-}
-
 /* ── Voice & Transcription tab (language shortcut in the tab title) ── */
 
 .language-shortcut {
     @apply text-primary text-sm whitespace-nowrap;
 }
-.language-shortcut .c-more {
+.language-shortcut > .c-more {
     @apply text-sm;
     line-height: 0;
 }
@@ -84,11 +79,10 @@ body.narrow .close-settings-btn {
 .settings-tab .ptt-settings-body {
     @apply flex-y gap-y-4;
 }
-/* Splits Push-to-talk chats in the list from the rest: a label, then a rule to the tile's edge */
-/* A tile item pads only its bottom, so the hover frame hugs the avatar at the top - match it there */
 .settings-tab .ptt-chat-item {
-    @apply pt-1;
+    @apply py-1;
 }
+/* Splits Push-to-talk chats in the list from the rest: a label, then a rule to the tile's edge */
 .settings-tab .ptt-chats-divider {
     @apply flex-x items-center gap-x-2;
     @apply px-4 pt-3 pb-1;
@@ -112,66 +106,66 @@ body.narrow .close-settings-btn {
 
 /* ── Push-to-talk practice modal ── */
 
-.ptt-practice-modal .c-meters {
+.ptt-practice-meters {
     @apply flex-y gap-y-3 py-2;
 }
-.ptt-practice-modal .c-meter {
+.ptt-practice-meters > .c-meter {
     @apply grid items-center gap-x-3 px-2 py-1.5 rounded-lg;
     grid-template-columns: auto 1fr 5rem 2rem;
 }
-.ptt-practice-modal .c-meter .c-icon {
+.ptt-practice-meters > .c-meter > .c-icon {
     @apply flex text-primary;
     transition: opacity 100ms linear;
 }
-.ptt-practice-modal .c-meter .c-title {
+.ptt-practice-meters > .c-meter > .c-title {
     @apply text-body text-02 truncate;
 }
-.ptt-practice-modal .c-meter .c-bar {
+.ptt-practice-meters > .c-meter > .c-bar {
     @apply h-2 rounded-full overflow-hidden bg-04;
 }
-.ptt-practice-modal .c-meter .c-fill {
+.ptt-practice-meters > .c-meter > .c-bar > .c-fill {
     @apply h-full rounded-full bg-primary;
     transition: width 100ms linear;
 }
-.ptt-practice-modal .c-meter .c-off {
-    @apply text-caption-500 text-03 text-right;
+.ptt-practice-meters > .c-meter > .c-off {
+    @apply text-caption-500 text-03 text-end;
 }
-.ptt-practice-modal .c-meter .c-count {
-    @apply text-caption-500 text-02 text-right;
+.ptt-practice-meters > .c-meter > .c-count {
+    @apply text-caption-500 text-02 text-end;
 }
-.ptt-practice-modal .c-meter.off .c-title {
+.ptt-practice-meters > .c-meter.off > .c-title {
     @apply text-03;
 }
-.ptt-practice-modal .c-meter.fired {
+.ptt-practice-meters > .c-meter.fired {
     animation: ptt-practice-fired 600ms ease-out;
 }
-.ptt-practice-modal .c-meter.fired .c-icon,
-.ptt-practice-modal .c-meter.fired .c-title {
+.ptt-practice-meters > .c-meter.fired > .c-icon,
+.ptt-practice-meters > .c-meter.fired > .c-title {
     @apply text-success;
 }
-.ptt-practice-modal .c-meter.fired .c-fill {
+.ptt-practice-meters > .c-meter.fired > .c-bar > .c-fill {
     @apply bg-success;
 }
 @keyframes ptt-practice-fired {
     0% { background-color: color-mix(in srgb, var(--success) 30%, transparent); }
     100% { background-color: transparent; }
 }
-.ptt-practice-modal .c-raw-header {
+.ptt-practice-modal > .dialog-body > .form-block > .c-raw-header {
     @apply flex-x items-center justify-between gap-x-2;
     @apply cursor-pointer text-caption-500 text-03;
 }
-.ptt-practice-modal .c-raw-header > .c-link {
+.ptt-practice-modal > .dialog-body > .form-block > .c-raw-header > .c-link {
     @apply text-primary;
 }
-.ptt-practice-modal .c-readout {
+.ptt-practice-modal > .dialog-body > .form-block > .c-readout {
     @apply flex-y gap-y-1 py-2;
     @apply text-sm text-03;
 }
-.ptt-practice-modal .c-readout > div {
+.ptt-practice-modal > .dialog-body > .form-block > .c-readout > div {
     @apply font-mono;
 }
 
-.settings-tab .ptt-reply-window-settings .c-description {
+.settings-tab .ptt-reply-window-settings > .c-description {
     @apply text-caption text-03;
 }
 
@@ -213,25 +207,21 @@ body.narrow .close-settings-btn {
     @apply whitespace-normal;
     @apply text-body-500 text-02;
 }
-.render-mode-tile .c-comment {
-    @apply whitespace-normal;
-    @apply text-caption-500 text-03;
-}
 
 /* ── Connection endpoints ── */
 
 /* An unmeasured endpoint takes the icon slot's own text color: --background-03 is
    the tile background in the dark theme, so a dot painted with it is invisible. */
-.rpc-endpoints .c-status {
+.rpc-endpoints .ti-left > .c-status {
     @apply self-center;
     @apply w-2 h-2;
     @apply rounded-full;
     background-color: currentColor;
 }
-.rpc-endpoints .c-status.on {
+.rpc-endpoints .ti-left > .c-status.on {
     @apply bg-success;
 }
-.rpc-endpoints .c-status.off {
+.rpc-endpoints .ti-left > .c-status.off {
     @apply bg-danger;
 }
 
@@ -250,7 +240,7 @@ body.narrow .close-settings-btn {
     @apply text-sm;
 }
 .phone-verification-status > i {
-    @apply text-base mr-2;
+    @apply text-base me-2;
 }
 .languages-form > section .form-section-validation,
 .email-form > section .form-section-validation,
@@ -265,7 +255,7 @@ body.narrow .close-settings-btn {
 .your-account-tile .first-tile-item .ti-left {
     @apply mt-1;
 }
-.your-account-tile .c-actions {
+.your-account-tile .ti-right > .c-actions {
     @apply flex-x items-center;
 }
 
@@ -281,34 +271,21 @@ body.narrow .close-settings-btn {
     @apply max-h-10;
     @apply text-caption;
 }
-.sessions-tile-item .ti-title .c-description {
+.sessions-tile-item .ti-title > .c-description {
     @apply whitespace-normal;
-}
-.sessions-tile-item .sign-out-btn {
-    @apply flex-none;
-    @apply text-danger-light;
-    @apply cursor-pointer;
-}
-body.hoverable .sessions-tile-item .sign-out-btn:hover,
-.touch-capable .sessions-tile-item .sign-out-btn:active {
-    @apply text-danger;
-}
-.sessions-tile-item .c-current {
-    @apply flex-none;
-    @apply text-success;
 }
 
 /* ── Connected apps ── */
 
-.connected-apps-list .c-facts {
+.connected-apps-list .ti-caption > .c-facts {
     @apply grid gap-x-3 gap-y-0.5;
     grid-template-columns: max-content minmax(0, 1fr);
     @apply text-xs font-normal;
 }
-.connected-apps-list .c-facts > dt {
+.connected-apps-list .ti-caption > .c-facts > dt {
     @apply text-03;
 }
-.connected-apps-list .c-facts > dd {
+.connected-apps-list .ti-caption > .c-facts > dd {
     @apply text-02;
 }
 
@@ -319,18 +296,18 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
     @apply flex-y gap-y-1;
     @apply px-3 pt-2 pb-1;
 }
-.passkey-tile .passkey-intro .c-title {
+.passkey-tile > .passkey-intro > .c-title {
     @apply text-01;
     @apply font-semibold;
 }
-.passkey-tile .passkey-intro .c-text {
+.passkey-tile > .passkey-intro > .c-text {
     @apply text-caption;
     @apply text-03;
 }
 
 /* ── API Key Create Modal ── */
 
-.api-key-modal .form-block .c-title {
+.api-key-modal > .dialog-body > .form-block > .c-title {
     @apply text-01 text-body;
 }
 .api-key-form-block {
@@ -341,12 +318,12 @@ body.hoverable .sessions-tile-item .sign-out-btn:hover,
     @apply flex-x items-center gap-2;
 }
 .api-key-container .copy-to-clipboard {
-    @apply absolute right-1 bottom-1;
+    @apply absolute end-1 bottom-1;
 }
 .api-key-container code {
     @apply flex-1 flex items-center;
     @apply min-h-12;
-    @apply pl-2 pr-11;
+    @apply ps-2 pe-11;
     @apply rounded-lg border border-separator;
     @apply bg-input;
     @apply text-sm;
@@ -420,4 +397,16 @@ body.narrow .docs-tab .docs-content {
 }
 .settings-tab .tile-item.permission-item .ti-caption {
     @apply whitespace-normal;
+}
+
+/* ── Privacy: the blocked users list's disclosure chevron turns to point down when expanded ── */
+.blocked-users-chevron {
+    @apply transition-transform;
+}
+.blocked-users-chevron.on {
+    @apply rotate-90;
+}
+/* The glyph itself is mirrored on a right-to-left page, so it turns the other way to point down */
+[dir="rtl"] .blocked-users-chevron.on {
+    @apply -rotate-90;
 }

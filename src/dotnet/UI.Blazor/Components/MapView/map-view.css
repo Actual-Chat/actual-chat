@@ -10,38 +10,36 @@
     @apply absolute;
     @apply flex items-center justify-center;
 }
-.map-view .map-marker .c-pin {
+.map-view .map-marker > .c-pin {
     @apply relative;
     @apply w-9 h-[3.25rem];
 }
-.map-view .map-marker .c-bubble {
-    @apply absolute top-0 left-0;
+.map-view .map-marker > .c-pin > .c-bubble {
+    @apply absolute top-0 start-0;
 }
-.map-view .map-marker .c-dot {
-    @apply absolute bottom-0 left-1/2 -ml-2;
-}
-.map-view .map-marker .c-avatar {
+.map-view .map-marker > .c-pin > .c-bubble > .c-avatar {
     @apply block;
     @apply w-8 h-8;
     @apply rounded-full;
     @apply object-cover;
 }
-.map-view .map-marker .c-own-location {
+.map-view .map-own-location {
     @apply relative;
     @apply flex items-center justify-center;
     @apply w-4 h-4;
 }
-.map-view .map-marker .c-pin .c-own-location {
-    @apply absolute bottom-0 left-1/2 -ml-2;
+.map-view .map-marker > .c-pin > .c-dot,
+.map-view .map-marker > .c-pin > .map-own-location {
+    @apply absolute bottom-0 start-1/2 -ms-2;
 }
-.map-view .map-marker .c-own-dot {
+.map-view .map-own-location > .c-own-dot {
     @apply relative z-10;
     @apply w-4 h-4;
     @apply rounded-full border-[3px] border-white;
     @apply bg-primary;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
 }
-.map-view .map-marker .c-own-accuracy {
+.map-view .map-own-location > .c-own-accuracy {
     @apply absolute z-0;
     @apply rounded-full;
     @apply pointer-events-none;
@@ -51,18 +49,18 @@
     background-color: color-mix(in srgb, var(--primary) 15%, transparent);
     border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
 }
-.map-view .map-marker .c-own-pulse {
+.map-view .map-own-location > .c-own-pulse {
     @apply absolute inset-0 z-0;
     @apply rounded-full;
     @apply bg-primary;
     animation: own-location-pulse 2s ease-out infinite;
 }
-.map-view .map-marker .c-own-heading {
-    @apply absolute left-1/2 z-0;
+.map-view .map-own-location > .c-own-heading {
+    @apply absolute start-1/2 z-0;
     bottom: 50%;
     width: 3rem;
     height: 2.5rem;
-    margin-left: -1.5rem;
+    margin-inline-start: -1.5rem;
     transform-origin: 50% 100%;
     clip-path: polygon(0 0, 100% 0, 50% 100%);
     background: linear-gradient(to top, var(--primary), transparent);

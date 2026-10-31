@@ -33,7 +33,7 @@
     @if (isRecording) {
         @if (ShowRecordingToggle) {
             <HeaderButton
-                Class="c-mic"
+                Class="btn-mic"
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnStopRecording"
@@ -44,7 +44,7 @@
             </HeaderButton>
         }
         <HeaderButton
-            Class="c-hangup"
+            Class="btn-hang-up"
             StopPropagation="true"
             PreventDefault="true"
             Click="@OnHangUp"
@@ -64,7 +64,7 @@
                         style="stroke-dashoffset: @(dashOffset)"/>
             </svg>
             <HeaderButton
-                Class="c-listen"
+                Class="btn-listen"
                 StopPropagation="true"
                 PreventDefault="true"
                 Click="@OnStopListening"
@@ -79,7 +79,7 @@
         </div>
     } else {
         <HeaderButton
-            Class="c-hangup"
+            Class="btn-hang-up"
             StopPropagation="true"
             PreventDefault="true"
             Click="@OnHangUp"

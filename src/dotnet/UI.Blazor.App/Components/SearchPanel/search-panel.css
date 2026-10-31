@@ -46,10 +46,10 @@
     }
 }
 
-.search-panel .c-search {
+.search-panel > .c-search {
     @apply flex-x gap-x-2;
 }
-.search-panel .c-search .btn-h {
+.search-panel > .c-search .btn-h {
     @apply px-2;
 }
 
@@ -71,37 +71,37 @@
     @apply bg-input;
 }
 .search-input .search-icon,
-.search-input .c-close-btn {
+.search-input > label > .btn-close {
     @apply absolute;
     @apply flex items-center justify-center;
     @apply w-10 h-10;
     @apply text-03;
 }
 .search-input .search-icon {
-    @apply left-0;
+    @apply start-0;
 }
-.search-input .c-close-btn {
-    @apply right-0;
+.search-input > label > .btn-close {
+    @apply end-0;
 }
 .search-input input {
     @apply h-10;
-    @apply pl-10 pr-4;
+    @apply ps-10 pe-4;
     @apply rounded-full;
-    @apply text-left;
+    @apply text-start;
     @apply bg-transparent;
 }
 .search-input[data-has-close-btn] input {
-    @apply pr-10;
+    @apply pe-10;
 }
 .search-input input:focus {
-    @apply pl-4;
+    @apply ps-4;
     @apply bg-transparent;
 }
 .search-input input:focus + .search-icon {
     @apply hidden;
 }
 .search-input input::placeholder {
-    @apply text-left;
+    @apply text-start;
 }
 .search-input input:focus::placeholder {
     @apply text-transparent;
@@ -111,9 +111,9 @@
 }
 
 .search-input.icon-align-right i {
-    @apply right-0;
+    @apply end-0;
 }
 
 .search-input.icon-align-right input {
-    @apply pr-10 pl-4;
+    @apply pe-10 ps-4;
 }

@@ -97,7 +97,7 @@ describe('call audio output on the web', () => {
         await callButton.click();
         await caller.locator(CALL_SCREEN).first().waitFor({ state: 'visible', timeout: 20_000 });
         await caller.screenshot({ path: shot('caller-dialing') });
-        const accept = callee.locator('.btn-call.c-accept').first();
+        const accept = callee.locator('.btn-call.btn-accept').first();
         await accept.waitFor({ state: 'visible', timeout: 30_000 });
         await callee.screenshot({ path: shot('callee-ringing') });
         await accept.click();

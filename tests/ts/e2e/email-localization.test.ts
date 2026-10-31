@@ -314,7 +314,7 @@ describe('email localization', () => {
                 // TextBox debounces its input listener, and Tab fires Blazor's @onchange
                 await emailInput.pressSequentially(email, { delay: 20 });
                 await emailInput.press('Tab');
-                const verifyButton = modal.locator('.phone-verifier .c-verify-btn').first();
+                const verifyButton = modal.locator('.phone-verifier .btn-verify').first();
                 await verifyButton.waitFor({ state: 'visible', timeout: 15_000 });
                 const since = new Date();
 

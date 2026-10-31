@@ -58,7 +58,6 @@ const animationClasses = new Set<string>([
     'bar',                      // equalize-*
     'swap-a',                   // timer-swap - both halves animate, so both need phasing
     'swap-b',                   // timer-swap
-    'notify-mentioned-members', // shimmer
     // Call screen
     'rec-btn',                  // bgShake / record-btn-on-pulse
     'connecting-spinner',       // spin

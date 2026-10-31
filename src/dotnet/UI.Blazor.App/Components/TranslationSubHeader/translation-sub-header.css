@@ -1,29 +1,29 @@
 .translation-sub-header {
-    @apply pl-1 pr-0;
+    @apply ps-1 pe-0;
     @apply rounded-lg border-banner-default border-b;
     @apply bg-banner-default;
     @apply text-banner-default;
 }
 body.narrow .translation-sub-header {
-    @apply pl-3 pr-2;
+    @apply ps-3 pe-2;
 }
-sub-header.translation-sub-header .c-content {
+sub-header.translation-sub-header > .c-content {
     @apply flex-1 flex-x items-center gap-x-3;
     @apply min-h-10;
     @apply md:px-2;
 }
-sub-header.translation-sub-header .c-left {
+sub-header.translation-sub-header > .c-content > .c-left {
     @apply flex-none;
     @apply text-03;
 }
-sub-header.translation-sub-header .c-center {
+sub-header.translation-sub-header > .c-content > .c-center {
     @apply flex-1 flex-x items-center justify-between;
     @apply text-body-500 text-01;
 }
-sub-header.translation-sub-header .c-language {
+sub-header.translation-sub-header > .c-content > .c-center > .c-text > .c-language {
     @apply text-primary cursor-pointer;
 }
-sub-header.translation-sub-header .c-right {
+sub-header.translation-sub-header > .c-content > .c-right {
     @apply flex-none;
 }
 /* Reserve the full height in a single step (one viewport resize → one synchronous re-pin in the list) and

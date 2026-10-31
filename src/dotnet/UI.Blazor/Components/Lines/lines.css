@@ -1,6 +1,6 @@
 .left-line {
     @apply flex-none self-stretch flex-x items-stretch;
-    @apply pr-0.5;
+    @apply pe-0.5;
 }
 .left-line.can-move {
     @apply cursor-pointer;

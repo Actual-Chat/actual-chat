@@ -22,20 +22,20 @@
 .map-panel.minimized {
     @apply h-0;
 }
-.map-panel .c-map {
+.map-panel > .c-map {
     @apply w-full h-full;
 }
 .map-panel .btn-glass.btn,
 .map-panel .btn-glass.btn-h {
     @apply w-8 h-8;
 }
-.map-panel .btn-glass.c-expand {
-    @apply absolute top-2 left-2 z-10;
+.map-panel > .btn-glass.btn-map-expand {
+    @apply absolute top-2 start-2 z-10;
 }
-.map-panel .btn-glass.c-menu-btn {
-    @apply absolute top-2 right-2 z-10;
+.map-panel > .btn-glass.btn-map-menu {
+    @apply absolute top-2 end-2 z-10;
 }
-.map-panel .c-distance {
+.map-panel > .c-distance {
     @apply absolute top-2 left-1/2 z-10;
     @apply flex items-center;
     @apply h-8;
@@ -47,8 +47,8 @@
     @apply pointer-events-none;
     transform: translateX(-50%);
 }
-.map-panel .c-countdown {
-    @apply absolute bottom-3 left-3 z-10;
+.map-panel > .c-countdown {
+    @apply absolute bottom-3 start-3 z-10;
     @apply w-8 h-8;
     @apply rounded-full;
     background: var(--map-badge);
@@ -56,11 +56,11 @@
     @apply text-sm font-medium;
     @apply pointer-events-none;
 }
-.map-panel .c-countdown i {
+.map-panel > .c-countdown > i {
     @apply text-base;
 }
 .map-panel .btn.btn-round.btn-stop-sharing {
-    @apply absolute bottom-3 right-3 z-10;
+    @apply absolute bottom-3 end-3 z-10;
     @apply w-8 h-8;
     background: var(--map-control);
     color: var(--location-stop);
@@ -69,7 +69,7 @@
     @apply text-xl;
 }
 .map-panel .btn.btn-share-location {
-    @apply absolute bottom-3 right-3 z-10;
+    @apply absolute bottom-3 end-3 z-10;
     @apply h-8 min-h-8;
     @apply px-3;
     @apply rounded-full;
@@ -80,16 +80,16 @@
     @apply text-caption-500;
 }
 .map-panel .btn.btn-share-location.beside-stop {
-    @apply right-14;
+    @apply end-14;
 }
 
 /* ── Map panel ⋮ menu — mirrors the LocationMapModal map-type menu ── */
 
-.map-panel-host .c-menu-backdrop {
+.map-panel-host > .c-menu-backdrop {
     @apply fixed inset-0 z-10;
 }
-.map-panel-host .c-menu {
-    @apply absolute right-2 top-11 z-20;
+.map-panel-host > .c-menu {
+    @apply absolute end-2 top-11 z-20;
     @apply flex-y;
     @apply w-40;
     @apply p-1;
@@ -97,24 +97,24 @@
     @apply bg-01;
     box-shadow: 0 2px 6px var(--black-05);
 }
-.map-panel-host .c-menu .c-menu-item {
+.map-panel-host > .c-menu > .c-menu-item {
     @apply flex-x items-center gap-x-4;
     @apply h-12 shrink-0;
     @apply px-3;
     @apply rounded-lg;
 }
-.map-panel-host .c-menu .c-menu-item:disabled {
+.map-panel-host > .c-menu > .c-menu-item:disabled {
     @apply opacity-40;
 }
-body.hoverable .map-panel-host .c-menu .c-menu-item:hover:not(:disabled),
-.touch-capable .map-panel-host .c-menu .c-menu-item:active:not(:disabled) {
+body.hoverable .map-panel-host > .c-menu > .c-menu-item:hover:not(:disabled),
+.touch-capable .map-panel-host > .c-menu > .c-menu-item:active:not(:disabled) {
     @apply bg-hover;
 }
-.map-panel-host .c-menu .c-menu-item i {
+.map-panel-host > .c-menu > .c-menu-item > i {
     @apply text-2xl text-03;
 }
-.map-panel-host .c-menu .c-menu-item span {
-    @apply grow text-left;
+.map-panel-host > .c-menu > .c-menu-item > span {
+    @apply grow text-start;
     @apply text-body-500 text-01;
 }
 
@@ -126,7 +126,7 @@ body.hoverable .map-panel-host .c-menu .c-menu-item:hover:not(:disabled),
     @apply hidden;
 }
 body.wide .activity-pill {
-    @apply absolute z-button top-2 right-2;
+    @apply absolute z-button top-2 end-2;
     @apply flex-x items-center gap-2;
     @apply h-10;
     @apply px-3;
@@ -143,7 +143,7 @@ body.wide .activity-pill {
     from { opacity: 0; }
     to { opacity: 1; }
 }
-.activity-pill .c-live-dot {
+.activity-pill > .c-live-dot {
     @apply w-2 h-2;
     @apply rounded-full;
     background: var(--danger);
@@ -157,7 +157,7 @@ body.wide .activity-pill {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.35; }
 }
-.activity-pill .c-divider {
+.activity-pill > .c-divider {
     @apply w-0.5 h-4;
     @apply rounded-full;
     @apply bg-pal-white-40;
@@ -178,7 +178,7 @@ body.wide .activity-pill {
     transform: translate(-50%, 50%);
     box-shadow: 0 2px 3px var(--black-10);
 }
-.call-map-switch .c-option {
+.call-map-switch > .c-option {
     @apply flex items-center justify-center;
     @apply min-w-14;
     @apply px-2.5;
@@ -187,7 +187,7 @@ body.wide .activity-pill {
     height: 1.625rem;
     color: var(--gray-30);
 }
-.call-map-switch .c-option.on {
+.call-map-switch > .c-option.on {
     background: var(--blue-50-10);
     color: var(--blue-50);
 }

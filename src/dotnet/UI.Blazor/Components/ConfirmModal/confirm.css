@@ -2,7 +2,7 @@
     @apply md:gap-x-0;
     @apply w-full md:w-82;
 }
-.modal-frame.confirm-modal .c-text {
+.modal-frame.confirm-modal > .dialog-body > .confirm-text > .c-text {
     @apply flex-y gap-y-2;
     @apply text-body;
 }

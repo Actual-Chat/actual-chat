@@ -5,46 +5,45 @@
     @apply p-4;
     @apply rounded-lg;
     @apply bg-03;
-    @apply text-left;
+    @apply text-start;
     @apply overflow-hidden;
 }
 body.hoverable .download-tile:hover {
     @apply bg-primary;
 }
-body.hoverable .download-tile:hover .c-title,
-body.hoverable .download-tile:hover .c-text {
+body.hoverable .download-tile:hover > .c-content > .c-labels > * {
     @apply text-06;
 }
-.download-tile .c-labels {
+.download-tile > .c-content {
+    @apply flex-1 flex-y justify-between;
+}
+body.narrow .download-tile > .c-content {
+    @apply flex-x items-center justify-between;
+}
+.download-tile > .c-content > .c-labels {
     @apply flex-y gap-1;
     @apply min-w-0;
 }
-.download-tile .c-title {
+.download-tile > .c-content > .c-labels > .c-title {
     @apply flex justify-start;
     @apply text-xl font-semibold;
 }
-.download-tile .c-text {
+.download-tile > .c-content > .c-labels > .c-text {
     @apply flex justify-start;
     @apply text-body;
 }
-.download-tile .c-brand {
+.download-tile > .c-content > .c-brand {
     @apply flex-none;
     @apply md:mt-4;
-}
-.download-tile .c-qrcode {
-    @apply hidden md:flex;
-    @apply w-20 h-20;
-    @apply m-4;
-}
-.download-tile .c-content {
-    @apply flex-1 flex-y justify-between;
-}
-body.narrow .download-tile .c-content {
-    @apply flex-x items-center justify-between;
 }
 /* The store badges are fixed-size images, the web-app one is a wrapping text pill: without a cap it
    takes its max-content width and both dwarfs them and starves the labels beside it. The cap clears
    the widest badge (135px), so only the pill is ever constrained by it. */
-body.narrow .download-tile .c-brand {
+body.narrow .download-tile > .c-content > .c-brand {
     @apply max-w-36;
+}
+.download-tile > .c-qrcode {
+    @apply hidden md:flex;
+    @apply w-20 h-20;
+    @apply m-4;
 }

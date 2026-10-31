@@ -33,14 +33,14 @@
             <AuthorName AuthorId="@m.PeerId" Class="c-peer-name" ShowDetailsOnClick="false"/>
         </div>
         @if (m.IsIncoming) {
-            <ButtonRound Class="c-decline" Click="@OnDeclineClick">
+            <ButtonRound Class="btn-decline" Click="@OnDeclineClick">
                 <i class="icon-close text-2xl"></i>
             </ButtonRound>
-            <ButtonRound Class="c-accept" Click="@OnAcceptClick">
+            <ButtonRound Class="btn-accept" Click="@OnAcceptClick">
                 <i class="icon-phone-take text-2xl"></i>
             </ButtonRound>
         } else {
-            <ButtonRound Class="c-hang-up" Click="@OnHangUpClick" data-tune="@(m.HasHangUpTune ? "none" : null)">
+            <ButtonRound Class="btn-hang-up" Click="@OnHangUpClick" data-tune="@(m.HasHangUpTune ? "none" : null)">
                 <i class="icon-phone-off text-2xl"></i>
             </ButtonRound>
         }

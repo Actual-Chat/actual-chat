@@ -267,16 +267,16 @@ export class ItemHeightController {
 
     private setUnsettled(state: ItemHeightState, isUnsettled: boolean): void {
         state.isUnsettled = isUnsettled;
-        addOrRemoveClass(state.ref, 'c-height-unsettled', isUnsettled);
+        addOrRemoveClass(state.ref, 'height-unsettled', isUnsettled);
     }
 
     // Re-applies what Blazor's class rewrite drops, or the item keeps its written height while losing
     // the rules that give it meaning: the min-height floor returns and the clip goes.
     private reassertClasses(state: ItemHeightState): void {
         if (state.isControlled)
-            addOrRemoveClass(state.ref, 'c-height-controlled', true);
+            addOrRemoveClass(state.ref, 'height-controlled', true);
         if (state.isUnsettled)
-            addOrRemoveClass(state.ref, 'c-height-unsettled', true);
+            addOrRemoveClass(state.ref, 'height-unsettled', true);
     }
 
     private onItemDomChanged = (mutations: MutationRecord[]): void => {
@@ -336,7 +336,7 @@ export class ItemHeightController {
 
             state.applied = target;
             state.isControlled = true;
-            addOrRemoveClass(state.ref, 'c-height-controlled', true);
+            addOrRemoveClass(state.ref, 'height-controlled', true);
             this.setUnsettled(state, false);
             state.ref.style.transition = 'none';
             state.ref.style.height = `${target}px`;
@@ -556,7 +556,7 @@ export class ItemHeightController {
         const itemRef = state.ref;
         state.applied = target;
         state.isControlled = true;
-        addOrRemoveClass(itemRef, 'c-height-controlled', true);
+        addOrRemoveClass(itemRef, 'height-controlled', true);
         this.onHeightChanged(key);
         if (isAnimated) {
             this.setUnsettled(state, true);
@@ -696,7 +696,7 @@ function hasForeignClassChange(oldValue: string | null, newValue: string): boole
 function withoutOwnClasses(value: string): string {
     return value
         .split(/\s+/)
-        .filter(x => x !== '' && x !== 'c-height-controlled' && x !== 'c-height-unsettled')
+        .filter(x => x !== '' && x !== 'height-controlled' && x !== 'height-unsettled')
         .sort()
         .join(' ');
 }
@@ -712,7 +712,7 @@ function addOrRemoveClass(itemRef: HTMLElement, name: string, isOn: boolean): vo
 // Hands the item back to the stylesheet: whatever height was written to it describes content that is
 // no longer there.
 function release(itemRef: HTMLElement): void {
-    itemRef.classList.remove('c-height-controlled', 'c-height-unsettled');
+    itemRef.classList.remove('height-controlled', 'height-unsettled');
     itemRef.style.height = '';
 }
 

@@ -5,6 +5,6 @@
     @apply rounded-lg;
     @apply bg-btn-hover;
 }
-.playback-speed-btn .c-speed-label {
+.playback-speed-btn > .btn-content > .c-speed-label {
     @apply text-02 text-body-500 whitespace-nowrap;
 }

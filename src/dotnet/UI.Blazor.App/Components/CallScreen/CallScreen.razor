@@ -74,26 +74,26 @@
                             <div class="c-ring-buttons" @ref="_ringButtons">
                                 <div class="c-btn-cell">
                                     @RingHints
-                                    <Button Class="btn-call c-decline" Click="@OnDeclineClick">
+                                    <Button Class="btn-call btn-decline" Click="@OnDeclineClick">
                                         <i class="icon-close"></i>
                                     </Button>
                                     <span class="c-btn-label">@L.Common_Decline</span>
                                 </div>
                                 <div class="c-btn-cell">
-                                    <Button Class="btn-call c-mute" Click="@OnMuteClick">
+                                    <Button Class="btn-call btn-mute" Click="@OnMuteClick">
                                         <i class="@(m.IsRingMuted ? "icon-bell" : "icon-bell-off")"></i>
                                     </Button>
                                     <span class="c-btn-label">@L.Call_Mute</span>
                                 </div>
                                 <div class="c-btn-cell">
-                                    <Button Class="btn-call c-message" Click="@OnMessageClick">
+                                    <Button Class="btn-call btn-message" Click="@OnMessageClick">
                                         <i class="icon-message-ellipse"></i>
                                     </Button>
                                     <span class="c-btn-label">@L.Call_Message</span>
                                 </div>
                                 <div class="c-btn-cell">
                                     @RingHints
-                                    <Button Class="btn-call c-accept" Click="@OnAcceptClick">
+                                    <Button Class="btn-call btn-accept" Click="@OnAcceptClick">
                                         <i class="icon-phone-take"></i>
                                     </Button>
                                     <span class="c-btn-label">@L.Common_Accept</span>
@@ -118,7 +118,7 @@
                                 <ChatIcon Chat="@chat" Size="SquareSize.Size24" HideTitle="@true"/>
                             </div>
                             <div class="c-name">
-                                <span class="c-name-text">@chat.Title</span>
+                                <span class="c-name-text"><bdi>@chat.Title</bdi></span>
                             </div>
                             <CallStatus
                                 Text="@CallScreensUI.GetStatusText(m.Stage)"

@@ -41,11 +41,11 @@
         @if (isLoading) {
             <div class="c-play-loading"><Spinner/></div>
         } else if (m.IsPaused) {
-            <ButtonRound Tooltip="@L.MessageMenu_Play" Click="@OnResume" Class="c-play-btn btn-xs">
+            <ButtonRound Tooltip="@L.MessageMenu_Play" Click="@OnResume" Class="btn-play btn-xs">
                 <i class="icon-play text-xl"></i>
             </ButtonRound>
         } else {
-            <ButtonRound Tooltip="@L.Common_Pause" Click="@OnPause" Class="c-play-btn btn-xs">
+            <ButtonRound Tooltip="@L.Common_Pause" Click="@OnPause" Class="btn-play btn-xs">
                 <i class="icon-pause text-xl"></i>
             </ButtonRound>
         }

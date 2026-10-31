@@ -9,7 +9,7 @@
 @if (m.Grants.Count == 0) {
     <div class="settings-empty">@L.ConnectedApps_EmptyTitle</div>
 } else {
-    <Tile Class="tile-flat connected-apps-list">
+    <Tile Class="connected-apps-list">
         @foreach (var grant in m.Grants) {
             <TileItem IsHoverable="false">
                 <Content>

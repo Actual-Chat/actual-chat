@@ -27,7 +27,7 @@ body.narrow .stepper.onboarding-stepper {
 }
 .step-tile {
     @apply flex-x gap-x-4;
-    @apply pl-4 pt-2 pb-2 pr-4;
+    @apply ps-4 pt-2 pb-2 pe-4;
     @apply bg-01;
     @apply rounded-lg;
 }
@@ -77,14 +77,14 @@ body.narrow .stepper.onboarding-stepper {
     @apply flex-y gap-y-4;
 }
 /* The buttons drop below the avatar rather than squeeze it out once their labels stop fitting */
-.onboarding-modal .c-upload {
+.avatar-step > .form > .c-upload {
     @apply flex-none flex-x flex-wrap gap-4;
     @apply my-8;
 }
-.onboarding-modal .c-upload .c-buttons {
+.avatar-step > .form > .c-upload > .c-buttons {
     @apply flex-1 flex-y justify-center gap-y-2;
 }
-.onboarding-modal .form .c-upload .c-buttons label.upload-label {
+.avatar-step > .form > .c-upload > .c-buttons label.upload-label {
     @apply text-primary;
 }
 .onboarding-modal .form-block {
@@ -122,19 +122,12 @@ body.hoverable .analytics-step > .c-content > a:hover {
     @apply flex-y;
     @apply flex-1;
 }
-.step-tile > .c-docs .c-doc-wrapper {
+.step-tile > .c-docs > .c-doc-wrapper {
     @apply flex-x items-center;
     @apply min-h-12;
 }
-.step-tile > .c-docs .c-doc-wrapper:not(:last-child) {
+.step-tile > .c-docs > .c-doc-wrapper:not(:last-child) {
     @apply border-b border-separator;
-}
-.step-tile > .c-docs .c-doc-wrapper .c-doc-icon {
-    @apply w-6 h-6;
-}
-.step-tile > .c-docs .c-doc-wrapper .c-doc-text {
-    @apply ml-2;
-    @apply text-caption;
 }
 .step-tile > .c-docs a {
     @apply flex-1;
@@ -144,13 +137,6 @@ body.hoverable .analytics-step > .c-content > a:hover {
 
 body.hoverable .step-tile > .c-docs a:hover {
     @apply text-primary;
-}
-
-.sign-in-step .c-recaptcha-info {
-    @apply text-caption text-03;
-}
-.sign-in-step .c-recaptcha-info .recaptcha-link {
-    @apply text-caption-500 text-primary;
 }
 
 /* Specific styles */
@@ -204,12 +190,12 @@ body.narrow .stepper-image-filler {
 .onboarding-tutorial {
     @apply flex-y gap-y-4;
 }
-.onboarding-tutorial .c-title > p {
+.onboarding-tutorial > .c-title > p {
     @apply text-3.5xl font-semibold leading-8 wrap-anywhere;
     font-size: clamp(1.5rem, 2.5vw, 1.75rem);
     line-height: clamp(2rem, 3vw, 2rem);
 }
-.onboarding-tutorial .c-description {
+.onboarding-tutorial > .c-description {
     @apply text-title-500 font-light leading-5 wrap-anywhere;
     font-size: clamp(1rem, 1.75vw, 1.375rem);
     line-height: clamp(1.25rem, 2.25vw, 1.75rem);
@@ -283,7 +269,7 @@ body.narrow .stepper-image-filler {
 .stepper-skip-filler {
     @apply flex items-center justify-end;
     @apply h-10;
-    @apply pr-1;
+    @apply pe-1;
 }
 .stepper-skip-filler .btn-h {
     @apply absolute top-2;
@@ -310,7 +296,7 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
     @apply flex-1 flex-y gap-y-4;
     @apply p-4;
 }
-.phone-verification-modal .dialog-body > .c-content .c-title {
+.phone-verification-modal .dialog-body > .c-content > .c-title {
     @apply text-body-500 text-02;
 }
 
@@ -318,10 +304,10 @@ body.hoverable .stepper-skip-filler .btn-h:hover {
 .email-verification-modal .dialog-body > .c-content {
     @apply flex-1 flex-y justify-center gap-y-8;
 }
-.email-verification-modal .dialog-body > .c-content .c-image {
+.email-verification-modal .dialog-body > .c-content > .c-image {
     @apply flex-x justify-center items-center;
 }
-.email-verification-modal .dialog-body > .c-content .c-code {
+.email-verification-modal .dialog-body > .c-content > .c-code {
     @apply flex-y;
     @apply px-4;
 }

@@ -1,7 +1,7 @@
 .tile-item {
     @apply flex-x items-center justify-center gap-x-2;
     @apply min-h-12 w-full;
-    @apply pr-1 pb-1;
+    @apply pe-1 py-0.5;
     @apply rounded-lg;
 }
 body.hoverable .tile-item.clickable:not(.selected):hover,
@@ -108,7 +108,7 @@ body.hoverable .tile-item.clickable.item-danger:hover,
     @apply block;
     @apply min-w-24;
     @apply truncate;
-    @apply leading-6 text-right;
+    @apply leading-6 text-end;
 }
 .header-tile-item .ti-left {
     @apply hidden;
@@ -151,10 +151,10 @@ body.hoverable .tile-item.clickable.item-danger:hover,
 /* The share button is decoration, the account name is the identity, so the button yields first -
    but by a factor that lets its label ellipsise on the way rather than snap to icon-only. */
 .tile-item-my-account-link .ti-right {
-    @apply pr-1;
+    @apply pe-1;
 }
 .tile-item-my-account-link .btn.btn-share-action {
-    @apply mr-0.5 md:mr-0;
+    @apply me-0.5 md:me-0;
 }
 .tile-item.chat-roulette-is-enabled {
     @apply h-auto;

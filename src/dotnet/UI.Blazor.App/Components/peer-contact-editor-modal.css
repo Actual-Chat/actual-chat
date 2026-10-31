@@ -3,10 +3,10 @@
     @apply mb-2;
 }
 
-.peer-contact-editor-modal .c-name .c-title {
+.peer-contact-editor-modal .avatar-badge > .c-name > .c-title {
     @apply text-02 text-title-500 truncate;
 }
-.peer-contact-editor-modal .c-name .c-peer-own-name {
+.peer-contact-editor-modal .avatar-badge > .c-name > .c-peer-own-name {
     @apply text-03 text-caption-500 truncate;
 }
 

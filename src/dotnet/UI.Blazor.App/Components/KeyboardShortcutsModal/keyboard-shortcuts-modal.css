@@ -7,13 +7,13 @@
     @apply px-4 pb-2;
 }
 
-.keyboard-shortcuts .c-keys {
+.keyboard-shortcut-keys {
     @apply flex-none flex-x items-center gap-x-1;
 }
-.keyboard-shortcuts .c-keys > .c-sep {
+.keyboard-shortcut-keys > .c-sep {
     @apply text-caption-500 text-03;
 }
-.keyboard-shortcuts .c-keys > kbd {
+.keyboard-shortcut-keys > kbd {
     @apply flex-x items-center justify-center;
     @apply min-w-6 h-6 px-1.5;
     @apply rounded-md border border-separator;

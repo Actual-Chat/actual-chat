@@ -10,6 +10,7 @@ import { SvgCache } from '../../Components/Avatar/svg-cache';
 import { VirtualListOverlay } from '../../Components/VirtualList/virtual-list-overlay';
 import { isEditable } from 'keyboard-visibility';
 import { SafeAreas, type SafeAreaPreset, type SafeAreaViolation } from 'safe-area';
+import { TextDirection, type TextDirectionKind } from 'text-direction';
 
 const { infoLog } = getLogs('DebugUI');
 
@@ -357,6 +358,18 @@ export class DebugUI {
     // Flips between forced 34px insets and the real env() values; bound to the dev-only Ctrl+Shift+L, S chord.
     public static toggleSafeAreas(): void {
         this.showSafeAreas(SafeAreas.activeEmulation === null ? true : null);
+    }
+
+    /** Mirrors the page (`'rtl'`) or restores it (`'ltr'`); remembered across reloads like `?dir=rtl`. */
+    public static setTextDirection(direction: TextDirectionKind): void {
+        TextDirection.set(direction);
+        infoLog?.log(`setTextDirection: ${direction}`);
+    }
+
+    // Bound to the dev-only Ctrl+Shift+L, R chord.
+    public static toggleTextDirection(): void {
+        const direction = TextDirection.toggle();
+        infoLog?.log(`toggleTextDirection: ${direction}`);
     }
 
     /** Visible interactive elements the phone would hide under an inset or clip in a corner; the emulated

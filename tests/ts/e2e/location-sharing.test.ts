@@ -129,7 +129,7 @@ describe('location sharing', () => {
         await page.screenshot({ path: shot('loc-panel') });
 
         // act — hide the panel from its ⋮ menu; the activity pill takes its place (#4088)
-        await mapPanel.locator('.c-menu-btn').first().click();
+        await mapPanel.locator('.btn-map-menu').first().click();
         const panelMenu = page.locator('.map-panel-host .c-menu').first();
         await panelMenu.waitFor({ state: 'visible', timeout: 5_000 });
         await panelMenu.locator('.c-menu-item:has-text("Hide")').first().click();
@@ -148,7 +148,7 @@ describe('location sharing', () => {
         await mapPanel.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
 
         // act — expand the panel into the full map modal
-        await mapPanel.locator('.c-expand').first().click();
+        await mapPanel.locator('.btn-map-expand').first().click();
         const mapModal = page.locator('.location-map-modal').first();
         await mapModal.waitFor({ state: 'visible', timeout: 10_000 });
 
@@ -158,9 +158,9 @@ describe('location sharing', () => {
 
         // assert — the participants list shows the sharer: own row marked "(you)"
         // with a live "Updated ..." status
-        const participant = mapModal.locator('.c-participant').first();
+        const participant = mapModal.locator('.location-participant-view').first();
         await participant.waitFor({ state: 'visible', timeout: 10_000 });
-        expect(await mapModal.locator('.c-participant').count()).toBe(1);
+        expect(await mapModal.locator('.location-participant-view').count()).toBe(1);
         const participantText = (await participant.innerText()).toLowerCase();
         expect(participantText).toContain('(you)');
         expect(participantText).toContain('updated');
@@ -266,7 +266,7 @@ describe('location sharing', () => {
         expect(await mapModal.locator('.maplibregl-interactive').count()).toBeGreaterThan(0);
 
         // assert — the one-shot sender appears in the participants list with an update time
-        const senderRow = mapModal.locator('.c-participant').first();
+        const senderRow = mapModal.locator('.location-participant-view').first();
         await senderRow.waitFor({ state: 'visible', timeout: 10_000 });
         const senderText = (await senderRow.innerText()).toLowerCase();
         expect(senderText).toContain('updated');

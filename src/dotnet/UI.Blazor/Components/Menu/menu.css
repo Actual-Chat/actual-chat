@@ -100,7 +100,7 @@ body.narrow .ac-menu-icon > i {
     @apply text-2xl;
 }
 .ac-menu-text {
-    @apply w-full text-02 text-base font-medium mr-2;
+    @apply w-full text-02 text-base font-medium me-2;
     @apply overflow-hidden;
     @apply text-ellipsis;
 }

@@ -5,7 +5,7 @@
     var tabs = new TabDef[] {
         new("emoji", L.Emoji_Title) {
             Class = "no-scrollbar",
-            Content = @<div class="c-grid">
+            Content = @<div class="emoji-grid">
                            @if (_recentEmojis.Count > 0) {
                                <div class="c-emoji-recent">
                                    <div class="c-group-title">@L.Emoji_Recent</div>
@@ -72,7 +72,7 @@
 
     private RenderFragment EmojiButton(Emoji emoji) => __builder => {
         <button @key="emoji"
-            class="c-item"
+            class="emoji-grid-item"
             @onclick="@(() => OnEmojiClick(emoji))">
             <EmojiIcon Emoji="@emoji" Class="c-emoji" HasPreview="true"/>
         </button>

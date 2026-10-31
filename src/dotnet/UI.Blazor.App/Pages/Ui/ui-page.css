@@ -9,7 +9,7 @@
 .uk-sidebar {
     @apply flex-y flex-none gap-y-4;
     @apply w-60 p-4;
-    @apply bg-01 border-r border-separator;
+    @apply bg-01 border-e border-separator;
     overflow-y: auto;
 }
 .uk-brand {
@@ -134,7 +134,7 @@
 .uk-swatch {
     @apply flex-x items-center gap-x-2.5;
     @apply p-2 rounded-lg;
-    @apply cursor-pointer text-left;
+    @apply cursor-pointer text-start;
     background: var(--background-01);
     border: 1px solid var(--separator);
     min-width: 0;

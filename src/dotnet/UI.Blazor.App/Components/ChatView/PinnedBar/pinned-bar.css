@@ -2,7 +2,7 @@
     @apply flex items-stretch gap-2;
     @apply w-full lg:max-w-192 self-center;
     @apply min-h-12;
-    @apply pr-2 mb-0.5;
+    @apply pe-2 mb-0.5;
     @apply rounded-lg;
     @apply bg-01;
     @apply bg-gradient-to-r from-pal-blue-50-10 to-[var(--background-02)];
@@ -11,42 +11,42 @@
 .pinned-bar > .c-cycle {
     @apply flex-1 flex items-stretch gap-2;
     @apply min-w-0;
-    @apply pl-2 py-1.5;
-    @apply text-left;
+    @apply ps-2 py-1.5;
+    @apply text-start;
     @apply cursor-pointer;
 }
-body.hoverable .pinned-bar:has(.c-cycle:hover) {
+body.hoverable .pinned-bar:has(> .c-cycle:hover) {
     @apply bg-02;
 }
-.touch-capable .pinned-bar:has(.c-cycle:active) {
+.touch-capable .pinned-bar:has(> .c-cycle:active) {
     @apply bg-02;
 }
-.pinned-bar .c-indicator {
+.pinned-bar > .c-cycle > .c-indicator {
     @apply flex-y gap-0.5 self-stretch shrink-0;
     @apply w-0.5;
 }
-.pinned-bar .c-indicator > .c-seg {
+.pinned-bar > .c-cycle > .c-indicator > .c-seg {
     @apply flex-1;
     @apply w-full;
     @apply rounded-full;
     @apply opacity-30;
     @apply bg-primary-hover;
 }
-.pinned-bar .c-indicator > .c-seg.active {
+.pinned-bar > .c-cycle > .c-indicator > .c-seg.active {
     @apply opacity-100;
     @apply bg-primary;
 }
-.pinned-bar .c-text {
+.pinned-bar > .c-cycle > .c-text {
     @apply flex-1 self-center min-w-0;
     @apply line-clamp-2;
     @apply text-02 text-sm leading-tight;
 }
 .pinned-bar > .c-pin-icon {
     @apply self-center shrink-0;
-    @apply pr-2 md:pr-3.5;
+    @apply pe-2 md:pe-3.5;
     @apply text-03 text-body;
 }
 .pinned-bar > .c-pin-btn {
     @apply self-center shrink-0;
-    @apply pr-4 md:pr-5.5;
+    @apply pe-4 md:pe-5.5;
 }

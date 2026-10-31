@@ -79,6 +79,10 @@ export class SideNav extends DisposableBag {
     // Nullable: SideNav.left/right are cleared to null! on dispose, so only one side may be registered
     public get opposite(): SideNav | null { return this.side == SideNavSide.Left ? SideNav.right : SideNav.left; }
     public get isOpen() { return this.element.dataset.sideNav === 'open'; }
+    /** The screen edge the panel slides from: its own side, mirrored on a right-to-left page. */
+    public get isPhysicallyLeft(): boolean {
+        return (this.side == SideNavSide.Left) !== (document.documentElement.dir === 'rtl');
+    }
     public get isPulling() { return this._isPulling; }
     public set isPulling(value: boolean) {
         this._isPulling = value;
@@ -153,8 +157,7 @@ export class SideNav extends DisposableBag {
             return;
         }
 
-        const isLeft = this.side == SideNavSide.Left;
-        const closeDirectionSign = isLeft ? -1 : 1;
+        const closeDirectionSign = this.isPhysicallyLeft ? -1 : 1;
         const closeRatio = 1 - openRatio;
         const translateRatio = closeDirectionSign * closeRatio;
         const opacity = Math.min(1, 0.05 + Math.pow(openRatio, 0.35));
@@ -243,7 +246,7 @@ class SideNavPullDetectGesture extends Gesture {
                 return; // Not sure if this is possible, but just in case
 
             if (sideNav.hasHistoryNavigationGesture) {
-                let pullEdge = sideNav.side === SideNavSide.Left ? 0 : 1;
+                let pullEdge = sideNav.isPhysicallyLeft ? 0 : 1;
                 if (sideNav.isOpen)
                     pullEdge = 1 - pullEdge;
                 const pullEdgeX = ScreenSize.width * pullEdge;
@@ -281,7 +284,7 @@ class SideNavPullDetectGesture extends Gesture {
     ) {
         super();
         const startedAt = performance.now();
-        const isLeft = sideNav.side == SideNavSide.Left;
+        const isLeft = sideNav.isPhysicallyLeft;
         const isOpenSign = sideNav.isOpen ? 1 : -1;
         const openDirectionSign = isLeft ? 1 : -1;
         const allowedDirectionSign = openDirectionSign * -isOpenSign;
@@ -389,7 +392,7 @@ class SideNavPullGesture extends Gesture {
         public readonly firstMoveEvent: TouchEvent,
     ) {
         super();
-        this.isLeft = sideNav.side == SideNavSide.Left;
+        this.isLeft = sideNav.isPhysicallyLeft;
         this.wasOpen = sideNav.isOpen;
         const isOpenSign = this.wasOpen ? 1 : -1;
         const openDirectionSign = this.isLeft ? 1 : -1;

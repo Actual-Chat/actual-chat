@@ -58,17 +58,17 @@
     height: var(--track-height);
     background: var(--progress-color);
 }
-.font-size-slider .c-preview {
+.font-size-slider > .c-preview {
     @apply flex-x items-end justify-between w-full;
     @apply px-2;
     height: 28px;
 }
-.font-size-slider .c-sample {
+.font-size-slider > .c-preview > .c-sample {
     @apply text-01;
     font-size: var(--preview-font-size, 16px);
     line-height: 1;
 }
-.font-size-slider .c-size {
+.font-size-slider > .c-preview > .c-size {
     @apply text-caption;
     @apply text-03;
 }

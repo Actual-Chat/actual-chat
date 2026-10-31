@@ -6,13 +6,13 @@
     @apply flex items-center justify-center;
     width: var(--acg-circle-size, 2.25rem);
     height: var(--acg-circle-size, 2.25rem);
-    margin-left: var(--acg-circle-overlap, -1rem);
+    margin-inline-start: var(--acg-circle-overlap, -1rem);
     @apply rounded-full;
     @apply overflow-hidden;
     transition: margin-left 0.5s ease;
 }
 .author-circle:first-child {
-    @apply ml-0;
+    @apply ms-0;
 }
 .author-circle .author-wrapper {
     @apply flex items-center justify-center;
@@ -49,6 +49,7 @@
     height: var(--acg-circle-size, 2.25rem);
 }
 .author-circle-group.animate-changes > .author-circle {
+    /* physical: --acg-x is a physical x offset */
     @apply absolute left-0 top-1/2;
     margin: 0;
     transform: translate(var(--acg-x, 0px), -50%) scale(1);

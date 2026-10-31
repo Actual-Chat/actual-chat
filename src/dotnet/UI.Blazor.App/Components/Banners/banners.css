@@ -64,7 +64,7 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
     width: calc(100% - 1rem);
 }
 
-.banner .c-suggestion {
+.chat-picture-suggestion-banner .banner-body > .c-suggestion {
     @apply flex-x items-center gap-3;
 }
 
@@ -80,9 +80,9 @@ body.narrow .banner.reconnect-banner .banner-body > .c-main-text.desktop {
 .own-voice-sample-banner {
     @apply flex-y gap-y-1;
 }
-.own-voice-sample-banner .c-title {
+.own-voice-sample-banner > .c-title {
     @apply text-caption-500;
 }
-.own-voice-sample-banner .c-prompt {
+.own-voice-sample-banner > .c-prompt {
     @apply text-caption text-02;
 }

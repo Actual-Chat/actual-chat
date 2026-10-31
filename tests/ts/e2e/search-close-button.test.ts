@@ -16,7 +16,7 @@ import {
 
 const searchRoot = (page: Page) => page.locator('.left-chat-search-input').first();
 const searchInput = (page: Page) => page.locator('.left-chat-search-input input[type="text"]').first();
-const closeButton = (page: Page) => page.locator('.left-chat-search-input .c-close-btn').first();
+const closeButton = (page: Page) => page.locator('.left-chat-search-input .btn-close').first();
 
 async function searchState(page: Page) {
     return searchRoot(page).evaluate(root => {

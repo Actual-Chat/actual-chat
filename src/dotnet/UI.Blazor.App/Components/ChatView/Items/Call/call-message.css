@@ -1,7 +1,7 @@
 .call-message {
     @apply flex-x items-center gap-x-3;
     @apply md:w-fit md:min-w-96;
-    @apply ml-8 my-1 p-1;
+    @apply ms-8 my-1 p-1;
     @apply rounded-full border border-separator;
 }
 .call-message.c-action {
@@ -10,35 +10,35 @@
 .call-message.c-action:hover {
     @apply bg-01;
 }
-.call-message .c-cm-icon-badge {
+.call-message > .c-cm-icon-badge {
     @apply flex flex-none items-center justify-center;
     @apply w-10 h-10;
     @apply rounded-full;
 }
-.call-message .c-cm-icon {
+.call-message > .c-cm-icon-badge > .c-cm-icon {
     @apply text-2xl;
 }
-.call-message.c-missed .c-cm-icon-badge {
+.call-message.c-missed > .c-cm-icon-badge {
     background-color: var(--magenta-50-10);
 }
-.call-message.c-missed .c-cm-icon {
+.call-message.c-missed > .c-cm-icon-badge > .c-cm-icon {
     @apply text-danger;
 }
-.call-message.c-regular .c-cm-icon-badge {
+.call-message.c-regular > .c-cm-icon-badge {
     background-color: var(--gray-50-10);
 }
-.call-message.c-regular .c-cm-icon {
+.call-message.c-regular > .c-cm-icon-badge > .c-cm-icon {
     @apply text-03;
 }
-.call-message .c-cm-body {
+.call-message > .c-cm-body {
     @apply flex-y flex-1;
     @apply min-w-0;
 }
-.call-message .c-cm-title {
+.call-message > .c-cm-body > .c-cm-title {
     @apply truncate;
     @apply text-body-500 text-02;
 }
-.call-message .c-cm-meta {
+.call-message > .c-cm-body > .c-cm-meta {
     @apply truncate;
     @apply text-sm text-03;
 }

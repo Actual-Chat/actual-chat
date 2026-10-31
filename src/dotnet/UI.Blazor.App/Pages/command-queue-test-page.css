@@ -5,49 +5,49 @@
     @apply overflow-y-auto;
     @apply select-text;
 }
-.command-queue-test-page .c-hint {
+.command-queue-test-page > .c-hint {
     @apply text-sm text-03;
 }
-.command-queue-test-page .c-toolbar {
+.command-queue-test-page > .c-toolbar {
     @apply flex-x items-center gap-x-2;
 }
-.command-queue-test-page .c-status {
+.command-queue-test-page > .c-toolbar > .c-status {
     @apply text-sm text-03;
 }
-.command-queue-test-page .c-status.paused {
+.command-queue-test-page > .c-toolbar > .c-status.paused {
     @apply text-danger;
 }
-.command-queue-test-page .c-table-wrapper {
+.command-queue-table {
     @apply shrink-0;
     @apply rounded-lg border border-separator;
     @apply overflow-y-auto;
 }
-.command-queue-test-page table {
+.command-queue-table > table {
     @apply w-full;
     @apply border-collapse;
     @apply text-sm;
 }
-.command-queue-test-page thead tr {
+.command-queue-table thead > tr {
     @apply sticky top-0;
     @apply border-b border-separator;
     @apply bg-01;
     @apply text-03;
 }
-.command-queue-test-page tbody tr {
+.command-queue-table tbody > tr {
     @apply border-b border-separator;
 }
-.command-queue-test-page th,
-.command-queue-test-page td {
+.command-queue-table th,
+.command-queue-table td {
     @apply p-2;
-    @apply text-left;
+    @apply text-start;
 }
-.command-queue-test-page .c-number {
+.command-queue-table tr > .c-number {
     @apply w-16;
-    @apply text-right;
+    @apply text-end;
 }
-.command-queue-test-page .c-time {
+.command-queue-table tr > .c-time {
     @apply w-24;
 }
-.command-queue-test-page .c-error {
+.command-queue-table tr > .c-error {
     @apply text-danger;
 }

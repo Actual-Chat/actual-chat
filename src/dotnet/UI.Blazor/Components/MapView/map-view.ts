@@ -351,7 +351,7 @@ export class MapView {
 
     private static createOwnLocationElement(m: MapMarker): HTMLElement {
         const own = document.createElement('div');
-        own.className = 'c-own-location';
+        own.className = 'map-own-location';
         const accuracy = document.createElement('div');
         accuracy.className = 'c-own-accuracy';
         accuracy.style.display = 'none';

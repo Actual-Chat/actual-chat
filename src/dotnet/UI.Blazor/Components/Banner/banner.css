@@ -23,12 +23,12 @@
 }
 .banner-body {
     @apply flex-1;
-    @apply ml-1;
+    @apply ms-1;
     @apply text-body;
 }
 .banner-buttons {
     @apply flex-x items-center justify-end gap-x-2;
-    @apply ml-auto;
+    @apply ms-auto;
     @apply text-03;
 }
 .banner.banner-wrap {
@@ -46,20 +46,20 @@
 /* The dismiss button is out of flow, so only a banner that has one reserves room for it - 36px is
    what it actually occupies (24px wide at right-2), and the room saved keeps a phone row unwrapped. */
 .banner.banner-wrap.banner-dismissible > .c-content {
-    @apply pr-9;
+    @apply pe-9;
 }
 .banner.banner-wrap .banner-body {
     @apply flex-1;
     @apply min-w-44;
 }
 .banner.banner-wrap .banner-buttons {
-    @apply ml-auto;
+    @apply ms-auto;
 }
 /* Top-right on both platforms: a wrap banner can grow to two rows (a long message pushes the
    action buttons onto their own row), and centering the button vertically then drops it into the
    gap between the rows instead of a corner. */
 .banner.banner-wrap .close-banner-abs {
-    @apply absolute top-2 right-2;
+    @apply absolute top-2 end-2;
 }
 /* Desktop: the lead (icon + message) keeps its natural width, so a long message pushes the action
    buttons onto their own row - like mobile - instead of squeezing the text into a narrow column. */
@@ -73,20 +73,20 @@ body.wide .banner.banner-wrap .banner-lead {
    clears the close) and let the button row run flush to the right edge. Flex can't express a first-row-
    only reservation, hence the measured class. */
 body.wide .banner.banner-wrap.banner-dismissible.buttons-wrapped > .c-content {
-    @apply pr-0;
+    @apply pe-0;
 }
 body.wide .banner.banner-wrap.banner-dismissible.buttons-wrapped .banner-body {
-    @apply pr-9;
+    @apply pe-9;
 }
 /* The query sees the content box, 20px narrower than the banner, so 22rem still fired up to a 380px
    viewport and cost English a row on every phone. A translation that doesn't fit wraps regardless -
    .banner-body's min-w-44 floor sees to that, from a 362px viewport down. */
 @container banner-wrap (max-width: 20rem) {
     .banner.banner-wrap.banner-dismissible > .c-content {
-        @apply pr-0;
+        @apply pe-0;
     }
     .banner.banner-wrap.banner-dismissible .banner-body {
-        @apply pr-10;
+        @apply pe-10;
     }
     .banner.banner-wrap .banner-buttons {
         @apply basis-full;
@@ -100,10 +100,10 @@ body.narrow .banner.banner-wrap > .c-content {
     @apply flex-y items-stretch gap-y-1;
 }
 body.narrow .banner.banner-wrap.banner-dismissible > .c-content {
-    @apply pr-0;
+    @apply pe-0;
 }
 body.narrow .banner.banner-wrap.banner-dismissible .banner-body {
-    @apply pr-9;
+    @apply pe-9;
 }
 body.narrow .banner.banner-wrap .banner-body {
     @apply min-w-0 min-h-6;
@@ -111,7 +111,7 @@ body.narrow .banner.banner-wrap .banner-body {
 }
 body.narrow .banner.banner-wrap .banner-buttons {
     @apply justify-end basis-auto;
-    @apply ml-0;
+    @apply ms-0;
 }
 body.hoverable .banner .btn:hover,
 body.hoverable .banner .btn-h:hover {

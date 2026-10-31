@@ -86,7 +86,7 @@
                 var authorName = author?.Avatar.Name ?? "";
                 if (!m.OnlyAnonymousChatAllowed) {
                     if (Features_EnableAnonymousChat.IsEnabled && _anonymousChat) {
-                        <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
+                        <Button Class="btn-modal btn-primary btn-anonymous-chat" Click="OnStartAnonymousPeerChat">
                             <i class="icon-question-mark-bubble text-xl"></i>
                             <span class="c-title">
                                 <span>@L.Account_ChatWith</span>
@@ -95,7 +95,7 @@
                         </Button>
                     } else {
                         <Button
-                            Class="btn-modal btn-primary start-chat-btn"
+                            Class="btn-modal btn-primary btn-start-chat"
                             Click="OnStartPeerChat">
                             <i class="icon-message-ellipse text-xl"></i>
                             <span class="c-title">
@@ -105,7 +105,7 @@
                         </Button>
                     }
                 } else if (Features_EnableAnonymousChat.IsEnabled && m.EnableIncompleteUI) {
-                    <Button Class="btn-modal btn-primary anonymous-chat-btn" Click="OnStartAnonymousPeerChat">
+                    <Button Class="btn-modal btn-primary btn-anonymous-chat" Click="OnStartAnonymousPeerChat">
                         <i class="icon-question-mark-bubble text-xl"></i>
                         <span class="c-title">
                             <span>@L.Account_ChatWith</span>
@@ -117,7 +117,7 @@
                 }
 
                 @if (Features_EnableAnonymousChat.IsEnabled && m.EnableIncompleteUI) {
-                    <div class="tile-wrapper">
+                    <div class="anonymous-chat-option">
                         <div class="c-incut @(toggleValue ? "show" : "")">
                             <div class="c-info">
                                 <i class="icon-alert-triangle text-lg text-warning"></i>
@@ -133,7 +133,7 @@
                                 @L.Account_AnonymousChatCaption
                             </Caption>
                             <Right>
-                                <Toggle Class="mr-2"
+                                <Toggle Class="me-2"
                                         IsChecked="@toggleValue"
                                         IsDisabled="@m.OnlyAnonymousChatAllowed"
                                         IsCheckedChanged="@(_ => OnChatTypeChanged())"/>

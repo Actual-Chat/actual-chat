@@ -34,11 +34,11 @@
     @apply bg-01;
     box-shadow: inset 0 0 0 1px var(--primary);
 }
-.left-chat-search-input .c-filter-btn {
+.left-chat-search-input label > .btn-filter {
     @apply flex-none self-center inline-flex;
     @apply order-first;
     @apply w-0;
-    @apply ml-0;
+    @apply ms-0;
     @apply rounded-full;
     @apply opacity-0;
     @apply text-03;
@@ -48,13 +48,13 @@
                 margin-left 200ms ease-out,
                 opacity 200ms ease-out;
 }
-.left-chat-search-input.open .c-filter-btn {
+.left-chat-search-input.open label > .btn-filter {
     @apply w-8;
-    @apply ml-1;
+    @apply ms-1;
     @apply opacity-100;
     pointer-events: auto;
 }
-.left-chat-search-input .c-filter-badges {
+.left-chat-search-input > .c-filter-badges {
     @apply z-30;
     @apply flex flex-wrap items-center gap-2;
     @apply -mt-1 px-3 pb-1;
@@ -68,7 +68,7 @@
     @apply px-4;
 }
 .left-chat-search-input.open .search-input input {
-    @apply pl-2;
+    @apply ps-2;
 }
 .left-chat-search-input.place .search-input {
     @apply relative;
@@ -86,38 +86,38 @@
 .left-chat-search-input.place .search-input input::placeholder {
     @apply text-03;
 }
-.left-chat-search-input .c-ai-btn {
-    @apply absolute right-1 top-1;
+.left-chat-search-input label > .btn-ai {
+    @apply absolute end-1 top-1;
     @apply flex items-center justify-center;
     @apply w-8 h-8;
     @apply bg-primary;
     @apply text-white;
     transition: opacity 200ms ease-out;
 }
-.left-chat-search-input.place .c-close-btn i {
+.left-chat-search-input.place label > .btn-close i {
     @apply text-03;
 }
-.left-chat-search-input .c-ai-btn.search-btn {
+.left-chat-search-input label > .btn-ai.search-btn {
     @apply text-03;
 }
-.left-chat-search-input.open .c-ai-btn {
+.left-chat-search-input.open label > .btn-ai {
     @apply opacity-0;
     @apply pointer-events-none;
 }
-.left-chat-search-input.closed .c-ai-btn {
+.left-chat-search-input.closed label > .btn-ai {
     @apply opacity-100;
 }
 
-.left-chat-search-input .c-close-btn {
+.left-chat-search-input label > .btn-close {
     @apply absolute z-10;
     @apply flex;
     transition: opacity 200ms ease-out;
 }
-.left-chat-search-input.closed .c-close-btn {
+.left-chat-search-input.closed label > .btn-close {
     @apply z-minus;
     @apply opacity-0;
     @apply duration-0;
 }
-.left-chat-search-input.open .c-close-btn {
+.left-chat-search-input.open label > .btn-close {
     @apply opacity-100;
 }

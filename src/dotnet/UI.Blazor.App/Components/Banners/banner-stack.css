@@ -9,7 +9,7 @@
     @apply hidden;
 }
 .banner-stack .banner {
-    @apply absolute top-0 left-0 right-0;
+    @apply absolute top-0 start-0 end-0;
     @apply mx-auto;
     transform-origin: top center;
     transition:

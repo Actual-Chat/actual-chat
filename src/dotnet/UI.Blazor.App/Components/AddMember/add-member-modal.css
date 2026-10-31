@@ -12,7 +12,7 @@
 .c-contact-list > .c-no-contacts > .c-text {
     @apply text-body;
 }
-.c-contact-list > .c-no-contacts .c-share {
+.c-contact-list > .c-no-contacts > .c-share {
     @apply w-full;
     @apply m-0 p-0;
 }
@@ -22,7 +22,7 @@
     @apply px-2;
     @apply rounded-lg;
 }
-body.hoverable .c-contact-list > .c-item:hover {
+body.hoverable .with-contact-list > .c-contact-list > .c-item:hover {
     @apply bg-hover;
 }
 .c-contact-list > .c-item,
@@ -34,6 +34,6 @@ body.hoverable .c-contact-list > .c-item:hover {
     @apply truncate;
     @apply text-body-500 text-02;
 }
-body.hoverable .c-contact-list > .c-item:hover > .avatar-name {
+body.hoverable .with-contact-list > .c-contact-list > .c-item:hover > .avatar-name {
     @apply text-01;
 }

@@ -30,91 +30,94 @@ body.device-android .modal-frame.emoji-modal {
 
 /* ── Emoji tab ── */
 
-.emoji-modal .c-grid {
+.emoji-grid {
     @apply flex-y gap-3;
     @apply p-2;
 }
-.emoji-modal .c-group {
+.emoji-grid > .c-group {
     @apply flex-y gap-1;
 }
-.emoji-modal .c-group-title {
+.emoji-grid > .c-emoji-recent > .c-group-title,
+.emoji-grid > .c-group > .c-group-title {
     @apply px-1;
     @apply text-sm font-medium text-03;
 }
-.emoji-modal .c-group-items {
+.emoji-grid > .c-group > .c-group-items {
     @apply grid gap-1;
     grid-template-columns: repeat(auto-fill, minmax(3rem, 1fr));
 }
-.emoji-modal .c-item {
+.emoji-grid-item {
     @apply flex-none flex items-center justify-center;
     @apply w-12 h-12;
     @apply rounded-lg;
     @apply cursor-pointer;
 }
-body.hoverable .emoji-modal .c-item:hover,
-.touch-capable .emoji-modal .c-item:active {
+body.hoverable .emoji-grid-item:hover,
+.touch-capable .emoji-grid-item:active {
     @apply bg-hover;
 }
-.emoji-modal .c-emoji {
+.emoji-grid-item > .c-emoji {
     @apply w-9 h-9;
 }
 
 /* Recent emojis — horizontal scrolling strip */
-.emoji-modal .c-emoji-recent {
+.emoji-grid > .c-emoji-recent {
     @apply flex-y gap-1;
 }
-.emoji-modal .c-emoji-recent-list {
+.emoji-grid > .c-emoji-recent > .c-emoji-recent-list {
     @apply flex-x gap-1;
     @apply overflow-x-auto;
 }
 
 /* ── GIF tab ── */
 
-.emoji-modal .c-gif-tab {
+.gif-picker {
     @apply flex-y;
     @apply h-full;
     @apply overflow-hidden;
 }
-.emoji-modal .c-gif-scroll {
+.gif-picker > .c-gif-scroll {
     @apply flex-1 flex-y;
     @apply min-h-0;
     @apply overflow-y-auto;
 }
-.emoji-modal .c-gif-tab .search-box {
+.gif-picker > .search-box {
     @apply flex-none;
     @apply m-2;
 }
 /* Recent GIFs — horizontal scrolling strip */
-.emoji-modal .c-gif-recent {
+.gif-picker-recent {
     @apply flex-none;
     @apply px-2 pt-1 pb-2;
 }
-.emoji-modal .c-gif-recent-label {
+.gif-picker-recent > .c-gif-recent-label {
     @apply pb-1;
     @apply text-03 text-body;
 }
-.emoji-modal .c-gif-recent-list {
+.gif-picker-recent-list {
     @apply flex gap-1;
     @apply overflow-x-auto;
 }
-.emoji-modal .c-gif-recent-item {
+.gif-picker-recent-list > .c-gif-recent-item {
     @apply flex-none;
     @apply h-20;
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply cursor-pointer;
 }
-.emoji-modal .c-gif-recent-item > .c-gif-img {
+.gif-picker-recent-list > .c-gif-recent-item > .c-gif-img {
+    @apply block;
     @apply h-full w-auto;
+    @apply rounded-lg;
 }
-body.hoverable .emoji-modal .c-gif-recent-item:hover {
+body.hoverable .gif-picker-recent-list > .c-gif-recent-item:hover {
     @apply opacity-80;
 }
 /* Arrow buttons for horizontal scroll */
-.emoji-modal .c-gif-recent-wrap {
+.gif-picker-recent > .c-gif-recent-wrap {
     @apply relative;
 }
-.emoji-modal .c-gif-recent-arrow {
+.gif-picker-recent > .c-gif-recent-wrap > .c-gif-recent-arrow {
     @apply absolute top-1/2 z-10;
     @apply flex items-center justify-center;
     @apply w-6 h-6;
@@ -128,16 +131,16 @@ body.hoverable .emoji-modal .c-gif-recent-item:hover {
 /* No :not(.hidden) here: .hidden is display:none, so it already wins over any opacity, and
    the build expands a .hidden inside :not() into the full selector text of all 453 rules that
    apply it - 223 copies of this one rule, several dragging an unrelated :has() along. */
-body.hoverable .emoji-modal .c-gif-recent:hover .c-gif-recent-arrow {
+body.hoverable .gif-picker-recent:hover > .c-gif-recent-wrap > .c-gif-recent-arrow {
     @apply opacity-100;
 }
-.emoji-modal .c-gif-recent-arrow.left {
-    @apply left-0.5;
+.gif-picker-recent > .c-gif-recent-wrap > .c-gif-recent-arrow.left {
+    @apply start-0.5;
 }
-.emoji-modal .c-gif-recent-arrow.right {
-    @apply right-0.5;
+.gif-picker-recent > .c-gif-recent-wrap > .c-gif-recent-arrow.right {
+    @apply end-0.5;
 }
-body.hoverable .emoji-modal .c-gif-recent-arrow:hover {
+body.hoverable .gif-picker-recent > .c-gif-recent-wrap > .c-gif-recent-arrow:hover {
     @apply bg-pal-black-80;
 }
 
@@ -145,15 +148,15 @@ body.hoverable .emoji-modal .c-gif-recent-arrow:hover {
    Multi-column rebalances ALL items when content changes, which makes the user's
    hover target shuffle to a different GIF mid-click. With independent columns,
    items keep their slot and new pages strictly append at the bottom of each column. */
-.emoji-modal .c-gif-grid {
+.gif-picker-grid {
     @apply flex items-start gap-1;
     @apply px-2;
 }
-.emoji-modal .c-gif-col {
+.gif-picker-grid > .c-gif-col {
     @apply flex-1 flex-y gap-1;
     @apply min-w-0;
 }
-.emoji-modal .c-gif-item {
+.gif-picker-grid > .c-gif-col > .c-gif-item {
     @apply relative isolate;
     @apply block;
     @apply w-full;
@@ -164,7 +167,7 @@ body.hoverable .emoji-modal .c-gif-recent-arrow:hover {
     content-visibility: auto;
     contain-intrinsic-size: auto 180px;
 }
-.emoji-modal .c-gif-item::before {
+.gif-picker-grid > .c-gif-col > .c-gif-item::before {
     @apply content-empty;
     @apply absolute inset-0 z-minus;
     @apply opacity-0;
@@ -172,14 +175,14 @@ body.hoverable .emoji-modal .c-gif-recent-arrow:hover {
     @apply pointer-events-none;
     animation: gif-skeleton-pulse 2s ease-in-out infinite;
 }
-.emoji-modal .c-gif-item.loaded::before {
+.gif-picker-grid > .c-gif-col > .c-gif-item.loaded::before {
     @apply opacity-0;
     animation: none;
 }
-body.hoverable .emoji-modal .c-gif-item:hover {
+body.hoverable .gif-picker-grid > .c-gif-col > .c-gif-item:hover {
     @apply opacity-80;
 }
-.emoji-modal .c-gif-img {
+.gif-picker-grid > .c-gif-col > .c-gif-item > .c-gif-img {
     @apply block;
     @apply w-full h-auto;
     @apply rounded-lg;
@@ -189,15 +192,15 @@ body.hoverable .emoji-modal .c-gif-item:hover {
     50%      { opacity: 0.7; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .emoji-modal .c-gif-item::before {
+    .gif-picker-grid > .c-gif-col > .c-gif-item::before {
         animation: none;
         opacity: 0.35;
     }
 }
-.emoji-modal .c-gif-sentinel {
+.gif-picker-grid > .c-gif-col > .c-gif-sentinel {
     @apply h-px;
 }
-.emoji-modal .c-gif-status {
+.gif-picker > .c-gif-scroll > .c-gif-status {
     @apply py-2;
     @apply opacity-0;
     @apply rounded-lg;

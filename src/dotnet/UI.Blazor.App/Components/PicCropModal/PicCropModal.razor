@@ -18,9 +18,9 @@
     BodyClass="no-scrollbar"
     HasCloseButton="true">
     <Body>
-        <div class="c-crop">
+        <div class="pic-crop-area">
             <div class="c-content">
-                <div class="c-canvas-container">
+                <div class="pic-crop-canvas">
                     @if (IsMarbleState) {
                         <div class="c-marble">@GeneratedAvatar</div>
                     }
@@ -68,7 +68,7 @@
                 <span>@L.PicCrop_Upload</span>
             </Button>
         </div>
-        <div class="c-controls">
+        <div class="pic-crop-controls">
             <div class="c-tools-row">
                 <ButtonRound Class="btn-rotate-ccw btn-sm" Tooltip="@L.PicCrop_RotateLeft" IsDisabled="@(!_hasSource || _isSaving)">
                     <i class="icon-refresh text-xl c-flip"></i>
@@ -87,7 +87,7 @@
                 </ButtonRound>
             </div>
             <div class="c-labeled-slider">
-                <div class="c-slider">
+                <div class="pic-crop-slider">
                     <div class="c-track"></div>
                     <div class="c-fill"></div>
                     <div class="c-thumb"></div>
@@ -98,7 +98,7 @@
             </div>
             @if (ModalModel.HasBlur) {
                 <div class="c-labeled-slider">
-                    <div class="c-slider">
+                    <div class="pic-crop-slider">
                         <div class="c-track"></div>
                         <div class="c-fill"></div>
                         <div class="c-thumb"></div>
@@ -108,10 +108,10 @@
                 </div>
             }
             @if (_hasError) {
-                <div class="c-status c-generation-error">@L.PicCrop_LoadFailed</div>
+                <div class="c-generation-error">@L.PicCrop_LoadFailed</div>
             }
             @if (_hasGenerationError) {
-                <div class="c-status c-generation-error">@L.PicCrop_GenerationFailed</div>
+                <div class="c-generation-error">@L.PicCrop_GenerationFailed</div>
             }
         </div>
         <input @ref="_fileInputRef" type="file" accept="image/*" @onchange="@OnFileSelected" hidden />

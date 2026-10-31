@@ -1,12 +1,12 @@
 .totp-verifier {
     @apply flex-y gap-y-4;
 }
-.totp-verifier .c-description {
+.totp-verifier > .c-description {
     @apply text-caption text-03;
 }
-.totp-verifier .c-note {
+.totp-verifier > .c-note {
     @apply text-caption text-04;
 }
-.totp-verifier .c-resend-code {
+.totp-verifier > .c-resend-code {
     @apply flex-x justify-center gap-x-1;
 }

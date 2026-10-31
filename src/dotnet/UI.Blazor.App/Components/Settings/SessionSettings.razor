@@ -9,7 +9,7 @@
 @if (currentSession != null) {
     <TileTopic Topic="@L.Sessions_CurrentSession"/>
 
-    <Tile Class="tile-flat">
+    <Tile>
         <TileItem IsHoverable="false" Class="sessions-tile-item">
             <Content>
                 <span class="c-description">@currentSession.Description</span>
@@ -28,7 +28,7 @@
 
 <TileTopic Topic="@L.Sessions_Sessions"/>
 
-<Tile Class="tile-flat">
+<Tile>
     @foreach (var session in otherSessions) {
         var activeDaysAgo = (int)(now - session.LastSeenAt).Positive().TotalDays;
         var sActiveDaysAgo = activeDaysAgo == 0

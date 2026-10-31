@@ -16,7 +16,7 @@
 }
 .pic-blurred {
     @apply opacity-70;
-    @apply absolute right-0 top-0 left-0 bottom-0;
+    @apply absolute end-0 top-0 start-0 bottom-0;
     @apply overflow-hidden;
 }
 /* Deferred until app-ready: a 40px blur across a full-width cover is the most expensive thing

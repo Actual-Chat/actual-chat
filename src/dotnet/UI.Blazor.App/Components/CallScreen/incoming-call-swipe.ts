@@ -26,7 +26,7 @@ export class IncomingCallSwipe {
         fromEvent<MouseEvent>(root, 'click', { capture: true })
             .pipe(takeUntil(this.disposed$))
             .subscribe(e => {
-                if ((e.target as HTMLElement | null)?.closest('.c-decline, .c-accept')) {
+                if ((e.target as HTMLElement | null)?.closest('.btn-decline, .btn-accept')) {
                     e.stopImmediatePropagation();
                     e.preventDefault();
                 }
@@ -46,11 +46,11 @@ export class IncomingCallSwipe {
     }
 
     private onDown(e: PointerEvent): void {
-        const button = (e.target as HTMLElement | null)?.closest<HTMLElement>('.c-decline, .c-accept');
+        const button = (e.target as HTMLElement | null)?.closest<HTMLElement>('.btn-decline, .btn-accept');
         if (button == null)
             return;
 
-        const method = button.classList.contains('c-accept') ? 'SwipeAccept' : 'SwipeDecline';
+        const method = button.classList.contains('btn-accept') ? 'SwipeAccept' : 'SwipeDecline';
         const startY = e.clientY;
         const trigger = TriggerRem * RemPx;
         const maxDrag = MaxDragRem * RemPx;

@@ -1,4 +1,5 @@
 .ac-tooltip {
+    /* physical: tooltip-host.ts positions it in viewport coordinates */
     @apply absolute top-0 left-0 z-tooltip;
     @apply block;
     @apply max-w-64 md:max-w-80;

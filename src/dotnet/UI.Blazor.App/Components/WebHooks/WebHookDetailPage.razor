@@ -14,7 +14,7 @@
 }
 
 <div class="web-hook-detail">
-    <Tile Class="tile-flat">
+    <Tile>
         <TileItem Click="@(() => OnEditClick(hook))">
             <Icon><i class="icon-edit"></i></Icon>
             <Content>@hook.Name</Content>
@@ -34,7 +34,7 @@
         <WebHookDeliveryList WebHookId="@hook.Id" Deliveries="@m.Deliveries"/>
     }
 
-    <Tile Class="tile-flat">
+    <Tile>
         <TileItem Click="@(() => OnRotateSecretClick(hook))">
             <Icon><i class="icon-key"></i></Icon>
             <Content>@(isIncoming ? L.WebHook_RotateUrl : L.WebHook_RotateSecret)</Content>

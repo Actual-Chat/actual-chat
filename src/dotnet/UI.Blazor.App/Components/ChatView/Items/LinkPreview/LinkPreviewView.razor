@@ -95,7 +95,7 @@
 
     RenderFragment RenderInfo() =>
         @<div>
-            <span class="c-title">@preview.Title</span>
+            <span class="c-title"><bdi>@preview.Title</bdi></span>
             @if (!preview.Description.IsNullOrEmpty()) {
                 <div class="c-description">@preview.Description</div>
             }

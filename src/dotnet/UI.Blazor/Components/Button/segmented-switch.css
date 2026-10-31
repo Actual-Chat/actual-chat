@@ -32,7 +32,7 @@ body.hoverable .segmented-switch > .btn-segment:not(.on):hover,
 .segmented-switch > .btn-segment > .c-dot {
     @apply inline-block;
     @apply w-2 h-2;
-    @apply ml-1;
+    @apply ms-1;
     @apply rounded-full;
     @apply bg-danger;
 }
@@ -44,6 +44,7 @@ body.hoverable .segmented-switch > .btn-segment:not(.on):hover,
     @apply rounded-full;
 }
 .segmented-switch.pill > .c-thumb {
+    /* physical: the thumb slides from the left edge by translateX */
     @apply block;
     @apply absolute z-0 top-1 bottom-1 left-1;
     @apply rounded-full;

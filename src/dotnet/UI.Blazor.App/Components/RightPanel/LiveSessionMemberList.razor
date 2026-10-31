@@ -45,25 +45,25 @@
         <div class="c-manage">
             <span class="c-manage-title">@L.Call_Manage</span>
             <div class="c-manage-buttons">
-                <button class="c-manage-btn @(TranscriptOn(live.Rules) ? "on" : "off")"
+                <button class="btn-manage @(TranscriptOn(live.Rules) ? "on" : "off")"
                         @onclick="@(() => ToggleTranscript(live))" title="@L.Call_Transcription">
                     <i class="icon-voice-to-text-message"></i>
                 </button>
                 @if (m.IsController) {
-                    <button class="c-manage-btn @(live.Rules.VideoAllowed ? "on" : "off")"
+                    <button class="btn-manage @(live.Rules.VideoAllowed ? "on" : "off")"
                             @onclick="@(() => ToggleVideo(live))" title="@L.Call_Video">
                         <i class="icon-video"></i>
                     </button>
                 }
                 @if (m.CanMuteOthers) {
-                    <button class="c-manage-btn @(anyMuted ? "on" : "off")"
+                    <button class="btn-manage @(anyMuted ? "on" : "off")"
                             @onclick="@(() => ToggleMuteAll(live, !anyMuted))"
                             title="@(anyMuted ? L.Call_UnmuteAll : L.Call_MuteAll)">
                         <i class="@(anyMuted ? "icon-mic-off" : "icon-mic-2")"></i>
                     </button>
                 }
                 @if (m.CanMuteOthers && anyHandRaised) {
-                    <button class="c-manage-btn on"
+                    <button class="btn-manage on"
                             @onclick="@(() => LowerAllHands(live))"
                             title="@L.Call_LowerAllHands">
                         <i class="icon-hand"></i>
@@ -85,7 +85,7 @@
             var groupTitle = L.RightPanel_GroupTitle_Format(title, members.Count);
             <Collapsed @key="@key" Title="@groupTitle" IsCollapsed="false">
             @foreach (var member in members) {
-                <div class="c-member-row" @key="@member.AuthorId.Value">
+                <div class="live-session-member" @key="@member.AuthorId.Value">
                     <AuthorBadge
                         AuthorId="@member.AuthorId"
                         ShowPresence="true"
@@ -105,7 +105,7 @@
                         }
                         @if (m.CanSetHost && member.AuthorId != live.Host
                             && member.Group != MemberGroup.Exited) {
-                            <button class="c-host-btn" title="@L.Call_MakeHost"
+                            <button class="btn-make-host" title="@L.Call_MakeHost"
                                     @onclick="@(() => OnMakeHostClick(live.ChatId, member))">
                                 <i class="icon-star"></i>
                             </button>
@@ -122,7 +122,7 @@
                         }
                         @if (isRecording) {
                             var micTitle = CanStopRecording(m, member) ? L.Call_TurnOffRecording : L.Call_Recording;
-                            <button class="c-mic-btn" title="@micTitle"
+                            <button class="btn-mic" title="@micTitle"
                                     @onclick="@(() => OnMicClick(live.ChatId, m, member))">
                                 <i class="icon-mic-2 recording"></i>
                             </button>

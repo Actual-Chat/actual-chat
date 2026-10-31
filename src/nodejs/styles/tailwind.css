@@ -237,7 +237,7 @@
 
     .custom-scrollbar-outside {
         @apply custom-scrollbar;
-        @apply -mr-3 pr-1.5;
+        @apply -me-3 pe-1.5;
     }
 
     /* Mozilla */

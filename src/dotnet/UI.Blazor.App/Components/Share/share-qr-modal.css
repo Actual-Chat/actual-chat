@@ -12,16 +12,16 @@
     @apply flex-y items-center gap-6;
     @apply p-6 pt-0;
 }
-.share-qr-modal .c-tabs,
-.share-qr-modal .c-hint {
+.share-qr-modal > .dialog-body > .c-tabs,
+.share-qr-modal > .dialog-body > .c-hint {
     width: var(--c-pane-size);
 }
-.share-qr-modal .c-code,
+.share-qr-modal > .dialog-body > .c-code,
 .share-qr-modal .qr-scan-view {
     width: var(--c-pane-size);
     height: var(--c-pane-size);
 }
-.share-qr-modal .c-code {
+.share-qr-modal > .dialog-body > .c-code {
     @apply flex items-center justify-center;
     --qr-code-size: var(--c-qr-size);
     @apply rounded-3xl;
@@ -29,14 +29,14 @@
 }
 /* Three lines of text-sm: what the longest of these strings takes in the widest locale, which the
    Max catalog is built to expose. Less than that and the modal grows when the hint wraps once more. */
-.share-qr-modal .c-hint {
+.share-qr-modal > .dialog-body > .c-hint {
     @apply flex items-center justify-center;
     @apply min-h-15;
     @apply text-center text-sm text-03;
 }
 /* The scan pane says what went wrong here rather than in a toast, and the line goes back to the
    hint on its own - so it has to read as a message, not as a permanent caption. */
-.share-qr-modal .c-hint.error {
+.share-qr-modal > .dialog-body > .c-hint.error {
     @apply text-danger;
 }
 
@@ -69,7 +69,7 @@ body.narrow .share-qr-modal > .dialog-body {
 /* Below the close button's row, not level with it: the header spans the full width, so a switch
    beside the button would sit under it and take none of the taps meant for it. 3.5rem is
    .ordinary-header's height. */
-body.narrow .share-qr-modal .c-tabs {
+body.narrow .share-qr-modal > .dialog-body > .c-tabs {
     @apply absolute z-20;
     /* No safe-area term, unlike the header: .dialog-body is the containing block here, and it
        already starts below the frame's padding. */
@@ -83,7 +83,7 @@ body.narrow .share-qr-modal .c-tabs {
 body.narrow .share-qr-modal:has(.c-code) {
     background: linear-gradient(180deg, var(--violet-99) 0%, var(--indigo-90) 100%);
 }
-body.narrow .share-qr-modal .c-code {
+body.narrow .share-qr-modal > .dialog-body > .c-code {
     background: none;
 }
 /* Scan pane: the camera is the whole sheet, so the close button has to read against it. */
@@ -103,15 +103,15 @@ body.narrow .share-qr-modal:has(.qr-scan-view) > .modal-header i {
 }
 /* Nothing to caption over a live camera - but a rejected code still has to say so, and over an
    arbitrary scene it needs its own backing to stay readable. */
-body.narrow .share-qr-modal:has(.qr-scan-view) .c-hint {
+body.narrow .share-qr-modal:has(.qr-scan-view) > .dialog-body > .c-hint {
     @apply absolute inset-x-0 z-20;
     @apply w-auto mx-6 min-h-0;
     bottom: calc(2rem + var(--safe-area-bottom));
 }
-body.narrow .share-qr-modal:has(.qr-scan-view) .c-hint:not(.error) {
+body.narrow .share-qr-modal:has(.qr-scan-view) > .dialog-body > .c-hint:not(.error) {
     @apply invisible;
 }
-body.narrow .share-qr-modal:has(.qr-scan-view) .c-hint.error {
+body.narrow .share-qr-modal:has(.qr-scan-view) > .dialog-body > .c-hint.error {
     @apply px-4 py-2;
     @apply rounded-2xl;
     @apply text-white;

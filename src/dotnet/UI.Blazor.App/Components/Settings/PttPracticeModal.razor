@@ -14,7 +14,7 @@
 <DialogFrame Class="ptt-practice-modal compact-header modal-sm" Title="@L.Ptt_PracticeTitle" HasCloseButton="true">
     <Body>
         <FormBlock>
-            <div class="c-meters">
+            <div class="ptt-practice-meters">
                 @RenderMeter(Meter.FlipToTalk, PttGestureIcon.GestureKind.FlipToTalk,
                     L.Ptt_FlipToTalk, options.IsFlipToTalkEnabled, progress.FlipToTalk)
                 @RenderMeter(Meter.DoubleShake, PttGestureIcon.GestureKind.DoubleShake,

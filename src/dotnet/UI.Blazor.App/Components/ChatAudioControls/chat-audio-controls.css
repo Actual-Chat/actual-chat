@@ -9,41 +9,41 @@ body.narrow .chat-activity-panel .chat-audio-controls {
 }
 /* Red controls rest at danger-light and deepen to danger on hover/press;
    without these the base .btn-h:hover rule would repaint them gray. */
-.chat-audio-controls .c-mic,
-.chat-audio-controls .c-hangup {
+.chat-audio-controls > .btn-mic,
+.chat-audio-controls > .btn-hang-up {
     @apply text-danger-light;
 }
-body.hoverable .chat-audio-controls .c-mic:hover,
-body.hoverable .chat-audio-controls .c-hangup:hover,
-.touch-capable .chat-audio-controls .c-mic:active,
-.touch-capable .chat-audio-controls .c-hangup:active {
+body.hoverable .chat-audio-controls > .btn-mic:hover,
+body.hoverable .chat-audio-controls > .btn-hang-up:hover,
+.touch-capable .chat-audio-controls > .btn-mic:active,
+.touch-capable .chat-audio-controls > .btn-hang-up:active {
     @apply text-danger;
 }
-.chat-audio-controls .c-listen,
-body.hoverable .chat-audio-controls .c-listen:hover {
+.chat-audio-controls > .c-listening-timer > .btn-listen,
+body.hoverable .chat-audio-controls > .c-listening-timer > .btn-listen:hover {
     @apply text-primary;
 }
 
 /* Listening timer ring */
-.chat-audio-controls .c-listening-timer {
+.chat-audio-controls > .c-listening-timer {
     @apply relative;
     @apply flex items-center justify-center;
 }
-.chat-audio-controls .c-listening-timer .c-timer-ring {
+.chat-audio-controls > .c-listening-timer > .c-timer-ring {
     @apply absolute -inset-2;
     @apply pointer-events-none;
     width: calc(100% + 1rem);
     height: calc(100% + 1rem);
     transform: rotate(-90deg);
 }
-.chat-audio-controls .c-timer-ring-bg {
+.chat-audio-controls > .c-listening-timer > .c-timer-ring > .c-timer-ring-bg {
     @apply opacity-30;
     fill: none;
     stroke: var(--primary);
     stroke-width: 0.75;
     stroke-linecap: round;
 }
-.chat-audio-controls .c-timer-ring-circle {
+.chat-audio-controls > .c-listening-timer > .c-timer-ring > .c-timer-ring-circle {
     fill: none;
     stroke: var(--primary);
     stroke-width: 1.25;
@@ -54,6 +54,6 @@ body.hoverable .chat-audio-controls .c-listen:hover {
 }
 
 /* The icon/countdown alternation itself is the shared .timer-swap (round-progress.css). */
-.chat-audio-controls .c-timer-text {
+.chat-audio-controls .timer-swap > .c-timer-text {
     @apply text-primary text-[0.7rem] font-semibold leading-none tabular-nums;
 }

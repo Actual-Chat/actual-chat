@@ -81,7 +81,7 @@
 
     // A small tag naming the real class of a region.
     private RenderFragment Tag(string cls) =>
-        @<span class="absolute top-0 right-0 z-10 px-1 rounded-bl bg-01 text-03 font-mono opacity-70 pointer-events-none" style="font-size:10px">@cls</span>;
+        @<span class="absolute top-0 end-0 z-10 px-1 rounded-es bg-01 text-03 font-mono opacity-70 pointer-events-none" style="font-size:10px">@cls</span>;
 
     // The real modal frame: header + body + [footer] + [buttons].
     private RenderFragment Frame(string frameCls, RenderFragment header, RenderFragment body, RenderFragment? footer, RenderFragment? buttons) =>

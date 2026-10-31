@@ -14,22 +14,23 @@
     @apply absolute inset-0 z-30;
     @apply overflow-hidden pointer-events-none;
 }
-.call-reactions-overlay .c-reaction {
+.call-reactions-overlay > .c-reaction {
     @apply absolute bottom-16 max-w-full;
     @apply flex-y items-center gap-1;
     @apply opacity-0;
     /* The same fraction of the panel and of the reaction itself, so a wide label never
        leaves the panel: at 0% its left edge is on the panel's edge, at 100% its right one is */
+    /* physical: --left and the translate below are one physical offset */
     left: var(--left);
     translate: calc(-1 * var(--left)) 0;
     will-change: transform, opacity;
     animation: callReactionFloat 5s ease-out forwards;
 }
-.call-reactions-overlay .c-emoji {
+.call-reactions-overlay > .c-reaction > .c-emoji {
     @apply w-12 h-12;
     @apply text-5xl leading-none;
 }
-.call-reactions-overlay .c-name {
+.call-reactions-overlay > .c-reaction > .c-name {
     @apply px-1.5 py-0.5 rounded;
     @apply text-caption text-white whitespace-nowrap;
     @apply overflow-hidden;
@@ -37,7 +38,7 @@
     text-overflow: ellipsis;
     background: rgba(0, 0, 0, 0.5);
 }
-.call-screen.collapsed .call-reactions-overlay .c-name {
+.call-screen.collapsed .call-reactions-overlay > .c-reaction > .c-name {
     @apply hidden;
 }
 @keyframes callReactionFloat {
@@ -47,7 +48,7 @@
     100% { opacity: 0; transform: translateY(-12rem) scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .call-reactions-overlay .c-reaction {
+    .call-reactions-overlay > .c-reaction {
         animation: callReactionFade 5s linear forwards;
     }
     @keyframes callReactionFade {

@@ -53,15 +53,6 @@
     @apply rounded-full;
 }
 
-.tab-panel-tabs .c-container {
-    @apply flex-x self-center;
-    @apply max-h-8;
-    @apply rounded-full;
-}
-.tab-panel-tabs .c-container:has(.message-counter-badge):hover {
-    @apply bg-secondary;
-}
-
 /* Buttons */
 .tab-panel-tabs .btn.btn-tab {
     @apply no-sheen;
@@ -144,10 +135,10 @@ body.hoverable .tab-panel-tabs .btn-tab.on:hover {
     @apply py-1 px-2;
 }
 .tab-panel-tabs .btn-tab .btn-content[data-has-badge] {
-    @apply pr-1.5;
+    @apply pe-1.5;
 }
 .tab-panel-tabs .btn-tab .btn-content .message-counter-badge {
-    @apply ml-1;
+    @apply ms-1;
 }
 
 .side-nav.side-nav-right .tab-panel-tabs .btn-group {

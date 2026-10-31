@@ -1,9 +1,9 @@
 /* ── Header: how far the call has got, under the peer's name ── */
 
-.call-modal .c-header > .c-bottom > .c-status {
+.author-modal-header > .c-bottom > .call-status {
     @apply text-caption text-03;
 }
-.call-modal .c-header > .c-bottom > .c-status.offline {
+.author-modal-header > .c-bottom > .call-status.offline {
     @apply text-warning;
 }
 
@@ -21,17 +21,17 @@ body.narrow .call-modal .dialog-buttons {
 }
 /* Solid gradients stay as plain CSS (same as .btn-glass): the shorthand also clears the
    default .btn-round background so the fill is exact. */
-.call-modal .btn-call.c-decline,
-.call-modal .btn-call.c-hang-up {
+.call-modal .btn-call.btn-decline,
+.call-modal .btn-call.btn-hang-up {
     background: linear-gradient(180deg, var(--magenta-60) 0%, var(--magenta-50) 100%);
     @apply text-white;
 }
-.call-modal .btn-call.c-accept {
+.call-modal .btn-call.btn-accept {
     background: linear-gradient(180deg, var(--emerald-40) 0%, var(--emerald-30) 100%);
     @apply text-white;
 }
-.call-modal .btn-call.c-mute,
-.call-modal .btn-call.c-message {
+.call-modal .btn-call.btn-mute,
+.call-modal .btn-call.btn-message {
     /* Same neutral glass as the video-panel controls (.btn-glass). */
     background: linear-gradient(180deg, var(--black-20) -20.83%, var(--black-40) 100%);
     @apply text-white;

@@ -30,7 +30,7 @@ body.narrow .place-info {
 }
 /* Over the wallpaper rather than in a header row - the page has no header to put it in. */
 .place-info > .c-top > .c-back-btn {
-    @apply absolute right-4 z-10;
+    @apply absolute end-4 z-10;
     top: calc(1rem + var(--safe-area-top-narrow));
     @apply bg-round-right-panel;
     @apply text-primary;
@@ -88,7 +88,7 @@ body.narrow .place-info {
 .place-info > .c-center > .c-follow-info > div {
     @apply flex-x items-center gap-x-1;
 }
-.place-info > .c-center > .c-follow-info .c-text {
+.place-info > .c-center > .c-follow-info > div > .c-text {
     @apply text-03;
 }
 
@@ -109,7 +109,7 @@ body.narrow .place-info {
     @apply p-4;
 }
 
-.place-info-search-results-navigator .c-content {
+.place-info-search-results-navigator > .c-content {
     @apply mb-14;
 }
 
@@ -123,5 +123,5 @@ body.narrow .place-info {
     @apply w-80;
     @apply shrink-0;
     @apply p-4;
-    @apply border-r border-bg-05;
+    @apply border-e border-bg-05;
 }

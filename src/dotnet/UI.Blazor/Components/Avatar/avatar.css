@@ -1,29 +1,28 @@
 .avatar-badge {
     @apply flex-x items-center gap-x-2;
 }
-.avatar-badge .c-content {
+.avatar-badge > .c-content {
     @apply flex-1 flex-y;
     @apply overflow-hidden;
 }
-.avatar-badge .c-name {
+.avatar-badge > .c-name,
+.avatar-badge > .c-content > .c-top > .c-name {
     @apply flex-y;
     @apply overflow-hidden;
     @apply text-body-500;
 }
-.avatar-badge .c-top {
+.avatar-badge > .c-content > .c-top {
     @apply flex-x items-end justify-between gap-x-0.5;
 }
-.avatar-badge .c-top .c-name {
+.avatar-badge > .c-content > .c-top > .c-name {
     @apply flex-1;
 }
-.avatar-badge .c-top .c-status {
+.avatar-badge > .c-content > .c-top > .c-status {
     @apply flex-none;
-}
-.avatar-badge .c-bottom .c-bio {
-    @apply line-clamp-1;
     @apply text-caption text-03;
 }
-.avatar-badge .c-bottom .c-status {
+.avatar-badge > .c-content > .c-bottom > .c-bio,
+.avatar-badge > .c-content > .c-bottom > .c-status {
     @apply line-clamp-1;
     @apply text-caption text-03;
 }
@@ -34,9 +33,6 @@
 }
 .avatar-name > .c-anonymous {
     @apply sup;
-}
-.avatar-badge .c-status {
-    @apply text-caption text-03;
 }
 .avatar-text {
     @apply flex justify-center items-center;
@@ -72,7 +68,7 @@
 }
 
 .presence-indicator {
-    @apply absolute right-0 bottom-0;
+    @apply absolute end-0 bottom-0;
     @apply flex items-center justify-center;
     @apply w-2.5 h-2.5;
     @apply rounded-full;

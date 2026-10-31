@@ -100,19 +100,19 @@ body.hoverable .image-line .image-item:hover {
 .image-attachment[data-state="uploading"] image-skeleton:has(> .image-placeholder) {
     animation: none;
 }
-.image-attachment[data-state="uploading"] .video-thumbnail .c-overlay {
+.image-attachment[data-state="uploading"] .video-thumbnail > .c-overlay {
     @apply invisible;
 }
 
 /* File Attachment */
 .file-attachment {
     @apply gap-x-2;
-    @apply p-1 pr-4;
+    @apply p-1 pe-4;
     @apply rounded-full border border-separator;
     @apply bg-01;
 }
 .file-attachment.upload-file {
-    @apply pr-1;
+    @apply pe-1;
 }
 .file-attachment.icon-only {
     @apply flex-none;
@@ -129,14 +129,14 @@ body.hoverable .file-attachment:not(.upload-file):not([data-state="uploading"]):
     @apply invisible;
 }
 .file-attachment.with-menu {
-    @apply pr-1;
+    @apply pe-1;
 }
-.file-attachment .c-file-link {
+.file-attachment > .c-file-link {
     @apply flex-x items-center gap-x-2;
     @apply flex-1 min-w-0;
     @apply overflow-hidden;
 }
-.file-attachment .c-file-icon {
+.file-attachment > .c-file-link > .c-file-icon {
     @apply relative;
     @apply flex-none flex items-center justify-center;
     @apply w-10 h-10;
@@ -144,24 +144,20 @@ body.hoverable .file-attachment:not(.upload-file):not([data-state="uploading"]):
     @apply overflow-hidden;
     @apply text-white;
 }
-.file-attachment .c-file-info {
+.file-attachment > .c-file-link > .c-file-info,
+.file-attachment > .c-file-info {
     @apply flex-y justify-between;
     @apply w-full;
     @apply overflow-hidden;
 }
-.file-attachment .c-title {
-    @apply w-64;
-    @apply line-clamp-1;
-    @apply text-body-500 text-02;
-}
-.file-attachment .c-normal-title {
+.file-attachment .file-attachment-title {
     @apply flex-x;
     @apply text-caption text-02;
 }
-.file-attachment .c-normal-title .c-start {
+.file-attachment .file-attachment-title > .c-start {
     @apply truncate;
 }
-.file-attachment .c-normal-title .c-end {
+.file-attachment .file-attachment-title > .c-end {
     @apply flex-none;
 }
 .file-attachment.upload-file .remove-attachment-btn.btn {
@@ -169,17 +165,16 @@ body.hoverable .file-attachment:not(.upload-file):not([data-state="uploading"]):
     @apply min-w-10 max-w-10 min-h-10 max-h-10;
 }
 
-.file-attachment .c-bottom {
+.file-attachment > .c-file-link > .c-file-info > .c-bottom,
+.file-attachment > .c-file-info > .c-bottom {
     @apply relative;
     @apply flex-x justify-between;
     @apply h-5;
 }
-.file-attachment .c-size {
+.file-attachment > .c-file-link > .c-file-info > .c-bottom > .c-size,
+.file-attachment > .c-file-info > .c-bottom > .c-size {
     @apply flex-x gap-x-2;
     @apply text-caption text-03;
-}
-.file-attachment .c-open {
-    @apply text-caption text-primary;
 }
 
 .file-text {
@@ -218,7 +213,7 @@ body.hoverable .image-attachment:hover > .remove-attachment-btn.btn {
     @apply flex;
 }
 /* The upload size takes the corner the video duration sits in */
-.image-attachment:has(> .attachment-upload-size) .video-thumbnail .c-duration {
+.image-attachment:has(> .attachment-upload-size) .video-thumbnail > .c-duration {
     @apply invisible;
 }
 .attachment-upload-ring {
@@ -233,30 +228,16 @@ body.hoverable .image-attachment:hover > .remove-attachment-btn.btn {
     @apply rounded-full;
     @apply bg-pal-black-80;
 }
-.attachment-upload-ring .c-track {
+.attachment-upload-ring > svg > .c-track {
     stroke: rgba(255, 255, 255, 0.25);
 }
-.attachment-upload-ring .c-percent {
+.attachment-upload-ring > .c-percent {
     @apply relative z-10;
     @apply text-caption-500;
 }
 .narrow-panel .attachment-upload-ring {
     @apply w-8 h-8;
 }
-.narrow-panel .attachment-upload-ring .c-percent {
+.narrow-panel .attachment-upload-ring > .c-percent {
     @apply hidden;
-}
-
-.attachment-item .c-plug {
-    @apply absolute inset-0 z-10;
-    @apply flex items-center justify-center;
-    @apply bg-02;
-}
-.attachment-item .c-plug > .c-wrapper {
-    @apply flex items-center justify-center;
-    @apply w-12 h-12;
-    @apply rounded-full;
-    @apply overflow-hidden;
-    @apply bg-03;
-    @apply text-01;
 }

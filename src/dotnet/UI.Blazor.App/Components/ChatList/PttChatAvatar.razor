@@ -2,7 +2,7 @@
 @inherits ComputedStateComponent<AppUIHub, PttChatAvatar.Model>
 @{
     var (isPlaying, isRecording) = State.Value;
-    var cls = isRecording ? "c-ptt-avatar recording" : isPlaying ? "c-ptt-avatar playing" : "c-ptt-avatar";
+    var cls = isRecording ? "ptt-chat-avatar recording" : isPlaying ? "ptt-chat-avatar playing" : "ptt-chat-avatar";
 }
 
 <div class="@cls" style="z-index: @ZIndex">

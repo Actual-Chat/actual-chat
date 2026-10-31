@@ -11,13 +11,13 @@
 }
 /* The gap goes on the data-key item, the only box the list measures, and as padding, which
    getBoundingClientRect counts - a margin here escapes that box and drifts the list's geometry. */
-.virtual-list .c-virtual-container .item[data-has-conversation-message] {
+.virtual-list > .c-wrapper > .c-virtual-container .item[data-has-conversation-message] {
     @apply pt-4;
 }
 /* ...but inside a block (one carrying the split-out live header) the card follows the header flush -
    no gap between the header and the description. Covers both the joined block and the frozen/unjoined
    (left-the-call) block. */
-.virtual-list .c-virtual-container .group[data-has-live-block] .item[data-has-live-card] {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block] .item[data-has-live-card] {
     @apply pt-0;
 }
 /* Standalone preview card (not inside a block - never joined, no overlay) keeps its own box. */
@@ -29,37 +29,32 @@
    rounding, so a card box here would draw a second box inside the block with the title detached.
    No rounded corners left to clip, so overflow goes visible too - lets the "Show more" pill straddle
    below the card's bottom edge instead of being cut off by the base .conversation-message rule. */
-.virtual-list .c-virtual-container .group[data-has-live-block] .conversation-message.live {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block] .conversation-message.live {
     @apply border-none rounded-none;
     background: none;
     overflow: visible;
 }
-.c-live-card {
+.live-conversation-card {
     @apply relative;
     @apply flex-y gap-y-2 w-full;
     @apply p-4;
 }
 /* The split header carries the title, so the description card drops its own top padding and butts
    right up under the header - one continuous surface, no gap. */
-.virtual-list .c-virtual-container .group[data-has-live-block] .c-live-card {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block] .live-conversation-card {
     @apply pt-0;
 }
 /* A card that ends with the faded preview drops its bottom padding so the preview sits flush above
    the footer (mirrors the pt-0 that butts the card under the header) - no gap after the last row.
    Keyed on the preview itself: any collapsed block has one, attended or not. */
-.virtual-list .c-virtual-container .group[data-has-live-block] .c-live-card:has(.last-entries-preview) {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block]
+    .live-conversation-card:has(> .last-entries-preview) {
     @apply pb-0;
 }
-/* An expanded live card that renders empty used to be collapsed to zero here, but nothing has produced
-   .conversation-message.live:empty since 7538c686bc gave such a card its own .c-live-card-empty element,
-   so both rules were unreachable. Style .c-live-card-empty if the gap ever comes back. */
-.virtual-list .c-virtual-container .group[data-has-live-block] .conversation-message.live:empty {
-    @apply min-h-0 mb-0;
-}
-.c-live-card .c-lc-title {
+.live-conversation-card > .c-lc-title {
     @apply flex-x items-center gap-x-3;
 }
-.c-live-card .c-lc-title chat-activity-panel-icon-svg {
+.live-conversation-card > .c-lc-title > chat-activity-panel-icon-svg {
     @apply flex-none flex items-center;
 }
 /* Nobody is streaming: the equalizer holds its shape but stops moving - here the motion itself is the
@@ -67,10 +62,10 @@
    whole session, so an always-on animation is a permanent compositor tick for no information.
    !important: `.equalizer.active .bar.bar-1` re-declares the animation shorthand at equal specificity. */
 .live-conversation-header.quiet .equalizer .bar,
-.c-live-card.quiet .c-lc-title .equalizer .bar {
+.live-conversation-card.quiet > .c-lc-title .equalizer .bar {
     animation: none !important;
 }
-.c-live-card .c-lc-name {
+.live-conversation-card > .c-lc-title > .c-lc-name {
     @apply flex-1 min-w-0;
     @apply text-01 text-base font-medium leading-5;
     display: -webkit-box;
@@ -78,51 +73,51 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
-.c-live-card .c-lc-expand {
+.live-conversation-card > .c-lc-title > .c-lc-expand {
     @apply flex-none;
 }
-.c-live-card .c-lc-summary-box {
+.live-conversation-card > .c-lc-summary-box {
     display: grid;
     grid-template-rows: 1fr;
     transition: grid-template-rows 200ms ease;
 }
 @starting-style {
-    .c-live-card .c-lc-summary-box {
+    .live-conversation-card > .c-lc-summary-box {
         grid-template-rows: 0fr;
     }
 }
-.c-live-card .c-lc-summary {
+.live-conversation-card > .c-lc-summary-box > .c-lc-summary {
     @apply text-01 text-body;
     overflow: hidden;
 }
-.c-live-card .c-lc-summary ul {
-    @apply ml-4;
+.live-conversation-card > .c-lc-summary-box > .c-lc-summary ul {
+    @apply ms-4;
     list-style-type: disc;
 }
-.c-live-card .c-lc-meta-row {
+.live-conversation-card > .c-lc-meta-row {
     @apply flex-x items-center gap-x-2 w-full;
 }
-.c-live-card .c-lc-authors {
+.live-conversation-card > .c-lc-meta-row > .c-lc-authors {
     @apply flex-none;
 }
-.c-live-card .c-lc-meta {
+.live-conversation-card > .c-lc-meta-row > .c-lc-meta {
     @apply flex-y flex-1 min-w-0 gap-y-0.5;
 }
-.c-live-card .c-lc-started {
+.live-conversation-card > .c-lc-meta-row > .c-lc-meta > .c-lc-started {
     @apply truncate;
     @apply text-caption text-03;
 }
-.c-live-card .c-lc-copy {
+.live-conversation-card > .c-lc-meta-row > .c-lc-copy {
     @apply flex-none;
 }
-.c-live-card .c-lc-expand i,
-.c-live-card .c-lc-copy i {
+.live-conversation-card > .c-lc-title > .c-lc-expand > .c-content > i,
+.live-conversation-card > .c-lc-meta-row > .c-lc-copy > .c-content > i {
     @apply text-xl;
 }
-/* Straddles the card's bottom edge (half over the first folded row below) - c-live-card is the relative
+/* Straddles the card's bottom edge (half over the first folded row below) - the card is the relative
    anchor. z-10 keeps it above that folded row but below the sticky live header (z-20), so it slides
    under the pinned header instead of over it. Mirrors navigate-to-end's floating pill (modal tokens). */
-.c-lc-showmore {
+.live-conversation-card > .c-lc-showmore {
     @apply absolute left-1/2 bottom-0 z-10;
     @apply flex-x items-center gap-x-1 whitespace-nowrap;
     @apply px-2.5 h-6 rounded-full;
@@ -130,26 +125,26 @@
     @apply text-caption-500 text-cr-item-badge-selected-text;
     transform: translate(-50%, 50%);
 }
-.c-lc-showmore i {
+.live-conversation-card > .c-lc-showmore > i {
     @apply text-lg text-03;
 }
-body.hoverable .c-lc-showmore:hover {
+body.hoverable .live-conversation-card > .c-lc-showmore:hover {
     @apply cursor-pointer;
     @apply bg-hover;
 }
-.c-lc-showmore:active {
+.live-conversation-card > .c-lc-showmore:active {
     @apply opacity-70;
 }
-.conversation-message .c-details {
+.conversation-details {
     @apply flex-y gap-y-2;
     @apply w-full;
 }
 /* Last child = no footer under the card (the block supplies its own one item below), and without it
    the description ends flush against the card's bottom edge. A footer's own p-4 already spaces it. */
-.conversation-message .c-details:last-child {
+.conversation-details:last-child {
     @apply pb-4;
 }
-.conversation-message .c-summary {
+.conversation-details > .c-summary {
     @apply flex-y;
 }
 
@@ -174,34 +169,35 @@ body.hoverable .c-lc-showmore:hover {
 }
 /* A title with nothing under it (a call with no messages): the header's min-height and bottom padding
    would otherwise leave an empty band above the footer. */
-.conversation-message .c-details > .c-summary:only-child
-    > .conversation-header-short:only-child .bg-wrapper {
+.conversation-details > .c-summary:only-child
+    > .conversation-header-short:only-child > .bg-wrapper {
     @apply min-h-0 pb-1;
 }
-.conversation-header-short .c-title,
-.conversation-header .c-title {
+.conversation-header-short > .bg-wrapper > .c-title,
+.conversation-header > .bg-wrapper > .c-title {
     @apply flex-1;
     @apply text-body font-medium text-cr-item-badge-selected-text leading-4.5;
 }
-.conversation-header-short .c-title .c-tldr,
-.conversation-header .c-title .c-tldr {
+.conversation-header-short > .bg-wrapper > .c-title > .c-tldr,
+.conversation-header > .bg-wrapper > .c-title > .c-tldr {
     @apply relative;
     @apply inline-block;
     @apply min-w-6 h-4;
 }
-.conversation-header-short .c-title .c-tldr i,
-.conversation-header .c-title .c-tldr i {
+.conversation-header-short > .bg-wrapper > .c-title > .c-tldr > i,
+.conversation-header > .bg-wrapper > .c-title > .c-tldr > i {
     @apply absolute -top-0.5;
     @apply text-title-500;
 }
 .conversation-header-short .btn-h.btn-summary-toggle,
 .conversation-header .btn-h.btn-summary-toggle {
-    @apply float-end;
+    /* physical: float: inline-end needs Chromium 118, newer than the oldest WebView we run on */
+    @apply float-right;
     @apply rounded-full;
     @apply text-cr-item-badge-selected-text text-title-500 leading-5;
 }
 
-.conversation-message .c-summary .c-short {
+.conversation-details > .c-summary > .c-short {
     @apply block;
     @apply min-h-6;
     @apply px-4;
@@ -232,31 +228,36 @@ body.hoverable .c-lc-showmore:hover {
 .conversation-footer .bg-wrapper {
     background: linear-gradient(180deg, var(--conversation-gradient-02) 13.46%, var(--conversation-gradient-01) 175%);
 }
-.conversation-footer-short .c-content,
-.conversation-footer .c-content {
+/* The avatars' and the copy button's own .c-content too, as the former descendant rule reached them */
+.conversation-footer-short > .bg-wrapper > .c-content,
+.conversation-footer > .bg-wrapper > .c-content,
+.conversation-footer-short .avatar-circle > .c-content,
+.conversation-footer .avatar-circle > .c-content,
+.conversation-footer-short .btn-h > .c-content,
+.conversation-footer .btn-h > .c-content {
     @apply flex-x items-center gap-x-4;
 }
-.conversation-footer-short .c-tool,
-.conversation-footer .c-tool {
+.conversation-footer-short > .bg-wrapper > .c-content > .c-info > .c-tool,
+.conversation-footer > .bg-wrapper > .c-content > .c-info > .c-tool {
     @apply flex items-center;
     @apply text-caption text-04;
 }
-.conversation-footer-short .c-time,
-.conversation-footer .c-time {
+.conversation-footer-short > .bg-wrapper > .c-content > .c-info > .c-time,
+.conversation-footer > .bg-wrapper > .c-content > .c-info > .c-time {
     @apply text-01;
 }
-.conversation-footer-short .c-count,
-.conversation-footer .c-count {
+.conversation-footer-short > .bg-wrapper > .c-content > .c-info > .c-count,
+.conversation-footer > .bg-wrapper > .c-content > .c-info > .c-count {
     @apply text-03;
 }
 
-.conversation-message .c-long {
+.conversation-details > .c-long {
     @apply flex-y gap-2;
     @apply min-h-6;
     @apply px-4;
     @apply text-body text-01;
 }
-.conversation-message .c-long .c-long-content {
+.conversation-details > .c-long > .c-long-content {
     @apply flex-y;
     filter: opacity(0);
     transition-behavior: allow-discrete;
@@ -264,37 +265,37 @@ body.hoverable .c-lc-showmore:hover {
     transition-timing-function: ease-in-out;
     transition-duration: 500ms;
 }
-.conversation-message.open-details .c-long .c-long-content {
+.conversation-message.open-details > .conversation-details > .c-long > .c-long-content {
     filter: opacity(1);
     @starting-style {
         filter: opacity(0);
     }
 }
-.conversation-message .c-summary .c-short .show-more-btn,
-.conversation-message .c-long .show-more-btn {
+.conversation-details > .c-summary > .c-short > .show-more-btn,
+.conversation-details > .c-long > .c-long-content > .show-more-btn {
     @apply text-nowrap;
     @apply text-caption-500 text-cr-item-badge-selected-text;
 }
-body.hoverable .conversation-message .c-summary .c-short .show-more-btn:hover,
-body.hoverable .conversation-message .c-long .show-more-btn:hover {
+body.hoverable .conversation-details > .c-summary > .c-short > .show-more-btn:hover,
+body.hoverable .conversation-details > .c-long > .c-long-content > .show-more-btn:hover {
     @apply cursor-pointer;
 }
-.conversation-message .c-summary .c-short .show-more-btn:active,
-.conversation-message .c-long .show-more-btn:active {
+.conversation-details > .c-summary > .c-short > .show-more-btn:active,
+.conversation-details > .c-long > .c-long-content > .show-more-btn:active {
     @apply opacity-70;
 }
-.conversation-message .c-long .show-more-btn {
+.conversation-details > .c-long > .c-long-content > .show-more-btn {
     @apply self-center;
     @apply w-fit;
 }
 /* The link continues the description's last line, and MarkupView renders every paragraph as a block
    <p> - which would drop it onto a line of its own, with the margin below showing as a stray indent.
    Matched via the link so a description ending in a list or a code block keeps that block's own box. */
-.conversation-message .c-summary .c-short > p.paragraph-markup:has(+ .show-more-btn) {
+.conversation-details > .c-summary > .c-short > p.paragraph-markup:has(+ .show-more-btn) {
     @apply inline;
 }
-.conversation-message .c-summary .c-short .show-more-btn {
-    @apply ml-1;
+.conversation-details > .c-summary > .c-short > .show-more-btn {
+    @apply ms-1;
 }
 
 .conversation-message .mention-markup {
@@ -303,9 +304,7 @@ body.hoverable .conversation-message .c-long .show-more-btn:hover {
 }
 
 .conversation-message ol {
-    @apply ml-4;
-}
-.conversation-message ol {
+    @apply ms-4;
     list-style-type: decimal;
 }
 .conversation-header-short .btn-h i,
@@ -337,30 +336,12 @@ body.hoverable .conversation-message .c-long .show-more-btn:hover {
     @apply text-cr-item-badge-selected-text text-caption-500;
 }
 
-/* Attachments */
-.conversation-attachments {
-    @apply flex-x items-center gap-x-3;
-    @apply px-4;
-}
-body.hoverable .conversation-attachments .image-attachment:hover {
-    filter: brightness(1.1);
-}
-.conversation-attachments .image-attachment > .c-content {
-    @apply w-full;
-}
-.conversation-attachments .c-extra {
-    @apply flex-none flex items-center justify-center;
-    @apply w-10 h-10;
-    @apply rounded-full;
-    @apply bg-cr-badge-selected;
-    @apply text-cr-badge-selected-text;
-}
 /* Joined live block: the group is the single container - it owns the rounding and the opaque bg-01 base,
    wrapping the sticky header, the scrollable card, the author entries, and the live footer as one box.
    The violet tint is painted by the ::before overlay below - in FRONT of the sticky header so it can
    scroll up off it; position:relative anchors that overlay. */
-.virtual-list .c-virtual-container .group[data-has-joined-live-card],
-.virtual-list .c-virtual-container .group[data-has-live-block] {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-joined-live-card],
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block] {
     @apply relative;
     isolation: isolate;
     /* mx-1 matches the 4px horizontal padding on regular conversation .item wrappers, so the live
@@ -375,7 +356,7 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 }
 /* A joined block that has no split-out header starts with its card, so the 8px sit on top of the
    card's own 16px gap. */
-.virtual-list .c-virtual-container .group[data-has-joined-live-card]:not([data-has-live-block])
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-joined-live-card]:not([data-has-live-block])
     .item[data-has-live-card] {
     @apply pt-6;
 }
@@ -384,7 +365,7 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    the header's Join/expand buttons clickable through it. The joined block tints its sticky header
    directly instead (see .live-conversation-header below), so its colour pins with the header rather than
    sliding off it. */
-.virtual-list .c-virtual-container .group[data-has-unjoined-live-block]::before {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-unjoined-live-block]::before {
     @apply content-empty;
     @apply absolute inset-0 z-30;
     @apply pointer-events-none;
@@ -395,7 +376,7 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 /* overflow:clip (not hidden): clips the block content to the rounded corners just like hidden, but
    without making the group a scroll container - so the live header's position:sticky still pins against
    the transcript instead of being trapped inside this group. */
-.virtual-list .c-virtual-container .group[data-has-live-block] {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block] {
     @apply px-0;
     overflow: clip;
 }
@@ -405,7 +386,7 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    carry this, since it comes back when you leave and a leaver's block keeps the joined violet tint.
    Its match set is a strict subset of the base shell rule's expanded arm, so mx-1 cascades in from
    there - only the tint is overridden here, and it wins by coming later. */
-.virtual-list .c-virtual-container .group[data-has-unjoined-live-block] {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-unjoined-live-block] {
     isolation: isolate;
     @apply rounded-2xl;
     background:
@@ -420,7 +401,7 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    the block's own top tint shows through, and the pinned header overlaps the content sliding under it.
    The top padding is the block's gap from what precedes it (see the group rule above); the inset absorbs
    it, so the pinned header still reaches the top edge. */
-.virtual-list .c-virtual-container .item[data-has-live-header] {
+.virtual-list > .c-wrapper > .c-virtual-container .item[data-has-live-header] {
     @apply sticky z-20 pt-2 -top-2;
 }
 
@@ -428,7 +409,7 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    (.conversation-header .bg-wrapper: p-4, min-h-14). Opaque bg-01 so the pinned (sticky) header occludes
    the transcript sliding under it; the violet tint is the group ::before overlay in front, which scrolls
    up off this header as you scroll. */
-.virtual-list .c-virtual-container .live-conversation-header {
+.virtual-list > .c-wrapper > .c-virtual-container .live-conversation-header {
     @apply flex items-center gap-x-3;
     @apply p-4 min-h-14;
     @apply rounded-t-2xl;
@@ -438,12 +419,12 @@ body.hoverable .conversation-attachments .image-attachment:hover {
    of scrolling off (the unjoined ::before above does the scroll-off job for never-attended blocks). The
    ::after hangs the same tint a short way below the header as a soft fade over the content scrolling
    under it, and it pins too since it's anchored to the header. A separator line divides the two. */
-.virtual-list .c-virtual-container .live-conversation-header:not(.unjoined) {
+.virtual-list > .c-wrapper > .c-virtual-container .live-conversation-header:not(.unjoined) {
     @apply relative;
     background: linear-gradient(rgba(166, 53, 255, 0.1), rgba(166, 53, 255, 0.1)), var(--background-01);
     border-bottom: 1px solid var(--separator);
 }
-.virtual-list .c-virtual-container .live-conversation-header:not(.unjoined)::after {
+.virtual-list > .c-wrapper > .c-virtual-container .live-conversation-header:not(.unjoined)::after {
     @apply content-empty;
     @apply absolute inset-x-0 z-30 pointer-events-none;
     top: 100%;
@@ -453,12 +434,12 @@ body.hoverable .conversation-attachments .image-attachment:hover {
 /* A header for a block you never attended shares the block's magenta tint instead of the joined
    violet, so the sticky header, body, and faded preview all read as one surface. Keyed on the
    component's own class: the Join button returns when you leave, and the tint must not. */
-.virtual-list .c-virtual-container .live-conversation-header.unjoined {
+.virtual-list > .c-wrapper > .c-virtual-container .live-conversation-header.unjoined {
     background:
         linear-gradient(90deg, rgba(255, 202, 255, 0.3) 2%, rgba(130, 104, 255, 0.3) 100%),
         linear-gradient(var(--background-01), var(--background-01));
 }
-.live-conversation-header .c-lc-name {
+.live-conversation-header > .c-lc-name {
     @apply flex-1 min-w-0;
     @apply text-01 text-base font-medium leading-5;
     display: -webkit-box;
@@ -466,30 +447,30 @@ body.hoverable .conversation-attachments .image-attachment:hover {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
-.live-conversation-header .c-lc-expand {
+.live-conversation-header > .c-lc-expand {
     @apply flex-none;
 }
-.live-conversation-header .c-lc-expand i {
+.live-conversation-header > .c-lc-expand > .c-content > i {
     @apply text-xl;
 }
-.virtual-list .c-virtual-container .live-conversation-header .c-lc-dub {
+.virtual-list > .c-wrapper > .c-virtual-container .live-conversation-header > .c-lc-dub {
     @apply flex-none text-03;
 }
-.virtual-list .c-virtual-container .live-conversation-header .c-lc-dub.on {
+.virtual-list > .c-wrapper > .c-virtual-container .live-conversation-header > .c-lc-dub.on {
     @apply text-primary;
 }
-.virtual-list .c-virtual-container .live-conversation-header .c-lc-dub i {
+.virtual-list > .c-wrapper > .c-virtual-container .live-conversation-header > .c-lc-dub > .c-content > i {
     @apply text-xl;
 }
 /* Header Join affordance - styled like the activity panel's Join button: a visible tinted button by
    default (not only on hover), violet-60 text, stronger tint on hover. The .virtual-list prefix
    outranks .btn.btn-transparent's transparent background and text-primary colour. */
-.virtual-list .c-virtual-container .live-conversation-header .c-lc-join {
+.virtual-list > .c-wrapper > .c-virtual-container .live-conversation-header > .c-lc-join {
     @apply flex-none rounded-lg h-10 px-4;
     color: var(--violet-60);
     background-color: var(--violet-60-10);
 }
-body.hoverable .virtual-list .c-virtual-container .live-conversation-header .c-lc-join:hover {
+body.hoverable .virtual-list > .c-wrapper > .c-virtual-container .live-conversation-header > .c-lc-join:hover {
     background-color: var(--violet-60-20);
 }
 
@@ -500,24 +481,24 @@ body.hoverable .virtual-list .c-virtual-container .live-conversation-header .c-l
 }
 /* The footer band is 0.75rem; without this its item keeps the default min-h-6, leaving ~12px of dead
    space between the last message and the rounded bottom. Collapse the item so the footer sits flush. */
-.virtual-list .c-virtual-container .group[data-has-live-block] .item[data-has-live-footer] {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block] .item[data-has-live-footer] {
     @apply min-h-0;
 }
 /* The unjoined block is a compact preview card that the group's own rounding already closes, so its
    footer band would just add empty space below the last preview row - collapse it to nothing. */
-.virtual-list .c-virtual-container .group[data-has-unjoined-live-block] .live-conversation-footer {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-unjoined-live-block] .live-conversation-footer {
     @apply h-0;
 }
 
 /* Tier-1 dissolve: a too-short session leaves no card, so its block fades + collapses its chrome
    (border, tint, header, card, footer) out while the entries stay put, then it's removed and they
    drop to plain messages. Duration is kept in sync with LiveBlockUI.DissolveDuration (300ms). */
-.virtual-list .c-virtual-container .group[data-has-live-block-dissolving] {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block-dissolving] {
     animation: lc-dissolve-frame 300ms ease forwards;
 }
-.virtual-list .c-virtual-container .group[data-has-live-block-dissolving] > .item.expanded,
-.virtual-list .c-virtual-container .group[data-has-live-block-dissolving] > .item[data-has-live-card],
-.virtual-list .c-virtual-container .group[data-has-live-block-dissolving] > .item[data-has-live-footer] {
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block-dissolving] > .item.expanded,
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block-dissolving] > .item[data-has-live-card],
+.virtual-list > .c-wrapper > .c-virtual-container .group[data-has-live-block-dissolving] > .item[data-has-live-footer] {
     overflow: hidden;
     animation: lc-dissolve-chrome 300ms ease forwards;
 }

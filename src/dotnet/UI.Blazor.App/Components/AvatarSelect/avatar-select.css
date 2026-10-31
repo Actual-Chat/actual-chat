@@ -9,10 +9,10 @@
     @apply flex-y gap-y-2;
     @apply w-full md:w-80;
 }
-.avatar-select .c-hint {
+.avatar-select > .c-hint {
     @apply text-02 text-sm font-normal;
 }
-.avatar-select .c-hint.danger {
+.avatar-select > .c-hint.danger {
     @apply text-danger font-medium;
 }
 .avatar-select-item:hover {

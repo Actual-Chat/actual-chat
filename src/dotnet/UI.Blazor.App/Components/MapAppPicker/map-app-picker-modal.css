@@ -1,7 +1,7 @@
 .map-app-picker-modal .ti-left {
     @apply items-center;
 }
-.map-app-picker-modal .c-icon {
+.map-app-picker-modal .ti-left > .c-icon {
     @apply w-8 h-8;
     @apply rounded-lg;
     @apply object-contain;

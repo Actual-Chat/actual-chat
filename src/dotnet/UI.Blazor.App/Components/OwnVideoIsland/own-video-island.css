@@ -1,5 +1,5 @@
 .own-video-island {
-    @apply fixed right-4 bottom-24 z-30;
+    @apply fixed end-4 bottom-24 z-30;
     @apply w-40 aspect-video;
     @apply rounded-xl overflow-hidden;
     @apply bg-black;
@@ -7,7 +7,7 @@
     box-shadow: 0 6px 20px rgb(0 0 0 / 35%);
 }
 body.narrow .own-video-island {
-    @apply w-28 right-3;
+    @apply w-28 end-3;
 }
 /* The whole island is one tap target (back to the chat) and a drag handle. */
 .own-video-island > .video-streaming-preview {
@@ -15,7 +15,7 @@ body.narrow .own-video-island {
     @apply pointer-events-none;
 }
 .own-video-island .video-participant-label {
-    @apply absolute bottom-1 left-1 z-10;
+    @apply absolute bottom-1 start-1 z-10;
     @apply flex items-center gap-1;
     @apply px-1 rounded;
     @apply text-xs text-white;

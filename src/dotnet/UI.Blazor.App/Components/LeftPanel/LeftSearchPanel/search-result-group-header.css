@@ -8,7 +8,7 @@
     @apply px-0 py-1;
     @apply border-0;
     @apply bg-transparent;
-    @apply text-left text-03 text-body-500;
+    @apply text-start text-03 text-body-500;
     @apply cursor-pointer;
 }
 .search-result-group-header > .c-title > .c-title-text {
@@ -30,14 +30,14 @@ body.hoverable .search-result-group-header > .c-title:hover > .c-title-text,
 .search-result-group-header .show-more-btn.btn .btn-content {
     @apply gap-0;
 }
-.search-result-group-header .show-more-btn.btn .c-text {
+.search-result-group-header .show-more-btn.btn > .btn-content > .c-text {
     @apply w-17;
 }
-.search-result-group-header .show-more-btn.btn .c-arrow {
+.search-result-group-header .show-more-btn.btn > .btn-content > .c-arrow {
     @apply rotate-180;
     @apply transition-transform duration-200;
 }
-.search-result-group-header.expanded .show-more-btn.btn .c-arrow {
+.search-result-group-header.expanded .show-more-btn.btn > .btn-content > .c-arrow {
     @apply rotate-0;
 }
 .search-result-group-header .show-btn.btn {

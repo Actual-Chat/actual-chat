@@ -1,5 +1,5 @@
 .content-list-date-visor {
-    @apply absolute top-1 left-0 right-0 z-button;
+    @apply absolute top-1 start-0 end-0 z-button;
     @apply flex justify-center;
     @apply invisible opacity-0;
     @apply duration-500 transition-[opacity,visibility];

@@ -114,7 +114,7 @@ describe('list end pin after the last message shrinks', () => {
             await aliceCtx.addInitScript((ms: number) => {
                 document.addEventListener('DOMContentLoaded', () => {
                     const style = document.createElement('style');
-                    style.textContent = '.virtual-list > .c-wrapper > ul.c-virtual-container .item.c-height-controlled'
+                    style.textContent = '.virtual-list > .c-wrapper > ul.c-virtual-container .item.height-controlled'
                         + ` { transition-duration: ${ms}ms !important; }`;
                     document.head.appendChild(style);
                 });
@@ -158,7 +158,7 @@ describe('list end pin after the last message shrinks', () => {
         await typeAndSend(bob, longLines);
         await alice.waitForTimeout(2_500);
         const afterLong = await listState(alice);
-        const transition = await alice.locator('.item.c-height-controlled').first()
+        const transition = await alice.locator('.item.height-controlled').first()
             .evaluate(el => getComputedStyle(el).transitionDuration).catch(() => 'n/a');
         await alice.mouse.wheel(0, -60);
         await alice.waitForTimeout(1_500);

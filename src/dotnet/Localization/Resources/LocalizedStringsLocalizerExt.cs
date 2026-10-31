@@ -1791,6 +1791,7 @@ public static class LocalizedStringsLocalizerExt
         public string Shortcuts_ToggleSelection => l["Shortcuts_ToggleSelection"].Value;
         public string Shortcuts_ToggleTheme => l["Shortcuts_ToggleTheme"].Value;
         public string Shortcuts_ToggleSafeAreas => l["Shortcuts_ToggleSafeAreas"].Value;
+        public string Shortcuts_ToggleTextDirection => l["Shortcuts_ToggleTextDirection"].Value;
 
         public string LocationAccuracy_Topic => l["LocationAccuracy_Topic"].Value;
 

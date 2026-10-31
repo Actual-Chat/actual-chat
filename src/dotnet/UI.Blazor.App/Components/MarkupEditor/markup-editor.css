@@ -67,7 +67,7 @@
 .markup-editor > .c-placeholder {
     @apply absolute;
     @apply w-full h-6;
-    @apply pr-4;
+    @apply pe-4;
     @apply truncate;
     @apply text-base;
     @apply text-03;

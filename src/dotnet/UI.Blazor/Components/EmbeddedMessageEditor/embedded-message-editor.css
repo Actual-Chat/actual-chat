@@ -4,22 +4,22 @@
 .embedded-message-editor label {
     @apply relative flex-x;
 }
-.embedded-message-editor label:has(input) .c-placeholder {
-    @apply absolute left-4;
+.embedded-message-editor > label:has(input) > .c-placeholder {
+    @apply absolute start-4;
     @apply flex-x gap-x-2 items-center justify-start;
     @apply h-full;
     @apply text-03;
 }
-.embedded-message-editor label:has(input:focus) .c-placeholder {
+.embedded-message-editor > label:has(input:focus) > .c-placeholder {
     @apply hidden;
 }
 .embedded-message-editor button {
-    @apply absolute right-1;
+    @apply absolute end-1;
     @apply flex items-center justify-center;
     @apply w-14 h-14;
 }
 .embedded-message-editor .glyph {
-    @apply absolute right-1;
+    @apply absolute end-1;
     @apply flex items-center justify-center;
     @apply w-12 h-14;
 }
@@ -28,12 +28,12 @@
 }
 .embedded-message-editor input {
     @apply h-14 w-full;
-    @apply pl-4 pr-14;
+    @apply ps-4 pe-14;
     @apply rounded-none;
-    @apply text-left;
+    @apply text-start;
 }
 .embedded-message-editor input::placeholder {
-    @apply text-left;
+    @apply text-start;
 }
 
 .embedded-message-editor.transparent-editor {
@@ -50,7 +50,7 @@
     @apply border border-transparent;
 }
 .embedded-message-editor.transparent-editor.with-post input {
-    @apply pr-12;
+    @apply pe-12;
 }
 .embedded-message-editor.transparent-editor input:focus {
     @apply border-primary;

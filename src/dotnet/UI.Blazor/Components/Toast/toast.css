@@ -2,7 +2,7 @@
 
 .toast-container {
     @apply fixed z-error-container;
-    @apply inset-x-0 md:inset-x-auto md:right-0;
+    @apply inset-x-0 md:inset-x-auto md:end-0;
     @apply h-auto;
     @apply overflow-y-auto;
 }
@@ -13,7 +13,7 @@ body.narrow .toast-container {
     max-height: calc(100vh - 3rem - var(--safe-area-top) - var(--safe-area-bottom));
 }
 body.wide .toast-container {
-    right: var(--safe-area-right);
+    inset-inline-end: var(--safe-area-end);
     bottom: calc(3rem + var(--safe-area-bottom));
     max-height: calc(100vh - 3rem - var(--safe-area-top) - var(--safe-area-bottom));
 }
@@ -37,14 +37,14 @@ body.wide .toast-container {
     @apply text-toast-text;
     @apply bg-toast-body;
 }
-.toast:has(.c-action) {
-    @apply pr-1;
+.toast:has(> .c-action) {
+    @apply pe-1;
 }
 .toast:has(.btn-timer) {
-    @apply pr-3 md:pr-2;
+    @apply pe-3 md:pe-2;
 }
-.toast:not(:has(.c-icon)) .c-content {
-    @apply ml-1;
+.toast:not(:has(> .c-icon)) > .c-content {
+    @apply ms-1;
 }
 
 .toast i {
@@ -55,14 +55,14 @@ body.wide .toast-container {
     @apply text-base font-normal;
     @apply break-words;
 }
-.toast:has(.c-action) .c-content,
-.toast:has(.btn-timer) .c-content {
-    @apply mr-4;
+.toast:has(> .c-action) > .c-content,
+.toast:has(.btn-timer) > .c-content {
+    @apply me-4;
 }
-.toast > .c-action .btn {
+.toast > .c-action > .btn {
     @apply text-toast-action;
 }
-.toast .c-action,
+.toast > .c-action,
 .toast .btn-timer {
     @apply self-end;
 }
@@ -75,7 +75,7 @@ body.narrow .toast .btn-timer {
     @apply z-50;
     @apply flex-x items-start gap-x-4;
     @apply w-full md:w-110;
-    @apply p-2 pl-4;
+    @apply p-2 ps-4;
     @apply overflow-hidden;
     @apply rounded-xl;
     @apply drop-shadow-md shadow-shadow-main;

@@ -1,0 +1,3 @@
+.call-status.offline {
+    @apply text-warning;
+}

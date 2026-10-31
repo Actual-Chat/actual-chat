@@ -331,7 +331,7 @@ async function openSearch(page: Page) {
 }
 
 async function openSearchFilterMenu(page: Page) {
-    await click(page, '.left-chat-search-input .c-filter-btn');
+    await click(page, '.left-chat-search-input .btn-filter');
     await page.locator('.search-filter-menu').first().waitFor({ state: 'visible', timeout: 10_000 });
 }
 

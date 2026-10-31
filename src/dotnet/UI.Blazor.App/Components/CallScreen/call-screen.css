@@ -17,6 +17,7 @@ nomad-slot-content:not([data-nomad-slot]) > .call-screen:not(.expanded):not(.col
 }
 /* Collapsed "island" — fixed, positioned below subheader, draggable */
 .call-screen.collapsed {
+    /* physical: call-screen.ts drags the island in viewport coordinates */
     @apply fixed z-button top-16 right-2;
     --call-screen-island-short: 6rem;
     --call-screen-island-aspect: 1.7778;
@@ -46,11 +47,11 @@ nomad-slot-content:not([data-nomad-slot]) > .call-screen:not(.expanded):not(.col
     @apply bg-03;
 }
 .call-screen.collapsed .call-screen-header {
-    @apply absolute top-1 right-1 left-auto;
+    @apply absolute top-1 end-1 start-auto;
     @apply flex-none;
     @apply p-0 z-10;
 }
-.call-screen.collapsed .call-screen-header .c-right {
+.call-screen.collapsed .call-screen-header > .header-row > .c-right {
     @apply gap-0;
 }
 /* The island of a call: expand on the left, hang-up on the right, the timer below them */
@@ -60,10 +61,10 @@ nomad-slot-content:not([data-nomad-slot]) > .call-screen:not(.expanded):not(.col
 .call-screen.collapsed.in-call .call-screen-header .header-row {
     @apply h-full items-start;
 }
-.call-screen.collapsed.in-call .call-screen-header .c-call-timer {
-    @apply absolute bottom-0 left-0;
+.call-screen.collapsed.in-call .call-screen-header > .header-row > .c-left > .c-call-timer {
+    @apply absolute bottom-0 start-0;
 }
-.call-screen .call-screen-header .c-call-timer {
+.call-screen .call-screen-header > .header-row > .c-left > .c-call-timer {
     @apply flex-x items-center gap-1;
     @apply h-8 px-2;
     @apply rounded-full;
@@ -217,18 +218,18 @@ body.wide .call-screen.expanded > .c-container {
 
 /* ── Stage without video: the chat's avatar, blurred behind and sharp in the middle ── */
 
-.call-screen .c-bg {
+.call-screen > .c-container > .c-bg {
     @apply absolute inset-0 z-0;
     @apply overflow-hidden;
 }
-.call-screen .c-bg .avatar,
-.call-screen .c-bg img {
+.call-screen > .c-container > .c-bg .avatar,
+.call-screen > .c-container > .c-bg img {
     @apply w-full h-full;
     object-fit: cover;
 }
 /* Darkening so white text/controls stay legible over any avatar: a light top wash for the header +
    a smooth, stronger bottom scrim under the whole action area (buttons/hints/labels). */
-.call-screen .c-scrim {
+.call-screen > .c-container > .c-scrim {
     @apply absolute inset-0 z-0;
     background:
         linear-gradient(to bottom, rgb(0 0 0 / 42%) 0%, rgb(0 0 0 / 0%) 16%),
@@ -247,21 +248,21 @@ body.wide .call-screen.expanded > .c-container {
     @apply text-center;
     @apply pointer-events-none;
 }
-.call-screen .call-screen-body .c-avatar {
+.call-screen .call-screen-body > .c-avatar {
     @apply mb-3;
 }
-.call-screen .call-screen-body .c-name {
+.call-screen .call-screen-body > .c-name {
     @apply flex-x items-center justify-center gap-2;
     @apply text-heading-600 text-white;
 }
-.call-screen .call-screen-body .c-status,
-.call-screen .call-screen-body .c-timer {
+.call-screen .call-screen-body > .call-status,
+.call-screen .call-screen-body > .c-timer {
     @apply text-base text-white opacity-70;
 }
 .call-screen .call-screen-body .raised-hands-counter {
     @apply mt-2;
 }
-.call-screen .call-screen-body .c-status.offline {
+.call-screen .call-screen-body > .call-status.offline {
     @apply text-warning opacity-100;
 }
 
@@ -284,18 +285,18 @@ body.wide .call-screen.expanded > .c-container {
     @apply justify-start gap-2;
 }
 /* Right-aligned so it sits under the hang-up, whether or not the pin controls share the row */
-.call-screen .call-screen-header .header-row-pin .c-react-dock {
-    @apply ml-auto;
+.call-screen .call-screen-header > .header-row-pin > .btn-react-dock {
+    @apply ms-auto;
 }
-.call-screen .call-screen-header .c-left,
-.call-screen .call-screen-header .c-right {
+.call-screen .call-screen-header > .header-row > .c-left,
+.call-screen .call-screen-header > .header-row > .c-right {
     @apply flex-x items-center gap-2;
 }
 /* The expand button of a video that has just opened waits for the opening animation to end */
 .call-screen.first-time-open:not(.expanded) .call-screen-header .btn-expand {
     @apply invisible;
 }
-.call-screen .call-screen-header .c-center {
+.call-screen .call-screen-header > .header-row > .c-center {
     @apply flex-y items-center justify-center;
     @apply min-h-12;
     @apply px-8 py-1;
@@ -312,17 +313,17 @@ body.wide .call-screen.expanded > .c-container {
         transparent 100%
     );
 }
-.call-screen .call-screen-header .c-center .c-chat-title {
+.call-screen .call-screen-header > .header-row > .c-center > .c-chat-title {
     @apply max-w-full;
     @apply truncate;
     @apply text-body-500;
 }
-.call-screen .call-screen-header .c-center .c-member-count {
+.call-screen .call-screen-header > .header-row > .c-center > .c-member-count {
     @apply flex-x items-center gap-1;
     @apply font-normal leading-tight text-white whitespace-nowrap;
 }
-.call-screen .call-screen-header .c-member-count .raised-hands-counter {
-    @apply h-5 px-1.5 ml-1;
+.call-screen .call-screen-header > .header-row > .c-center > .c-member-count > .raised-hands-counter {
+    @apply h-5 px-1.5 ms-1;
     @apply text-xs;
     text-shadow: none;
 }
@@ -370,7 +371,7 @@ html.native-titlebar body.wide .call-screen.expanded .call-screen-header {
 .call-screen.expanded .call-screen-header .header-row-main > .c-right {
     @apply col-start-3 justify-end;
 }
-.call-screen.expanded .call-screen-header.c-brand {
+.call-screen.expanded > .c-container > .c-brand {
     @apply flex-x items-center justify-center gap-2;
     @apply h-14 pt-0;
     @apply text-title-500 text-white;
@@ -386,11 +387,11 @@ html.native-titlebar body.wide .call-screen.expanded .call-screen-header {
     gap: clamp(0.25rem, 2vw, 1rem);
     bottom: var(--vp-safe-bottom);
 }
-.call-screen-footer .c-side {
+.call-screen-footer > .c-side {
     @apply flex-x items-center;
     gap: inherit;
 }
-.call-screen-footer .c-side.c-before {
+.call-screen-footer > .c-side.c-before {
     @apply justify-end;
 }
 body.device-mobile.narrow .call-screen.expanded .video-stage.video-stage-layout__sidebar {
@@ -417,26 +418,26 @@ body.device-mobile.narrow .call-screen.expanded .video-stage.video-stage-layout_
     @apply px-6;
     bottom: calc(var(--vp-safe-bottom) + 2rem);
 }
-.call-screen .c-ring-buttons {
+.call-screen-ring > .c-ring-buttons {
     @apply flex-x items-end justify-center gap-6;
 }
-.call-screen .c-btn-cell {
+.call-screen-ring > .c-ring-buttons > .c-btn-cell {
     @apply flex-y items-center gap-2;
 }
 /* Swipe-up hints above Decline/Accept: three chevrons pulsing upward.
    opacity + transform:scale only (both composited); continuous, so not registered in AnimationSync.
    The darkening behind them is the bottom scrim (.c-scrim), not a per-hint backdrop. */
-.call-screen .c-hints {
+.call-screen-ring > .c-ring-buttons > .c-btn-cell > .c-hints {
     @apply flex-y items-center text-white;
     gap: 1px;
     margin-bottom: 8px;
     /* Swipe hints only make sense where the buttons are swiped — touch devices. */
     display: none;
 }
-body.touch-capable .call-screen .c-hints {
+body.touch-capable .call-screen-ring > .c-ring-buttons > .c-btn-cell > .c-hints {
     display: flex;
 }
-.call-screen .c-hint-chevron {
+.call-screen-ring > .c-ring-buttons > .c-btn-cell > .c-hints > .c-hint-chevron {
     width: 22px;
     height: 9.9px;
     opacity: 0.34;
@@ -444,20 +445,20 @@ body.touch-capable .call-screen .c-hints {
     will-change: opacity, transform;
 }
 /* Stagger so the pulse sweeps upward: the bottom chevron (last child) lights first. */
-.call-screen .c-hint-chevron:nth-child(3) { animation-delay: 0s; }
-.call-screen .c-hint-chevron:nth-child(2) { animation-delay: 0.15s; }
-.call-screen .c-hint-chevron:nth-child(1) { animation-delay: 0.3s; }
+.call-screen-ring > .c-ring-buttons > .c-btn-cell > .c-hints > .c-hint-chevron:nth-child(3) { animation-delay: 0s; }
+.call-screen-ring > .c-ring-buttons > .c-btn-cell > .c-hints > .c-hint-chevron:nth-child(2) { animation-delay: 0.15s; }
+.call-screen-ring > .c-ring-buttons > .c-btn-cell > .c-hints > .c-hint-chevron:nth-child(1) { animation-delay: 0.3s; }
 @keyframes call-hint-sweep {
     0%, 100% { opacity: 0.34; transform: scale(1); }
     45% { opacity: 1; transform: scale(1.14); }
 }
 @media (prefers-reduced-motion: reduce) {
-    .call-screen .c-hint-chevron {
+    .call-screen-ring > .c-ring-buttons > .c-btn-cell > .c-hints > .c-hint-chevron {
         animation: none;
         opacity: 0.6;
     }
 }
-.call-screen .c-btn-label {
+.call-screen-ring > .c-ring-buttons > .c-btn-cell > .c-btn-label {
     @apply text-xs text-white opacity-80;
 }
 .call-screen .btn-call {
@@ -468,19 +469,19 @@ body.touch-capable .call-screen .c-hints {
 }
 /* Swipe-to-answer buttons: claim the vertical gesture so the browser doesn't hijack the drag as a
    page scroll (which cancels the pointer and snaps the button back before the threshold). */
-.call-screen .btn-call.c-decline,
-.call-screen .btn-call.c-accept {
+.call-screen .btn-call.btn-decline,
+.call-screen .btn-call.btn-accept {
     touch-action: none;
 }
 /* Solid gradients as plain CSS: the shorthand also clears .btn-round's default fill. */
-.call-screen .btn-call.c-decline {
+.call-screen .btn-call.btn-decline {
     background: linear-gradient(180deg, var(--magenta-60) 0%, var(--magenta-50) 100%);
 }
-.call-screen .btn-call.c-accept {
+.call-screen .btn-call.btn-accept {
     background: linear-gradient(180deg, var(--emerald-40) 0%, var(--emerald-30) 100%);
 }
-.call-screen .btn-call.c-mute,
-.call-screen .btn-call.c-message {
+.call-screen .btn-call.btn-mute,
+.call-screen .btn-call.btn-message {
     /* Same neutral glass as the other controls. */
     background: linear-gradient(180deg, var(--black-20) -20.83%, var(--black-40) 100%);
     text-shadow: 0 1px 3px rgb(0 0 0 / 60%);
@@ -570,9 +571,9 @@ body.hoverable .btn-glass.btn-h:hover {
     @apply flex-none w-12 h-12;
 }
 body.hoverable .call-screen .call-screen-footer > button:hover,
-body.hoverable .call-screen .call-screen-footer .c-side > button:hover,
+body.hoverable .call-screen .call-screen-footer > .c-side > button:hover,
 .touch-capable .call-screen .call-screen-footer > button:active,
-.touch-capable .call-screen .call-screen-footer .c-side > button:active {
+.touch-capable .call-screen .call-screen-footer > .c-side > button:active {
     @apply text-pal-white-50;
 }
 /* Compact recorder toggle: reused wherever RecorderToggle must sit among the round call
@@ -654,7 +655,7 @@ body.hoverable .call-screen .call-screen-footer .c-side > button:hover,
     @apply text-xl leading-5;
 }
 .recorder-wrapper.compact .rec-icon i.left {
-    @apply -mr-0.5;
+    @apply -me-0.5;
 }
 /* The call's main control stands out from the round buttons around it */
 .call-screen-footer .recorder-wrapper.compact,
@@ -912,7 +913,7 @@ body.wide .video-stage .video-track-player.item-x {
     @apply hidden;
     @apply flex-none;
     @apply min-w-9;
-    @apply tabular-nums text-right text-pal-white-70;
+    @apply tabular-nums text-end text-pal-white-70;
 }
 /* Separator: WORD SEPARATOR MIDDLE DOT (U+2E31, already wide enough on its
    own). Suffix: ᶠᵖˢ (U+1DA0, U+1D56, U+02E2 — small modifier letters). */
@@ -933,7 +934,7 @@ body.show-fps-overlay .video-fps:empty {
 /* right-1 bounds the caption to the tile, so a long name ellipsizes instead of
    overflowing past the tile's right edge and getting clipped by overflow:hidden */
 .call-screen .video-track-player .video-tile-caption {
-    @apply absolute bottom-1 left-1 right-1 z-10;
+    @apply absolute bottom-1 start-1 end-1 z-10;
     @apply flex items-center gap-1;
     @apply pointer-events-none;
 }
@@ -983,7 +984,7 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
     animation: hand-wave-ring 15s ease-out infinite;
 }
 .call-screen .video-track-player .video-hand-badge.corner {
-    @apply absolute top-1 left-1 z-10 hidden;
+    @apply absolute top-1 start-1 z-10 hidden;
     @apply pointer-events-none;
 }
 .call-screen:not(.layout-equal) .video-track-player.item-x .video-hand-badge.corner,
@@ -1027,7 +1028,7 @@ body.narrow .video-stage .video-track-player.pip-overlay .video-participant-labe
     to { transform: rotate(360deg); }
 }
 .call-screen .btn-chat {
-    @apply absolute right-4 top-0;
+    @apply absolute end-4 top-0;
 }
 
 /* ── Docked as a layout column (desktop full screen) ──
@@ -1099,7 +1100,7 @@ body[data-has-call-screen-column]
    on its left edge is the single divide between the flush video and the chat. */
 body[data-has-call-screen-chat-visible] .page-with-header-and-footer > .list-view-layout {
     @apply flex-none;
-    @apply border-l border-separator;
+    @apply border-s border-separator;
     width: 28rem;
 }
 @media (min-width: 1280px) {
@@ -1134,6 +1135,7 @@ body[data-has-call-screen-chat-visible] .page-with-header-and-footer > .list-vie
    overrides, so the collapse animates rather than snapping. */
 body[data-has-call-screen-column] .page-with-header-and-footer > .side-nav.side-nav-left,
 body[data-has-call-screen-column] .page-with-header-and-footer > .side-nav.side-nav-right {
+    /* physical: cancels the -mr-88 a closed .side-nav-right keeps */
     @apply w-0 mr-0;
     @apply overflow-hidden;
     transition: width 200ms ease-out;
@@ -1209,13 +1211,13 @@ body[data-has-call-screen-column] .page-with-header-and-footer > .side-nav.side-
    the inner `.c-grid` wrapper, because an element can't react to its own
    container query. In the default sidebar layout `.c-grid` is display:contents
    — transparent — so tiles stay direct flex children of .video-stage. */
-.c-grid {
+.video-stage > .c-grid {
     display: contents;
 }
 .call-screen.expanded.layout-equal .video-stage {
     container: vp-content / size;
 }
-.call-screen.expanded.layout-equal .c-grid {
+.call-screen.expanded.layout-equal .video-stage > .c-grid {
     @apply grid gap-0.5;
     @apply w-full h-full;
     grid-auto-rows: 1fr;
@@ -1223,7 +1225,7 @@ body[data-has-call-screen-column] .page-with-header-and-footer > .side-nav.side-
 }
 /* Mobile: the expanded panel has no edge padding (desktop already adds
    safe-area + 0.5rem), so keep tiles off the screen edge here. */
-body.narrow .call-screen.expanded.layout-equal .c-grid {
+body.narrow .call-screen.expanded.layout-equal .video-stage > .c-grid {
     @apply p-0.5;
 }
 /* The insets and the gaps between tiles show what is behind the grid: the full-screen video
@@ -1232,14 +1234,14 @@ body.narrow .call-screen.expanded.layout-equal,
 body.narrow .call-screen.expanded.layout-equal .video-stage {
     @apply bg-black;
 }
-body.device-mobile.narrow .call-screen.expanded.layout-equal .c-grid {
+body.device-mobile.narrow .call-screen.expanded.layout-equal .video-stage > .c-grid {
     padding:
         calc(var(--vp-safe-top) + 0.125rem)
         calc(var(--vp-safe-right) + 0.125rem)
         calc(var(--vp-safe-bottom) + 0.125rem)
         calc(var(--vp-safe-left) + 0.125rem);
 }
-.call-screen.expanded.layout-equal .c-grid .video-track-player.pip-overlay {
+.call-screen.expanded.layout-equal .video-stage > .c-grid > .video-track-player.pip-overlay {
     @apply hidden;
 }
 .call-screen.expanded.layout-equal .video-track-player.item-focused,
@@ -1268,42 +1270,42 @@ body.device-mobile.narrow .call-screen.expanded.layout-equal .c-grid {
     border: 0.125rem solid var(--danger-light);
     border-radius: inherit;
 }
-.call-screen.expanded.layout-equal .c-grid.tiles-1 {
+.call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-1 {
     grid-template-columns: 1fr;
     grid-template-rows: 1fr;
 }
-.call-screen.expanded.layout-equal .c-grid.tiles-4 {
+.call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-4 {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
 }
 /* 5 and 6 tiles share a 3x2 grid; the 5-tile case leaves one cell empty rather
    than stretching a tile, so every tile keeps the same aspect. */
-.call-screen.expanded.layout-equal .c-grid.tiles-5,
-.call-screen.expanded.layout-equal .c-grid.tiles-6 {
+.call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-5,
+.call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-6 {
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(2, 1fr);
 }
 @container vp-content (orientation: portrait) {
-    .call-screen.expanded.layout-equal .c-grid.tiles-2 {
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-2 {
         grid-template-columns: 1fr;
         grid-template-rows: 1fr 1fr;
     }
-    .call-screen.expanded.layout-equal .c-grid.tiles-3 {
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-3 {
         grid-template-columns: 1fr;
         grid-template-rows: repeat(3, 1fr);
     }
-    .call-screen.expanded.layout-equal .c-grid.tiles-5,
-    .call-screen.expanded.layout-equal .c-grid.tiles-6 {
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-5,
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-6 {
         grid-template-columns: repeat(2, 1fr);
         grid-template-rows: repeat(3, 1fr);
     }
 }
 @container vp-content (orientation: landscape) {
-    .call-screen.expanded.layout-equal .c-grid.tiles-2 {
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-2 {
         grid-template-columns: 1fr 1fr;
         grid-template-rows: 1fr;
     }
-    .call-screen.expanded.layout-equal .c-grid.tiles-3 {
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-3 {
         grid-template-columns: repeat(3, 1fr);
         grid-template-rows: 1fr;
     }
@@ -1331,27 +1333,27 @@ body.device-mobile.narrow .call-screen.expanded.layout-equal .c-grid {
     @apply min-w-0;
 }
 /* 2x2: the bottom row is the last two tiles in both orientations */
-.call-screen.expanded.layout-equal .c-grid.tiles-4 .gi-2 .video-tile-caption,
-.call-screen.expanded.layout-equal .c-grid.tiles-4 .gi-3 .video-tile-caption {
+.call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-4 .gi-2 .video-tile-caption,
+.call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-4 .gi-3 .video-tile-caption {
     @apply top-1 bottom-auto;
 }
 @container vp-content (orientation: portrait) {
     /* one column: only the last tile is the bottom row (2x1, 3x1); two columns: last row (5,6) */
-    .call-screen.expanded.layout-equal .c-grid.tiles-2 .gi-1 .video-tile-caption,
-    .call-screen.expanded.layout-equal .c-grid.tiles-3 .gi-2 .video-tile-caption,
-    .call-screen.expanded.layout-equal .c-grid.tiles-5 .gi-4 .video-tile-caption,
-    .call-screen.expanded.layout-equal .c-grid.tiles-6 .gi-4 .video-tile-caption,
-    .call-screen.expanded.layout-equal .c-grid.tiles-6 .gi-5 .video-tile-caption {
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-2 .gi-1 .video-tile-caption,
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-3 .gi-2 .video-tile-caption,
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-5 .gi-4 .video-tile-caption,
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-6 .gi-4 .video-tile-caption,
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-6 .gi-5 .video-tile-caption {
         @apply top-1 bottom-auto;
     }
 }
 @container vp-content (orientation: landscape) {
     /* three columns, two rows: the bottom row is everything after the first full row */
-    .call-screen.expanded.layout-equal .c-grid.tiles-5 .gi-3 .video-tile-caption,
-    .call-screen.expanded.layout-equal .c-grid.tiles-5 .gi-4 .video-tile-caption,
-    .call-screen.expanded.layout-equal .c-grid.tiles-6 .gi-3 .video-tile-caption,
-    .call-screen.expanded.layout-equal .c-grid.tiles-6 .gi-4 .video-tile-caption,
-    .call-screen.expanded.layout-equal .c-grid.tiles-6 .gi-5 .video-tile-caption {
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-5 .gi-3 .video-tile-caption,
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-5 .gi-4 .video-tile-caption,
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-6 .gi-3 .video-tile-caption,
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-6 .gi-4 .video-tile-caption,
+    .call-screen.expanded.layout-equal .video-stage > .c-grid.tiles-6 .gi-5 .video-tile-caption {
         @apply top-1 bottom-auto;
     }
 }
@@ -1411,13 +1413,13 @@ body.narrow[data-has-video-panel-expanded] .call-screen *::after {
    the row's end. Narrow layout line-clamps the label, which makes the row a -webkit-box and
    outranks a plainer selector - hence the item in the middle and the explicit display. */
 .audio-output-menu .ac-menu-item .ac-menu-text {
-    @apply flex-x items-center gap-x-2 text-left;
+    @apply flex-x items-center gap-x-2 text-start;
     display: flex;
     -webkit-line-clamp: unset;
 }
-.audio-output-menu .ac-menu-item .c-name {
+.audio-output-menu .ac-menu-text > .c-name {
     @apply truncate;
 }
-.audio-output-menu .ac-menu-item .c-check {
-    @apply ml-auto shrink-0 text-lg text-03;
+.audio-output-menu .ac-menu-text > .c-check {
+    @apply ms-auto shrink-0 text-lg text-03;
 }

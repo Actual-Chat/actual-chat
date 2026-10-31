@@ -5,10 +5,10 @@
 }
 
 <RenderIntoSlot Name="@ContentSwapTestPage.HeaderSlot">
-    <span class="c-slot-item">@m.Title #@_instance</span>
+    <span>@m.Title #@_instance</span>
 </RenderIntoSlot>
 <RenderIntoStack Name="@ContentSwapTestPage.FooterStack" Key="@m.Kind.ToString()">
-    <span class="c-slot-item">@m.Title #@_instance</span>
+    <span>@m.Title #@_instance</span>
 </RenderIntoStack>
 
 <div class="content-swap-test-view @m.KindCssClass @m.CssClass">
