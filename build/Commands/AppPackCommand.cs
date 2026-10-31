@@ -35,8 +35,6 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
             AppPlatform.Android => ("pack-android",
                 $"{publishDir}/release_net11.0-android_android-arm64/{appId}-Signed.aab"),
             AppPlatform.Ios => ("pack-ios", $"{publishDir}/release_net11.0-ios_ios-arm64/ActualChat.ipa"),
-            AppPlatform.Mac when settings.UseCatalyst => ("pack-maccatalyst",
-                $"{publishDir}/release_net11.0-maccatalyst_maccatalyst-arm64/*.pkg"),
             AppPlatform.Mac => ("pack-mac", $"{publishDir}/release_net11.0-macos*/*.pkg"),
             AppPlatform.Windows => ("pack-win", "artifacts/AppPackages/**/App.Maui_*_x64.msix"),
             AppPlatform.Linux => ("pack-linux", MauiApp.GetLinuxPackagePath(settings.IsDev)),
@@ -60,12 +58,8 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
         [Description("Build with Native AOT (currently wired for ios only)")]
         public bool UseNativeAot { get; init; }
 
-        [CommandOption("--catalyst")]
-        [Description("macos only: pack the Mac Catalyst app instead of the default AppKit one")]
-        public bool UseCatalyst { get; init; }
-
         [CommandOption("--universal")]
-        [Description("macos only (AppKit): a universal arm64 + x64 pkg, as CI builds it, instead of one for the host CPU")]
+        [Description("macos only: a universal arm64 + x64 pkg, as CI builds it, instead of one for the host CPU")]
         public bool IsUniversal { get; init; }
 
         public bool IsDev => !IsProd;
@@ -74,10 +68,8 @@ public sealed class AppPackCommand(CliContext context) : PlanCommand<AppPackComm
         {
             if (UseNativeAot && Platform != AppPlatform.Ios)
                 return ValidationResult.Error("--aot is only wired for the ios platform.");
-            if (UseCatalyst && Platform != AppPlatform.Mac)
-                return ValidationResult.Error("--catalyst is only supported for the macos platform.");
-            if (IsUniversal && (Platform != AppPlatform.Mac || UseCatalyst))
-                return ValidationResult.Error("--universal is only wired for the macos AppKit package.");
+            if (IsUniversal && Platform != AppPlatform.Mac)
+                return ValidationResult.Error("--universal is only wired for the macos package.");
             if (Platform is AppPlatform.Linux && OperatingSystem.IsWindows())
                 return ValidationResult.Error(
                     "Packing the Linux app needs Linux or macOS: the tarball carries the files' mode bits.");

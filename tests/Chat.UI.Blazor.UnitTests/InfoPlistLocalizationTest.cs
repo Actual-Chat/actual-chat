@@ -13,7 +13,6 @@ public class InfoPlistLocalizationTest
     private const string LprojRoot = "src/dotnet/App.Maui/Platforms/iOS/Resources";
     private static readonly string[] InfoPlistPaths = [
         "src/dotnet/App.Maui/Platforms/iOS/Info.plist",
-        "src/dotnet/App.Maui/Platforms/MacCatalyst/Info.plist",
         "src/dotnet/App.Maui/Platforms/MacOS/Info.plist",
     ];
     // Apple names the Chinese folders by script and Norwegian by its Bokmål standard,

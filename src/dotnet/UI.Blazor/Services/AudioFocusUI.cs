@@ -200,7 +200,7 @@ public sealed record AudioFocusDiagnostics(
 public sealed record AudioFocusScopeInfo(AudioFocusMode Mode, int Count);
 
 /// <summary>
-/// Native AVAudioSession snapshot (iOS / Mac Catalyst). Strings avoid an
+/// Native AVAudioSession snapshot (iOS). Strings avoid an
 /// AVFoundation dependency in UI.Blazor.
 /// </summary>
 public sealed record AppleAudioSessionDiagnostics(

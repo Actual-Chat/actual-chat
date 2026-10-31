@@ -100,7 +100,7 @@ and close `AudioStream`s.
 
 `MauiRecorderEngine` runs the same batched Silero model natively through
 `Core.Audio/VoiceActivityDetector`: TFLite on Android
-(`TfLiteVoiceActivityDetector`), CoreML on iOS and Mac Catalyst
+(`TfLiteVoiceActivityDetector`), CoreML on iOS
 (`CoreMLVoiceActivityDetector`, `Platforms/iOS/Resources/vad_batched_fp16.mlmodelc`).
 
 The `.mlmodelc` is checked in already compiled, so nothing at build time

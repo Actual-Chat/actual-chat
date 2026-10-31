@@ -161,8 +161,8 @@ public static class Links
         // Write-review pages, for platforms whose native in-app review flow is missing or fails.
         // Android takes the https Play page rather than market://, which every installed store
         // (RuStore etc.) claims and so ends in a chooser; Play owns play.google.com as a verified
-        // app link. The Mac link points at the Catalyst listing: the AppKit app isn't on the Mac
-        // App Store yet.
+        // app link. The Mac link points at the iOS listing: the Mac app is a universal purchase
+        // on the same App ID.
         public static readonly string iOSReview = "https://apps.apple.com/app/id6450874551?action=write-review";
         public static readonly string MacOSAppReview =
             "macappstore://apps.apple.com/app/id6450874551?action=write-review";

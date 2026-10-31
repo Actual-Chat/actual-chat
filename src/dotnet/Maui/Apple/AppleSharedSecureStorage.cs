@@ -5,8 +5,8 @@ namespace ActualChat.Maui;
 
 // UseDataProtectionKeychain matters only on macOS (AppKit): without it SecItem goes to the
 // file-based login keychain, whose per-app ACLs make macOS prompt for the keychain password
-// whenever a differently signed build (local vs. App Store) reads the item. iOS and Mac
-// Catalyst always use the data protection keychain, so the flag is a no-op there.
+// whenever a differently signed build (local vs. App Store) reads the item. iOS always uses
+// the data protection keychain, so the flag is a no-op there.
 public sealed class AppleSharedSecureStorage(string serviceName = "Voxt") : ISecureStorage
 {
     private static string AccessGroup => field ??= MauiSettings.IsDevApp

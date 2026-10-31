@@ -56,7 +56,7 @@ internal class MauiAppAotSource : IAotSource
         CodeKeeper.Keep<FirebaseMessagingService>();
 #endif
 
-#if IOS || MACCATALYST
+#if IOS
         // ObjC runtime resolves types by their [Register] name and calls exported selectors
         // against them. Under NativeAOT we pin the delegate types explicitly — Xamarin's
         // linker usually preserves them, but belt-and-braces for AOT.

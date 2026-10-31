@@ -4,7 +4,7 @@ What ships inside the mobile and desktop app packages, how each part is kept out
 isn't needed, and how to re-measure. Baselined on the `2.14.273` Android Release build
 (`net11.0-android`, `android-arm64`) plus a 22.3 s cold-start trace taken on device;
 Android is the largest package and the only one with a recorded trace, so it's the worked
-example throughout. iOS, Mac Catalyst and Windows share the same managed-code and
+example throughout. iOS, macOS and Windows share the same managed-code and
 web-asset pipelines.
 
 See [Android-specific behavior](./android-specific.md) for how the traces are recorded,
@@ -61,7 +61,7 @@ means we pay for native code we never execute.
 
 Excluding an assembly does **not** remove it from the app. Its IL still ships; only the
 precompiled native code goes away. Whatever runs anyway gets JIT'd on Android and Windows,
-or interpreted on iOS and Mac Catalyst, so the cost of being wrong is a slower first call,
+or interpreted on iOS, so the cost of being wrong is a slower first call,
 not a failure.
 
 That makes the criterion **large, and cold in practice**. Concretely, an assembly earns a
@@ -208,7 +208,7 @@ Two independent mechanisms enforce that, and it's worth knowing which is which:
   else has to know about it.
 - **`webonly/` is published but unpacked.** It lands in `dist` normally and is served on
   the web; `App.Maui.csproj` drops `wwwroot\dist\images\webonly\**` from `Content` and
-  `None`, which is what keeps it out of every app package — Android, iOS, Mac Catalyst and
+  `None`, which is what keeps it out of every app package — Android, iOS, macOS and
   Windows alike.
 
 **Adding an asset:** put it in `images/` and reference it as

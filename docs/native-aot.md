@@ -5,7 +5,7 @@
 Native AOT compilation produces a single native executable with no JIT and no interpreter.
 This improves startup time and reduces memory usage.
 
-We target Native AOT for MAUI apps on all platforms (Windows, Android, iOS, Mac Catalyst).
+We target Native AOT for MAUI apps on all platforms (Windows, Android, iOS).
 The feature is opt-in via `UseNativeAot=true` in the build:
 
 ```bash
@@ -64,7 +64,7 @@ Each AotSource has two parts:
 
 Console app that:
 - **Generate mode** (`-g [project-root]`): discovers Blazor components (`ComponentBase` descendants), `IComputeService` API interfaces, and serializable types (marked with `[MessagePackObject]`, `[MessagePackFormatter]` or `[Union]`) across all ActualChat assemblies. Outputs `XxxAotSource.g.cs` files into each target project.
-- **Mibc mode** (`-m [path]`): emits a static `.mibc` profile from the CodeKeeper type set plus what ActualLab's proxy keepers and the async machinery construct reflectively. Its output, `src/dotnet/App.Maui/_Profiling/aothelper.mibc`, is fed to crossgen2 by iOS / Mac Catalyst Release builds — see [The three profiles iOS Release feeds crossgen2](./ios-specific.md#the-three-profiles-ios-release-feeds-crossgen2).
+- **Mibc mode** (`-m [path]`): emits a static `.mibc` profile from the CodeKeeper type set plus what ActualLab's proxy keepers and the async machinery construct reflectively. Its output, `src/dotnet/App.Maui/_Profiling/aothelper.mibc`, is fed to crossgen2 by iOS Release builds — see [The three profiles iOS Release feeds crossgen2](./ios-specific.md#the-three-profiles-ios-release-feeds-crossgen2).
 - **Test mode** (no args): validates all registered types can be loaded, instantiated, and reflected upon. Uses `IAotTester` implementations (`ComponentTester`, `ApiTester`, `SerializableTester`).
 
 `update-aot-helpers.cmd` at the project root runs generate mode, then mibc mode. Re-run it and commit the result whenever you add or remove a Blazor component, a compute-service API or a serializable type: a type missing from `XxxAotSource.g.cs` may be trimmed out of the WASM and MAUI AOT builds.
@@ -194,11 +194,11 @@ or, to keep android-x64 on the experimental NativeAOT path and only carve out ar
 </PropertyGroup>
 ```
 
-**iOS / Mac Catalyst**: `PublishAot=true` replaces CoreCLR + composite R2R. Both platforms lack a JIT, so the default build relies on CoreCLR's interpreter for whatever R2R doesn't cover; Native AOT removes the interpreter entirely, which is why every reflection path has to be covered by CodeKeeper.
+**iOS**: `PublishAot=true` replaces CoreCLR + composite R2R. iOS lacks a JIT, so the default build relies on CoreCLR's interpreter for whatever R2R doesn't cover; Native AOT removes the interpreter entirely, which is why every reflection path has to be covered by CodeKeeper.
 
 iOS keeps `UseInterpreter=true` for this reason — the macios SDK gates `DynamicCodeSupport` on `UseInterpreter` / `MtouchInterpreter`, and with both unset `RuntimeFeature.IsDynamicCodeSupported` goes `false`, which is Native AOT's constraint without Native AOT's static coverage. See [iOS-specific behavior](./ios-specific.md).
 
-**macOS (MacCatalyst)**: `Info.plist` must declare `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` for `getUserMedia` to resolve (already in place); otherwise JS `mediaDevices` calls hang forever from within `WKWebView` with no visible error — the same hang shape as the earlier Windows unpackaged case (see Known Issues #8).
+**macOS**: `Info.plist` must declare `NSCameraUsageDescription` and `NSMicrophoneUsageDescription` for `getUserMedia` to resolve (already in place); otherwise JS `mediaDevices` calls hang forever from within `WKWebView` with no visible error — the same hang shape as the earlier Windows unpackaged case (see Known Issues #8).
 
 ## Files reference
 

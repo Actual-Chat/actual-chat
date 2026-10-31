@@ -16,7 +16,7 @@
       <key>CFBundleURLSchemes</key>
       <array>
         <!-- The web-auth callback scheme; a prod-flavor build would need "voxt" here,
-             same caveat as Platforms/MacCatalyst/Info.plist -->
+             same caveat as Platforms/iOS/Info.plist -->
         <string>voxt-dev</string>
       </array>
     </dict>

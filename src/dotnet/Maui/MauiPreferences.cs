@@ -39,9 +39,9 @@ public static class MauiPreferences
         // ReSharper disable once HeuristicUnreachableCode
         : "group.chat.actual.app.shared";
 #else
-    // Nowhere else shares these: Mac Catalyst has no extensions and isn't even granted the App
-    // Group, and an Android app widget runs in the app's own process. A store name off iOS would
-    // only put them in a second file - one the Android backup rules don't know to exclude.
+    // Nowhere else shares these: only the iOS app has extensions, and an Android app widget runs
+    // in the app's own process. A store name off iOS would only put them in a second file - one
+    // the Android backup rules don't know to exclude.
     private static string? SharedName => null;
 #endif
 

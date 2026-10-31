@@ -68,20 +68,10 @@ public class AppleAudioCapture(AppUIHub hub) : IAudioCapture
             var preRoll = PttPreRoll.TryTake();
             Log.LogInformation("CaptureInternal: starting");
             using var outBuffer = new BlockRingBuffer<float>(Constants.Audio.RecordingSampleRate * 10);
-            // TODO(FC): restore AEC/NS/AGC on Mac Catalyst.
-            // Voice processing breaks on Mac Catalyst: the engine's recording graph has no
-            // active output side, so the VoiceProcessor's downlink DSP can't get valid sample
-            // timestamps and either errors out continuously or delivers a single initial
-            // buffer then goes silent. Wiring a silent AVAudioPlayerNode to MainMixerNode
-            // suppressed the error spam but didn't restore steady-state frame delivery.
-            // Until we find a stable workaround, ship without VP on Mac Catalyst (desktops
-            // are typically used with headphones, so echo is a minor regression vs iOS).
-            //
             // This must precede GetOutputFormat(): enabling VP can change the input node's
             // output format, and both the resampler and the tap below are built from it. Reading
             // it first would leave Transform() throwing on every buffer - silent dead recording.
-            if (!OperatingSystem.IsMacCatalyst())
-                engine.Input.SetVoiceProcessingEnabled(true);
+            engine.Input.SetVoiceProcessingEnabled(true);
 
             var hwFormat = engine.Input.GetOutputFormat();
             Log.LogInformation("CaptureInternal: input format {SampleRate} Hz x {ChannelCount}, owner={Owner}",

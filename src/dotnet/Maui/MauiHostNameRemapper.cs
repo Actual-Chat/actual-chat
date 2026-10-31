@@ -13,7 +13,7 @@ public sealed class MauiHostNameRemapper : HostNameRemapper
         => Instance = new MauiHostNameRemapper();
 #else
     {
-        // On iOS/macCatalyst, MauiHttpClientFactory uses NSUrlSessionHandler (native stack),
+        // On iOS, MauiHttpClientFactory uses NSUrlSessionHandler (native stack),
         // so SocketsHttpHandler with ConnectCallback cannot be used.
         // See how/where HostNameRemapper.Instance is used.
     }

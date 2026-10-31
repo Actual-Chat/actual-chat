@@ -6,11 +6,11 @@
   <!-- <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk.Razor" /> -->
 
   <PropertyGroup>
-    <!-- Build Android by default; add iOS / MacCatalyst only on macOS to avoid iOS build issues on Windows CI -->
+    <!-- Build Android by default; add iOS only on macOS to avoid iOS build issues on Windows CI -->
     <TargetFrameworks>net11.0-android;</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net11.0-ios;net11.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">$(TargetFrameworks);net11.0-ios</TargetFrameworks>
     <!-- Experimental AppKit backend (dotnet/maui-labs); opt-in so machines without the `macos` workload still restore -->
-    <!-- TODO(maui-labs): make net11.0-macos a default osx TFM, like maccatalyst, once the AppKit backend is officially supported -->
+    <!-- TODO(maui-labs): make net11.0-macos a default osx TFM, like ios, once the AppKit backend is officially supported -->
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx')) AND '$(EnableMacOSAppKit)' == 'true'">$(TargetFrameworks);net11.0-macos</TargetFrameworks>
     <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net11.0-windows10.0.22621.0</TargetFrameworks>
     <!-- Experimental GTK4 backend (dotnet/maui-labs). Linux has no workload and no TFM of its own,
@@ -47,7 +47,6 @@
     <!-- Original defaults for MAUI project: -->
     <!--
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">16.4</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">14.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
@@ -56,7 +55,6 @@
 
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">28.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">17.0</SupportedOSPlatformVersion>
-    <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">17.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-macos'))">15.0</SupportedOSPlatformVersion>
     <SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</SupportedOSPlatformVersion>
     <TargetPlatformMinVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.17763.0</TargetPlatformMinVersion>
@@ -76,7 +74,7 @@
        composite in place and the build quietly ships the image you meant to replace. -->
   <PropertyGroup>
     <UsePartialR2R Condition="'$(UsePartialR2R)' == ''">true</UsePartialR2R>
-    <UsePartialR2R Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst')) or $(TargetFramework.Contains('-macos'))">false</UsePartialR2R>
+    <UsePartialR2R Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-macos'))">false</UsePartialR2R>
   </PropertyGroup>
 
   <!-- CoreCLR runtime settings — .NET 11 runs MAUI on CoreCLR on every platform,
@@ -91,7 +89,7 @@
          predates DATAS (on by default since .NET 9), which starts Server GC with a single
          heap and grows it on demand rather than one heap per core, so the number no longer
          describes what we'd get. Staying on Workstation regardless: it's the only choice on
-         iOS and Mac Catalyst, where the macios SDK's _ValidateGarbageCollector target
+         iOS, where the macios SDK's _ValidateGarbageCollector target
          hard errors on Server GC. -->
     <ServerGarbageCollection>false</ServerGarbageCollection>
   </PropertyGroup>
@@ -216,15 +214,6 @@
     <PackageReference Include="OpusSharp.Core" />
     <PackageReference Include="OpusSharp.Natives" />
   </ItemGroup>
-  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
-    <!-- OpusSharp.Natives has no maccatalyst slice, so its native part comes from Platforms/MacCatalyst/Opus -->
-    <PackageReference Include="OpusSharp.Core" />
-    <NativeReference Include="Platforms\MacCatalyst\Opus\libopus.xcframework">
-      <Kind>Framework</Kind>
-      <SmartLink>False</SmartLink>
-      <ForceLoad>True</ForceLoad>
-    </NativeReference>
-  </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
     <PackageReference Include="Microsoft.Maui.Platforms.MacOS" />
     <PackageReference Include="Microsoft.Maui.Platforms.MacOS.Essentials" />
@@ -258,7 +247,7 @@
   </ItemGroup>
 
   <!-- Runtime mode — common to every platform.
-       .NET 11 dropped the Mono path for Android / iOS / Mac Catalyst, so CoreCLR is the
+       .NET 11 dropped the Mono path for Android / iOS, so CoreCLR is the
        only runtime here, exactly as it always was on Windows. That leaves a single
        axis: CoreCLR (+ ReadyToRun in Release) vs. Native AOT. UseNativeAot=true flips
        every TFM to NAOT — see the NAOT block at the end of this file. -->
@@ -271,7 +260,7 @@
        common NAOT block at the end.
 
        Excluding an assembly doesn't drop it from the app - only its precompiled native code,
-       so whatever runs anyway is JIT'd (Android / Windows) or interpreted (iOS / Mac Catalyst).
+       so whatever runs anyway is JIT'd (Android / Windows) or interpreted (iOS).
 
        Only PhoneNumbers is active: the nine other assemblies docs/app-bundles.md identifies
        as cold crashed crossgen2 in ReadyToRunVisibilityRootProvider.AddCompilationRoots
@@ -382,7 +371,7 @@
        about 1MB of bundle. Android and Windows compile under `partial`, where the profile is
        a *filter* instead: a miss costs one jit, and rooting this file would multiply the
        image. Emitted by update-aot-helpers.cmd - see the iOS block below for what it covers. -->
-  <ItemGroup Condition="'$(Configuration)' == 'Release' and ($(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst')))">
+  <ItemGroup Condition="'$(Configuration)' == 'Release' and $(TargetFramework.Contains('-ios'))">
     <PublishReadyToRunPgoFiles Include="$(MSBuildThisFileDirectory)_Profiling\aothelper.mibc" />
   </ItemGroup>
 
@@ -396,7 +385,7 @@
        run interpreted for the life of the process. Mostly value-type generic instantiations,
        which a full-mode image cannot enumerate statically. See
        docs/ios-specific.md -> Measuring what runs interpreted. -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release' and ($(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst')))">
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and ($(TargetFramework.Contains('-android')) or $(TargetFramework.Contains('-ios')))">
     <PublishReadyToRunCrossgen2CompositeExtraArgs>$(PublishReadyToRunCrossgen2CompositeExtraArgs);--mapcsv</PublishReadyToRunCrossgen2CompositeExtraArgs>
   </PropertyGroup>
 
@@ -457,7 +446,7 @@
     <RuntimeHostConfigurationOption Include="ArgumentList.AllowGenerics" Value="false" Trim="true" />
   </ItemGroup>
 
-  <!-- Apple targets (iOS / Mac Catalyst): what the two profile ItemGroups above are for.
+  <!-- iOS: what the two profile ItemGroups above are for.
        The opposite purpose to Android's. There a profile SHRINKS the
        image (a miss costs one jit); here a miss is interpreted for the life of the process,
        so the profile exists to ADD what a full build cannot enumerate statically: value-type
@@ -486,7 +475,7 @@
        PublishTrimmed outright ("iOS projects do not support setting 'PublishTrimmed'"),
        so MtouchLink stays the knob here - None / SdkOnly / Full. The NAOT block at the
        end raises it to Full. -->
-  <PropertyGroup Condition="($(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))) and !($(UseNativeAot) and '$(Configuration)' == 'Release')">
+  <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) and !($(UseNativeAot) and '$(Configuration)' == 'Release')">
     <MtouchLink>SdkOnly</MtouchLink>
   </PropertyGroup>
 
@@ -545,48 +534,10 @@
     <CreatePackage>false</CreatePackage>
   </PropertyGroup>
 
-  <!-- MacCatalyst build properties -->
-
-  <!-- Entitlements are selected by IsDevMaui (not Configuration) — same App Store
-       entitlement set is used for Debug and Release, matching iOS. -->
-  <PropertyGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
-    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">maccatalyst-arm64</RuntimeIdentifier>
-    <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacCatalyst\Entitlements.dev.plist</CodesignEntitlements>
-    <CodesignEntitlements Condition="'$(IsDevMaui)' != 'true'">Platforms\MacCatalyst\Entitlements.prod.plist</CodesignEntitlements>
-    <UseNativeHttpHandler>true</UseNativeHttpHandler>
-  </PropertyGroup>
-
-  <!-- Debug: Apple Development cert + development profile (mirrors iOS Debug).
-       Profile names below must exist in Apple Developer Console as Mac Catalyst
-       subtype; the developer's Mac must be a registered device on them. -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net11.0-maccatalyst|AnyCPU'">
-    <CreatePackage>false</CreatePackage>
-    <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">mac.chat.actual.dev.app</CodesignProvision>
-    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">mac.chat.actual.app</CodesignProvision>
-    <CodesignKey>Apple Development</CodesignKey>
-    <ProvisioningType>manual</ProvisioningType>
-    <EnableCodeSigning>true</EnableCodeSigning>
-  </PropertyGroup>
-
-  <!-- Release: App Store / TestFlight signed. Profiles below MUST be the "Mac" type,
-       not "Mac Catalyst" — the latter makes dyld reject @rpath for embedded .frameworks
-       and crashes the app at launch (dotnet/macios#14686).
-       CreatePackage + EnablePackageSigning let the SDK build & sign the .pkg directly. -->
-  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-maccatalyst|AnyCPU'">
-    <CodesignProvision Condition="'$(IsDevMaui)' == 'true'">Mac App Store Dev</CodesignProvision>
-    <CodesignProvision Condition="'$(IsDevMaui)' != 'true'">Mac App Store</CodesignProvision>
-    <CodesignKey>Apple Distribution: Actual Chat Inc. (M287G8G83F)</CodesignKey>
-    <PackageSigningKey>3rd Party Mac Developer Installer: Actual Chat Inc. (M287G8G83F)</PackageSigningKey>
-    <EnableCodeSigning>true</EnableCodeSigning>
-    <EnablePackageSigning>true</EnablePackageSigning>
-    <CreatePackage>true</CreatePackage>
-  </PropertyGroup>
-
-  <!-- macOS (AppKit) Release: Mac App Store / TestFlight distribution, mirroring the
-       Mac Catalyst Release block - same "Mac"-type profiles and certificates work for an
-       AppKit app of the same bundle id. Unlike Catalyst, entitlements apply in Release
-       only: a Debug build stays unsandboxed so it can read the Catalyst app's keychain
-       items and keep logs in ~/Library/Logs. -->
+  <!-- macOS (AppKit) Release: Mac App Store / TestFlight distribution. The profiles MUST be
+       the "Mac" type, not "Mac Catalyst" - the latter makes dyld reject @rpath for embedded
+       .frameworks and crashes the app at launch (dotnet/macios#14686). CreatePackage +
+       EnablePackageSigning let the SDK build & sign the .pkg directly. -->
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net11.0-macos|AnyCPU'">
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(RuntimeIdentifiers)' == ''">osx-arm64</RuntimeIdentifier>
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacOS\Entitlements.dev.plist</CodesignEntitlements>
@@ -600,7 +551,7 @@
     <CreatePackage>true</CreatePackage>
   </PropertyGroup>
 
-  <!-- NBGV ships NBGV_SetVersionForMauiIOS for the ios/maccatalyst TPIs only, so without
+  <!-- NBGV ships NBGV_SetVersionForMauiIOS for the ios and maccatalyst TPIs only, so without
        this twin the AppKit package ships as 1.0 instead of the version every other app
        carries. Same anchor and 3-part version convention as the NBGV original.
        TODO(maui-labs): drop once NBGV covers the macos TPI. -->
@@ -614,13 +565,12 @@
     </PropertyGroup>
   </Target>
 
-  <!-- macOS (AppKit): Debug builds sign like the Catalyst ones - the dev profile carries
+  <!-- macOS (AppKit): Debug builds are signed too - the dev profile carries
        keychain-access-groups, which the data protection keychain (AppleSharedSecureStorage)
        requires; an unprovisioned or ad-hoc signed build gets errSecMissingEntitlement and
-       never persists the session. The profiles are plain macOS ones, so the Catalyst names
-       apply as-is. The bare key name resolves when the keychain holds one Apple Development
-       cert; scripts/run-mac.sh passes the team cert's hash as CodesignKey when there are
-       several. -->
+       never persists the session. The bare key name resolves when the keychain holds one
+       Apple Development cert; scripts/run-mac.sh passes the team cert's hash as CodesignKey
+       when there are several. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Debug' and $(TargetFramework.Contains('-macos'))">
     <EnableCodeSigning>true</EnableCodeSigning>
     <CodesignEntitlements Condition="'$(IsDevMaui)' == 'true'">Platforms\MacOS\Entitlements.dev.plist</CodesignEntitlements>
@@ -634,7 +584,7 @@
        for apps carrying get-task-allow. iOS Debug builds get it from the SDK, the Mac ones
        don't. Debug only - the App Store rejects it, so it can't live in Entitlements.*.plist,
        which the Release builds share. -->
-  <ItemGroup Condition="'$(Configuration)' == 'Debug' and ($(TargetFramework.Contains('-macos')) or $(TargetFramework.Contains('-maccatalyst')))">
+  <ItemGroup Condition="'$(Configuration)' == 'Debug' and $(TargetFramework.Contains('-macos'))">
     <CustomEntitlements Include="com.apple.security.get-task-allow" Type="Boolean" Value="true" />
   </ItemGroup>
 
@@ -799,26 +749,22 @@
     <AndroidResource Include="Platforms\Android\Resources\xml\share_targets.xml.prod" Link="Platforms\Android\Resources\xml\share_targets.xml" />
   </ItemGroup>
 
-  <!-- NOT iOS, NOT Mac Catalyst and NOT macOS - code shared by every Apple TFM lives in Apple\ or *.Apple.cs -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true AND $(TargetFramework.Contains('-macos')) != true">
+  <!-- NOT iOS and NOT macOS - code shared by every Apple TFM lives in Apple\ or *.Apple.cs -->
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-macos')) != true">
     <Compile Remove="**\*.Apple.cs" />
     <None Include="**\*.Apple.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\Apple\**\*.cs" />
     <None Include="**\Apple\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
 
-  <!-- NOT iOS and NOT Mac Catalyst -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true AND $(TargetFramework.Contains('-maccatalyst')) != true">
-    <Compile Remove="**\**\*.MaciOS.cs" />
-    <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-    <Compile Remove="**\MaciOS\**\*.cs" />
-    <None Include="**\MaciOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-  </ItemGroup>
-
   <!-- NOT iOS -->
   <ItemGroup Condition="$(TargetFramework.Contains('-ios')) != true">
     <Compile Remove="**\**\*.iOS.cs" />
     <None Include="**\**\*.iOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\**\*.MaciOS.cs" />
+    <None Include="**\**\*.MaciOS.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
+    <Compile Remove="**\MaciOS\**\*.cs" />
+    <None Include="**\MaciOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
     <Compile Remove="**\iOS\**\*.cs" />
     <None Include="**\iOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
@@ -865,11 +811,6 @@
     <Compile Remove="**\MacOS\**\*.cs" />
     <None Include="**\MacOS\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
   </ItemGroup>
-  <!-- NOT Mac Catalyst and NOT macOS - shared Catalyst+AppKit code lives in MacShared\ -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst')) != true AND $(TargetFramework.Contains('-macos')) != true">
-    <Compile Remove="**\MacShared\**\*.cs" />
-    <None Include="**\MacShared\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-  </ItemGroup>
   <!-- macOS (AppKit) -->
   <ItemGroup Condition="$(TargetFramework.Contains('-macos'))">
     <!-- The labs icon target feeds MauiIcon straight to sips, which can't rasterize SVG, so
@@ -885,28 +826,6 @@
     <!-- AppleTuneUI reads them from here, and the WebView fetches the ringtone from dist/sounds - the
          folder build.mjs strips from the MAUI wwwroot because the other platforms bundle it elsewhere -->
     <BundleResource Include="..\..\..\resources\sounds\converted\*.m4a" Link="wwwroot\dist\sounds\%(Filename)%(Extension)" />
-  </ItemGroup>
-
-  <!-- NOT MacCatalyst -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst')) != true">
-    <Compile Remove="**\**\*.MacCatalyst.cs" />
-    <None Include="**\**\*.MacCatalyst.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-    <Compile Remove="**\MacCatalyst\**\*.cs" />
-    <None Include="**\MacCatalyst\**\*.cs" Exclude="$(DefaultItemExcludes);$(DefaultExcludesInProjectFolder)" />
-  </ItemGroup>
-  <!-- MacCatalyst -->
-  <ItemGroup Condition="$(TargetFramework.Contains('-maccatalyst'))">
-    <Folder Include="Platforms\iOS\Resources\" />
-    <BundleResource Include="..\..\..\resources\sounds\converted\attention_ringtone.caf" Link="%(Filename)%(Extension)" />
-    <!-- Remove metadata.json from Content to prevent default SDK behavior -->
-    <Content Remove="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\metadata.json" />
-    <!-- Includes all files in the .mlmodelc recursively as BundleResources.
-         Link with the .mlmodelc root at the bundle's Resources/ so NSBundle.GetUrlForResource
-         finds it (without the Platforms\iOS\Resources\ prefix it'd otherwise inherit). -->
-    <BundleResource Include="Platforms\iOS\Resources\vad_batched_fp16.mlmodelc\**" Link="vad_batched_fp16.mlmodelc\%(RecursiveDir)%(Filename)%(Extension)" />
-    <!-- Localized Info.plist usage descriptions; the Link keeps <lang>.lproj at the bundle root,
-         where the OS looks for it -->
-    <BundleResource Include="Platforms\iOS\Resources\**\InfoPlist.strings" Link="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
   <!-- Linux (GTK4) -->
@@ -1165,7 +1084,7 @@
        the per-platform Release blocks above describe the default CoreCLR + ReadyToRun
        behavior and run regardless of UseNativeAot. This block then overrides what
        conflicts with NAOT and sets the NAOT-specific properties, uniformly for every
-       TFM (Android / iOS / Mac Catalyst / Windows). Add a new NAOT-only knob? It goes
+       TFM (Android / iOS / Windows). Add a new NAOT-only knob? It goes
        here — there are no per-platform NAOT blocks. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and $(UseNativeAot) and '$([MSBuild]::GetTargetPlatformIdentifier($(TargetFramework)))' != ''">
     <!-- NAOT mode -->
@@ -1176,9 +1095,9 @@
 
     <!-- Full trimming, spelled per platform: Apple takes MtouchLink, everyone else
          PublishTrimmed + TrimMode (which the macios SDK refuses). -->
-    <MtouchLink Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))">Full</MtouchLink>
-    <PublishTrimmed Condition="!$(TargetFramework.Contains('-ios')) and !$(TargetFramework.Contains('-maccatalyst'))">true</PublishTrimmed>
-    <TrimMode Condition="!$(TargetFramework.Contains('-ios')) and !$(TargetFramework.Contains('-maccatalyst'))">full</TrimMode>
+    <MtouchLink Condition="$(TargetFramework.Contains('-ios'))">Full</MtouchLink>
+    <PublishTrimmed Condition="!$(TargetFramework.Contains('-ios'))">true</PublishTrimmed>
+    <TrimMode Condition="!$(TargetFramework.Contains('-ios'))">full</TrimMode>
 
     <!-- R2R is CoreCLR-only and incompatible with NAOT -->
     <PublishReadyToRun>false</PublishReadyToRun>

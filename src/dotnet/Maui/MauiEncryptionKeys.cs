@@ -13,7 +13,7 @@ public sealed class MauiEncryptionKeys(ISecureStorage secureStorage, IPreference
     private const string PrimaryKeyName = "db_encryption_key";
 
     public static MauiEncryptionKeys Default { get; } = new(
-#if IOS || MACCATALYST || MACOS
+#if IOS || MACOS
         AppleSharedSecureStorage.PerApp,
 #else
         SecureStorage.Default,

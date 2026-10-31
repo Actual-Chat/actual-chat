@@ -20,20 +20,9 @@ while read -r hash; do
 done < <(security find-identity -v -p codesigning | grep "Apple Development" | grep -o '[0-9A-F]\{40\}')
 echo "Codesign: ${CODESIGN_ARGS[0]:-csproj default}"
 
-# The target decides the framework and the output folder, so it is resolved before the build.
-# AppKit (net11.0-macos) is the default Mac app; its TargetFrameworks override enables the opt-in
-# macos TFM without pulling in android etc. Mac Catalyst needs a RID, which follows the host CPU.
-if [ -z "$IS_CATALYST" ]; then
-    TARGET_ARGS=(-f net11.0-macos '-p:TargetFrameworks="net11.0-macos;net11.0"')
-    OUT_DIR="$REPO_ROOT/artifacts/bin/App.Maui/debug_net11.0-macos"
-else
-    case "$(uname -m)" in
-        arm64) RID="maccatalyst-arm64" ;;
-        *)     RID="maccatalyst-x64" ;;
-    esac
-    TARGET_ARGS=(-f net11.0-maccatalyst -p:RuntimeIdentifier="$RID")
-    OUT_DIR="$REPO_ROOT/artifacts/bin/App.Maui/debug_net11.0-maccatalyst_$RID"
-fi
+# The TargetFrameworks override enables the opt-in macos TFM without pulling in android etc.
+TARGET_ARGS=(-f net11.0-macos '-p:TargetFrameworks="net11.0-macos;net11.0"')
+OUT_DIR="$REPO_ROOT/artifacts/bin/App.Maui/debug_net11.0-macos"
 
 build_web_assets
 dotnet build src/dotnet/App.Maui/ "${TARGET_ARGS[@]}" "${CODESIGN_ARGS[@]}" "${BUILD_ARGS[@]}" || exit 1

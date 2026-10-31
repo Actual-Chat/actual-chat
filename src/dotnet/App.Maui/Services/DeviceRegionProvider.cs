@@ -15,7 +15,7 @@ public static class DeviceRegionProvider
         try {
 #if ANDROID
             return GetAndroidRegion();
-#elif IOS || MACCATALYST
+#elif IOS
             return GetIOSRegion();
 #elif MACOS
             return GetMacOSRegion();
@@ -60,7 +60,7 @@ public static class DeviceRegionProvider
     }
 #endif
 
-#if IOS || MACCATALYST
+#if IOS
     private static string GetIOSRegion()
     {
         // Try to get from carrier (SIM card) first

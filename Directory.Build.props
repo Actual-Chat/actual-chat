@@ -229,7 +229,7 @@
     <!-- CA1510: Use 'ArgumentNullException.ThrowIfNull' instead of explicitly throwing a new exception instance -->
     <!-- CA1515: Consider making public types internal -->
     <!-- CA1707: Remove the underscores from type name -->
-    <!-- CA1711: Rename type name MacNotificationsPermission so that it does not end in 'Permission' -->
+    <!-- CA1711: Rename type name MacOSNotificationsPermission so that it does not end in 'Permission' -->
     <!-- CA1720: Identifier 'Long' contains type name -->
     <!-- CA1724: The type name C conflicts in whole or in part with the namespace name N. -->
     <!-- CA1725: In member M, change parameter name P to P1 in order to match the identifier as it has been declared in ... -->

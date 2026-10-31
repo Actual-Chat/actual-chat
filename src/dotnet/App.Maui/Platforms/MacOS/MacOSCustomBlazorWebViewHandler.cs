@@ -43,7 +43,7 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
         // bundle's wwwroot; nothing else answers that origin, there is no HTTP server behind the WebView.
         config.SetUrlSchemeHandler(this.NewAppSchemeHandler(), "app");
         // content://files/<key> previews of local files (attachments, gallery thumbnails) - what
-        // MauiWebView.MaciOS registers from BlazorWebViewInitializing on iOS and Catalyst.
+        // MauiWebView.MaciOS registers from BlazorWebViewInitializing on iOS.
         // media/<key> carries remote media too, since WKWebView refuses a handler for https
         ContentResolver.InstallUrlConverters();
         config.SetUrlSchemeHandler(ContentSchemeHandler.Instance, "content");
@@ -54,7 +54,7 @@ public sealed class MacOSCustomBlazorWebViewHandler : BlazorWebViewHandler
         config.UserContentController.AddScriptMessageHandler(WindowConfigurator.WindowDragHandler, "windowDrag");
         config.Preferences.JavaScriptCanOpenWindowsAutomatically = true;
         config.UpgradeKnownHostsToHttps = true;
-        // Same as the iOS/Catalyst WebView: without this WebKit's autoplay policy keeps the
+        // Same as the iOS WebView: without this WebKit's autoplay policy keeps the
         // AudioContext silent until a user gesture it recognizes, so voice playback produces
         // no sound even though the pipeline runs.
         config.MediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypes.None;

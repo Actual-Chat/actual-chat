@@ -3,8 +3,8 @@
 Voxt shows up to two splash screens on startup, and they're owned by different
 layers:
 
-- **Native splash** — drawn before any of our code paints. On Android, iOS and Mac
-  Catalyst it's drawn by the OS from a static image: the same artwork everywhere,
+- **Native splash** — drawn before any of our code paints. On Android and iOS
+  it's drawn by the OS from a static image: the same artwork everywhere,
   `Resources/Splash/splashscreen_voxt.png`, declared once as `<MauiSplashScreen>` in
   `App.Maui.csproj` with `<Color>#0C003D</Color>`. Windows has no OS splash for
   unpackaged apps, so we draw our own window instead (see below). Whether we control
@@ -27,7 +27,7 @@ background** instead, falling back to the dark theme's `--background-01`
 | | Native splash | Held until app is ready? | Exit animation | Web splash | Transition |
 |---|---|---|---|---|---|
 | **Android** | `SplashTheme` → `Maui.SplashTheme` (window background; system splash on API 31+) | **Yes** — pre-draw hold in `MainActivity.SplashDelayer`, capped at 3s | **Ours**, 300ms fade via `SplashExitAnimator` (API 31+; hard cut on 28-30) | Removed **instantly**, at `MarkRendered` | **splash → app** |
-| **iOS / Mac Catalyst** | `MauiSplash.storyboardc` via `UILaunchStoryboardName` | **No** — the system dismisses it once the app finishes launching | None available | Fades out, 350ms | **splash → bg → app** |
+| **iOS** | `MauiSplash.storyboardc` via `UILaunchStoryboardName` | **No** — the system dismisses it once the app finishes launching | None available | Fades out, 350ms | **splash → bg → app** |
 | **Windows** | **Ours** — `WindowsSplashScreen`, a borderless always-on-top window in theme colour | **Yes** — closed on `WhenFirstSplashRemoved`, capped at 3s | **Ours**, 200ms logo fade | Removed **instantly**, behind the splash window | **splash → app** |
 | **Web — WASM (`w`) / Auto (`a`)** | None | n/a | n/a | Fades out, 350ms | **bg → app** |
 | **Web — Server / SSB (`s`, `ss`)** | None | n/a | n/a | **Not rendered at all** | none |

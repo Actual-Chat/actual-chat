@@ -17,7 +17,7 @@ public class MauiHttpClientFactory(IServiceProvider services) : IHttpClientFacto
         = new();
 
     public static bool IsEnabled
-#if IOS || MACCATALYST || MACOS
+#if IOS || MACOS
         => true;
 #else
         => false;
@@ -51,7 +51,7 @@ public class MauiHttpClientFactory(IServiceProvider services) : IHttpClientFacto
     // Private methods
 
     private HttpMessageHandler? CreatePlatformMessageHandler()
-#if IOS || MACCATALYST || MACOS
+#if IOS || MACOS
         => new NSUrlSessionHandler {
             SslProtocols = System.Security.Authentication.SslProtocols.Tls12
                 | System.Security.Authentication.SslProtocols.Tls13,

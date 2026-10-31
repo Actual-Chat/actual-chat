@@ -1,6 +1,6 @@
 using ActualChat.UI.Blazor;
 using ActualChat.UI.Blazor.App.Services;
-#if IOS || MACCATALYST
+#if IOS
 using Foundation;
 using UIKit;
 #endif
@@ -21,7 +21,7 @@ public class MediaMetadataUI(AppUIHub hub) : UIServiceBase<AppUIHub>(hub), IMedi
     public Task Reset()
         => Task.CompletedTask;
 
-#if false // was: #if IOS || MACCATALYST
+#if false // was: #if IOS
     private static UIImage DefaultUIImage => field ??= new ();
 
     public Task SetPlayback(MediaMetadata metadata, bool isStreaming)

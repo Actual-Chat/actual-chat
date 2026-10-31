@@ -144,7 +144,7 @@ public static class MauiDiagnostics
         // capture (Cocoa bindings) doesn't cover it either - the managed Sentry sink below still
         // runs - so a plain file is where the AppKit app's logs land. The GTK app's too: a Linux
         // desktop has no log of its own for an app started from the launcher.
-        // TODO(maui-labs): add WriteTo.AppleLog (move MaciOS/Logging to MacShared) and native
+        // TODO(maui-labs): add WriteTo.AppleLog (move MaciOS/Logging to Apple) and native
         // Sentry once the backend is officially supported.
         AppDataLogFilePath = Path.Combine(FileSystem.AppDataDirectory, "Logs", "ActualChat.log");
         logging = logging.WriteTo.File(AppDataLogFilePath,

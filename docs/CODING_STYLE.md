@@ -238,12 +238,8 @@ public async switchFacing(): Promise<boolean> {
     `Foo.cs`.
   - **A standalone type goes into the platform folder** (`Platforms/iOS/IconUIExt.cs`), with no
     suffix.
-- Pick the widest folder the code has a *caller* on, not the widest it compiles for. `Apple` needs
-  no UIKit (the AppKit target, `net11.0-macos`, lacks it); `MaciOS` is for code Mac Catalyst really
-  runs. Code reached only from an iOS feature - CallKit, the share extension - goes to
-  `Platforms/iOS`, even when it would compile for Catalyst.
-- `IOS` is **not** defined for Mac Catalyst (only `MACCATALYST` is), so an `#if IOS` registration
-  leaves Catalyst out.
+- Pick the widest folder the code has a *caller* on, not the widest it compiles for. `Apple` is
+  shared by iOS and macOS, so it needs no UIKit (the AppKit target, `net11.0-macos`, lacks it).
 - Main-thread checks and dispatch go through `ActualChat.Maui.MauiMainThread` (`IsMainThread`,
   `BeginDispatchToMainThread`, `DispatchToMainThread`; static-imported in `App.Maui`). Essentials'
   `MainThread` and the AppKit `MacOSMainThread` are banned at build time (`BannedSymbols.txt`):

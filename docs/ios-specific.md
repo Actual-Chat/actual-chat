@@ -1,8 +1,7 @@
 # iOS-specific behavior
 
 Things that behave differently on iOS than on every other platform we ship, and the
-reasons why. Mac Catalyst shares most of them — both are Apple targets with the same
-runtime constraints.
+reasons why.
 
 ## Policy: every platform keeps a JIT or an interpreter
 
@@ -151,8 +150,8 @@ Both are reachable in a shipped build if ever needed: see
 
 **Android and Windows now ship partial R2R; iOS deliberately does not.** There a miss costs
 one JIT compile, here it is interpreted for the life of the process — so the same size win
-buys a permanent slowdown. `UsePartialR2R` is forced `false` for `-ios` / `-maccatalyst` in
-`App.Maui.csproj`. The profile pipeline and the settings both platforms use are described in
+buys a permanent slowdown. `UsePartialR2R` is forced `false` for `-ios` in
+`App.Maui.csproj`. The profile pipeline and the settings Android and Windows use are described in
 [startup-profiling.md](./startup-profiling.md); this section is why none of it applies here.
 
 Two ways to precompile less and interpret more were built and measured on device
@@ -476,11 +475,6 @@ below.
 **Android was unaffected.** It permits JIT and was already on CoreCLR before the sweep
 (`UseCoreClr` + `UseMonoRuntime=false`), so `IsDynamicCodeSupported` stayed `true` — which
 is why the failure showed up on iOS alone.
-
-**Mac Catalyst is an open question.** macOS allows JIT, so it probably doesn't need the
-interpreter — but the SDK condition above lists `MacCatalyst`, so it likely gets
-`DynamicCodeSupport=false` too and would fail the same way. Unverified. If it does, prefer
-setting `DynamicCodeSupport=true` there over paying for an interpreter it doesn't need.
 
 ### What breaks: MessagePack formatters
 

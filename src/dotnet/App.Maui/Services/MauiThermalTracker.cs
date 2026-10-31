@@ -1,4 +1,4 @@
-#if IOS || MACCATALYST
+#if IOS
 using Foundation;
 #endif
 
@@ -17,7 +17,7 @@ public sealed class MauiThermalTracker : ThermalTracker
         StartTracking();
     }
 
-#if IOS || MACCATALYST
+#if IOS
     private NSObject? _observer;
 
     private void StartTracking()

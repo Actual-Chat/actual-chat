@@ -105,7 +105,7 @@ current prod release visible in the stores is `2.17.246`.
   that overrides the string.
 - `entity=macSoftware` and `id=6450874551` return the *same* record: the Mac
   Catalyst app is a universal purchase on the iOS App ID
-  (`docs/maccatalyst-distribution.md`), so the lookup API can't tell whether the
+  (`docs/macos-distribution.md`), so the lookup API can't tell whether the
   Mac build has cleared review. The web page
   `apps.apple.com/us/app/voxt/id6450874551?platform=mac` does render a
   Mac-specific "Version 2.17" from its `serialized-server-data` JSON, but both
@@ -628,5 +628,5 @@ between them.
   it goes through that machinery.
 - `docs/plans/android-anr-issues.md` — the cold-start budget this feature
   must respect; dropping the region is what keeps it off that path entirely.
-- `docs/maccatalyst-distribution.md`, `.github/fastlane/Fastfile`,
+- `docs/macos-distribution.md`, `.github/fastlane/Fastfile`,
   `.claude/skills/promote-release/SKILL.md` — the release side of D1.

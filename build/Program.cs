@@ -41,7 +41,6 @@ internal static class Program
         public const string Build = "build";
         public const string Maui = "maui";
         public const string PackIos = "pack-ios";
-        public const string PackMacCatalyst = "pack-maccatalyst";
         public const string PackMac = "pack-mac";
         public const string PackAndroid = "pack-android";
         public const string PackWin = "pack-win";
@@ -452,27 +451,6 @@ internal static class Program
                     $"-c {configuration}",
                     $"-p:IsDevMaui={isDevMaui}",
                     $"-p:UseNativeAot={useNativeAot}")
-                .WithWorkingDirectory("src/dotnet/App.Maui")
-                .ToConsole(Green("dotnet: "))
-                .ExecuteAsync(cancellationToken)
-                .Task
-                .ConfigureAwait(false);
-        });
-
-        Target(Targets.PackMacCatalyst, DependsOn(Targets.NpmBuild), async () => {
-            var isProduction = configuration.Equals("Release", StringComparison.OrdinalIgnoreCase);
-            isDevMaui ??= !isProduction;
-            await Cli
-                .Wrap(dotnet)
-                .WithArguments("publish",
-                    "-noLogo",
-                    "-maxCpuCount",
-                    "-nodeReuse:false",
-                    "-f net11.0-maccatalyst",
-                    @"/p:TargetFrameworks=\""net11.0-maccatalyst;net11.0\""", // otherwise needs maui-android etc
-                    "-p:RuntimeIdentifier=maccatalyst-arm64",
-                    $"-c {configuration}",
-                    $"-p:IsDevMaui={isDevMaui}")
                 .WithWorkingDirectory("src/dotnet/App.Maui")
                 .ToConsole(Green("dotnet: "))
                 .ExecuteAsync(cancellationToken)

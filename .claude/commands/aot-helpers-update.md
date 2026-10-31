@@ -10,7 +10,7 @@ description: Regenerate the AOT helper outputs - the XxxAotSource.g.cs files and
 | Output | Mode | Consumed by |
 |---|---|---|
 | `src/dotnet/*/Module/*AotSource.g.cs` | `-g` | the WASM and MAUI AOT builds — a type missing here may be trimmed out |
-| `src/dotnet/App.Maui/_Profiling/aothelper.mibc` | `-m` | iOS / Mac Catalyst Release crossgen2 |
+| `src/dotnet/App.Maui/_Profiling/aothelper.mibc` | `-m` | iOS Release crossgen2 |
 
 Details: [`docs/native-aot.md`](../../docs/native-aot.md#appaothelper).
 

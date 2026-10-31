@@ -223,7 +223,7 @@ lowest, hiding a real update from anyone already on `2.17.x`, whereas `2.17.9999
 at worst offers a banner to someone already on the store's newest build of a
 train that predates v2.19. Anything that doesn't parse at all still throws.
 
-`MacOS` reuses the iOS probe: Mac Catalyst is a universal purchase on the iOS App
+`MacOS` reuses the iOS probe: the Mac app is a universal purchase on the iOS App
 ID, so the lookup API can't tell the two apart. A Mac user would therefore see
 the banner before the Mac build clears review; `AnnounceDelay` is what absorbs
 that.
