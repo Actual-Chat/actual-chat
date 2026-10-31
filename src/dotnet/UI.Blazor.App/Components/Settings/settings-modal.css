@@ -117,7 +117,7 @@ body.narrow .close-settings-btn {
 }
 .ptt-practice-modal .c-meter {
     @apply grid items-center gap-x-3 px-2 py-1.5 rounded-lg;
-    grid-template-columns: auto 1fr 5rem;
+    grid-template-columns: auto 1fr 5rem 2rem;
 }
 .ptt-practice-modal .c-meter .c-icon {
     @apply flex text-primary;
@@ -135,6 +135,9 @@ body.narrow .close-settings-btn {
 }
 .ptt-practice-modal .c-meter .c-off {
     @apply text-caption-500 text-03 text-right;
+}
+.ptt-practice-modal .c-meter .c-count {
+    @apply text-caption-500 text-02 text-right;
 }
 .ptt-practice-modal .c-meter.off .c-title {
     @apply text-03;

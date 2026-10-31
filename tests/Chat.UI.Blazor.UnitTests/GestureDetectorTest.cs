@@ -12,17 +12,34 @@ public class GestureDetectorTest
     private static SensorSample Landscape(double atMs) => new(At(atMs), -1f, 0f, 0f);
     private static SensorSample FaceUp(double atMs) => new(At(atMs), 0f, 0f, 1f);
     private static SensorSample FaceDown(double atMs) => new(At(atMs), 0f, 0f, -1f);
-    private static SensorSample FaceDownJittery(double atMs) => new(At(atMs), 0.3f, 0f, -0.9f);
+    private static SensorSample FaceDownJittery(double atMs) => new(At(atMs), 0.6f, 0f, -0.95f);
     private static SensorSample UpsideDown(double atMs) => new(At(atMs), 0f, -1f, 0f);
     private static Moment At(double ms) => T0 + TimeSpan.FromMilliseconds(ms);
 
-    private static IEnumerable<SensorSample> PocketRest(double startMs, double durationMs = 1000, double stepMs = 50)
+    private static IEnumerable<SensorSample> PocketRest(double startMs, double durationMs = 1000, double stepMs = 20)
     {
         for (var t = startMs; t < startMs + durationMs; t += stepMs)
             yield return UpsideDown(t);
     }
 
-    private static SensorSample Pat(double atMs, float g = 2.5f) => new(At(atMs), 0f, -1f, g);
+    private static SensorSample Pat(double atMs, float g = 1.2f) => new(At(atMs), 0f, -1f, g);
+
+    // A turn by `degrees` around the screen normal, spread evenly over `durationMs` at 50Hz
+    private static IEnumerable<GyroSample> Turn(double startMs, float degrees, double durationMs)
+    {
+        var count = Math.Max(1, (int)(durationMs / 20));
+        var delta = degrees * MathF.PI / 180f / count;
+        var rate = delta / 0.02f;
+        for (var i = 1; i <= count; i++)
+            yield return new GyroSample(At(startMs + (i * 20)), 0f, 0f, rate, delta);
+    }
+
+    private static bool FlipFired(IEnumerable<GyroSample> samples, (float X, float Y, float Z)? gravity = null)
+    {
+        var d = new FlipToTalkDetector();
+        var g = gravity ?? (0f, 1f, 0f);
+        return samples.Aggregate(false, (fired, s) => d.Process(s, g) || fired);
+    }
 
     private static bool PatFired(IEnumerable<SensorSample> samples)
     {
@@ -31,105 +48,74 @@ public class GestureDetectorTest
     }
 
     [Fact]
-    public void FlipFiresOnPortraitLandscapePortrait()
+    public void FlipFiresOnATurnAndBack()
     {
-        var d = new FlipToTalkDetector();
+        // arrange
+        var turn = Turn(0, 80, 200).Concat(Turn(200, 0, 200)).Concat(Turn(400, -80, 200));
+
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(Landscape(300)).Should().BeFalse();
-        d.Process(Landscape(600)).Should().BeFalse();
-        d.Process(Portrait(900)).Should().BeTrue();
+        FlipFired(turn).Should().BeTrue();
     }
 
     [Fact]
-    public void FlipFiresOnRealisticRotation()
+    public void FlipFiresOnASlowTurn()
     {
-        // A deliberate flip at SensorSpeed.UI's ~60ms cadence: the samples taken while the phone
-        // is actually turning are dynamic and get skipped, so only the settled ones classify.
-        var d = new FlipToTalkDetector();
+        // arrange: a turn taken at leisure - 0.7s each way, held 0.8s
+        var turn = Turn(0, 70, 700).Concat(Turn(700, 0, 800)).Concat(Turn(1500, -70, 700));
+
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(Portrait(60)).Should().BeFalse();
-        d.Process(new SensorSample(At(120), -1.6f, -1.0f, 0.5f)).Should().BeFalse();
-        foreach (var atMs in new[] { 180, 240, 300, 360, 420 })
-            d.Process(Landscape(atMs)).Should().BeFalse($"landscape at {atMs}ms is not the end of a flip");
-        d.Process(new SensorSample(At(480), -1.3f, -1.4f, 0.3f)).Should().BeFalse();
-        d.Process(Portrait(540)).Should().BeTrue();
+        FlipFired(turn).Should().BeTrue();
     }
 
     [Fact]
-    public void FlipFiresOnQuickRotation()
+    public void FlipFiresWhileTheHandMoves()
     {
-        // Measured on-device 2026-09-01: a quick flip holds landscape ~135ms, and at the ~68ms
-        // sample cadence no landscape sample lands past the dwell - only the return dates it.
-        var d = new FlipToTalkDetector();
+        // arrange: rotation is all the gyroscope reports, so a hand moving the phone doesn't matter -
+        // here the turn arrives in uneven jerks
+        var turn = Turn(0, 30, 40).Concat(Turn(40, 5, 100)).Concat(Turn(140, 45, 60))
+            .Concat(Turn(200, 0, 150)).Concat(Turn(350, -50, 60)).Concat(Turn(410, -30, 120));
+
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(Landscape(68)).Should().BeFalse();
-        d.Process(Landscape(136)).Should().BeFalse();
-        d.Process(Portrait(203)).Should().BeTrue();
+        FlipFired(turn).Should().BeTrue();
     }
 
     [Fact]
-    public void FlipDoesNotFireOnHalfRotation()
+    public void FlipDoesNotFireOnAHalfTurn()
+        => FlipFired(Turn(0, 80, 200).Concat(Turn(200, 0, 2000))).Should().BeFalse();
+
+    [Fact]
+    public void FlipDoesNotFireOnSmallTwists()
     {
-        // Portrait -> landscape held well past the dwell is only half a flip: without a return
-        // to portrait no sample may fire, however many landscape readings arrive.
-        var d = new FlipToTalkDetector();
+        // arrange: a wrist twisting back and forth by 40 degrees
+        var twists = Enumerable.Range(0, 6).SelectMany(i => Turn(i * 200, i % 2 == 0 ? 40 : -40, 200));
+
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        for (var atMs = 60; atMs <= 5000; atMs += 60)
-            d.Process(Landscape(atMs)).Should().BeFalse($"landscape at {atMs}ms is not a flip");
+        FlipFired(twists).Should().BeFalse();
     }
 
     [Fact]
-    public void FlipDoesNotFireOnBriefLandscapeBlip()
+    public void FlipDoesNotFireOnAFastWristShake()
     {
-        // One landscape sample is a blip, not a rotation - the dwell is what tells them apart.
-        var d = new FlipToTalkDetector();
+        // arrange: past the turn and straight back within ~40ms
+        var shake = Turn(0, 65, 40).Concat(Turn(40, -65, 40));
+
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(Landscape(60)).Should().BeFalse();
-        d.Process(Portrait(120)).Should().BeFalse();
+        FlipFired(shake).Should().BeFalse();
     }
 
     [Fact]
-    public void FlipDoesNotFireOnLateralJolt()
-    {
-        // An arm swing pushes |X| past the dominance threshold while |a| is nowhere near 1g:
-        // that's hand acceleration, not gravity, so it must not read as landscape.
-        var d = new FlipToTalkDetector();
-        // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(new SensorSample(At(60), -1.4f, -1.1f, 0.3f)).Should().BeFalse();
-        d.Process(new SensorSample(At(120), -2.2f, -0.6f, 0.2f)).Should().BeFalse();
-        d.Process(new SensorSample(At(180), -1.5f, -0.9f, 0.1f)).Should().BeFalse();
-        d.Process(new SensorSample(At(240), -1.2f, -1.3f, 0.2f)).Should().BeFalse();
-        d.Process(Portrait(300)).Should().BeFalse();
-        d.Process(Portrait(360)).Should().BeFalse();
-    }
+    public void FlipDoesNotFireWhenTheReturnIsTooLate()
+        => FlipFired(Turn(0, 80, 200).Concat(Turn(200, 0, 2600)).Concat(Turn(2800, -80, 200)))
+            .Should().BeFalse("a turn held that long is the phone's new position");
 
     [Fact]
-    public void FlipDoesNotFireWhenReturnExceedsWindow()
+    public void FlipDoesNotFireOnAPhoneSpunWhileLyingFlat()
     {
-        var d = new FlipToTalkDetector();
-        // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(Landscape(300)).Should().BeFalse();
-        d.Process(Landscape(600)).Should().BeFalse();
-        d.Process(Portrait(4000)).Should().BeFalse();
-    }
+        // arrange
+        var turn = Turn(0, 80, 200).Concat(Turn(200, 0, 200)).Concat(Turn(400, -80, 200));
 
-    [Fact]
-    public void FlipDoesNotFireThroughFlat()
-    {
-        var d = new FlipToTalkDetector();
         // act + assert
-        d.Process(Portrait(0)).Should().BeFalse();
-        d.Process(Landscape(200)).Should().BeFalse();
-        d.Process(Landscape(500)).Should().BeFalse();
-        d.Process(FaceUp(700)).Should().BeFalse();
-        d.Process(Portrait(900)).Should().BeFalse();
+        FlipFired(turn, gravity: (0f, 0f, 1f)).Should().BeFalse();
     }
 
     [Fact]
@@ -138,6 +124,17 @@ public class GestureDetectorTest
         // act + assert
         HasFired(Rest(0).Concat(Burst(1.0f, extremes: 4, startMs: 1000, stepMs: 80)), ShakeSensitivity.Medium)
             .Should().BeTrue();
+    }
+
+    [Fact]
+    public void ShakeIgnoresJoltsThroughTheScreen()
+    {
+        // arrange: alternating jolts along Z are pats, not a shake
+        var samples = Rest(0).Concat(Enumerable.Range(0, 6)
+            .Select(i => new SensorSample(At(1000 + (i * 80)), 0f, 0f, i % 2 == 0 ? 2.2f : -0.2f)));
+
+        // act + assert
+        HasFired(samples, ShakeSensitivity.High).Should().BeFalse();
     }
 
     [Fact]
@@ -427,20 +424,64 @@ public class GestureDetectorTest
 
     [Fact]
     public void DoublePatFiresOnTwoTapsInRhythm()
-        => PatFired(PocketRest(0).Concat([Pat(1000), UpsideDown(1050), Pat(1300)]).Concat(PocketRest(1350)))
+        => PatFired(PocketRest(0).Concat([Pat(1000)]).Concat(PocketRest(1050, 250)).Concat([Pat(1300)]).Concat(PocketRest(1350)))
             .Should().BeTrue();
 
     [Fact]
     public void DoublePatFiresWhenEachPatSpansTwoSamples()
     {
-        // At the ~50ms cadence a firm pat lands on two consecutive samples, and its rebound can
+        // At the 50Hz cadence a firm pat lands on several consecutive samples, and its rebound can
         // cross the threshold as well; neither may read as a third impulse.
         var samples = PocketRest(0)
-            .Concat([Pat(1000), Pat(1050), UpsideDown(1100), Pat(1300), Pat(1350)])
-            .Concat([new SensorSample(At(1400), 0f, -1f, -1.5f)])
-            .Concat(PocketRest(1450));
+            .Concat([Pat(1000), Pat(1020)]).Concat(PocketRest(1040, 260)).Concat([Pat(1300), Pat(1320)])
+            .Concat([new SensorSample(At(1340), 0f, -1f, -0.8f)])
+            .Concat(PocketRest(1360));
         // act + assert
         PatFired(samples).Should().BeTrue();
+    }
+
+    [Fact]
+    public void DoublePatIsDroppedWhenThePhoneTurnsDuringTheHold()
+    {
+        // arrange: pulled out of a pocket, the phone turns toward the face right after the "pats"
+        var turning = Enumerable.Range(1, 30).Select(i => {
+            var angle = MathF.Min(1f, i / 15f) * MathF.PI / 3;
+            return new SensorSample(At(1300 + (i * 20)), 0f, -MathF.Cos(angle), MathF.Sin(angle));
+        });
+        var samples = PocketRest(0).Concat([Pat(1000)]).Concat(PocketRest(1020, 280)).Concat([Pat(1300)])
+            .Concat(turning);
+
+        // act + assert
+        PatFired(samples).Should().BeFalse();
+    }
+
+    [Fact]
+    public void DoublePatIsDroppedWhenLightRisesDuringTheHold()
+    {
+        // arrange
+        var d = new PatDetector();
+        var pair = PocketRest(0).Concat([Pat(1000)]).Concat(PocketRest(1020, 280)).Concat([Pat(1300)])
+            .Concat(PocketRest(1320, 100));
+
+        // act
+        var firedEarly = pair.Count(d.Process);
+        d.SetLit(At(1420));
+        var firedLater = PocketRest(1420, 600).Count(d.Process);
+
+        // assert
+        (firedEarly + firedLater).Should().Be(0);
+    }
+
+    [Fact]
+    public void JoltsAlongThePhoneDoNotReadAsPats()
+    {
+        // arrange: a step jolts a pocketed phone along its length, not through its screen
+        static SensorSample Jolt(double atMs) => new(At(atMs), 0f, -2.2f, 0f);
+        var samples = PocketRest(0).Concat([Jolt(1000)]).Concat(PocketRest(1020, 280)).Concat([Jolt(1300)])
+            .Concat(PocketRest(1320));
+
+        // act + assert
+        PatFired(samples).Should().BeFalse();
     }
 
     [Fact]
@@ -450,8 +491,8 @@ public class GestureDetectorTest
 
     [Fact]
     public void AThirdTapInsideTheWindowCancelsThePair()
-        // The cancel fires on the t=1650 recovery sample (gravity un-winding past Threshold), not on Pat(1600) itself.
-        => PatFired(PocketRest(0).Concat([Pat(1000), UpsideDown(1050), Pat(1300), UpsideDown(1350), Pat(1600)])
+        => PatFired(PocketRest(0).Concat([Pat(1000)]).Concat(PocketRest(1050, 250)).Concat([Pat(1300)])
+                .Concat(PocketRest(1350, 250)).Concat([Pat(1600)])
                 .Concat(PocketRest(1650)))
             .Should().BeFalse("three impulses in a row is a bump train, not a double-pat");
 
@@ -482,9 +523,9 @@ public class GestureDetectorTest
     {
         var d = new PatDetector();
         var samples = PocketRest(0)
-            .Concat([Pat(1000), UpsideDown(1050), Pat(1300)]).Concat(PocketRest(1350, 600))
-            .Concat([Pat(1950), UpsideDown(2000), Pat(2250)]).Concat(PocketRest(2300))
-            .Concat([Pat(3400), UpsideDown(3450), Pat(3700)]).Concat(PocketRest(3750));
+            .Concat([Pat(1000)]).Concat(PocketRest(1050, 250)).Concat([Pat(1300)]).Concat(PocketRest(1350, 600))
+            .Concat([Pat(1950)]).Concat(PocketRest(2000, 250)).Concat([Pat(2250)]).Concat(PocketRest(2300))
+            .Concat([Pat(3400)]).Concat(PocketRest(3450, 250)).Concat([Pat(3700)]).Concat(PocketRest(3750));
         // act + assert: the second pair starts inside the 1s debounce of the first fire
         samples.Count(d.Process).Should().Be(2);
     }
@@ -648,14 +689,46 @@ public class GestureDetectorTest
     [Fact]
     public void RecognizerCoveredSuppressesFlip()
     {
-        var options = new GestureOptions(true, false, false, false, false, ShakeSensitivity.Medium);
-        var r = new GestureRecognizer(options);
+        // arrange
+        var r = new GestureRecognizer(new GestureOptions(true, false, false, false, false, ShakeSensitivity.Medium));
         r.SetProximityCovered(true);
+        foreach (var s in Enumerable.Range(0, 40).Select(i => Portrait(i * 20)))
+            r.Process(s);
+        var turn = Turn(800, 80, 200).Concat(Turn(1000, 0, 200)).Concat(Turn(1200, -80, 200));
+
         // act + assert
-        r.Process(Portrait(0)).Should().BeNull();
-        r.Process(Landscape(300)).Should().BeNull();
-        r.Process(Landscape(600)).Should().BeNull();
-        r.Process(Portrait(900)).Should().BeNull("covered carry must suppress flip");
+        turn.Select(r.ProcessGyro).Should().AllSatisfy(e => e.Should().BeNull("covered carry must suppress flip"));
+    }
+
+    [Fact]
+    public void RecognizerFiresAFlipFromTheGyroscope()
+    {
+        // arrange
+        var r = new GestureRecognizer(new GestureOptions(true, false, false, false, false, ShakeSensitivity.Medium));
+        foreach (var s in Enumerable.Range(0, 40).Select(i => Portrait(i * 20)))
+            r.Process(s);
+        var turn = Turn(800, 80, 200).Concat(Turn(1000, 0, 200)).Concat(Turn(1200, -80, 200));
+
+        // act + assert
+        turn.Select(r.ProcessGyro).Should().Contain(e => e != null && e.Value.Kind == GestureKind.FlipToTalk);
+    }
+
+    [Fact]
+    public void FlipProgressRisesThroughTheTurnAndClearsOnFire()
+    {
+        // arrange
+        var d = new FlipToTalkDetector();
+        var upright = (0f, 1f, 0f);
+
+        // act + assert
+        foreach (var s in Turn(0, 45, 100))
+            d.Process(s, upright);
+        d.GetProgress(At(100)).Should().BeApproximately(0.25f, 0.02f);
+        foreach (var s in Turn(100, 45, 100))
+            d.Process(s, upright);
+        d.GetProgress(At(200)).Should().BeApproximately(0.5f, 0.02f);
+        Turn(200, -90, 200).Any(s => d.Process(s, upright)).Should().BeTrue();
+        d.GetProgress(At(400)).Should().Be(0f);
     }
 
     [Fact]
@@ -668,7 +741,8 @@ public class GestureDetectorTest
         // act + assert
         r.Process(UpsideDown(0)).Should().BeNull();
         r.Process(UpsideDown(200)).Should().BeNull();
-        foreach (var sample in Burst(1.4f, extremes: 6, startMs: 400, stepMs: 70))
+        r.Process(UpsideDown(400)).Should().BeNull();
+        foreach (var sample in Burst(1.4f, extremes: 6, startMs: 600, stepMs: 70))
             r.Process(sample).Should().BeNull("upside-down carry must suppress shake");
     }
 
@@ -679,15 +753,20 @@ public class GestureDetectorTest
         var r = new GestureRecognizer(options);
         r.IsGuardSuppressing.Should().BeFalse();
 
-        // act: a few upside-down samples latch the guard
+        // act: upside-down held past UpsideDownHold latches the guard
         r.Process(UpsideDown(0));
         r.Process(UpsideDown(200));
+        r.Process(UpsideDown(400));
 
         // assert
         r.IsGuardSuppressing.Should().BeTrue();
 
-        // act: an upright, gravity-dominated sample clears the latch
-        r.Process(Portrait(400));
+        // act: upright held past UpsideDownHold clears the latch
+        r.Process(Portrait(600));
+        r.Process(Portrait(800));
+        r.Process(Portrait(1000));
+        r.Process(Portrait(1200));
+        r.Process(Portrait(1400));
 
         // assert
         r.IsGuardSuppressing.Should().BeFalse();
@@ -700,9 +779,13 @@ public class GestureDetectorTest
         var r = new GestureRecognizer(options);
         // act
         r.Process(UpsideDown(0));
-        r.Process(Portrait(200));
+        r.Process(UpsideDown(200));
+        r.Process(UpsideDown(400));
+        r.Process(Portrait(600));
+        r.Process(Portrait(800));
+        r.Process(Portrait(1000));
         var hasFired = false;
-        foreach (var sample in Burst(1.4f, extremes: 6, startMs: 400, stepMs: 70))
+        foreach (var sample in Burst(1.4f, extremes: 6, startMs: 1200, stepMs: 70))
             hasFired |= r.Process(sample) is { Kind: GestureKind.DoubleShake };
         // assert
         hasFired.Should().BeTrue("an upright gravity-dominated sample clears the latch");
@@ -736,37 +819,6 @@ public class GestureDetectorTest
         r.Process(UpsideDown(0)).Should().BeNull();
         var e = r.Process(UpsideDown(1200));
         e!.Value.Kind.Should().Be(GestureKind.Pocket, "the pocket stop branch is never suppressed");
-    }
-
-    [Fact]
-    public void RecognizerSustainedCoverResetsHalfBuiltFlip()
-    {
-        var options = new GestureOptions(true, false, false, false, false, ShakeSensitivity.Medium);
-        var r = new GestureRecognizer(options);
-        // act + assert
-        r.Process(Portrait(0)).Should().BeNull();
-        r.Process(Landscape(300)).Should().BeNull();
-        r.SetProximityCovered(true);
-        // Past ProximitySuppressionDelay and not resting screen-up, so the cover really suppresses
-        r.Process(Portrait(900)).Should().BeNull("a held cover suppresses the flip it would have fired");
-        r.SetProximityCovered(false);
-        r.Process(Landscape(1200)).Should().BeNull();
-        r.Process(Portrait(1500)).Should().BeNull("pocketing must wipe half-built start-gesture state");
-    }
-
-    [Fact]
-    public void RecognizerCoverSpikeKeepsHalfBuiltFlip()
-    {
-        var options = new GestureOptions(true, false, false, false, false, ShakeSensitivity.Medium);
-        var r = new GestureRecognizer(options);
-        // act + assert: under-display proximity sensors blip "near" while the phone is still,
-        // and a blip that never reaches the dwell must not wipe a gesture in progress.
-        r.Process(Portrait(0)).Should().BeNull();
-        r.Process(Landscape(300)).Should().BeNull();
-        r.SetProximityCovered(true);
-        r.SetProximityCovered(false);
-        r.Process(Landscape(600)).Should().BeNull();
-        r.Process(Portrait(900)).Should().NotBeNull("a sub-dwell proximity spike must not disarm gestures");
     }
 
     [Fact]
@@ -808,7 +860,7 @@ public class GestureDetectorTest
     public void RecognizerRoutesAPatOnlyWhilePocketed()
     {
         var r = new GestureRecognizer(new GestureOptions(false, false, false, false, true, ShakeSensitivity.Medium));
-        var pocketed = PocketRest(0).Concat([Pat(1000), UpsideDown(1050), Pat(1300)]).Concat(PocketRest(1350));
+        var pocketed = PocketRest(0).Concat([Pat(1000)]).Concat(PocketRest(1050, 250)).Concat([Pat(1300)]).Concat(PocketRest(1350));
         // act + assert: upside-down carry latches the pocket guard, so the pat is fed
         pocketed.Select(r.Process).Should().Contain(e => e != null && e.Value.Kind == GestureKind.DoublePat);
         r.Reset();
@@ -854,20 +906,6 @@ public class GestureDetectorTest
     }
 
     [Fact]
-    public void FlipProgressRisesThroughTheFlipAndClearsOnFire()
-    {
-        var d = new FlipToTalkDetector();
-        // act + assert
-        d.Process(Portrait(0));
-        d.GetProgress(At(0)).Should().Be(0f);
-        d.Process(Landscape(68));
-        d.GetProgress(At(68)).Should().BeApproximately(0.5f, 0.01f);
-        d.GetProgress(At(200)).Should().BeApproximately(0.75f, 0.01f);
-        d.Process(Portrait(300)).Should().BeTrue();
-        d.GetProgress(At(300)).Should().Be(0f);
-    }
-
-    [Fact]
     public void ShakeProgressCountsStepsAndClearsOnFire()
     {
         var d = new ShakeDetector(ShakeSensitivity.Medium);
@@ -889,12 +927,14 @@ public class GestureDetectorTest
         // act + assert
         d.Process(Pat(1000));
         d.GetProgress(At(1000)).Should().BeApproximately(1f / 3, 0.01f);
-        d.Process(UpsideDown(1050));
+        foreach (var s in PocketRest(1050, 250))
+            d.Process(s);
         d.Process(Pat(1300));
         d.GetProgress(At(1300)).Should().BeApproximately(2f / 3, 0.01f);
-        d.GetProgress(At(1700)).Should().BeGreaterThan(2f / 3).And.BeLessThan(1f);
-        d.Process(UpsideDown(1850)).Should().BeTrue();
-        d.GetProgress(At(1850)).Should().Be(0f);
+        PocketRest(1320, 460).Count(d.Process).Should().Be(0, "the pair must first sit out its 500ms hold");
+        d.GetProgress(At(1780)).Should().BeGreaterThan(2f / 3).And.BeLessThan(1f);
+        d.Process(UpsideDown(1800)).Should().BeTrue();
+        d.GetProgress(At(1800)).Should().Be(0f);
     }
 
     [Fact]

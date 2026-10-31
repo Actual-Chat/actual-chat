@@ -8,6 +8,8 @@ public class SensorFeed
 {
     public event Action<SensorSample>? SampleReceived;
     public event Action<bool>? ProximityChanged;
+    public event Action? LightRose;
+    public event Action<GyroSample>? GyroReceived;
 
     public static bool IsAccelerometerStale(
         Moment startedAt, Moment lastSampleAt, Moment now, TimeSpan timeout)
@@ -34,6 +36,12 @@ public class SensorFeed
 
     protected void OnSample(SensorSample sample)
         => SampleReceived?.Invoke(sample);
+
+    protected void OnGyro(GyroSample sample)
+        => GyroReceived?.Invoke(sample);
+
+    protected void OnLightRose()
+        => LightRose?.Invoke();
 
     protected void OnProximityChanged(bool isCovered)
         => ProximityChanged?.Invoke(isCovered);

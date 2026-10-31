@@ -81,10 +81,9 @@ public static partial class Constants
         // lies still (measured 0.2-1s on a OnePlus CPH2747), and each one used to disarm the
         // start gestures outright, so a cover only counts once it has held this long.
         public static readonly TimeSpan ProximitySuppressionDelay = TimeSpan.FromSeconds(0.5);
-        // SensorSpeed.UI is a hint, not a contract: another app pinning the accelerometer at its
-        // max rate raises the shared HAL rate and every connection gets the flood - 470Hz measured
-        // against our 15Hz request - so the surplus is dropped at the platform edge.
-        public static readonly TimeSpan GestureSampleMinPeriod = TimeSpan.FromMilliseconds(50);
+        // A pat is a 10-30ms impulse, so ~50Hz is requested; the floor sits under its 20ms so callback
+        // jitter does not halve the rate. Another app can raise the shared HAL rate to 470Hz.
+        public static readonly TimeSpan GestureSampleMinPeriod = TimeSpan.FromMilliseconds(15);
         // How long an accelerometer that should be delivering may stay silent before the feed
         // stops trusting its own flag and re-asserts the shared registration.
         public static readonly TimeSpan GestureSensorStaleTimeout = TimeSpan.FromSeconds(3);
