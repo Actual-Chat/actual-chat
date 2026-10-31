@@ -76,7 +76,7 @@ body.hoverable .left-panel-account-menu .dropdown-menu-btn.btn-round:hover .btn-
     @apply overflow-visible;
 }
 .btn-round.account-btn .avatar-circle > .c-content > .c-permission-warning {
-    @apply absolute -right-0.5 -top-0.5;
+    @apply absolute -end-0.5 -top-0.5;
     @apply w-4 h-4;
     @apply outline-2 outline-[var(--background-01)] -outline-offset-1;
     outline-style: solid;

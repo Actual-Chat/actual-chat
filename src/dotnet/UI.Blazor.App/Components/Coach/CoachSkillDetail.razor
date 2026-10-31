@@ -171,7 +171,7 @@
             @if (m.History.Days.Count > 0 || Kind == CoachMetricKind.Pace && PaceTargetRange(m.Pace) is not null) {
                 <div class="c-chart">
                     @if (Kind == CoachMetricKind.Pace) {
-                        <LineChart Items="@HistoryItems(m)" ItemClick="@OnDay" Class="c-pace-chart" ScaleStep="50"
+                        <LineChart Items="@HistoryItems(m)" ItemClick="@OnDay" Class="coach-pace-chart" ScaleStep="50"
                                    TargetRange="@PaceTargetRange(m.Pace)" ReferenceValue="@BaselineChartValue(m)"/>
                         @if (PaceTargetRange(m.Pace) is not null) {
                             <div class="c-range-legend c-coverage">
@@ -181,7 +181,7 @@
                         }
                     } else {
                         <BarChart Items="@HistoryItems(m)" ShowValues="true" ShowZeroValues="true"
-                                  ValueFormat="0.#" ItemClick="@OnDay" Class="c-speaking-chart"
+                                  ValueFormat="0.#" ItemClick="@OnDay" Class="coach-speaking-chart"
                                   ReferenceValue="@BaselineChartValue(m)" Maximum="@BaselineChartValue(m)"/>
                     }
                     @if (m.Comparison.Baseline is { InvalidatedAt: null, MeasurementVersion: 1 } chartBaseline) {

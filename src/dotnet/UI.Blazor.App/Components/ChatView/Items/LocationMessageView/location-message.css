@@ -10,15 +10,15 @@
 .location-message.live {
     border-color: var(--blue-80);
 }
-.location-message .c-map-area {
+.location-message > .c-map-area {
     @apply relative shrink-0 h-[8.75rem];
     @apply overflow-hidden;
 }
-.location-message .c-map {
+.location-message > .c-map-area > .c-map {
     @apply w-full h-full;
 }
-.location-message .c-countdown {
-    @apply absolute top-2 left-2;
+.location-message > .c-map-area > .c-countdown {
+    @apply absolute top-2 start-2;
     @apply w-8 h-8;
     @apply rounded-full;
     background: var(--map-badge);
@@ -26,58 +26,58 @@
     @apply text-sm font-medium;
     @apply pointer-events-none;
 }
-.location-message .c-countdown i {
+.location-message > .c-map-area > .c-countdown > i {
     @apply text-base;
 }
-.location-message .c-map-area .btn.btn-round.btn-stop-sharing {
-    @apply absolute top-2 right-2;
+.location-message > .c-map-area > .btn.btn-round.btn-stop-sharing {
+    @apply absolute top-2 end-2;
     @apply w-8 h-8;
     background: var(--map-control);
     color: var(--location-stop);
 }
-.location-message .c-map-area .btn.btn-round.btn-stop-sharing marker-pin-off-svg {
+.location-message > .c-map-area > .btn.btn-round.btn-stop-sharing marker-pin-off-svg {
     @apply text-xl;
 }
-.location-message .c-tracking-error {
-    @apply absolute bottom-0 left-0 right-0;
+.location-message > .c-map-area > .c-tracking-error {
+    @apply absolute bottom-0 start-0 end-0;
     @apply flex-x items-center gap-1.5;
     @apply px-3 pt-8 pb-2;
     background: linear-gradient(to top, var(--black-70), transparent);
     @apply text-white text-caption-500 font-medium;
     @apply pointer-events-none;
 }
-.location-message .c-tracking-error i {
+.location-message > .c-map-area > .c-tracking-error > i {
     color: var(--danger);
 }
-.location-message .c-footer {
+.location-message > .c-footer {
     @apply flex-x grow items-center gap-x-2;
     @apply p-2;
 }
-.location-message .c-footer .c-pin {
+.location-message > .c-footer > .c-pin {
     @apply text-2xl text-03;
 }
-.location-message.live .c-footer .c-pin {
+.location-message.live > .c-footer > .c-pin {
     color: var(--location-accent);
 }
-.location-message .c-footer .c-info {
+.location-message > .c-footer > .c-info {
     @apply flex-y grow min-w-0;
 }
-.location-message .c-footer .c-title {
+.location-message > .c-footer > .c-info > .c-title {
     @apply truncate;
     @apply text-body-500 text-01;
 }
-.location-message.live .c-footer .c-title {
+.location-message.live > .c-footer > .c-info > .c-title {
     color: var(--location-accent);
 }
-.location-message .c-footer .c-caption {
+.location-message > .c-footer > .c-info > .c-caption {
     @apply truncate;
     @apply text-sm text-03;
 }
-.location-message .c-footer .c-copy {
+.location-message > .c-footer > .c-copy {
     @apply flex shrink-0;
     @apply text-03;
 }
-.location-message .btn.c-share-back {
+.location-message > .btn.btn-share-back {
     @apply flex-none;
     @apply mx-2 mb-2;
     @apply h-8 min-h-8 max-h-8 w-auto;

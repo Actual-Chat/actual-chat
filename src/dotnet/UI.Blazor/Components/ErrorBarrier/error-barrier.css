@@ -26,10 +26,10 @@
 .error-barrier > .c-text p {
     @apply text-center;
 }
-.error-barrier > .c-text .c-header {
+.error-barrier > .c-text > .c-header {
     @apply text-subhead-600;
 }
-.error-barrier.compact > .c-text .c-header {
+.error-barrier.compact > .c-text > .c-header {
     @apply hidden;
 }
 

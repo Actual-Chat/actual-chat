@@ -113,7 +113,7 @@ describe('safe areas', () => {
 
             // assert — the close button sits below the status bar and out of the corner
             await expectInsideSafeArea(header.locator('.right-panel-close-btn'), preset, 'coach close button');
-            await expectInsideSafeArea(header.locator('.c-settings-btn'), preset, 'coach settings button');
+            await expectInsideSafeArea(header.locator('.btn-coach-settings'), preset, 'coach settings button');
 
             // assert — switching Chat/Coach moves neither the close button, nor the cover, nor the title line
             expect(await header.locator('.right-panel-close-btn').boundingBox()).toEqual(chatClose);

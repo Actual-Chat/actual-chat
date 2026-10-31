@@ -130,7 +130,7 @@ export async function dialPeerCall(caller: Page, callee: Page) {
     const callButton = caller.locator('.btn-start-call').first();
     await callButton.waitFor({ state: 'visible', timeout: 30_000 });
     await callButton.click();
-    const accept = callee.locator('.btn-call.c-accept').first();
+    const accept = callee.locator('.btn-call.btn-accept').first();
     await accept.waitFor({ state: 'visible', timeout: 30_000 });
     await accept.click();
     // Answered on the caller's side too: while it still dials, its camera button asks through the join preview
@@ -156,8 +156,8 @@ export async function hangUpIfAny(page: Page | undefined) {
         // A call's video floating over another chat carries the hang-up; inline, the chat's activity panel has it
         page.locator('.call-screen.in-call .call-screen-header .btn-hang-up').first(),
         // The chat's own first: on a narrow screen the chat list's copy is off-screen, yet counts as visible
-        page.locator('.chat-activity-panel .chat-audio-controls .c-hangup').first(),
-        page.locator('.chat-audio-controls .c-hangup').first(),
+        page.locator('.chat-activity-panel .chat-audio-controls .btn-hang-up').first(),
+        page.locator('.chat-audio-controls .btn-hang-up').first(),
         // On a wide screen an active call has no screen of its own: it ends with the recording
         page.locator('.chat-audio-panel .recorder-wrapper.record-on button').first(),
     ];

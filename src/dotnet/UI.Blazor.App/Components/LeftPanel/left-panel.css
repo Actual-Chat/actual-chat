@@ -47,7 +47,7 @@ html.native-titlebar .left-panel-buttons .navbar-button .btn-square {
 html.native-titlebar .left-panel-buttons .navbar-button .left-line {
     @apply h-12;
 }
-html.native-titlebar .left-panel-buttons .c-delimiter {
+html.native-titlebar .left-panel-buttons .navbar-buttons > .c-delimiter {
     @apply w-12;
 }
 .left-panel-buttons > .c-spacer {
@@ -83,7 +83,7 @@ html.native-titlebar .left-panel-buttons .c-delimiter {
     @apply pt-2 -mt-2;
     @apply overflow-hidden;
 }
-.left-panel-buttons .c-delimiter {
+.left-panel-buttons .navbar-buttons > .c-delimiter {
     @apply mx-1 w-10 md:w-12 border-t border-nav-separator;
 }
 .navbar-button.settings-btn {
@@ -112,13 +112,13 @@ html.native-titlebar .left-panel-buttons .c-delimiter {
 }
 /* Round the wallpaper's top-left only in narrow mode, where the bg-04 safe-area strip exists to blend into. */
 body.narrow .left-panel-content-header > .c-content {
-    @apply rounded-tl-lg;
+    @apply rounded-ss-lg;
 }
 /* Fill the concave corner sliver with bg-04 on top of the header (painting over, not behind, so a
    transparent wallpaper doesn't reveal a box). */
 body.narrow .left-panel-content-header::before {
     @apply content-empty;
-    @apply absolute left-0 top-0 z-10;
+    @apply absolute start-0 top-0 z-10;
     @apply w-2 h-2;
     @apply pointer-events-none;
     background: radial-gradient(circle at bottom right, transparent 0.5rem, var(--background-04) calc(0.5rem + 0.5px));
@@ -161,7 +161,7 @@ body.narrow .left-panel-content-header::before {
         color-mix(in srgb, var(--blue-50-50) 80%, var(--violet-50-50)),
         var(--background-03));
     @apply flex-1 flex-y;
-    @apply rounded-tl-lg;
+    @apply rounded-ss-lg;
     @apply overflow-hidden;
     @apply bg-03;
     background-image: var(--c-search-tint);
@@ -187,21 +187,23 @@ body.narrow .left-panel-content-header::before {
     padding-bottom: 0;
 }
 .left-panel-content-search:has(+ .left-panel-content-dock:is([data-has-active-chats], [data-has-ptt-chats]))
-    .left-place-search-overlay-panel :is(.tab > .c-container, .c-search-tab.c-container) {
+    .left-place-search-overlay-panel .tab > .c-container,
+.left-panel-content-search:has(+ .left-panel-content-dock:is([data-has-active-chats], [data-has-ptt-chats]))
+    .left-place-search-overlay-panel > .c-search-tab.c-container {
     padding-bottom: 1.75rem;
 }
 /* A swap layer paints --content-swap-bg to occlude the layer under it, and a flat colour cannot
    match a gradient - so the tint went missing for the length of every tab swap. The swap host
    repaints the band, shifted up by the tab strip standing above it, and the layer inherits that:
    layer and host share a grid area, so the two line up exactly. */
-.left-panel-content-search .c-tab-content {
+.left-panel-content-search .tab-panel > .c-tab-content {
     @apply bg-03;
     background-image: var(--c-search-tint);
     background-repeat: no-repeat;
     background-size: 100% var(--c-search-tint-h);
     background-position: 0 -2.5rem;
 }
-.left-panel-content-search .c-tab-content > .c-layer.outgoing {
+.left-panel-content-search .tab-panel > .c-tab-content > .c-layer.outgoing {
     background: inherit;
 }
 /* The border lives on the wrapper, not on .c-content: .c-content is clamped to max-h-14,
@@ -222,7 +224,7 @@ body.narrow .left-panel-content-header::before {
 }
 /* The Clear button of the notifications header takes the same 40px slot as the search close button:
    a bare header button is only as big as its glyph */
-.left-panel-content-header .c-clear-btn {
+.left-panel-content-header .btn-clear-notifications {
     @apply w-10 h-10;
 }
 .left-panel-content-header.place {
@@ -233,17 +235,14 @@ body.narrow .left-panel-content-header::before {
 .left-panel-content-header.place .box-wrapper {
     @apply h-14;
 }
-.left-panel-content-header.place .c-icon {
+.left-panel-content-header.place > .c-content > .c-icon {
     @apply absolute top-1/2 inset-x-0;
     @apply h-26;
     @apply -translate-y-1/2;
     transition: transform 200ms ease-out;
 }
-.left-panel-content.search-open .left-panel-content-header.place .c-icon {
+.left-panel-content.search-open .left-panel-content-header.place > .c-content > .c-icon {
     @apply -translate-y-[100vh];
-}
-.left-panel-content-header.place.chat-roulette .c-icon.c-chat-roulette-icon {
-    @apply flex items-center justify-center;
 }
 .left-panel-content-header > .c-content {
     @apply relative;
@@ -265,7 +264,7 @@ body:not(.narrow) .left-panel-content-header.place > .c-content {
    the open search takes the whole row, which squeezes the title down to nothing. */
 .left-panel-content-header > .c-content[data-has-search] {
     @apply justify-end;
-    @apply pr-0;
+    @apply pe-0;
 }
 .left-panel-content-header > .c-content[data-has-open-search] {
     @apply gap-x-0;
@@ -279,7 +278,7 @@ body:not(.narrow) .left-panel-content-header.place > .c-content {
 .left-panel-content-header > .c-content > .c-title {
     @apply flex-1;
     @apply min-w-0;
-    @apply pl-1;
+    @apply ps-1;
     @apply truncate;
     @apply text-01 text-subhead-500;
 }
@@ -289,43 +288,37 @@ body:not(.narrow) .left-panel-content-header.place > .c-content {
 .left-panel-content-header .left-chat-search-input {
     @apply self-start;
 }
-.left-panel-content-header .c-ending {
-    @apply absolute right-0;
-    @apply flex-x items-center justify-end gap-x-2;
-    @apply w-full;
-    @apply px-2;
-}
-.left-panel-content-header.place .c-info {
+.left-panel-content-header.place > .c-info {
     @apply grid items-center gap-x-4;
     @apply min-h-14.5;
-    @apply p-2 pl-4;
+    @apply p-2 ps-4;
     grid-template-columns: 1fr auto;
 }
-.left-panel-content-header.place .c-info > .c-left {
+.left-panel-content-header.place > .c-info > .c-left {
     @apply flex-1 flex-y;
     @apply overflow-hidden;
 }
-.left-panel-content-header.place .c-info > .c-left > .c-top {
+.left-panel-content-header.place > .c-info > .c-left > .c-top {
     @apply flex-x items-center gap-x-2;
     @apply text-title-500 text-01 leading-6;
 }
-.left-panel-content-header.place .c-info > .c-left > .c-top .c-title {
+.left-panel-content-header.place > .c-info > .c-left > .c-top > .c-title {
     @apply flex-initial;
     @apply p-0;
     @apply truncate;
 }
-.left-panel-content-header.place .c-info > .c-left > .c-top i {
+.left-panel-content-header.place > .c-info > .c-left > .c-top > i {
     @apply text-title-500 text-03;
 }
-body.hoverable .left-panel-content-header.place .c-info > .c-left > .c-top:hover i {
+body.hoverable .left-panel-content-header.place > .c-info > .c-left > .c-top:hover > i {
     @apply text-01;
 }
-.left-panel-content-header.place .c-info > .c-left > .c-bottom {
+.left-panel-content-header.place > .c-info > .c-left > .c-bottom {
     @apply flex-x items-center gap-x-1;
     @apply text-caption-500 text-03;
 }
 
-.left-panel-content-header.place .c-info > .c-right {
+.left-panel-content-header.place > .c-info > .c-right {
     @apply flex-none flex items-center justify-center;
 }
 
@@ -383,7 +376,7 @@ body.hoverable .add-members-btn:hover {
 .left-search-panel:before {
     @apply content-empty;
     @apply absolute inset-0 z-minus;
-    @apply rounded-tl-lg;
+    @apply rounded-ss-lg;
     @apply bg-03;
     @apply opacity-0;
     /* Fixed blue header height so it stays constant when the keyboard opens (viewport units shrink with the keyboard) */
@@ -397,15 +390,6 @@ body.hoverable .add-members-btn:hover {
 }
 .left-panel-content.search-open .left-search-panel:before {
     @apply opacity-100;
-}
-
-.left-panel-content-header.place.chat-roulette > .c-content {
-    @apply bg-pal-indigo-70;
-}
-
-.left-panel-content-header.place.chat-roulette .c-right .btn.btn-start-roulette {
-    @apply bg-cr-btn;
-    @apply text-white;
 }
 
 .navbar-button .voxt-btn {

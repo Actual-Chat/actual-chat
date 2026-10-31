@@ -71,7 +71,7 @@ body.hoverable .contact-selector-list-item:hover,
 .contact-selector-badges > .c-contact > .c-close {
     @apply flex-none flex items-center justify-center;
     @apply w-4 self-stretch;
-    @apply ml-auto;
+    @apply ms-auto;
     @apply text-base leading-none text-03;
 }
 body.hoverable .contact-selector-badges > .c-contact:hover {
@@ -83,12 +83,12 @@ body.hoverable .contact-selector-badges > .c-contact:active,
     @apply bg-contact-selector-badge-active;
     @apply border-banner-error;
 }
-body.hoverable .contact-selector-badges > .c-contact:hover .c-name,
-body.hoverable .contact-selector-badges > .c-contact:hover .c-close,
-body.hoverable .contact-selector-badges > .c-contact:active .c-name,
-body.hoverable .contact-selector-badges > .c-contact:active .c-close,
-.touch-capable .contact-selector-badges > .c-contact:active .c-name,
-.touch-capable .contact-selector-badges > .c-contact:active .c-close {
+body.hoverable .contact-selector-badges > .c-contact:hover > .c-name,
+body.hoverable .contact-selector-badges > .c-contact:hover > .c-close,
+body.hoverable .contact-selector-badges > .c-contact:active > .c-name,
+body.hoverable .contact-selector-badges > .c-contact:active > .c-close,
+.touch-capable .contact-selector-badges > .c-contact:active > .c-name,
+.touch-capable .contact-selector-badges > .c-contact:active > .c-close {
     @apply text-banner-error;
 }
 
@@ -114,9 +114,6 @@ body.hoverable .contact-selector-badges > .c-contact:active .c-close,
     @apply p-0;
     @apply bg-square;
     @apply rounded-xl md:rounded-lg;
-}
-.contact-selector-place-picker .c-bottom-hill {
-    @apply w-full;
 }
 .contact-selector-place-picker .tab-panel-tabs .btn .icon-message-ellipse {
     @apply text-primary;

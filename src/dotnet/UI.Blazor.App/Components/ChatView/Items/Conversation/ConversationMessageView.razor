@@ -54,7 +54,7 @@
             ? L.Conversation_VoiceOnly
             : L.Chat_Messages(messageCount, messageCount);
         var startedAt = L.Conversation_StartedAt_Format(startsAt.ToString("t", DateFormatter));
-        <div class="@(state.IsAnyoneTalking ? "c-live-card" : "c-live-card quiet")">
+        <div class="@(state.IsAnyoneTalking ? "live-conversation-card" : "live-conversation-card quiet")">
             @if (!Message.HasSplitHeader && hasLiveTitle) {
                 <div class="c-lc-title">
                     <chat-activity-panel-icon-svg size="6" isActive="true" mode="audio"/>
@@ -118,7 +118,7 @@
         </div>
     } else {
         <CascadingValue Value="@_fakeEntry" IsFixed="true">
-        <div class="c-details">
+        <div class="conversation-details">
             <div class="c-summary">
                 @if (!Message.HasSplitHeader) {
                     <ConversationMessageHeader

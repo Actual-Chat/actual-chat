@@ -1,35 +1,35 @@
-.phone-verifier .c-verify {
+.phone-verifier > .c-verify {
     @apply flex-x gap-x-4 items-center;
 }
-.phone-verifier .c-description {
+.phone-verifier > .c-verify > .c-description {
     @apply text-sm text-03;
 }
-.phone-verifier .c-verify .c-verify-btn {
+.phone-verifier > .c-verify > .btn-verify {
     @apply flex-none;
     @apply text-sm;
 }
-.phone-verifier .c-recaptcha-info {
+.phone-verifier .captcha-view {
     @apply my-1;
     @apply text-caption text-03;
 }
-.phone-verifier .c-recaptcha-info .recaptcha-link {
+.phone-verifier .captcha-view > .recaptcha-link {
     @apply text-caption-500 text-primary;
 }
 
-.phone-verifier .c-incut {
+.phone-verifier > .form > .c-incut {
     @apply flex-y gap-4 items-center;
     @apply py-2;
     @apply rounded-lg;
     @apply overflow-hidden;
     @apply text-01;
 }
-.phone-verifier .c-incut .verify-btn {
+.phone-verifier > .form > .c-incut > .verify-btn {
     @apply flex-none;
     @apply px-8;
     @apply bg-01;
     @apply text-primary;
 }
-.phone-verifier .c-incut .c-info {
+.phone-verifier > .form > .c-incut > .c-info {
     @apply text-caption;
 }
 .phone-verifier .verification-status i {

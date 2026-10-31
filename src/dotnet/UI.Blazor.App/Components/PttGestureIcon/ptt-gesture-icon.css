@@ -3,12 +3,12 @@
     @apply flex-none;
     @apply w-6 h-6;
 }
-.ptt-gesture-icon .c-phone,
-.ptt-gesture-icon .c-button,
-.ptt-gesture-icon .c-light,
-.ptt-gesture-icon .c-ring,
-.ptt-gesture-icon .c-hand,
-.ptt-gesture-icon .c-wave {
+.ptt-gesture-icon > .c-phone,
+.ptt-gesture-icon > g > .c-button,
+.ptt-gesture-icon > .c-light,
+.ptt-gesture-icon > .c-ring,
+.ptt-gesture-icon > .c-hand,
+.ptt-gesture-icon > g > .c-wave {
     transform-box: fill-box;
     transform-origin: center;
 }
@@ -16,7 +16,7 @@
 /* ── Flip to talk: to landscape and straight back, then a pause upright ── */
 
 /* Each turn speeds up and slows down on its own, the way a hand turns a phone */
-.ptt-gesture-icon.flip-to-talk .c-phone {
+.ptt-gesture-icon.flip-to-talk > .c-phone {
     animation: ptt-gesture-flip 2.6s linear infinite;
 }
 @keyframes ptt-gesture-flip {
@@ -27,7 +27,7 @@
 
 /* ── Double shake: one left-right-left-right burst ── */
 
-.ptt-gesture-icon.double-shake .c-phone {
+.ptt-gesture-icon.double-shake > .c-phone {
     animation: ptt-gesture-shake 2.4s linear infinite;
 }
 @keyframes ptt-gesture-shake {
@@ -42,24 +42,24 @@
 /* ── Hush: the phone turns face down in one move - to its edge (an "I") while lying down -
    then fades out where it lies and fades back in upright ── */
 
-.ptt-gesture-icon.hush .c-phone {
+.ptt-gesture-icon.hush > .c-phone {
     animation:
         ptt-gesture-hush-turn 3s linear infinite,
         ptt-gesture-hush-fade 3s linear infinite;
 }
-.ptt-gesture-icon.hush .c-side.left {
+.ptt-gesture-icon.hush > .c-phone > .c-side.left {
     animation: ptt-gesture-hush-left 3s linear infinite;
 }
-.ptt-gesture-icon.hush .c-side.right {
+.ptt-gesture-icon.hush > .c-phone > .c-side.right {
     animation: ptt-gesture-hush-right 3s linear infinite;
 }
 /* The edges shrink along their length only, so the frame keeps its 2-unit thickness throughout */
-.ptt-gesture-icon.hush .c-edge {
+.ptt-gesture-icon.hush > .c-phone > .c-edge {
     transform-box: fill-box;
     transform-origin: center;
     animation: ptt-gesture-hush-edge 3s linear infinite;
 }
-.ptt-gesture-icon.hush .c-cover {
+.ptt-gesture-icon.hush > .c-phone > .c-side > .c-cover {
     @apply opacity-0;
     animation: ptt-gesture-hush-cover 3s linear infinite;
 }
@@ -104,13 +104,13 @@
 /* ── Headset button: the button is pushed down to the bottom of the stem and springs back.
    Lock Screen talk button: the dim button lights up as a tap ring spreads out ── */
 
-.ptt-gesture-icon.headset-button .c-button {
+.ptt-gesture-icon.headset-button > g > .c-button {
     animation: ptt-gesture-headset-press 2.4s ease-in-out infinite;
 }
-.ptt-gesture-icon.lock-screen-talk .c-light {
+.ptt-gesture-icon.lock-screen-talk > .c-light {
     animation: ptt-gesture-lock-light 2.4s ease-in-out infinite;
 }
-.ptt-gesture-icon.lock-screen-talk .c-ring {
+.ptt-gesture-icon.lock-screen-talk > .c-ring {
     @apply opacity-0;
     animation: ptt-gesture-headset-ring 2.4s ease-out infinite;
 }
@@ -133,14 +133,14 @@
 /* ── Double pat: the hand pats the pocket twice - left and 30° down, turning 15° on each hit -
    and each hit sends two faint waves off to the left ── */
 
-.ptt-gesture-icon.double-pat .c-hand {
+.ptt-gesture-icon.double-pat > .c-hand {
     animation: ptt-gesture-pat-hand 2.4s ease-in-out infinite;
 }
-.ptt-gesture-icon.double-pat .c-wave {
+.ptt-gesture-icon.double-pat > g > .c-wave {
     @apply opacity-0;
     animation: ptt-gesture-pat-wave 2.4s ease-out infinite;
 }
-.ptt-gesture-icon.double-pat .c-wave.second {
+.ptt-gesture-icon.double-pat > g > .c-wave.second {
     animation-delay: 0.06s;
 }
 @keyframes ptt-gesture-pat-hand {
@@ -164,7 +164,7 @@
 .ptt-gesture-icon.always-watch {
     @apply overflow-hidden;
 }
-.ptt-gesture-icon.always-watch .c-line {
+.ptt-gesture-icon.always-watch > .c-line {
     animation: ptt-gesture-watch-run 2s linear infinite;
 }
 @keyframes ptt-gesture-watch-run {
@@ -173,10 +173,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+    /* !important: every animation above is set on a longer selector */
     .ptt-gesture-icon * {
-        animation: none;
+        animation: none !important;
     }
-    .ptt-gesture-icon.flip-to-talk .c-phone {
+    .ptt-gesture-icon.flip-to-talk > .c-phone {
         transform: rotate(-25deg);
     }
 }

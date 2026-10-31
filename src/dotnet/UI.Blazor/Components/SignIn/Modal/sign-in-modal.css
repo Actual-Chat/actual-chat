@@ -54,7 +54,7 @@ body.keyboard-open .sign-in-modal {
 .btn.sign-in.sign-in-with > .btn-content > i,
 .btn.sign-in.sign-in-with > .btn-content > img {
     @apply inline-block align-middle;
-    @apply mr-2;
+    @apply me-2;
 }
 .btn.sign-in.sign-in-with > .btn-content > span {
     @apply inline align-middle;
@@ -67,43 +67,27 @@ body.keyboard-open .sign-in-modal {
     @apply flex-y grow justify-start gap-y-6;
 }
 
-/* Sign-in step - header block */
-.sign-in-step .c-header {
-    @apply flex-y gap-y-2;
-}
-
-.sign-in-step .c-title {
-    @apply text-title-500 text-02;
-}
-.sign-in-step .c-description {
-    @apply text-body text-02;
-}
-
 /* Sign-in step - auth providers block */
-.provider-select-step:not(:has(.c-separator)) {
-    @apply justify-center;
-}
-
-.sign-in-step .c-auth-providers {
+.provider-select-step > .c-auth-providers {
     @apply flex-y gap-y-4;
 }
 
 /* Sign-in step - phone form */
 
-.sign-in-step .c-phone-form {
+.provider-select-step > .c-phone-form {
     @apply flex-y gap-y-4;
 }
 
-.sign-in-step .c-phone-form i.icon-refresh {
+.provider-select-step > .c-phone-form i.icon-refresh {
     @apply animate-spin;
 }
-.sign-in-step .c-phone-form .c-info {
+.provider-select-step > .c-phone-form .form-section-content > .c-left > .c-info {
     @apply text-caption-500 text-03 flex items-center gap-1;
 }
-.sign-in-step .c-phone-form .c-info i.icon-info {
+.provider-select-step > .c-phone-form .form-section-content > .c-left > .c-info > i.icon-info {
     @apply text-sm align-bottom;
 }
-.c-phone-form .dialog-buttons {
+.provider-select-step > .c-phone-form > .dialog-buttons {
     @apply px-0;
 }
 
@@ -111,8 +95,11 @@ body.keyboard-open .sign-in-modal {
 .verify-phone-step {
     @apply gap-y-3;
 }
-.verify-phone-step .totp-verifier {
+.verify-phone-step > .totp-verifier {
     @apply gap-y-2;
+}
+.verify-phone-step > .totp-verifier > .c-description {
+    @apply text-body text-02;
 }
 .verify-phone-step > .c-reason {
     @apply text-body-500 text-03;
@@ -124,30 +111,30 @@ body.keyboard-open .verify-phone-step > .c-reason {
 
 /* Sign-in step - separator */
 
-.sign-in-step .c-separator {
+.provider-select-step > .c-separator {
     @apply flex items-center text-center text-02;
 }
-.sign-in-step .c-separator::before,
-.sign-in-step .c-separator::after {
+.provider-select-step > .c-separator::before,
+.provider-select-step > .c-separator::after {
     @apply flex-1;
     content: '';
     @apply border-b border-solid border-counter;
 }
-.sign-in-step .c-separator:not(:empty)::before {
-    @apply mr-3;
+.provider-select-step > .c-separator:not(:empty)::before {
+    @apply me-3;
 }
-.sign-in-step .c-separator:not(:empty)::after {
-    @apply ml-3;
+.provider-select-step > .c-separator:not(:empty)::after {
+    @apply ms-3;
 }
 
-.sign-in-step .c-recaptcha-info {
+.provider-select-step > .c-phone-form > .captcha-view {
     @apply text-caption text-03;
 }
-.sign-in-step .c-recaptcha-info .recaptcha-link {
+.provider-select-step > .c-phone-form > .captcha-view > .recaptcha-link {
     @apply text-caption-500 text-primary;
 }
 
 /* Sign-in step - account error */
-.sign-in-step .c-account-error {
+.provider-select-step > .c-phone-form > .c-account-error {
     @apply text-caption-500 text-danger;
 }

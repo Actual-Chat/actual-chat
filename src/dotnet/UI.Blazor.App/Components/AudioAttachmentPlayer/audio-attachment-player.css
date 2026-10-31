@@ -4,7 +4,7 @@
     @apply rounded-full border border-separator;
     @apply bg-01;
 }
-.audio-file-attachment .c-play-btn {
+.audio-file-attachment > .btn-play {
     @apply relative;
     @apply flex-none flex items-center justify-center;
     @apply w-10 h-10;
@@ -12,20 +12,20 @@
     @apply bg-pal-magenta-70 text-white;
     @apply cursor-pointer;
 }
-body.hoverable .audio-file-attachment .c-play-btn:hover {
+body.hoverable .audio-file-attachment > .btn-play:hover {
     filter: brightness(1.1);
 }
-.audio-file-attachment .c-file-info {
+.audio-file-attachment > .c-file-info {
     @apply flex-y justify-start;
     @apply w-full;
     @apply overflow-hidden;
 }
-.audio-file-attachment .c-time {
+.audio-file-attachment > .c-file-info > .c-bottom > .c-time {
     @apply flex-x gap-x-2;
     @apply text-caption text-03;
 }
-.audio-file-attachment .c-progress {
-    @apply absolute left-13 right-13 bottom-0.5;
+.audio-file-attachment > .c-file-info > .audio-progress {
+    @apply absolute start-13 end-13 bottom-0.5;
     @apply flex items-center;
     @apply h-2;
 }
@@ -40,37 +40,37 @@ body.hoverable .audio-file-attachment .c-play-btn:hover {
     @apply bg-music;
     @apply text-music;
 }
-.audio-attachment-subheader .c-row-main {
+.audio-attachment-subheader > .c-row-main {
     @apply flex-x items-center gap-x-2;
     @apply w-full;
 }
-.audio-attachment-subheader .c-play-btn {
+.audio-attachment-subheader > .c-row-main > .btn-play {
     @apply flex-none;
     @apply w-10 h-10;
     @apply rounded-full;
     color: var(--accent-music);
     background: var(--border-music);
 }
-body.hoverable .audio-attachment-subheader .c-play-btn:hover {
+body.hoverable .audio-attachment-subheader > .c-row-main > .btn-play:hover {
     filter: brightness(1.1);
 }
-.audio-attachment-subheader .c-close {
+.audio-attachment-subheader > .c-row-main > .c-actions > .c-close {
     @apply -mt-2;
 }
-.audio-attachment-subheader .c-close i {
+.audio-attachment-subheader > .c-row-main > .c-actions > .c-close > .c-content > i {
     @apply text-xl leading-5;
 }
-.audio-attachment-subheader .c-info {
+.audio-attachment-subheader > .c-row-main > .c-info {
     @apply flex-1 flex-y justify-center;
     @apply min-w-0;
     @apply overflow-hidden;
 }
-.audio-attachment-subheader .c-info .c-title {
+.audio-attachment-subheader > .c-row-main > .c-info > .c-title {
     @apply overflow-hidden whitespace-nowrap;
     @apply text-caption-500 text-01;
     container-type: inline-size;
 }
-.audio-attachment-subheader .c-info .c-title-inner {
+.audio-attachment-subheader > .c-row-main > .c-info > .c-title > .c-title-inner {
     @apply inline-block;
     animation: c-title-marquee 12s steps(30) infinite;
 }
@@ -79,56 +79,57 @@ body.hoverable .audio-attachment-subheader .c-play-btn:hover {
     50%, 70% { transform: translateX(min(0px, calc(-100% + 100cqw))); }
     100%     { transform: translateX(0); }
 }
-.audio-attachment-subheader .c-actions {
+.audio-attachment-subheader > .c-row-main > .c-actions {
     @apply flex-none flex-x items-center gap-x-2;
 }
-.audio-attachment-subheader .c-actions .icon-media-backward-10,
-.audio-attachment-subheader .c-actions .icon-media-forward-10 {
+.audio-attachment-subheader > .c-row-main > .c-actions .icon-media-backward-10,
+.audio-attachment-subheader > .c-row-main > .c-actions .icon-media-forward-10 {
     font-size: 1.25rem;
 }
-.audio-attachment-subheader .c-row-scrubber {
+.audio-attachment-subheader > .c-row-scrubber {
     @apply flex-x items-center gap-x-2;
     @apply w-full;
 }
-.audio-attachment-subheader .c-row-scrubber .c-elapsed,
-.audio-attachment-subheader .c-row-scrubber .c-total {
+.audio-attachment-subheader > .c-row-scrubber > .c-elapsed,
+.audio-attachment-subheader > .c-row-scrubber > .c-total {
     @apply flex-none w-10;
     @apply text-caption text-03 tabular-nums;
 }
-.audio-attachment-subheader .c-row-scrubber .c-elapsed {
-    @apply text-left;
+.audio-attachment-subheader > .c-row-scrubber > .c-elapsed {
+    @apply text-start;
 }
-.audio-attachment-subheader .c-row-scrubber .c-total {
-    @apply text-right;
+.audio-attachment-subheader > .c-row-scrubber > .c-total {
+    @apply text-end;
 }
-.audio-attachment-subheader .c-progress {
+.audio-attachment-subheader > .c-row-scrubber > .audio-progress {
     @apply flex-1 flex items-center;
     @apply h-4;
 }
 
 /* Shared interactive progress bar — custom slider, see AudioAttachmentPlayer notes */
-.c-progress {
+.audio-progress {
     @apply relative;
     container-type: inline-size;
 }
-.c-progress .c-progress-track,
-.c-progress .c-progress-fill {
-    @apply absolute left-0 right-0 top-1/2;
+.audio-progress > .c-progress-track,
+.audio-progress > .c-progress-fill {
+    @apply absolute start-0 end-0 top-1/2;
     @apply h-0.5;
     @apply rounded-full;
     @apply pointer-events-none;
     transition: height 0.1s ease;
 }
-.c-progress .c-progress-track {
+.audio-progress > .c-progress-track {
     @apply bg-cancel;
     @apply -translate-y-1/2;
 }
-.c-progress .c-progress-fill {
+.audio-progress > .c-progress-fill {
     @apply bg-primary;
+    /* physical: the thumb moves by translateX from the left, so the fill grows from that side */
     @apply origin-left;
     transform: translateY(-50%) scaleX(var(--progress, 0));
 }
-.c-progress .c-progress-thumb {
+.audio-progress > .c-progress-thumb {
     @apply absolute top-1/2;
     @apply w-2 h-2;
     @apply -mt-1;
@@ -137,7 +138,7 @@ body.hoverable .audio-attachment-subheader .c-play-btn:hover {
     @apply pointer-events-none;
     transform: translateX(calc(var(--progress, 0) * (100cqw - 0.5rem)));
 }
-.c-progress .c-progress-input {
+.audio-progress > .c-progress-input {
     @apply absolute inset-0;
     @apply w-full h-full;
     @apply m-0;
@@ -147,24 +148,24 @@ body.hoverable .audio-attachment-subheader .c-play-btn:hover {
     -webkit-appearance: none;
     appearance: none;
 }
-body.hoverable .c-progress:hover .c-progress-track,
-body.hoverable .c-progress:hover .c-progress-fill,
-.c-progress.is-scrubbing .c-progress-track,
-.c-progress.is-scrubbing .c-progress-fill {
+body.hoverable .audio-progress:hover > .c-progress-track,
+body.hoverable .audio-progress:hover > .c-progress-fill,
+.audio-progress.is-scrubbing > .c-progress-track,
+.audio-progress.is-scrubbing > .c-progress-fill {
     @apply h-1;
 }
-.c-progress:has(.c-progress-input:disabled) .c-progress-track,
-.c-progress:has(.c-progress-input:disabled) .c-progress-fill,
-.c-progress:has(.c-progress-input:disabled) .c-progress-thumb {
+.audio-progress:has(> .c-progress-input:disabled) > .c-progress-track,
+.audio-progress:has(> .c-progress-input:disabled) > .c-progress-fill,
+.audio-progress:has(> .c-progress-input:disabled) > .c-progress-thumb {
     @apply opacity-50;
 }
-.c-progress .c-progress-input:disabled {
+.audio-progress > .c-progress-input:disabled {
     cursor: default;
 }
-.audio-attachment-subheader .c-progress-track {
+.audio-attachment-subheader > .c-row-scrubber > .audio-progress > .c-progress-track {
     background: color-mix(in srgb, var(--accent-music), transparent 80%);
 }
-.audio-attachment-subheader .c-progress-fill,
-.audio-attachment-subheader .c-progress-thumb {
+.audio-attachment-subheader > .c-row-scrubber > .audio-progress > .c-progress-fill,
+.audio-attachment-subheader > .c-row-scrubber > .audio-progress > .c-progress-thumb {
     background: var(--accent-music);
 }

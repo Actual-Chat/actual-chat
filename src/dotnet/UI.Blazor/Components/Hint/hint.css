@@ -1,5 +1,6 @@
 /* The look is .bubble-surface's; a hint is one short line with no buttons, so it is sized like a tooltip */
 .ac-hint {
+    /* physical: hint-host.ts places it through BubbleHost.place in viewport coordinates */
     @apply absolute top-0 left-0 z-bubble;
     @apply max-w-64 md:max-w-80;
     @apply px-3 py-2;

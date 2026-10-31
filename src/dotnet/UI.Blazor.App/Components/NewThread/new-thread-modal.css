@@ -1,5 +1,5 @@
 .new-thread-modal .waiting-message-container {
-    @apply absolute z-minus left-2 bottom-1.5;
+    @apply absolute z-minus start-2 bottom-1.5;
     @apply h-4 w-fit;
     @apply bg-transparent;
 }

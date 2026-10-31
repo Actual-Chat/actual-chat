@@ -83,6 +83,16 @@ body.no-select {
        edge. */
     --titlebar-inset: 0px;
 }
+/* The left/right insets by writing direction. Declared on body, where safe-area.ts can override the
+   physical ones, so that they resolve against the override. */
+body {
+    --safe-area-start: var(--safe-area-left);
+    --safe-area-end: var(--safe-area-right);
+}
+body[dir="rtl"], [dir="rtl"] body {
+    --safe-area-start: var(--safe-area-right);
+    --safe-area-end: var(--safe-area-left);
+}
 /* In narrow mode the chat header and full-screen modals put their back button in the top-left
    corner, so there the titlebar joins the top inset the way the notch does. The left panel opts
    out (its navbar column lays itself out around the traffic lights), and so does the right panel:
@@ -137,6 +147,7 @@ body.narrow {
     background-color: var(--background-04);
 }
 .safe-area-left::after {
+    /* physical: covers the device inset on the left */
     content: '';
     position: fixed;
     left: 0;
@@ -154,6 +165,7 @@ body.narrow {
     background-color: var(--background-04);
 }
 .safe-area-right::after {
+    /* physical: covers the device inset on the right */
     content: '';
     position: fixed;
     right: 0;
@@ -170,7 +182,7 @@ body[data-has-video-panel-expanded] .safe-area-right::after {
     display: none;
 }
 .safe-area-bottom-overlay {
-    @apply absolute bottom-0 left-0 right-0;
+    @apply absolute bottom-0 start-0 end-0;
     pointer-events: none;
     background: linear-gradient(to bottom, transparent, var(--background-03));
 }
@@ -258,8 +270,8 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
 .base-layout::before {
     content: '';
     position: fixed;
-    left: 0;
-    right: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     top: 0;
     height: var(--safe-area-top-wide);
     z-index: 99999;
@@ -271,7 +283,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply relative;
     @apply flex-1 flex-y flex-nowrap;
     @apply min-w-0;
-    @apply float-left;
+    @apply float-start;
 }
 /* clip, not hidden: a closed side panel still contributes its width here, so the box overflows by
    the panel's width and "hidden" leaves it programmatically scrollable - one focus() inside a panel
@@ -306,7 +318,7 @@ h1.section:nth-child(1), h2.section:nth-child(1), h3.section:nth-child(1), h4.se
     @apply justify-items-stretch;
 }
 body.narrow .layout-header > .c-content.selection-header {
-    @apply pr-3;
+    @apply pe-3;
 }
 .layout-header[data-has-selection-header] {
     @apply bg-gradient-to-r from-pal-magenta-50-20 to-pal-blue-50-20;
@@ -424,7 +436,7 @@ body.narrow .list-view-layout[data-has-participating-activity] .layout-header {
    The animated group positions heads by transform (--acg-x) with margin:0 - a margin
    would shift its absolute-positioned heads and stack them, so exclude it. */
 .list-view-layout .layout-header.collapsed:has(.header-activity-panel-wrapper) .author-circle-group:not(.animate-changes) .author-circle:not(:first-child) {
-    @apply -ml-5;
+    @apply -ms-5;
 }
 body.narrow .list-view-layout .layout-header.expanded .chat-header-control-panel {
     @apply max-w-32;
@@ -433,7 +445,7 @@ body.narrow .list-view-layout .layout-header.collapsed .chat-header-control-pane
     @apply max-w-0;
 }
 body.narrow .list-view-layout .layout-header.collapsed .chat-header-title {
-    @apply pr-16;
+    @apply pe-16;
 }
 /* Wrapper is the SINGLE animated element for collapse/expand */
 .header-activity-panel-wrapper {
@@ -489,12 +501,12 @@ body.narrow .list-view-layout[data-has-listening-activity] .layout-subfooter:bef
     @apply bg-01;
     @apply border-b border-separator;
 }
-.default-layout .layout-header .c-content {
+.default-layout .layout-header > .c-content {
     @apply flex-1 flex-x gap-x-4;
     @apply overflow-hidden;
     @apply bg-01;
 }
-.default-layout .layout-header .c-content .c-title {
+.default-layout .layout-header > .c-content > .c-title {
     @apply flex-1;
     @apply text-01 font-medium;
     @apply truncate;
@@ -503,14 +515,14 @@ body.narrow .list-view-layout[data-has-listening-activity] .layout-subfooter:bef
     @apply justify-start gap-y-4;
     @apply p-4;
     @apply overflow-x-hidden;
-    @apply float-left;
+    @apply float-start;
 }
 
 /* Error container */
 
 .error-container {
     @apply fixed z-error-container;
-    @apply inset-x-0 md:inset-x-auto md:right-0;
+    @apply inset-x-0 md:inset-x-auto md:end-0;
     @apply h-auto;
     @apply overflow-y-auto;
 }
@@ -521,7 +533,7 @@ body.narrow .error-container {
     max-height: calc(100vh - 3rem - var(--safe-area-top) - var(--safe-area-bottom));
 }
 body.wide .error-container {
-    right: var(--safe-area-right);
+    inset-inline-end: var(--safe-area-end);
     top: calc(3rem + var(--safe-area-top));
     max-height: calc(100vh - 3rem - var(--safe-area-top) - var(--safe-area-bottom));
 }
@@ -722,4 +734,16 @@ body > div[data-recaptcha-error] { display: none !important; }
    the keyframes are untouched, only the sampling rate changes. */
 .animate-pulse {
     animation-timing-function: steps(10);
+}
+
+/* Icons that point the way of travel - back, forward, next, reply - mirror on a right-to-left page.
+   Media transport (rewind, skip) and everything else keep their shape. */
+[dir="rtl"] :is(
+    .icon-arrow-left, .icon-arrow-left-fill, .icon-arrow-right, .icon-arrow-right-1, .icon-arrow-right-2,
+    .icon-chevron-left, .icon-chevron-right, .icon-chevron-right-fill,
+    .icon-gallery-arrow-left, .icon-gallery-arrow-right,
+    .icon-reply, .icon-reply-2, .icon-forward, .icon-corner-up-right
+)::before {
+    @apply inline-block;
+    transform: scaleX(-1);
 }

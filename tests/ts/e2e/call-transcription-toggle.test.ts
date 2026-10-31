@@ -33,7 +33,7 @@ const shot = (name: string) => path.join(SHOTS_DIR, `${name}.png`);
 
 const TOGGLE = `${CALL_CONTROLS} .btn-transcription`;
 const CALL_TAB = '.chat-side-panel .live-session-member-list';
-const MANAGE_BUTTONS = `${CALL_TAB} .c-manage-btn`;
+const MANAGE_BUTTONS = `${CALL_TAB} .btn-manage`;
 const MANAGE_TOGGLE = `${MANAGE_BUTTONS}:has(.icon-voice-to-text-message)`;
 
 /** Waits for a toggle to show the given state: it follows the server, a round trip after a click. */

@@ -1,7 +1,7 @@
 /* Inherited from Blazored Modal */
 
 .modal-overlay {
-    @apply z-modal-overlay fixed top-0 left-0;
+    @apply z-modal-overlay fixed top-0 start-0;
     @apply flex-1 flex-y justify-center;
     @apply h-full w-full;
     @apply overflow-hidden;
@@ -154,7 +154,7 @@ body.wide .modal-overlay-fullscreen .modal .modal-content {
 }
 
 .modal-chrome-overlay {
-    @apply fixed left-0 top-0;
+    @apply fixed start-0 top-0;
     @apply block;
     @apply h-full w-full;
 }
@@ -240,7 +240,7 @@ body.device-android .modal-frame {
 
 .btn.btn-square.modal-close {
     @apply h-fit;
-    @apply -mr-1.5;
+    @apply -me-1.5;
 }
 body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
     @apply opacity-90;
@@ -293,6 +293,16 @@ body.hoverable .btn.btn-square.modal-close:hover > .btn-content {
 }
 .dialog-body.body-tiles {
     @apply py-2;
+}
+/* Picker lists: the rows carry their own horizontal padding and hover fill, so the body keeps half
+   the inset and the row text lines up with the title */
+.dialog-body.body-list {
+    @apply gap-y-2;
+    @apply px-2;
+}
+/* A full-bleed body (a map, an image) reaches the frame's edges */
+.modal-frame.full-bleed > .dialog-body {
+    @apply p-0;
 }
 /* A <Form> is a plain block by default, so its FormBlocks would collapse together once the body
    owns the padding. Make every modal form the same 1rem stack as the body itself, so blocks are
@@ -431,25 +441,6 @@ body.wide .modal-overlay-fullscreen .modal-frame.modal-chrome {
 
 .modal-overlay-fullscreen .modal-header {
     @apply hidden;
-}
-
-.dialog-body .c-chat-list {
-    @apply flex-y justify-center gap-y-1;
-    @apply px-2;
-}
-.dialog-body .c-chat-list .c-chat {
-    @apply flex-x items-center gap-x-2;
-    @apply px-2 py-1;
-    @apply rounded-lg;
-    @apply overflow-hidden;
-}
-.dialog-body .c-chat-list .c-chat .c-chat-title {
-    @apply line-clamp-1;
-    @apply text-body-500 text-01;
-}
-body.hoverable .dialog-body .c-chat-list .c-chat:hover {
-    @apply bg-hover;
-    @apply cursor-pointer;
 }
 
 /* A dialog of prose: its header already spaces the title, so the frame gap and the body's top padding

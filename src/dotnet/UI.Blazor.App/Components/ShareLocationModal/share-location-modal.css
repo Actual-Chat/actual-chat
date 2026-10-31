@@ -1,90 +1,86 @@
-.share-location-modal .dialog-body {
+.share-location-modal > .dialog-body {
     @apply relative;
     @apply flex-y;
-    @apply p-0;
 }
 body.wide .share-location-modal {
     @apply pb-0;
 }
-.share-location-modal .c-map-area {
+.share-location-modal > .dialog-body > .c-map-area {
     @apply relative;
     @apply w-full h-60;
     @apply overflow-hidden;
     @apply bg-03;
 }
-.share-location-modal .c-map {
-    @apply w-full h-full;
-}
 /* Picker mode grows the map to the LocationMapModal sizing; device-ios/android force
    .modal-frame to the full viewport height even when wide (tablets, landscape). */
-.share-location-modal.picking .c-map-area {
+.share-location-modal.picking > .dialog-body > .c-map-area {
     @apply h-128 max-h-[70vh];
 }
-body.narrow .share-location-modal.picking .c-map-area,
-body.device-ios .share-location-modal.picking .c-map-area,
-body.device-android .share-location-modal.picking .c-map-area {
+body.narrow .share-location-modal.picking > .dialog-body > .c-map-area,
+body.device-ios .share-location-modal.picking > .dialog-body > .c-map-area,
+body.device-android .share-location-modal.picking > .dialog-body > .c-map-area {
     @apply flex-1;
     @apply h-auto max-h-none;
 }
 /* Not a MapLibre marker: it must stay at the map center while the map moves under it.
    The pin's dot sits 8px above its bottom edge, so the bottom hangs 8px below center. */
-.share-location-modal .c-center-pin {
-    @apply absolute left-1/2 z-10;
+.share-location-modal > .dialog-body > .c-map-area > .c-center-pin {
+    @apply absolute start-1/2 z-10;
     @apply pointer-events-none;
     bottom: calc(50% - 0.5rem);
-    margin-left: -1.125rem;
+    margin-inline-start: -1.125rem;
     transition: transform 150ms ease-out;
 }
-.share-location-modal .c-center-pin::after {
-    @apply absolute left-1/2;
+.share-location-modal > .dialog-body > .c-map-area > .c-center-pin::after {
+    @apply absolute start-1/2;
     @apply w-3 h-1.5;
     @apply rounded-full;
     bottom: -0.75rem;
-    margin-left: -0.375rem;
+    margin-inline-start: -0.375rem;
     background: var(--black-05);
     content: '';
 }
-.share-location-modal .c-map-area .map-view[data-moving] ~ .c-center-pin {
+.share-location-modal > .dialog-body > .c-map-area > .c-map[data-moving] ~ .c-center-pin {
     transform: translateY(-0.375rem);
 }
-.share-location-modal .c-permission-prompt {
+.share-location-modal > .dialog-body > .c-map-area > .c-permission-prompt {
     @apply flex-y items-center justify-center gap-y-2;
     @apply w-full h-full;
     @apply px-8;
     @apply text-center;
 }
-.share-location-modal .c-permission-prompt i {
+.share-location-modal > .dialog-body > .c-map-area > .c-permission-prompt > i {
     @apply text-3xl text-03;
 }
-.share-location-modal .c-permission-prompt span {
+.share-location-modal > .dialog-body > .c-map-area > .c-permission-prompt > span {
     @apply text-body-500 text-02;
 }
-.share-location-modal .c-map-area .btn-glass i {
+.share-location-modal > .dialog-body > .c-map-area .btn-glass i {
     @apply text-2xl;
 }
-.share-location-modal .c-map-area .c-close {
-    @apply absolute top-2 left-2 z-10;
+.share-location-modal > .dialog-body > .c-map-area > .c-close {
+    @apply absolute top-2 start-2 z-10;
 }
-.share-location-modal .c-map-menu {
-    @apply absolute top-2 right-2 z-10;
+.share-location-modal > .dialog-body > .c-map-area > .c-map-menu {
+    @apply absolute top-2 end-2 z-10;
     @apply flex-x items-center gap-x-2;
 }
-.share-location-modal .c-actions {
+.share-location-modal > .dialog-body > .c-actions {
     @apply flex-y;
     @apply p-1;
 }
-.share-location-modal .c-actions .btn-tile i,
-.share-location-modal .c-actions .btn-tile marker-pin-live-svg {
+.share-location-modal > .dialog-body > .c-actions .btn-tile i,
+.share-location-modal > .dialog-body > .c-actions .btn-tile marker-pin-live-svg {
     @apply text-2xl;
     color: var(--location-accent);
 }
-.share-location-modal .c-actions .btn-tile .spinner {
+.share-location-modal > .dialog-body > .c-actions .btn-tile .spinner {
     color: var(--location-accent);
 }
-.share-location-modal .c-menu-backdrop {
+.share-location-modal > .dialog-body > .c-menu-backdrop {
     @apply fixed inset-0 z-10;
 }
-.share-location-modal .c-menu {
+.share-location-modal > .dialog-body > .c-menu {
     @apply absolute z-20;
     @apply flex-y;
     @apply p-1;
@@ -92,34 +88,34 @@ body.device-android .share-location-modal.picking .c-map-area {
     @apply bg-01;
     box-shadow: 0 2px 6px var(--black-05);
 }
-.share-location-modal .c-duration-menu {
-    @apply right-2 bottom-2;
+.share-location-modal > .dialog-body > .c-duration-menu {
+    @apply end-2 bottom-2;
     @apply w-60;
 }
-.share-location-modal .c-map-type-menu {
-    @apply right-2 top-[3.875rem];
+.share-location-modal > .dialog-body > .c-map-type-menu {
+    @apply end-2 top-[3.875rem];
     @apply w-40;
 }
-.share-location-modal .c-menu .c-menu-item {
+.share-location-modal > .dialog-body > .c-menu > .c-menu-item {
     @apply flex-x items-center gap-x-4;
     @apply h-12 shrink-0;
     @apply px-3;
     @apply rounded-lg;
 }
-.share-location-modal .c-menu .c-menu-item:disabled {
+.share-location-modal > .dialog-body > .c-menu > .c-menu-item:disabled {
     @apply opacity-40;
 }
-body.hoverable .share-location-modal .c-menu .c-menu-item:hover:not(:disabled),
-.touch-capable .share-location-modal .c-menu .c-menu-item:active:not(:disabled) {
+body.hoverable .share-location-modal > .dialog-body > .c-menu > .c-menu-item:hover:not(:disabled),
+.touch-capable .share-location-modal > .dialog-body > .c-menu > .c-menu-item:active:not(:disabled) {
     @apply bg-hover;
 }
-.share-location-modal .c-menu .c-menu-item i {
+.share-location-modal > .dialog-body > .c-menu > .c-menu-item > i {
     @apply text-2xl text-03;
 }
-.share-location-modal .c-menu .c-menu-item span {
-    @apply grow text-left;
+.share-location-modal > .dialog-body > .c-menu > .c-menu-item > span {
+    @apply grow text-start;
     @apply text-body-500 text-01;
 }
-.share-location-modal .c-menu .c-menu-item .c-check {
+.share-location-modal > .dialog-body > .c-menu > .c-menu-item > .c-check {
     @apply text-xl text-primary;
 }

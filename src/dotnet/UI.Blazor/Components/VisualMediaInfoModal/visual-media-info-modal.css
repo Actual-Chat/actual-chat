@@ -3,17 +3,17 @@
     @apply px-4;
     @apply overflow-hidden;
 }
-.media-info .c-item {
+.media-info > .c-item {
     @apply flex-y gap-x-1;
     @apply text-body text-03;
 }
-.media-info .c-item:not(:last-child) {
+.media-info > .c-item:not(:last-child) {
     @apply border-b border-separator;
 }
-.media-info .c-item .c-key {
+.media-info > .c-item > .c-key {
     @apply text-caption text-03;
 }
-.media-info .c-item .c-value {
+.media-info > .c-item > .c-value {
     @apply line-clamp-2;
     @apply text-body text-01;
 }

@@ -5,7 +5,7 @@
     var newest = Group.Newest;
 }
 
-<div class="reaction-notification-item c-history" @onclick="@OnClick">
+<div class="reaction-notification-item reaction-notification-history-item" @onclick="@OnClick">
     @if (newest.AuthorId is { } authorId) {
         <AuthorCircleGroup
             Class="c-authors"

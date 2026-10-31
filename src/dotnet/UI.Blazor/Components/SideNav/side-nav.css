@@ -1,4 +1,5 @@
 .side-nav {
+    /* physical: both side navs slide by translateX, so they mirror only together with it */
     /* Must match PanelsUI.PanelTransitionDuration */
     --side-nav-transition-duration: 200ms;
     @apply isolate;
@@ -46,9 +47,6 @@ body.device-ios .side-nav {
     @apply md:w-1/2 lg:w-96 xl:w-128;
     @apply md:transition-width md:duration-200 md:ease-[cubic-bezier(0.32,0.54,0.4,0.9)] md:delay-0 lg:transition-none;
 }
-body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
-    transform: translate3d(-100%, 0, 0);
-}
 
 /* Right SideNav
    md (820–1099): overlay covering the right half — Tailwind md: variants set absolute/w-1/2/left-1/2.
@@ -57,6 +55,7 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
                   instantly on open (chat makes room, then the panel slides into the gap) and delayed
                   to the end of the slide on close (chat reclaims the width a single time). */
 .side-nav.side-nav-right {
+    /* physical: see .side-nav */
     @apply flex-none flex-y;
     @apply md:absolute md:w-1/2 md:left-1/2;
     @apply md:transition-transform md:duration-200 md:ease-[cubic-bezier(0.32,0.54,0.4,0.9)];
@@ -67,6 +66,7 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
     @apply md:shadow-[-1px_0_0_var(--separator)] lg:shadow-none;
 }
 .side-nav.side-nav-right[data-side-nav="closed"] {
+    /* physical: see .side-nav */
     @apply md:translate-x-full;
     @apply lg:translate-x-full lg:-mr-88 xl:-mr-112;
 }
@@ -75,9 +75,6 @@ body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
     .side-nav.side-nav-right[data-side-nav="closed"] {
         transition: transform 200ms cubic-bezier(0.32, 0.54, 0.4, 0.9), margin-right 0ms 200ms;
     }
-}
-body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
-    transform: translate3d(100%, 0, 0);
 }
 @keyframes show-side-nav-content {
     from { filter: opacity(0); }
@@ -114,6 +111,7 @@ body.narrow .page-with-header-and-footer[data-has-right-panel-open] > .side-nav.
     @apply w-auto;
 }
 body.narrow .side-nav.side-nav-right {
+    /* physical: see .side-nav */
     @apply mr-0;
 }
 body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
@@ -124,6 +122,37 @@ body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
 }
 body.narrow .side-nav.side-nav-right[data-side-nav="open"] {
     box-shadow: none;
+}
+
+/* Right-to-left: each panel sits on the opposite screen edge, so every slide above is mirrored.
+   side-nav.ts mirrors the pull gestures the same way (SideNav.isPhysicallyLeft). */
+[dir="rtl"] .side-nav.side-nav-right {
+    /* physical: mirrors .side-nav-right */
+    @apply md:left-auto md:right-1/2;
+    @apply lg:right-auto;
+}
+[dir="rtl"] .side-nav.side-nav-right[data-side-nav="open"] {
+    @apply md:shadow-[1px_0_0_var(--separator)] lg:shadow-none;
+}
+[dir="rtl"] .side-nav.side-nav-right[data-side-nav="closed"] {
+    /* physical: mirrors .side-nav-right's closed state */
+    @apply md:-translate-x-full;
+    @apply lg:-translate-x-full lg:mr-0 lg:-ml-88 xl:-ml-112;
+}
+@media (min-width: 1100px) {
+    [dir="rtl"] .side-nav.side-nav-right[data-side-nav="closed"] {
+        transition: transform 200ms cubic-bezier(0.32, 0.54, 0.4, 0.9), margin-left 0ms 200ms;
+    }
+}
+[dir="rtl"] body.narrow .side-nav.side-nav-right {
+    /* physical: see .side-nav */
+    @apply ml-0;
+}
+[dir="rtl"] body.narrow .side-nav.side-nav-left[data-side-nav="closed"] {
+    transform: translate3d(100%, 0, 0);
+}
+[dir="rtl"] body.narrow .side-nav.side-nav-right[data-side-nav="closed"] {
+    transform: translate3d(-100%, 0, 0);
 }
 
 /* SideNav.setTransform toggles this while the panel sits between open and closed - i.e. for the

@@ -36,7 +36,7 @@
    Linear in --rp-collapse so the translated scroll region stays glued to it; the 100rem fallback shows
    an unmeasured chat-info in full instead of hiding it. */
 body.narrow .chat-side-panel > .c-top-region {
-    @apply absolute z-20 top-0 left-0;
+    @apply absolute z-20 top-0 start-0;
     /* Block, not flex: as a flex column with a max-height it would shrink the header (and the bio,
        which is overflow:auto → min-height:0, collapses first) to fit the cap — and that shrunk height
        is what the header measurement then reads, trapping it. As a block the header keeps its natural
@@ -52,7 +52,7 @@ body.narrow .chat-side-panel > .c-top-region {
 /* Narrow: constant-height list block, translated down while expanded so the header shrink never resizes
    the list viewport (what made Android/Chrome reclamp scrollTop and jitter). Clipped by .chat-side-panel. */
 body.narrow .chat-side-panel > .c-panel-content {
-    @apply absolute left-0;
+    @apply absolute start-0;
     top: var(--rp-bar-h);
     height: calc(100% - var(--rp-bar-h));
     transform: translateY(calc(var(--rp-collapse-range) * (1 - var(--rp-collapse))));
@@ -137,7 +137,7 @@ body.narrow .chat-side-panel.has-expanded-header > .c-panel-content {
     @apply flex-x items-center justify-center gap-x-3;
     @apply opacity-100;
     top: calc(0.5rem + var(--safe-area-top));
-    right: 1rem;
+    inset-inline-end: 1rem;
     transform: translateX(calc(0.5rem * var(--rp-collapse)));
     transition: opacity .25s ease-in .25s;
 }
@@ -163,13 +163,13 @@ body:not(.narrow) .chat-side-panel > .c-top-region > .c-header > .c-top {
     @apply rounded-b-lg;
 }
 body.narrow .chat-side-panel > .c-top-region > .c-header > .c-top {
-    @apply rounded-tr-lg;
+    @apply rounded-se-lg;
 }
 /* Keep the top inset bg-03 in every state (the panel colour): the notch never shows the header image
    nor the content behind the narrow overlay. */
 body.narrow .chat-side-panel::before {
     content: '';
-    @apply absolute left-0 right-0 top-0 z-30;
+    @apply absolute start-0 end-0 top-0 z-30;
     @apply pointer-events-none;
     @apply bg-03;
     height: var(--safe-area-top);
@@ -225,8 +225,8 @@ body.narrow .chat-side-panel::before {
     @apply absolute z-20;
     @apply flex-x;
     @apply h-16 w-full;
-    padding-left: calc(1rem - 0.5rem * var(--rp-collapse));
-    padding-right: calc(1rem - 0.5rem * var(--rp-collapse));
+    padding-inline-start: calc(1rem - 0.5rem * var(--rp-collapse));
+    padding-inline-end: calc(1rem - 0.5rem * var(--rp-collapse));
     top: calc(4.5rem + var(--safe-area-top));
     transform: translateY(calc(-4rem * var(--rp-collapse)));
     transition:
@@ -278,7 +278,7 @@ body.narrow .chat-side-panel::before {
         height .25s ease-in,
         background-color 0.1s ease-in;
 }
-.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .c-wrapper {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar > .c-wrapper {
     @apply w-full h-full;
 }
 .chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar > div,
@@ -306,11 +306,13 @@ body.narrow .chat-side-panel::before {
     @apply opacity-0;
     transition: width 0.25s ease-in, height 0.25s ease-in, opacity 0.25s ease-in 0.25s;
 }
-.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .zoomable-avatar.full-size-avatar {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center
+    .chat-avatar .zoomable-avatar.full-size-avatar {
     @apply hidden;
     @apply opacity-0;
 }
-.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .zoomable-avatar.full-size-avatar {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center
+    .chat-avatar .zoomable-avatar.full-size-avatar {
     width: var(--expanded-header-height);
     height: var(--expanded-header-height);
 }
@@ -336,19 +338,21 @@ body.narrow .chat-side-panel::before {
         border-radius: 9999px;
     }
 }
-.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .zoomable-avatar.full-size-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .zoomable-avatar.full-size-avatar > .c-content {
     @apply w-full h-full;
 }
-.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .zoomable-avatar.small-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header > .c-center .chat-avatar .zoomable-avatar.small-avatar > .c-content {
     width: calc(4rem - 1.5rem * var(--rp-collapse));
     height: calc(4rem - 1.5rem * var(--rp-collapse));
     transition: width 0.25s ease-in, height 0.25s ease-in;
 }
-.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center .chat-avatar .zoomable-avatar.small-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header.expanded-header > .c-center
+    .chat-avatar .zoomable-avatar.small-avatar > .c-content {
     width: var(--expanded-header-height);
     height: var(--expanded-header-height);
 }
-.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center .chat-avatar .zoomable-avatar.small-avatar .c-content {
+.chat-side-panel > .c-top-region > .c-header.collapsed-header > .c-center
+    .chat-avatar .zoomable-avatar.small-avatar > .c-content {
     @apply w-16 h-16;
 }
 
@@ -402,8 +406,8 @@ body.narrow .chat-side-panel::before {
     @apply text-02 text-body-500;
     @apply truncate pointer-events-none;
     top: calc(0.5rem + var(--safe-area-top));
-    left: calc(1rem + 2.5rem + 0.5rem);
-    right: 3.5rem;
+    inset-inline-start: calc(1rem + 2.5rem + 0.5rem);
+    inset-inline-end: 3.5rem;
     height: 2.5rem;
     line-height: 2.5rem;
     opacity: clamp(0, calc((var(--rp-collapse) - 0.5) * 2), 1);
@@ -493,27 +497,27 @@ body.hoverable .author-list-tab .avatar-badge:hover {
 .author-list-tab .avatar-badge .avatar-name {
     @apply font-medium text-02;
 }
-.author-list-tab .avatar-badge .c-status .c-typing-indicator {
+.author-list-tab .avatar-badge > .c-content > * > .c-status > .c-typing-indicator {
     @apply text-primary;
 }
 
 .thread-list-tab {
     @apply p-2;
 }
-.thread-list-tab .c-content {
+.thread-list-tab > .c-content {
     @apply flex-y gap-y-1;
 }
-.thread-list-tab .c-empty {
+.thread-list-tab > .c-empty {
     @apply p-8 text-center;
 }
 /* Thread rows carry no avatar, only the title and the last message */
 .thread-list-tab .thread-list-skeleton .message-avatar-wrapper-skeleton {
     @apply hidden;
 }
-.thread-list-tab .thread-list-skeleton .c-container {
+.thread-list-tab .thread-list-skeleton > .c-container {
     @apply py-2;
 }
-.thread-list-tab .c-content .c-description {
+.thread-list-tab .thread-list-item > .c-description {
     @apply flex-1 flex-y items-start justify-start gap-1;
     @apply w-full;
     @apply overflow-hidden;
@@ -527,12 +531,12 @@ body.hoverable .author-list-tab .avatar-badge:hover {
 body.hoverable .thread-list-item:hover {
     @apply bg-hover;
 }
-.thread-list-item .c-top {
+.thread-list-item > .c-description > .c-top {
     @apply flex-x items-start gap-x-1;
     @apply w-full;
     @apply overflow-hidden;
 }
-.thread-list-item .c-chat-title {
+.thread-list-item > .c-description > .c-top > .c-chat-title {
     @apply w-full;
     @apply truncate;
     @apply text-body text-01;
@@ -540,54 +544,54 @@ body.hoverable .thread-list-item:hover {
 .thread-list-item .last-entry-time {
     @apply leading-5;
 }
-.thread-list-item .c-bottom {
+.thread-list-item > .c-description > .c-bottom {
     @apply flex-x items-end gap-x-1;
     @apply w-full;
 }
-.thread-list-item .c-bottom .c-last-message {
+.thread-list-item > .c-description > .c-bottom > .c-last-message {
     @apply flex-x items-end gap-x-1;
     @apply w-full h-4.5;
     @apply truncate;
     @apply text-caption text-03;
 }
-.thread-list-item .c-bottom .c-last-message .c-name {
+.thread-list-item > .c-description > .c-bottom > .c-last-message > .c-name {
     @apply flex;
     @apply truncate;
     @apply whitespace-pre;
     @apply text-caption-500 text-pal-blue-30;
 }
-.thread-list-item .c-bottom .c-last-message .c-name[data-has-non-shrinkable] {
+.thread-list-item > .c-description > .c-bottom > .c-last-message > .c-name[data-has-non-shrinkable] {
     @apply flex-none;
 }
-.thread-list-item .c-bottom .c-last-message .c-name[data-has-shrinkable] {
+.thread-list-item > .c-description > .c-bottom > .c-last-message > .c-name[data-has-shrinkable] {
     @apply min-w-16;
 }
-.thread-list-item .c-bottom .c-last-message .c-colon {
-    @apply -ml-1;
+.thread-list-item > .c-description > .c-bottom > .c-last-message > .c-colon {
+    @apply -ms-1;
     @apply text-caption-500 text-02;
 }
-.thread-list-item .c-bottom .c-last-message .c-text {
+.thread-list-item > .c-description > .c-bottom > .c-last-message > .c-text {
     @apply min-w-8;
     @apply truncate;
     @apply pointer-events-none;
 }
 
-.content-list-tab .c-empty {
+.content-list-tab .item > .c-empty {
     @apply p-8 text-center;
 }
-.content-list-tab .c-group-header {
+.content-list-tab .item > .c-group-header {
     @apply px-3 pt-3 pb-1;
     @apply text-sm font-semibold;
 }
-.content-list-grid .c-media-row,
-.content-list-grid .c-media-skeleton {
+.content-list-grid .item > .c-media-row,
+.content-list-grid .skeleton-container > .c-media-skeleton {
     @apply grid grid-cols-3 gap-px;
     @apply w-full;
 }
-.content-list-grid .c-media-skeleton {
+.content-list-grid .skeleton-container > .c-media-skeleton {
     @apply pb-px;
 }
-.content-list-grid .c-media-skeleton > div {
+.content-list-grid .skeleton-container > .c-media-skeleton > div {
     @apply bg-skeleton;
     aspect-ratio: 1 / 1;
 }
@@ -607,104 +611,108 @@ body.hoverable .content-list-grid .image-attachment:hover image-skeleton {
     filter: brightness(1.12);
     transition-delay: 0.15s;
 }
-.content-list-grid .c-video {
+.content-list-grid .item > .c-media-row > .c-video {
     @apply bg-black;
 }
-.content-list-grid .c-play-icon {
+.content-list-grid .item > .c-media-row > .c-video > .c-play-icon {
     @apply absolute inset-0;
     @apply flex items-center justify-center;
     @apply text-3xl text-white;
 }
-.content-list-grid .c-video .c-duration {
-    @apply absolute bottom-1 left-1;
+.content-list-grid .item > .c-media-row > .c-video > .c-duration {
+    @apply absolute bottom-1 start-1;
     @apply px-1.5 py-0.5;
     @apply rounded-md border border-pal-white-20;
     @apply bg-pal-black-90 text-white;
     @apply text-xxs font-medium leading-none whitespace-nowrap;
 }
-.content-list-grid .c-video .c-duration:empty {
+.content-list-grid .item > .c-media-row > .c-video > .c-duration:empty {
     @apply hidden;
 }
-.content-list-rows .c-file-row,
-.content-list-rows .c-file-skeleton {
+.content-list-rows .item > .c-file-row,
+.content-list-rows .skeleton-container > .c-file-skeleton {
     @apply flex items-center gap-2;
     @apply w-full px-3 py-1;
     @apply h-14 overflow-hidden;
     @apply border-b border-separator;
     @apply no-underline;
 }
-body.hoverable .content-list-rows .c-file-row:hover,
-.touch-capable .content-list-rows .c-file-row:active {
+body.hoverable .content-list-rows .item > .c-file-row:hover,
+.touch-capable .content-list-rows .item > .c-file-row:active {
     @apply bg-hover;
 }
-.content-list-rows .c-file-icon {
+.content-list-rows .item > .c-file-row > .c-file-icon,
+.content-list-rows .skeleton-container > .c-file-skeleton > .c-file-icon {
     @apply flex-none flex items-center justify-center;
     @apply w-9 h-9 rounded-lg;
     @apply text-white;
 }
-.content-list-rows .c-file-icon i {
+.content-list-rows .item > .c-file-row > .c-file-icon i {
     @apply text-lg;
 }
-.content-list-rows .c-file-icon.file-default {
+.content-list-rows .item > .c-file-row > .c-file-icon.file-default {
     @apply bg-file-default;
 }
-.content-list-rows .c-file-info {
+.content-list-rows .item > .c-file-row > .c-file-info,
+.content-list-rows .skeleton-container > .c-file-skeleton > .c-file-info {
     @apply min-w-0 flex-1 flex-y gap-y-0;
 }
-.content-list-rows .c-normal-title {
+.content-list-rows .item > .c-file-row > .c-file-info > .file-attachment-title {
     @apply flex-x;
     @apply text-sm text-02 leading-tight;
 }
-.content-list-rows .c-normal-title .c-start {
+.content-list-rows .item > .c-file-row > .c-file-info > .file-attachment-title > .c-start {
     @apply truncate;
 }
-.content-list-rows .c-normal-title .c-end {
+.content-list-rows .item > .c-file-row > .c-file-info > .file-attachment-title > .c-end {
     @apply flex-none;
 }
-.content-list-rows .c-file-size,
-.content-list-rows .c-file-date {
+.content-list-rows .item > .c-file-row > .c-file-info > .c-file-size,
+.content-list-rows .item > .c-file-row > .c-file-info > .c-file-date,
+.content-list-rows .item > .c-file-row > .c-file-info > .c-file-meta > .c-meta-left > .c-file-size,
+.content-list-rows .item > .c-file-row > .c-file-info > .c-file-meta > .c-meta-left > .c-file-date {
     @apply text-sm text-03 leading-tight;
 }
-.content-list-rows .c-file-row.is-current {
+.content-list-rows .item > .c-file-row.is-current {
     background-color: color-mix(in srgb, var(--primary) 10%, transparent);
 }
-.content-list-rows .c-file-row.is-current .c-normal-title {
+.content-list-rows .item > .c-file-row.is-current > .c-file-info > .file-attachment-title {
     @apply text-primary;
 }
-.content-list-rows .c-file-row.is-current .c-file-icon {
+.content-list-rows .item > .c-file-row.is-current > .c-file-icon {
     @apply bg-primary;
 }
-.content-list-rows .c-file-meta {
+.content-list-rows .item > .c-file-row > .c-file-info > .c-file-meta {
     @apply flex-x items-center justify-between gap-x-2;
     @apply text-sm text-03 leading-tight;
     @apply whitespace-nowrap;
 }
-.content-list-rows .c-file-meta .c-meta-left {
+.content-list-rows .item > .c-file-row > .c-file-info > .c-file-meta > .c-meta-left {
     @apply flex-x items-center min-w-0;
 }
-.content-list-rows .c-file-meta .c-sep {
+.content-list-rows .item > .c-file-row > .c-file-info > .c-file-meta > .c-meta-left > .c-sep {
     @apply px-1;
 }
-.content-list-rows .c-file-meta .c-time {
+.content-list-rows .item > .c-file-row > .c-file-info > .c-file-meta > .c-time {
     @apply flex-none;
 }
-.content-list-rows .c-file-row .c-progress {
+.content-list-rows .item > .c-file-row > .c-file-info > .audio-progress {
     @apply w-full h-2 mt-0.5;
 }
-.content-list-rows .c-file-skeleton .c-file-icon {
+.content-list-rows .skeleton-container > .c-file-skeleton > .c-file-icon {
     @apply bg-skeleton;
 }
-.content-list-rows .c-file-skeleton .c-file-info {
+.content-list-rows .skeleton-container > .c-file-skeleton > .c-file-info {
     @apply gap-y-1.5;
 }
-.content-list-rows .c-file-skeleton .c-line {
+.content-list-rows .skeleton-container > .c-file-skeleton > .c-file-info > .c-line {
     @apply h-3 rounded-full;
     @apply bg-skeleton;
 }
-.content-list-rows .c-file-skeleton .c-size {
+.content-list-rows .skeleton-container > .c-file-skeleton > .c-file-info > .c-size {
     @apply w-10;
 }
-.content-list-rows .c-file-skeleton .c-date {
+.content-list-rows .skeleton-container > .c-file-skeleton > .c-file-info > .c-date {
     @apply w-28;
 }
 .content-list-links .item {
@@ -741,34 +749,34 @@ body.narrow .content-list-links .link-preview:not(.local-link) {
     @apply w-24 h-16 max-w-none max-h-none;
     @apply rounded-lg overflow-hidden;
 }
-.content-list-links .link-preview:not(.local-link) .c-info {
+.content-list-links .link-preview:not(.local-link) > .c-info {
     @apply justify-center gap-y-0.5;
     @apply py-0;
     @apply whitespace-break-spaces;
 }
-.content-list-links .link-preview:not(.local-link) .c-description {
+.content-list-links .link-preview:not(.local-link) > .c-info > div > .c-description {
     @apply hidden;
 }
-.content-list-links .c-link-skeleton {
+.content-list-links .skeleton-container > .c-link-skeleton {
     @apply flex-x items-center gap-x-3;
     @apply mx-2 my-1 p-2;
     @apply rounded-2xl border border-separator;
     @apply bg-03;
 }
-.content-list-links .c-link-skeleton .c-thumbnail {
+.content-list-links .skeleton-container > .c-link-skeleton > .c-thumbnail {
     @apply flex-none;
     @apply w-24 h-16 rounded-lg;
     @apply bg-skeleton;
 }
-.content-list-links .c-link-skeleton .c-info {
+.content-list-links .skeleton-container > .c-link-skeleton > .c-info {
     @apply flex-1 flex-y gap-y-2;
     @apply min-w-0;
 }
-.content-list-links .c-link-skeleton .c-line {
+.content-list-links .skeleton-container > .c-link-skeleton > .c-info > .c-line {
     @apply h-3 rounded-full;
     @apply bg-skeleton;
 }
-.content-list-links .c-link-skeleton .c-domain {
+.content-list-links .skeleton-container > .c-link-skeleton > .c-info > .c-domain {
     @apply w-1/3;
 }
 
@@ -792,14 +800,14 @@ body.narrow .content-list-links .link-preview:not(.local-link) {
     @apply text-primary;
 }
 /* Plain URL fallback: middle-truncate via start (ellipsis) + pinned end (keeps the .ext visible). */
-.content-list-links .c-link-plain .c-normal-title {
+.content-list-links .message-link-preview > .c-link-plain > .c-info > .file-attachment-title {
     @apply flex-x min-w-0;
     @apply text-caption-500 md:text-body-500 leading-tight text-primary;
 }
-.content-list-links .c-link-plain .c-normal-title .c-start {
+.content-list-links .message-link-preview > .c-link-plain > .c-info > .file-attachment-title > .c-start {
     @apply truncate;
 }
-.content-list-links .c-link-plain .c-normal-title .c-end {
+.content-list-links .message-link-preview > .c-link-plain > .c-info > .file-attachment-title > .c-end {
     @apply flex-none;
 }
 
@@ -817,14 +825,14 @@ body.narrow .content-list-links .link-preview:not(.local-link) {
 
 /* ── Push-to-talk modal ── */
 
-.chat-ptt-settings-modal .c-device-off {
+.chat-ptt-settings-modal > .dialog-body > .form-block > .c-device-off {
     @apply mb-2;
 }
-.chat-ptt-settings-modal .c-tune-on-device {
+.chat-ptt-settings-modal > .dialog-body > .form-block > .c-tune-on-device {
     @apply px-4 pt-2;
     @apply text-caption text-03;
 }
-.chat-ptt-settings-modal .c-tune-on-device .link {
+.chat-ptt-settings-modal > .dialog-body > .form-block > .c-tune-on-device > .link {
     @apply text-primary;
     @apply underline;
     @apply cursor-pointer;

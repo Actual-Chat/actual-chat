@@ -9,7 +9,7 @@
     @apply hover:bg-inherit;
 }
 .new-chat-modal .contact-selector-list-item {
-    @apply pl-0 pr-1;
+    @apply ps-0 pe-1;
 }
 .new-chat-modal .contact-selector-list {
     @apply pt-0;

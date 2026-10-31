@@ -13,7 +13,7 @@
     @apply relative;
     @apply flex-y;
     @apply min-h-6;
-    @apply border-l-2 border-transparent rounded-2xl;
+    @apply border-s-2 border-transparent rounded-2xl;
     @apply select-text;
 }
 /* Nothing inside a message may opt back into selection on touch: a long press on selectable text
@@ -45,7 +45,7 @@ body.hoverable .audio-recording-message.message-wrapper:hover .avatar-badge {
 .chat-message {
     @apply relative;
     @apply flex-1 flex-x items-stretch gap-x-1;
-    @apply ml-2;
+    @apply ms-2;
     @apply break-words;
     @apply text-current;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
@@ -56,7 +56,7 @@ body.hoverable .audio-recording-message.message-wrapper:hover .avatar-badge {
     @apply flex-none flex-y;
     @apply w-fit;
     @apply select-none;
-    @apply ml-0.5;
+    @apply ms-0.5;
 }
 .chat-message > .c-author-badge .avatar-badge {
     @apply sticky z-10 bottom-1 top-2 items-start;
@@ -70,7 +70,7 @@ body.hoverable .audio-recording-message.message-wrapper:hover .avatar-badge {
 
 .chat-message > .c-content {
     @apply flex-1 flex-y;
-    @apply mr-3 md:mr-7 ml-[2.75rem] lg:mr-1;
+    @apply me-3 md:me-7 ms-[2.75rem] lg:me-1;
     /* Room for the playback frame, which paints outside the text; overflow-hidden would clip it.
        The negative vertical margin cancels the vertical padding. */
     @apply px-1 py-0.5 -my-0.5;
@@ -168,8 +168,8 @@ body.hoverable .message-link:hover {
 .forwarded-message .message-reactions,
 .forwarded-message .message-link-preview,
 .forwarded-message .forwarded-author-header {
-    @apply py-0 pl-2;
-    @apply border-l-2 border-primary;
+    @apply py-0 ps-2;
+    @apply border-s-2 border-primary;
 }
 
 .message-wrapper.own-message .author-name {
@@ -186,7 +186,7 @@ body.hoverable .message-wrapper:hover .avatar-badge {
 
 .message-wrapper.replied-message,
 .message-wrapper.mention.replied-message {
-    @apply border-l-2 border-replied-message-border;
+    @apply border-s-2 border-replied-message-border;
     @apply bg-replied-message;
 }
 body.hoverable .message-wrapper.replied-message:hover,
@@ -196,7 +196,7 @@ body.hoverable .message-wrapper.mention.replied-message:hover {
 
 .message-wrapper.selected-message,
 .message-wrapper.mention.selected-message {
-    @apply border-l-2 border-selected-message-border;
+    @apply border-s-2 border-selected-message-border;
     @apply rounded-none;
     @apply bg-selected-message;
     transition: border-radius 0.25s ease 0.1s, border-color 0.25s ease 0.1s;
@@ -228,7 +228,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 .chat-message-markup {
     @apply relative;
     @apply h-auto;
-    @apply mb-0.5 pr-1.5;
+    @apply mb-0.5 pe-1.5;
     @apply text-02 text-body;
 }
 .chat-message-markup.empty {
@@ -236,7 +236,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 }
 .chat-message-unsupported {
     @apply flex-x items-center gap-x-1.5;
-    @apply mb-0.5 pr-1.5;
+    @apply mb-0.5 pe-1.5;
     @apply text-02 text-body;
 }
 .playable-text-markup,
@@ -291,7 +291,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     -webkit-line-break: after-white-space;
 }
 
-.chat-message-markup .c-streaming-ellipsis {
+.chat-message-markup > .c-streaming-ellipsis {
     @apply opacity-50;
 }
 
@@ -306,7 +306,7 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
     animation-timing-function: linear;
     animation-fill-mode: both;
 }
-.chat-message-markup .changes.c-alt .change-item {
+.chat-message-markup > .changes.c-alt > .change-item {
     animation-name: changeItemInAlt;
 }
 @keyframes changeItemIn {
@@ -319,17 +319,17 @@ body.hoverable .chat-message.mention:hover .chat-message-timestamp-on-hover {
 }
 
 .chat-message-markup .chat-message-sending-status {
-    @apply ml-1;
+    @apply ms-1;
 }
 .chat-message-markup .plain-text-markup .chat-message-sending-status {
-    @apply ml-0;
+    @apply ms-0;
 }
 .chat-message-markup .list-markup + .chat-message-sending-status {
-    @apply -right-1;
+    @apply -end-1;
 }
 
 .chat-message.mention .chat-message-markup {
-    @apply ml-0;
+    @apply ms-0;
 }
 body.hoverable .chat-message:hover .message-reactions-add {
     @apply visible;
@@ -395,8 +395,8 @@ body.hoverable .system-entry .message-content .avatar-name:hover {
 
 .chat-message-quote {
     @apply flex-x gap-x-2;
-    @apply pb-0.5 pr-2;
-    @apply rounded-r-lg;
+    @apply pb-0.5 pe-2;
+    @apply rounded-e-lg;
     @apply text-03 cursor-pointer;
     @apply antialiased sm:subpixel-antialiased md:antialiased;
 }
@@ -425,7 +425,7 @@ body.hoverable .chat-message-quote:hover,
     @apply relative;
     @apply flex-y gap-y-1;
     @apply w-full;
-    @apply py-1 pr-4;
+    @apply py-1 pe-4;
     @apply overflow-hidden;
 }
 .conversation-message .message-attachments {
@@ -463,10 +463,10 @@ body.narrow .message-file-attachments {
     @apply flex-y gap-y-2;
     @apply p-4;
 }
-.chat-welcome-block .c-header {
+.chat-welcome-block > .c-header {
     @apply flex-x gap-x-2 items-center;
 }
-.chat-welcome-block .c-chat-title {
+.chat-welcome-block > .c-header > .c-chat-title {
     @apply truncate;
     @apply text-01 text-heading-600;
 }
@@ -474,10 +474,10 @@ body.narrow .message-file-attachments {
     @apply flex-x gap-x-1;
     @apply text-02 text-body;
 }
-.chat-welcome-block .c-content.c-contact-share {
+.chat-welcome-block > .c-content.c-contact-share {
     @apply block;
 }
-.chat-welcome-block .c-content.c-contact-share > .c-value {
+.chat-welcome-block > .c-content.c-contact-share > .c-value {
     max-width: min(25rem, 100%);
 }
 .chat-link {
@@ -492,23 +492,23 @@ body.narrow .message-file-attachments {
 .narrow .chat-link {
     @apply gap-x-4;
 }
-.chat-link .c-link-url,
-.chat-link .c-link-buttons {
+.chat-link > .c-link-url,
+.chat-link > .c-link-buttons {
     @apply flex-x items-center gap-x-4;
 }
-.chat-link .c-link-url {
+.chat-link > .c-link-url {
     @apply flex-1;
     @apply min-h-12;
     @apply text-caption-500 md:text-body-500;
     @apply truncate;
 }
-.chat-link .c-link-url > .c-round {
+.chat-link > .c-link-url > .c-round {
     @apply flex-none flex items-center justify-center;
     @apply h-12 w-12;
     @apply rounded-full;
     @apply bg-hover;
 }
-body.narrow .chat-link .c-link-buttons {
+body.narrow .chat-link > .c-link-buttons {
     @apply gap-x-3;
 }
 .chat-link i {
@@ -517,7 +517,7 @@ body.narrow .chat-link .c-link-buttons {
 .chat-link i.icon-copy {
     @apply text-lg;
 }
-.chat-link .c-link-wrapper {
+.chat-link > .c-link-url > .c-link-wrapper {
     @apply flex-y;
     @apply overflow-hidden;
 }
@@ -570,97 +570,11 @@ body.hoverable .message-wrapper:has(.chat-welcome-block):hover {
 .link-preview-attachment-list .image-attachment > .c-content {
     @apply flex-auto;
 }
-.link-preview .link-preview-attachment-list .c-overlay {
+.link-preview-attachment-list .video-thumbnail > .c-overlay {
     @apply w-8 h-8;
     @apply m-0;
     top: calc(50% - 1rem);
-    left: calc(50% - 1rem);
-}
-.notify-mentioned-members-line {
-    @apply flex;
-    @apply mb-1 mx-0.5;
-}
-.notify-mentioned-members {
-    @apply relative;
-    @apply flex-x flex-wrap items-center;
-    @apply min-h-5;
-    @apply px-1.5;
-    @apply rounded-full border border-modal;
-    @apply select-none;
-    @apply overflow-hidden;
-    @apply text-01 text-sm;
-    box-shadow: 0 2px 4px 0 var(--shadow-alert);
-    background: linear-gradient(-45deg, var(--background-01) 40%, var(--hover) 50%, var(--background-01) 60%);
-    background-size: 300%;
-    background-position-x: 100%;
-    animation: shimmer 5s infinite steps(50);
-}
-.notify-mentioned-members .c-icon {
-    @apply flex-none flex items-center justify-center;
-    @apply w-5 h-5;
-    @apply -ml-1;
-}
-body.hoverable .notify-mentioned-members.not-notified {
-    @apply flex-nowrap;
-    @apply w-fit;
-    @apply cursor-pointer;
-}
-.notify-mentioned-members.has-notified {
-    @apply rounded-lg;
-}
-/* The pill sizes to its label rather than to a fixed expanded width: that width fit the English
-   label but not its translations, and the overflow wrapped the label under the icon. */
-body.hoverable .notify-mentioned-members .not-mentioned {
-    @apply flex items-center;
-    @apply max-w-0;
-    @apply overflow-hidden;
-    @apply whitespace-nowrap;
-    filter: opacity(0);
-    transition: filter 0ms linear 0ms, -webkit-filter 0ms linear 0ms, max-width 0ms linear 0ms;
-}
-body.hoverable .notify-mentioned-members:hover .not-mentioned {
-    @apply max-w-60;
-    filter: opacity(1);
-    transition: filter 150ms linear 150ms, -webkit-filter 150ms linear 150ms, max-width 150ms linear 150ms;
-}
-@keyframes shimmer {
-    0%, 90% {
-        background-position-x: 100%;
-    }
-    100% {
-        background-position-x: 0;
-    }
-}
-.notify-mentioned-members.has-notified {
-    @apply bg-transparent;
-    @apply animate-none;
-}
-body.hoverable .notify-mentioned-members.has-notified:hover {
-    @apply bg-transparent;
-}
-.notify-mentioned-members .mention-markup {
-    @apply p-0 m-0;
-    @apply bg-transparent;
-}
-.notify-mentioned-members .mentioned-members-count {
-    @apply flex items-center justify-center;
-    @apply text-center;
-    @apply flex-none;
-    @apply w-4 h-4;
-    @apply rounded-full;
-    @apply bg-primary;
-    @apply text-caption-500;
-    @apply always-white;
-}
-.notify-mentioned-members .mentioned-members-count > span {
-    @apply flex-none w-5 h-5;
-    @apply rounded-full;
-    @apply bg-primary;
-    @apply text-caption-500;
-    @apply always-white;
-}
-.notify-mentioned-members .default-text {
-    @apply text-01;
+    inset-inline-start: calc(50% - 1rem);
 }
 
 .waiting-message-container {
@@ -668,7 +582,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply w-fit;
     @apply h-8;
     @apply px-3;
-    @apply rounded-r-full rounded-bl-full;
+    @apply rounded-e-full rounded-es-full;
     @apply bg-03;
 }
 .waiting-message-container > .c-circle {
@@ -702,7 +616,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
 }
 
 .hover-menu-wrapper {
-    @apply absolute right-0 -top-5 z-10;
+    @apply absolute end-0 -top-5 z-10;
     @apply -flex-x;
     @apply h-full w-4;
 }
@@ -713,7 +627,7 @@ body.hoverable .notify-mentioned-members.has-notified:hover {
     @apply sticky z-10 bottom-0;
     @apply flex-x items-center gap-1;
     @apply w-fit h-fit;
-    @apply p-1 mr-2 -mt-4;
+    @apply p-1 me-2 -mt-4;
     @apply rounded-full border border-modal;
     @apply bg-modal;
     @apply shadow-modal-wide;
@@ -735,35 +649,35 @@ body.narrow .chat-view.virtual-list > .c-wrapper > ul.c-virtual-container > li {
     @apply px-0.5;
 }
 
-.chat-view.virtual-list .c-virtual-container .chat-message-group {
+.chat-view.virtual-list > .c-wrapper > .c-virtual-container .chat-message-group {
     @apply relative;
     @apply flex-x;
     @apply w-full;
 }
 
-.chat-view.virtual-list .c-virtual-container .chat-message-group > .c-left {
+.chat-view.virtual-list > .c-wrapper > .c-virtual-container .chat-message-group > .c-left {
     @apply absolute inset-0 top-2;
     @apply flex-none flex-y;
     @apply w-fit;
     @apply select-none;
-    @apply m-2 mt-1 ml-3;
+    @apply m-2 mt-1 ms-3;
 }
 
-.chat-view.virtual-list .c-virtual-container .chat-message-group > .c-left > .avatar-badge {
+.chat-view.virtual-list > .c-wrapper > .c-virtual-container .chat-message-group > .c-left > .avatar-badge {
     @apply sticky z-10 bottom-1 top-2;
     @apply h-fit w-fit;
 }
 
-.chat-view.virtual-list .c-virtual-container div.group > .chat-message-group > .c-left > .avatar-badge {
+.chat-view.virtual-list > .c-wrapper > .c-virtual-container div.group > .chat-message-group > .c-left > .avatar-badge {
     @apply top-20 md:top-16;
 }
 
-.chat-view.virtual-list .c-virtual-container .chat-message-group > .c-group-items {
+.chat-view.virtual-list > .c-wrapper > .c-virtual-container .chat-message-group > .c-group-items {
     @apply w-full;
     @apply flex-y;
 }
 
-.chat-view.virtual-list .c-virtual-container div.item .chat-message > .c-author-badge .avatar-badge {
+.chat-view.virtual-list > .c-wrapper > .c-virtual-container div.item .chat-message > .c-author-badge .avatar-badge {
     @apply top-20 md:top-16;
 }
 
@@ -772,7 +686,7 @@ body.narrow .chat-view.virtual-list > .c-wrapper > ul.c-virtual-container > li {
 .temporary-container {
     @apply absolute inset-0 z-minus;
     @apply whitespace-break-spaces;
-    padding-right: inherit;
+    padding-inline-end: inherit;
     animation: smoothHide 0.5s ease-in forwards;
 }
 

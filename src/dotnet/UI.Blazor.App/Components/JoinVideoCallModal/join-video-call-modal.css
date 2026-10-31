@@ -1,4 +1,4 @@
-.join-video-call-modal .c-container {
+.join-video-call-modal .dialog-body > .c-container {
     @apply flex-y;
     @apply gap-y-2;
 }
@@ -65,8 +65,8 @@
 /* Mirror toggle — overrides the default scaleX(-1). Placed on .c-video (owned
    fully by Blazor) rather than .video-frame (which JS manages state on) so
    Blazor re-renders don't wipe out the JS-added classes. */
-.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview,
-.join-video-call-modal .c-video.no-mirror .video-frame .camera-preview-video {
+.join-video-call-modal .dialog-body > .c-container > .c-video.no-mirror .video-frame .camera-preview,
+.join-video-call-modal .dialog-body > .c-container > .c-video.no-mirror .video-frame .camera-preview-video {
     transform: none;
 }
 /* Quarter-turn, canvas painter only. It draws the raw capture, which on iOS stays
@@ -79,7 +79,8 @@
     transform: scaleX(-1) rotate(var(--video-rotation, 0deg));
     transform-origin: center center;
 }
-.join-video-call-modal .c-video.no-mirror .video-frame[data-preview-backend="canvas"] .camera-preview {
+.join-video-call-modal .dialog-body > .c-container > .c-video.no-mirror
+    .video-frame[data-preview-backend="canvas"] .camera-preview {
     transform: rotate(var(--video-rotation, 0deg));
 }
 /* Odd quarters swap the box's axes so a portrait frame still fills the frame. */
@@ -91,62 +92,30 @@
     top: 50%;
     transform: translate(-50%, -50%) scaleX(-1) rotate(var(--video-rotation, 0deg));
 }
-.join-video-call-modal .c-video.no-mirror .video-frame[data-preview-backend="canvas"] .camera-preview[data-rotated-video] {
+.join-video-call-modal .dialog-body > .c-container > .c-video.no-mirror
+    .video-frame[data-preview-backend="canvas"] .camera-preview[data-rotated-video] {
     transform: translate(-50%, -50%) rotate(var(--video-rotation, 0deg));
 }
-/* Encoder-unavailable state: dim the preview and overlay the actionable
-   restart prompt centred on the frame. Triggered by the modal's encoder
-   probe (see JoinVideoCallModal.razor); kept independent of camera state
-   so the user still sees themselves under the message. */
-.join-video-call-modal .c-video.encoder-unavailable .video-frame .camera-preview,
-.join-video-call-modal .c-video.encoder-unavailable .video-frame .camera-preview-video {
-    @apply opacity-30;
-}
-.join-video-call-modal .video-frame .c-encoder-error {
-    @apply absolute inset-0;
-    @apply flex-y items-center justify-center gap-y-2;
-    @apply px-6 text-center;
-    @apply bg-[rgba(0,0,0,0.6)] text-white;
-    @apply rounded-2xl;
-    @apply pointer-events-none;
-}
-.join-video-call-modal .video-frame .c-encoder-error .c-encoder-error-text {
-    @apply text-base;
-    @apply max-w-xs;
-}
-.join-video-call-modal .c-permission-block {
+.join-video-call-modal .dialog-body > .c-container > .c-permission-block {
     @apply flex-y items-center justify-center gap-y-3;
     @apply min-h-56 max-h-64;
     @apply px-6 py-4;
     @apply rounded-2xl;
     @apply bg-03;
 }
-.join-video-call-modal .c-permission-block .c-text {
+.join-video-call-modal .dialog-body > .c-container > .c-permission-block > .c-text {
     @apply text-center text-body-500 text-02;
 }
-.join-video-call-modal .c-permission-block .c-hint {
+.join-video-call-modal .dialog-body > .c-container > .c-permission-block > .c-hint {
     @apply text-center text-caption-500 text-03;
     @apply max-w-xs;
 }
-.join-video-call-modal .c-members {
+.join-video-call-modal .dialog-body > .c-container > .c-members {
     @apply flex-x items-center gap-x-4;
-}
-.join-video-call-modal .c-members .c-text {
-    @apply w-full;
-    @apply text-caption text-03;
-}
-.join-video-call-modal .c-rules {
-    @apply py-1;
-}
-.join-video-call-modal .c-rules .c-rules-header {
-    @apply text-title-500 text-01;
-}
-.join-video-call-modal .c-rules .c-rules-text {
-    @apply text-caption-500 text-02;
 }
 
 /* Toolbar — centered */
-.join-video-call-modal .c-toolbar {
+.join-video-call-modal .dialog-body > .c-container > .c-toolbar {
     @apply flex items-center justify-center gap-3;
     @apply py-2;
 }
@@ -188,18 +157,18 @@
     @apply flex-y;
     @apply min-w-[15rem] max-w-[20rem];
 }
-.camera-menu .c-header {
+.camera-menu > .c-header {
     @apply text-caption-500 text-02 px-2 py-1;
 }
-.camera-menu .c-loading,
-.camera-menu .c-empty {
+.camera-menu > .c-loading,
+.camera-menu > .c-empty {
     @apply text-caption-500 text-03 px-2 py-2;
 }
 .camera-menu .ac-menu-item.selected .ac-menu-icon > i {
     @apply text-primary;
 }
-.camera-menu .c-facing-badge {
-    @apply ml-1.5 text-03;
+.camera-menu .ac-menu-text > .c-facing-badge {
+    @apply ms-1.5 text-03;
 }
 
 /* Mic button — recording state */
@@ -211,7 +180,7 @@
     @apply text-2xl;
 }
 .join-video-call-modal .btn-round.mic-btn .rec-icon i.left {
-    @apply -mr-0.5;
+    @apply -me-0.5;
 }
 .join-video-call-modal .btn-round.mic-btn.mic-on {
     @apply text-primary;

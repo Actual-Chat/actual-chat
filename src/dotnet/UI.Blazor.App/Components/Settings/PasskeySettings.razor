@@ -10,7 +10,7 @@
 @if (!m.CanUse && passkeys.Count == 0) {
     <p class="c-description">@L.Passkeys_Unavailable</p>
 } else {
-    <Tile Class="tile-flat passkey-tile">
+    <Tile Class="passkey-tile">
         <div class="passkey-intro">
             <div class="c-title">@L.Passkeys_Headline</div>
             <p class="c-text">@L.Passkeys_Intro</p>
@@ -31,7 +31,7 @@
                     <Right>
                         <div class="c-actions p-1" @onclick:stopPropagation="true">
                             <HeaderButton
-                                Class="c-danger btn-sm"
+                                Class="btn-quiet-danger btn-sm"
                                 Tooltip="@L.Passkeys_Delete"
                                 Click="@(() => OnDeleteClick(passkey))">
                                 <i class="icon-trash03"></i>

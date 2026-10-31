@@ -16,7 +16,7 @@
 @if (m.Rows.Count == 0 && !ShowAddButton) {
     <div class="settings-empty">@(isPersonal ? L.Integrations_PersonalEmptyTitle : L.Integrations_EmptyTitle)</div>
 } else {
-    <Tile Class="tile-flat web-hook-list">
+    <Tile Class="web-hook-list">
         @foreach (var row in m.Rows) {
             @if (row.CanManage) {
                 <WebHookRow Row="@row" Click="@(() => OnHookClick(row.Hook.Id))"/>

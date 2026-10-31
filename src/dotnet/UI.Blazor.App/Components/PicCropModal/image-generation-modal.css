@@ -1,10 +1,4 @@
-/* The body owns its own insets here - the fields are filled boxes, and without this they run
-   edge to edge while the footer's buttons stay inset. */
-.image-generation-modal .dialog-body {
-    @apply p-4;
-}
-
-.image-generation-modal .c-body {
+.image-generation-modal > .dialog-body > .c-body {
     @apply flex-y gap-3;
     @apply w-full;
 }

@@ -36,14 +36,14 @@ export class EmojiModal {
 
         // Mark .c-gif-item as .loaded once its <img> finishes (or errors).
         // 'load' / 'error' don't bubble — listen in capture phase on the grid.
-        const grid = scrollContainer.querySelector<HTMLElement>('.c-gif-grid');
+        const grid = scrollContainer.querySelector<HTMLElement>('.gif-picker-grid');
         if (grid) {
             grid.addEventListener('load', this.onMediaLoadOrError, { capture: true });
             grid.addEventListener('error', this.onMediaLoadOrError, { capture: true });
             this.gridForLoadEvents = grid;
         }
 
-        const recentContainer = scrollContainer.querySelector<HTMLElement>('.c-gif-recent');
+        const recentContainer = scrollContainer.querySelector<HTMLElement>('.gif-picker-recent');
         if (recentContainer)
             this.recentScroll = new RecentScroll(recentContainer);
     }
@@ -79,7 +79,7 @@ class RecentScroll {
     private readonly wrap: HTMLElement;
 
     constructor(private readonly container: HTMLElement) {
-        this.list = container.querySelector<HTMLElement>('.c-gif-recent-list')!;
+        this.list = container.querySelector<HTMLElement>('.gif-picker-recent-list')!;
 
         // Wrap list + arrows in a relative container for arrow positioning
         this.wrap = document.createElement('div');

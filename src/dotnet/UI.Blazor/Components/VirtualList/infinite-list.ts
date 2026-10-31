@@ -2600,7 +2600,7 @@ export class InfiniteList extends VirtualList {
             return;
 
         for (const item of this.items) {
-            if (item.ref.classList.contains('c-height-unsettled'))
+            if (item.ref.classList.contains('height-unsettled'))
                 continue;
 
             const required = getRequiredHeight(item.ref);

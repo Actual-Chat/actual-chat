@@ -44,7 +44,7 @@ body.hoverable .navbar-chat-buttons .navbar-button .left-line:hover {
 }
 body.hoverable .navbar-place-buttons .navbar-button .hover-zone,
 body.hoverable .navbar-chat-buttons .navbar-button .hover-zone {
-    @apply absolute left-0;
+    @apply absolute start-0;
     @apply h-full md:w-4 xl:w-6;
     @apply hover:cursor-move;
 }
@@ -58,17 +58,17 @@ body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-
 }
 
 .navbar-button .badge {
-    @apply absolute -right-0.5 -top-0.5;
+    @apply absolute -end-0.5 -top-0.5;
     @apply min-w-4 max-w-7 min-h-4 w-auto h-4;
     @apply text-[0.625rem];
     @apply bg-danger;
 }
-.navbar-button .badge.c-unread-dot {
+.navbar-button > .badge.c-unread-dot {
     @apply min-w-2.5 max-w-2.5 min-h-2.5 w-2.5 h-2.5;
     @apply p-0;
 }
 .navbar-button > .c-dots {
-    @apply absolute z-10 left-1;
+    @apply absolute z-10 start-1;
     @apply hidden;
     @apply opacity-50;
     @apply cursor-move;
@@ -101,12 +101,6 @@ body.hoverable .navbar-chat-buttons .navbar-button:has(.hover-zone:hover) .left-
 .navbar-group > .c-swap > .c-layer {
     @apply flex-y gap-y-1;
     @apply min-h-0;
-}
-.navbar-group > .c-swap > .c-layer > .c-container {
-    @apply flex-1 flex-y;
-}
-.navbar-group > .c-swap > .c-layer > .c-container > .c-delimiter {
-    @apply border-t border-separator;
 }
 /* Navgar subgroup */
 .navbar-subgroup {
@@ -167,7 +161,7 @@ body.hoverable .navbar-item.active:active {
     @apply border-0;
 }
 .navbar-item.incut-item {
-    @apply ml-8;
+    @apply ms-8;
 }
 
 .active-chats .navbar-subgroup .pin-toggle,
@@ -231,13 +225,6 @@ body.hoverable .navbar-chat-buttons .navbar-button .btn:hover:focus:active::afte
 }
 body.narrow .navbar-chat-buttons .navbar-button .btn-round {
     @apply w-10 h-10;
-}
-
-.navbar-button .c-chat-roulette-icon {
-    @apply flex-none flex items-center justify-center;
-    @apply h-full w-full;
-    @apply bg-pal-indigo-70;
-    @apply text-pal-sienna-70;
 }
 
 .right-line {

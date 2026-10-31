@@ -86,7 +86,7 @@ describe('Audio Diagnostics modal opens from the chat activity panel', () => {
             await modal.waitFor({ state: 'hidden', timeout: 10_000 }).catch(() => { /* ignore */ });
         } finally {
             // Hang up, so the next spec doesn't start inside a call.
-            await activityPanel.locator('.chat-audio-controls .c-hangup').first()
+            await activityPanel.locator('.chat-audio-controls .btn-hang-up').first()
                 .click({ force: true }).catch(() => { /* ignore */ });
             await activityPanel.waitFor({ state: 'hidden', timeout: 10_000 })
                 .catch(() => { /* ignore */ });

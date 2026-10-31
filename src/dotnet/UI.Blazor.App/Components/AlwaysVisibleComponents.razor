@@ -18,6 +18,8 @@
 @if (HostInfo.IsDevelopmentInstance) {
     <Hotkey Keys="ctrl+shift+l s" AriaLabel="@L.Shortcuts_ToggleSafeAreas" OnTrigger="OnToggleSafeAreas"
             IsGlobal="true"/>
+    <Hotkey Keys="ctrl+shift+l r" AriaLabel="@L.Shortcuts_ToggleTextDirection" OnTrigger="OnToggleTextDirection"
+            IsGlobal="true"/>
 }
 @if (!UrlMapper.IsVoxt) {
     <CommandQueueHotkey />
@@ -76,6 +78,9 @@
 
     private Task OnToggleSafeAreas()
         => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.DebugUI.toggleSafeAreas").AsTask();
+
+    private Task OnToggleTextDirection()
+        => JS.InvokeVoidAsync($"{BlazorUICoreModule.ImportName}.DebugUI.toggleTextDirection").AsTask();
 
     private async Task OnShortcutsHelp() {
         if (_isShortcutsHelpOpen)

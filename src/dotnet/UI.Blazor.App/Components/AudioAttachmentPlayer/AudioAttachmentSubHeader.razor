@@ -16,7 +16,7 @@
     <div class="c-row-main">
         <ButtonRound Tooltip="@(m?.IsPlaying == true ? L.Common_Pause : L.MessageMenu_Play)"
                      Click="@OnToggle"
-                     Class="c-play-btn btn-xs">
+                     Class="btn-play btn-xs">
             <i class="@iconCls text-xl"></i>
         </ButtonRound>
         <div class="c-info">
@@ -39,7 +39,7 @@
     </div>
     <div class="c-row-scrubber">
         <span class="c-elapsed">@positionLabel</span>
-        <div class="c-progress" style="--progress: @fraction.ToString("0.######")">
+        <div class="audio-progress" style="--progress: @fraction.ToString("0.######")">
             <div class="c-progress-track"></div>
             <div class="c-progress-fill"></div>
             <div class="c-progress-thumb"></div>

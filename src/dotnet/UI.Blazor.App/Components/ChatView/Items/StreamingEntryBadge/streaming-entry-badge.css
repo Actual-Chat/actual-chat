@@ -2,7 +2,7 @@
     @apply relative;
     @apply flex items-center gap-2;
     @apply w-fit h-5;
-    @apply pl-2;
+    @apply ps-2;
     @apply overflow-hidden;
     @apply rounded-full border border-separator;
     @apply cursor-pointer;
@@ -33,11 +33,11 @@ body.hoverable .streaming-entry-badge:hover::after,
 @keyframes badge-shimmer {
     to { transform: translateX(100%); }
 }
-.streaming-entry-badge .c-icon,
-.chat-message-markup .streaming-entry-badge .c-icon {
+.streaming-entry-badge > .c-icon,
+.chat-message-markup .streaming-entry-badge > .c-icon {
     @apply text-body text-03;
 }
-body.hoverable .streaming-entry-badge:hover .c-icon,
-.touch-capable .streaming-entry-badge:active .c-icon {
+body.hoverable .streaming-entry-badge:hover > .c-icon,
+.touch-capable .streaming-entry-badge:active > .c-icon {
     @apply text-01;
 }

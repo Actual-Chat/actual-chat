@@ -30,7 +30,7 @@
 </Tile>
 
 <TileTopic Topic="@L.Common_Repeat"/>
-<Tile Class="tile-flat">
+<Tile>
     <TileItem Class="tile-item-action" Click="@OnRestartWalkThrough">
         <Icon><i class="icon-refresh"></i></Icon>
         <Content>@L.UserInterface_WalkThrough</Content>
@@ -47,7 +47,7 @@
 
 @if (AppReviewUI.IsAvailable) {
     <TileTopic Topic="@L.AppSettings_RateApp_Format(CoreConstants.AppName)"/>
-    <Tile Class="tile-flat">
+    <Tile>
         <TileItem Class="tile-item-action" Click="@OnLeaveReview">
             <Icon><i class="icon-star"></i></Icon>
             <Content>@L.AppReview_LeaveReview</Content>

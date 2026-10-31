@@ -3,47 +3,43 @@
     @apply overflow-y-auto;
 }
 
-.guide-modal .c-hero {
+.guide-modal .form-block > .c-hero {
     @apply overflow-hidden;
     @apply rounded-lg;
 }
 
-.guide-modal .c-text {
-    @apply text-02;
-}
-
-.guide-modal .c-title {
+.guide-modal .form-block > .c-title {
     @apply text-body text-02;
     @apply font-bold;
 }
 
-.guide-modal .c-intro {
+.guide-modal .form-block > .c-intro {
     @apply text-body text-02;
 }
 
-.guide-modal ol.c-steps {
+.guide-modal .form-block > ol.c-steps {
     @apply flex-y gap-y-4;
     @apply list-decimal;
     @apply text-body text-02;
 }
 
-.guide-modal ol.c-steps > li {
-    @apply ml-5 pl-1;
+.guide-modal .form-block > ol.c-steps > li {
+    @apply ms-5 ps-1;
 }
 
-.guide-modal ol.c-steps > li > img {
+.guide-modal .form-block > ol.c-steps > li > img {
     @apply mt-2;
 }
 
-.guide-modal ul.c-items {
+.guide-modal .form-block > ul.c-items {
     @apply text-02 list-disc;
 }
 
-.guide-modal ul.c-items > li {
-    @apply text-02 pb-4 ml-4;
+.guide-modal .form-block > ul.c-items > li {
+    @apply text-02 pb-4 ms-4;
 }
 
-.guide-modal .c-reload {
-    @apply mr-2 text-primary hover:underline hover:text-primary-hover;
+.guide-modal .form-block > ul.c-items > li > .c-reload {
+    @apply me-2 text-primary hover:underline hover:text-primary-hover;
 }
 

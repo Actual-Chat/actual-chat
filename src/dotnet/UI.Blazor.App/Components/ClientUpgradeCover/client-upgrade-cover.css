@@ -8,7 +8,7 @@
     @apply flex-none flex-x items-center justify-start gap-x-2;
     @apply h-14 w-full;
 }
-.client-upgrade-cover > .c-header .c-logo {
+.client-upgrade-cover > .c-header > .c-logo {
     @apply h-6;
 }
 .client-upgrade-cover > .c-content {

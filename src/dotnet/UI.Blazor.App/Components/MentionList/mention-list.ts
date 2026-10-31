@@ -23,7 +23,7 @@ export class MentionList {
         // The list now lives inside the post-panel and grows it upward, so the editor top
         // moves with the list. The input row stays anchored to the panel bottom, so its top
         // is the stable reference for how much room the list has above it.
-        this.editorRow = this.editor?.querySelector<HTMLElement>('.c-editor-row') ?? null;
+        this.editorRow = this.editor?.querySelector<HTMLElement>('.editor-row') ?? null;
         const layout = mentionList.closest('.list-view-layout') ?? document;
         this.header = layout.querySelector<HTMLElement>('.layout-header');
 

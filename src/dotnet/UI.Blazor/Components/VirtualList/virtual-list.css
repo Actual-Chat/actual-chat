@@ -167,18 +167,19 @@ body.app-ready .virtual-list > .c-wrapper > ul.c-virtual-container {
    element measure back exactly what we just set. */
 /* Selector depth matches the .item min-height rules above on purpose: anything shorter loses to
    them, the item floors at 24px, and a plain message - which is 24px - animates from its own
-   height to itself, i.e. not at all. */
-.virtual-list > .c-wrapper > ul.c-virtual-container .item.c-height-controlled {
+   height to itself, i.e. not at all. Grouped items (.c-group-items > .item) are controlled too, so
+   these stay descendant selectors. */
+.virtual-list > .c-wrapper > ul.c-virtual-container .item.height-controlled {
     min-height: 0;
     transition: height 150ms linear;
 }
 /* Only while the written height is out of step with the content - waiting out the settle delay, or
    transitioning towards it. A settled controlled item is exactly its content's height, and clipping it
    permanently cuts off whatever is meant to escape the box - the hover menu. */
-.virtual-list > .c-wrapper > ul.c-virtual-container .item.c-height-controlled.c-height-unsettled {
+.virtual-list > .c-wrapper > ul.c-virtual-container .item.height-controlled.height-unsettled {
     overflow: hidden;
 }
-.virtual-list > .c-wrapper > ul.c-virtual-container .item.c-height-controlled > * {
+.virtual-list > .c-wrapper > ul.c-virtual-container .item.height-controlled > * {
     flex-shrink: 0;
 }
 
@@ -206,5 +207,5 @@ body.app-ready .virtual-list > .c-wrapper > ul.c-virtual-container {
     @apply absolute w-full;
     @apply invisible pointer-events-none;
     top: 0;
-    left: 0;
+    inset-inline-start: 0;
 }

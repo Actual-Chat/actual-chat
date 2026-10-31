@@ -2001,6 +2001,7 @@
   "Shortcuts_ToggleSelection": "Toggle selection in pickers",
   "Shortcuts_ToggleTheme": "Toggle light or dark theme",
   "Shortcuts_ToggleSafeAreas": "Toggle safe areas",
+  "Shortcuts_ToggleTextDirection": "Toggle right-to-left layout",
 
   // The section heading above the LocationAccuracy_* options further up.
   "LocationAccuracy_Topic": "Location Accuracy",

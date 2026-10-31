@@ -48,7 +48,7 @@
                     }
                 </span>
                 @if (lastTextEntry != null) {
-                    <div class="c-last-message">
+                    <div class="c-last-message" dir="auto">
                         @if (chat.Kind != ChatKind.Peer && !lastTextEntry.IsSystemEntry) {
                             <span class="hidden last-entry-id">@m.LastTextEntry?.Id.Value</span>
                         }

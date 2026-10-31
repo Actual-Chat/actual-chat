@@ -27,24 +27,26 @@
    what anyone said. The block therefore grows by exactly one row per entry until the cap, and never
    again after it - a streaming conversation settles at a stable height instead of breathing with the
    text. */
-.last-entries-preview .c-message-wrapper {
+.last-entries-preview > .c-message-wrapper {
     @apply flex-x gap-x-4 items-start;
     @apply h-10;
 }
-.last-entries-preview .c-message-wrapper .avatar-circle {
+.last-entries-preview > .c-message-wrapper > .avatar-circle {
     @apply self-start;
 }
-.last-entries-preview .c-message-wrapper .c-content {
+/* The avatar's own .c-content too, as the former descendant rule reached it */
+.last-entries-preview > .c-message-wrapper > .c-content,
+.last-entries-preview > .c-message-wrapper > .avatar-circle > .c-content {
     @apply flex-y;
     @apply w-full;
     @apply overflow-hidden;
 }
-.last-entries-preview .c-message-wrapper .c-content .c-info {
+.last-entries-preview > .c-message-wrapper > .c-content > .c-info {
     @apply flex-x items-center gap-x-2;
     @apply w-full;
     @apply overflow-hidden;
 }
-.last-entries-preview .c-message-wrapper .c-content .c-message {
+.last-entries-preview > .c-message-wrapper > .c-content > .c-message {
     @apply text-caption text-02;
     @apply line-clamp-1;
 }

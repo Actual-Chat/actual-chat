@@ -16,7 +16,7 @@
         <div class="chat-footer readonly">
             <div class="c-content">
                 <span>@L.ChatFooter_YouBlockedUser</span>
-                <Button Class="btn-primary btn-transparent ml-2" Click="@OnUnblock">@L.ChatFooter_Unblock</Button>
+                <Button Class="btn-primary btn-transparent ms-2" Click="@OnUnblock">@L.ChatFooter_Unblock</Button>
             </div>
         </div>
     } else if (m.IsBlockedByPeer) {
@@ -50,14 +50,14 @@
                             <SignInButton ButtonClass="w-full"/>
                         </div>
                         @if (m.PeerId is { } otherUserId) {
-                            <span class="inline-flex mx-2 mr-1 items-center">@L.ChatFooter_ToChatWith_Prefix</span>
+                            <span class="inline-flex mx-2 me-1 items-center">@L.ChatFooter_ToChatWith_Prefix</span>
                             <AccountName UserId="@otherUserId"/>
                             <span class="inline-flex items-center">@L.ChatFooter_ToChatWith_Suffix</span>
                         } else if (m.CanJoinWithGuestAccount) {
                             <span class="inline-flex mx-2 items-center">@L.ChatFooter_Or</span>
                             <Button Click="@OnJoin" Class="inline-flex btn-outline">@L.ChatFooter_JoinAnonymously</Button>
                         } else {
-                            <span class="inline-flex ml-2 items-center">@L.ChatFooter_ToJoinThisChat</span>
+                            <span class="inline-flex ms-2 items-center">@L.ChatFooter_ToJoinThisChat</span>
                         }
                     </div>
                 }

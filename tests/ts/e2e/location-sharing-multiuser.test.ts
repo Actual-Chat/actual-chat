@@ -132,15 +132,15 @@ describe('multi-user location sharing', () => {
         // assert — the live card Alice posted offers Bob a share-back button, while Alice's own
         // copy of the same card doesn't (#4057)
         await expect.poll(
-            async () => bob.locator('.location-message').last().locator('.c-share-back').count(),
+            async () => bob.locator('.location-message').last().locator('.btn-share-back').count(),
             { timeout: 20_000 },
         ).toBe(1);
-        expect(await alice.locator('.location-message').last().locator('.c-share-back').count()).toBe(0);
+        expect(await alice.locator('.location-message').last().locator('.btn-share-back').count()).toBe(0);
         // Pinned by index: once Bob shares, his own card becomes the last one
         const bobCard = bob.locator('.location-message').nth(await bob.locator('.location-message').count() - 1);
 
         // act — Bob expands the map from the inline panel
-        await bobPanel.locator('.c-expand').first().click();
+        await bobPanel.locator('.btn-map-expand').first().click();
         const bobMap = bob.locator('.location-map-modal').first();
         await bobMap.waitFor({ state: 'visible', timeout: 10_000 });
 
@@ -159,9 +159,9 @@ describe('multi-user location sharing', () => {
         // assert — the participants list shows exactly Alice: not marked "(you)", with an
         // "Updated ..." status and her share's countdown; Bob (not sharing) gets no row,
         // only his own map marker
-        const bobRow = bobMap.locator('.c-participant').first();
+        const bobRow = bobMap.locator('.location-participant-view').first();
         await bobRow.waitFor({ state: 'visible', timeout: 10_000 });
-        expect(await bobMap.locator('.c-participant').count()).toBe(1);
+        expect(await bobMap.locator('.location-participant-view').count()).toBe(1);
         const bobRowText = (await bobRow.innerText()).toLowerCase();
         expect(bobRowText).toContain('updated');
         expect(bobRowText).not.toContain('(you)');
@@ -185,7 +185,7 @@ describe('multi-user location sharing', () => {
         await bob.locator('.location-message.live .btn-stop-sharing').first()
             .waitFor({ state: 'visible', timeout: 20_000 });
         await expect.poll(
-            async () => bobCard.locator('.c-share-back').count(),
+            async () => bobCard.locator('.btn-share-back').count(),
             { timeout: 10_000 },
         ).toBe(0);
         await bobCard.scrollIntoViewIfNeeded();
@@ -198,7 +198,7 @@ describe('multi-user location sharing', () => {
         ).toBe(2);
 
         // act — Alice expands her map
-        await alicePanel.locator('.c-expand').first().click();
+        await alicePanel.locator('.btn-map-expand').first().click();
         const aliceMap = alice.locator('.location-map-modal').first();
         await aliceMap.waitFor({ state: 'visible', timeout: 10_000 });
         await aliceMap.locator('.maplibregl-marker').first().waitFor({ state: 'visible', timeout: 15_000 });
@@ -207,8 +207,8 @@ describe('multi-user location sharing', () => {
 
         // assert — two participant rows: Alice's own row first ("(you)" + countdown), then
         // Bob's with his countdown and his distance from her (Paris -> Berlin, hundreds of km)
-        expect(await aliceMap.locator('.c-participant').count()).toBe(2);
-        const rows = await aliceMap.locator('.c-participant').allInnerTexts();
+        expect(await aliceMap.locator('.location-participant-view').count()).toBe(2);
+        const rows = await aliceMap.locator('.location-participant-view').allInnerTexts();
         expect(rows[0].toLowerCase()).toContain('(you)');
         expect(rows[1].toLowerCase()).not.toContain('(you)');
         expect(rows[1].toLowerCase()).toMatch(/\d+ km from you/);
@@ -221,7 +221,7 @@ describe('multi-user location sharing', () => {
         await alice.locator('.location-message').last().click();
         await aliceMap.waitFor({ state: 'visible', timeout: 10_000 });
         await expect.poll(
-            async () => aliceMap.locator('.c-participant').count(),
+            async () => aliceMap.locator('.location-participant-view').count(),
             { timeout: 15_000 },
         ).toBe(2);
         await alice.keyboard.press('Escape');
@@ -255,7 +255,7 @@ describe('multi-user location sharing', () => {
 
         // assert — the share-back button goes away with the share it answered (#4057)
         await expect.poll(
-            async () => bobCard.locator('.c-share-back').count(),
+            async () => bobCard.locator('.btn-share-back').count(),
             { timeout: 20_000 },
         ).toBe(0);
         await alice.screenshot({ path: shot('all-stopped') });

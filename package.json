@@ -10,7 +10,7 @@
     "images:kitties": "node scripts/generate-svg-variants.mjs",
     "images:kitties:check": "node scripts/generate-svg-variants.mjs --check",
     "test:svg-variants": "node --test scripts/generate-svg-variants.test.mjs",
-    "test:css-selectors": "node --test scripts/check-css-selectors.test.mjs",
+    "test:css-selectors": "node --test scripts/check-css-selectors.test.mjs scripts/check-css-conventions.test.mjs",
     "font": "svgtofont --sources ./src/nodejs/icons --output ./src/nodejs/fonts/svgtofont",
     "test:unit": "vitest run --config vitest.config.ts",
     "test:e2e": "vitest run --config vitest.config.e2e.ts",
@@ -23,7 +23,7 @@
     "lint:all": "npm run lint:ts:all && npm run lint:css",
     "lint:ts": "eslint \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\"",
     "lint:ts:all": "eslint --no-error-on-unmatched-pattern \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\"",
-    "lint:css": "node scripts/check-css-selectors.mjs",
+    "lint:css": "node scripts/check-css-selectors.mjs && node scripts/check-css-conventions.mjs",
     "lint:fix": "eslint --fix --no-error-on-unmatched-pattern \"src/nodejs/**/*.ts\" \"src/dotnet/**/*.ts\" \"tests/ts/**/*.ts\""
   },
   "devDependencies": {

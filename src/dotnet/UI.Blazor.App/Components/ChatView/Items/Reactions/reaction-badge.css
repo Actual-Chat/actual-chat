@@ -9,17 +9,17 @@
 .reaction-badge.icons {
     @apply p-0.5;
 }
-.reaction-badge .c-emoji {
+.reaction-badge > .c-emoji {
     @apply w-5 md:w-4 h-5 md:h-4;
 }
 .reaction-badge.own {
     @apply bg-reaction-own;
     @apply text-primary-title;
 }
-.reaction-badge .c-count {
+.reaction-badge > .c-count {
     @apply font-semibold;
 }
 
-.reaction-badge .c-author+.c-author {
-    @apply -ml-3;
+.reaction-badge > .c-author + .c-author {
+    @apply -ms-3;
 }

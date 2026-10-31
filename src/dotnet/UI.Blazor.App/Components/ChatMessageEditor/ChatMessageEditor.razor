@@ -34,19 +34,19 @@
     <input class="attachment-web-file-picker" type="file" multiple tabindex="-1"/>
     <MentionListManager @key="@MentionListManagerKey">
         <div class="c-content">
-            <div class="c-editor-column">
+            <div class="editor-column">
                 <div class="post-panel"
                      data-bubble="@(BubbleRef.New<TextMessagePanelBubble>())"
                      data-bubble-priority="150"
                      data-bubble-placement="@(FloatingPosition.Top.ToPositionString())">
-                    <div class="c-editor-overlay">
+                    <div class="editor-overlay">
                         <RelatedChatEntryPanel/>
-                        <div class="c-editor-top">
+                        <div class="editor-top">
                             @RenderAttachmentListView()
                             <MentionList/>
                         </div>
                     </div>
-                    <div class="c-editor-row">
+                    <div class="editor-row">
                         <div class="c-left-buttons">
                             @if (Chat.Rules.CanUpload()) {
                                 <ButtonRound

@@ -1,5 +1,5 @@
 /* Wrapper holds the chips pill (floating above) and the scrollable list.
-   It lives in the post-panel top container (.c-editor-top) as a grid item stacked
+   It lives in the post-panel top container (.editor-top) as a grid item stacked
    over the attachment list. Open: it participates in the grid track, so the panel
    grows to fit it. Closed: it goes absolute so it no longer contributes height.
    Chips are a content-width floating "hover-menu" pill anchored over the list's top-right. */
@@ -27,7 +27,7 @@
     @apply rounded-t-lg;
     @apply overflow-x-hidden overflow-y-auto;
     @apply text-03;
-    /* Opaque card: it overlays the attachment list stacked beneath it in .c-editor-top,
+    /* Opaque card: it overlays the attachment list stacked beneath it in .editor-top,
        so a translucent bg would let the attachments show through. */
     @apply bg-03;
     /* --mention-list-cap = the visible height cap; --row-count is set per-render (rows or skeletons).
@@ -56,7 +56,7 @@ body.narrow .mention-list {
 }
 body.narrow .mention-list-wrapper::after {
     @apply content-empty;
-    @apply absolute bottom-0 left-12 right-12;
+    @apply absolute bottom-0 start-12 end-12;
     @apply h-px;
     @apply bg-pal-white-10;
 }
@@ -101,13 +101,13 @@ body.hoverable .mention-list .mention-list-item.selected,
     @apply opacity-5;
     @apply cursor-default pointer-events-none;
 }
-.mention-list .mention-list-skeleton .c-avatar {
+.mention-list .mention-list-skeleton > .c-content > .c-avatar {
     @apply flex-none;
     @apply w-7 h-7;
     @apply rounded-full;
     @apply bg-skeleton;
 }
-.mention-list .mention-list-skeleton .c-line {
+.mention-list .mention-list-skeleton > .c-content > .c-center > .c-line {
     @apply h-3.5;
     @apply rounded-full;
     @apply bg-skeleton;
@@ -118,7 +118,7 @@ body.hoverable .mention-list .mention-list-item.selected,
     @apply text-body-500;
 }
 .mention-list-wrapper .mention-list-chips {
-    @apply absolute -top-7 right-3 z-10;
+    @apply absolute -top-7 end-3 z-10;
     @apply flex-x items-center gap-0.5;
     @apply w-fit;
     @apply p-1;
@@ -127,7 +127,7 @@ body.hoverable .mention-list .mention-list-item.selected,
     @apply shadow-modal-wide;
 }
 body.narrow .mention-list-wrapper .mention-list-chips {
-    @apply right-2;
+    @apply end-2;
     @apply border-pal-black-30;
     @apply bg-post-panel;
 }
@@ -161,7 +161,7 @@ body.hoverable .mention-list-wrapper .mention-list-chip.btn-transparent.active:h
 .mention-list .mention-list-emoji-icon {
     @apply w-6 h-6;
 }
-.mention-list .c-description {
+.mention-list .mention-list-item > .c-content > .c-center > .c-description {
     @apply opacity-60;
     @apply text-03 font-light;
 }

@@ -5,42 +5,37 @@
 .wipe-chat-history-modal .dialog-body {
     @apply text-body;
 }
-.chat-history-retention-modal .c-hint {
+.chat-history-retention-modal > .dialog-body > .form-block > .c-hint {
     @apply text-02;
 }
-.chat-history-retention-modal .c-error {
-    @apply text-danger;
-}
-.chat-history-retention-modal .c-warning {
+.chat-history-retention-modal > .dialog-body > .form-block > .c-error,
+.chat-history-retention-modal > .dialog-body > .form-block > .c-warning {
     @apply text-danger;
 }
 .chat-history-retention-modal b {
     @apply font-semibold;
 }
-.chat-history-retention-modal .c-wipe-link {
+.chat-history-retention-modal > .dialog-body > .form-block > .c-hint > .c-wipe-link {
     @apply text-primary cursor-pointer;
 }
-.wipe-chat-history-modal .c-warning {
+.wipe-chat-history-modal > .dialog-body > .form-block > .c-warning {
     @apply text-danger;
 }
-.wipe-chat-history-modal .c-period {
+.wipe-chat-history-modal > .dialog-body > .form-block > .c-period {
     @apply flex-y items-start gap-y-2;
 }
-.wipe-chat-history-modal .c-period > .period-input {
+.wipe-chat-history-modal > .dialog-body > .form-block > .c-period > .period-input {
     @apply w-full;
 }
-.wipe-chat-history-modal .c-everything {
+.wipe-chat-history-modal > .dialog-body > .form-block > .c-period > .c-everything {
     @apply cursor-pointer;
 }
-.wipe-chat-history-modal .c-hint,
-.wipe-chat-history-modal .c-proposal {
+.wipe-chat-history-modal > .dialog-body > .form-block > .c-hint {
     @apply text-02;
 }
-.wipe-chat-history-modal .c-count {
+.wipe-chat-history-modal > .dialog-body > .form-block > .c-count,
+.wipe-chat-history-modal .period-input > .c-count {
     @apply font-semibold text-danger;
-}
-.wipe-chat-history-modal .c-proposal code {
-    @apply font-mono font-semibold text-danger;
 }
 
 /* One line, as the chat list shows the last message */
@@ -48,10 +43,10 @@
     @apply flex-x min-w-0 gap-x-1;
     @apply text-02;
 }
-.chat-entry-line .c-name {
+.chat-entry-line > .c-name {
     @apply shrink-0 font-medium;
 }
-.chat-entry-line .c-text {
+.chat-entry-line > .c-text {
     @apply truncate;
 }
 .chat-history-retention-modal .chat-entry-line,

@@ -27,12 +27,12 @@ body.narrow .chat-message-editor > .c-content {
    related panel is exactly the post-panel's width instead of spanning past it to the audio panel.
    On narrow it's layout-transparent (the related panel renders in the narrow branch), so the
    mobile DOM stays effectively flat. */
-.c-editor-column {
+.editor-column {
     /* min-w-0: as a flex item its default min-width:auto would refuse to shrink below the
        post-panel's intrinsic width, pushing the column past the right edge. */
     @apply flex-auto flex-y gap-y-2 min-w-0;
 }
-body.narrow .c-editor-column {
+body.narrow .editor-column {
     @apply contents;
 }
 
@@ -52,25 +52,25 @@ body.narrow .c-editor-column {
    adding footer height. The panel keeps only the input row in flow, so long text still grows
    the panel and pushes the chat view - but attachments/mentions/related never do.
    Children stack top-down: related on top, then the attachment/mention card flush above the row. */
-.c-editor-overlay {
+.editor-overlay {
     @apply absolute inset-x-0 bottom-full z-20;
     @apply flex-y gap-y-2;
     /* Let clicks fall through the transparent gaps between the stacked cards to the chat view;
        the cards themselves re-enable pointer events. */
     @apply pointer-events-none;
 }
-.c-editor-overlay > * {
+.editor-overlay > * {
     @apply pointer-events-auto;
 }
 /* Mobile keeps the related chip tight to the panel (the wide gap reads as detached there). */
-body.narrow .c-editor-overlay {
+body.narrow .editor-overlay {
     @apply gap-y-0;
 }
 
 /* Top container: attachments + mention list stacked in one grid cell.
    The mention list (z above) overlaps the attachments; the taller of the two
    drives the height, so the card grows to fit the mention list when it's larger. */
-.c-editor-top {
+.editor-top {
     @apply relative grid items-start;
     @apply md:rounded-t-3xl;
     @apply bg-02;
@@ -78,25 +78,25 @@ body.narrow .c-editor-overlay {
        attachment row scrolls horizontally instead of stretching the whole panel. */
     grid-template-columns: minmax(0, 1fr);
 }
-.c-editor-top > * {
+.editor-top > * {
     grid-area: 1 / 1;
     @apply min-w-0;
 }
-.c-editor-top > .attachment-list-wrapper {
+.editor-top > .attachment-list-wrapper {
     @apply z-10;
 }
-.c-editor-top > .mention-list-wrapper {
+.editor-top > .mention-list-wrapper {
     @apply z-20;
 }
 /* On mobile the overlay is a self-contained rounded sheet (1rem top). The clip lives on the
-   inner content cards, NOT on .c-editor-top - otherwise it would cut the mention chips pill,
+   inner content cards, NOT on .editor-top - otherwise it would cut the mention chips pill,
    which overhangs above the list (-top-7) as a sibling of .mention-list. */
-body.narrow .c-editor-top {
+body.narrow .editor-top {
     @apply rounded-t-2xl;
 }
 
 /* The input row: left buttons + editor + right buttons. */
-.c-editor-row {
+.editor-row {
     @apply relative;
     @apply flex-auto flex-x justify-between items-center md:gap-x-2;
     @apply py-0 px-2;
@@ -122,25 +122,25 @@ body.narrow .text-mode .post-panel,
 body.narrow .narrow-panel .post-panel {
     @apply py-1;
 }
-/* The attach/send buttons are absolute-positioned inside .c-editor-row (its relative ancestor),
+/* The attach/send buttons are absolute-positioned inside .editor-row (its relative ancestor),
    so the bottom strip they float in must be reserved on that same row - not on the post-panel,
    or they'd anchor above the strip and the editor text would run under them. */
-body.narrow .text-mode .c-editor-row,
-body.narrow .narrow-panel .c-editor-row {
+body.narrow .text-mode .editor-row,
+body.narrow .narrow-panel .editor-row {
     @apply pb-10;
 }
 
-.post-panel .c-right-buttons {
+.editor-row > .c-right-buttons {
     @apply flex-x items-end self-end;
     @apply md:my-2;
 }
-body.narrow .text-mode .post-panel .c-right-buttons,
-body.narrow .narrow-panel .post-panel .c-right-buttons {
-    @apply absolute bottom-2 right-2;
+body.narrow .text-mode .editor-row > .c-right-buttons,
+body.narrow .narrow-panel .editor-row > .c-right-buttons {
+    @apply absolute bottom-2 end-2;
 }
 
-body.narrow .text-mode .post-panel .c-right-buttons .c-incut,
-body.narrow .narrow-panel .post-panel .c-right-buttons .c-incut {
+body.narrow .text-mode .editor-row > .c-right-buttons > .c-incut,
+body.narrow .narrow-panel .editor-row > .c-right-buttons > .c-incut {
     @apply flex-1;
 }
 
@@ -172,7 +172,7 @@ body.narrow .narrow-panel .post-panel .message-input-label {
 }
 
 .post-panel .message-input .editor-content {
-    @apply mr-0 md:py-0.5;
+    @apply me-0 md:py-0.5;
     /* AY: It's an inline element that grows to flexbox container, so setting its width defines the weight,
        but flexbox ensures it never grows above what's allowed;
        I checked w-full, etc. - all these options let the text (1 long word) to overflow-x the container. */
@@ -228,31 +228,31 @@ body.narrow.touch-capable .attach-btn.btn.btn-round.btn-transparent:active {
 body.narrow .post-panel-btn.attach-btn {
     @apply self-end;
 }
-.post-panel .c-left-buttons {
+.editor-row > .c-left-buttons {
     @apply relative;
     @apply flex-x items-center self-end gap-x-2;
     @apply my-2 mx-1;
 }
-body.narrow .post-panel .c-left-buttons {
+body.narrow .editor-row > .c-left-buttons {
     @apply my-0;
 }
-body.narrow .text-mode .c-left-buttons,
-body.narrow .narrow-panel .c-left-buttons {
-    @apply absolute left-2 bottom-2;
+body.narrow .text-mode .editor-row > .c-left-buttons,
+body.narrow .narrow-panel .editor-row > .c-left-buttons {
+    @apply absolute start-2 bottom-2;
 }
-body.wide .post-panel .c-left-buttons {
+body.wide .editor-row > .c-left-buttons {
     @apply rounded-full;
 }
 
 /* Notify Call Panel */
 .notify-call-btn {
     @apply hidden;
-    @apply absolute right-0 md:right-2;
+    @apply absolute end-0 md:end-2;
     @apply opacity-0;
     transition-property: display, opacity;
 }
 .default-mode .notify-call-btn {
-    @apply right-2;
+    @apply end-2;
     @apply flex;
     @apply opacity-100;
 }
@@ -320,7 +320,7 @@ body.narrow .notify-call-panel.panel-open {
 /* Post button */
 .post-panel-btn.post-message {
     @apply hidden;
-    @apply absolute right-0 md:right-2;
+    @apply absolute end-0 md:end-2;
     @apply flex-none self-end;
     @apply outline-none;
     @apply text-primary;
@@ -480,18 +480,18 @@ body.hoverable .mqs-item:hover {
 }
 .mqs-item-spec {
     @apply text-caption text-03;
-    @apply text-left;
+    @apply text-start;
 }
 .mqs-item-size {
     @apply flex-none self-start;
     @apply text-caption text-03;
 }
-.c-remove-btn.btn {
+.btn-remove-all.btn {
     @apply flex-none;
     @apply h-10 w-10;
     @apply bg-input;
 }
-body.narrow .c-remove-btn.btn {
+body.narrow .btn-remove-all.btn {
     @apply h-8 w-8;
     @apply bg-pal-white-20;
 }
@@ -512,10 +512,10 @@ body.narrow .attachment-wrapper {
 .narrow-panel .attachment-wrapper {
     @apply rounded;
 }
-body.narrow .chat-message-editor:not(.narrow-panel) .attachment-wrapper:has(.c-file) {
+body.narrow .chat-message-editor:not(.narrow-panel) .attachment-wrapper:has(.file-attachment-view) {
     @apply -mt-px;
-    border-left: 1px solid var(--black-50);
-    border-right: 1px solid var(--black-50);
+    border-inline-start: 1px solid var(--black-50);
+    border-inline-end: 1px solid var(--black-50);
     border-top: 1px solid var(--black-50);
 }
 .attachment-wrapper.last-element {
@@ -575,31 +575,31 @@ body.narrow .narrow-panel .attachment-item > img,
     @apply absolute z-30;
     @apply self-center;
     @apply min-w-8 max-w-8 min-h-8 max-h-8;
-    @apply top-0 right-0;
+    @apply top-0 end-0;
     @apply opacity-60;
 }
 /* Editor: smaller cross, always visible on desktop and mobile. */
 .attachment-list-wrapper .remove-attachment-btn.btn {
     @apply min-w-6 max-w-6 min-h-6 max-h-6;
-    @apply top-0.5 right-0.5;
+    @apply top-0.5 end-0.5;
     @apply opacity-80;
 }
 .narrow-panel .remove-attachment-btn.btn {
     @apply hidden;
 }
-.attachment-item > .c-file {
+.attachment-item > .file-attachment-view {
     @apply flex-y items-center justify-center;
     @apply w-full h-full;
 }
-.attachment-item > .c-file .c-icon {
+.attachment-item > .file-attachment-view > .c-icon {
     @apply flex-y items-center justify-center;
     @apply w-full h-full;
     @apply always-white;
 }
-.attachment-item > .c-file .c-extension {
+.attachment-item > .file-attachment-view > .c-icon > .c-extension {
     @apply text-caption-500;
 }
-.narrow-panel .attachment-item > .c-file .c-extension {
+.narrow-panel .attachment-item > .file-attachment-view > .c-icon > .c-extension {
     @apply hidden;
 }
 
@@ -632,7 +632,7 @@ body.narrow .narrow-panel .attachment-filename {
     @apply hidden;
 }
 .attachment-list-wrapper .attachment-item > .c-duration {
-    @apply absolute bottom-1 left-1 z-20;
+    @apply absolute bottom-1 start-1 z-20;
     @apply px-1.5 py-0.5;
     @apply rounded-md;
     @apply bg-pal-black-90 text-white;
@@ -683,7 +683,7 @@ body.narrow .narrow-panel .attachment-filename {
     @apply bg-danger;
 }
 .attachment-upload-size {
-    @apply absolute bottom-1 left-1 z-20;
+    @apply absolute bottom-1 start-1 z-20;
     @apply px-1.5 py-0.5;
     @apply rounded-md;
     @apply bg-pal-black-80 text-white;
@@ -715,7 +715,7 @@ body.narrow .related-chat-entry-panel {
 .related-chat-entry-panel .related-chat-entry > .c-content {
     @apply flex-1 flex-x items-center gap-x-2;
     @apply max-w-full max-h-10 md:max-h-8;
-    @apply md:pr-1;
+    @apply md:pe-1;
 }
 .related-chat-entry-panel .related-chat-entry > .c-content > .c-icon {
     @apply flex justify-center;
@@ -790,7 +790,7 @@ body.narrow .related-chat-entry-panel .related-chat-entry .icon-edit {
 .related-chat-entry {
     @apply flex-1 flex-x items-center;
     @apply max-w-full;
-    @apply md:p-2 md:pl-5;
+    @apply md:p-2 md:ps-5;
     @apply bg-03;
     @apply text-base;
     @apply cursor-pointer;
@@ -837,13 +837,13 @@ body.hoverable .related-chat-entry-panel .btn.btn-round:hover .btn-content {
 
 .rounded-sub-footer::before {
     @apply content-empty;
-    @apply absolute left-0 bottom-0;
+    @apply absolute start-0 bottom-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at right top, transparent 70%, var(--post-panel) 60%);
 }
 .rounded-sub-footer::after {
     @apply content-empty;
-    @apply absolute right-0 bottom-0;
+    @apply absolute end-0 bottom-0;
     @apply w-8 h-8;
     background: radial-gradient(circle at left top, transparent 70%, var(--post-panel) 60%);
 }
@@ -915,7 +915,7 @@ body.narrow .list-view-layout[data-has-audio-panel-header] .rounded-sub-footer >
 
 .attachment-web-file-picker {
     @apply block absolute;
-    left: -10000px;
+    inset-inline-start: -10000px;
     top: 0;
     opacity: 1;
     z-index: -999;

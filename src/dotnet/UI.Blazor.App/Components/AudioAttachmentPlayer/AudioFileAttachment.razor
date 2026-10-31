@@ -12,7 +12,7 @@
 }
 
 <div class="audio-file-attachment file-attachment unfocusable">
-    <button class="c-play-btn" type="button" @onclick="@OnToggle" @onclick:stopPropagation>
+    <button class="btn-play" type="button" @onclick="@OnToggle" @onclick:stopPropagation>
         <i class="@iconCls"></i>
     </button>
     <div class="c-file-info">
@@ -29,7 +29,7 @@
             }
         </div>
         @if (m.IsCurrent) {
-            <div class="c-progress" style="--progress: @fraction.ToString("0.######")">
+            <div class="audio-progress" style="--progress: @fraction.ToString("0.######")">
                 <div class="c-progress-track"></div>
                 <div class="c-progress-fill"></div>
                 <div class="c-progress-thumb"></div>

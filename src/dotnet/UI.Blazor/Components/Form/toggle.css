@@ -34,7 +34,7 @@
     transition: .2s;
 }
 .toggle > .dash > .o {
-    @apply absolute left-0 top-0;
+    @apply absolute start-0 top-0;
     @apply w-5 h-5;
     @apply bg-toggle-circle border-[1.5px] border-toggle rounded-full;
     transition: .15s;

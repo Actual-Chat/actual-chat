@@ -6,7 +6,7 @@
 /* The header mirrors the chat side panel's, so switching Chat/Coach moves nothing: the cover starts
    below the top inset, which stays the panel's colour, and the close button keeps its place. */
 .coach-header { @apply relative; }
-.coach-header .c-cover {
+.coach-header > .c-cover {
     @apply flex-none h-26;
     background: linear-gradient(
         120deg,
@@ -16,75 +16,56 @@
     );
     margin-top: var(--safe-area-top-narrow);
 }
-body:not(.narrow) .coach-header .c-cover { @apply rounded-b-lg; }
-body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
-.coach-header .c-cover .right-panel-close-btn {
-    @apply absolute right-4;
+body:not(.narrow) .coach-header > .c-cover { @apply rounded-b-lg; }
+body.narrow .coach-header > .c-cover { @apply rounded-se-lg; }
+.coach-header > .c-cover > .right-panel-close-btn {
+    @apply absolute end-4;
     top: calc(0.5rem + var(--safe-area-top));
 }
-.coach-header .c-head { @apply relative px-4; }
-.coach-header .c-head > .c-avatar { @apply absolute left-4 -top-8 z-10; }
-.coach-header .c-buttons { @apply flex-x justify-end gap-x-2 h-8 pt-2; }
-.coach-header .c-settings-btn { @apply relative -top-7 bg-round-right-panel text-03; }
-.coach-header .c-settings-btn.is-active { @apply text-primary; }
-.coach-header .c-bottom { @apply flex-x items-center justify-between gap-x-2 pt-2; }
-.coach-header .c-title { @apply text-title-500 text-02 whitespace-nowrap; }
+.coach-header > .c-head { @apply relative px-4; }
+.coach-header > .c-head > .c-avatar { @apply absolute start-4 -top-8 z-10; }
+.coach-header > .c-head > .c-buttons { @apply flex-x justify-end gap-x-2 h-8 pt-2; }
+.coach-header .btn-coach-settings { @apply relative -top-7 bg-round-right-panel text-03; }
+.coach-header .btn-coach-settings.is-active { @apply text-primary; }
+.coach-header > .c-head > .c-bottom { @apply flex-x items-center justify-between gap-x-2 pt-2; }
+.coach-header > .c-head > .c-bottom > .c-title { @apply text-title-500 text-02 whitespace-nowrap; }
 .coach-panel > .c-body { @apply flex-none flex-y gap-y-3 px-4 pt-3; }
-.coach-language-chips { @apply flex-x items-center justify-between gap-x-2; }
-.coach-language-chips .c-chips { @apply flex-x flex-wrap gap-2; }
+.coach-language-chips { @apply flex-y items-start gap-y-1; }
+.coach-language-chips > .c-chips-row > .c-chips { @apply flex-x flex-wrap gap-2; }
 .coach-language-chips .chip {
-    @apply px-3 py-1 rounded-full bg-01 text-sm text-02;
+    @apply flex-none;
+    @apply px-3 py-1 rounded-full bg-01 text-sm text-02 whitespace-nowrap;
 }
 .coach-language-chips .chip.on { @apply bg-primary text-white; }
-.coach-language-chips .c-level { @apply opacity-80; }
-.coach-language-chips .c-words { @apply text-caption text-03; }
+.coach-language-chips .chip > .c-level { @apply opacity-80; }
 .coach-tabs { @apply mt-3; }
 .coach-empty { @apply flex-y gap-y-4 px-4 pt-4 pb-4; }
-.coach-empty .c-promise { @apply flex-y items-center text-center gap-y-3 p-4; }
-.coach-empty .c-mascot { width: 80px; height: 64px; @apply object-contain; }
-.coach-empty .c-title { @apply text-title-500 text-02; }
-.coach-empty .c-privacy,
-.coach-empty .c-first { @apply text-caption text-03; }
-.coach-window-tabs { @apply -mx-4; }
-.coach-metrics { @apply flex-y; }
-.coach-metric-row { @apply flex-y border-b border-separator; }
-.coach-metric-row .c-head {
-    @apply flex-x items-center gap-x-2;
-    @apply min-h-12 py-2;
-}
-.coach-metric-row.expandable .c-head { @apply cursor-pointer; }
-.coach-metric-row .c-chevron { @apply w-5 text-03; }
-.coach-metric-row .c-title { @apply flex-1 text-body-500 text-02; }
-.coach-metric-row .c-value { @apply text-03 font-normal; }
-.coach-metric-row .c-aside { @apply text-sm; }
-.coach-metric-row .c-aside.band-good { @apply text-success; }
-.coach-metric-row .c-aside.band-medium { @apply text-warning; }
-.coach-metric-row .c-aside.band-high,
-.coach-metric-row .c-aside.band-low { @apply text-danger; }
-.coach-metric-row .c-aside.band-none { @apply text-03; }
-.coach-metric-row .c-chips { @apply flex-x flex-wrap gap-2 pb-3 pl-7; }
+.coach-empty > .c-promise { @apply flex-y items-center text-center gap-y-3 p-4; }
+.coach-empty > .c-promise > .c-mascot { @apply object-contain; width: 80px; height: 64px; }
+.coach-empty > .c-promise > .c-title { @apply text-title-500 text-02; }
+.coach-empty > .c-promise > .c-privacy,
+.coach-empty > .c-promise > .c-first { @apply text-caption text-03; }
 .coach-chip {
     @apply flex-x items-center gap-x-1;
     @apply px-3 py-1 rounded-full bg-01 text-sm;
 }
-.coach-chip .c-count { @apply text-03; }
-.coach-metric-row .coach-day-chart { @apply mb-3 ml-7 p-3 rounded-lg bg-01; }
+.coach-chip > .c-count { @apply text-03; }
 .coach-occurrences { @apply flex-y gap-y-2; }
-.coach-occurrences .c-head { @apply flex-x items-center gap-x-2; }
-.coach-occurrences .c-title { @apply text-body-500 text-02; }
-.coach-occurrences .c-no-data { @apply text-caption text-03; }
-.coach-occurrences .c-limit { @apply text-caption text-03 py-2; }
+.coach-occurrences > .c-head { @apply flex-x items-center gap-x-2; }
+.coach-occurrences > .c-head > .c-title { @apply text-body-500 text-02; }
+.coach-occurrences > .c-no-data { @apply text-caption text-03; }
+.coach-occurrences > .c-limit { @apply text-caption text-03 py-2; }
 .coach-occurrence {
-    @apply flex-y gap-y-3 w-full p-3 text-left;
+    @apply flex-y gap-y-3 w-full p-3 text-start;
 }
-.coach-occurrence .c-head { @apply flex-x items-baseline justify-between gap-x-2; }
-.coach-occurrence .c-chat { @apply text-body-500 text-02; }
-.coach-occurrence .c-time { @apply text-caption text-03; }
-.coach-occurrence .c-context { @apply text-base text-01 whitespace-pre-wrap break-words; }
-.coach-occurrence .c-context mark { @apply bg-transparent font-medium; color: var(--danger-light); }
-.coach-occurrence .c-word { @apply cursor-pointer underline decoration-dotted underline-offset-4; }
-.coach-occurrence .c-recommendation { @apply text-sm text-03; }
-.coach-occurrence .c-synonyms { @apply flex-x flex-wrap gap-x-3 text-sm text-02; }
+.coach-occurrence > .c-head { @apply flex-x items-baseline justify-between gap-x-2; }
+.coach-occurrence > .c-head > .c-chat { @apply text-body-500 text-02; }
+.coach-occurrence > .c-head > .c-time { @apply text-caption text-03; }
+.coach-occurrence > .c-context { @apply text-base text-01 whitespace-pre-wrap break-words; }
+.coach-occurrence > .c-context mark { @apply bg-transparent font-medium; color: var(--danger-light); }
+.coach-occurrence > .c-context > .c-word { @apply cursor-pointer underline decoration-dotted underline-offset-4; }
+.coach-occurrence > .c-recommendation { @apply text-sm text-03; }
+.coach-occurrence > .c-synonyms { @apply flex-x flex-wrap gap-x-3 text-sm text-02; }
 .coach-occurrence .btn-open-occurrence { @apply self-start; }
 /* The snackbar from the mock: a dark card in both themes, 12 px padding, the word in pink, a ringed close */
 .banner.coach-tip-bar {
@@ -96,25 +77,25 @@ body.narrow .coach-header .c-cover { @apply rounded-tr-lg; }
 .banner.coach-tip-bar > .c-content { @apply justify-start items-start p-0; }
 .banner.coach-tip-bar .banner-lead { @apply items-start gap-0; }
 .banner.coach-tip-bar .banner-lead > :not(.banner-body) { @apply hidden; }
-.banner.coach-tip-bar .banner-body { @apply flex-y gap-y-1 ml-0; }
-.banner.coach-tip-bar .c-tip-title {
-    @apply flex-x items-center gap-x-2 pr-8;
+.banner.coach-tip-bar .banner-body { @apply flex-y gap-y-1 ms-0; }
+.coach-tip-bar .banner-body > .c-tip-title {
+    @apply flex-x items-center gap-x-2 pe-8;
     @apply text-base font-medium;
     color: #f4f4f5;
 }
-.banner.coach-tip-bar .c-tip-mascot { @apply flex-none; width: 30px; height: 24px; }
-.banner.coach-tip-bar .c-tip-body { @apply text-sm leading-tight; }
-.banner.coach-tip-bar .c-tip-value { @apply font-semibold mr-2; color: #d25e8c; }
-.banner.coach-tip-bar .c-word { @apply font-semibold; color: #d25e8c; }
-.banner.coach-tip-bar .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }
+.coach-tip-bar .banner-body > .c-tip-title > .c-tip-mascot { @apply flex-none; width: 30px; height: 24px; }
+.coach-tip-bar .banner-body > .c-tip-body { @apply text-sm leading-tight; }
+.coach-tip-bar .banner-body > .c-tip-body > .c-tip-value { @apply font-semibold me-2; color: #d25e8c; }
+.coach-tip-bar .banner-body > .c-tip-body > div > .c-word { @apply font-semibold; color: #d25e8c; }
+.coach-tip-bar .banner-body > .c-tip-body > .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }
 .banner.coach-tip-bar .coach-chip { @apply bg-01 text-02; }
 /* The timer button's ring is drawn at 2rem for btn-sm, so the button keeps that size */
-.banner.coach-tip-bar .c-tip-close {
-    @apply absolute top-2 right-2;
+.banner.coach-tip-bar .btn-tip-close {
+    @apply absolute top-2 end-2;
     @apply w-8 h-8 min-w-0 min-h-0 p-0;
     color: #e9e9ec;
 }
-.banner.coach-tip-bar .c-tip-close i { @apply text-base; color: #e9e9ec; }
+.banner.coach-tip-bar .btn-tip-close i { @apply text-base; color: #e9e9ec; }
 /* Mobile: pin the coach tip as a fixed banner above the audio panel, out of the subfooter's flow, so
    the transcript scrolls under it. The anchor is absolute against the chat column (.c-container is the
    positioned ancestor); the grown end anchor below keeps the newest message clear of the banner.
@@ -137,191 +118,203 @@ body.narrow .list-view-layout[data-has-coach-tip] .virtual-list > .c-wrapper > u
     @apply flex-y gap-y-1;
     @apply max-w-80 p-3;
 }
-.coach-mark-menu .c-title { @apply text-body-500 text-02; }
-.coach-mark-menu .c-body { @apply text-sm text-03; }
-.coach-mark-menu .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }
+.coach-mark-menu > .c-title { @apply text-body-500 text-02; }
+.coach-mark-menu > .c-body { @apply text-sm text-03; }
+.coach-mark-menu > .c-synonyms { @apply flex-x flex-wrap gap-1 mt-1; }
 .coach-recent { @apply flex-y gap-y-2 px-4 pt-3 pb-4; }
 .coach-recent-summary { @apply flex-y p-3 gap-y-2; }
-.coach-recent-summary .c-heading { @apply flex-x items-center justify-between text-body-500 text-01 text-left; }
-.coach-recent-summary .c-period,
-.coach-recent-summary .c-caption { @apply text-caption text-03; }
-.coach-recent-summary .c-skill { @apply flex-y gap-y-1 py-2 text-left; }
-.coach-recent-summary .c-skill + .c-skill { @apply border-t border-separator; }
-.coach-recent-summary .c-row { @apply flex-x flex-wrap justify-between gap-x-3 gap-y-1; }
-.coach-recent-summary .c-name { @apply text-body-500 text-01; }
-.coach-recent-summary .c-value,
-.coach-recent-summary .c-change { @apply text-sm; }
-.coach-recent-summary .c-rail { @apply relative block h-1.5 my-1 rounded-full bg-04; }
-.coach-recent-summary .c-fill { @apply absolute h-full rounded-full bg-primary; }
-.coach-recent-summary .c-range { @apply absolute h-full rounded-full bg-success; }
-.coach-recent-summary .c-marker { @apply absolute top-1/2 w-1 h-3 -translate-y-1/2 -translate-x-1/2 bg-primary; }
-.coach-recent-summary .c-marker.previous { @apply h-2 bg-03; }
+.coach-recent-summary > .c-heading { @apply flex-x items-center justify-between text-body-500 text-01 text-start; }
+.coach-recent-summary > .c-period,
+.coach-recent-summary > .c-skill > .c-caption { @apply text-caption text-03; }
+.coach-recent-summary > .c-skill { @apply flex-y gap-y-1 py-2 text-start; }
+.coach-recent-summary > .c-skill + .c-skill { @apply border-t border-separator; }
+.coach-recent-summary > .c-skill > .c-row { @apply flex-x flex-wrap justify-between gap-x-3 gap-y-1; }
+.coach-recent-summary > .c-skill > .c-row > .c-name { @apply text-body-500 text-01; }
+.coach-recent-summary > .c-skill > .c-row > .c-value,
+.coach-recent-summary > .c-skill > .c-change { @apply text-sm; }
+.coach-recent-summary > .c-skill > .c-rail { @apply relative block h-1.5 my-1 rounded-full bg-04; }
+.coach-recent-summary > .c-skill > .c-rail > .c-fill { @apply absolute h-full rounded-full bg-primary; }
+.coach-recent-summary > .c-skill > .c-rail > .c-range { @apply absolute h-full rounded-full bg-success; }
+.coach-recent-summary > .c-skill > .c-rail > .c-marker {
+    @apply absolute top-1/2 w-1 h-3 -translate-y-1/2 -translate-x-1/2 bg-primary;
+}
+.coach-recent-summary > .c-skill > .c-rail > .c-marker.previous { @apply h-2 bg-03; }
 .coach-recent-summary button:focus-visible { @apply outline outline-2 outline-primary rounded; }
-.coach-week-deltas .c-comparison.targeted { @apply rounded-lg outline outline-2 outline-primary; }
+.coach-week-deltas > .c-comparison.targeted { @apply rounded-lg outline outline-2 outline-primary; }
 .coach-conversation { @apply flex-y gap-y-2 px-3 py-2; }
-.coach-conversation .c-head { @apply flex-x items-baseline justify-between gap-x-2; }
-.coach-conversation .c-title { @apply text-body-500; }
-.coach-conversation .c-when { @apply text-caption text-03 whitespace-nowrap; }
-.coach-conversation .c-finding { @apply flex-x items-start gap-x-2 text-sm text-01; }
-.coach-conversation .c-dot { @apply flex-none w-2 h-2 mt-1.5 rounded-full bg-03; }
-.coach-conversation .c-dot.band-high,
-.coach-conversation .c-dot.band-low { @apply bg-danger; }
-.coach-conversation .c-dot.band-medium { @apply bg-warning; }
-.coach-conversation .c-dot.band-good { @apply bg-success; }
-.coach-conversation .c-links { @apply flex-x gap-x-4 text-sm; }
+.coach-conversation > .c-head { @apply flex-x items-baseline justify-between gap-x-2; }
+.coach-conversation > .c-head > .c-title { @apply text-body-500; }
+.coach-conversation > .c-head > .c-when { @apply text-caption text-03 whitespace-nowrap; }
+.coach-conversation > .c-finding { @apply flex-x items-start gap-x-2 text-sm text-01; }
+.coach-conversation > .c-finding > .c-dot { @apply flex-none w-2 h-2 mt-1.5 rounded-full bg-03; }
+.coach-conversation > .c-finding > .c-dot.band-high,
+.coach-conversation > .c-finding > .c-dot.band-low { @apply bg-danger; }
+.coach-conversation > .c-finding > .c-dot.band-medium { @apply bg-warning; }
+.coach-conversation > .c-finding > .c-dot.band-good { @apply bg-success; }
+.coach-conversation > .c-links { @apply flex-x gap-x-4 text-sm; }
 .coach-conversation.excluded { @apply opacity-70; }
-.coach-conversation .c-excluded { @apply text-sm text-03; }
-.coach-conversation .c-links a { @apply text-primary cursor-pointer; }
-.coach-conversation .c-links a.c-exclude { @apply flex-x items-center gap-x-1 ml-auto leading-none text-03; }
-.coach-conversation .c-links a.c-exclude i { @apply flex-none text-sm leading-none; }
+.coach-conversation > .c-excluded { @apply text-sm text-03; }
+.coach-conversation > .c-links > a { @apply text-primary cursor-pointer; }
+.coach-conversation > .c-links > a.c-exclude { @apply flex-x items-center gap-x-1 ms-auto leading-none text-03; }
+.coach-conversation > .c-links > a.c-exclude > i { @apply flex-none text-sm leading-none; }
 .coach-progress { @apply flex-y gap-y-3 px-4 pt-3 pb-4; }
-.coach-better .c-mascot { width: 48px; height: 38px; @apply object-contain; }
+.coach-better .ti-left > .c-mascot { @apply object-contain; width: 48px; height: 38px; }
 .coach-week-scores { @apply p-3; }
-.coach-week-scores .c-column { @apply pt-4; }
-.coach-week-scores .c-bar-track { @apply items-center; }
-.coach-week-scores .c-label { @apply min-h-8 text-center; }
-.coach-week-scores .c-bar {
+.coach-week-scores > .bar-chart > .c-column { @apply pt-4; }
+.coach-week-scores > .bar-chart > .c-column > .c-bar-track { @apply items-center; }
+.coach-week-scores > .bar-chart > .c-column > .c-label { @apply min-h-8 text-center; }
+.coach-week-scores > .bar-chart > .c-column > .c-bar-track > .c-bar {
     @apply shrink-0 max-w-full rounded;
     width: 18px;
 }
 .coach-days { @apply flex-x gap-x-1.5 p-3; }
-.coach-days .c-day { @apply flex-1 flex-y items-center gap-y-1 text-micro-500 text-03; }
-.coach-days .c-day > div { @apply w-full h-6 rounded-md bg-04; }
-.coach-days .c-day.on > div { @apply bg-primary; }
-.coach-progress .c-days-caption { @apply text-caption text-03 -mt-2; }
-.coach-progress .c-deltas-hint { @apply text-caption text-03 -mt-2; }
-.coach-progress .c-scores-caption { @apply text-caption text-03 -mt-2; }
-.coach-week-deltas .c-badge { @apply font-medium min-w-11 text-right; }
-.coach-skill-detail .c-baseline-change.improving,
-.coach-recent-summary .c-change.improving,
-.coach-week-deltas .c-badge.improving { color: var(--green-10); }
-.coach-skill-detail .c-baseline-change.stable,
-.coach-recent-summary .c-change.stable,
-.coach-week-deltas .c-badge.stable { color: var(--emerald-10); }
-.coach-skill-detail .c-baseline-change.worsening,
-.coach-recent-summary .c-change.worsening,
-.coach-week-deltas .c-badge.worsening { color: var(--text-banner-warning); }
-.theme-dark .coach-skill-detail .c-baseline-change.improving,
-.theme-dark .coach-recent-summary .c-change.improving,
-.theme-dark .coach-week-deltas .c-badge.improving { color: var(--green-70); }
-.theme-dark .coach-skill-detail .c-baseline-change.stable,
-.theme-dark .coach-recent-summary .c-change.stable,
-.theme-dark .coach-week-deltas .c-badge.stable { color: var(--emerald-40); }
-.coach-milestones .c-check {
+.coach-days > .c-day { @apply flex-1 flex-y items-center gap-y-1 text-micro-500 text-03; }
+.coach-days > .c-day > div { @apply w-full h-6 rounded-md bg-04; }
+.coach-days > .c-day.on > div { @apply bg-primary; }
+.coach-progress > .c-days-caption,
+.coach-progress > .c-scores-caption { @apply text-caption text-03 -mt-2; }
+.coach-week-deltas .ti-right > .c-badge { @apply font-medium min-w-11 text-end; }
+.coach-skill-detail > .c-baseline-change.improving,
+.coach-recent-summary > .c-skill > .c-change.improving,
+.coach-week-deltas .ti-right > .c-badge.improving { color: var(--green-10); }
+.coach-skill-detail > .c-baseline-change.stable,
+.coach-recent-summary > .c-skill > .c-change.stable,
+.coach-week-deltas .ti-right > .c-badge.stable { color: var(--emerald-10); }
+.coach-skill-detail > .c-baseline-change.worsening,
+.coach-recent-summary > .c-skill > .c-change.worsening,
+.coach-week-deltas .ti-right > .c-badge.worsening { color: var(--text-banner-warning); }
+.theme-dark .coach-skill-detail > .c-baseline-change.improving,
+.theme-dark .coach-recent-summary > .c-skill > .c-change.improving,
+.theme-dark .coach-week-deltas .ti-right > .c-badge.improving { color: var(--green-70); }
+.theme-dark .coach-skill-detail > .c-baseline-change.stable,
+.theme-dark .coach-recent-summary > .c-skill > .c-change.stable,
+.theme-dark .coach-week-deltas .ti-right > .c-badge.stable { color: var(--emerald-40); }
+.coach-milestones .ti-left > .c-check {
     @apply flex-x items-center justify-center w-5 h-5 rounded-full bg-success text-xs text-white;
 }
-.coach-milestones .c-check.off { @apply bg-transparent border border-separator; }
+.coach-milestones .ti-left > .c-check.off { @apply bg-transparent border border-separator; }
 .coach-skills { @apply flex-y gap-y-3 px-4 pt-3 pb-4; }
-.coach-skills .c-periods { @apply flex-x items-center justify-between gap-x-2; }
-.coach-skills .c-periods .c-chips { @apply flex-x gap-x-2; }
-.coach-skills .chip { @apply px-3 py-1 rounded-full bg-01 text-sm text-02; }
+.coach-skills > .c-periods { @apply flex-x items-center gap-x-2; }
+.coach-skills > .c-periods > .c-chips { @apply flex-x flex-wrap gap-x-2; }
+.coach-skills .chip {
+    @apply flex-none;
+    @apply px-3 py-1 rounded-full bg-01 text-sm text-02 whitespace-nowrap;
+}
 .coach-skills .chip.on { @apply bg-primary text-white; }
-.coach-skills .c-words,
-.coach-skills .c-all-languages,
-.coach-skills .c-footer { @apply text-caption text-03; }
-.coach-skills .c-all-languages { @apply -mt-2; }
+.coach-skills > .c-topic-row { @apply flex-x items-center justify-between gap-x-2; }
+.coach-skills > .c-topic-row > .c-words,
+.coach-skills > .c-all-languages,
+.coach-skills > .c-footer { @apply text-caption text-03; }
+.coach-skills > .c-all-languages { @apply -mt-2; }
 .coach-skill { @apply flex-y gap-y-1 px-3 py-2; }
 .coach-skill + .coach-skill { @apply border-t border-separator; }
-.coach-skill .c-row { @apply flex-x items-baseline justify-between gap-x-3; }
-.coach-skill .c-name { @apply text-body-500 text-01; }
+.coach-skill > .c-row { @apply flex-x items-baseline justify-between gap-x-3; }
+.coach-skill > .c-row > .c-name { @apply text-body-500 text-01; }
 .coach-skill .btn-skill-detail {
     @apply flex-x items-center gap-x-2;
-    @apply text-left;
+    @apply text-start;
 }
 .coach-skill-detail {
     @apply flex-y gap-y-3;
     @apply min-w-0;
 }
-.coach-skill-detail .c-head {
+.coach-skill-detail > .c-head {
     @apply flex-x items-center gap-x-2;
 }
-.coach-skill-detail .c-moment-head {
+.coach-skill-detail .coach-occurrence > .c-head { @apply items-center; }
+.coach-skill-detail > .c-moment > .c-moment-head {
     @apply flex-x items-center justify-between gap-x-2;
 }
 .coach-skill-detail h2 { @apply text-heading-500 text-01; }
-.coach-skill-detail .c-periods {
-    @apply flex-x flex-wrap gap-2;
+.coach-skill-detail > .c-periods {
+    @apply flex-x flex-wrap items-center gap-2;
 }
-.coach-skill-detail .c-overview,
-.coach-skill-detail .c-distribution,
-.coach-skill-detail .c-moment {
+.coach-skill-detail > .c-overview,
+.coach-skill-detail > .c-distribution,
+.coach-skill-detail > .c-moment {
     @apply flex-y gap-y-3;
     @apply p-4;
     @apply text-body text-01;
 }
-.coach-skill-detail .c-value { @apply text-heading-500 text-01; }
-.coach-skill-detail .c-scope,
-.coach-skill-detail .c-rate,
-.coach-skill-detail .c-coverage,
-.coach-skill-detail .c-ranges,
-.coach-skill-detail .c-explanation,
-.coach-skill-detail .c-distribution-explanation,
-.coach-skill-detail .c-provisional,
-.coach-skill-detail .c-sample-progress { @apply text-caption text-02; }
-.coach-skill-detail .c-ranges {
-    @apply flex-y gap-y-1;
-}
-.coach-skill-detail .c-calendar {
+.coach-skill-detail > .c-overview > .c-value { @apply text-heading-500 text-01; }
+.coach-skill-detail > .c-scope,
+.coach-skill-detail > .c-coverage,
+.coach-skill-detail > .card > .c-coverage,
+.coach-skill-detail > .c-overview > .c-rate,
+.coach-skill-detail > .c-overview > .c-explanation,
+.coach-skill-detail > .c-overview > .c-provisional,
+.coach-skill-detail > .card > .c-sample-progress,
+.coach-skill-detail > .c-distribution > .c-distribution-explanation { @apply text-caption text-02; }
+.coach-skill-detail > .c-calendar {
     @apply flex-x items-center justify-between gap-x-2;
     @apply text-caption text-02;
 }
-.coach-skill-detail .c-baseline {
+.coach-skill-detail > .c-baseline {
     @apply flex-y gap-y-2;
     @apply p-4;
 }
-.coach-skill-detail .c-baseline .chip { @apply whitespace-normal; }
-.coach-skill-detail .c-baseline .btn-text {
+.coach-skill-detail > .c-baseline > .chip { @apply whitespace-normal; }
+.coach-skill-detail > .c-baseline > .btn-text {
     @apply self-start max-w-full justify-start px-0;
-    @apply text-01 text-left underline underline-offset-2;
+    @apply text-01 text-start underline underline-offset-2;
 }
-.coach-skill-detail .c-baseline .btn-text > .btn-content { @apply text-left line-clamp-none; }
-.coach-skill-detail .c-baseline .btn-save-baseline,
-.coach-skill-detail .c-baseline .chip.on { color: var(--black); }
-.coach-skill-detail .c-baseline h3 { @apply text-body-500 text-01; }
-.coach-skill-detail .c-history {
+.coach-skill-detail > .c-baseline > .btn-text > .btn-content { @apply text-start line-clamp-none; }
+.coach-skill-detail > .c-baseline > .btn-save-baseline,
+.coach-skill-detail > .c-baseline > .chip.on { color: var(--black); }
+.coach-skill-detail > .c-baseline > h3 { @apply text-body-500 text-01; }
+.coach-skill-detail > .c-history {
     @apply flex-y gap-y-3;
     @apply p-4;
 }
-.coach-skill-detail .c-history h3 { @apply text-body-500 text-01; }
-.coach-skill-detail .c-history-value { @apply text-heading-500 text-01; }
-.coach-skill-detail .c-chart {
+.coach-skill-detail > .c-history > h3 { @apply text-body-500 text-01; }
+.coach-skill-detail > .c-history > .c-history-value { @apply text-heading-500 text-01; }
+.coach-skill-detail > .c-history > .c-chart {
     @apply overflow-x-auto;
     @apply py-2;
 }
-.coach-skill-detail .c-pace-chart { @apply w-full; }
-.coach-skill-detail .c-range-legend { @apply flex-x items-center gap-x-2 pt-2; }
-.coach-skill-detail .c-target-key {
+.coach-pace-chart { @apply w-full; }
+.coach-skill-detail > .c-history > .c-chart > .c-range-legend {
+    @apply flex-x items-center gap-x-2;
+    @apply pt-2;
+    @apply text-caption text-02;
+}
+.coach-skill-detail > .c-history > .c-chart > .c-range-legend > .c-target-key {
     @apply flex-none w-4 h-3 rounded-sm border;
     background: color-mix(in srgb, var(--emerald-50) 15%, transparent);
     border-color: var(--emerald-30);
 }
-.theme-dark .coach-skill-detail .c-target-key { border-color: var(--emerald-50); }
-.coach-skill-detail .c-baseline-key {
+.theme-dark .coach-skill-detail > .c-history > .c-chart > .c-range-legend > .c-target-key {
+    border-color: var(--emerald-50);
+}
+.coach-skill-detail > .c-history > .c-chart > .c-range-legend > .c-baseline-key {
     @apply flex-none w-4 border-t-2 border-dashed;
     border-color: var(--text-02);
 }
-.coach-skill-detail .c-ranges.c-distribution-ranges { @apply grid grid-cols-3 gap-3; }
-.coach-skill-detail .c-distribution-ranges > div { @apply flex-y gap-y-1 min-w-0; }
-.coach-skill-detail .c-speaking-chart {
+.coach-skill-detail > .c-distribution > .c-distribution-ranges {
+    @apply grid grid-cols-3 gap-3;
+    @apply text-caption text-02;
+}
+.coach-skill-detail > .c-distribution > .c-distribution-ranges > div { @apply flex-y gap-y-1 min-w-0; }
+.coach-speaking-chart {
     --bar-chart-label-height: 1.5rem;
     --bar-chart-value-height: 1.25rem;
 }
-.coach-skill-detail .c-speaking-chart .c-column {
+.coach-speaking-chart > .c-column {
     @apply min-w-16 pt-5;
 }
-.coach-skill-detail .c-speaking-chart .c-bar-track { @apply relative; }
-.coach-skill-detail .c-speaking-chart .c-value {
+.coach-speaking-chart > .c-column > .c-bar-track { @apply relative; }
+.coach-speaking-chart > .c-column > .c-bar-track > .c-value {
     @apply absolute w-full;
+    @apply text-caption text-02;
     bottom: var(--bar-height);
 }
-.coach-skill-detail .c-speaking-chart .c-bar { @apply shrink-0; }
-.coach-skill-detail .c-speaking-chart .c-reference { @apply border-primary; }
-.coach-skill-detail .c-speaking-chart .c-bar { min-height: 2px; }
-.coach-skill-detail .bar-chart .c-value,
-.coach-skill-detail .bar-chart .c-label { @apply text-caption text-02; }
-.coach-skill-detail .c-words {
+.coach-speaking-chart > .c-column > .c-bar-track > .c-bar { @apply shrink-0; min-height: 2px; }
+.coach-speaking-chart > .c-reference { @apply border-primary; }
+.coach-speaking-chart > .c-column > .c-label { @apply text-caption text-02; }
+.coach-skill-detail > .c-words {
     @apply flex-y gap-y-2;
     @apply p-4;
+    @apply text-caption text-03;
 }
 .coach-skill-detail .btn-word-detail {
     @apply relative min-h-10 px-2 rounded overflow-hidden;
@@ -329,67 +322,63 @@ body.narrow .list-view-layout[data-has-coach-tip] .virtual-list > .c-wrapper > u
     @apply py-2;
     @apply text-body text-01;
 }
-.coach-skill-detail .c-word-bar {
-    @apply absolute inset-y-1 left-0 rounded pointer-events-none;
+.coach-skill-detail .btn-word-detail > .c-word-bar {
+    @apply absolute inset-y-1 start-0 rounded pointer-events-none;
     background: color-mix(in srgb, var(--primary) 20%, transparent);
 }
-.coach-skill-detail .c-word-label { @apply relative min-w-0 break-words text-left; overflow-wrap: anywhere; }
-.coach-skill-detail .c-word-count { @apply relative shrink-0; }
+.coach-skill-detail .btn-word-detail > .c-word-label {
+    @apply relative min-w-0 break-words text-start;
+    overflow-wrap: anywhere;
+}
+.coach-skill-detail .btn-word-detail > .c-word-count { @apply relative shrink-0; }
 .coach-skill-detail .btn-word-detail:focus-visible,
 .coach-skill .btn-skill-detail:focus-visible,
-.coach-skill .c-focus-link:focus-visible,
-.coach-settings-page .c-focus-reset:focus-visible {
+.coach-skill > .c-focus-link:focus-visible,
+.coach-settings-page .form-section > .c-language-focus > .c-focus-reset:focus-visible {
     @apply outline outline-2 outline-primary;
 }
-.coach-skill .c-value { @apply text-sm font-medium text-03 text-right; }
-.coach-skill .c-value.band-good { @apply text-success; }
-.coach-skill .c-value.band-medium { @apply text-warning; }
-.coach-skill .c-value.band-high,
-.coach-skill .c-value.band-low { @apply text-danger; }
-.coach-skill.plain .c-name { @apply text-base font-normal; }
-.coach-skill .c-caption { @apply text-caption text-03; }
-.coach-skill .c-chips { @apply flex-x flex-wrap gap-2 pt-1; }
-.coach-skill .c-focus-link { @apply text-sm text-01 underline text-left; }
-.coach-skill .c-focus-selected { @apply flex-x items-center gap-x-2 text-sm font-medium text-01; }
-.coach-score-sheet .c-points { @apply text-sm text-03 whitespace-nowrap; }
+.coach-skill > .c-row > .c-value { @apply text-sm font-medium text-03 text-end; }
+.coach-skill > .c-row > .c-value.band-good { @apply text-success; }
+.coach-skill > .c-row > .c-value.band-medium { @apply text-warning; }
+.coach-skill > .c-row > .c-value.band-high,
+.coach-skill > .c-row > .c-value.band-low { @apply text-danger; }
+.coach-skill.plain > .c-row > .c-name { @apply text-base font-normal; }
+.coach-skill > .c-caption { @apply text-caption text-03; }
+.coach-skill > .c-chips { @apply flex-x flex-wrap gap-2 pt-1; }
+.coach-skill > .c-focus-link { @apply text-sm text-01 underline text-start; }
+.coach-skill > .c-focus-selected { @apply flex-x items-center gap-x-2 text-sm font-medium text-01; }
+.coach-score-sheet .ti-right > .c-points { @apply text-sm text-03 whitespace-nowrap; }
+.coach-score-sheet .form-block > .c-empty { @apply py-2 text-center; }
 .coach-settings-page { @apply flex-y gap-y-3 px-4 pt-2 pb-4; }
-.coach-settings-page .c-title-row { @apply flex-x items-center gap-x-2; }
-.coach-settings-page .c-title { @apply text-title-500; }
-.coach-settings-page .c-hint { @apply text-caption text-03; }
-.coach-settings-page .c-topic-row { @apply flex-x items-center justify-between; }
-.coach-settings-page .c-languages-manage,
-.coach-settings-page .c-switch-on { @apply text-sm font-medium text-primary cursor-pointer; }
-.coach-settings-page .c-topic { @apply text-caption text-03 px-2 pt-1; }
-.coach-settings-page .c-iso { @apply text-sm font-medium text-01; }
-.coach-settings-page .c-data .c-hint { @apply px-2 pb-2; }
-.coach-settings-page .c-language-focus { @apply flex-y gap-y-2 px-4 pb-4 text-caption text-02; }
-.coach-settings-page .c-focus-reset { @apply self-start text-sm text-01 underline text-left; }
-body.hoverable .coach-skill .c-focus-link:hover,
-body.hoverable .coach-settings-page .c-focus-reset:hover {
+.coach-settings-page > .c-title-row { @apply flex-x items-center gap-x-2; }
+.coach-settings-page > .c-title-row > .c-title { @apply text-title-500; }
+.coach-settings-page > .c-hint,
+.coach-settings-page > .c-data > .c-hint { @apply text-caption text-03; }
+.coach-settings-page > .c-topic-row { @apply flex-x items-center justify-between; }
+.coach-settings-page > .c-topic-row > .c-languages-manage { @apply text-sm font-medium text-primary cursor-pointer; }
+.coach-settings-page > .c-data > .c-hint { @apply px-2 pb-2; }
+.coach-settings-page .form-section > .c-language-focus { @apply flex-y gap-y-2 px-4 pb-4 text-caption text-02; }
+.coach-settings-page .form-section > .c-language-focus > .c-focus-reset {
+    @apply self-start text-sm text-01 underline text-start;
+}
+body.hoverable .coach-skill > .c-focus-link:hover,
+body.hoverable .coach-settings-page .form-section > .c-language-focus > .c-focus-reset:hover {
     color: var(--blue-40);
 }
-.theme-dark body.hoverable .coach-skill .c-focus-link:hover,
-.theme-dark body.hoverable .coach-settings-page .c-focus-reset:hover {
+.theme-dark body.hoverable .coach-skill > .c-focus-link:hover,
+.theme-dark body.hoverable .coach-settings-page .form-section > .c-language-focus > .c-focus-reset:hover {
     color: var(--blue-70);
 }
 .coach-menu-entry { @apply flex-x items-center justify-between gap-x-4 w-full; }
 .coach-panel .tab-panel { @apply flex-none; }
-.coach-language-chips { @apply flex-y items-start gap-y-1; }
-.coach-language-chips .chip,
-.coach-skills .chip { @apply whitespace-nowrap flex-none; }
-.coach-language-chips .c-chips,
-.coach-skills .c-periods .c-chips { @apply flex-wrap; }
-.coach-score-sheet .c-empty { @apply py-2 text-center; }
-.coach-skills .c-topic-row { @apply flex-x items-center justify-between gap-x-2; }
-.coach-skills .c-periods { @apply justify-start; }
 .coach-talk-time { @apply p-3 items-center; }
-.coach-talk-time .donut-chart .c-ring { @apply w-24 h-24; }
-.coach-talk-time .donut-chart .c-center { @apply text-title-500 text-01; }
-.c-score-ring { @apply relative flex-none flex items-center justify-center w-10 h-10; }
+.coach-talk-time > .donut-chart > .c-ring { @apply w-24 h-24; }
+.coach-talk-time > .donut-chart > .c-ring > .c-center { @apply text-title-500 text-01; }
+.c-score-ring { @apply relative flex-none flex items-center justify-center w-7 h-7; }
 .c-score-ring > svg { @apply absolute inset-0 w-full h-full; transform: rotate(-90deg); }
-.c-score-ring .c-track { fill: none; stroke: var(--background-02); stroke-width: 4; }
-.c-score-ring .c-arc { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round; }
-.c-score-ring i { @apply text-xl; }
+.c-score-ring > svg > .c-track { fill: none; stroke: var(--background-02); stroke-width: 4; }
+.c-score-ring > svg > .c-arc { fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round; }
+.c-score-ring i { @apply text-sm; }
 /* The header, score card and tab strip stay put, like the chat panel's; only the tab content scrolls */
 .coach-panel > .coach-recent,
 .coach-panel > .coach-progress,
@@ -404,8 +393,6 @@ body.hoverable .coach-settings-page .c-focus-reset:hover {
 .coach-panel > .coach-empty > *,
 .coach-panel > .coach-settings-page > * { @apply flex-none; }
 .coach-settings-page .tile > .form-block { @apply p-0; }
-.coach-panel .c-coach-toggle { @apply flex-none; }
-.c-score-ring { @apply w-7 h-7; }
-.c-score-ring i { @apply text-sm; }
-.coach-switched-off-sheet .c-switch-on { @apply text-sm font-medium text-primary cursor-pointer; }
-.coach-switched-off-sheet .c-hint { @apply text-caption text-03 pt-2; }
+.coach-settings-page > .c-where > .c-coach-toggle { @apply flex-none; }
+.coach-switched-off-sheet .ti-right > .c-switch-on { @apply text-sm font-medium text-primary cursor-pointer; }
+.coach-switched-off-sheet .form-block > .c-hint { @apply text-caption text-03 pt-2; }

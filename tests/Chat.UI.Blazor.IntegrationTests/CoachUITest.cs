@@ -438,7 +438,7 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
             TimeSpan.FromSeconds(10));
 
         // act - dismiss
-        await inTipsChat.InvokeAsync(() => inTipsChat.Find(".banner.coach-tip-bar .c-tip-close").Click());
+        await inTipsChat.InvokeAsync(() => inTipsChat.Find(".banner.coach-tip-bar .btn-tip-close").Click());
 
         // assert
         await TestWait.When(async ct => (await hub.Coach.GetPendingTip(tester.Session, ct)).Should().BeNull());
@@ -1040,8 +1040,8 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         // act
         var cut = tester.Render<CoachPanel>();
         InitializeHub(tester, hub, cut.Instance);
-        cut.WaitForAssertion(() => cut.Find(".coach-header .c-settings-btn"), TimeSpan.FromSeconds(30));
-        await cut.InvokeAsync(() => cut.Find(".coach-header .c-settings-btn").Click());
+        cut.WaitForAssertion(() => cut.Find(".coach-header .btn-coach-settings"), TimeSpan.FromSeconds(30));
+        await cut.InvokeAsync(() => cut.Find(".coach-header .btn-coach-settings").Click());
         await TestWait.WhenRendered(cut, () => cut.Find(".coach-settings-page .c-skip-peers"));
         await cut.InvokeAsync(() => cut.Find(".coach-settings-page .c-skip-peers").Click());
         // The click writes the whole settings record and so does the command below, so the second one
@@ -1344,10 +1344,10 @@ public sealed class CoachUITest(ChatAppHostFixture fixture, ITestOutputHelper @o
         InitializeHub(tester, hub, cut.Instance);
 
         // assert
-        cut.WaitForAssertion(() => cut.Find(".coach-header .c-settings-btn"), TimeSpan.FromSeconds(30));
+        cut.WaitForAssertion(() => cut.Find(".coach-header .btn-coach-settings"), TimeSpan.FromSeconds(30));
         cut.FindAll(".coach-panel .c-coach-toggle")
             .Should().BeEmpty("the switch lives in the settings, not on the panel");
-        await cut.InvokeAsync(() => cut.Find(".coach-header .c-settings-btn").Click());
+        await cut.InvokeAsync(() => cut.Find(".coach-header .btn-coach-settings").Click());
         await TestWait.WhenRendered(cut, () => cut.Find(".coach-settings-page .c-coach-toggle").TextContent
             .Should().Contain("Coach me in this chat"));
     }

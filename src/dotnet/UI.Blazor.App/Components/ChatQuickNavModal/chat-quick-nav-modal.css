@@ -76,27 +76,27 @@ body.wide .chat-quick-nav-modal .modal-content {
     /* Reveal the thin scrollbar whenever the list overflows (not only on hover). */
     scrollbar-color: var(--scrollbar) transparent;
 }
-.chat-quick-nav .c-item {
+.chat-quick-nav > .c-list > .c-item {
     @apply flex-none truncate cursor-pointer;
     @apply rounded-lg;
 }
-body.hoverable .chat-quick-nav .c-item.selected,
-.touch-capable .chat-quick-nav .c-item:active {
+body.hoverable .chat-quick-nav > .c-list > .c-item.selected,
+.touch-capable .chat-quick-nav > .c-list > .c-item:active {
     @apply bg-mention-list-item-selected;
 }
-.chat-quick-nav .c-item.c-no-match {
+.chat-quick-nav > .c-list > .c-item.c-no-match {
     @apply cursor-default;
     @apply flex-x items-center h-12 px-3;
     @apply text-body-500 text-03 opacity-60;
 }
-.chat-quick-nav .c-item > .c-content {
+.chat-quick-nav > .c-list > .c-item > .c-content {
     @apply flex-x items-center gap-x-3;
     @apply h-12 px-3;
 }
-.chat-quick-nav .c-item > .c-content > .c-center {
+.chat-quick-nav > .c-list > .c-item > .c-content > .c-center {
     @apply flex-auto truncate;
     @apply text-body-500 text-01;
 }
-.chat-quick-nav .c-item .c-description {
+.chat-quick-nav > .c-list > .c-item > .c-content > .c-center > .c-description {
     @apply text-03 opacity-60 font-light;
 }

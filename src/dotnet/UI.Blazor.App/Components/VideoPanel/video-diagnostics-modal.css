@@ -2,7 +2,7 @@ body.wide .video-diagnostics-modal {
     @apply w-112;
 }
 .video-diagnostics-modal .dialog-body {
-    @apply flex flex-col gap-3 p-4;
+    @apply flex flex-col gap-3;
     font-size: 0.8125rem;
 }
 /* The body content wrapper is explicitly user-selectable so the user can
@@ -61,7 +61,7 @@ body.wide .video-diagnostics-modal {
 }
 
 .diag-expand-indicator {
-    @apply text-04 text-xs ml-auto;
+    @apply text-04 text-xs ms-auto;
     @apply font-mono;
 }
 
@@ -82,7 +82,7 @@ body.wide .video-diagnostics-modal {
 }
 
 .diag-value {
-    @apply text-01 text-right truncate;
+    @apply text-01 text-end truncate;
     @apply font-mono;
     font-size: 0.75rem;
 }
@@ -124,7 +124,7 @@ div.diag-value.multiline .diag-value {
 }
 
 .diag-row.diag-sub .diag-label {
-    @apply pl-3 text-04;
+    @apply ps-3 text-04;
 }
 .diag-row.diag-sub .diag-value {
     @apply text-04;
@@ -150,8 +150,8 @@ div.diag-value.multiline .diag-value {
 /* The blue accent rail marks the expandable detail strip — it should not
    bracket the always-visible Source fields. */
 .diag-js-expanded {
-    @apply flex flex-col gap-0.5 pl-3;
-    border-left: 2px solid var(--primary);
+    @apply flex flex-col gap-0.5 ps-3;
+    border-inline-start: 2px solid var(--primary);
 }
 
 .diag-layer-picker {
@@ -237,6 +237,6 @@ div.diag-value.multiline .diag-value {
 .diag-log-subline {
     @apply font-mono;
     font-size: 0.7rem;
-    padding-left: 0.5rem;
+    padding-inline-start: 0.5rem;
     overflow-wrap: anywhere;
 }

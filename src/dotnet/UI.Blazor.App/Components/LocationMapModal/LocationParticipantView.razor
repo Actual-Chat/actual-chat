@@ -8,7 +8,7 @@
         : "";
 }
 
-<div class="c-participant" @onclick="@Click">
+<div class="location-participant-view" @onclick="@Click">
     <AvatarCircle Avatar="@Participant.Author.Avatar" Size="@SquareSize.Size10"/>
     <div class="c-info">
         <div class="c-name">
@@ -24,7 +24,7 @@
             }
         </div>
     </div>
-    <div class="c-menu-btn" @onclick:stopPropagation="true">
+    <div class="c-menu" @onclick:stopPropagation="true">
         <ButtonRound
             Class="btn-sm btn-transparent"
             data-menu="@menuRef"

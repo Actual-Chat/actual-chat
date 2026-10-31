@@ -5,20 +5,20 @@
 @implements IAsyncDisposable
 @inherits ComponentBase<AppUIHub>
 
-<div class="c-gif-tab">
+<div class="gif-picker">
     <SearchBox Placeholder="@L.Emoji_SearchGifs" ClearButton="true" TextChanged="@OnSearch"/>
     <div class="c-gif-scroll no-scrollbar">
         @if (_recentGifs.Count > 0 && _searchQuery.IsNullOrEmpty()) {
-            <div class="c-gif-recent">
+            <div class="gif-picker-recent">
                 <div class="c-gif-recent-label">@L.Emoji_Recent</div>
-                <div class="c-gif-recent-list no-scrollbar">
+                <div class="gif-picker-recent-list no-scrollbar">
                     @foreach (var gif in _recentGifs) {
                         @GifButton(gif, "c-gif-recent-item", false, true)
                     }
                 </div>
             </div>
         }
-        <div class="c-gif-grid">
+        <div class="gif-picker-grid">
             @* Each new item is appended to the currently-shorter column (height estimated from aspect ratio).
                Stable: items are only appended, never reshuffled, so positions don't change across loads. *@
             @for (var col = 0; col < 2; col++) {

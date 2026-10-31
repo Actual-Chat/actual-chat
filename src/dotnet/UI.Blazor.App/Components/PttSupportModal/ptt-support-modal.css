@@ -4,7 +4,7 @@
     @apply cursor-pointer;
 }
 /* What the action that opened the dialog just did - the part the user must not miss */
-.ptt-support-modal .c-lead {
+.ptt-support-modal .confirm-text > .c-text > .c-lead {
     @apply text-02;
     @apply underline;
 }

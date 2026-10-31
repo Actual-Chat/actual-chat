@@ -92,7 +92,8 @@
         && m.Translation == TranslationState.None
         && status == ChatMessageSendingStatus.MessageStatus.Default;
 }
-<div @ref="Ref" class="chat-message-markup @translationCls @streamingCls @(isEmptyMarkup ? "empty" : "")" data-children="code-block">
+<div @ref="Ref" class="chat-message-markup @translationCls @streamingCls @(isEmptyMarkup ? "empty" : "")" dir="auto"
+     data-children="code-block">
     @if (m.IsStreaming) {
         @if (IsOwnMessage && sm.IsTextEmpty && !HasNewerStreamingEntry()) {
             <StreamingEntryBadge

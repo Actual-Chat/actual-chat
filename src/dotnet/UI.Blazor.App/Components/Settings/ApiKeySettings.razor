@@ -6,7 +6,7 @@
 
 <TileTopic Topic="@L.Settings_ApiKeys" Description="@L.ApiKeys_Description"/>
 
-<Tile Class="tile-flat">
+<Tile>
     @foreach (var key in keys) {
         <TileItem IsHoverable="false">
             <Icon><i class="icon-key"></i></Icon>
@@ -24,7 +24,7 @@
             <Right>
                 @if (key.IsActive) {
                     <HeaderButton
-                        Class="c-danger btn-sm"
+                        Class="btn-quiet-danger btn-sm"
                         Tooltip="@L.ApiKeys_Deactivate"
                         Click="@(() => OnDeactivateClick(key.IdPrefix))">
                         <i class="icon-key-off"></i>

@@ -6,14 +6,14 @@
         return;
 
     if (CaptchaUI.IsFake) {
-        <div class="c-recaptcha-info">
+        <div class="captcha-view">
             This is fake reCAPTCHA. Should I fail?
             <a href=""
                @onclick="@OnToggleFakeCaptcha"
                @onclick:preventDefault>@(_fakeCaptchaMustFail ? "Yes" : "No")</a>
         </div>
     } else if (CaptchaUI.IsAvailable) {
-        <div class="c-recaptcha-info">
+        <div class="captcha-view">
             @L.Captcha_Protected_Prefix<a
                 class="recaptcha-link"
                 href="https://policies.google.com/privacy">@L.Onboarding_PrivacyPolicy</a>@L.Captcha_And<a

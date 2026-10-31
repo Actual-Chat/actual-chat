@@ -1,16 +1,16 @@
-.report-modal .c-container {
+.report-modal > .dialog-body > .c-container {
     @apply flex flex-y gap-y-2;
 }
-.report-modal .c-description {
+.report-modal > .dialog-body > .c-container > .c-description {
     @apply text-02;
 }
-.report-modal .c-comment {
+.report-modal > .dialog-body > .c-container > .c-comment {
     @apply w-full p-2 rounded;
     @apply bg-input border border-bg-04;
     @apply text-01;
     resize: vertical;
     min-height: 6rem;
 }
-.report-modal .c-counter {
+.report-modal > .dialog-body > .c-container > .c-counter {
     @apply self-end text-sm text-03;
 }

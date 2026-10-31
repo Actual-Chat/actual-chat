@@ -1,27 +1,27 @@
-.oauth-consent-modal .c-heading {
+.oauth-consent-modal > .dialog-body > .form-block > .c-heading {
     @apply text-title-500 text-02;
 }
-.oauth-consent-modal .c-note {
+.oauth-consent-modal > .dialog-body > .form-block > .c-note {
     @apply text-caption text-03;
 }
 
-.oauth-consent-modal .c-account {
+.oauth-consent-account {
     @apply flex-x items-center gap-x-3;
 }
-.oauth-consent-modal .c-account .c-name {
+.oauth-consent-account > .c-name {
     @apply flex-y min-w-0;
 }
-.oauth-consent-modal .c-account .c-label {
+.oauth-consent-account > .c-name > .c-label {
     @apply text-micro-500 text-03;
 }
-.oauth-consent-modal .c-account .c-title {
+.oauth-consent-account > .c-name > .c-title {
     @apply text-body-500 text-02 truncate;
 }
 
-.oauth-consent-modal .c-scope {
+.oauth-consent-modal > .dialog-body > .form-block > .c-scope {
     @apply flex-x items-center gap-x-2;
     @apply text-02;
 }
-.oauth-consent-modal .c-scope > i {
+.oauth-consent-modal > .dialog-body > .form-block > .c-scope > i {
     @apply text-xl text-primary;
 }

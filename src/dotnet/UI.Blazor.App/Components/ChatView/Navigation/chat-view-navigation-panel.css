@@ -3,7 +3,7 @@
 }
 /* The column exists even with nothing to show, so it must not swallow taps on the chat below it */
 .chat-view-navigation-panel > .c-content {
-    @apply absolute bottom-3 md:bottom-0 right-3 z-10;
+    @apply absolute bottom-3 md:bottom-0 end-3 z-10;
     @apply flex-y items-center justify-center gap-y-2;
     @apply pointer-events-none;
     @apply shadow-scrollbar;
@@ -12,8 +12,8 @@
     @apply pointer-events-auto;
 }
 body.hoverable .chat-view-navigation-panel > .c-content {
-    @apply right-0;
-    @apply p-3 pl-8;
+    @apply end-0;
+    @apply p-3 ps-8;
 }
 body.narrow[data-has-audio-panel-header] .chat-view-navigation-panel > .c-content {
     @apply bottom-18;

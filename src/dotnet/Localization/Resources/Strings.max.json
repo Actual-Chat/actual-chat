@@ -2001,6 +2001,7 @@
   "Shortcuts_ToggleSelection": "Εναλλαγή επιλογής σε λίστες επιλογής",
   "Shortcuts_ToggleTheme": "Comutați între tema luminoasă și cea întunecată",
   "Shortcuts_ToggleSafeAreas": "Переключить безопасные области",
+  "Shortcuts_ToggleTextDirection": "Εναλλαγή διάταξης από δεξιά προς αριστερά",
 
   // The section heading above the LocationAccuracy_* options further up.
   "LocationAccuracy_Topic": "Точност на местоположението",

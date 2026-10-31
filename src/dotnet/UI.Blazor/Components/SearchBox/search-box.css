@@ -7,32 +7,32 @@
     @apply relative flex-x;
 }
 .search-box .search-icon,
-.search-box .c-close-btn {
+.search-box > label > .btn-close {
     @apply absolute;
     @apply flex items-center justify-center;
     @apply w-10 h-10;
     @apply text-03;
 }
 .search-box .search-icon {
-    @apply left-0;
+    @apply start-0;
 }
-.search-box .c-close-btn {
-    @apply right-0;
+.search-box > label > .btn-close {
+    @apply end-0;
 }
 .search-box input {
     @apply h-10;
-    @apply pl-10 pr-4;
+    @apply ps-10 pe-4;
     @apply rounded-full;
-    @apply text-left bg-input;
+    @apply text-start bg-input;
 }
 .search-box input:focus {
-    @apply pl-4;
+    @apply ps-4;
 }
 .search-box input:focus + .search-icon {
     @apply hidden;
 }
 .search-box input::placeholder {
-    @apply text-left;
+    @apply text-start;
 }
 .search-box input:focus::placeholder {
     @apply text-transparent;
@@ -47,12 +47,12 @@
 }
 
 .search-box.icon-align-right i {
-    @apply right-0;
+    @apply end-0;
 }
 
 .search-box.icon-align-right input {
     @apply px-10;
 }
 .search-box:has(input:focus) input {
-    @apply pl-4;
+    @apply ps-4;
 }

@@ -6,7 +6,7 @@
     var url = _pageUrl + "#" + link.url;
     <a
         href="@url"
-        class="c-title @(isActiveLink ? "active" : "")"
+        class="docs-link @(isActiveLink ? "active" : "")"
         @onclick="@(() => NavigateTo(link.url))"
         @onclick:preventDefault="true">
         @link.title

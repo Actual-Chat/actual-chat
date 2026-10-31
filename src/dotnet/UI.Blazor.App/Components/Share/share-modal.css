@@ -15,23 +15,6 @@
 .share-modal .embedded-message-editor {
     @apply border-b-0;
 }
-.share-modal .link-info {
-    @apply flex-x gap-x-4;
-    @apply border rounded-lg border-separator;
-}
-.share-modal .link-info .c-icon {
-    @apply flex items-center;
-    @apply text-03 pl-3;
-}
-.share-modal .link-info .c-body {
-    @apply grow;
-    @apply flex-x items-center;
-}
-.share-modal .link-info .c-link {
-    @apply w-full max-h-5;
-    @apply truncate;
-    @apply leading-5 text-body-500 text-02;
-}
 .share-modal .copy-to-clipboard .btn.btn-round .btn-content {
     @apply min-h-12 min-w-12 max-h-12 max-w-12;
 }
@@ -85,11 +68,11 @@
     @apply bg-cancel;
 }
 .share-actions .share-externally-button,
-.share-actions .c-copy-link {
+.share-actions > * > .c-copy-link {
     @apply flex-1;
 }
 .share-actions .share-externally-button .btn,
-.share-actions .c-copy-link .btn {
+.share-actions > * > .c-copy-link > .btn {
     @apply flex-1;
     @apply w-auto;
     @apply px-4;
@@ -107,13 +90,13 @@
 .share-actions .share-externally-button .btn i {
     @apply text-xl;
 }
-.share-actions .c-copy-link.c-fixed,
-.share-actions .c-copy-link.c-fixed .btn {
+.share-actions > * > .c-copy-link.c-fixed,
+.share-actions > * > .c-copy-link.c-fixed > .btn {
     @apply flex-none;
 }
-.share-actions .c-copy-link .btn-content {
+.share-actions > * > .c-copy-link > .btn > .btn-content {
     @apply flex items-center gap-2;
 }
-.share-actions .c-copy-link span {
+.share-actions > * > .c-copy-link span {
     @apply text-02;
 }

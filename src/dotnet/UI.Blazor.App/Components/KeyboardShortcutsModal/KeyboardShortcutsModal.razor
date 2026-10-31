@@ -77,7 +77,7 @@
 
     // Private methods
 
-    private RenderFragment RenderKeys(Shortcut shortcut) => @<div class="c-keys">
+    private RenderFragment RenderKeys(Shortcut shortcut) => @<div class="keyboard-shortcut-keys">
         @for (var i = 0; i < shortcut.Combos.Length; i++) {
             if (i > 0) {
                 <span class="c-sep">/</span>

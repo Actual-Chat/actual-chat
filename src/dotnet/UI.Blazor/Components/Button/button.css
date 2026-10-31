@@ -20,7 +20,7 @@ body.device-ios * {
     @apply z-10;
 }
 .btn-header-back .button-touch-target {
-    @apply -right-12;
+    @apply -end-12;
 }
 
 /* Sizes */

@@ -18,7 +18,7 @@
 }
 
 .chat-view-search-results-navigator > .c-content {
-    @apply absolute bottom-3 md:bottom-0 right-3 md:mb-2 z-10;
+    @apply absolute bottom-3 md:bottom-0 end-3 md:mb-2 z-10;
     @apply flex-y items-center justify-center gap-y-3;
     @apply shadow-scrollbar;
 }

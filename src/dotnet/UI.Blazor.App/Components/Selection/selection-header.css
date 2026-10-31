@@ -22,9 +22,6 @@
 .selection-header .selection-header-buttons .btn.btn-round.start-thread-btn {
     @apply text-primary;
 }
-.selection-header .btn-h.c-close-btn {
+.selection-header > div > .btn-h.btn-close {
     @apply w-10;
-}
-.selection-header > .c-button-group > .btn-h span {
-    @apply text-body-500;
 }

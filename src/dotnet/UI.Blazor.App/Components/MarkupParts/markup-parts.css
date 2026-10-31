@@ -1,12 +1,12 @@
 .translation-marker {
     @apply top-1;
-    @apply pl-1;
+    @apply ps-1;
 }
 /* .markup-suffix supplies the gap itself, so the marker must not add its own on top. */
 .markup-suffix .translation-marker,
 .playable-text-markup .translation-marker,
 .plain-text-markup .translation-marker {
-    @apply pl-0;
+    @apply ps-0;
 }
 .entry-marker {
     @apply relative;
@@ -45,9 +45,9 @@
    the edge matches the text's gap on the right. */
 .mention-markup.mention-markup-alertable {
     @apply gap-x-0.5;
-    @apply pl-0.5;
+    @apply ps-0.5;
 }
-.mention-markup .c-mention-state {
+.mention-markup > .c-mention-state {
     @apply flex-none;
     font-size: 1rem;
 }
@@ -62,12 +62,12 @@
 .mention-markup.mention-markup-alertable.mention-read {
     @apply bg-mention-active text-primary;
 }
-.mention-markup.mention-markup-alertable.mention-notified .c-mention-state,
-.mention-markup.mention-markup-alertable.mention-read .c-mention-state {
+.mention-markup.mention-markup-alertable.mention-notified > .c-mention-state,
+.mention-markup.mention-markup-alertable.mention-read > .c-mention-state {
     @apply text-primary;
 }
 /* Shake the pending bell on hover (desktop only) to signal it's actionable. */
-body.hoverable .mention-markup.mention-markup-alertable:hover .c-mention-state.icon-bell {
+body.hoverable .mention-markup.mention-markup-alertable:hover > .c-mention-state.icon-bell {
     transform-origin: 50% 10%;
     animation: bell-shake 0.7s ease-in-out;
 }
@@ -119,7 +119,7 @@ body.hoverable .mention-markup.mention-markup-alertable:hover .c-mention-state.i
     width: 0;
     height: 0;
 }
-#spoiler-stencil .c-flood {
+#spoiler-stencil > .c-flood {
     flood-color: var(--spoiler-fill);
 }
 .spoiler-markup {
@@ -163,7 +163,7 @@ body.hoverable .mention-markup.mention-markup-alertable:hover .c-mention-state.i
     @apply max-w-64 md:max-w-96 max-h-64 md:max-h-80;
 }
 .gif-watermark {
-    @apply absolute bottom-1 left-1;
+    @apply absolute bottom-1 start-1;
     @apply h-3 w-auto;
     @apply pointer-events-none select-none;
     @apply opacity-70;
@@ -187,10 +187,10 @@ body.hoverable .mention-markup.mention-markup-alertable:hover .c-mention-state.i
     @apply inline-flex items-center justify-center;
     @apply w-10 h-10;
 }
-.emoji-message .c-emoji {
+.emoji-message > .c-emoji {
     @apply w-10 h-10;
 }
-.emoji-message.emoji-animating .c-emoji {
+.emoji-message.emoji-animating > .c-emoji {
     @apply opacity-0;
 }
 
@@ -349,7 +349,7 @@ body.hoverable .mention-markup.mention-markup-alertable:hover .c-mention-state.i
 
 .code-block-markup {
     @apply flex-y items-stretch;
-    @apply mr-2;
+    @apply me-2;
     @apply rounded border-2 border-separator;
     @apply overflow-hidden;
     max-height: 75vh;
@@ -402,17 +402,17 @@ ol.list-markup {
 }
 ul.list-markup {
     @apply flex-y;
-    @apply pl-2;
+    @apply ps-2;
 }
 ul {
     list-style: none outside;
 }
 ul.list-markup li {
-    @apply relative pl-4;
+    @apply relative ps-4;
 }
 ul.list-markup li::before {
     content: "\2012";
-    @apply absolute left-0;
+    @apply absolute start-0;
     @apply text-01;
 }
 
@@ -516,9 +516,9 @@ ul.list-markup li::before {
 /* min-height keeps the bar visible for a quote that renders no height of its own: a lone ">"
    is a blank line, and .blank-line-markup is a margin rather than an empty line by design. */
 .quote-markup {
-    @apply py-0 pl-2;
+    @apply py-0 ps-2;
     @apply min-h-5;
-    border-left: 2px solid var(--quote-markup-border);
+    border-inline-start: 2px solid var(--quote-markup-border);
 }
 
 /* Table: scrolls on its own so a wide table never widens the message. Cell alignment comes
@@ -535,7 +535,7 @@ ul.list-markup li::before {
 .table-markup td {
     @apply px-2 py-1;
     @apply border border-separator;
-    @apply align-top text-left;
+    @apply align-top text-start;
     word-break: break-word;
 }
 .table-markup th {
@@ -553,6 +553,6 @@ ul.list-markup li::before {
    word and the marks: they can never wrap onto a line of their own. */
 .markup-suffix {
     @apply inline;
-    padding-left: 0.25rem;
+    padding-inline-start: 0.25rem;
     white-space: nowrap;
 }

@@ -18,6 +18,7 @@
     @apply rotate-45;
 }
 .ac-bubble {
+    /* physical: bubble-host.ts positions it in viewport coordinates */
     @apply hidden absolute top-0 left-0 z-bubble;
     /* Both bounds subtract the insets - shift() can only translate a bubble, not shrink it - and the
        floor yields the same way the cap does, since a bare min-width would just override it. */

@@ -31,16 +31,16 @@
                     TextChanged="OnSearchInputTextChanged">
                 </TextInput>
                 <HeaderButton
-                    Class="c-filter-btn btn-lg"
+                    Class="btn-filter btn-lg"
                     data-menu="@(MenuRef.New<SearchFilterMenu>())"
                     data-menu-trigger="@MenuTrigger.Primary"
                     data-menu-placement="@(FloatingPosition.BottomStart.ToPositionString())">
                     <i class="icon-options-2 text-xl"></i>
                 </HeaderButton>
-                <ButtonRound Click="@OnSearchButtonClick" Class="c-ai-btn search-btn btn-transparent">
+                <ButtonRound Click="@OnSearchButtonClick" Class="btn-ai search-btn btn-transparent">
                     <i class="icon-search text-xl"></i>
                 </ButtonRound>
-                <HeaderButton Click="@OnCloseClick" Class="c-close-btn" data-child="close-btn">
+                <HeaderButton Click="@OnCloseClick" Class="btn-close" data-child="close-btn">
                     <i class="icon-close text-2xl"></i>
                 </HeaderButton>
             </label>

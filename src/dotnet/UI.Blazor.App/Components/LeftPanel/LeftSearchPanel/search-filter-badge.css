@@ -1,7 +1,7 @@
 .search-filter-badge {
     @apply inline-flex items-center gap-x-1;
     @apply h-5;
-    @apply pl-2 pr-1.5;
+    @apply ps-2 pe-1.5;
     @apply rounded-full border-0;
     @apply bg-03;
     @apply text-caption text-03 whitespace-nowrap;

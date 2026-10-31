@@ -40,53 +40,51 @@
 }
 
 /* Header */
-.log-item .c-header {
+.log-item > .c-header {
     @apply flex flex-x items-baseline gap-x-1;
 }
-.log-item .c-timestamp {
+.log-item > .c-header > .c-timestamp {
     @apply text-03 underline;
 }
-.log-item .c-category {
+.log-item > .c-header > .c-category {
     @apply text-03;
     @apply break-all;
 }
-.log-item .c-level {
+.log-item > .c-header > .c-level {
     @apply flex justify-center font-bold min-w-3;
 }
-.log-item .c-id {
+.log-item > .c-header > .c-id {
     @apply text-sm font-semibold text-cancel-text opacity-20;
 }
 
-.log-item.trace .c-level,
-.log-item.debug .c-level {
+.log-item.trace > .c-header > .c-level,
+.log-item.debug > .c-header > .c-level {
     @apply text-03;
 }
-.log-item.info .c-level {
+.log-item.info > .c-header > .c-level {
     @apply text-01;
 }
-.log-item.warning .c-level {
+.log-item.warning > .c-header > .c-level {
     @apply text-warning;
 }
-.log-item.error .c-level {
-    @apply text-danger;
-}
-.log-item.critical .c-level {
+.log-item.error > .c-header > .c-level,
+.log-item.critical > .c-header > .c-level {
     @apply text-danger;
 }
 
 /* Body */
-.log-item .c-body {
-    @apply ml-4;
+.log-item > .c-body {
+    @apply ms-4;
     @apply text-01;
     @apply break-all;
 }
-.log-item.trace .c-body,
-.log-item.debug .c-body {
+.log-item.trace > .c-body,
+.log-item.debug > .c-body {
     @apply text-03 opacity-70;
 }
-.log-item.warning .c-body {
+.log-item.warning > .c-body {
     @apply text-warning;
 }
-.log-item.error .c-body {
+.log-item.error > .c-body {
     @apply text-danger;
 }

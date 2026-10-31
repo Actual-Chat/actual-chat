@@ -164,7 +164,7 @@ in a later section looks loaded — most of them are.*
 
 ### Content bookkeeping
 
-- **settled height** — *`ItemHeightController.getHeight`, `c-height-unsettled`.* The height an item
+- **settled height** — *`ItemHeightController.getHeight`, `height-unsettled`.* The height an item
   *will* have once its transition lands, and the value the model uses. An animation in flight therefore
   changes how the list looks without changing where it thinks anything is.
 - **appearance** — *`applyAppearances`, `beginAppearance`, `EdgeSentinel`.* An item parked at a start
@@ -613,7 +613,7 @@ change, so a live transcript is followed rather than waited out; overridable per
 computed style and cached; 150 is the fallback) → `transitionend` or its backstop timer → settle →
 re-schedule with whatever the content did meanwhile. Each write calls back into the list, which
 updates the model and queues a throttled (64ms) `relayout` — offsets, re-anchor, layout, re-pin. The
-item is clipped (`c-height-unsettled`) for exactly as long as the written height is behind the
+item is clipped (`height-unsettled`) for exactly as long as the written height is behind the
 content, and not a moment longer, because a settled item is exactly its content's height and a
 permanent clip would cut off the hover menu.
 
@@ -1556,8 +1556,8 @@ Three things make this harder than it sounds, and each has a defence:
   by a `MutationObserver` on the container, or the height observer would measure a detached element
   forever.
 - **Blazor rewrites the whole `class` attribute** whenever an item's own classes change, which the
-  edge classes do as the loaded window moves. That silently drops `c-height-controlled` and
-  `c-height-unsettled`, leaving the item with a written height and none of the rules that make it mean
+  edge classes do as the loaded window moves. That silently drops `height-controlled` and
+  `height-unsettled`, leaving the item with a written height and none of the rules that make it mean
   anything. The same observer re-asserts them, ignoring the controller's own writes so it cannot loop
   with itself, and re-measures — a class can change the item's padding without the content resizing.
 - **A `transitionend` can simply not arrive** — the element detached mid-flight, or nothing ever

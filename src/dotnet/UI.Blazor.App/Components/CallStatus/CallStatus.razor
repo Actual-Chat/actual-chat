@@ -4,7 +4,7 @@
     var isOffline = IsAnswered && State.Value;
 }
 
-<span class="c-status @(isOffline ? "offline" : "")">
+<span class="call-status @(isOffline ? "offline" : "")">
     @if (isOffline) {
         @(IsShort ? L.Call_NoConnectionShort : L.Call_NoConnection)
     } else if (IsInProgress) {

@@ -16,7 +16,7 @@
     Url="@url"
     ReplaceOnPrefix="/chat/"
     IsSelected="false"
-    Class="c-history">
+    Class="notification-history-list-item">
     <ChildContent>
         <div class="c-container">
             <ChatIcon Chat="@chat" ShowPresence="false"/>
@@ -26,7 +26,7 @@
                     <span class="c-incut"></span>
                     <LiveTimeDeltaText Class="c-timestamp" Moment="@newest.SentAt"/>
                 </span>
-                <div class="c-last-message">
+                <div class="c-last-message" dir="auto">
                     <span class="c-text">@newest.Text</span>
                     <div class="c-incut"></div>
                     @if (Group.OlderCount > 0) {

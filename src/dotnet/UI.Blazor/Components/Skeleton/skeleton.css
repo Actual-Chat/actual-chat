@@ -8,7 +8,7 @@
 }
 body.narrow splash-page-skeleton .left-panel-skeleton.side-nav {
     @apply relative;
-    @apply top-auto bottom-auto left-auto right-auto;
+    @apply top-auto bottom-auto start-auto end-auto;
     @apply w-full;
     @apply z-auto;
 }
@@ -36,8 +36,8 @@ splash-page-skeleton {
     @apply items-end gap-y-3 md:gap-y-2;
 }
 body.narrow .thin-left-panel-skeleton .panel-body-skeleton {
-    padding-left: 0.4rem;
-    padding-right: 0.5rem;
+    padding-inline-start: 0.4rem;
+    padding-inline-end: 0.5rem;
 }
 /* Widths mirror .left-panel-buttons in left-panel.css, including its wider md variant
    next to an open right panel - otherwise the chat list shifts once the real UI lands. */
@@ -58,8 +58,8 @@ thin-left-panel-skeleton .button {
     @apply rounded-xl md:rounded-lg;
     @apply bg-03;
     animation: pulse 2s steps(10) infinite;
-    margin-left: var(--button-margin-left);
-    margin-right: var(--button-margin-right);
+    margin-inline-start: var(--button-margin-left);
+    margin-inline-end: var(--button-margin-right);
 }
 thin-left-panel-skeleton .footer-button {
     @apply w-10 h-10 md:w-12 md:h-12;
@@ -67,7 +67,7 @@ thin-left-panel-skeleton .footer-button {
     @apply rounded-full;
     @apply bg-03;
 }
-thin-left-panel-skeleton .c-delimiter {
+thin-left-panel-skeleton > .c-delimiter {
     @apply w-10;
     @apply mt-0 mb-2 mx-1;
     @apply border-t border-nav-separator;
@@ -92,11 +92,11 @@ body.narrow .wide-left-panel-skeleton:has(.inaccessible-place-request) {
     @apply py-2 px-2;
     @apply border-b border-separator;
 }
-.wide-left-panel-skeleton .panel-header-skeleton .c-title {
+.wide-left-panel-skeleton > .panel-header-skeleton > .c-title {
     @apply flex-1 flex items-center;
     @apply h-1/2;
 }
-.wide-left-panel-skeleton .panel-header-skeleton .c-content {
+.wide-left-panel-skeleton > .panel-header-skeleton > .c-content {
     @apply flex-1 self-end;
     @apply w-full h-10;
     @apply rounded-full;
@@ -122,7 +122,7 @@ body.narrow .wide-left-panel-skeleton:has(.inaccessible-place-request) {
 
 /* Right Panel Skeleton */
 .right-panel-skeleton {
-    @apply absolute lg:relative right-0;
+    @apply absolute lg:relative end-0;
     @apply flex-none flex-y;
     @apply bg-03;
     @apply w-full h-full;
@@ -138,43 +138,43 @@ chat-side-panel-skeleton {
     @apply w-full h-full;
     @apply overflow-hidden;
 }
-chat-side-panel-skeleton .c-header {
+chat-side-panel-skeleton > .c-header {
     @apply relative flex-none;
 }
-chat-side-panel-skeleton .c-cover {
+chat-side-panel-skeleton > .c-header > .c-cover {
     @apply h-26;
     @apply rounded-b-xl;
     @apply bg-right-panel-skeleton-header;
 }
-chat-side-panel-skeleton .c-avatar {
-    @apply absolute left-4 top-18;
+chat-side-panel-skeleton > .c-header > .c-avatar {
+    @apply absolute start-4 top-18;
     @apply w-16 h-16;
 }
-chat-side-panel-skeleton .c-bottom {
+chat-side-panel-skeleton > .c-header > .c-bottom {
     @apply flex-x items-center gap-x-2;
     @apply h-17;
     @apply pt-10 px-4;
 }
-chat-side-panel-skeleton .c-badge {
+chat-side-panel-skeleton > .c-header > .c-bottom > .c-badge {
     @apply flex-none;
     @apply w-24 h-6;
     @apply rounded-full;
     @apply bg-skeleton;
 }
-chat-side-panel-skeleton .c-chat-info {
+chat-side-panel-skeleton > .c-chat-info {
     @apply flex-none;
     @apply h-6;
 }
-chat-side-panel-skeleton .c-tabs {
+chat-side-panel-skeleton > .c-tabs {
     @apply flex-none;
     @apply h-10;
 }
-chat-side-panel-skeleton .c-divider {
+chat-side-panel-skeleton > .c-divider {
     @apply flex-none;
     @apply h-px mx-6;
     @apply bg-separator;
 }
-chat-side-panel-skeleton .c-list {
+chat-side-panel-skeleton > .c-list {
     @apply flex-1;
     @apply overflow-hidden;
 }
@@ -190,14 +190,15 @@ chat-side-panel-skeleton .c-list {
     @apply border-b border-separator;
 }
 .chat-header-skeleton > .c-wrapper {
+    @apply flex items-center;
     @apply w-full lg:max-w-192 h-14;
 }
-.chat-header-skeleton > .c-wrapper .c-icon {
+.chat-header-skeleton > .c-wrapper > .c-icon {
     @apply flex-none flex items-center justify-center;
     @apply h-14;
-    @apply pr-2;
+    @apply pe-2;
 }
-.chat-header-skeleton > .c-wrapper .c-title {
+.chat-header-skeleton > .c-wrapper > .c-title {
     @apply flex-1 flex items-center justify-start;
 }
 
@@ -208,7 +209,7 @@ chat-side-panel-skeleton .c-list {
 .chat-panel-skeleton .panel-body-skeleton {
     @apply self-center;
     @apply w-full h-0 min-h-0 lg:max-w-192;
-    @apply p-2 md:py-1.5 md:px-0 ml-[2px];
+    @apply p-2 md:py-1.5 md:px-0 ms-[2px];
     @apply overflow-hidden;
 }
 
@@ -283,7 +284,7 @@ chat-list-skeleton .message-avatar-skeleton {
 chat-list-skeleton .thread-skeleton .message-avatar-skeleton {
     @apply w-8 h-8;
 }
-chat-list-skeleton .message-skeleton.thread-skeleton .c-container {
+chat-list-skeleton > .message-skeleton.thread-skeleton > .c-container {
     @apply mt-1;
 }
 
@@ -307,7 +308,7 @@ chat-list-skeleton .message-skeleton.thread-skeleton .c-container {
 .message-skeleton.header-skeleton .message-avatar-skeleton {
     @apply w-10 h-10;
 }
-.message-skeleton .c-container {
+.message-skeleton > .c-container {
     @apply flex-y items-start justify-center gap-y-1;
     @apply w-full;
 }
@@ -338,7 +339,7 @@ chat-list-skeleton .message-skeleton.thread-skeleton .c-container {
 }
 .message-wrapper-skeleton {
     @apply flex-wrap flex-x items-start gap-y-2;
-    @apply py-1 pr-13 pl-14;
+    @apply py-1 pe-13 ps-14;
 }
 .message-content-skeleton {
     @apply flex;
@@ -568,7 +569,7 @@ tab-skeleton {
     @apply min-h-10;
     @apply my-0 mx-2;
 }
-tab-skeleton .c-line {
+tab-skeleton > .c-line {
     @apply flex-1 flex items-center justify-center;
     @apply h-3;
     @apply rounded-full;
@@ -595,7 +596,7 @@ body:not(.app-ready) voxt-skeleton,
 body:not(.app-ready) image-skeleton[data-image-state="skeleton"],
 body:not(.app-ready) thin-left-panel-skeleton .button,
 body:not(.app-ready) chat-view-footer-skeleton .footer-button,
-body:not(.app-ready) tab-skeleton .c-line {
+body:not(.app-ready) tab-skeleton > .c-line {
     animation: none;
 }
 

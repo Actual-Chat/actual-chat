@@ -43,7 +43,7 @@ const INLINE_VIDEO = '.call-screen:not(.expanded):not(.collapsed)';
 const FLOATING_VIDEO = '.call-screen.collapsed';
 const OWN_TILE = '.video-streaming-preview';
 const REMOTE_TILE = '.remote-video-container';
-const ACTIVITY_HANG_UP = '.chat-activity-panel .chat-audio-controls .c-hangup';
+const ACTIVITY_HANG_UP = '.chat-activity-panel .chat-audio-controls .btn-hang-up';
 
 /**
  * Waits for the call's video in the chat, standing in for the island: with the call's timer, and the

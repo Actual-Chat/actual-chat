@@ -1715,6 +1715,7 @@
   "Shortcuts_ToggleSelection": "在选择器中切换选中状态",
   "Shortcuts_ToggleTheme": "切换浅色或深色主题",
   "Shortcuts_ToggleSafeAreas": "切换安全区域",
+  "Shortcuts_ToggleTextDirection": "切换从右到左布局",
 
   "LocationAccuracy_Topic": "位置精度",
 

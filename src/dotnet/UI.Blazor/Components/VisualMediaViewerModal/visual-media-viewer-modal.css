@@ -46,7 +46,7 @@ html.native-titlebar body.wide .image-viewer-modal.modal-frame {
 .image-viewer-header > .c-author > .c-content > .c-time {
     @apply text-caption text-pal-white-80;
 }
-.image-viewer-header .c-control-panel {
+.image-viewer-header > .c-control-panel {
     @apply flex-x gap-x-3 md:gap-x-4;
 }
 .image-viewer-header > .c-control-panel > .c-link {
@@ -114,15 +114,15 @@ body.device-ios swiper-slide img {
     touch-action: none;
 }
 swiper-container::part(button-next) {
-    @apply right-0;
-    @apply py-4 pl-4 pr-2;
-    @apply rounded-l-2xl;
+    @apply end-0;
+    @apply py-4 ps-4 pe-2;
+    @apply rounded-s-2xl;
     @apply bg-pal-black-60;
 }
 swiper-container::part(button-prev) {
-    @apply left-0;
-    @apply py-4 pl-2 pr-4;
-    @apply rounded-r-2xl;
+    @apply start-0;
+    @apply py-4 ps-2 pe-4;
+    @apply rounded-e-2xl;
     @apply bg-pal-black-60;
 }
 .media-swiper .video-wrapper {
@@ -157,7 +157,7 @@ swiper-container::part(button-prev) {
     @apply max-w-full max-h-full;
 }
 .video-wrapper .video-control {
-    @apply absolute z-10 left-0 right-0 bottom-0;
+    @apply absolute z-10 start-0 end-0 bottom-0;
     @apply flex-y items-center gap-x-2;
     @apply bg-black;
     padding-left: calc(1rem + var(--safe-area-left));
@@ -180,8 +180,8 @@ swiper-container::part(button-prev) {
     pointer-events: none;
     transition-delay: 0s;
 }
-.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control .c-line-1,
-.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control .c-thumb {
+.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control > .c-line-1,
+.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control > .c-line-2 > .c-thumb {
     @apply hidden;
 }
 .image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control.has-mini-progress {
@@ -191,7 +191,7 @@ swiper-container::part(button-prev) {
     backdrop-filter: none;
     padding: 0;
 }
-.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control.has-mini-progress .c-line-2 {
+.image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control.has-mini-progress > .c-line-2 {
     @apply min-h-0 gap-x-0;
 }
 .image-viewer-modal:has(.show-to-hide) .video-wrapper .video-control.has-mini-progress progress {
@@ -200,25 +200,25 @@ swiper-container::part(button-prev) {
 .video-wrapper .video-control * {
     @apply always-white;
 }
-.video-wrapper .video-control .c-line-1 {
+.video-wrapper .video-control > .c-line-1 {
     @apply relative flex-1 flex-x items-end justify-center gap-x-4;
     @apply w-full min-h-8;
     @apply pt-2;
 }
-.video-control .c-line-1 .play-btn.is-playing .play-icon {
+.video-control > .c-line-1 > .play-btn.is-playing .play-icon {
     @apply hidden;
 }
-.video-control .c-line-1 .play-btn.is-playing .pause-icon {
+.video-control > .c-line-1 > .play-btn.is-playing .pause-icon {
     @apply flex;
 }
-.video-control .c-line-1 .play-btn.is-paused .play-icon {
+.video-control > .c-line-1 > .play-btn.is-paused .play-icon {
     @apply flex;
 }
-.video-control .c-line-1 .play-btn.is-paused .pause-icon {
+.video-control > .c-line-1 > .play-btn.is-paused .pause-icon {
     @apply hidden;
 }
 
-.video-wrapper .video-control .c-line-2 {
+.video-wrapper .video-control > .c-line-2 {
     @apply relative;
     @apply flex-x items-center;
     @apply w-full min-h-8;
@@ -240,21 +240,21 @@ swiper-container::part(button-prev) {
     @apply bg-white;
     @apply rounded-full;
 }
-.video-wrapper .video-control .c-line-1 .c-timeline {
-    @apply absolute right-0;
+.video-wrapper .video-control > .c-line-1 > .c-timeline {
+    @apply absolute end-0;
     @apply flex-none flex-x items-center gap-x-1;
     @apply whitespace-nowrap;
     @apply text-body-500;
 }
 .video-wrapper .video-control progress:before {
     @apply content-empty;
-    @apply absolute z-10 left-0;
+    @apply absolute z-10 start-0;
     @apply h-full max-w-none;
     @apply rounded-full;
     @apply bg-pal-white-50;
     width: var(--data-media-loaded);
 }
-.video-wrapper .video-control .c-thumb {
+.video-wrapper .video-control > .c-line-2 > .c-thumb {
     @apply absolute top-1/2 z-10;
     @apply w-3 h-3;
     @apply rounded-full;
@@ -263,7 +263,7 @@ swiper-container::part(button-prev) {
     transition: width 150ms ease, height 150ms ease;
     transform: translate(calc(var(--progress, 0) * (100cqw - 100%)), -50%);
 }
-.video-wrapper .video-control .c-line-2.thumb-active .c-thumb {
+.video-wrapper .video-control > .c-line-2.thumb-active > .c-thumb {
     @apply w-5 h-5;
 }
 
@@ -332,7 +332,7 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
 }
 .reload-icon-wrapper .btn {
     @apply absolute z-20;
-    left: calc(50% - 1.25rem);
+    inset-inline-start: calc(50% - 1.25rem);
     top: calc(50% - 1.25rem);
 }
 .video-wrapper .video-thumbnail-wrapper {
@@ -388,7 +388,7 @@ swiper-container.media-swiper.navigation-visible::part(button-prev) {
 
 /* Inline media info panel (mobile only) */
 .media-info-panel {
-    @apply absolute bottom-0 left-0 right-0 z-20;
+    @apply absolute bottom-0 start-0 end-0 z-20;
     @apply hidden;
     @apply py-6 px-4;
     @apply bg-01;
