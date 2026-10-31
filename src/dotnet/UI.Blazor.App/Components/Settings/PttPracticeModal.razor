@@ -54,6 +54,7 @@
     private static readonly TimeSpan CoolDown = TimeSpan.FromSeconds(1.5);
 
     private readonly CpuTimestamp?[] _firedAt = new CpuTimestamp?[4];
+    private readonly int[] _fireCounts = new int[4];
     private GestureEvent? _lastGesture;
     private bool _isRawDataShown;
     private CancellationTokenSource? _refreshCts;
@@ -103,6 +104,7 @@
                 } else {
                     <div class="c-off">@L.Ptt_Practice_Off</div>
                 }
+                <div class="c-count">x@(_fireCounts[(int)meter])</div>
             </div>
         };
 
@@ -112,6 +114,7 @@
     private void OnResetClick() {
         GestureUI.ResetGestures();
         Array.Clear(_firedAt);
+        Array.Clear(_fireCounts);
         _lastGesture = null;
     }
 
@@ -132,8 +135,10 @@
             GestureKind.DoublePat => Meter.DoublePat,
             _ => null,
         };
-        if (meter is { } m)
+        if (meter is { } m) {
             _firedAt[(int)m] = CpuTimestamp.Now;
+            _fireCounts[(int)m]++;
+        }
         _ = InvokeAsync(StateHasChanged);
     }
 

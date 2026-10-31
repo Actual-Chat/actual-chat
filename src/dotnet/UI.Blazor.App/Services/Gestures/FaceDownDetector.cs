@@ -20,8 +20,10 @@ public sealed class FaceDownDetector
     // MAUI reports Y ≈ +1 for an upright portrait, so top-down is the negative end.
     private const float PocketMaxY = -0.5f;
     private const float NotFaceDownZ = -0.3f;
-    private const float StillTolerance = 0.04f;
+    // Loose enough for a surface that moves - a table on a train, a car seat
+    private const float StillTolerance = 0.12f;
 
+    private readonly MedianSmoother _smoother = new();
     private Moment? _heldSince;
     private Moment? _lastNotFaceDownAt;
     private Moment? _stillSince;
@@ -42,12 +44,14 @@ public sealed class FaceDownDetector
 
     public GestureKind Process(SensorSample sample)
     {
-        if (sample.Z > NotFaceDownZ)
+        // Posture from a median, so a spike can't enter or leave face-down; stillness stays on the raw reading
+        var posture = _smoother.Process(sample);
+        if (posture.Z > NotFaceDownZ)
             _lastNotFaceDownAt = sample.At;
 
-        var isFaceDown = sample.Z <= FaceDownZ;
+        var isFaceDown = posture.Z <= FaceDownZ;
         // Top down only: the phone held to the ear is covered and near-vertical too, but top up.
-        var isPocketed = _isCovered && MathF.Abs(sample.Z) <= PocketMaxZ && sample.Y <= PocketMaxY;
+        var isPocketed = _isCovered && MathF.Abs(posture.Z) <= PocketMaxZ && posture.Y <= PocketMaxY;
         if (!isFaceDown && !isPocketed) {
             _heldSince = null;
             _stillSince = null;
@@ -94,7 +98,7 @@ public sealed class FaceDownDetector
         var dwellMs = (sample.At - _heldSince.Value).TotalMilliseconds;
         LastFireInfo = $"{kind} entry={(_isFastEntry ? "fast" : "slow")}({_entryDurationMs:F0}ms)"
             + $" dwell={dwellMs:F0}ms still={stillMs:F0}ms covered={_isCovered}"
-            + $" z={sample.Z:F2} |a|={sample.Magnitude:F3}";
+            + $" z={posture.Z:F2} |a|={sample.Magnitude:F3}";
         return kind;
     }
 
@@ -129,6 +133,7 @@ public sealed class FaceDownDetector
     {
         // _isCovered survives: it mirrors the physical proximity sensor, not gesture progress,
         // and no fresh reading arrives after a reset - SensorFeed pushes false on sensor stop.
+        _smoother.Reset();
         _heldSince = null;
         _lastNotFaceDownAt = null;
         _stillSince = null;

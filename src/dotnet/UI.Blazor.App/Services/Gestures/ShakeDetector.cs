@@ -61,14 +61,13 @@ public sealed class ShakeDetector(ShakeSensitivity sensitivity)
 
         var threshold = GetDeviationThreshold(Sensitivity);
         if (_axis == GravityAxis.None) {
+            // In the screen's plane only: a jolt through the screen is a pat, not a shake
             var (ax, ay, az) = (MathF.Abs(fx), MathF.Abs(fy), MathF.Abs(fz));
-            var max = MathF.Max(ax, MathF.Max(ay, az));
-            if (max <= threshold)
+            var max = MathF.Max(ax, ay);
+            if (max <= threshold || az > max)
                 return false;
 
-            _axis = max == ax ? GravityAxis.X
-                : max == ay ? GravityAxis.Y
-                : GravityAxis.Z;
+            _axis = max == ax ? GravityAxis.X : GravityAxis.Y;
         }
 
         var value = _axis switch {

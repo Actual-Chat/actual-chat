@@ -16,10 +16,10 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     private readonly GestureRecognizer _recognizer = new(DisarmedOptions);
     // Ring of the last ~5s of samples (at Constants.Audio.GestureSampleMinPeriod), logged on
     // FaceDown fire - the only forensic record of what led to a gesture once it's fired on-device.
-    private readonly SensorSample[] _recentSamples = new SensorSample[100];
+    private readonly SensorSample[] _recentSamples = new SensorSample[250];
     private int _recentSampleIndex;
     private string _lastGuardStatus = "off";
-    private volatile bool _isPracticeMode;
+    private bool _isPracticeMode;
     private bool _isHeadsetButtonEnabled;
     private bool _isStopGestureEnabled;
     private bool _isHushArmed;
@@ -59,9 +59,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
     public bool IsHushArmed => Volatile.Read(ref _isHushArmed);
 
     public bool IsPracticeMode {
-        get => _isPracticeMode;
+        get => Volatile.Read(ref _isPracticeMode);
         set {
-            _isPracticeMode = value;
+            Volatile.Write(ref _isPracticeMode, value);
             _recognizer.Reset();
             if (!value) {
                 // Disarm synchronously rather than waiting for the poll loop's next tick - leaving
@@ -99,7 +99,8 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         var isEnabled = Volatile.Read(ref _isHeadsetButtonEnabled);
         var hasAnswerWindow = Volatile.Read(ref _hasAnswerWindow);
         var hasArmedChats = Volatile.Read(ref _hasArmedChats);
-        return new(isEnabled, hasAnswerWindow, ChatAudioUI.IsRecording(), _isPracticeMode, hasArmedChats);
+        var isPracticeMode = Volatile.Read(ref _isPracticeMode);
+        return new(isEnabled, hasAnswerWindow, ChatAudioUI.IsRecording(), isPracticeMode, hasArmedChats);
     }
 
     protected override Task OnRun(CancellationToken cancellationToken)
@@ -112,7 +113,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
             return Task.CompletedTask;
 
         Feed.SampleReceived += OnSample;
+        Feed.GyroReceived += OnGyro;
         Feed.ProximityChanged += OnProximityChanged;
+        Feed.LightRose += OnLightRose;
         VoiceActivityUI.VoiceStamped += OnVoiceStamped;
         var retryDelays = RetryDelaySeq.Exp(0.1, 1);
         return AsyncChain.From(TrackActivation)
@@ -167,7 +170,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 var whenCarAudioRouteChanged = cCarAudioRoute.WhenInvalidated(waitCts.Token);
                 var whenAppSettingsChanged = cAppSettings.WhenInvalidated(waitCts.Token);
 
-                var isPracticeMode = _isPracticeMode;
+                var isPracticeMode = Volatile.Read(ref _isPracticeMode);
                 var pttChatIds = cPttChatIds.Value;
                 var isMicOpen = cRecordingChatId.Value is not null;
                 var isStopGestureEnabled = !(cAppSettings.Value.IsFaceDownMicStopDisabled ?? false);
@@ -227,7 +230,7 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                     isMicOpen,
                     mustSenseHush || isPracticeMode,
                     settings.ShakeSensitivity);
-                if (_isPracticeMode != isPracticeMode)
+                if (Volatile.Read(ref _isPracticeMode) != isPracticeMode)
                     continue; // The setter raced this write and owns the disarm - re-decide
 
                 // SensorFeed's Start/Stop are idempotent, so the loop states them every iteration
@@ -281,6 +284,9 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
         _recognizer.SetProximityCovered(isCovered);
     }
 
+    private void OnLightRose()
+        => _recognizer.SetLightRose();
+
     private void OnVoiceStamped()
         => Wake();
 
@@ -299,12 +305,23 @@ public sealed class GestureUI : UIWorkerBase<AppUIHub>
                 $"{sample.X:F2},{sample.Y:F2},{sample.Z:F2}");
             _lastGuardStatus = guardStatus;
         }
-        var isPracticeMode = _isPracticeMode;
+        var isPracticeMode = Volatile.Read(ref _isPracticeMode);
         var recognizerOptions = _recognizer.Options;
-        var isMicOpen = recognizerOptions.IsMicOpen;
-        if (_recognizer.Process(sample) is not { } gesture)
-            return;
+        if (_recognizer.Process(sample) is { } gesture)
+            HandleGesture(gesture, recognizerOptions, isPracticeMode);
+    }
 
+    private void OnGyro(GyroSample sample)
+    {
+        var isPracticeMode = Volatile.Read(ref _isPracticeMode);
+        var recognizerOptions = _recognizer.Options;
+        if (_recognizer.ProcessGyro(sample) is { } gesture)
+            HandleGesture(gesture, recognizerOptions, isPracticeMode);
+    }
+
+    private void HandleGesture(GestureEvent gesture, GestureOptions recognizerOptions, bool isPracticeMode)
+    {
+        var isMicOpen = recognizerOptions.IsMicOpen;
         if (gesture.Kind is GestureKind.FaceDown or GestureKind.Pocket)
             Log.LogWarning("{Kind} fired: {Info}; samples: {Samples}",
                 gesture.Kind, _recognizer.FaceDownLastFireInfo, FormatRecentSamples());

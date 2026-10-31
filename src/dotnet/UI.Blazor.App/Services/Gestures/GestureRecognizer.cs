@@ -26,9 +26,9 @@ public sealed class GestureRecognizer
     // never during ordinary sampling, so it's the signal to drop all in-progress gesture state
     // rather than let it look like a gesture that spans the pause.
     public static readonly TimeSpan SampleGap = TimeSpan.FromSeconds(2);
+    public static readonly TimeSpan UpsideDownHold = TimeSpan.FromMilliseconds(300);
 
     private const float UpsideDownMinY = 0.5f;
-    private const float MaxGravityDeviation = 0.3f;
 
     // Options is written from the worker's poll-loop thread and Process/Reset/SetProximityCovered
     // run on the sensor callback thread - the lock keeps the detectors' internal state (e.g.
@@ -39,11 +39,14 @@ public sealed class GestureRecognizer
     private readonly ProximityGuard _proximity = new();
     private readonly ShakeDetector _shake;
     private readonly PatDetector _pat = new();
+    private readonly GravityEstimator _gravity = new();
     private GestureOptions _options;
     private Moment? _lastSampleAt;
     private bool _isProximitySuppressed;
     private bool _wasSuppressed;
     private bool _isUpsideDown;
+    private bool _isTopDownPosture;
+    private Moment _postureSince;
 
     public GestureOptions Options {
         get {
@@ -134,6 +137,12 @@ public sealed class GestureRecognizer
         }
     }
 
+    public void SetLightRose()
+    {
+        lock (_lock)
+            _pat.SetLit(_lastSampleAt ?? default);
+    }
+
     public GestureEvent? Process(SensorSample sample)
     {
         lock (_lock) {
@@ -141,7 +150,8 @@ public sealed class GestureRecognizer
                 ResetUnguarded();
             _lastSampleAt = sample.At;
 
-            UpdateUpsideDownUnguarded(sample);
+            var gravity = _gravity.Process(sample);
+            UpdateUpsideDownUnguarded(sample, gravity);
             if (_options.IsStopGestureEnabled || _options.IsHushEnabled) {
                 var putAway = _faceDown.Process(sample);
                 // With nothing outgoing the fire can only mean hush, and hush needs a transition:
@@ -159,7 +169,8 @@ public sealed class GestureRecognizer
             if (_options.IsMicOpen && _options.IsDoubleShakeEnabled && _shake.Process(sample))
                 return new GestureEvent(GestureKind.DoubleShake, sample.At);
 
-            _isProximitySuppressed = _proximity.IsSuppressing(sample);
+            var posture = new SensorSample(sample.At, gravity.X, gravity.Y, gravity.Z);
+            _isProximitySuppressed = _proximity.IsSuppressing(posture);
             var isSuppressed = _isProximitySuppressed || _isUpsideDown;
             if (isSuppressed) {
                 // Reset on the way IN, so no half-built flip/shake state survives pocketing; on
@@ -168,7 +179,9 @@ public sealed class GestureRecognizer
                 // shake that's already in progress.
                 if (!_wasSuppressed) {
                     _flip.Reset();
-                    _shake.Reset();
+                    // With the mic open the shake is the stop gesture and keeps running here
+                    if (!_options.IsMicOpen)
+                        _shake.Reset();
                     _pat.Reset();
                 }
                 _wasSuppressed = true;
@@ -181,13 +194,24 @@ public sealed class GestureRecognizer
             }
 
             _wasSuppressed = false;
-            if (_options.IsFlipToTalkEnabled && _flip.Process(sample))
-                return new GestureEvent(GestureKind.FlipToTalk, sample.At);
             // Guarded on IsMicOpen so a stop shake isn't fed to the detector twice.
             if (!_options.IsMicOpen && _options.IsDoubleShakeEnabled && _shake.Process(sample))
                 return new GestureEvent(GestureKind.DoubleShake, sample.At);
 
             return null;
+        }
+    }
+
+    public GestureEvent? ProcessGyro(GyroSample sample)
+    {
+        lock (_lock) {
+            // A turn in the screen plane is pure rotation: the gyroscope sees it whatever the hand does
+            if (!_options.IsFlipToTalkEnabled || _lastSampleAt is null || _isProximitySuppressed || _isUpsideDown)
+                return null;
+
+            return _flip.Process(sample, _gravity.Gravity)
+                ? new GestureEvent(GestureKind.FlipToTalk, sample.At)
+                : null;
         }
     }
 
@@ -210,20 +234,20 @@ public sealed class GestureRecognizer
 
     // Private methods
 
-    private void UpdateUpsideDownUnguarded(SensorSample sample)
+    private void UpdateUpsideDownUnguarded(SensorSample sample, (float X, float Y, float Z) gravity)
     {
-        // Only a gravity-dominated reading says anything about carry orientation; mid-stride
-        // bounce leaves the latch unchanged, which is what holds it through a walk.
-        if (MathF.Abs(sample.Magnitude - 1f) > MaxGravityDeviation)
-            return;
-
-        var axis = sample.GetDominantAxis(UpsideDownMinY);
-        if (axis == GravityAxis.None)
-            return;
-
+        // From the gravity estimate over every reading - the phone may be moving the whole time.
+        var posture = new SensorSample(sample.At, gravity.X, gravity.Y, gravity.Z);
+        var axis = posture.GetDominantAxis(UpsideDownMinY);
         // MAUI yields Y ≈ +1 for an UPRIGHT portrait on both platforms (verified on-device
         // 2026-08-11), so top-down pocket carry is the NEGATIVE end of Y.
-        _isUpsideDown = axis == GravityAxis.Y && sample.Y <= -UpsideDownMinY;
+        var isTopDown = axis == GravityAxis.Y && posture.Y <= -UpsideDownMinY;
+        // Either edge counts once it has held: a flip swings through top-down, and patting a
+        // top-down phone mustn't drop and re-arm the latch - the re-entry wipes the pat in progress.
+        _postureSince = isTopDown == _isTopDownPosture ? _postureSince : sample.At;
+        _isTopDownPosture = isTopDown;
+        if (_isUpsideDown != isTopDown && sample.At - _postureSince >= UpsideDownHold)
+            _isUpsideDown = isTopDown;
     }
 
     private void ResetUnguarded()
@@ -231,6 +255,9 @@ public sealed class GestureRecognizer
         // The proximity level is deliberately kept: it's edge-driven, so forgetting it would
         // leave us reading "uncovered" until the sensor next changes its mind.
         _isUpsideDown = false;
+        _isTopDownPosture = false;
+        _postureSince = default;
+        _gravity.Reset();
         _isProximitySuppressed = false;
         _wasSuppressed = false;
         _flip.Reset();
