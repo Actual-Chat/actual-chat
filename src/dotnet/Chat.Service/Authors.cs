@@ -34,9 +34,12 @@ public class Authors(IServiceProvider services) : IAuthors
         if (chat == null)
             return null;
 
-        var authorFull = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken).ConfigureAwait(false);
+        var authorFull = await Backend.Get(chatId, authorId, RequestedAuthorKind.Full, cancellationToken)
+            .ConfigureAwait(false);
         if (authorFull is null)
             return null;
+        if (authorFull.IsAnonymous)
+            return authorFull.ToAuthor(); // Never de-anonymize: the viewer's name for the user behind it reveals them
 
         return await WithPreferredName(session, authorFull.ToAuthor(), authorFull.UserId, cancellationToken)
             .ConfigureAwait(false);
